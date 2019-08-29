@@ -40,6 +40,8 @@ github.com/MakeNowJust/heredoc v0.0.0-20171113091838-e9091a26100e/go.mod h1:64YH
 github.com/Masterminds/goutils v1.1.0/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver v1.4.2/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/sprig v0.0.0-20190301161902-9f8fceff796f/go.mod h1:y6hNFY5UBTIWBxnzTeuNhlNS5hqE0NB0E6fgfo2Br3o=
+github.com/MatousJobanek/toolchain-common v0.0.0-20190829111508-af489ff019ae h1:lyY66AmKt7MWnOG3H7TQBIYRSq/IUg8JWyW44RYDVFA=
+github.com/MatousJobanek/toolchain-common v0.0.0-20190829111508-af489ff019ae/go.mod h1:a0prNI70PmcWfvUPCYovUOq82D70zOAioaaSmzZIZEw=
 github.com/NYTimes/gziphandler v1.0.1/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMomdKFjzJNB0c=
 github.com/OpenPeeDeeP/depguard v0.0.0-20180806142446-a69c782687b2/go.mod h1:7/4sitnI9YlQgTLLk734QlzXT8DuHVnAyztLplQjk+o=
@@ -75,6 +77,8 @@ github.com/codeready-toolchain/api v0.0.0-20190812113906-bd1f09d19c28/go.mod h1:
 github.com/codeready-toolchain/api v0.0.0-20190828070258-91f65d92be5f h1:41TI6Ouj4coGPWZ0Eq19nlpyHFjCtnL9Bz5eraBnh4U=
 github.com/codeready-toolchain/api v0.0.0-20190828070258-91f65d92be5f/go.mod h1:jHr8IvmLGTxmgD+jc1bBbucP4bSbT2JHnM+HdAw6N2g=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20190819084459-ba40462e7938/go.mod h1:ATdn3CpRa2qvS9AKWMdNEkEFPwbY9aBtCY6FLswrXHo=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20190830131634-231d1bd08d5f h1:VHbKnso6ca8ub6nCnjp4sboBI/g7ZqfQxQnzRhXn2XU=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20190830131634-231d1bd08d5f/go.mod h1:a0prNI70PmcWfvUPCYovUOq82D70zOAioaaSmzZIZEw=
 github.com/coreos/bbolt v1.3.0/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/bbolt v1.3.3/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.9+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=

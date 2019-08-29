@@ -4,9 +4,10 @@ require (
 	cloud.google.com/go v0.40.0 // indirect
 	github.com/Azure/go-autorest v13.0.0+incompatible // indirect
 	github.com/codeready-toolchain/api v0.0.0-20190828070258-91f65d92be5f
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20190819084459-ba40462e7938
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20190830131634-231d1bd08d5f
 	github.com/go-openapi/spec v0.19.2 // indirect
 	github.com/gobuffalo/envy v1.7.0 // indirect
+	github.com/golangci/golangci-lint v1.17.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.9.2 // indirect
 	github.com/mailru/easyjson v0.0.0-20190620125010-da37f6c1e481 // indirect
