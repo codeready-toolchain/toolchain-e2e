@@ -85,8 +85,8 @@ ifeq ($(MEMBER_REPO_PATH),)
 	rm -rf ${MEMBER_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/member-operator.git --depth 1 ${MEMBER_REPO_PATH}
-endif
 	$(MAKE) prepare-e2e-repo REPO_PATH=$(MEMBER_REPO_PATH) REPO_NAME=member-operator
+endif
 	oc new-project $(MEMBER_NS)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
@@ -103,8 +103,8 @@ ifeq ($(HOST_REPO_PATH),)
 	rm -rf ${HOST_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/host-operator.git --depth 1 ${HOST_REPO_PATH}
-endif
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(HOST_REPO_PATH) REPO_NAME=host-operator
+endif
 	oc new-project $(HOST_NS)
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
