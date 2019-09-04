@@ -26,6 +26,9 @@ require (
 	sigs.k8s.io/kubefed v0.1.0-rc2
 )
 
+// fix for unavailable git.apache.org https://status.apache.org/incidents/63030p4241xj
+replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
+
 // Pinned to kubernetes-1.13.1
 replace (
 	k8s.io/api => k8s.io/api v0.0.0-20181213150558-05914d821849
