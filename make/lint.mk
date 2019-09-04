@@ -6,7 +6,9 @@ YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
 .PHONY: lint-yaml
 ## runs yamllint on all yaml files
 lint-yaml: ${YAML_FILES}
+ifneq ($(YAML_FILES),)
 	$(Q)yamllint -c .yamllint $(YAML_FILES)
+endif
 
 .PHONY: lint-go-code
 ## Checks the code with golangci-lint
