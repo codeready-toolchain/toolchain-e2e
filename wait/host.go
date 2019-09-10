@@ -82,7 +82,7 @@ func UntilHasStatusCondition(conditions ...toolchainv1alpha1.Condition) MurWaitC
 func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountStatusEmbedded) MurWaitCondition {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		if len(mur.Status.UserAccounts) != len(expUaStatuses) {
-			a.T.Logf("waiting for corrent number of UserAccount statuses in MasterUserRecord '%s`", mur.Name)
+			a.T.Logf("waiting for correct number of UserAccount statuses in MasterUserRecord '%s`", mur.Name)
 			return false
 		}
 		for _, expUaStatus := range expUaStatuses {
