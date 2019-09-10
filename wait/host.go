@@ -25,6 +25,7 @@ func NewHostAwaitility(a *Awaitility) *HostAwaitility {
 		}}
 }
 
+// WaitForMasterUserRecord waits until there is MasterUserRecord with the given name available
 func (a *HostAwaitility) WaitForMasterUserRecord(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
@@ -40,6 +41,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string) error {
 	})
 }
 
+// GetMasterUserRecord returns MasterUserRecord with the given name if available, otherwise it fails
 func (a *HostAwaitility) GetMasterUserRecord(name string) *toolchainv1alpha1.MasterUserRecord {
 	mur := &toolchainv1alpha1.MasterUserRecord{}
 	err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur)
@@ -47,6 +49,7 @@ func (a *HostAwaitility) GetMasterUserRecord(name string) *toolchainv1alpha1.Mas
 	return mur
 }
 
+// WaitForMasterUserRecord waits until there is MasterUserRecord available with the given name and meeting the set of given wait-conditions
 func (a *HostAwaitility) WaitForMurConditions(name string, waitCond ...MurWaitCondition) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
@@ -66,8 +69,10 @@ func (a *HostAwaitility) WaitForMurConditions(name string, waitCond ...MurWaitCo
 	})
 }
 
+// MurWaitCondition represents a function checking if MasterUserRecord meets the given condition
 type MurWaitCondition func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
+// UntilHasStatusCondition checks if MasterUserRecord status has the given set of conditions
 func UntilHasStatusCondition(conditions ...toolchainv1alpha1.Condition) MurWaitCondition {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		if test.ConditionsMatch(mur.Status.Conditions, conditions...) {
@@ -79,6 +84,7 @@ func UntilHasStatusCondition(conditions ...toolchainv1alpha1.Condition) MurWaitC
 	}
 }
 
+// UntilHasUserAccountStatus checks if MasterUserRecord status has the given set of status embedded UserAccounts
 func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountStatusEmbedded) MurWaitCondition {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		if len(mur.Status.UserAccounts) != len(expUaStatuses) {
@@ -98,6 +104,7 @@ func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountSta
 	}
 }
 
+// WaitForUserSignupStatusConditions waits until there is a UserSignup available with the given name and set of status conditions
 func (a *HostAwaitility) WaitForUserSignupStatusConditions(name string, conditions ...toolchainv1alpha1.Condition) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		userSignup := &toolchainv1alpha1.UserSignup{}
@@ -118,6 +125,7 @@ func (a *HostAwaitility) WaitForUserSignupStatusConditions(name string, conditio
 	})
 }
 
+// WaitForUserSignup waits until there is a UserSignup with the given name available
 func (a *HostAwaitility) WaitForUserSignup(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		userSignup := &toolchainv1alpha1.UserSignup{}

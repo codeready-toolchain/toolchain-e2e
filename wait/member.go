@@ -26,6 +26,7 @@ func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 		}}
 }
 
+// WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, expSpec toolchainv1alpha1.UserAccountSpec, conditions ...toolchainv1alpha1.Condition) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
@@ -46,6 +47,7 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, expSpec toolchainv1al
 	})
 }
 
+// GetUserAccount returns a UserAccount with the given name if is available, otherwise it fails
 func (a *MemberAwaitility) GetUserAccount(name string) *toolchainv1alpha1.UserAccount {
 	ua := &toolchainv1alpha1.UserAccount{}
 	err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua)
@@ -53,6 +55,7 @@ func (a *MemberAwaitility) GetUserAccount(name string) *toolchainv1alpha1.UserAc
 	return ua
 }
 
+// WaitForUser waits until there is a User with the given name available
 func (a *MemberAwaitility) WaitForUser(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		user := &userv1.User{}
@@ -71,6 +74,7 @@ func (a *MemberAwaitility) WaitForUser(name string) error {
 	})
 }
 
+// WaitForIdentity waits until there is an Identity with the given name available
 func (a *MemberAwaitility) WaitForIdentity(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		identity := &userv1.Identity{}
