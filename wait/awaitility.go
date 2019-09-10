@@ -19,12 +19,13 @@ import (
 )
 
 const (
-	OperatorRetryInterval = time.Second * 5
-	OperatorTimeout       = time.Second * 60
-	RetryInterval         = time.Millisecond * 100
-	Timeout               = time.Second * 3
-	MemberNsVar           = "MEMBER_NS"
-	HostNsVar             = "HOST_NS"
+	OperatorRetryInterval          = time.Second * 5
+	OperatorTimeout                = time.Second * 60
+	RetryInterval                  = time.Millisecond * 100
+	Timeout                        = time.Second * 3
+	MemberNsVar                    = "MEMBER_NS"
+	HostNsVar                      = "HOST_NS"
+	KubeFedClusterConditionTimeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
 )
 
 // Awaitility contains information necessary for verifying availability of resources in both operators
@@ -85,7 +86,7 @@ func (a *Awaitility) WaitForReadyKubeFedClusters() error {
 func (a *SingleAwaitilityImpl) WaitForKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) error {
 	timeout := Timeout
 	if condition != nil {
-		timeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
+		timeout = KubeFedClusterConditionTimeout
 	}
 	return wait.Poll(RetryInterval, timeout, func() (done bool, err error) {
 		_, ok, err := a.GetKubeFedCluster(clusterType, condition)
@@ -102,7 +103,7 @@ func (a *SingleAwaitilityImpl) WaitForKubeFedCluster(clusterType cluster.Type, c
 func (a *SingleAwaitilityImpl) WaitForKubeFedClusterConditionWithName(name string, condition *v1beta1.ClusterCondition) error {
 	timeout := Timeout
 	if condition != nil {
-		timeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
+		timeout = KubeFedClusterConditionTimeout
 	}
 	return wait.Poll(RetryInterval, timeout, func() (done bool, err error) {
 		cluster := &v1beta1.KubeFedCluster{}
