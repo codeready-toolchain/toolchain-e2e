@@ -1,16 +1,18 @@
 package doubles
 
 import (
+	"os"
+	"testing"
+
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
-	"os"
-	"testing"
 )
 
 // InitializeOperators initializes test context, registers schemes and waits until both operators (host, member)

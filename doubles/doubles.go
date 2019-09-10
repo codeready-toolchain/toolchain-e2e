@@ -1,8 +1,9 @@
 package doubles
 
 import (
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"time"
+
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
 )
 
 const (
