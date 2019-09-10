@@ -34,7 +34,7 @@ NOTE: This is not required for openshift-ci environment
 
 ==== Running End-to-End Tests
 
-Although the e2e tests are in the separated repository that the actual operators are, it's still possible to run them against the current code that is at HEAD of the operator repositories.
+Although the e2e tests are in the separated repository than the actual operators are, it's still possible to run them against the current code that is at HEAD of the operator repositories.
 There are multiple Makefile targets that will execute the e2e tests, they just differ in where the operators' code is taken from:
 
 * `make test-e2e` - this target clones the latest changes from both repos https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator], builds images from the master, deploys to OpenShift and runs e2e tests against them.
@@ -95,6 +95,6 @@ If you are still confused by the different e2e/operator location, execution and 
 ci-operator --config ../../openshift/release/ci-operator/config/codeready-toolchain/toolchain-e2e/codeready-toolchain-toolchain-e2e-master.yaml --git-ref=codeready-toolchain/toolchain-e2e@master
 ```
 
-assuming that the https://github.com/openshift/release[OpenShift Release] repo was checked you.
+assuming that you have the https://github.com/openshift/release[OpenShift Release] repo in `$GOPATH`.
 
 NOTE: you can ignore the RBAC issues that are displayed in the console
