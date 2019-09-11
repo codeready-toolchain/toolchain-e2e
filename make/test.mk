@@ -10,8 +10,11 @@ TEST_NS := toolchain-e2e-$(shell date +'%s')
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 
+IS_CRC := $(shell crc status /dev/null 2>&1 | grep Running)
+IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
+
 .PHONY: test-e2e-keep-namespaces
-test-e2e-keep-namespaces: deploy-member deploy-host setup-kubefed e2e-setup e2e-run
+test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-setup e2e-run
 
 .PHONY: test-e2e-local
 test-e2e-local:
@@ -51,12 +54,24 @@ print-logs:
 e2e-setup:
 	oc new-project $(TEST_NS) --display-name e2e-tests
 ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-	$(info logging as system:admin")
-	$(shell echo "oc login -u system:admin")
 	$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${GO_PACKAGE_REPO_NAME}:${GIT_COMMIT_ID_SHORT})
 	($(MAKE) docker-image IMAGE_NAME=${IMAGE_NAME})
 else
 	$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:toolchain-e2e)
+endif
+
+.PHONY: login-as-admin
+login-as-admin:
+ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+    ifeq ($(IS_CRC),)
+		$(info logging as system:admin")
+		oc login -u system:admin
+    else
+        ifneq ($(IS_KUBE_ADMIN),)
+			$(info logging as kube:admin")
+			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password`
+        endif
+    endif
 endif
 
 .PHONY: setup-kubefed
