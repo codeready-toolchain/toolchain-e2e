@@ -596,6 +596,7 @@ func (s *userSignupIntegrationTest) newUserSignup(name string) *v1alpha1.UserSig
 
 	spec := v1alpha1.UserSignupSpec{
 		UserID:        uuid.NewV4().String(),
+		Username:      name,
 		TargetCluster: memberCluster.Name,
 	}
 
