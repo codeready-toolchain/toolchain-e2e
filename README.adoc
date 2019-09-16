@@ -25,9 +25,11 @@ It would work analogically also for the cases when the repositories either both 
 
 If you still don't know what to do with e2e tests in some use-cases, go to <<What to do>> section where all use-cases are covered.
 
-==== Prerequisites if running locally on Minishift
-If you are running these tests locally in Minishift, make sure that you have exposed Minishift's docker-env, so deployment can use the locally built image. You can expose it by running the following command.
-`eval $(minishift docker-env)`
+==== Prerequisites if running locally on Minishift or CRC (CodeReady Containers)
+If you are running these tests locally in Minishift or CRC, make sure that you have exposed necessary environments, so deployment can use the locally built image. You can expose it by running the following commands.
+
+* for Minishift `eval $(minishift docker-env)` `eval $(minishift oc-env)`
+* for CodeReady Containers `eval $(crc oc-env)`
 
 
 NOTE: This is not required for openshift-ci environment
