@@ -92,3 +92,51 @@ func (a *MemberAwaitility) WaitForIdentity(name string) error {
 		return false, nil
 	})
 }
+
+// WaitForDeletedUserAccount waits until the UserAccount with the given name is not found
+func (a *MemberAwaitility) WaitForDeletedUserAccount(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		ua := &toolchainv1alpha1.UserAccount{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("UserAccount is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until UserAccount is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// WaitForDeletedUser waits until the User with the given name is not found
+func (a *MemberAwaitility) WaitForDeletedUser(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		user := &userv1.User{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("deleted user '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until User is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// WaitForDeletedIdentity waits until the Identity with the given name is not found
+func (a *MemberAwaitility) WaitForDeletedIdentity(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		identity := &userv1.Identity{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("deleted identity '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until Identity is deleted '%s'", name)
+		return false, nil
+	})
+}
