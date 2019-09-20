@@ -256,8 +256,8 @@ func verifyDeletion(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterUs
 	assert.NoError(awaitility.T, err, "UserAccount is not deleted")
 
 	err = memberAwait.WaitForDeletedUser(mur.Name)
-	assert.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err, "User is not deleted")
 
 	err = memberAwait.WaitForDeletedIdentity(mur.Name)
-	assert.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err, "Identity is not deleted")
 }
