@@ -4,7 +4,7 @@ require (
 	cloud.google.com/go v0.40.0 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
 	github.com/codeready-toolchain/api v0.0.0-20190910110833-66e1ab342d1e
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20190911094622-c907aa042ca8
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20190920111906-1948fd993dcc
 	github.com/go-openapi/spec v0.19.2 // indirect
 	github.com/gobuffalo/envy v1.7.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect

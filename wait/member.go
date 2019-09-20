@@ -2,14 +2,16 @@ package wait
 
 import (
 	"context"
+	"reflect"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"reflect"
 )
 
 type MemberAwaitility struct {
@@ -43,6 +45,66 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, expSpec toolchainv1al
 			return true, nil
 		}
 		a.T.Logf("waiting for UserAccount '%s' with expected spec and status condition", name)
+		return false, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForNSTmplSet(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found NSTemplateSet '%s'", name)
+		return true, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("deleted NSTemplateSet '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting for deletion of NSTemplateSet '%s'", name)
+		return false, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForNamespace(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		namespace := &v1.Namespace{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, namespace); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of Namespace '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found Namespace '%s'", name)
+		return true, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForDeletedNamespace(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		namespace := &v1.Namespace{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, namespace); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("deleted Namespace '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting for deletion of Namespace '%s'", name)
 		return false, nil
 	})
 }
