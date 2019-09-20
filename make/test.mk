@@ -14,7 +14,10 @@ IS_CRC := $(shell crc status /dev/null 2>&1 | grep Running)
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 
 .PHONY: test-e2e-keep-namespaces
-test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-setup e2e-run
+test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-run
+
+.PHONY: deploy-ops
+deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e-local
 test-e2e-local:
@@ -35,6 +38,7 @@ test-e2e: test-e2e-keep-namespaces e2e-cleanup
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
 	oc get kubefedcluster -n $(MEMBER_NS)
+	oc new-project $(TEST_NS) --display-name e2e-tests
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} operator-sdk test local ./e2e --no-setup --namespace $(TEST_NS) --verbose --go-test-flags "-timeout=15m" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} && exit 1)
 
@@ -49,16 +53,6 @@ print-logs:
 	@echo "====================================================================================="
 	@oc logs deployment.apps/member-operator --namespace $(MEMBER_NS)
 	@echo "====================================================================================="
-
-.PHONY: e2e-setup
-e2e-setup:
-	oc new-project $(TEST_NS) --display-name e2e-tests
-ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-	$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${GO_PACKAGE_REPO_NAME}:${GIT_COMMIT_ID_SHORT})
-	($(MAKE) docker-image IMAGE_NAME=${IMAGE_NAME})
-else
-	$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:toolchain-e2e)
-endif
 
 .PHONY: login-as-admin
 login-as-admin:
@@ -109,7 +103,18 @@ endif
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/cluster_role.yaml
 	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
-	sed -e 's|REPLACE_IMAGE|registry.svc.ci.openshift.org/codeready-toolchain/member-operator-v0.1:member-operator|g' ${MEMBER_REPO_PATH}/deploy/operator.yaml  | oc apply -f -
+ifeq ($(HOST_IMAGE_NAME),)
+    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+		$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/member-operator:${GIT_COMMIT_ID_SHORT})
+		$(MAKE) -C ${MEMBER_REPO_PATH} build
+		docker build -f ${MEMBER_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${MEMBER_REPO_PATH}
+    else
+		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/member-operator-v0.1:member-operator)
+    endif
+else
+	$(eval IMAGE_NAME := $(OPERATOR_IMAGE_NAME))
+endif
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${MEMBER_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
 .PHONY: deploy-host
 deploy-host:
@@ -127,7 +132,18 @@ endif
 	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
 	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds
-	sed -e 's|REPLACE_IMAGE|registry.svc.ci.openshift.org/codeready-toolchain/host-operator-v0.1:host-operator|g' ${HOST_REPO_PATH}/deploy/operator.yaml  | oc apply -f -
+ifeq ($(MEMBER_IMAGE_NAME),)
+    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+		$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/host-operator:${GIT_COMMIT_ID_SHORT})
+		$(MAKE) -C ${HOST_REPO_PATH} build
+		docker build -f ${HOST_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${HOST_REPO_PATH}
+    else
+		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/host-operator-v0.1:host-operator)
+    endif
+else
+	$(eval IMAGE_NAME := $(OPERATOR_IMAGE_NAME))
+endif
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${HOST_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
 .PHONY: prepare-e2e-repo
 prepare-e2e-repo:
@@ -152,3 +168,4 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge FETCH_HEAD; \
 	fi;
 endif
+
