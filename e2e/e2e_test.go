@@ -132,6 +132,24 @@ func TestE2EFlow(t *testing.T) {
 		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
 		verifyResources(awaitility, extraMur, nil, expectingUaConditions(toBeProvisioned()))
 	})
+
+	t.Run("delete MasterUserRecord and expect UserAccount to be deleted", func(t *testing.T) {
+		// given
+		currentMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(mur.Name)
+
+		// when
+		err := awaitility.Client.Delete(context.TODO(), currentMur)
+
+		// then
+		require.NoError(t, err)
+		t.Logf("MasterUserRecord '%s' deleted", mur.Name)
+
+		verifyDeletion(awaitility, currentMur)
+		assert.NoError(t, err)
+
+		extraMur = wait.NewHostAwaitility(awaitility).GetMasterUserRecord(extraMur.Name)
+		verifyResources(awaitility, extraMur, nil, expectingUaConditions(toBeProvisioned()))
+	})
 }
 
 type murConditionsGetter func() []toolchainv1alpha1.Condition
@@ -225,4 +243,21 @@ func createMasterUserRecord(awaitility *wait.Awaitility, ctx *framework.TestCtx,
 
 func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
+}
+
+func verifyDeletion(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterUserRecord) {
+	hostAwait := wait.NewHostAwaitility(awaitility)
+	memberAwait := wait.NewMemberAwaitility(awaitility)
+
+	err := hostAwait.WaitForDeletedMasterUserRecord(mur.Name)
+	assert.NoError(awaitility.T, err, "MasterUserRecord is not deleted")
+
+	err = memberAwait.WaitForDeletedUserAccount(mur.Name)
+	assert.NoError(awaitility.T, err, "UserAccount is not deleted")
+
+	err = memberAwait.WaitForDeletedUser(mur.Name)
+	assert.NoError(awaitility.T, err, "User is not deleted")
+
+	err = memberAwait.WaitForDeletedIdentity(mur.Name)
+	assert.NoError(awaitility.T, err, "Identity is not deleted")
 }

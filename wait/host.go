@@ -141,6 +141,22 @@ func (a *HostAwaitility) WaitForUserSignup(name string) error {
 	})
 }
 
+// WaitForDeletedMasterUserRecord waits until MUR with the given name is not present
+func (a *HostAwaitility) WaitForDeletedMasterUserRecord(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		mur := &toolchainv1alpha1.MasterUserRecord{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("MasterUserAccount is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until MasterUserAccount is deleted '%s'", name)
+		return false, nil
+	})
+}
+
 func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster string) string {
 	for _, ua := range mur.Spec.UserAccounts {
 		if ua.TargetCluster == targetCluster {
