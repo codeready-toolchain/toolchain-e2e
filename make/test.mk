@@ -112,7 +112,7 @@ ifeq ($(HOST_IMAGE_NAME),)
 		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/member-operator-v0.1:member-operator)
     endif
 else
-	$(eval IMAGE_NAME := $(OPERATOR_IMAGE_NAME))
+	$(eval IMAGE_NAME := $(HOST_IMAGE_NAME))
 endif
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${MEMBER_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
@@ -141,7 +141,7 @@ ifeq ($(MEMBER_IMAGE_NAME),)
 		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/host-operator-v0.1:host-operator)
     endif
 else
-	$(eval IMAGE_NAME := $(OPERATOR_IMAGE_NAME))
+	$(eval IMAGE_NAME := $(MEMBER_IMAGE_NAME))
 endif
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${HOST_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
