@@ -103,18 +103,16 @@ endif
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/cluster_role.yaml
 	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
-ifeq ($(HOST_IMAGE_NAME),)
+ifeq ($(MEMBER_IMAGE_NAME),)
     ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-		$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/member-operator:${GIT_COMMIT_ID_SHORT})
+		$(eval MEMBER_IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/member-operator:${GIT_COMMIT_ID_SHORT})
 		$(MAKE) -C ${MEMBER_REPO_PATH} build
-		docker build -f ${MEMBER_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${MEMBER_REPO_PATH}
+		docker build -f ${MEMBER_REPO_PATH}/build/Dockerfile -t ${MEMBER_IMAGE_NAME} ${MEMBER_REPO_PATH}
     else
-		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/member-operator-v0.1:member-operator)
+		$(eval MEMBER_IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/member-operator-v0.1:member-operator)
     endif
-else
-	$(eval IMAGE_NAME := $(HOST_IMAGE_NAME))
 endif
-	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${MEMBER_REPO_PATH}/deploy/operator.yaml | oc apply -f -
+	sed -e 's|REPLACE_IMAGE|${MEMBER_IMAGE_NAME}|g' ${MEMBER_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
 .PHONY: deploy-host
 deploy-host:
@@ -132,18 +130,16 @@ endif
 	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
 	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds
-ifeq ($(MEMBER_IMAGE_NAME),)
+ifeq ($(HOST_IMAGE_NAME),)
     ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-		$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/host-operator:${GIT_COMMIT_ID_SHORT})
+		$(eval HOST_IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/host-operator:${GIT_COMMIT_ID_SHORT})
 		$(MAKE) -C ${HOST_REPO_PATH} build
-		docker build -f ${HOST_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${HOST_REPO_PATH}
+		docker build -f ${HOST_REPO_PATH}/build/Dockerfile -t ${HOST_IMAGE_NAME} ${HOST_REPO_PATH}
     else
-		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/host-operator-v0.1:host-operator)
+		$(eval HOST_IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/host-operator-v0.1:host-operator)
     endif
-else
-	$(eval IMAGE_NAME := $(MEMBER_IMAGE_NAME))
 endif
-	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${HOST_REPO_PATH}/deploy/operator.yaml | oc apply -f -
+	sed -e 's|REPLACE_IMAGE|${HOST_IMAGE_NAME}|g' ${HOST_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
 .PHONY: prepare-e2e-repo
 prepare-e2e-repo:
