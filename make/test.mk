@@ -32,7 +32,13 @@ test-e2e-host-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator
 
 .PHONY: test-e2e
+ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+# when runnig locally we need to retrieve the operators
 test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
+else
+# when runnig in CI the operators should have been already fetched and built
+test-e2e: test-e2e-keep-namespaces e2e-cleanup
+endif
 
 .PHONY: e2e-run
 e2e-run:
@@ -186,9 +192,7 @@ ifeq ($(SET_IMAGE_NAME),)
 			docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
-			# $(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
-			# the following line should be removed and replaced by the previous one once this PR is merged https://github.com/openshift/release/pull/5140
-			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
+			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
         endif
     else
 		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
