@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MemberAwaitility struct {
@@ -79,32 +80,37 @@ func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
 	})
 }
 
-func (a *MemberAwaitility) WaitForNamespace(name string) error {
+func (a *MemberAwaitility) WaitForNamespace(username, typeName string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		namespace := &v1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, namespace); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of Namespace '%s'", name)
-				return false, nil
-			}
+		labels := map[string]string{"owner": username, "type": typeName}
+		opts := client.MatchingLabels(labels)
+		namespaceList := &v1.NamespaceList{}
+		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
 			return false, err
 		}
-		a.T.Logf("found Namespace '%s'", name)
+
+		if len(namespaceList.Items) < 1 {
+			return false, nil
+		}
+		a.T.Logf("found Namespace type '%s'", typeName)
 		return true, nil
 	})
 }
 
-func (a *MemberAwaitility) WaitForDeletedNamespace(name string) error {
+func (a *MemberAwaitility) WaitForDeletedNamespace(username, typeName string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		namespace := &v1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, namespace); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("deleted Namespace '%s'", name)
-				return true, nil
-			}
+		labels := map[string]string{"owner": username, "type": typeName}
+		opts := client.MatchingLabels(labels)
+		namespaceList := &v1.NamespaceList{}
+		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
 			return false, err
 		}
-		a.T.Logf("waiting for deletion of Namespace '%s'", name)
+
+		if len(namespaceList.Items) < 1 {
+			a.T.Logf("deleted Namespace with owner '%s' type '%s'", username, typeName)
+			return true, nil
+		}
+		a.T.Logf("waiting for deletion of Namespace with owner '%s' type '%s'", username, typeName)
 		return false, nil
 	})
 }

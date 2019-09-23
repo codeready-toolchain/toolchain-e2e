@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -46,7 +45,7 @@ func (s *nsTemplateSetTest) TestCreateOK() {
 	require.NoError(t, err)
 
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitForNamespace(fmt.Sprintf("%s-%s", username, ns.Type))
+		err = s.memberAwait.WaitForNamespace(username, ns.Type)
 		require.NoError(t, err)
 	}
 }
@@ -64,7 +63,7 @@ func (s *nsTemplateSetTest) TestDeleteOK() {
 	require.NoError(t, err)
 
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitForNamespace(fmt.Sprintf("%s-%s", username, ns.Type))
+		err = s.memberAwait.WaitForNamespace(username, ns.Type)
 		require.NoError(t, err)
 	}
 
@@ -76,7 +75,7 @@ func (s *nsTemplateSetTest) TestDeleteOK() {
 	require.NoError(t, err)
 
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitForDeletedNamespace(fmt.Sprintf("%s-%s", username, ns.Type))
+		err = s.memberAwait.WaitForDeletedNamespace(username, ns.Type)
 		require.NoError(t, err)
 	}
 }
