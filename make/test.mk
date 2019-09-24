@@ -89,9 +89,6 @@ clean-e2e-namespaces:
 
 .PHONY: build-with-operators
 build-with-operators: build get-member-operator-repo get-host-operator-repo
-	# operators are built, now copy the operators' binaries to make them available for CI
-	cp ${MEMBER_REPO_PATH}/build/_output/bin/member-operator build/_output/bin/member-operator
-	cp ${HOST_REPO_PATH}/build/_output/bin/host-operator build/_output/bin/host-operator
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
@@ -136,6 +133,8 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge FETCH_HEAD; \
 	fi;
 	$(MAKE) -C ${E2E_REPO_PATH} build
+	# operators are built, now copy the operators' binaries to make them available for CI
+	cp ${E2E_REPO_PATH}/build/_output/bin/${REPO_NAME} build/_output/bin/${REPO_NAME}
 endif
 
 ###########################################################
@@ -186,9 +185,7 @@ ifeq ($(SET_IMAGE_NAME),)
 			docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
-			# $(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
-			# the following line should be removed and replaced by the previous one once this PR is merged https://github.com/openshift/release/pull/5140
-			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
+			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
         endif
     else
 		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
