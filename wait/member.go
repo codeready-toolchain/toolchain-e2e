@@ -80,6 +80,16 @@ func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
 	})
 }
 
+func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace {
+	labels := map[string]string{"owner": username, "type": typeName}
+	opts := client.MatchingLabels(labels)
+	namespaceList := &v1.NamespaceList{}
+	err := a.Client.List(context.TODO(), opts, namespaceList)
+	require.NoError(a.T, err)
+	require.True(a.T, len(namespaceList.Items) > 0)
+	return &namespaceList.Items[0]
+}
+
 func (a *MemberAwaitility) WaitForNamespace(username, typeName string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		labels := map[string]string{"owner": username, "type": typeName}

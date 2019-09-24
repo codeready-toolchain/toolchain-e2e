@@ -36,44 +36,85 @@ func (s *nsTemplateSetTest) TestCreateOK() {
 	t := s.T()
 	username := "amar"
 
+	// create NSTmplSet
 	t.Logf("Creating NSTmplSet with username:%s", username)
 	nsTmplSet := newNSTmplSet(username, s.namespace)
 	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, doubles.CleanupOptions(s.testCtx))
 	require.NoError(t, err)
 
+	// wait for NSTmplSet
 	err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name)
 	require.NoError(t, err)
 
+	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
 		err = s.memberAwait.WaitForNamespace(username, ns.Type)
 		require.NoError(t, err)
 	}
 }
 
-func (s *nsTemplateSetTest) TestDeleteOK() {
+func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 	t := s.T()
-	username := "hemal"
+	username := "amit"
 
+	// create NSTmplSet
 	t.Logf("Creating NSTmplSet with username:%s", username)
 	nsTmplSet := newNSTmplSet(username, s.namespace)
 	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, doubles.CleanupOptions(s.testCtx))
 	require.NoError(t, err)
 
+	// wait for NSTmplSet
 	err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name)
 	require.NoError(t, err)
 
+	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
 		err = s.memberAwait.WaitForNamespace(username, ns.Type)
 		require.NoError(t, err)
 	}
 
+	// delete Namespace dev
+	typeName := "dev"
+	t.Logf("Deleting Namespace type :%s", typeName)
+	devNs := s.memberAwait.GetNamespace(username, typeName)
+	err = s.awaitility.Client.Delete(context.TODO(), devNs)
+	require.NoError(t, err)
+
+	// wait for Namespace dev to recreate
+	err = s.memberAwait.WaitForNamespace(username, typeName)
+	require.NoError(t, err)
+}
+
+func (s *nsTemplateSetTest) TestDeleteOK() {
+	t := s.T()
+	username := "hemal"
+
+	// create NSTmplSet
+	t.Logf("Creating NSTmplSet with username:%s", username)
+	nsTmplSet := newNSTmplSet(username, s.namespace)
+	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, doubles.CleanupOptions(s.testCtx))
+	require.NoError(t, err)
+
+	// wait for NSTmplSet
+	err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name)
+	require.NoError(t, err)
+
+	// wait for Namespace
+	for _, ns := range nsTmplSet.Spec.Namespaces {
+		err = s.memberAwait.WaitForNamespace(username, ns.Type)
+		require.NoError(t, err)
+	}
+
+	// delete NSTmplSet
 	t.Logf("Deleting NSTmplSet with username:%s", username)
 	err = s.awaitility.Client.Delete(context.TODO(), nsTmplSet)
 	require.NoError(t, err)
 
+	// wait for NSTmplSet
 	err = s.memberAwait.WaitForDeletedNSTmplSet(nsTmplSet.Name)
 	require.NoError(t, err)
 
+	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
 		err = s.memberAwait.WaitForDeletedNamespace(username, ns.Type)
 		require.NoError(t, err)
