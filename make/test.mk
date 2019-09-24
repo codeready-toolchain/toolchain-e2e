@@ -32,7 +32,7 @@ test-e2e-host-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator
 
 .PHONY: test-e2e
-test-e2e: test-e2e-keep-namespaces e2e-cleanup
+test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
 
 .PHONY: e2e-run
 e2e-run:
@@ -83,12 +83,18 @@ clean-e2e-namespaces:
 
 ###########################################################
 #
-# Deploying Member and Host Operators in Openshift CI Environment
+# Fetching and building Member and Host Operators
 #
 ###########################################################
 
-.PHONY: deploy-member
-deploy-member:
+.PHONY: build-with-operators
+build-with-operators: build get-member-operator-repo get-host-operator-repo
+	# operators are built, now copy the operators' binaries to make them available for CI
+	cp ${MEMBER_REPO_PATH}/build/_output/bin/member-operator build/_output/bin/member-operator
+	cp ${HOST_REPO_PATH}/build/_output/bin/host-operator build/_output/bin/host-operator
+
+.PHONY: get-member-operator-repo
+get-member-operator-repo:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
 	rm -rf ${MEMBER_REPO_PATH}
@@ -96,26 +102,9 @@ ifeq ($(MEMBER_REPO_PATH),)
 	git clone https://github.com/codeready-toolchain/member-operator.git --depth 1 ${MEMBER_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(MEMBER_REPO_PATH) REPO_NAME=member-operator
 endif
-	oc new-project $(MEMBER_NS)
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/role_binding.yaml
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/cluster_role.yaml
-	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
-ifeq ($(MEMBER_IMAGE_NAME),)
-    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-		$(eval MEMBER_IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/member-operator:${GIT_COMMIT_ID_SHORT})
-		$(MAKE) -C ${MEMBER_REPO_PATH} build
-		docker build -f ${MEMBER_REPO_PATH}/build/Dockerfile -t ${MEMBER_IMAGE_NAME} ${MEMBER_REPO_PATH}
-    else
-		$(eval MEMBER_IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/member-operator-v0.1:member-operator)
-    endif
-endif
-	sed -e 's|REPLACE_IMAGE|${MEMBER_IMAGE_NAME}|g' ${MEMBER_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
-.PHONY: deploy-host
-deploy-host:
+.PHONY: get-host-operator-repo
+get-host-operator-repo:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 	rm -rf ${HOST_REPO_PATH}
@@ -123,23 +112,6 @@ ifeq ($(HOST_REPO_PATH),)
 	git clone https://github.com/codeready-toolchain/host-operator.git --depth 1 ${HOST_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(HOST_REPO_PATH) REPO_NAME=host-operator
 endif
-	oc new-project $(HOST_NS)
-	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
-	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
-	oc apply -f ${HOST_REPO_PATH}/deploy/crds
-ifeq ($(HOST_IMAGE_NAME),)
-    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-		$(eval HOST_IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/host-operator:${GIT_COMMIT_ID_SHORT})
-		$(MAKE) -C ${HOST_REPO_PATH} build
-		docker build -f ${HOST_REPO_PATH}/build/Dockerfile -t ${HOST_IMAGE_NAME} ${HOST_REPO_PATH}
-    else
-		$(eval HOST_IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/host-operator-v0.1:host-operator)
-    endif
-endif
-	sed -e 's|REPLACE_IMAGE|${HOST_IMAGE_NAME}|g' ${HOST_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
 .PHONY: prepare-e2e-repo
 prepare-e2e-repo:
@@ -163,5 +135,68 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		# merge the branch with master \
 		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge FETCH_HEAD; \
 	fi;
+	$(MAKE) -C ${E2E_REPO_PATH} build
 endif
+
+###########################################################
+#
+# Deploying Member and Host Operators in Openshift CI Environment
+#
+###########################################################
+
+.PHONY: deploy-member
+deploy-member:
+ifeq ($(MEMBER_REPO_PATH),)
+	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
+endif
+	oc new-project $(MEMBER_NS)
+	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
+	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
+	oc apply -f ${MEMBER_REPO_PATH}/deploy/role_binding.yaml
+	oc apply -f ${MEMBER_REPO_PATH}/deploy/cluster_role.yaml
+	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
+	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
+	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}
+
+.PHONY: deploy-host
+deploy-host:
+ifeq ($(HOST_REPO_PATH),)
+	$(eval HOST_REPO_PATH = /tmp/host-operator)
+endif
+	oc new-project $(HOST_NS)
+	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
+	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
+	oc apply -f ${HOST_REPO_PATH}/deploy/crds
+	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}
+
+.PHONY: build-and-deploy-operator
+build-and-deploy-operator:
+# when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
+ifeq ($(SET_IMAGE_NAME),)
+    # now we know that the image of the targeted operator is not provided, but can be still triggered in the same use case, but the image of the other operator can be provided
+    ifeq ($(IS_OTHER_IMAGE_SET),)
+    	# check if it is running locally
+        ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+			# if it is running locally, then build the image via docker
+			$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
+			$(MAKE) -C ${E2E_REPO_PATH} build
+			docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
+        else
+			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
+			# $(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
+			# the following line should be removed and replaced by the previous one once this PR is merged https://github.com/openshift/release/pull/5140
+			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
+        endif
+    else
+		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
+		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
+    endif
+else
+	# use the provided image name
+	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
+endif
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
