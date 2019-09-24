@@ -3,6 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
@@ -13,10 +15,8 @@ import (
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/api/core/v1"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"testing"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -84,7 +84,7 @@ func TestE2EFlow(t *testing.T) {
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(mur.Spec.UserID)}, identity)
 			require.NoError(t, err)
 
-			identity.User = corev1.ObjectReference{Name: "", UID: ""}
+			identity.User = v1.ObjectReference{Name: "", UID: ""}
 			err = awaitility.Client.Update(context.TODO(), identity)
 			require.NoError(t, err)
 
@@ -198,7 +198,7 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 	assert.NoError(awaitility.T, err)
 
 	verifyUserResources(memberAwait, userAccount)
-
+	verifyToolchainResources(memberAwait, userAccount)
 }
 
 func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
@@ -206,6 +206,11 @@ func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1
 	assert.NoError(awaitility.T, err)
 
 	err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
+	assert.NoError(awaitility.T, err)
+}
+
+func verifyToolchainResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
+	err := awaitility.WaitForNSTmplSet(userAcc.Name)
 	assert.NoError(awaitility.T, err)
 }
 
