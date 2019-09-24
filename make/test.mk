@@ -32,13 +32,7 @@ test-e2e-host-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator
 
 .PHONY: test-e2e
-ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-# when runnig locally we need to retrieve the operators
 test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
-else
-# when runnig in CI the operators should have been already fetched and built
-test-e2e: test-e2e-keep-namespaces e2e-cleanup
-endif
 
 .PHONY: e2e-run
 e2e-run:
@@ -95,9 +89,6 @@ clean-e2e-namespaces:
 
 .PHONY: build-with-operators
 build-with-operators: build get-member-operator-repo get-host-operator-repo
-	# operators are built, now copy the operators' binaries to make them available for CI
-	cp ${MEMBER_REPO_PATH}/build/_output/bin/member-operator build/_output/bin/member-operator
-	cp ${HOST_REPO_PATH}/build/_output/bin/host-operator build/_output/bin/host-operator
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
@@ -142,6 +133,8 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge FETCH_HEAD; \
 	fi;
 	$(MAKE) -C ${E2E_REPO_PATH} build
+	# operators are built, now copy the operators' binaries to make them available for CI
+	cp ${E2E_REPO_PATH}/build/_output/bin/${REPO_NAME} build/_output/bin/${REPO_NAME}
 endif
 
 ###########################################################
