@@ -10,7 +10,8 @@ import (
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type nsTemplateSetTest struct {
@@ -88,7 +89,8 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name)
+	readyCond := toolchainv1alpha1.Condition{Type: toolchainv1alpha1.ConditionReady, Status: corev1.ConditionTrue, Reason: "Provisioned"}
+	err = s.memberAwait.WaitForNSTmplSetWithConditions(nsTmplSet.Name, readyCond)
 	require.NoError(t, err)
 
 	// wait for Namespace
@@ -102,7 +104,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 
 func newNSTmplSet(username, namespace string) *toolchainv1alpha1.NSTemplateSet {
 	nsTmplSet := &toolchainv1alpha1.NSTemplateSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      username,
 			Namespace: namespace,
 		},

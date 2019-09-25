@@ -65,6 +65,25 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string) error {
 	})
 }
 
+func (a *MemberAwaitility) WaitForNSTmplSetWithConditions(name string, waitCond ...toolchainv1alpha1.Condition) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if !test.ConditionsMatch(nsTmplSet.Status.Conditions, waitCond...) {
+			a.T.Logf("waiting for conditions match for NSTemplateSet '%s'", name)
+			return false, nil
+		}
+		a.T.Logf("found NSTemplateSet '%s'", name)
+		return true, nil
+	})
+}
+
 func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
