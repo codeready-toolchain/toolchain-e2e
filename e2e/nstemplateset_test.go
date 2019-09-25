@@ -53,7 +53,7 @@ func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 	require.NoError(t, err)
 
 	// wait for Namespace dev to recreate
-	err = s.memberAwait.WaitForNamespace(username, typeName)
+	err = s.memberAwait.WaitForNamespace(username, devNs.Labels["type"], devNs.Labels["revision"])
 	require.NoError(t, err)
 }
 
@@ -95,7 +95,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 
 	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitForNamespace(username, ns.Type)
+		err = s.memberAwait.WaitForNamespace(username, ns.Type, ns.Revision)
 		require.NoError(t, err)
 	}
 

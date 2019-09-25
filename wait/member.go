@@ -109,9 +109,9 @@ func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace
 	return &namespaceList.Items[0]
 }
 
-func (a *MemberAwaitility) WaitForNamespace(username, typeName string) error {
+func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		labels := map[string]string{"owner": username, "type": typeName}
+		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
 		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
@@ -119,9 +119,10 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName string) error {
 		}
 
 		if len(namespaceList.Items) < 1 {
+			a.T.Logf("waiting for availability of Namespace type '%s' with revision '%s'", typeName, revision)
 			return false, nil
 		}
-		a.T.Logf("found Namespace type '%s'", typeName)
+		a.T.Logf("found Namespace type '%s' with revision '%s'", typeName, revision)
 		return true, nil
 	})
 }
