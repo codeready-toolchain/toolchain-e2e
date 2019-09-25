@@ -22,8 +22,8 @@ import (
 const (
 	OperatorRetryInterval          = time.Second * 5
 	OperatorTimeout                = time.Second * 60
-	RetryInterval                  = time.Millisecond * 500
-	Timeout                        = time.Second * 10
+	RetryInterval                  = time.Millisecond * 300
+	Timeout                        = time.Second * 9
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	KubeFedClusterConditionTimeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
