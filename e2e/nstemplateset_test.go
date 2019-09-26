@@ -31,6 +31,9 @@ func (s *nsTemplateSetTest) SetupSuite() {
 	s.testCtx, s.awaitility = doubles.InitializeOperators(s.T(), nsTmplSetList)
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.MemberNs
+
+	// TODO remove this, temp fix until CRT-231 is completed
+	setupTemplateTier(s.T(), s.testCtx, s.awaitility.Client, s.awaitility.HostNs)
 }
 
 func (s *nsTemplateSetTest) TestCreateOK() {
@@ -111,11 +114,135 @@ func newNSTmplSet(username, namespace string) *toolchainv1alpha1.NSTemplateSet {
 		Spec: toolchainv1alpha1.NSTemplateSetSpec{
 			TierName: "basic",
 			Namespaces: []toolchainv1alpha1.Namespace{
-				{Type: "dev", Revision: "abcde01"},
-				{Type: "code", Revision: "abcde11"},
-				{Type: "stage", Revision: "abcde21"},
+				{Type: "dev", Revision: "123abc", Template: ""},
+				{Type: "code", Revision: "123abc", Template: ""},
+				{Type: "stage", Revision: "123abc", Template: ""},
 			},
 		},
 	}
 	return nsTmplSet
 }
+
+// TODO remove this, temp fix until CRT-231 is completed
+func setupTemplateTier(t *testing.T, testCtx *framework.TestCtx, client framework.FrameworkClient, namespace string) {
+	nsTmplTier := &toolchainv1alpha1.NSTemplateTier{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "basic",
+			Namespace: namespace,
+		},
+		Spec: toolchainv1alpha1.NSTemplateTierSpec{
+			Namespaces: []toolchainv1alpha1.Namespace{
+				{Type: "dev", Revision: "123abc", Template: _templatesBasicDevYaml},
+				{Type: "code", Revision: "123abc", Template: _templatesBasicCodeYaml},
+				{Type: "stage", Revision: "123abc", Template: _templatesBasicStageYaml},
+			},
+		},
+	}
+	err := client.Create(context.TODO(), nsTmplTier, doubles.CleanupOptions(testCtx))
+	require.NoError(t, err)
+}
+
+var _templatesBasicDevYaml = `apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  labels:
+    provider: codeready-toolchain
+    project: codeready-toolchain
+  name: basic-dev
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      labels:
+        provider: codeready-toolchain
+        project: codeready-toolchain
+      name: ${USER_NAME}-dev
+  - apiVersion: authorization.openshift.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        provider: codeready-toolchain
+        app: codeready-toolchain
+      name: user-edit
+      namespace: ${USER_NAME}-dev
+    roleRef:
+      name: edit
+    subjects:
+      - kind: User
+        name: ${USER_NAME}
+    userNames:
+      - ${USER_NAME}
+parameters:
+  - name: USER_NAME
+    value: johnsmith
+`
+
+var _templatesBasicCodeYaml = `apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  labels:
+    provider: codeready-toolchain
+    project: codeready-toolchain
+  name: basic-code
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      labels:
+        provider: codeready-toolchain
+        project: codeready-toolchain
+      name: ${USER_NAME}-code
+  - apiVersion: authorization.openshift.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        provider: codeready-toolchain
+        app: codeready-toolchain
+      name: user-edit
+      namespace: ${USER_NAME}-code
+    roleRef:
+      name: edit
+    subjects:
+      - kind: User
+        name: ${USER_NAME}
+    userNames:
+      - ${USER_NAME}
+parameters:
+  - name: USER_NAME
+    value: johnsmith
+`
+
+var _templatesBasicStageYaml = `apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  labels:
+    provider: codeready-toolchain
+    project: codeready-toolchain
+  name: basic-stage
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      labels:
+        provider: codeready-toolchain
+        project: codeready-toolchain
+      name: ${USER_NAME}-stage
+  - apiVersion: authorization.openshift.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        provider: codeready-toolchain
+        app: codeready-toolchain
+      name: user-edit
+      namespace: ${USER_NAME}-stage
+    roleRef:
+      name: edit
+    subjects:
+      - kind: User
+        name: ${USER_NAME}
+    userNames:
+      - ${USER_NAME}
+parameters:
+  - name: USER_NAME
+    value: johnsmith
+`
