@@ -13,7 +13,6 @@ import (
 	errs "github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -97,8 +96,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	readyCond := toolchainv1alpha1.Condition{Type: toolchainv1alpha1.ConditionReady, Status: corev1.ConditionTrue, Reason: "Provisioned"}
-	err = s.memberAwait.WaitForNSTmplSetWithConditions(nsTmplSet.Name, readyCond)
+	err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, toBeProvisioned())
 	require.NoError(t, err)
 
 	// wait for Namespace
