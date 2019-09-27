@@ -1,25 +1,32 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	cloud.google.com/go v0.40.0 // indirect
+	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20190910110833-66e1ab342d1e
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20190920111906-1948fd993dcc
-	github.com/go-openapi/spec v0.19.2 // indirect
-	github.com/gobuffalo/envy v1.7.0 // indirect
+	github.com/codeready-toolchain/api v0.0.0-20190926105251-44ed4423e3bf
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20190926125002-408e9c1b28de
+	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/mailru/easyjson v0.0.0-20190620125010-da37f6c1e481 // indirect
-	github.com/openshift/api v3.9.0+incompatible
+	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
 	github.com/operator-framework/operator-sdk v0.10.0
+	github.com/pkg/errors v0.8.1
+	github.com/rogpeppe/go-internal v1.4.0 // indirect
 	github.com/satori/go.uuid v1.2.0
-	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.3.0
-	golang.org/x/tools v0.0.0-20190620191750-1fa568393b23 // indirect
-	k8s.io/api v0.0.0-20190620073856-dcce3486da33
-	k8s.io/apimachinery v0.0.0-20190620073744-d16981aedf33
+	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.4.0
+	go.uber.org/multierr v1.2.0 // indirect
+	golang.org/x/crypto v0.0.0-20190926180335-cea2066c6411 // indirect
+	golang.org/x/sys v0.0.0-20190927073244-c990c680b611 // indirect
+	golang.org/x/tools v0.0.0-20190927052746-69890759d905 // indirect
+	google.golang.org/appengine v1.6.4 // indirect
+	k8s.io/api v0.0.0-20190925180651-d58b53da08f5
+	k8s.io/apiextensions-apiserver v0.0.0-20190927042040-728319705b32 // indirect
+	k8s.io/apimachinery v0.0.0-20190927035529-0104e33c351d
 	k8s.io/client-go v11.0.0+incompatible
-	sigs.k8s.io/controller-runtime v0.1.12
+	k8s.io/gengo v0.0.0-20190907103519-ebc107f98eab // indirect
+	sigs.k8s.io/controller-runtime v0.2.2
+	sigs.k8s.io/controller-tools v0.2.1 // indirect
 	sigs.k8s.io/kubefed v0.1.0-rc2
 )
 

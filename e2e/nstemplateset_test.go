@@ -2,16 +2,21 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/doubles"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	templatev1 "github.com/openshift/api/template/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	errs "github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
 type nsTemplateSetTest struct {
@@ -33,7 +38,7 @@ func (s *nsTemplateSetTest) SetupSuite() {
 	s.namespace = s.awaitility.MemberNs
 
 	// TODO remove this, temp fix until CRT-231 is completed
-	setupTemplateTier(s.T(), s.testCtx, s.awaitility.Client, s.awaitility.HostNs)
+	setupTemplateTier(s.T(), s.testCtx, s.awaitility.Client, s.awaitility.Scheme, s.awaitility.HostNs)
 }
 
 func (s *nsTemplateSetTest) TestCreateOK() {
@@ -113,7 +118,7 @@ func newNSTmplSet(username, namespace string) *toolchainv1alpha1.NSTemplateSet {
 		},
 		Spec: toolchainv1alpha1.NSTemplateSetSpec{
 			TierName: "basic",
-			Namespaces: []toolchainv1alpha1.Namespace{
+			Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
 				{Type: "dev", Revision: "123abc", Template: ""},
 				{Type: "code", Revision: "123abc", Template: ""},
 				{Type: "stage", Revision: "123abc", Template: ""},
@@ -124,25 +129,47 @@ func newNSTmplSet(username, namespace string) *toolchainv1alpha1.NSTemplateSet {
 }
 
 // TODO remove this, temp fix until CRT-231 is completed
-func setupTemplateTier(t *testing.T, testCtx *framework.TestCtx, client framework.FrameworkClient, namespace string) {
+func setupTemplateTier(t *testing.T, testCtx *framework.TestCtx, client framework.FrameworkClient, scheme *runtime.Scheme, namespace string) {
+	codecFactory := serializer.NewCodecFactory(scheme)
+	decoder := codecFactory.UniversalDeserializer()
+
+	devTmpl, err := decodeTemplate(decoder, _templatesBasicDevYaml)
+	require.NoError(t, err)
+	codeTmpl, err := decodeTemplate(decoder, _templatesBasicCodeYaml)
+	require.NoError(t, err)
+	stageTmpl, err := decodeTemplate(decoder, _templatesBasicStageYaml)
+	require.NoError(t, err)
+
 	nsTmplTier := &toolchainv1alpha1.NSTemplateTier{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "basic",
 			Namespace: namespace,
 		},
 		Spec: toolchainv1alpha1.NSTemplateTierSpec{
-			Namespaces: []toolchainv1alpha1.Namespace{
-				{Type: "dev", Revision: "123abc", Template: _templatesBasicDevYaml},
-				{Type: "code", Revision: "123abc", Template: _templatesBasicCodeYaml},
-				{Type: "stage", Revision: "123abc", Template: _templatesBasicStageYaml},
+			Namespaces: []toolchainv1alpha1.NSTemplateTierNamespace{
+				{Type: "dev", Revision: "123abc", Template: *devTmpl},
+				{Type: "code", Revision: "123abc", Template: *codeTmpl},
+				{Type: "stage", Revision: "123abc", Template: *stageTmpl},
 			},
 		},
 	}
-	err := client.Create(context.TODO(), nsTmplTier, doubles.CleanupOptions(testCtx))
+	err = client.Create(context.TODO(), nsTmplTier, doubles.CleanupOptions(testCtx))
 	require.NoError(t, err)
 }
 
-var _templatesBasicDevYaml = `apiVersion: template.openshift.io/v1
+func decodeTemplate(decoder runtime.Decoder, tmplContent []byte) (*templatev1.Template, error) {
+	obj, _, err := decoder.Decode(tmplContent, nil, nil)
+	if err != nil {
+		return nil, errs.Wrapf(err, "unable to decode template")
+	}
+	tmpl, ok := obj.(*templatev1.Template)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object type %T to Template, must be a v1.Template", obj)
+	}
+	return tmpl, nil
+}
+
+var _templatesBasicDevYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   labels:
@@ -175,9 +202,9 @@ objects:
 parameters:
   - name: USER_NAME
     value: johnsmith
-`
+`)
 
-var _templatesBasicCodeYaml = `apiVersion: template.openshift.io/v1
+var _templatesBasicCodeYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   labels:
@@ -210,9 +237,9 @@ objects:
 parameters:
   - name: USER_NAME
     value: johnsmith
-`
+`)
 
-var _templatesBasicStageYaml = `apiVersion: template.openshift.io/v1
+var _templatesBasicStageYaml = []byte(`apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
   labels:
@@ -245,4 +272,4 @@ objects:
 parameters:
   - name: USER_NAME
     value: johnsmith
-`
+`)

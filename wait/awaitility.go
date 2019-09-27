@@ -10,6 +10,7 @@ import (
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -35,6 +36,7 @@ type Awaitility struct {
 	Client           framework.FrameworkClient
 	ControllerClient client.Client
 	KubeClient       kubernetes.Interface
+	Scheme           *runtime.Scheme
 	MemberNs         string
 	HostNs           string
 }
