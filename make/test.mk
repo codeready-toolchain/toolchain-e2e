@@ -175,7 +175,7 @@ ifeq ($(SET_IMAGE_NAME),)
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
 			# if it is running locally, then build the image via docker
 			$(eval IMAGE_NAME := quay.io/matousjobanek/host:alpha)
-			$(MAKE) -C ${E2E_REPO_PATH} build && docker build -t quay.io/matousjobanek/host:alpha -f build/Dockerfile . && docker push quay.io/matousjobanek/host:alpha
+			$(MAKE) -C ${E2E_REPO_PATH} build && docker build -t quay.io/matousjobanek/host:alpha -f ${E2E_REPO_PATH}/build/Dockerfile ${E2E_REPO_PATH} && docker push quay.io/matousjobanek/host:alpha
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
@@ -189,7 +189,7 @@ else
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
 	PRJ_ROOT_DIR=${E2E_REPO_PATH} IMAGE_NAME=${IMAGE_NAME} ${E2E_REPO_PATH}/scripts/olm_catalog.sh
-	oc apply -f ${E2E_REPO_PATH}/hack/deploy_csv.yaml
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f -
 	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f -
 
 
@@ -202,9 +202,8 @@ ifeq ($(SET_IMAGE_NAME),)
     	# check if it is running locally
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
 			# if it is running locally, then build the image via docker
-			$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
-			$(MAKE) -C ${E2E_REPO_PATH} build
-			docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
+			$(eval IMAGE_NAME := quay.io/matousjobanek/member:alpha)
+			$(MAKE) -C ${E2E_REPO_PATH} build && docker build -t quay.io/matousjobanek/member:alpha -f ${E2E_REPO_PATH}/build/Dockerfile ${E2E_REPO_PATH} && docker push quay.io/matousjobanek/member:alpha
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
