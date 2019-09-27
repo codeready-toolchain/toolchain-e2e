@@ -191,6 +191,14 @@ endif
 	PRJ_ROOT_DIR=${E2E_REPO_PATH} IMAGE_NAME=${IMAGE_NAME} ${E2E_REPO_PATH}/scripts/olm_catalog.sh
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f -
 	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f -
+	while [[ -z `oc get sa host-operator -n ${NAMESPACE} 2>/dev/null` ]]; do \
+        if [[ $${NEXT_WAIT_TIME} -eq 30 ]]; then \
+           echo "reached timeout of waiting for ServiceAccount host-operator to be avialable in namespace ${NAMESPACE}"; \
+           exit 1; \
+        fi; \
+        echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount host-operator in namespace ${NAMESPACE}"; \
+        sleep 1; \
+    done;
 
 
 .PHONY: build-and-deploy-operator
