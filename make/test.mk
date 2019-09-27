@@ -200,7 +200,6 @@ endif
         sleep 1; \
     done;
 
-
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
 # when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
