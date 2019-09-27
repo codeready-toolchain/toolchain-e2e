@@ -21,15 +21,15 @@ deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e-local
 test-e2e-local:
-	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator MEMBER_REPO_PATH=../member-operator
+	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator
 
 .PHONY: test-e2e-member-local
 test-e2e-member-local:
-	$(MAKE) test-e2e MEMBER_REPO_PATH=../member-operator
+	$(MAKE) test-e2e MEMBER_REPO_PATH=${PWD}/../member-operator
 
 .PHONY: test-e2e-host-local
 test-e2e-host-local:
-	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator
+	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator
 
 .PHONY: test-e2e
 test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
@@ -56,17 +56,17 @@ print-logs:
 
 .PHONY: login-as-admin
 login-as-admin:
-ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-    ifeq ($(IS_CRC),)
-		$(info logging as system:admin")
-		oc login -u system:admin
-    else
-        ifneq ($(IS_KUBE_ADMIN),)
-			$(info logging as kube:admin")
-			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password`
-        endif
-    endif
-endif
+#ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+#    ifeq ($(IS_CRC),)
+#		$(info logging as system:admin")
+#		oc login -u system:admin
+#    else
+#        ifneq ($(IS_KUBE_ADMIN),)
+#			$(info logging as kube:admin")
+#			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password`
+#        endif
+#    endif
+#endif
 
 .PHONY: setup-kubefed
 setup-kubefed:
@@ -163,13 +163,35 @@ ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 endif
 	oc new-project $(HOST_NS)
-	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
-	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
-	oc apply -f ${HOST_REPO_PATH}/deploy/crds
-	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}
+	$(MAKE) build-and-deploy-operator-host E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME} NAMESPACE=$(HOST_NS)
+
+.PHONY: build-and-deploy-operator-host
+build-and-deploy-operator-host:
+# when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
+ifeq ($(SET_IMAGE_NAME),)
+    # now we know that the image of the targeted operator is not provided, but can be still triggered in the same use case, but the image of the other operator can be provided
+    ifeq ($(IS_OTHER_IMAGE_SET),)
+    	# check if it is running locally
+        ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+			# if it is running locally, then build the image via docker
+			$(eval IMAGE_NAME := quay.io/matousjobanek/host:alpha)
+			$(MAKE) -C ${E2E_REPO_PATH} build && docker build -t quay.io/matousjobanek/host:alpha -f build/Dockerfile . && docker push quay.io/matousjobanek/host:alpha
+        else
+			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
+			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
+        endif
+    else
+		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
+		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
+    endif
+else
+	# use the provided image name
+	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
+endif
+	PRJ_ROOT_DIR=${E2E_REPO_PATH} IMAGE_NAME=${IMAGE_NAME} ${E2E_REPO_PATH}/scripts/olm_catalog.sh
+	oc apply -f ${E2E_REPO_PATH}/hack/deploy_csv.yaml
+	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f -
+
 
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
