@@ -188,7 +188,7 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-	PRJ_ROOT_DIR=${E2E_REPO_PATH} IMAGE_NAME=${IMAGE_NAME} ${E2E_REPO_PATH}/scripts/olm_catalog.sh
+	#PRJ_ROOT_DIR=${E2E_REPO_PATH} IMAGE_NAME=${IMAGE_NAME} ${E2E_REPO_PATH}/scripts/olm_catalog.sh
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f -
 	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f -
 	while [[ -z `oc get sa host-operator -n ${NAMESPACE} 2>/dev/null` ]]; do \
