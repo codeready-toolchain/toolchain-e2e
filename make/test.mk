@@ -56,17 +56,17 @@ print-logs:
 
 .PHONY: login-as-admin
 login-as-admin:
-#ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-#    ifeq ($(IS_CRC),)
-#		$(info logging as system:admin")
-#		oc login -u system:admin
-#    else
-#        ifneq ($(IS_KUBE_ADMIN),)
-#			$(info logging as kube:admin")
-#			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password`
-#        endif
-#    endif
-#endif
+ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+    ifeq ($(IS_CRC),)
+		$(info logging as system:admin")
+		oc login -u system:admin
+    else
+        ifneq ($(IS_KUBE_ADMIN),)
+			$(info logging as kube:admin")
+			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password`
+        endif
+    endif
+endif
 
 .PHONY: setup-kubefed
 setup-kubefed:
@@ -163,45 +163,15 @@ ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 endif
 	oc new-project $(HOST_NS)
-	$(MAKE) build-and-deploy-operator-host E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME} NAMESPACE=$(HOST_NS)
-
-.PHONY: build-and-deploy-operator-host
-build-and-deploy-operator-host:
-# when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
-ifeq ($(SET_IMAGE_NAME),)
-    # now we know that the image of the targeted operator is not provided, but can be still triggered in the same use case, but the image of the other operator can be provided
-    ifeq ($(IS_OTHER_IMAGE_SET),)
-    	# check if it is running locally
-        ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-			# if it is running locally, then build the image via docker
-			$(eval IMAGE_NAME := quay.io/matousjobanek/host:alpha)
-			$(MAKE) -C ${E2E_REPO_PATH} build && docker build -t quay.io/matousjobanek/host:alpha -f ${E2E_REPO_PATH}/build/Dockerfile ${E2E_REPO_PATH} && docker push quay.io/matousjobanek/host:alpha
-        else
-			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
-			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
-        endif
-    else
-		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
-		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
-    endif
-else
-	# use the provided image name
-	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
+ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
+	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
+	oc apply -f ${HOST_REPO_PATH}/deploy/crds
 endif
-	#PRJ_ROOT_DIR=${E2E_REPO_PATH} IMAGE_NAME=${IMAGE_NAME} ${E2E_REPO_PATH}/scripts/olm_catalog.sh
-	$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
-	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f -
-	while [[ -z `oc get sa host-operator -n ${NAMESPACE} 2>/dev/null` ]]; do \
-        if [[ $${NEXT_WAIT_TIME} -eq 30 ]]; then \
-           echo "reached timeout of waiting for ServiceAccount host-operator to be avialable in namespace ${NAMESPACE} - see following info for debugging:"; \
-           oc get ${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
-           CATALOGSOURCE_NAME=${CATALOGSOURCE_NAME}; \
-           oc logs `oc get pods -n openshift-marketplace -o name | grep $${CATALOGSOURCE_NAME#*/}` -n openshift-marketplace; \
-           exit 1; \
-        echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount host-operator in namespace ${NAMESPACE}"; \
-        fi; \
-        sleep 1; \
-    done;
+	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME} NAMESPACE=$(HOST_NS)
 
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
@@ -212,8 +182,9 @@ ifeq ($(SET_IMAGE_NAME),)
     	# check if it is running locally
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
 			# if it is running locally, then build the image via docker
-			$(eval IMAGE_NAME := quay.io/matousjobanek/member:alpha)
-			$(MAKE) -C ${E2E_REPO_PATH} build && docker build -t quay.io/matousjobanek/member:alpha -f ${E2E_REPO_PATH}/build/Dockerfile ${E2E_REPO_PATH} && docker push quay.io/matousjobanek/member:alpha
+			$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
+			$(MAKE) -C ${E2E_REPO_PATH} build
+			docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
@@ -226,5 +197,24 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
+ifeq ($(shell [[ "${REPO_NAME}" == "host-operator" && -n "${OPENSHIFT_BUILD_NAMESPACE}" ]] && echo true ),true)
+	$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
+	$(eval SUBSCRIPTION_NAME := $(shell sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f - | grep subscription | awk '{print $$1;}'))
+	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]]; do \
+        if [[ $${NEXT_WAIT_TIME} -eq 30 ]]; then \
+           echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be avialable in namespace ${NAMESPACE} - see following info for debugging:"; \
+           echo "================================ CatalogSource =================================="; \
+           oc get ${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
+           echo "================================ CatalogSource Pod Logs =================================="; \
+           CATALOGSOURCE_NAME=${CATALOGSOURCE_NAME}; \
+           oc logs `oc get pods -n openshift-marketplace -o name | grep $${CATALOGSOURCE_NAME#*/}` -n openshift-marketplace; \
+           echo "================================ Subscription =================================="; \
+           oc get ${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+           # exit 1; \
+        fi; \
+        echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
+        sleep 1; \
+    done
+else
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
-
+endif
