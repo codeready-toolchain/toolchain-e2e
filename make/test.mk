@@ -96,7 +96,7 @@ ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
 	rm -rf ${MEMBER_REPO_PATH}
 	# clone
-	git clone https://github.com/codeready-toolchain/member-operator.git --depth 1 ${MEMBER_REPO_PATH}
+	git clone https://github.com/codeready-toolchain/member-operator.git ${MEMBER_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(MEMBER_REPO_PATH) REPO_NAME=member-operator
 endif
 
@@ -106,7 +106,7 @@ ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 	rm -rf ${HOST_REPO_PATH}
 	# clone
-	git clone https://github.com/codeready-toolchain/host-operator.git --depth 1 ${HOST_REPO_PATH}
+	git clone https://github.com/codeready-toolchain/host-operator.git ${HOST_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(HOST_REPO_PATH) REPO_NAME=host-operator
 endif
 
@@ -123,6 +123,8 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	@echo "branch ref of the user's fork: \"${REMOTE_E2E_BRANCH}\" - if empty then not found"
 	# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
 	if [[ -n "${REMOTE_E2E_BRANCH}" ]]; then \
+		git config --global user.email "devtools@redhat.com"; \
+		git config --global user.name "Devtools"; \
 		# retrieve the branch name \
 		BRANCH_NAME=`echo ${BRANCH_REF} | awk -F'/' '{print $$3}'`; \
 		# add the user's fork as remote repo \
@@ -130,7 +132,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		# fetch the branch; \
 		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} fetch external ${BRANCH_REF}; \
 		# merge the branch with master \
-		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge FETCH_HEAD; \
+		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge --allow-unrelated-histories FETCH_HEAD; \
 	fi;
 	$(MAKE) -C ${E2E_REPO_PATH} build
 	# operators are built, now copy the operators' binaries to make them available for CI
