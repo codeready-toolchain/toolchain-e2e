@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -10,7 +9,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	templatev1 "github.com/openshift/api/template/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	errs "github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -156,15 +154,12 @@ func setupTemplateTier(t *testing.T, testCtx *framework.TestCtx, client framewor
 }
 
 func decodeTemplate(decoder runtime.Decoder, tmplContent []byte) (*templatev1.Template, error) {
-	obj, _, err := decoder.Decode(tmplContent, nil, nil)
+	tmpl := &templatev1.Template{}
+	_, _, err := decoder.Decode(tmplContent, nil, tmpl)
 	if err != nil {
-		return nil, errs.Wrapf(err, "unable to decode template")
+		return nil, err
 	}
-	tmpl, ok := obj.(*templatev1.Template)
-	if !ok {
-		return nil, fmt.Errorf("unable to convert object type %T to Template, must be a v1.Template", obj)
-	}
-	return tmpl, nil
+	return tmpl, err
 }
 
 var _templatesBasicDevYaml = []byte(`apiVersion: template.openshift.io/v1
