@@ -10,8 +10,9 @@ TEST_NS := toolchain-e2e-$(shell date +'%s')
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 
-IS_CRC := $(shell crc status /dev/null 2>&1 | grep Running)
+IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>&1 | grep crc)
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
+IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
 .PHONY: test-e2e-keep-namespaces
 test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-run
@@ -58,8 +59,11 @@ print-logs:
 login-as-admin:
 ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
     ifeq ($(IS_CRC),)
-		$(info logging as system:admin")
-		oc login -u system:admin
+        ifneq ($(IS_OS_3),)
+        	# is running locally and against OS 3, so we assume that it's minishift
+			$(info logging as system:admin")
+			oc login -u system:admin
+        endif
     else
         ifneq ($(IS_KUBE_ADMIN),)
 			$(info logging as kube:admin")
@@ -119,7 +123,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	$(eval BRANCH_REF := $(shell curl ${AUTHOR_LINK}/toolchain-e2e.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_SHA} | awk '{print $$2}'))
 	@echo "detected branch ref ${BRANCH_REF}"
 	# check if a branch with the same ref exists in the user's fork of ${REPO_NAME} repo
-	$(eval REMOTE_E2E_BRANCH := $(shell curl ${AUTHOR_LINK}/${REPO_NAME}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${BRANCH_REF} | awk '{print $$2}'))
+	$(eval REMOTE_E2E_BRANCH := $(shell curl ${AUTHOR_LINK}/${REPO_NAME}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "${BRANCH_REF}$" | awk '{print $$2}'))
 	@echo "branch ref of the user's fork: \"${REMOTE_E2E_BRANCH}\" - if empty then not found"
 	# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
 	if [[ -n "${REMOTE_E2E_BRANCH}" ]]; then \
@@ -165,7 +169,8 @@ ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 endif
 	oc new-project $(HOST_NS)
-ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+ifneq ($(IS_OS_3),)
+	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
@@ -183,10 +188,19 @@ ifeq ($(SET_IMAGE_NAME),)
     ifeq ($(IS_OTHER_IMAGE_SET),)
     	# check if it is running locally
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-			# if it is running locally, then build the image via docker
-			$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
-			$(MAKE) -C ${E2E_REPO_PATH} build
-			docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
+                # if it is running locally, then build the image via docker
+            ifneq ($(IS_OS_3),)
+            	# is running locally and against OS 3, so we assume that it's minishift - it will use local docker registry
+				$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
+				$(MAKE) -C ${E2E_REPO_PATH} build
+				docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
+            else
+            	# if is using OS4 then use quay registry
+				$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
+				$(MAKE) -C ${E2E_REPO_PATH} build
+				docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
+				docker push ${IMAGE_NAME}
+            endif
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
@@ -199,7 +213,8 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-ifeq ($(shell [[ "${REPO_NAME}" == "host-operator" && -n "${OPENSHIFT_BUILD_NAMESPACE}" ]] && echo true ),true)
+ifeq ($(shell [[ "${REPO_NAME}" == "host-operator" && -z "${IS_OS_3}" ]] && echo true ),true)
+	# it is host-operator and is not using OS 3, so we will install operator via CSV
 	$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
 	$(eval SUBSCRIPTION_NAME := $(shell sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f - | grep subscription | awk '{print $$1;}'))
 	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]]; do \
