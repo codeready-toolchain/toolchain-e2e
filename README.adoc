@@ -5,6 +5,12 @@ image:https://godoc.org/github.com/codeready-toolchain/toolchain-e2e?status.png[
 
 This repo contains e2e tests for https://github.com/codeready-toolchain/host-operator[host] and https://github.com/codeready-toolchain/member-operator[member] operators of CodeReady Toolchain.
 
+== Build
+
+Requires Go version 1.13 - download for your development environment https://golang.org/dl/[here].
+
+This repository uses https://github.com/golang/go/wiki/Modules[Go modules]. You may need to `export GO111MODULE=on` to turn modules support "on".
+
 == End-to-End tests
 
 The e2e tests are executed against host and member operators running in OpenShift. The operators are built from the https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator] repositories.
