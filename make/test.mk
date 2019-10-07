@@ -14,14 +14,14 @@ IS_CRC := $(shell crc status /dev/null 2>&1 | grep Running)
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 
 .PHONY: test-e2e-keep-namespaces
-test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-run
+test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host deploy-registration setup-kubefed e2e-run
 
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e-local
 test-e2e-local:
-	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator MEMBER_REPO_PATH=../member-operator
+	$(MAKE) test-e2e HOST_REPO_PATH=../host-operator MEMBER_REPO_PATH=../member-operator REG_REPO_PATH=../registration-service
 
 .PHONY: test-e2e-member-local
 test-e2e-member-local:
@@ -173,6 +173,17 @@ endif
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds
 	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}
 
+.PHONY: deploy-registration
+deploy-registration:
+ifeq ($(REG_REPO_PATH),)
+	$(eval REG_REPO_PATH = /tmp/registration-service)
+endif
+	oc new-project $(HOST_NS)
+	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
+	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
+	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
+	$(MAKE) build-and-deploy-deployment REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME}
+
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
 # when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
@@ -199,3 +210,23 @@ else
 endif
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 
+.PHONY: build-and-deploy-deployment
+build-and-deploy-deployment:
+# when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the deployment is (not) provided
+ifeq ($(SET_IMAGE_NAME),)
+	# check if it is running locally
+    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+		# if it is running locally, then build the image via docker
+		$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${GIT_COMMIT_ID_SHORT})
+		$(MAKE) -C ${REPO_PATH} build
+		docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
+    else
+		# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
+		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
+    endif
+else
+	# use the provided image name
+	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
+endif
+	# TODO finalize on deployment_dev.yaml file name used
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
