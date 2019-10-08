@@ -12,7 +12,7 @@ PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr
 
 IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>&1 | grep crc)
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
-IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
+IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
 .PHONY: test-e2e-keep-namespaces
 test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-run
@@ -39,7 +39,7 @@ test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
 	oc get kubefedcluster -n $(MEMBER_NS)
-	oc new-project $(TEST_NS) --display-name e2e-tests
+	oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} operator-sdk test local ./test/e2e --no-setup --namespace $(TEST_NS) --verbose --go-test-flags "-timeout=15m" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} && exit 1)
 
@@ -62,12 +62,12 @@ ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
         ifneq ($(IS_OS_3),)
         	# is running locally and against OS 3, so we assume that it's minishift
 			$(info logging as system:admin")
-			oc login -u system:admin
+			oc login -u system:admin 1>/dev/null
         endif
     else
         ifneq ($(IS_KUBE_ADMIN),)
 			$(info logging as kube:admin")
-			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password`
+			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password` 1>/dev/null
         endif
     endif
 endif
@@ -154,7 +154,7 @@ deploy-member:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
 endif
-	oc new-project $(MEMBER_NS)
+	oc new-project $(MEMBER_NS) 1>/dev/null
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role_binding.yaml
@@ -168,7 +168,7 @@ deploy-host:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 endif
-	oc new-project $(HOST_NS)
+	oc new-project $(HOST_NS) 1>/dev/null
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
