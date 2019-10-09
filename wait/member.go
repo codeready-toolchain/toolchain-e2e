@@ -90,7 +90,7 @@ func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace
 	namespaceList := &v1.NamespaceList{}
 	err := a.Client.List(context.TODO(), opts, namespaceList)
 	require.NoError(a.T, err)
-	require.True(a.T, len(namespaceList.Items) > 0)
+	require.Len(a.T, namespaceList.Items, 1)
 	return &namespaceList.Items[0]
 }
 
