@@ -15,7 +15,6 @@ import (
 )
 
 func TestCreateNSTemplateTierAtStartup(t *testing.T) {
-	// given:
 	// given
 	tierList := &toolchainv1alpha1.NSTemplateTierList{}
 	ctx, awaitility := doubles.InitializeOperators(t, tierList)
