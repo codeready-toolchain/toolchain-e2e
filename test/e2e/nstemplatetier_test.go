@@ -33,7 +33,7 @@ func TestCreateNSTemplateTierAtStartup(t *testing.T) {
 			// the `advanced` tier should be in generation 1 (just created)
 			assert.Equal(t, int64(1), tier.ObjectMeta.GetGeneration())
 		case "basic":
-			// the `basic` tier should be in generation 1 (just updated - was created by makefile)
+			// the `basic` tier should be in generation 2 (just updated - was created by makefile)
 			assert.Equal(t, int64(2), tier.ObjectMeta.GetGeneration())
 		default:
 			t.Fatalf("unexpected tier: %s", tier.Name)
