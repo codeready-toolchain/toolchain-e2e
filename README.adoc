@@ -31,7 +31,9 @@ It would work analogically also for the cases when the repositories either both 
 
 If you still don't know what to do with e2e tests in some use-cases, go to <<What to do>> section where all use-cases are covered.
 
-==== Prerequisites if running locally on Minishift or CRC (CodeReady Containers)
+==== Prerequisites if running locally
+
+===== Minishift or CRC (CodeReady Containers)
 If you are running these tests locally in Minishift or CRC, make sure that you have exposed necessary environments, so deployment can use the locally built image. You can expose it by running the following commands.
 
 * for Minishift `eval $(minishift docker-env)` `eval $(minishift oc-env)`
@@ -39,6 +41,12 @@ If you are running these tests locally in Minishift or CRC, make sure that you h
 
 
 NOTE: This is not required for openshift-ci environment
+
+===== OpenShift 4.2+
+
+* Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
+* Log in to the target OpenShift cluster with cluster admin privileges
+* The visibility of both repositories `host-operator` and `member-operator` in quay is set to public (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings)
 
 ==== Running End-to-End Tests
 
