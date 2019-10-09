@@ -2,13 +2,14 @@ package wait
 
 import (
 	"context"
+	"reflect"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"reflect"
 )
 
 type HostAwaitility struct {
@@ -173,4 +174,40 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 		}
 	}
 	return false
+}
+
+// WaitForNSTemplateTier waits until an NSTemplateTier with the given name and conditions is present
+func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated...", name)
+		tier := &toolchainv1alpha1.NSTemplateTier{}
+		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, tier)
+		if err != nil && !errors.IsNotFound(err) {
+			a.T.Logf("NSTemplateTier '%s' could not be fetched", name)
+			// return the error
+			return false, err
+		} else if errors.IsNotFound(err) {
+			// keep waiting
+			return false, nil
+		}
+		for _, match := range criteria {
+			// if at least one criteria does not match, keep waiting
+			if !match(tier) {
+				// keep waiting
+				return false, nil
+			}
+		}
+		// stop waiting
+		return true, nil
+	})
+}
+
+// NSTemplateTierWaitCriterion the criterion that must be met so the wait is over
+type NSTemplateTierWaitCriterion func(*toolchainv1alpha1.NSTemplateTier) bool
+
+// NSTemplateTierHavingGeneration a wait criterion that checks the object generation
+func NSTemplateTierHavingGeneration(g int) NSTemplateTierWaitCriterion {
+	return func(tier *toolchainv1alpha1.NSTemplateTier) bool {
+		return tier.GetGeneration() == int64(g)
+	}
 }
