@@ -39,7 +39,7 @@ test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
 	oc get kubefedcluster -n $(MEMBER_NS)
-	oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
+	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} operator-sdk test local ./test/e2e --no-setup --namespace $(TEST_NS) --verbose --go-test-flags "-timeout=15m" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} && exit 1)
 
@@ -92,7 +92,7 @@ clean-e2e-namespaces:
 ###########################################################
 
 .PHONY: build-with-operators
-build-with-operators: build get-member-operator-repo get-host-operator-repo
+build-with-operators: build get-member-operator-repo get-host-operator-repo get-registration-service-repo
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
@@ -112,6 +112,16 @@ ifeq ($(HOST_REPO_PATH),)
 	# clone
 	git clone https://github.com/codeready-toolchain/host-operator.git ${HOST_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(HOST_REPO_PATH) REPO_NAME=host-operator
+endif
+
+.PHONY: get-registration-service-repo
+get-registration-service-repo:
+ifeq ($(REG_REPO_PATH),)
+	$(eval REG_REPO_PATH = /tmp/registration-service)
+	rm -rf ${REG_REPO_PATH}
+	# clone
+	git clone https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
+	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(REG_REPO_PATH) REPO_NAME=registration-service
 endif
 
 .PHONY: prepare-e2e-repo
@@ -154,7 +164,7 @@ deploy-member:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
 endif
-	oc new-project $(MEMBER_NS) 1>/dev/null
+	-oc new-project $(MEMBER_NS) 1>/dev/null
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role_binding.yaml
@@ -168,7 +178,7 @@ deploy-host:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/host-operator)
 endif
-	oc new-project $(HOST_NS) 1>/dev/null
+	-oc new-project $(HOST_NS) 1>/dev/null
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
@@ -185,7 +195,7 @@ deploy-registration:
 ifeq ($(REG_REPO_PATH),)
 	$(eval REG_REPO_PATH = /tmp/registration-service)
 endif
-	oc new-project $(HOST_NS)
+	-oc new-project $(HOST_NS)
 	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
