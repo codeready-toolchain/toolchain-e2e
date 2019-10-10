@@ -205,9 +205,31 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 // NSTemplateTierWaitCriterion the criterion that must be met so the wait is over
 type NSTemplateTierWaitCriterion func(*toolchainv1alpha1.NSTemplateTier) bool
 
-// NSTemplateTierHavingGeneration a wait criterion that checks the object generation
-func NSTemplateTierHavingGeneration(g int) NSTemplateTierWaitCriterion {
+// NSTemplateTierSpecMatcher a matcher for the
+type NSTemplateTierSpecMatcher func(s toolchainv1alpha1.NSTemplateTierSpec) bool
+
+// NSTemplateTierSpecHaving verify that the NSTemplateTier spec has the specified condition
+func NSTemplateTierSpecHaving(match NSTemplateTierSpecMatcher) NSTemplateTierWaitCriterion {
 	return func(tier *toolchainv1alpha1.NSTemplateTier) bool {
-		return tier.GetGeneration() == int64(g)
+		return match(tier.Spec)
+	}
+}
+
+// Not negates the given matcher
+func Not(match NSTemplateTierSpecMatcher) NSTemplateTierSpecMatcher {
+	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
+		return !match(s)
+	}
+}
+
+// NamespaceRevisions checks that ALL namespaces' revision match the given value
+func NamespaceRevisions(r string) NSTemplateTierSpecMatcher {
+	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
+		for _, ns := range s.Namespaces {
+			if ns.Revision != r {
+				return false
+			}
+		}
+		return true
 	}
 }

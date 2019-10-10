@@ -17,12 +17,12 @@ func TestCreateOrUpdateNSTemplateTierAtStartup(t *testing.T) {
 	defer ctx.Cleanup()
 	hostAwait := wait.NewHostAwaitility(awaitility)
 
-	// check the "advanced" NSTemplateTier, expecting generation=1 (just created)
-	err := hostAwait.WaitForNSTemplateTier("advanced", wait.NSTemplateTierHavingGeneration(1))
+	// check the "advanced" NSTemplateTier exists (just created)
+	err := hostAwait.WaitForNSTemplateTier("advanced")
 	require.NoError(t, err)
 
-	// check the "basic" NSTemplateTier, expecting generation=2 (just updated)
-	err = hostAwait.WaitForNSTemplateTier("basic", wait.NSTemplateTierHavingGeneration(2))
+	// check the "basic" NSTemplateTier exists, and all its Namespace revisions are different from `000000a`,
+	// which is the value specified in the initial manifest
+	err = hostAwait.WaitForNSTemplateTier("basic", wait.NSTemplateTierSpecHaving(wait.Not(wait.NamespaceRevisions("000000a"))))
 	require.NoError(t, err)
-
 }
