@@ -123,7 +123,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	$(eval BRANCH_REF := $(shell curl ${AUTHOR_LINK}/toolchain-e2e.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_SHA} | awk '{print $$2}'))
 	@echo "detected branch ref ${BRANCH_REF}"
 	# check if a branch with the same ref exists in the user's fork of ${REPO_NAME} repo
-	$(eval REMOTE_E2E_BRANCH := $(shell curl ${AUTHOR_LINK}/${REPO_NAME}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "${BRANCH_REF}$" | awk '{print $$2}'))
+	$(eval REMOTE_E2E_BRANCH := $(shell curl ${AUTHOR_LINK}/${REPO_NAME}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "${BRANCH_REF}$$" | awk '{print $$2}'))
 	@echo "branch ref of the user's fork: \"${REMOTE_E2E_BRANCH}\" - if empty then not found"
 	# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
 	if [[ -n "${REMOTE_E2E_BRANCH}" ]]; then \
@@ -136,7 +136,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		# fetch the branch; \
 		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} fetch external ${BRANCH_REF}; \
 		# merge the branch with master \
-		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge --allow-unrelated-histories FETCH_HEAD; \
+		git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge --allow-unrelated-histories --no-commit FETCH_HEAD; \
 	fi;
 	$(MAKE) -C ${E2E_REPO_PATH} build
 	# operators are built, now copy the operators' binaries to make them available for CI
