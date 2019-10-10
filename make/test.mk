@@ -14,11 +14,14 @@ IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.ser
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
+.PHONY: test-e2e-keep-namespaces
+test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-run
+
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e
-test-e2e: build-with-operators login-as-admin deploy-member deploy-host setup-kubefed e2e-run e2e-cleanup
+test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host' and 'member' repositories
