@@ -20,20 +20,23 @@ test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
 
+.PHONY: test-e2e
+test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
+
 .PHONY: test-e2e-local
+## Run the e2e tests with the local 'host' and 'member' repositories
 test-e2e-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator
 
 .PHONY: test-e2e-member-local
+## Run the e2e tests with the local 'member' repository only
 test-e2e-member-local:
 	$(MAKE) test-e2e MEMBER_REPO_PATH=${PWD}/../member-operator
 
 .PHONY: test-e2e-host-local
+## Run the e2e tests with the local 'host' repository only
 test-e2e-host-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator
-
-.PHONY: test-e2e
-test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
 
 .PHONY: e2e-run
 e2e-run:
@@ -183,6 +186,9 @@ ifneq ($(IS_OS_3),)
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds
 endif
 	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME} NAMESPACE=$(HOST_NS)
+	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
+	# as the controller starts (which is a use-case for CRT-231)
+	oc apply -f test/e2e/nstemplatetier-basic.yaml -n $(HOST_NS)
 
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
