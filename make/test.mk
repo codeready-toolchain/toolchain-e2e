@@ -85,8 +85,8 @@ setup-kubefed:
 e2e-cleanup:
 	oc delete project ${MEMBER_NS} ${HOST_NS} ${TEST_NS} --wait=false || true
 
-.PHONY: clean-e2e-namespaces
-clean-e2e-namespaces:
+.PHONY: clean-e2e-resources
+clean-e2e-resources:
 	$(Q)-oc get projects --output=name | grep -E "(member|host)\-operator\-[0-9]+|toolchain\-e2e\-[0-9]+" | xargs oc delete
 	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas" | xargs oc delete
 	$(Q)-oc delete crd kubefedclusters.core.kubefed.k8s.io
