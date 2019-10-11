@@ -128,8 +128,10 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		echo "branch ref of the user's fork: \"$${REMOTE_E2E_BRANCH}\" - if empty then not found"; \
 		# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master \
 		if [[ -n "$${REMOTE_E2E_BRANCH}" ]]; then \
-			git config --global user.email "devtools@redhat.com"; \
-			git config --global user.name "Devtools"; \
+			if [[ -n "$(OPENSHIFT_BUILD_NAMESPACE)" ]]; then \
+				git config --global user.email "devtools@redhat.com"; \
+				git config --global user.name "Devtools"; \
+			fi; \
 			# retrieve the branch name \
 			BRANCH_NAME=`echo ${BRANCH_REF} | awk -F'/' '{print $$3}'`; \
 			# add the user's fork as remote repo \
