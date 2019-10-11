@@ -3,14 +3,13 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20190926105251-44ed4423e3bf
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20190926125002-408e9c1b28de
+	github.com/codeready-toolchain/api v0.0.0-20191007162531-948e5f985128
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
 	github.com/operator-framework/operator-sdk v0.10.0
-	github.com/pkg/errors v0.8.1
 	github.com/rogpeppe/go-internal v1.4.0 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/pflag v1.0.5

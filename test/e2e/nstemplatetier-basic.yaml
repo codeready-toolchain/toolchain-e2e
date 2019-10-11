@@ -1,0 +1,78 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: NSTemplateTier
+metadata:
+  name: basic
+spec:
+  namespaces:
+  - revision: 000000a
+    template:
+      apiVersion: template.openshift.io/v1
+      kind: Template
+      metadata:
+        creationTimestamp: null
+        labels:
+          provider: codeready-toolchain
+        name: basic-code
+      objects:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          annotations:
+            openshift.io/description: ${USERNAME}-code
+            openshift.io/display-name: ${USERNAME}-code
+            openshift.io/requester: ${USERNAME}
+          labels:
+            provider: codeready-toolchain
+          name: ${USERNAME}-code
+      parameters:
+      - name: USERNAME
+        required: true
+    type: code
+  - revision: 000000a
+    template:
+      apiVersion: template.openshift.io/v1
+      kind: Template
+      metadata:
+        creationTimestamp: null
+        labels:
+          provider: codeready-toolchain
+        name: basic-dev
+      objects:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          annotations:
+            openshift.io/description: ${USERNAME}-dev
+            openshift.io/display-name: ${USERNAME}-dev
+            openshift.io/requester: ${USERNAME}
+          labels:
+            provider: codeready-toolchain
+          name: ${USERNAME}-dev
+      parameters:
+      - name: USERNAME
+        required: true
+    type: dev
+  - revision: 000000a
+    template:
+      apiVersion: template.openshift.io/v1
+      kind: Template
+      metadata:
+        creationTimestamp: null
+        labels:
+          provider: codeready-toolchain
+        name: basic-stage
+      objects:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          annotations:
+            openshift.io/description: ${USERNAME}-stage
+            openshift.io/display-name: ${USERNAME}-stage
+            openshift.io/requester: ${USERNAME}
+          labels:
+            provider: codeready-toolchain
+          name: ${USERNAME}-stage
+      parameters:
+      - name: USERNAME
+        required: true
+    type: stage

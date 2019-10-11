@@ -11,11 +11,12 @@ import (
 	murtest "github.com/codeready-toolchain/toolchain-common/pkg/test/masteruserrecord"
 	"github.com/codeready-toolchain/toolchain-e2e/doubles"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -45,52 +46,65 @@ func TestE2EFlow(t *testing.T) {
 	verifyResourcesExpectingToBeProvisioned(awaitility, extraMur)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
+
 		t.Run("delete user and wait until is recreated", func(t *testing.T) {
+			// given
 			user := &userv1.User{}
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: mur.Name}, user)
 			require.NoError(t, err)
 
+			// when
 			err = awaitility.Client.Delete(context.TODO(), user)
-			require.NoError(t, err)
 
+			// then
+			require.NoError(t, err)
 			verifyResourcesExpectingToBeProvisioned(awaitility, mur)
 			verifyResourcesExpectingToBeProvisioned(awaitility, extraMur)
 		})
 
 		t.Run("delete identity and wait until is recreated", func(t *testing.T) {
+			// given
 			identity := &userv1.Identity{}
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(mur.Spec.UserID)}, identity)
 			require.NoError(t, err)
 
+			// when
 			err = awaitility.Client.Delete(context.TODO(), identity)
-			require.NoError(t, err)
 
+			// then
+			require.NoError(t, err)
 			verifyResourcesExpectingToBeProvisioned(awaitility, mur)
 			verifyResourcesExpectingToBeProvisioned(awaitility, extraMur)
 		})
 
 		t.Run("delete user mapping and wait until is recreated", func(t *testing.T) {
+			// given
 			user := &userv1.User{}
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: mur.Name}, user)
 			require.NoError(t, err)
 
+			// when
 			user.Identities = []string{}
 			err = awaitility.Client.Update(context.TODO(), user)
-			require.NoError(t, err)
 
+			// then
+			require.NoError(t, err)
 			verifyResourcesExpectingToBeProvisioned(awaitility, mur)
 			verifyResourcesExpectingToBeProvisioned(awaitility, extraMur)
 		})
 
 		t.Run("delete identity mapping and wait until is recreated", func(t *testing.T) {
+			// given
 			identity := &userv1.Identity{}
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(mur.Spec.UserID)}, identity)
 			require.NoError(t, err)
+			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 
-			identity.User = v1.ObjectReference{Name: "", UID: ""}
+			// when
 			err = awaitility.Client.Update(context.TODO(), identity)
-			require.NoError(t, err)
 
+			// then
+			require.NoError(t, err)
 			verifyResourcesExpectingToBeProvisioned(awaitility, mur)
 			verifyResourcesExpectingToBeProvisioned(awaitility, extraMur)
 		})
@@ -220,7 +234,7 @@ func verifyNSTmplSet(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alph
 func coolStatus() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:    toolchainv1alpha1.ConditionType("CoolType"),
-		Status:  v1.ConditionTrue,
+		Status:  corev1.ConditionTrue,
 		Reason:  "EverythingIsGood",
 		Message: "because our SaaS is cool",
 	}
@@ -229,7 +243,7 @@ func coolStatus() toolchainv1alpha1.Condition {
 func toBeProvisioned() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
-		Status: v1.ConditionTrue,
+		Status: corev1.ConditionTrue,
 		Reason: "Provisioned",
 	}
 }
