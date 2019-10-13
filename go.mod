@@ -3,13 +3,11 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.40.0 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/NYTimes/gziphandler v1.1.1 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20191007162531-948e5f985128
+	github.com/codeready-toolchain/api v0.0.0-20191013054335-17f0782f9285
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
 	github.com/gobuffalo/envy v1.7.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30 // indirect
 	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
 	github.com/operator-framework/operator-sdk v0.10.0
 	github.com/satori/go.uuid v1.2.0
@@ -19,7 +17,6 @@ require (
 	k8s.io/api v0.0.0-20190925180651-d58b53da08f5
 	k8s.io/apimachinery v0.0.0-20190925235427-62598f38f24e
 	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/code-generator v0.0.0-20190531131525-17d711082421 // indirect
 	sigs.k8s.io/controller-runtime v0.2.2
 	sigs.k8s.io/kubefed v0.1.0-rc2
 )
