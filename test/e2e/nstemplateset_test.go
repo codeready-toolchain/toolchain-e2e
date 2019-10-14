@@ -87,6 +87,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	// create NSTmplSet
 	t.Logf("Creating NSTmplSet with username:%s", username)
 	nsTmplSet := s.newNSTmplSet(username)
+	t.Logf("Creating NSTmplSet:%v", nsTmplSet)
 	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, doubles.CleanupOptions(s.testCtx))
 	require.NoError(t, err)
 
