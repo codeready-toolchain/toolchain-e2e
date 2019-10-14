@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"context"
+	"testing"
+
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/doubles"
@@ -13,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"testing"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 )
@@ -597,6 +598,7 @@ func (s *userSignupIntegrationTest) newUserSignup(name string) *v1alpha1.UserSig
 	spec := v1alpha1.UserSignupSpec{
 		UserID:        uuid.NewV4().String(),
 		Username:      name,
+		CompliantUsername: name,
 		TargetCluster: memberCluster.Name,
 	}
 
@@ -623,7 +625,7 @@ func (s *userSignupIntegrationTest) newMasterUserRecord(name string, userID stri
 				UserID:  userID,
 				NSLimit: "default",
 				NSTemplateSet: v1alpha1.NSTemplateSetSpec{
-					Namespaces: []v1alpha1.Namespace{},
+					Namespaces: []v1alpha1.NSTemplateSetNamespace{},
 				},
 			},
 		},

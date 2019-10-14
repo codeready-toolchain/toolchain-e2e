@@ -3,23 +3,21 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.40.0 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20190910110833-66e1ab342d1e
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20190911094622-c907aa042ca8
-	github.com/go-openapi/spec v0.19.2 // indirect
+	github.com/codeready-toolchain/api v0.0.0-20191013054335-17f0782f9285
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
 	github.com/gobuffalo/envy v1.7.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/mailru/easyjson v0.0.0-20190620125010-da37f6c1e481 // indirect
-	github.com/openshift/api v3.9.0+incompatible
+	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
 	github.com/operator-framework/operator-sdk v0.10.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.3.0
+	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.4.0
 	golang.org/x/tools v0.0.0-20190620191750-1fa568393b23 // indirect
-	k8s.io/api v0.0.0-20190620073856-dcce3486da33
-	k8s.io/apimachinery v0.0.0-20190620073744-d16981aedf33
+	k8s.io/api v0.0.0-20190925180651-d58b53da08f5
+	k8s.io/apimachinery v0.0.0-20190925235427-62598f38f24e
 	k8s.io/client-go v11.0.0+incompatible
-	sigs.k8s.io/controller-runtime v0.1.12
+	sigs.k8s.io/controller-runtime v0.2.2
 	sigs.k8s.io/kubefed v0.1.0-rc2
 )
 
