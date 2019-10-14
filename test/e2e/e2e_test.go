@@ -26,9 +26,6 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := doubles.InitializeOperators(t, murList)
 	defer ctx.Cleanup()
 
-	// TODO remove this, temp fix until CRT-231 is completed
-	setupTemplateTier(t, ctx, awaitility.Client, awaitility.Scheme, awaitility.HostNs)
-
 	extraMur := createMasterUserRecord(awaitility, ctx, "extrajohn")
 	t.Log("extra MasterUserRecord created at start")
 	targetCluster := extraMur.Spec.UserAccounts[0].TargetCluster

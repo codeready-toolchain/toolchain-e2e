@@ -7,13 +7,11 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/doubles"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	templatev1 "github.com/openshift/api/template/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type nsTemplateSetTest struct {
@@ -22,6 +20,7 @@ type nsTemplateSetTest struct {
 	testCtx     *framework.TestCtx
 	awaitility  *wait.Awaitility
 	memberAwait *wait.MemberAwaitility
+	basicTier   *toolchainv1alpha1.NSTemplateTier
 }
 
 func TestNSTemplateSet(t *testing.T) {
@@ -33,9 +32,7 @@ func (s *nsTemplateSetTest) SetupSuite() {
 	s.testCtx, s.awaitility = doubles.InitializeOperators(s.T(), nsTmplSetList)
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.MemberNs
-
-	// TODO remove this, temp fix until CRT-231 is completed
-	setupTemplateTier(s.T(), s.testCtx, s.awaitility.Client, s.awaitility.Scheme, s.awaitility.HostNs)
+	s.basicTier = getBasicTier(s.T(), s.awaitility.Client, s.awaitility.HostNs)
 }
 
 func (s *nsTemplateSetTest) TestCreateOK() {
@@ -89,7 +86,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 
 	// create NSTmplSet
 	t.Logf("Creating NSTmplSet with username:%s", username)
-	nsTmplSet := newNSTmplSet(username, s.namespace)
+	nsTmplSet := s.newNSTmplSet(username)
 	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, doubles.CleanupOptions(s.testCtx))
 	require.NoError(t, err)
 
@@ -106,163 +103,28 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	return nsTmplSet
 }
 
-func newNSTmplSet(username, namespace string) *toolchainv1alpha1.NSTemplateSet {
+func (s *nsTemplateSetTest) newNSTmplSet(username string) *toolchainv1alpha1.NSTemplateSet {
 	nsTmplSet := &toolchainv1alpha1.NSTemplateSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      username,
-			Namespace: namespace,
+			Namespace: s.namespace,
 		},
 		Spec: toolchainv1alpha1.NSTemplateSetSpec{
 			TierName: "basic",
-			Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
-				{Type: "dev", Revision: "123abc", Template: ""},
-				{Type: "code", Revision: "123abc", Template: ""},
-				{Type: "stage", Revision: "123abc", Template: ""},
-			},
 		},
+	}
+	for _, ns := range s.basicTier.Spec.Namespaces {
+		nsTmplSet.Spec.Namespaces = append(nsTmplSet.Spec.Namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
+			Type:     ns.Type,
+			Revision: ns.Revision,
+		})
 	}
 	return nsTmplSet
 }
 
-// TODO remove this, temp fix until CRT-231 is completed
-func setupTemplateTier(t *testing.T, testCtx *framework.TestCtx, client framework.FrameworkClient, scheme *runtime.Scheme, namespace string) {
-	codecFactory := serializer.NewCodecFactory(scheme)
-	decoder := codecFactory.UniversalDeserializer()
-
-	devTmpl, err := decodeTemplate(decoder, _templatesBasicDevYaml)
+func getBasicTier(t *testing.T, client framework.FrameworkClient, namespace string) *toolchainv1alpha1.NSTemplateTier {
+	tmplTier := &toolchainv1alpha1.NSTemplateTier{}
+	err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: "basic"}, tmplTier)
 	require.NoError(t, err)
-	codeTmpl, err := decodeTemplate(decoder, _templatesBasicCodeYaml)
-	require.NoError(t, err)
-	stageTmpl, err := decodeTemplate(decoder, _templatesBasicStageYaml)
-	require.NoError(t, err)
-
-	nsTmplTier := &toolchainv1alpha1.NSTemplateTier{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "basic",
-			Namespace: namespace,
-		},
-		Spec: toolchainv1alpha1.NSTemplateTierSpec{
-			Namespaces: []toolchainv1alpha1.NSTemplateTierNamespace{
-				{Type: "dev", Revision: "123abc", Template: *devTmpl},
-				{Type: "code", Revision: "123abc", Template: *codeTmpl},
-				{Type: "stage", Revision: "123abc", Template: *stageTmpl},
-			},
-		},
-	}
-	err = client.Create(context.TODO(), nsTmplTier, doubles.CleanupOptions(testCtx))
-	require.NoError(t, err)
+	return tmplTier
 }
-
-func decodeTemplate(decoder runtime.Decoder, tmplContent []byte) (*templatev1.Template, error) {
-	tmpl := &templatev1.Template{}
-	_, _, err := decoder.Decode(tmplContent, nil, tmpl)
-	if err != nil {
-		return nil, err
-	}
-	return tmpl, err
-}
-
-var _templatesBasicDevYaml = []byte(`apiVersion: template.openshift.io/v1
-kind: Template
-metadata:
-  labels:
-    provider: codeready-toolchain
-    project: codeready-toolchain
-  name: basic-dev
-objects:
-  - apiVersion: v1
-    kind: Namespace
-    metadata:
-      labels:
-        provider: codeready-toolchain
-        project: codeready-toolchain
-      name: ${USER_NAME}-dev
-  - apiVersion: authorization.openshift.io/v1
-    kind: RoleBinding
-    metadata:
-      labels:
-        provider: codeready-toolchain
-        app: codeready-toolchain
-      name: user-edit
-      namespace: ${USER_NAME}-dev
-    roleRef:
-      name: edit
-    subjects:
-      - kind: User
-        name: ${USER_NAME}
-    userNames:
-      - ${USER_NAME}
-parameters:
-  - name: USER_NAME
-    value: johnsmith
-`)
-
-var _templatesBasicCodeYaml = []byte(`apiVersion: template.openshift.io/v1
-kind: Template
-metadata:
-  labels:
-    provider: codeready-toolchain
-    project: codeready-toolchain
-  name: basic-code
-objects:
-  - apiVersion: v1
-    kind: Namespace
-    metadata:
-      labels:
-        provider: codeready-toolchain
-        project: codeready-toolchain
-      name: ${USER_NAME}-code
-  - apiVersion: authorization.openshift.io/v1
-    kind: RoleBinding
-    metadata:
-      labels:
-        provider: codeready-toolchain
-        app: codeready-toolchain
-      name: user-edit
-      namespace: ${USER_NAME}-code
-    roleRef:
-      name: edit
-    subjects:
-      - kind: User
-        name: ${USER_NAME}
-    userNames:
-      - ${USER_NAME}
-parameters:
-  - name: USER_NAME
-    value: johnsmith
-`)
-
-var _templatesBasicStageYaml = []byte(`apiVersion: template.openshift.io/v1
-kind: Template
-metadata:
-  labels:
-    provider: codeready-toolchain
-    project: codeready-toolchain
-  name: basic-stage
-objects:
-  - apiVersion: v1
-    kind: Namespace
-    metadata:
-      labels:
-        provider: codeready-toolchain
-        project: codeready-toolchain
-      name: ${USER_NAME}-stage
-  - apiVersion: authorization.openshift.io/v1
-    kind: RoleBinding
-    metadata:
-      labels:
-        provider: codeready-toolchain
-        app: codeready-toolchain
-      name: user-edit
-      namespace: ${USER_NAME}-stage
-    roleRef:
-      name: edit
-    subjects:
-      - kind: User
-        name: ${USER_NAME}
-    userNames:
-      - ${USER_NAME}
-parameters:
-  - name: USER_NAME
-    value: johnsmith
-`)
