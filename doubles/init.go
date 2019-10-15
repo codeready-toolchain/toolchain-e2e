@@ -8,6 +8,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
+	templatev1 "github.com/openshift/api/template/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
@@ -49,6 +50,7 @@ func InitializeOperators(t *testing.T, obj runtime.Object) (*framework.TestCtx, 
 		Client:           f.Client,
 		KubeClient:       f.KubeClient,
 		ControllerClient: f.Client.Client,
+		Scheme:           f.Scheme,
 		HostNs:           hostNs,
 		MemberNs:         memberNs,
 	}
@@ -62,6 +64,7 @@ func InitializeOperators(t *testing.T, obj runtime.Object) (*framework.TestCtx, 
 
 func newSchemeBuilder() runtime.SchemeBuilder {
 	addToSchemes := append(apis.AddToSchemes, userv1.AddToScheme)
+	addToSchemes = append(addToSchemes, templatev1.AddToScheme)
 	return addToSchemes
 }
 

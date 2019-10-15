@@ -3,10 +3,14 @@ package wait
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -14,15 +18,13 @@ import (
 	"sigs.k8s.io/kubefed/pkg/apis/core/common"
 	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
 	"sigs.k8s.io/kubefed/pkg/controller/util"
-	"testing"
-	"time"
 )
 
 const (
 	OperatorRetryInterval          = time.Second * 5
 	OperatorTimeout                = time.Second * 60
-	RetryInterval                  = time.Millisecond * 100
-	Timeout                        = time.Second * 3
+	RetryInterval                  = time.Millisecond * 300
+	Timeout                        = time.Second * 9
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	KubeFedClusterConditionTimeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
@@ -34,6 +36,7 @@ type Awaitility struct {
 	Client           framework.FrameworkClient
 	ControllerClient client.Client
 	KubeClient       kubernetes.Interface
+	Scheme           *runtime.Scheme
 	MemberNs         string
 	HostNs           string
 }
