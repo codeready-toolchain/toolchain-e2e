@@ -2,14 +2,17 @@ package wait
 
 import (
 	"context"
+	"reflect"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MemberAwaitility struct {
@@ -43,6 +46,87 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, expSpec toolchainv1al
 			return true, nil
 		}
 		a.T.Logf("waiting for UserAccount '%s' with expected spec and status condition", name)
+		return false, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForNSTmplSet(name string, waitCond ...toolchainv1alpha1.Condition) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if len(waitCond) != 0 && !test.ConditionsMatch(nsTmplSet.Status.Conditions, waitCond...) {
+			a.T.Logf("waiting for conditions match for NSTemplateSet '%s'", name)
+			return false, nil
+		}
+		a.T.Logf("found NSTemplateSet '%s'", name)
+		return true, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("deleted NSTemplateSet '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting for deletion of NSTemplateSet '%s'", name)
+		return false, nil
+	})
+}
+
+func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace {
+	labels := map[string]string{"owner": username, "type": typeName}
+	opts := client.MatchingLabels(labels)
+	namespaceList := &v1.NamespaceList{}
+	err := a.Client.List(context.TODO(), opts, namespaceList)
+	require.NoError(a.T, err)
+	require.Len(a.T, namespaceList.Items, 1)
+	return &namespaceList.Items[0]
+}
+
+func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
+		opts := client.MatchingLabels(labels)
+		namespaceList := &v1.NamespaceList{}
+		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+			return false, err
+		}
+
+		if len(namespaceList.Items) < 1 {
+			a.T.Logf("waiting for availability of Namespace type '%s' with revision '%s'", typeName, revision)
+			return false, nil
+		}
+		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
+		a.T.Logf("found Namespace type '%s' with revision '%s'", typeName, revision)
+		return true, nil
+	})
+}
+
+func (a *MemberAwaitility) WaitForDeletedNamespace(username, typeName string) error {
+	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		labels := map[string]string{"owner": username, "type": typeName}
+		opts := client.MatchingLabels(labels)
+		namespaceList := &v1.NamespaceList{}
+		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+			return false, err
+		}
+
+		if len(namespaceList.Items) < 1 {
+			a.T.Logf("deleted Namespace with owner '%s' type '%s'", username, typeName)
+			return true, nil
+		}
+		a.T.Logf("waiting for deletion of Namespace with owner '%s' type '%s'", username, typeName)
 		return false, nil
 	})
 }

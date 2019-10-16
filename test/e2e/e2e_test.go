@@ -212,7 +212,7 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 	assert.NoError(awaitility.T, err)
 
 	verifyUserResources(memberAwait, userAccount)
-
+	verifyNSTmplSet(memberAwait, userAccount)
 }
 
 func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
@@ -220,6 +220,11 @@ func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1
 	assert.NoError(awaitility.T, err)
 
 	err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
+	assert.NoError(awaitility.T, err)
+}
+
+func verifyNSTmplSet(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
+	err := awaitility.WaitForNSTmplSet(userAcc.Name)
 	assert.NoError(awaitility.T, err)
 }
 
