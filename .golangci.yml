@@ -1,0 +1,21 @@
+service:
+  project-path: github.com/codeready-toolchain/toolchain-e2e
+
+run:
+  # timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 10m
+
+linters:
+  enable:
+    - gofmt 
+    - unparam
+
+# all available settings of specific linters
+linters-settings:
+  unparam:
+    # Inspect exported functions, default is false. Set to true if no external program/library imports your code.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
+    # with golangci-lint call it on a directory with the changed file.
+    check-exported: true
+ 
