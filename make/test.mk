@@ -216,7 +216,7 @@ endif
 	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
 
-	$(MAKE) build-and-deploy-deployment REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME}
+	$(MAKE) build-and-deploy-service REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME}
 
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
@@ -274,32 +274,32 @@ else
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 endif
 
-.PHONY: build-and-deploy-deployment
-build-and-deploy-deployment:
-# build step
+.PHONY: build-and-deploy-service
+build-and-deploy-service:
+# build service
 # when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the deployment is (not) provided
 ifeq ($(SET_IMAGE_NAME),)
 	# check if it is running locally
     ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
         ifneq ($(IS_OS_3),)
-			# if it is running locally and against OS 3, so we assume that it's minishift - it will use local docker registry
+			# using OS 3 (assuming it's minishift) then build image
 			$(eval IMAGE_NAME := quay.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${DATE_SUFFIX})
 			$(MAKE) -C ${REPO_PATH} build
 			docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
         else
-			# if is using OS4 then use quay registry
+			# using OS 4 then build and push image
 			$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
 			$(MAKE) -C ${REPO_PATH} build
 			docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
 			docker push ${IMAGE_NAME}
         endif
     else
-		# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
+		# if it is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
     endif
 else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-# deploy step
+# deploy service
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
