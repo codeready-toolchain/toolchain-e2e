@@ -127,6 +127,7 @@ ifeq ($(REG_REPO_PATH),)
 	rm -rf ${REG_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
+	@echo "Go version:$(shell go version)"
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(REG_REPO_PATH) REPO_NAME=registration-service
 endif
 
