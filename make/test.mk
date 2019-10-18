@@ -123,7 +123,7 @@ endif
 .PHONY: get-registration-service-repo
 get-registration-service-repo:
 ifeq ($(REG_REPO_PATH),)
-	$(eval REG_REPO_PATH = /tmp/registration-service)
+	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
 	rm -rf ${REG_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
@@ -209,7 +209,7 @@ endif
 .PHONY: deploy-registration
 deploy-registration:
 ifeq ($(REG_REPO_PATH),)
-	$(eval REG_REPO_PATH = /tmp/registration-service)
+	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
 endif
 	-oc new-project $(HOST_NS) 1>/dev/null
 	# deploy resources
