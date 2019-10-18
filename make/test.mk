@@ -103,7 +103,7 @@ build-with-operators: build get-member-operator-repo get-host-operator-repo get-
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
 ifeq ($(MEMBER_REPO_PATH),)
-	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
+	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 	rm -rf ${MEMBER_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/member-operator.git ${MEMBER_REPO_PATH}
@@ -113,7 +113,7 @@ endif
 .PHONY: get-host-operator-repo
 get-host-operator-repo:
 ifeq ($(HOST_REPO_PATH),)
-	$(eval HOST_REPO_PATH = /tmp/host-operator)
+	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 	rm -rf ${HOST_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/host-operator.git ${HOST_REPO_PATH}
@@ -173,7 +173,7 @@ endif
 .PHONY: deploy-member
 deploy-member:
 ifeq ($(MEMBER_REPO_PATH),)
-	$(eval MEMBER_REPO_PATH = /tmp/member-operator)
+	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 endif
 	-oc new-project $(MEMBER_NS) 1>/dev/null
 ifneq ($(IS_OS_3),)
@@ -189,7 +189,7 @@ endif
 .PHONY: deploy-host
 deploy-host:
 ifeq ($(HOST_REPO_PATH),)
-	$(eval HOST_REPO_PATH = /tmp/host-operator)
+	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
 	-oc new-project $(HOST_NS) 1>/dev/null
 ifneq ($(IS_OS_3),)
