@@ -106,7 +106,7 @@ ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 	rm -rf ${MEMBER_REPO_PATH}
 	# clone
-	git clone --depth 1 https://github.com/codeready-toolchain/member-operator.git ${MEMBER_REPO_PATH}
+	git clone https://github.com/codeready-toolchain/member-operator.git ${MEMBER_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(MEMBER_REPO_PATH) REPO_NAME=member-operator
 endif
 
@@ -116,7 +116,7 @@ ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 	rm -rf ${HOST_REPO_PATH}
 	# clone
-	git clone --depth 1 https://github.com/codeready-toolchain/host-operator.git ${HOST_REPO_PATH}
+	git clone https://github.com/codeready-toolchain/host-operator.git ${HOST_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(HOST_REPO_PATH) REPO_NAME=host-operator
 endif
 
@@ -126,7 +126,7 @@ ifeq ($(REG_REPO_PATH),)
 	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
 	rm -rf ${REG_REPO_PATH}
 	# clone
-	git clone --depth 1 https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
+	git clone https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
 	@echo "Go version:$(shell go version)"
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(REG_REPO_PATH) REPO_NAME=registration-service
 endif
