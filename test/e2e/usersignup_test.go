@@ -348,7 +348,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Lookup the MUR
 	mur := &v1alpha1.MasterUserRecord{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.namespace, Name: userSignup.Name}, mur)
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.namespace, Name: userSignup.Spec.CompliantUsername}, mur)
 	require.NoError(s.T(), err)
 
 	require.Len(s.T(), mur.Spec.UserAccounts, 1)
@@ -493,7 +493,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Name)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are as expected
@@ -531,7 +531,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Name)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
 	require.NoError(s.T(), err)
 
 	// Confirm the conditions
@@ -567,7 +567,6 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	// Create user signup with the same name and UserID as the MUR
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
 	userSignup := s.newUserSignup(uuid.NewV4().String(), "paul@hotel.com", "paul-at-hotel-com")
-	userSignup.Spec.CompliantUsername = "paul"
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, doubles.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
