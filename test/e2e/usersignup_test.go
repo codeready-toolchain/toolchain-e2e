@@ -462,7 +462,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 
 	// Lookup the MasterUserRecord
 	mur := &v1alpha1.MasterUserRecord{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userSignup.Name, Namespace: s.namespace}, mur)
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userSignup.Spec.CompliantUsername, Namespace: s.namespace}, mur)
 	require.NoError(s.T(), err)
 
 	require.Equal(s.T(), userSignup.Name, mur.Spec.UserID)
@@ -568,6 +568,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
 	userSignup := s.newUserSignup("paul")
 	userSignup.Name = userID
+	userSignup.Spec.CompliantUsername = "paul"
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, doubles.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
