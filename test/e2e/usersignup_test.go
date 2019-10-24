@@ -465,9 +465,9 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userSignup.Name, Namespace: s.namespace}, mur)
 	require.NoError(s.T(), err)
 
-	require.Equal(s.T(), userSignup.Spec.UserID, mur.Spec.UserID)
+	require.Equal(s.T(), userSignup.Name, mur.Spec.UserID)
 	require.Len(s.T(), mur.Spec.UserAccounts, 1)
-	require.Equal(s.T(), userSignup.Spec.UserID, mur.Spec.UserAccounts[0].Spec.UserID)
+	require.Equal(s.T(), userSignup.Name, mur.Spec.UserAccounts[0].Spec.UserID)
 	require.Equal(s.T(), "default", mur.Spec.UserAccounts[0].Spec.NSLimit)
 	require.NotNil(s.T(), mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
 }
@@ -567,7 +567,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	// Create user signup with the same name and UserID as the MUR
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
 	userSignup := s.newUserSignup("paul")
-	userSignup.Spec.UserID = userID
+	userSignup.Name = userID
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, doubles.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
@@ -596,7 +596,6 @@ func (s *userSignupIntegrationTest) newUserSignup(name string) *v1alpha1.UserSig
 	require.True(s.awaitility.T, ok, "KubeFedCluster should exist")
 
 	spec := v1alpha1.UserSignupSpec{
-		UserID:        uuid.NewV4().String(),
 		Username:      name,
 		CompliantUsername: name,
 		TargetCluster: memberCluster.Name,
