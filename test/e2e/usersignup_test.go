@@ -104,7 +104,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 
 	// Create user signup - approval set to false
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup = s.newUserSignup(uuid.NewV4().String(),"gretel@somewhere.com", "gretel-at-somewhere-com")
+	userSignup = s.newUserSignup(uuid.NewV4().String(), "gretel@somewhere.com", "gretel-at-somewhere-com")
 	userSignup.Spec.Approved = false
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, doubles.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -596,9 +596,9 @@ func (s *userSignupIntegrationTest) newUserSignup(userID, username, compliantUse
 	require.True(s.awaitility.T, ok, "KubeFedCluster should exist")
 
 	spec := v1alpha1.UserSignupSpec{
-		Username:      username,
+		Username:          username,
 		CompliantUsername: compliantUsername,
-		TargetCluster: memberCluster.Name,
+		TargetCluster:     memberCluster.Name,
 	}
 
 	userSignup := &v1alpha1.UserSignup{
