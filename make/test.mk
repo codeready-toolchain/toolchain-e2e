@@ -43,20 +43,22 @@ test-e2e-host-local:
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
 	oc get kubefedcluster -n $(MEMBER_NS)
+	$(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS}
 	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} operator-sdk test local ./test/e2e --no-setup --namespace $(TEST_NS) --verbose --go-test-flags "-timeout=15m" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} && exit 1)
 
 .PHONY: print-logs
 print-logs:
-	@echo "=====================================================================================" &
-	@echo "================================ Host cluster logs =================================="
+	$(MAKE) print-operator-logs REPO_NAME=host-operator NAMESPACE=${HOST_NS}
+	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS}
+
+.PHONY: print-operator-logs
+print-operator-logs:
 	@echo "====================================================================================="
-	@oc logs deployment.apps/host-operator --namespace $(HOST_NS)
+	@echo "========================== ${REPO_NAME} deployment logs ============================="
 	@echo "====================================================================================="
-	@echo "================================ Member cluster logs ================================"
-	@echo "====================================================================================="
-	@oc logs deployment.apps/member-operator --namespace $(MEMBER_NS)
+	-oc logs deployment.apps/${REPO_NAME} --namespace ${NAMESPACE}
 	@echo "====================================================================================="
 
 .PHONY: login-as-admin
@@ -266,6 +268,7 @@ ifeq ($(IS_OS_3),)
            oc logs `oc get pods -n openshift-marketplace -o name | grep $${CATALOGSOURCE_NAME#*/}` -n openshift-marketplace; \
            echo "================================ Subscription =================================="; \
            oc get ${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+           $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
            exit 1; \
         fi; \
         echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster; \
