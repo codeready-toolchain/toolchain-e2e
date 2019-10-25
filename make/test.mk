@@ -39,6 +39,11 @@ test-e2e-member-local:
 test-e2e-host-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator
 
+.PHONY: test-e2e-registration-local
+## Run the e2e tests with the local 'registration' repository only
+test-e2e-registration-local:
+	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
+
 .PHONY: e2e-run
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
