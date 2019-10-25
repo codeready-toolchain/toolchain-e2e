@@ -16,7 +16,7 @@ IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
 .PHONY: test-e2e-keep-namespaces
-test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host setup-kubefed e2e-run
+test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host deploy-registration setup-kubefed e2e-run
 
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
@@ -27,7 +27,7 @@ test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host' and 'member' repositories
 test-e2e-local:
-	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator
+	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: test-e2e-member-local
 ## Run the e2e tests with the local 'member' repository only
@@ -39,12 +39,17 @@ test-e2e-member-local:
 test-e2e-host-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator
 
+.PHONY: test-e2e-registration-local
+## Run the e2e tests with the local 'registration' repository only
+test-e2e-registration-local:
+	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
+
 .PHONY: e2e-run
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
 	oc get kubefedcluster -n $(MEMBER_NS)
 	$(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS}
-	oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
+	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} operator-sdk test local ./test/e2e --no-setup --namespace $(TEST_NS) --verbose --go-test-flags "-timeout=15m" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} && exit 1)
 
@@ -100,7 +105,7 @@ clean-e2e-resources:
 ###########################################################
 
 .PHONY: build-with-operators
-build-with-operators: build get-member-operator-repo get-host-operator-repo
+build-with-operators: build get-member-operator-repo get-host-operator-repo get-registration-service-repo
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
@@ -120,6 +125,17 @@ ifeq ($(HOST_REPO_PATH),)
 	# clone
 	git clone https://github.com/codeready-toolchain/host-operator.git ${HOST_REPO_PATH}
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(HOST_REPO_PATH) REPO_NAME=host-operator
+endif
+
+.PHONY: get-registration-service-repo
+get-registration-service-repo:
+ifeq ($(REG_REPO_PATH),)
+	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
+	rm -rf ${REG_REPO_PATH}
+	# clone
+	git clone https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
+	@echo "Go version:$(shell go version)"
+	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(REG_REPO_PATH) REPO_NAME=registration-service
 endif
 
 .PHONY: prepare-e2e-repo
@@ -166,7 +182,7 @@ deploy-member:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 endif
-	oc new-project $(MEMBER_NS) 1>/dev/null
+	-oc new-project $(MEMBER_NS) 1>/dev/null
 ifneq ($(IS_OS_3),)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
@@ -182,7 +198,7 @@ deploy-host:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
-	oc new-project $(HOST_NS) 1>/dev/null
+	-oc new-project $(HOST_NS) 1>/dev/null
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
@@ -196,6 +212,19 @@ endif
 	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
 	# as the controller starts (which is a use-case for CRT-231)
 	oc apply -f test/e2e/nstemplatetier-basic.yaml -n $(HOST_NS)
+
+.PHONY: deploy-registration
+deploy-registration:
+ifeq ($(REG_REPO_PATH),)
+	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
+endif
+	-oc new-project $(HOST_NS) 1>/dev/null
+	# deploy resources
+	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
+	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
+	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
+
+	$(MAKE) build-and-deploy-service REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME}
 
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
@@ -253,3 +282,33 @@ ifeq ($(IS_OS_3),)
 else
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
 endif
+
+.PHONY: build-and-deploy-service
+build-and-deploy-service:
+# build service
+# when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the deployment is (not) provided
+ifeq ($(SET_IMAGE_NAME),)
+	# check if it is running locally
+    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
+        ifneq ($(IS_OS_3),)
+			# using OS 3 (assuming it's minishift) then build image
+			$(eval IMAGE_NAME := quay.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${DATE_SUFFIX})
+			$(MAKE) -C ${REPO_PATH} build
+			docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
+        else
+			# using OS 4 then build and push image
+			$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
+			$(MAKE) -C ${REPO_PATH} build
+			docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
+			docker push ${IMAGE_NAME}
+        endif
+    else
+		# if it is running in CI then we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
+		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
+    endif
+else
+	# use the provided image name
+	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
+endif
+# deploy service
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
