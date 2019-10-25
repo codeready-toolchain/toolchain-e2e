@@ -303,7 +303,7 @@ ifeq ($(SET_IMAGE_NAME),)
 			docker push ${IMAGE_NAME}
         endif
     else
-		# if it is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
+		# if it is running in CI then we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
     endif
 else
