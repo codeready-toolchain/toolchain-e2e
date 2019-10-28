@@ -29,7 +29,7 @@ func TestNSTemplateSet(t *testing.T) {
 
 func (s *nsTemplateSetTest) SetupSuite() {
 	nsTmplSetList := &toolchainv1alpha1.NSTemplateSetList{}
-	s.testCtx, s.awaitility = doubles.InitializeOperators(s.T(), nsTmplSetList)
+	s.testCtx, s.awaitility = doubles.WaitForDeployments(s.T(), nsTmplSetList)
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.MemberNs
 	s.basicTier = getBasicTier(s.T(), s.awaitility.Client, s.awaitility.HostNs)

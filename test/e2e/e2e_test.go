@@ -23,7 +23,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
-	ctx, awaitility := doubles.InitializeOperators(t, murList)
+	ctx, awaitility := doubles.WaitForDeployments(t, murList)
 	defer ctx.Cleanup()
 
 	extraMur := createMasterUserRecord(awaitility, ctx, "extrajohn")

@@ -15,7 +15,7 @@ import (
 
 func TestKubeFedE2E(t *testing.T) {
 	fedClusterList := &v1beta1.KubeFedClusterList{}
-	ctx, awaitility := doubles.InitializeOperators(t, fedClusterList)
+	ctx, awaitility := doubles.WaitForDeployments(t, fedClusterList)
 	defer ctx.Cleanup()
 
 	verifyKubeFedCluster(ctx, awaitility, cluster.Host, awaitility.Member())
