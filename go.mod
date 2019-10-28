@@ -3,7 +3,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20191013054335-17f0782f9285
+	github.com/codeready-toolchain/api v0.0.0-20191023231919-300ac3dd8c36
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
