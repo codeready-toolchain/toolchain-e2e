@@ -45,8 +45,9 @@ NOTE: This is not required for openshift-ci environment
 ===== OpenShift 4.2+
 
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
-* Log in to the target OpenShift cluster with cluster admin privileges
-* The visibility of both repositories `host-operator` and `member-operator` in quay is set to public (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings)
+* Log in to the quay.io using `docker login quay.io`
+* Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
+* Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
 
 ==== Running End-to-End Tests
 
