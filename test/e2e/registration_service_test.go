@@ -35,7 +35,7 @@ func (s *registrationServiceTestSuite) SetupSuite() {
 	s.route = s.awaitility.RegistrationServiceURL
 }
 
-func (s *registrationServiceTestSuite) TestSmokeTest() {
+func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	// just make sure that the landing page is reachable
 	req, err := http.NewRequest("GET", s.route, nil)
 	require.NoError(s.T(), err)
