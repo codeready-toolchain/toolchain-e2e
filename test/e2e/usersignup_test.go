@@ -33,7 +33,7 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.testCtx, s.awaitility = doubles.InitializeOperators(s.T(), userSignupList)
+	s.testCtx, s.awaitility = doubles.WaitForDeployments(s.T(), userSignupList)
 	s.hostAwait = s.awaitility.Host()
 	s.namespace = s.awaitility.HostNs
 }

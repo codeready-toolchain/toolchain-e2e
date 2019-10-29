@@ -9,6 +9,7 @@ require (
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
+	github.com/openshift/client-go v3.9.0+incompatible
 	github.com/operator-framework/operator-sdk v0.10.0
 	github.com/rogpeppe/go-internal v1.4.0 // indirect
 	github.com/satori/go.uuid v1.2.0
@@ -19,6 +20,7 @@ require (
 	golang.org/x/sys v0.0.0-20190927073244-c990c680b611 // indirect
 	golang.org/x/tools v0.0.0-20190927052746-69890759d905 // indirect
 	google.golang.org/appengine v1.6.4 // indirect
+	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.0.0-20190925180651-d58b53da08f5
 	k8s.io/apiextensions-apiserver v0.0.0-20190927042040-728319705b32 // indirect
 	k8s.io/apimachinery v0.0.0-20190927035529-0104e33c351d

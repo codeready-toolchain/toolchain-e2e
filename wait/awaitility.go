@@ -21,24 +21,27 @@ import (
 )
 
 const (
-	OperatorRetryInterval          = time.Second * 5
+	OperatorRetryInterval          = time.Millisecond * 200
 	OperatorTimeout                = time.Second * 60
-	RetryInterval                  = time.Millisecond * 300
+	RetryInterval                  = time.Millisecond * 200
 	Timeout                        = time.Second * 9
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
+	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
 	KubeFedClusterConditionTimeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
 )
 
 // Awaitility contains information necessary for verifying availability of resources in both operators
 type Awaitility struct {
-	T                *testing.T
-	Client           framework.FrameworkClient
-	ControllerClient client.Client
-	KubeClient       kubernetes.Interface
-	Scheme           *runtime.Scheme
-	MemberNs         string
-	HostNs           string
+	T                      *testing.T
+	Client                 framework.FrameworkClient
+	ControllerClient       client.Client
+	KubeClient             kubernetes.Interface
+	Scheme                 *runtime.Scheme
+	MemberNs               string
+	HostNs                 string
+	RegistrationServiceNs  string
+	RegistrationServiceURL string
 }
 
 // SingleAwaitility contains information necessary for verifying availability of resources in a single operator

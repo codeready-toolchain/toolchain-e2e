@@ -13,7 +13,7 @@ import (
 func TestCreateOrUpdateNSTemplateTierAtStartup(t *testing.T) {
 	// given
 	tierList := &toolchainv1alpha1.NSTemplateTierList{}
-	ctx, awaitility := doubles.InitializeOperators(t, tierList)
+	ctx, awaitility := doubles.WaitForDeployments(t, tierList)
 	defer ctx.Cleanup()
 	hostAwait := NewHostAwaitility(awaitility)
 
