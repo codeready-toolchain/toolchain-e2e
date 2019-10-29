@@ -48,7 +48,6 @@ test-e2e-registration-local:
 e2e-run:
 	oc get kubefedcluster -n $(HOST_NS)
 	oc get kubefedcluster -n $(MEMBER_NS)
-	$(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS}
 	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} operator-sdk test local ./test/e2e --no-setup --namespace $(TEST_NS) --verbose --go-test-flags "-timeout=15m" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} && exit 1)
@@ -134,7 +133,6 @@ ifeq ($(REG_REPO_PATH),)
 	rm -rf ${REG_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/registration-service.git ${REG_REPO_PATH}
-	@echo "Go version:$(shell go version)"
 	$(MAKE) prepare-e2e-repo E2E_REPO_PATH=$(REG_REPO_PATH) REPO_NAME=registration-service
 endif
 
@@ -191,7 +189,7 @@ ifneq ($(IS_OS_3),)
 	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
 endif
-	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME} NAMESPACE=$(MEMBER_NS)
+	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME} NAMESPACE=$(MEMBER_NS)
 
 .PHONY: deploy-host
 deploy-host:
@@ -208,7 +206,7 @@ ifneq ($(IS_OS_3),)
 	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds
 endif
-	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME} NAMESPACE=$(HOST_NS)
+	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${REG_IMAGE_NAME} NAMESPACE=$(HOST_NS)
 	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
 	# as the controller starts (which is a use-case for CRT-231)
 	oc apply -f test/e2e/nstemplatetier-basic.yaml -n $(HOST_NS)
@@ -223,8 +221,7 @@ endif
 	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
-
-	$(MAKE) build-and-deploy-service REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME}
+	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${HOST_IMAGE_NAME} NAMESPACE=$(HOST_NS)
 
 .PHONY: build-and-deploy-operator
 build-and-deploy-operator:
@@ -259,56 +256,32 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-ifeq ($(IS_OS_3),)
-	# it is not using OS 3 so we will install operator via CSV
-	$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
-	$(eval SUBSCRIPTION_NAME := $(shell sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f - | grep subscription | awk '{print $$1;}'))
-	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.k8s.io 2>/dev/null` ]]; do \
-        if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-           echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster - see following info for debugging:"; \
-           echo "================================ CatalogSource =================================="; \
-           oc get ${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
-           echo "================================ CatalogSource Pod Logs =================================="; \
-           CATALOGSOURCE_NAME=${CATALOGSOURCE_NAME}; \
-           oc logs `oc get pods -n openshift-marketplace -o name | grep $${CATALOGSOURCE_NAME#*/}` -n openshift-marketplace; \
-           echo "================================ Subscription =================================="; \
-           oc get ${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
-           $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
-           exit 1; \
-        fi; \
-        echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster; \
-        sleep 1; \
-    done
+	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
+ifeq ($(REPO_NAME),registration-service)
+	# registration service is not integrated with OLM yet, so deploy it directly
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
 else
-	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
-endif
-
-.PHONY: build-and-deploy-service
-build-and-deploy-service:
-# build service
-# when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the deployment is (not) provided
-ifeq ($(SET_IMAGE_NAME),)
-	# check if it is running locally
-    ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-        ifneq ($(IS_OS_3),)
-			# using OS 3 (assuming it's minishift) then build image
-			$(eval IMAGE_NAME := quay.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${DATE_SUFFIX})
-			$(MAKE) -C ${REPO_PATH} build
-			docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
-        else
-			# using OS 4 then build and push image
-			$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
-			$(MAKE) -C ${REPO_PATH} build
-			docker build -f ${REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${REPO_PATH}
-			docker push ${IMAGE_NAME}
-        endif
+    ifeq ($(IS_OS_3),)
+		# it is not using OS 3 so we will install operator via CSV
+		$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
+		$(eval SUBSCRIPTION_NAME := $(shell sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f - | grep subscription | awk '{print $$1;}'))
+		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.k8s.io 2>/dev/null` ]]; do \
+			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
+			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster - see following info for debugging:"; \
+			   echo "================================ CatalogSource =================================="; \
+			   oc get ${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
+			   echo "================================ CatalogSource Pod Logs =================================="; \
+			   CATALOGSOURCE_NAME=${CATALOGSOURCE_NAME}; \
+			   oc logs `oc get pods -n openshift-marketplace -o name | grep $${CATALOGSOURCE_NAME#*/}` -n openshift-marketplace; \
+			   echo "================================ Subscription =================================="; \
+			   oc get ${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+			   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
+			   exit 1; \
+			fi; \
+			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster; \
+			sleep 1; \
+		done
     else
-		# if it is running in CI then we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
-		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
     endif
-else
-	# use the provided image name
-	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-# deploy service
-	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
