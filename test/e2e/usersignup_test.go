@@ -60,7 +60,7 @@ func (s *userSignupIntegrationTest) TestUserSignupCreated() {
 	require.NoError(s.T(), err)
 
 	// Confirm that a MasterUserRecord wasn't created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.Error(s.T(), err)
 
 	// Delete the User Signup
@@ -217,7 +217,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was NOT created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.Error(s.T(), err)
 
 	// Create user signup - approval set to false
@@ -247,7 +247,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was NOT created yet
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.Error(s.T(), err)
 
 	// Now, reload the userSignup, manually approve it (setting Approved to true) and update the resource
@@ -260,7 +260,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are updated to reflect that the userSignup was approved
@@ -289,7 +289,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm that:
@@ -327,7 +327,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm that:
@@ -348,7 +348,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Lookup the MUR
 	mur := &v1alpha1.MasterUserRecord{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.namespace, Name: userSignup.Spec.CompliantUsername}, mur)
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.namespace, Name: userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel]}, mur)
 	require.NoError(s.T(), err)
 
 	require.Len(s.T(), mur.Spec.UserAccounts, 1)
@@ -373,7 +373,7 @@ func (s *userSignupIntegrationTest) TestDeletedUserSignupIsGarbageCollected() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Delete the UserSignup
@@ -405,7 +405,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalNoApprovalSet(
 	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm that:
@@ -441,7 +441,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm that:
@@ -462,7 +462,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 
 	// Lookup the MasterUserRecord
 	mur := &v1alpha1.MasterUserRecord{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userSignup.Spec.CompliantUsername, Namespace: s.namespace}, mur)
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel], Namespace: s.namespace}, mur)
 	require.NoError(s.T(), err)
 
 	require.Equal(s.T(), userSignup.Name, mur.Spec.UserID)
@@ -493,7 +493,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are as expected
@@ -531,7 +531,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.CompliantUsername)
+	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Labels[v1alpha1.UserSignupCompliantUsernameLabel])
 	require.NoError(s.T(), err)
 
 	// Confirm the conditions
@@ -596,7 +596,6 @@ func (s *userSignupIntegrationTest) newUserSignup(userID, username, compliantUse
 
 	spec := v1alpha1.UserSignupSpec{
 		Username:          username,
-		CompliantUsername: compliantUsername,
 		TargetCluster:     memberCluster.Name,
 	}
 
@@ -604,6 +603,9 @@ func (s *userSignupIntegrationTest) newUserSignup(userID, username, compliantUse
 		ObjectMeta: v1.ObjectMeta{
 			Name:      userID,
 			Namespace: s.namespace,
+			Labels: map[string]string{
+			  v1alpha1.UserSignupCompliantUsernameLabel: compliantUsername,
+			},
 		},
 		Spec: spec,
 	}
