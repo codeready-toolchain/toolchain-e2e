@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/doubles"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +13,7 @@ import (
 func TestCreateOrUpdateNSTemplateTierAtStartup(t *testing.T) {
 	// given
 	tierList := &toolchainv1alpha1.NSTemplateTierList{}
-	ctx, awaitility := doubles.WaitForDeployments(t, tierList)
+	ctx, awaitility := testsupport.WaitForDeployments(t, tierList)
 	defer ctx.Cleanup()
 	hostAwait := NewHostAwaitility(awaitility)
 

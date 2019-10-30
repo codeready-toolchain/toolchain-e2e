@@ -1,4 +1,4 @@
-package doubles
+package testsupport
 
 import (
 	"time"
