@@ -595,8 +595,8 @@ func (s *userSignupIntegrationTest) newUserSignup(userID, username, compliantUse
 	require.True(s.awaitility.T, ok, "KubeFedCluster should exist")
 
 	spec := v1alpha1.UserSignupSpec{
-		Username:          username,
-		TargetCluster:     memberCluster.Name,
+		Username:      username,
+		TargetCluster: memberCluster.Name,
 	}
 
 	userSignup := &v1alpha1.UserSignup{
@@ -604,7 +604,7 @@ func (s *userSignupIntegrationTest) newUserSignup(userID, username, compliantUse
 			Name:      userID,
 			Namespace: s.namespace,
 			Labels: map[string]string{
-			  v1alpha1.UserSignupCompliantUsernameLabel: compliantUsername,
+				v1alpha1.UserSignupCompliantUsernameLabel: compliantUsername,
 			},
 		},
 		Spec: spec,
