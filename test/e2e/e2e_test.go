@@ -228,7 +228,7 @@ func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
 		err = awaitility.Host().Client.Update(context.TODO(), userSignup)
 		require.NoError(t, err)
 		// Check the updated conditions
-		userSignup, err = awaitility.Host().WaitForUserSignupStatusConditions(userSignup.Name,
+		_, err = awaitility.Host().WaitForUserSignupStatusConditions(userSignup.Name,
 			v1alpha1.Condition{
 				Type:   v1alpha1.UserSignupApproved,
 				Status: corev1.ConditionTrue,

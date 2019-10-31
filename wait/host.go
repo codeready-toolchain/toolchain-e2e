@@ -158,15 +158,6 @@ func (a *HostAwaitility) WaitForDeletedMasterUserRecord(name string) error {
 	})
 }
 
-func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster string) string {
-	for _, ua := range mur.Spec.UserAccounts {
-		if ua.TargetCluster == targetCluster {
-			return ua.SyncIndex
-		}
-	}
-	return ""
-}
-
 func containsUserAccountStatus(expectedStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, actualStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
 	for _, expectedStatus := range expectedStatuses {
 		if expectedStatus.TargetCluster == actualStatus.TargetCluster &&
