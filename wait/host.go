@@ -2,7 +2,6 @@ package wait
 
 import (
 	"context"
-	"reflect"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -50,10 +49,10 @@ func (a *HostAwaitility) GetMasterUserRecord(name string) *toolchainv1alpha1.Mas
 	return mur
 }
 
-// WaitForMasterUserRecord waits until there is MasterUserRecord available with the given name and meeting the set of given wait-conditions
-func (a *HostAwaitility) WaitForMurConditions(name string, waitCond ...MurWaitCondition) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		mur := &toolchainv1alpha1.MasterUserRecord{}
+// WaitForMurConditions waits until there is MasterUserRecord available with the given name and meeting the set of given wait-conditions
+func (a *HostAwaitility) WaitForMurConditions(name string, waitCond ...MurWaitCondition) (*toolchainv1alpha1.MasterUserRecord, error) {
+	mur := &toolchainv1alpha1.MasterUserRecord{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of MasterUserRecord '%s'", name)
@@ -68,6 +67,7 @@ func (a *HostAwaitility) WaitForMurConditions(name string, waitCond ...MurWaitCo
 		}
 		return true, nil
 	})
+	return mur, err
 }
 
 // MurWaitCondition represents a function checking if MasterUserRecord meets the given condition
@@ -93,12 +93,11 @@ func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountSta
 			return false
 		}
 		for _, expUaStatus := range expUaStatuses {
-			expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.TargetCluster)
+			// expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.TargetCluster)
 			if !containsUserAccountStatus(mur.Status.UserAccounts, expUaStatus) {
 				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s`", mur.Name)
 				return false
 			}
-
 		}
 		a.T.Logf("all UserAccount statuses are present in MasterUserRecord '%s`", mur.Name)
 		return true
@@ -106,9 +105,9 @@ func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountSta
 }
 
 // WaitForUserSignupStatusConditions waits until there is a UserSignup available with the given name and set of status conditions
-func (a *HostAwaitility) WaitForUserSignupStatusConditions(name string, conditions ...toolchainv1alpha1.Condition) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		userSignup := &toolchainv1alpha1.UserSignup{}
+func (a *HostAwaitility) WaitForUserSignupStatusConditions(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserSignup, error) {
+	userSignup := &toolchainv1alpha1.UserSignup{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userSignup); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of UserSignup '%s'", name)
@@ -124,6 +123,7 @@ func (a *HostAwaitility) WaitForUserSignupStatusConditions(name string, conditio
 		a.T.Logf("waiting for [%+v] conditions to match...", conditions)
 		return false, nil
 	})
+	return userSignup, err
 }
 
 // WaitForUserSignup waits until there is a UserSignup with the given name available
@@ -167,9 +167,10 @@ func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster s
 	return ""
 }
 
-func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
-	for _, status := range uaStatuses {
-		if reflect.DeepEqual(uaStatus, status) {
+func containsUserAccountStatus(expectedStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, actualStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
+	for _, expectedStatus := range expectedStatuses {
+		if expectedStatus.TargetCluster == actualStatus.TargetCluster &&
+			test.ConditionsMatch(expectedStatus.Conditions, actualStatus.Conditions...) {
 			return true
 		}
 	}

@@ -5,6 +5,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
 	github.com/codeready-toolchain/api v0.0.0-20191023231919-300ac3dd8c36
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
+	github.com/davecgh/go-spew v1.1.1
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect

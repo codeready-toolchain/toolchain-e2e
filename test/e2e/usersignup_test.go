@@ -89,7 +89,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 	// 2) the Approved reason is set to PendingApproval
 	// 3) the Complete condition is set to false
 	// 4) the Complete reason is set to PendingApproval
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
@@ -115,7 +115,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are the same as if no approval value was set
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
@@ -138,7 +138,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 	require.NoError(s.T(), err)
 
 	// Check the updated conditions
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -170,7 +170,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 	// 1) the Approved condition is set to true
 	// 2) the Approved reason is set to ApprovedByAdmin
 	// 3) the Complete condition is set to true
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -203,7 +203,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	// 2) the Approved reason is set to PendingApproval
 	// 3) the Complete condition is set to false
 	// 4) the Complete reason is set to PendingApproval
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
@@ -233,7 +233,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are the same as if no approval value was set
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
@@ -264,7 +264,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are updated to reflect that the userSignup was approved
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -296,7 +296,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	// 1) the Approved condition is set to true
 	// 2) the Approved reason is set to ApprovedByAdmin
 	// 3) the Complete condition is set to true
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -334,7 +334,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// 1) the Approved condition is set to true
 	// 2) the Approved reason is set to ApprovedAutomatically
 	// 3) the Complete condition is (eventually) set to true
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -412,7 +412,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalNoApprovalSet(
 	// 1) the Approved condition is set to true
 	// 2) the Approved reason is set to ApprovedAutomatically
 	// 3) the Complete condition is (eventually) set to true
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -448,7 +448,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 	// 1) the Approved condition is set to true
 	// 2) the Approved reason is set to ApprovedAutomatically
 	// 3) the Complete condition is (eventually) set to true
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -497,7 +497,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are as expected
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -535,7 +535,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 	require.NoError(s.T(), err)
 
 	// Confirm the conditions
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
@@ -579,7 +579,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	// 1) the Approved condition is set to true
 	// 2) the Approved reason is set to ApprovedAutomatically
 	// 3) the Complete condition is (eventually) set to true
-	err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignupStatusConditions(userSignup.Name,
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,

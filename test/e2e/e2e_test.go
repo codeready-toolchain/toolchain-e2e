@@ -5,22 +5,25 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	murtest "github.com/codeready-toolchain/toolchain-common/pkg/test/masteruserrecord"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	uuid "github.com/satori/go.uuid"
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestE2EFlow(t *testing.T) {
+func TestMasterUserAccountFlow(t *testing.T) {
 	// given
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
 	ctx, awaitility := testsupport.WaitForDeployments(t, murList)
@@ -166,6 +169,173 @@ func TestE2EFlow(t *testing.T) {
 	})
 }
 
+func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
+
+	// ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	// defer ctx.Cleanup()
+	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	memberCluster, ok, err := awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
+	require.NoError(t, err)
+	require.True(t, ok, "KubeFedCluster should exist")
+
+	t.Run("create namespaces upon signup approval", func(t *testing.T) {
+		// 0. Verify that the `basic` NSTemplateTier resource exists (will be needed later)
+		basicTier := v1alpha1.NSTemplateTier{}
+		err := awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: awaitility.HostNs,
+			Name:      "basic",
+		}, &basicTier)
+		require.NoError(t, err)
+		revisions := make(map[string]string, 3)
+		for _, typ := range []string{"code", "dev", "stage"} {
+			r, found := namespaceRevision(basicTier, typ)
+			require.True(t, found, "unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
+			revisions[typ] = r
+		}
+
+		// 1. Create a UserSignup resource
+		username := "foo-" + uuid.NewV4().String()
+		userSignup := &v1alpha1.UserSignup{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      username,
+				Namespace: awaitility.HostNs,
+			},
+			Spec: v1alpha1.UserSignupSpec{
+				Username:          username,
+				CompliantUsername: username,
+				TargetCluster:     memberCluster.Name,
+				Approved:          false,
+			},
+		}
+		err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
+		require.NoError(t, err, "unable to create usersignup resource")
+		// at this stage, the usersignup should not be approved nor completed
+		userSignup, err = awaitility.Host().WaitForUserSignupStatusConditions(userSignup.Name,
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupApproved,
+				Status: corev1.ConditionFalse,
+				Reason: "PendingApproval",
+			},
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupComplete,
+				Status: corev1.ConditionFalse,
+				Reason: "PendingApproval",
+			})
+		require.NoError(t, err)
+
+		// 2. approve the UserSignup
+		userSignup.Spec.Approved = true
+		err = awaitility.Host().Client.Update(context.TODO(), userSignup)
+		require.NoError(t, err)
+		// Check the updated conditions
+		userSignup, err = awaitility.Host().WaitForUserSignupStatusConditions(userSignup.Name,
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupApproved,
+				Status: corev1.ConditionTrue,
+				Reason: "ApprovedByAdmin",
+			},
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupComplete,
+				Status: corev1.ConditionTrue,
+			})
+		require.NoError(t, err)
+
+		// 3. Wait for MUR to be created
+		mur, err := awaitility.Host().WaitForMurConditions(username,
+			wait.UntilHasStatusCondition(
+				v1alpha1.Condition{
+					Type:   v1alpha1.MasterUserRecordReady,
+					Status: corev1.ConditionTrue,
+					Reason: "Provisioned",
+				},
+			),
+			wait.UntilHasUserAccountStatus(
+				v1alpha1.UserAccountStatusEmbedded{
+					TargetCluster: memberCluster.Name,
+					UserAccountStatus: toolchainv1alpha1.UserAccountStatus{
+						Conditions: []toolchainv1alpha1.Condition{
+							{
+								Type:   toolchainv1alpha1.ConditionReady,
+								Status: corev1.ConditionTrue,
+								Reason: "Provisioned",
+							},
+						},
+					},
+				},
+			),
+		)
+		require.NoError(t, err)
+		require.Len(t, mur.Spec.UserAccounts, 1)
+
+		// 4. Wait for UserAccount to be ready/provisioned with the expect spec
+		err = awaitility.Member().WaitForUserAccount(username,
+			v1alpha1.UserAccountSpec{
+				UserID:   username,
+				Disabled: false,
+				NSLimit:  "default",
+				NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+					TierName: "basic",
+					Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
+						{
+							Type:     "code",
+							Revision: revisions["code"],
+							Template: "", // must be empty
+						},
+						{
+							Type:     "dev",
+							Revision: revisions["dev"],
+							Template: "", // must be empty
+						},
+						{
+							Type:     "stage",
+							Revision: revisions["stage"],
+							Template: "", // must be empty
+						},
+					},
+				},
+			},
+			toolchainv1alpha1.Condition{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: corev1.ConditionTrue,
+				Reason: "Provisioned",
+			},
+		)
+		require.NoError(t, err)
+
+		// 5. Wait for User/Identity to be created
+		err = awaitility.Member().WaitForUser(username)
+		require.NoError(t, err)
+
+		err = awaitility.Member().WaitForIdentity("rhd:" + username)
+		require.NoError(t, err)
+
+		// 6. Wait for NSTemplateSet to be ready/provisioned
+		err = awaitility.Member().WaitForNSTmplSet(username,
+			toolchainv1alpha1.Condition{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: corev1.ConditionTrue,
+				Reason: "Provisioned",
+			},
+		)
+		require.NoError(t, err)
+
+		// 7. Wait for Namespaces to be created
+		for typ, revision := range revisions {
+			err = awaitility.Member().WaitForNamespace(username, typ, revision)
+			require.NoError(t, err)
+		}
+	})
+}
+
+func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) {
+	for _, ns := range tier.Spec.Namespaces {
+		if ns.Type == typ {
+			return ns.Revision, true
+		}
+	}
+	return "", false
+}
+
 type murConditionsGetter func() []toolchainv1alpha1.Condition
 type uaConditionsGetter func() []toolchainv1alpha1.Condition
 
@@ -202,11 +372,11 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 	}
 
 	if expectingMurConds != nil {
-		err = hostAwait.WaitForMurConditions(mur.Name,
+		_, err = hostAwait.WaitForMurConditions(mur.Name,
 			wait.UntilHasUserAccountStatus(uaStatus),
 			wait.UntilHasStatusCondition(expectingMurConds()...))
 	} else {
-		err = hostAwait.WaitForMurConditions(mur.Name,
+		_, err = hostAwait.WaitForMurConditions(mur.Name,
 			wait.UntilHasUserAccountStatus(uaStatus))
 	}
 	assert.NoError(awaitility.T, err)
