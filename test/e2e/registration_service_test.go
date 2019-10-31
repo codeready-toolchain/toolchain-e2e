@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/doubles"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -30,7 +30,7 @@ type registrationServiceTestSuite struct {
 
 func (s *registrationServiceTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.testCtx, s.awaitility = doubles.WaitForDeployments(s.T(), userSignupList)
+	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
 	s.namespace = s.awaitility.RegistrationServiceNs
 	s.route = s.awaitility.RegistrationServiceURL
 }

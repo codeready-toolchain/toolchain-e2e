@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/doubles"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ func TestNSTemplateSet(t *testing.T) {
 
 func (s *nsTemplateSetTest) SetupSuite() {
 	nsTmplSetList := &toolchainv1alpha1.NSTemplateSetList{}
-	s.testCtx, s.awaitility = doubles.WaitForDeployments(s.T(), nsTmplSetList)
+	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), nsTmplSetList)
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.MemberNs
 	s.basicTier = getBasicTier(s.T(), s.awaitility.Client, s.awaitility.HostNs)
@@ -88,7 +88,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	t.Logf("Creating NSTmplSet with username:%s", username)
 	nsTmplSet := s.newNSTmplSet(username)
 	t.Logf("Creating NSTmplSet:%v", nsTmplSet)
-	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, doubles.CleanupOptions(s.testCtx))
+	err := s.awaitility.Client.Create(context.TODO(), nsTmplSet, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(t, err)
 
 	// wait for NSTmplSet

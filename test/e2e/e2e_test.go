@@ -9,7 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	murtest "github.com/codeready-toolchain/toolchain-common/pkg/test/masteruserrecord"
-	"github.com/codeready-toolchain/toolchain-e2e/doubles"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
@@ -23,7 +23,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
-	ctx, awaitility := doubles.WaitForDeployments(t, murList)
+	ctx, awaitility := testsupport.WaitForDeployments(t, murList)
 	defer ctx.Cleanup()
 
 	extraMur := createMasterUserRecord(awaitility, ctx, "extrajohn")
@@ -33,7 +33,7 @@ func TestE2EFlow(t *testing.T) {
 		murtest.MetaNamespace(awaitility.HostNs), murtest.TargetCluster(targetCluster))
 
 	// when
-	err := awaitility.Client.Create(context.TODO(), mur, doubles.CleanupOptions(ctx))
+	err := awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(ctx))
 
 	// then
 	require.NoError(t, err)
@@ -252,7 +252,7 @@ func createMasterUserRecord(awaitility *wait.Awaitility, ctx *framework.TestCtx,
 	mur := murtest.NewMasterUserRecord(name,
 		murtest.MetaNamespace(awaitility.HostNs), murtest.TargetCluster(memberCluster.Name))
 
-	err = awaitility.Client.Create(context.TODO(), mur, doubles.CleanupOptions(ctx))
+	err = awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(ctx))
 	require.NoError(awaitility.T, err)
 
 	verifyResourcesExpectingToBeProvisioned(awaitility, mur)
