@@ -93,7 +93,7 @@ func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountSta
 			return false
 		}
 		for _, expUaStatus := range expUaStatuses {
-			// expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.TargetCluster)
+			expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.TargetCluster)
 			if !containsUserAccountStatus(mur.Status.UserAccounts, expUaStatus) {
 				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s`", mur.Name)
 				return false
