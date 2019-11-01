@@ -14,7 +14,6 @@ import (
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -109,12 +108,13 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("update UserAccount spec when MasterUserRecord spec is modified", func(t *testing.T) {
 		// given
-		toBeModifiedMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(extraMur.Name)
+		toBeModifiedMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
+		require.NoError(t, err)
 		murtest.ModifyUaInMur(toBeModifiedMur, targetCluster, murtest.NsLimit("advanced"),
 			murtest.TierName("admin"), murtest.Namespace("che", "4321"))
 
 		// when
-		err := awaitility.Client.Update(context.TODO(), toBeModifiedMur)
+		err = awaitility.Client.Update(context.TODO(), toBeModifiedMur)
 
 		// then
 		require.NoError(t, err)
@@ -127,13 +127,15 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("update MasterUserRecord status when UserAccount status is modified", func(t *testing.T) {
 		// given
-		currentMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(mur.Name)
-		userAccount := wait.NewMemberAwaitility(awaitility).GetUserAccount(mur.Name)
+		currentMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(mur.Name)
+		require.NoError(t, err)
+		userAccount, err := wait.NewMemberAwaitility(awaitility).WaitForUserAccount(mur.Name, currentMur.Spec.UserAccounts[0].Spec)
+		require.NoError(t, err)
 		userAccount.Status.Conditions, _ = condition.AddOrUpdateStatusConditions(
 			userAccount.Status.Conditions, coolStatus())
 
 		// when
-		err := awaitility.ControllerClient.Status().Update(context.TODO(), userAccount)
+		err = awaitility.ControllerClient.Status().Update(context.TODO(), userAccount)
 
 		// then
 		require.NoError(t, err)
@@ -142,26 +144,29 @@ func TestE2EFlow(t *testing.T) {
 		verifyResources(awaitility, currentMur, expectingMurConditions(toBeProvisioned()),
 			expectingUaConditions(toBeProvisioned(), coolStatus()))
 
-		extraMur = wait.NewHostAwaitility(awaitility).GetMasterUserRecord(extraMur.Name)
+		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
+		require.NoError(t, err)
 		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
 		verifyResources(awaitility, extraMur, nil, expectingUaConditions(toBeProvisioned()))
 	})
 
 	t.Run("delete MasterUserRecord and expect UserAccount to be deleted", func(t *testing.T) {
 		// given
-		currentMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(mur.Name)
+		currentMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(mur.Name)
+		require.NoError(t, err)
 
 		// when
-		err := awaitility.Client.Delete(context.TODO(), currentMur)
+		err = awaitility.Client.Delete(context.TODO(), currentMur)
 
 		// then
 		require.NoError(t, err)
 		t.Logf("MasterUserRecord '%s' deleted", mur.Name)
 
 		verifyDeletion(awaitility, currentMur)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		extraMur = wait.NewHostAwaitility(awaitility).GetMasterUserRecord(extraMur.Name)
+		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
+		require.NoError(t, err)
 		verifyResources(awaitility, extraMur, nil, expectingUaConditions(toBeProvisioned()))
 	})
 }
@@ -188,44 +193,43 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
-	err := hostAwait.WaitForMasterUserRecord(mur.Name)
-	assert.NoError(awaitility.T, err)
+	_, err := hostAwait.WaitForMasterUserRecord(mur.Name)
+	require.NoError(awaitility.T, err)
 
 	murUserAccount := mur.Spec.UserAccounts[0]
-	err = memberAwait.WaitForUserAccount(mur.Name, murUserAccount.Spec, expectingUaCons()...)
-	assert.NoError(awaitility.T, err)
+	userAccount, err := memberAwait.WaitForUserAccount(mur.Name, murUserAccount.Spec, expectingUaCons()...)
+	require.NoError(awaitility.T, err)
 
-	userAccount := memberAwait.GetUserAccount(mur.Name)
 	uaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
 		TargetCluster:     murUserAccount.TargetCluster,
 		UserAccountStatus: userAccount.Status,
 	}
 
 	if expectingMurConds != nil {
-		err = hostAwait.WaitForMurConditions(mur.Name,
+		_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
 			wait.UntilHasUserAccountStatus(uaStatus),
 			wait.UntilHasStatusCondition(expectingMurConds()...))
 	} else {
-		err = hostAwait.WaitForMurConditions(mur.Name,
+		_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
 			wait.UntilHasUserAccountStatus(uaStatus))
 	}
-	assert.NoError(awaitility.T, err)
+	require.NoError(awaitility.T, err)
 
 	verifyUserResources(memberAwait, userAccount)
 	verifyNSTmplSet(memberAwait, userAccount)
 }
 
 func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
-	err := awaitility.WaitForUser(userAcc.Name)
-	assert.NoError(awaitility.T, err)
+	_, err := awaitility.WaitForUser(userAcc.Name)
+	require.NoError(awaitility.T, err)
 
-	err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
-	assert.NoError(awaitility.T, err)
+	_, err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
+	require.NoError(awaitility.T, err)
 }
 
 func verifyNSTmplSet(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
-	err := awaitility.WaitForNSTmplSet(userAcc.Name)
-	assert.NoError(awaitility.T, err)
+	_, err := awaitility.WaitForNSTmplSet(userAcc.Name)
+	require.NoError(awaitility.T, err)
 }
 
 func coolStatus() toolchainv1alpha1.Condition {
@@ -268,15 +272,15 @@ func verifyDeletion(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterUs
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 
-	err := hostAwait.WaitForDeletedMasterUserRecord(mur.Name)
-	assert.NoError(awaitility.T, err, "MasterUserRecord is not deleted")
+	err := hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+	require.NoError(awaitility.T, err, "MasterUserRecord is not deleted")
 
-	err = memberAwait.WaitForDeletedUserAccount(mur.Name)
-	assert.NoError(awaitility.T, err, "UserAccount is not deleted")
+	err = memberAwait.WaitUntilUserAccountDeleted(mur.Name)
+	require.NoError(awaitility.T, err, "UserAccount is not deleted")
 
-	err = memberAwait.WaitForDeletedUser(mur.Name)
-	assert.NoError(awaitility.T, err, "User is not deleted")
+	err = memberAwait.WaitUntilUserDeleted(mur.Name)
+	require.NoError(awaitility.T, err, "User is not deleted")
 
-	err = memberAwait.WaitForDeletedIdentity(mur.Name)
-	assert.NoError(awaitility.T, err, "Identity is not deleted")
+	err = memberAwait.WaitUntilIdentityDeleted(mur.Name)
+	require.NoError(awaitility.T, err, "Identity is not deleted")
 }
