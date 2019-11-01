@@ -139,6 +139,17 @@ func (a *MemberAwaitility) GetUserAccount(name string) *toolchainv1alpha1.UserAc
 	return ua
 }
 
+// WaitForUserIdentity waits until there is a User with the given name available,
+// and then waits for an Identity with the given name
+func (a *MemberAwaitility) WaitForUserIdentity(username, identityName string) error {
+	err := a.WaitForUser(username)
+	if err != nil {
+		return err
+	}
+	return a.WaitForIdentity(identityName)
+
+}
+
 // WaitForUser waits until there is a User with the given name available
 func (a *MemberAwaitility) WaitForUser(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {

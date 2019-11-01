@@ -242,23 +242,13 @@ func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
 
 		// 3. Wait for MUR to be created
 		mur, err := awaitility.Host().WaitForMurConditions(username,
-			wait.UntilHasStatusCondition(
-				v1alpha1.Condition{
-					Type:   v1alpha1.MasterUserRecordReady,
-					Status: corev1.ConditionTrue,
-					Reason: "Provisioned",
-				},
-			),
+			wait.UntilHasStatusCondition(toBeProvisioned()),
 			wait.UntilHasUserAccountStatus(
 				v1alpha1.UserAccountStatusEmbedded{
 					TargetCluster: memberCluster.Name,
 					UserAccountStatus: toolchainv1alpha1.UserAccountStatus{
 						Conditions: []toolchainv1alpha1.Condition{
-							{
-								Type:   toolchainv1alpha1.ConditionReady,
-								Status: corev1.ConditionTrue,
-								Reason: "Provisioned",
-							},
+							toBeProvisioned(),
 						},
 					},
 				},
@@ -294,29 +284,16 @@ func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
 					},
 				},
 			},
-			toolchainv1alpha1.Condition{
-				Type:   toolchainv1alpha1.ConditionReady,
-				Status: corev1.ConditionTrue,
-				Reason: "Provisioned",
-			},
+			toBeProvisioned(),
 		)
 		require.NoError(t, err)
 
 		// 5. Wait for User/Identity to be created
-		err = awaitility.Member().WaitForUser(username)
-		require.NoError(t, err)
-
-		err = awaitility.Member().WaitForIdentity("rhd:" + username)
+		err = awaitility.Member().WaitForUserIdentity(username, "rhd:"+username)
 		require.NoError(t, err)
 
 		// 6. Wait for NSTemplateSet to be ready/provisioned
-		err = awaitility.Member().WaitForNSTmplSet(username,
-			toolchainv1alpha1.Condition{
-				Type:   toolchainv1alpha1.ConditionReady,
-				Status: corev1.ConditionTrue,
-				Reason: "Provisioned",
-			},
-		)
+		err = awaitility.Member().WaitForNSTmplSet(username, toBeProvisioned())
 		require.NoError(t, err)
 
 		// 7. Wait for Namespaces to be created
@@ -381,16 +358,8 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 	}
 	assert.NoError(awaitility.T, err)
 
-	verifyUserResources(memberAwait, userAccount)
+	awaitility.Member().WaitForUserIdentity(userAccount.Name, toIdentityName(userAccount.Spec.UserID))
 	verifyNSTmplSet(memberAwait, userAccount)
-}
-
-func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
-	err := awaitility.WaitForUser(userAcc.Name)
-	assert.NoError(awaitility.T, err)
-
-	err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
-	assert.NoError(awaitility.T, err)
 }
 
 func verifyNSTmplSet(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
