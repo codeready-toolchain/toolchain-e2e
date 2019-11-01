@@ -25,7 +25,6 @@ require (
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/gengo v0.0.0-20190907103519-ebc107f98eab // indirect
 	sigs.k8s.io/controller-runtime v0.2.2
-	sigs.k8s.io/controller-tools v0.2.1 // indirect
 	sigs.k8s.io/kubefed v0.1.0-rc2
 )
 
@@ -39,7 +38,7 @@ replace (
 )
 
 replace (
-	github.com/codeready-toolchain/api => github.com/sbryzak/api v0.0.0-20191101002546-cde97a700fa8
+	github.com/codeready-toolchain/api => github.com/sbryzak/api v0.0.0-20191101214508-cf5d4d46f1cd
 	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.29.0
 	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20181117043124-c2090bec4d9b
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20180711000925-0cf8f7e6ed1d
