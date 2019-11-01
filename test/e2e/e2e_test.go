@@ -14,6 +14,7 @@ import (
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -163,7 +164,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Logf("MasterUserRecord '%s' deleted", mur.Name)
 
 		verifyDeletion(awaitility, currentMur)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
 		require.NoError(t, err)
@@ -194,11 +195,11 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 	_, err := hostAwait.WaitForMasterUserRecord(mur.Name)
-	require.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err)
 
 	murUserAccount := mur.Spec.UserAccounts[0]
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name, murUserAccount.Spec, expectingUaCons()...)
-	require.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err)
 
 	uaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
 		TargetCluster:     murUserAccount.TargetCluster,
@@ -213,7 +214,7 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 		_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
 			wait.UntilHasUserAccountStatus(uaStatus))
 	}
-	require.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err)
 
 	verifyUserResources(memberAwait, userAccount)
 	verifyNSTmplSet(memberAwait, userAccount)
@@ -221,15 +222,15 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 
 func verifyUserResources(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
 	_, err := awaitility.WaitForUser(userAcc.Name)
-	require.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err)
 
 	_, err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
-	require.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err)
 }
 
 func verifyNSTmplSet(awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
 	_, err := awaitility.WaitForNSTmplSet(userAcc.Name)
-	require.NoError(awaitility.T, err)
+	assert.NoError(awaitility.T, err)
 }
 
 func coolStatus() toolchainv1alpha1.Condition {
@@ -273,14 +274,14 @@ func verifyDeletion(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterUs
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 
 	err := hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
-	require.NoError(awaitility.T, err, "MasterUserRecord is not deleted")
+	assert.NoError(awaitility.T, err, "MasterUserRecord is not deleted")
 
 	err = memberAwait.WaitUntilUserAccountDeleted(mur.Name)
-	require.NoError(awaitility.T, err, "UserAccount is not deleted")
+	assert.NoError(awaitility.T, err, "UserAccount is not deleted")
 
 	err = memberAwait.WaitUntilUserDeleted(mur.Name)
-	require.NoError(awaitility.T, err, "User is not deleted")
+	assert.NoError(awaitility.T, err, "User is not deleted")
 
 	err = memberAwait.WaitUntilIdentityDeleted(mur.Name)
-	require.NoError(awaitility.T, err, "Identity is not deleted")
+	assert.NoError(awaitility.T, err, "Identity is not deleted")
 }
