@@ -164,7 +164,6 @@ func TestE2EFlow(t *testing.T) {
 		t.Logf("MasterUserRecord '%s' deleted", mur.Name)
 
 		verifyDeletion(awaitility, currentMur)
-		assert.NoError(t, err)
 
 		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
 		require.NoError(t, err)
