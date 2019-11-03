@@ -88,7 +88,7 @@ func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace
 	labels := map[string]string{"owner": username, "type": typeName}
 	opts := client.MatchingLabels(labels)
 	namespaceList := &v1.NamespaceList{}
-	err := a.Client.List(context.TODO(), opts, namespaceList)
+	err := a.Client.List(context.TODO(), namespaceList, opts)
 	require.NoError(a.T, err)
 	require.Len(a.T, namespaceList.Items, 1)
 	return &namespaceList.Items[0]
@@ -99,7 +99,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
-		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
@@ -118,7 +118,7 @@ func (a *MemberAwaitility) WaitForDeletedNamespace(username, typeName string) er
 		labels := map[string]string{"owner": username, "type": typeName}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
-		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
