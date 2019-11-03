@@ -29,7 +29,7 @@ const (
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
-	KubeFedClusterConditionTimeout = defaults.DefaultClusterHealthCheckPeriod + 5 * time.Second
+	KubeFedClusterConditionTimeout = defaults.DefaultClusterHealthCheckPeriod + 5*time.Second
 )
 
 // Awaitility contains information necessary for verifying availability of resources in both operators
