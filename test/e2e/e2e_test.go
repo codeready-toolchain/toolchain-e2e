@@ -18,7 +18,6 @@ import (
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -194,18 +193,9 @@ func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
 
 		// 1. Create a UserSignup resource
 		username := "foo-" + uuid.NewV4().String()
-		userSignup := &v1alpha1.UserSignup{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      username,
-				Namespace: awaitility.HostNs,
-			},
-			Spec: v1alpha1.UserSignupSpec{
-				Username:          username,
-				CompliantUsername: username,
-				TargetCluster:     memberCluster.Name,
-				Approved:          false,
-			},
-		}
+		userID := uuid.NewV4().String()
+		userSignup, err := newUserSignup(awaitility.Host(), userID, username, username)
+		require.NoError(t, err)
 		err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
 		require.NoError(t, err, "unable to create usersignup resource")
 		// at this stage, the usersignup should not be approved nor completed
@@ -259,7 +249,7 @@ func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
 		// 4. Wait for UserAccount to be ready/provisioned with the expect spec
 		err = awaitility.Member().WaitForUserAccount(username,
 			v1alpha1.UserAccountSpec{
-				UserID:   username,
+				UserID:   userID,
 				Disabled: false,
 				NSLimit:  "default",
 				NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
@@ -288,7 +278,7 @@ func TestUserSignupToNamespaceProvisioningFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// 5. Wait for User/Identity to be created
-		err = awaitility.Member().WaitForUserIdentity(username, "rhd:"+username)
+		err = awaitility.Member().WaitForUserIdentity(username, "rhd:"+userID)
 		require.NoError(t, err)
 
 		// 6. Wait for NSTemplateSet to be ready/provisioned
