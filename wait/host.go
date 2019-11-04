@@ -167,10 +167,10 @@ func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster s
 	return ""
 }
 
-func containsUserAccountStatus(expectedStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, actualStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
-	for _, expectedStatus := range expectedStatuses {
-		if expectedStatus.TargetCluster == actualStatus.TargetCluster &&
-			test.ConditionsMatch(expectedStatus.Conditions, actualStatus.Conditions...) {
+func containsUserAccountStatus(actualStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, expectedStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
+	for _, a := range actualStatuses {
+		if a.TargetCluster == expectedStatus.TargetCluster &&
+			test.ConditionsMatch(a.Conditions, expectedStatus.Conditions...) {
 			return true
 		}
 	}
