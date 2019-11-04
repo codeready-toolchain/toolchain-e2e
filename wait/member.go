@@ -29,8 +29,25 @@ func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 		}}
 }
 
-// WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
-func (a *MemberAwaitility) WaitForUserAccount(name string, expSpec toolchainv1alpha1.UserAccountSpec, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserAccount, error) {
+// WaitForUserAccount waits until there is a UserAccount available with the given name and the set of status conditions
+func (a *MemberAwaitility) WaitForUserAccount(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserAccount, error) {
+	ua := &toolchainv1alpha1.UserAccount{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of useraccount '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting for UserAccount '%s' with expected spec and status condition", name)
+		return false, nil
+	})
+	return ua, err
+}
+
+// WaitForUserAccountWithSpec waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
+func (a *MemberAwaitility) WaitForUserAccountWithSpec(name string, expSpec toolchainv1alpha1.UserAccountSpec, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserAccount, error) {
 	ua := &toolchainv1alpha1.UserAccount{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {

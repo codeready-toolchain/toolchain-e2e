@@ -130,7 +130,7 @@ func TestE2EFlow(t *testing.T) {
 		// given
 		currentMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(mur.Name)
 		require.NoError(t, err)
-		userAccount, err := wait.NewMemberAwaitility(awaitility).WaitForUserAccount(mur.Name, currentMur.Spec.UserAccounts[0].Spec)
+		userAccount, err := wait.NewMemberAwaitility(awaitility).WaitForUserAccount(mur.Name)
 		require.NoError(t, err)
 		userAccount.Status.Conditions, _ = condition.AddOrUpdateStatusConditions(
 			userAccount.Status.Conditions, coolStatus())
@@ -197,7 +197,7 @@ func verifyResources(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterU
 	assert.NoError(awaitility.T, err)
 
 	murUserAccount := mur.Spec.UserAccounts[0]
-	userAccount, err := memberAwait.WaitForUserAccount(mur.Name, murUserAccount.Spec, expectingUaCons()...)
+	userAccount, err := memberAwait.WaitForUserAccountWithSpec(mur.Name, murUserAccount.Spec, expectingUaCons()...)
 	assert.NoError(awaitility.T, err)
 
 	uaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
