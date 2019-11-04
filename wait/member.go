@@ -88,17 +88,6 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 	})
 }
 
-// GetNamespace returns the namespace of the given type and owned by the given username
-func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace {
-	labels := map[string]string{"owner": username, "type": typeName}
-	opts := client.MatchingLabels(labels)
-	namespaceList := &v1.NamespaceList{}
-	err := a.Client.List(context.TODO(), opts, namespaceList)
-	require.NoError(a.T, err)
-	require.Len(a.T, namespaceList.Items, 1)
-	return &namespaceList.Items[0]
-}
-
 // WaitForNamespace waits until a namespace with the given owner (username), type and revision labels exists
 func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}

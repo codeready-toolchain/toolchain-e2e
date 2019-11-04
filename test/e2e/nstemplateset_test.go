@@ -44,14 +44,19 @@ func (s *nsTemplateSetTest) TestCreateOK() {
 func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 	t := s.T()
 	username := "amit"
-
-	s.createAndVerifyNSTmplSet(username)
-
-	// delete Namespace dev
-	typeName := "dev"
-	t.Logf("Deleting Namespace type :%s", typeName)
-	devNs := s.memberAwait.GetNamespace(username, typeName)
-	err := s.awaitility.Client.Delete(context.TODO(), devNs)
+	nsTmplSet := s.createAndVerifyNSTmplSet(username)
+	// delete Namespace 'dev'
+	typ := "dev"
+	var revision string
+	for _, ns := range nsTmplSet.Spec.Namespaces {
+		if ns.Type == typ {
+			revision = ns.Revision
+		}
+	}
+	t.Logf("Deleting Namespace type :%s", typ)
+	devNs, err := s.memberAwait.WaitForNamespace(username, typ, revision)
+	require.NoError(t, err)
+	err = s.awaitility.Client.Delete(context.TODO(), devNs)
 	require.NoError(t, err)
 
 	// wait for Namespace dev to recreate
@@ -92,7 +97,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	_, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, toBeProvisioned())
+	nsTmplSet, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, toBeProvisioned())
 	require.NoError(t, err)
 
 	// wait for Namespace
