@@ -141,13 +141,14 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	tier := &toolchainv1alpha1.NSTemplateTier{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated...", name)
+		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Ns)
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, tier)
 		if err != nil && !errors.IsNotFound(err) {
 			a.T.Logf("NSTemplateTier '%s' could not be fetched", name)
 			// return the error
 			return false, err
 		} else if errors.IsNotFound(err) {
+			a.T.Logf("NSTemplateTier '%s' not found in '%s'", name, a.Ns)
 			// keep waiting
 			return false, nil
 		}
@@ -155,6 +156,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 			// if at least one criteria does not match, keep waiting
 			if !match(tier) {
 				// keep waiting
+				a.T.Logf("NSTemplateTier '%s' not matching the criteria", name, a.Ns)
 				return false, nil
 			}
 		}
