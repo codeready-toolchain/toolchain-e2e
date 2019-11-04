@@ -9,7 +9,9 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	//authsupport "github.com/codeready-toolchain/toolchain-common/test/auth"
 
+	//uuid "github.com/satori/go.uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,3 +53,242 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
+
+// func (s *registrationServiceTestSuite) TestEndpoints() {
+//  s.Run("verify_healthcheck", func() {
+//      req, err := http.NewRequest("GET", s.route + "/api/v1/health", nil)
+//      require.NoError(s.T(), err)
+//      client := &http.Client{
+//          Timeout: time.Second * 10,
+//          Transport: &http.Transport{
+//              TLSClientConfig: &tls.Config{
+//                  InsecureSkipVerify: true,
+//              },
+//          },
+//      }
+
+//      resp, err := client.Do(req)
+//      require.NoError(s.T(), err)
+//      assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+
+//      defer resp.Body.Close()
+
+//      body, err := ioutil.ReadAll(resp.Body)
+//      require.Nil(s.T(), err)
+//      require.NotNil(s.T(), body)
+
+//      mp := make(map[string]interface{})
+//      err = json.Unmarshal([]byte(body), &mp)
+//      require.Nil(s.T(), err)
+
+//      alive := mp["alive"]
+//      require.True(s.T(), alive.(bool))
+
+//      testingMode := mp["testingMode"]
+//      require.False(s.T(), testingMode.(bool))
+
+//      revision := mp["revision"]
+//      require.NotNil(s.T(), revision)
+
+//      buildTime := mp["buildTime"]
+//      require.NotNil(s.T(), buildTime)
+
+//      startTime := mp["startTime"]
+//      require.NotNil(s.T(), startTime)
+//  })
+
+//  s.Run("verify_authconfig", func() {
+//      req, err := http.NewRequest("GET", s.route + "/api/v1/authconfig", nil)
+//      require.NoError(s.T(), err)
+//      client := &http.Client{
+//          Timeout: time.Second * 10,
+//          Transport: &http.Transport{
+//              TLSClientConfig: &tls.Config{
+//                  InsecureSkipVerify: true,
+//              },
+//          },
+//      }
+
+//      resp, err := client.Do(req)
+//      require.NoError(s.T(), err)
+//      assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+
+//      defer resp.Body.Close()
+
+//      body, err := ioutil.ReadAll(resp.Body)
+//      require.Nil(s.T(), err)
+//      require.NotNil(s.T(), body)
+
+//      mp := make(map[string]interface{})
+//      err = json.Unmarshal([]byte(body), &mp)
+//      require.Nil(s.T(), err)
+
+//      alive := mp["auth-client-library-url"]
+//      require.Equal(s.T(), alive.(string), "https://sso.prod-preview.openshift.io/auth/js/keycloak.js")
+
+//      testingMode := mp["auth-client-config"].(string)
+//      mp1 := make(map[string]interface{})
+//      err = json.Unmarshal([]byte(testingMode), &mp1)
+//      require.Nil(s.T(), err)
+
+//      realm := mp1["realm"]
+//      require.Equal(s.T(), realm.(string), "toolchain-public")
+
+//      authServerURL := mp1["auth-server-url"]
+//      require.Equal(s.T(), authServerURL.(string), "https://sso.prod-preview.openshift.io/auth")
+
+//      sslRequired := mp1["ssl-required"]
+//      require.Equal(s.T(), sslRequired.(string), "none")
+
+//      resource := mp1["resource"]
+//      require.Equal(s.T(), resource.(string), "crt")
+
+//      publicClient := mp1["public-client"]
+//      require.True(s.T(), publicClient.(bool))
+
+//      // confidentialPort := mp1["confidential-port"]
+//      // require.Equal(s.T(), int(confidentialPort.(float64)), 0)
+//  })
+
+//  s.Run("verify_signup_error_no_token", func() {
+//      requestBody, err := json.Marshal(map[string]string{})
+//      require.Nil(s.T(), err)
+//      req, err := http.NewRequest("POST", s.route + "/api/v1/signup",  bytes.NewBuffer(requestBody))
+//      require.NoError(s.T(), err)
+//      req.Header.Set("content-type", "application/json")
+//      client := &http.Client{
+//          Timeout: time.Second * 10,
+//          Transport: &http.Transport{
+//              TLSClientConfig: &tls.Config{
+//                  InsecureSkipVerify: true,
+//              },
+//          },
+//      }
+
+//      resp, err := client.Do(req)
+//      require.NoError(s.T(), err)
+//      assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
+
+//      defer resp.Body.Close()
+
+//      body, err := ioutil.ReadAll(resp.Body)
+//      require.Nil(s.T(), err)
+//      require.NotNil(s.T(), body)
+
+//      mp := make(map[string]interface{})
+//      err = json.Unmarshal([]byte(body), &mp)
+//      require.Nil(s.T(), err)
+
+//      tokenErr := mp["error"].(string)
+//      require.Equal(s.T(), "no token found", tokenErr)
+//  })
+
+//  s.Run("verify_signup_error_unknown_auth_header", func() {
+//      req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
+//      require.NoError(s.T(), err)
+//      req.Header.Set("Authorization", "1223123123")
+//      req.Header.Set("content-type", "application/json")
+//      client := &http.Client{
+//          Timeout: time.Second * 10,
+//          Transport: &http.Transport{
+//              TLSClientConfig: &tls.Config{
+//                  InsecureSkipVerify: true,
+//              },
+//          },
+//      }
+
+//      resp, err := client.Do(req)
+//      require.NoError(s.T(), err)
+//      assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
+        
+//      defer resp.Body.Close()
+
+//      body, err := ioutil.ReadAll(resp.Body)
+//      require.Nil(s.T(), err)
+//      require.NotNil(s.T(), body)
+
+//      mp := make(map[string]interface{})
+//      err = json.Unmarshal([]byte(body), &mp)
+//      require.Nil(s.T(), err)
+
+//      tokenErr := mp["error"].(string)
+//      require.Equal(s.T(), "found unknown authorization header:1223123123", tokenErr)
+//  })
+
+//     s.Run("verify_signup_error_invalid_token", func() {
+//      req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
+//      require.NoError(s.T(), err)
+//      req.Header.Set("Authorization", "Bearer 1223123123")
+//      req.Header.Set("content-type", "application/json")
+//      client := &http.Client{
+//          Timeout: time.Second * 10,
+//          Transport: &http.Transport{
+//              TLSClientConfig: &tls.Config{
+//                  InsecureSkipVerify: true,
+//              },
+//          },
+//      }
+
+//      resp, err := client.Do(req)
+//      require.NoError(s.T(), err)
+//      assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
+
+//      defer resp.Body.Close()
+
+//      body, err := ioutil.ReadAll(resp.Body)
+//      require.Nil(s.T(), err)
+//      require.NotNil(s.T(), body)
+
+//      mp := make(map[string]interface{})
+//      err = json.Unmarshal([]byte(body), &mp)
+//      require.Nil(s.T(), err)
+
+//      tokenErr := mp["error"].(string)
+//      require.Equal(s.T(), "token contains an invalid number of segments", tokenErr)
+//     })
+
+//     s.Run("verify_signup_valid_token", func() {
+
+//      tokenManager := authsupport.NewTokenManager()
+//         kid0 := uuid.NewV4().String()
+        
+//         //1. Create Keypair. --- AddPrivateKey() with kid
+//         privateKey, err := tokenManager.AddPrivateKey(kid0)
+
+//         // 2/3. Create Token. GenerateSignedToken(). Sign Token with Private Key. -- use func SignToken()
+//         //encodedToken, err := tokenManager.SignToken(token, kid0)
+//         identity := authsupport.NewIdentity()
+//         emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+//         token, err := tokenManager.GenerateSignedToken(*identity, kid0, emailClaim0)
+//         require.Nil(t, err)
+
+//         // // 4/5. Convert Public Key to JWK JSON Format and return
+//      keyServer := tokenManager.NewKeyServer()
+        
+//      keysEndpointURL := keyServer.URL
+//         // reg, err := configuration.New("")
+//      // srv := server.New(reg)
+        
+//      // Set auth_client.public_keys_url  to that address.
+//      os.Setenv("REGISTRATION_AUTH_CLIENT_PUBLIC_KEYS_URL", keysEndpointURL)
+//      os.Setenv("REGISTRATION_TESTINGMODE", "false")
+
+//      // Send Token in Header to Service.
+//      req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
+//      require.NoError(s.T(), err)
+//      req.Header.Set("Authorization", "Bearer " + token)
+//      req.Header.Set("content-type", "application/json")
+//      client := &http.Client{
+//          Timeout: time.Second * 10,
+//          Transport: &http.Transport{
+//              TLSClientConfig: &tls.Config{
+//                  InsecureSkipVerify: true,
+//              },
+//          },
+//      }
+
+//      resp, err := client.Do(req)
+//      require.NoError(s.T(), err)
+//      assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+//     })
+// }

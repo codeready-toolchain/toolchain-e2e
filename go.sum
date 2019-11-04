@@ -74,6 +74,7 @@ github.com/codeready-toolchain/api v0.0.0-20191023231919-300ac3dd8c36 h1:OZuIMbG
 github.com/codeready-toolchain/api v0.0.0-20191023231919-300ac3dd8c36/go.mod h1:9uSs8YlapNzaxIubqp2P9TA4L4iO4gCuqW1rrhCwsV4=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec h1:UT8D4KZqSQQtJXddJA9zBG9t7yPRIfpQqg/P3piLICo=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec/go.mod h1:3JxPAD9KG1+vr3Q9du6URHnZ0PuNezmHAK0nLYPXD2k=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20191104161227-62583e7d504a h1:nmV4hpUfFEpgwcVuDeNMmrefUxsrIqDHco7MsIu383Q=
 github.com/coreos/bbolt v1.3.0/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/bbolt v1.3.3/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.9+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
