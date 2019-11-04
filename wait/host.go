@@ -156,7 +156,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 			// if at least one criteria does not match, keep waiting
 			if !match(tier) {
 				// keep waiting
-				a.T.Logf("NSTemplateTier '%s' not matching the criteria", name, a.Ns)
+				a.T.Logf("NSTemplateTier '%s' in namespace '%s' is not matching the expected criteria", name, a.Ns)
 				return false, nil
 			}
 		}
