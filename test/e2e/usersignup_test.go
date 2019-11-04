@@ -286,6 +286,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	// Create user signup - approval set to true
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
 	userSignup, err = newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "robertjones@magenta.com", "robertjones-at-magenta-com")
+	require.NoError(s.T(), err)
 	userSignup.Spec.Approved = true
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
