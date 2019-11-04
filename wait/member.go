@@ -31,19 +31,7 @@ func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 
 // WaitForUserAccount waits until there is a UserAccount available with the given name and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserAccount, error) {
-	ua := &toolchainv1alpha1.UserAccount{}
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of useraccount '%s'", name)
-				return false, nil
-			}
-			return false, err
-		}
-		a.T.Logf("waiting for UserAccount '%s' with expected spec and status condition", name)
-		return false, nil
-	})
-	return ua, err
+	return a.WaitForUserAccountWithSpec(name, toolchainv1alpha1.UserAccountSpec{}, conditions...)
 }
 
 // WaitForUserAccountWithSpec waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
@@ -57,7 +45,7 @@ func (a *MemberAwaitility) WaitForUserAccountWithSpec(name string, expSpec toolc
 			}
 			return false, err
 		}
-		if reflect.DeepEqual(ua.Spec, expSpec) &&
+		if (reflect.DeepEqual(expSpec, toolchainv1alpha1.UserAccountSpec{}) || reflect.DeepEqual(ua.Spec, expSpec)) &&
 			test.ConditionsMatch(ua.Status.Conditions, conditions...) {
 			a.T.Logf("found UserAccount '%s' with expected spec and status condition", name)
 			return true, nil
