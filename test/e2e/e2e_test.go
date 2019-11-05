@@ -108,46 +108,6 @@ func TestMasterUserAccountFlow(t *testing.T) {
 		})
 	})
 
-	t.Run("update UserAccount spec when MasterUserRecord spec is modified", func(t *testing.T) {
-		// given
-		toBeModifiedMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(extraMur.Name)
-		murtest.ModifyUaInMur(toBeModifiedMur, targetCluster, murtest.NsLimit("advanced"),
-			murtest.TierName("admin"), murtest.Namespace("che", "4321"))
-
-		// when
-		err := awaitility.Client.Update(context.TODO(), toBeModifiedMur)
-
-		// then
-		require.NoError(t, err)
-		t.Logf("MasterUserRecord '%s' updated", mur.Name)
-
-		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
-		verifyResources(awaitility, toBeModifiedMur, nil, expectingUaConditions(toBeProvisioned()))
-		verifyResourcesExpectingToBeProvisioned(awaitility, mur)
-	})
-
-	t.Run("update MasterUserRecord status when UserAccount status is modified", func(t *testing.T) {
-		// given
-		currentMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(mur.Name)
-		userAccount := wait.NewMemberAwaitility(awaitility).GetUserAccount(mur.Name)
-		userAccount.Status.Conditions, _ = condition.AddOrUpdateStatusConditions(
-			userAccount.Status.Conditions, coolStatus())
-
-		// when
-		err := awaitility.ControllerClient.Status().Update(context.TODO(), userAccount)
-
-		// then
-		require.NoError(t, err)
-		t.Logf("MasterUserRecord '%s' updated", mur.Name)
-
-		verifyResources(awaitility, currentMur, expectingMurConditions(toBeProvisioned()),
-			expectingUaConditions(toBeProvisioned(), coolStatus()))
-
-		extraMur = wait.NewHostAwaitility(awaitility).GetMasterUserRecord(extraMur.Name)
-		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
-		verifyResources(awaitility, extraMur, nil, expectingUaConditions(toBeProvisioned()))
-	})
-
 	t.Run("delete MasterUserRecord and expect UserAccount to be deleted", func(t *testing.T) {
 		// given
 		currentMur := wait.NewHostAwaitility(awaitility).GetMasterUserRecord(mur.Name)
