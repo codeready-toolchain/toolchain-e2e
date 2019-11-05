@@ -142,6 +142,14 @@ func (a *HostAwaitility) WaitForUserSignup(name string) error {
 	})
 }
 
+// GetUserSignup returns UserSignup with the given name if available, otherwise it fails
+func (a *HostAwaitility) GetUserSignup(name string) *toolchainv1alpha1.UserSignup {
+	us := &toolchainv1alpha1.UserSignup{}
+	err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, us)
+	require.NoError(a.T, err)
+	return us
+}
+
 // WaitForDeletedMasterUserRecord waits until MUR with the given name is not present
 func (a *HostAwaitility) WaitForDeletedMasterUserRecord(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
