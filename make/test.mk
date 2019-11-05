@@ -23,7 +23,7 @@ test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host deploy-regist
 deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e
-test-e2e: build-with-operators test-e2e-keep-namespaces e2e-cleanup
+test-e2e: build-with-operators test-e2e-keep-namespaces clean-e2e-resources
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host' and 'member' repositories
@@ -88,10 +88,6 @@ endif
 setup-kubefed:
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-
-.PHONY: e2e-cleanup
-e2e-cleanup:
-	oc delete project ${MEMBER_NS} ${HOST_NS} ${TEST_NS} --wait=false || true
 
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
