@@ -326,6 +326,9 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	err = s.hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(s.T(), err)
 
+	// Get the newly created UserSignup resource
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+
 	// Confirm the MasterUserRecord was created
 	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
@@ -371,6 +374,9 @@ func (s *userSignupIntegrationTest) TestDeletedUserSignupIsGarbageCollected() {
 	// Confirm the UserSignup was created
 	err = s.hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(s.T(), err)
+
+	// Get the newly created UserSignup resource
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 
 	// Confirm the MasterUserRecord was created
 	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
@@ -442,6 +448,9 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 	// Confirm the UserSignup was created
 	err = s.hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(s.T(), err)
+
+	// Get the newly created UserSignup resource
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 
 	// Confirm the MasterUserRecord was created
 	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
