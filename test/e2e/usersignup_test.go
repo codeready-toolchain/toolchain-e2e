@@ -258,6 +258,8 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	// Lookup the UserSignup again
 	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 
+	require.NotEmpty(s.T(), userSignup.Status.CompliantUsername)
+
 	// Confirm the MUR was created
 	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
