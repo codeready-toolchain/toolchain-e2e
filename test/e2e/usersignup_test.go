@@ -216,9 +216,11 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 		})
 	require.NoError(s.T(), err)
 
-	// Confirm the MUR was NOT created
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.Error(s.T(), err)
+	// Get the newly created UserSignup resource
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+
+	// Confirm the CompliantUsername has NOT been set
+	require.Empty(s.T(), userSignup.Status.CompliantUsername)
 
 	// Create user signup - approval set to false
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
@@ -246,18 +248,15 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 		})
 	require.NoError(s.T(), err)
 
-	// Confirm the MUR was NOT created yet
-	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.Error(s.T(), err)
-
-	// Now, reload the userSignup, manually approve it (setting Approved to true) and update the resource
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Namespace: userSignup.Namespace, Name: userSignup.Name}, userSignup)
-	require.NoError(s.T(), err)
-
+	// Now, reload the UserSignup, manually approve it (setting Approved to true) and update the resource
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 	userSignup.Spec.Approved = true
 
 	err = s.awaitility.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
+
+	// Lookup the UserSignup again
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 
 	// Confirm the MUR was created
 	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
@@ -287,6 +286,9 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	// Confirm the UserSignup was created
 	err = s.hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(s.T(), err)
+
+	// Lookup the UserSignup again
+	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 
 	// Confirm the MUR was created
 	err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
