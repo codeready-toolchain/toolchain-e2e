@@ -27,12 +27,18 @@ func TestNSTemplateSet(t *testing.T) {
 	suite.Run(t, &nsTemplateSetTest{})
 }
 
-func (s *nsTemplateSetTest) SetupSuite() {
+func (s *nsTemplateSetTest) SetupTest() {
 	nsTmplSetList := &toolchainv1alpha1.NSTemplateSetList{}
 	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), nsTmplSetList)
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.MemberNs
 	s.basicTier = getBasicTier(s.T(), s.awaitility.Client, s.awaitility.HostNs)
+}
+
+func (s *nsTemplateSetTest) TearDownTest() {
+	if s.testCtx != nil {
+		s.testCtx.Cleanup()
+	}
 }
 
 func (s *nsTemplateSetTest) TestCreateOK() {

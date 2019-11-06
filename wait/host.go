@@ -26,7 +26,7 @@ func NewHostAwaitility(a *Awaitility) *HostAwaitility {
 }
 
 // WaitForMasterUserRecord waits until there is MasterUserRecord with the given name and the optional conditions is available
-func (a *HostAwaitility) WaitForMasterUserRecord(name string, conditions ...MurWaitCondition) (*toolchainv1alpha1.MasterUserRecord, error) {
+func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	mur := &toolchainv1alpha1.MasterUserRecord{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
@@ -36,8 +36,8 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, conditions ...MurW
 			}
 			return false, err
 		}
-		for _, isMatched := range conditions {
-			if !isMatched(a, mur) {
+		for _, match := range criteria {
+			if !match(a, mur) {
 				return false, nil
 			}
 		}
@@ -47,11 +47,11 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, conditions ...MurW
 	return mur, err
 }
 
-// MurWaitCondition represents a function checking if MasterUserRecord meets the given condition
-type MurWaitCondition func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
+// MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
+type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
-// UntilHasStatusCondition checks if MasterUserRecord status has the given set of conditions
-func UntilHasStatusCondition(conditions ...toolchainv1alpha1.Condition) MurWaitCondition {
+// UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
+func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		if test.ConditionsMatch(mur.Status.Conditions, conditions...) {
 			a.T.Logf("status conditions match in MasterUserRecord '%s`", mur.Name)
@@ -62,8 +62,8 @@ func UntilHasStatusCondition(conditions ...toolchainv1alpha1.Condition) MurWaitC
 	}
 }
 
-// UntilHasUserAccountStatus checks if MasterUserRecord status has the given set of status embedded UserAccounts
-func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountStatusEmbedded) MurWaitCondition {
+// UntilMasterUserRecordHasUserAccountStatuses checks if MasterUserRecord status has the given set of status embedded UserAccounts
+func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alpha1.UserAccountStatusEmbedded) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		if len(mur.Status.UserAccounts) != len(expUaStatuses) {
 			a.T.Logf("waiting for correct number of UserAccount statuses in MasterUserRecord '%s`", mur.Name)
@@ -82,8 +82,24 @@ func UntilHasUserAccountStatus(expUaStatuses ...toolchainv1alpha1.UserAccountSta
 	}
 }
 
+// UserSignupWaitCriterion a function to check that a user account has the expected condition
+type UserSignupWaitCriterion func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool
+
+// UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has exactly all the given status conditions
+func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
+	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
+		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in UserSignup '%s`", ua.Name)
+			return true
+		}
+		a.T.Logf("waiting for correct status condition of UserSignup '%s`", ua.Name)
+		return false
+	}
+}
+
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
-func (a *HostAwaitility) WaitForUserSignup(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserSignup, error) {
+func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	userSignup := &toolchainv1alpha1.UserSignup{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userSignup); err != nil {
@@ -93,12 +109,13 @@ func (a *HostAwaitility) WaitForUserSignup(name string, conditions ...toolchainv
 			}
 			return false, err
 		}
-		if test.ConditionsMatch(userSignup.Status.Conditions, conditions...) {
-			a.T.Log("conditions match")
-			return true, nil
+		for _, match := range criteria {
+			if !match(a, userSignup) {
+				return false, nil
+			}
 		}
-		a.T.Logf("waiting for [%+v] conditions to match...", conditions)
-		return false, nil
+		a.T.Logf("found UserSignup '%s'", name)
+		return true, nil
 	})
 	return userSignup, err
 }

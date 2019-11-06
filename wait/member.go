@@ -29,31 +29,50 @@ func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 		}}
 }
 
-// WaitForUserAccount waits until there is a UserAccount available with the given name and the set of status conditions
-func (a *MemberAwaitility) WaitForUserAccount(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserAccount, error) {
-	return a.WaitForUserAccountWithSpec(name, toolchainv1alpha1.UserAccountSpec{}, conditions...)
+// UserAccountWaitCriterion a function to check that a user account has the expected condition
+type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool
+
+// UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has the expected spec
+func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		return reflect.DeepEqual(ua.Spec, expected)
+	}
 }
 
-// WaitForUserAccountWithSpec waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
-func (a *MemberAwaitility) WaitForUserAccountWithSpec(name string, expSpec toolchainv1alpha1.UserAccountSpec, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserAccount, error) {
-	ua := &toolchainv1alpha1.UserAccount{}
+// UntilUserAccountHasConditions returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has exactly all the given status conditions
+func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
+			return true
+		}
+		a.T.Logf("waiting for correct status condition of UserAccount '%s`", ua.Name)
+		return false
+	}
+}
+
+// WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
+func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
+	userAccount := &toolchainv1alpha1.UserAccount{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userAccount); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of useraccount '%s'", name)
 				return false, nil
 			}
 			return false, err
 		}
-		if (reflect.DeepEqual(expSpec, toolchainv1alpha1.UserAccountSpec{}) || reflect.DeepEqual(ua.Spec, expSpec)) &&
-			test.ConditionsMatch(ua.Status.Conditions, conditions...) {
-			a.T.Logf("found UserAccount '%s' with expected spec and status condition", name)
-			return true, nil
+		for _, match := range criteria {
+			if !match(a, userAccount) {
+				return false, nil
+			}
 		}
-		a.T.Logf("waiting for UserAccount '%s' with expected spec and status condition", name)
-		return false, nil
+		a.T.Logf("found UserAccount '%s'", name)
+		return true, nil
 	})
-	return ua, err
+	return userAccount, err
 }
 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
