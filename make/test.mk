@@ -86,8 +86,8 @@ endif
 
 .PHONY: setup-kubefed
 setup-kubefed:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/kubefed/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/kubefed/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
