@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kubefed/pkg/apis/core/common"
 	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
-	"sigs.k8s.io/kubefed/pkg/controller/util"
+	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1/defaults"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
-	KubeFedClusterConditionTimeout = (util.DefaultClusterHealthCheckPeriod + 5) * time.Second
+	KubeFedClusterConditionTimeout = defaults.DefaultClusterHealthCheckPeriod + 5*time.Second
 )
 
 // Awaitility contains information necessary for verifying availability of resources in both operators
@@ -130,7 +131,7 @@ func (a *SingleAwaitilityImpl) WaitForKubeFedClusterConditionWithName(name strin
 // if the CR has the ClusterCondition
 func (a *SingleAwaitilityImpl) GetKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) (v1beta1.KubeFedCluster, bool, error) {
 	clusters := &v1beta1.KubeFedClusterList{}
-	if err := a.Client.List(context.TODO(), &client.ListOptions{Namespace: a.Ns}, clusters); err != nil {
+	if err := a.Client.List(context.TODO(), clusters, &client.ListOptions{Namespace: a.Ns}); err != nil {
 		return v1beta1.KubeFedCluster{}, false, err
 	}
 	for _, cl := range clusters.Items {
