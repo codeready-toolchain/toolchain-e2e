@@ -48,7 +48,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for correct status conditions [%+v] of UserAccount '%s`, the actual are: [%+v]", conditions, ua.Name, ua.Status.Conditions)
+		a.T.Logf("waiting for correct status conditions [%+v] of UserAccount '%s', the actual are: [%+v]", conditions, ua.Name, ua.Status.Conditions)
 		return false
 	}
 }
@@ -76,7 +76,7 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 }
 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
-func (a *MemberAwaitility) WaitForNSTmplSet(name string, waitCond ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.NSTemplateSet, error) {
+func (a *MemberAwaitility) WaitForNSTmplSet(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.NSTemplateSet, error) {
 	nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
@@ -86,8 +86,8 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, waitCond ...toolchainv1
 			}
 			return false, err
 		}
-		if len(waitCond) != 0 && !test.ConditionsMatch(nsTmplSet.Status.Conditions, waitCond...) {
-			a.T.Logf("waiting for conditions match for NSTemplateSet '%s'", name)
+		if len(conditions) != 0 && !test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...) {
+			a.T.Logf("waiting for correct status conditions [%+v] of NSTemplateSet '%s', the actual are: [%+v]", conditions, nsTmplSet.Name, nsTmplSet.Status.Conditions)
 			return false, nil
 		}
 		a.T.Logf("found NSTemplateSet '%s'", name)

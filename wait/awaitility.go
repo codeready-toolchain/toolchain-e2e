@@ -120,7 +120,7 @@ func (a *SingleAwaitilityImpl) WaitForKubeFedClusterConditionWithName(name strin
 			a.T.Logf("found %s KubeFedCluster", name)
 			return true, nil
 		}
-		a.T.Logf("waiting for %s KubeFedCluster having the expected condition", name)
+		a.T.Logf("waiting for %s KubeFedCluster having the expected condition (expected: %v vs actual: %v)", name, condition, cluster.Status.Conditions)
 		return false, err
 	})
 }
