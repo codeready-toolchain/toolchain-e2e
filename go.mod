@@ -38,7 +38,7 @@ replace (
 )
 
 replace (
-	github.com/codeready-toolchain/api => github.com/sbryzak/api v0.0.0-20191101214508-cf5d4d46f1cd
+	github.com/codeready-toolchain/api => github.com/sbryzak/api v0.0.0-20191107071612-89a5280b082a
 	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.29.0
 	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20181117043124-c2090bec4d9b
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20180711000925-0cf8f7e6ed1d
