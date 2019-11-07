@@ -115,3 +115,4 @@ ci-operator --config ../../openshift/release/ci-operator/config/codeready-toolch
 assuming that you have the https://github.com/openshift/release[OpenShift Release] repo in `$GOPATH`.
 
 NOTE: you can ignore the RBAC issues that are displayed in the console
+
