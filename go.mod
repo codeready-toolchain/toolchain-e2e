@@ -3,8 +3,8 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20191101182303-0a050462a248
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
+	github.com/codeready-toolchain/api v0.0.0-20191106003206-a7c89ec224a0
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20191107090247-4a50057c1ed0
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
@@ -40,9 +40,6 @@ replace (
 	k8s.io/kubernetes => k8s.io/kubernetes v1.14.1
 )
 
-replace (
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.0+incompatible
-	github.com/codeready-toolchain/toolchain-common => github.com/alexeykazakov/toolchain-common v0.0.0-20191102012635-0f430d8af797
-)
+replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.0+incompatible
 
 go 1.13
