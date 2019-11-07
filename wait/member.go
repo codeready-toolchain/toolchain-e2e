@@ -48,7 +48,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for correct status condition of UserAccount '%s`", ua.Name)
+		a.T.Logf("waiting for correct status conditions [%+v] of UserAccount '%s`, the actual are: [%+v]", conditions, ua.Name, ua.Status.Conditions)
 		return false
 	}
 }
