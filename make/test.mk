@@ -259,7 +259,7 @@ ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
 	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/deployment.yaml \
 	    -p IMAGE=${IMAGE_NAME} \
-	    -p E2E_TESTING_MODE=true \
+	    -p ENVIRONMENT=e2e-tests \
         | oc apply -f -
 else
     ifeq ($(IS_OS_3),)
