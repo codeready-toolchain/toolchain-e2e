@@ -645,7 +645,7 @@ func (s *userSignupIntegrationTest) newMasterUserRecord(name string, userID stri
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
 			Namespace: s.namespace,
-			Labels: map[string]string{v1alpha1.MasterUserRecordUserIDLabelKey: userID},
+			Labels:    map[string]string{v1alpha1.MasterUserRecordUserIDLabelKey: userID},
 		},
 		Spec: v1alpha1.MasterUserRecordSpec{
 			UserAccounts: userAccounts,
