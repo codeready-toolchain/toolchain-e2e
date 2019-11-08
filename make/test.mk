@@ -257,7 +257,10 @@ endif
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
 ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
-	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
+	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/deployment.yaml \
+	    -p IMAGE=${IMAGE_NAME} \
+	    -p ENVIRONMENT=e2e-tests \
+        | oc apply -f -
 else
     ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
