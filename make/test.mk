@@ -93,7 +93,7 @@ setup-kubefed:
 clean-e2e-resources:
 	$(Q)-oc get projects --output=name | grep -E "(member|host)\-operator\-[0-9]+|toolchain\-e2e\-[0-9]+" | xargs oc delete
 	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas" | xargs oc delete
-	$(Q)-oc delete crd kubefedclusters.core.kubefed.k8s.io
+	$(Q)-oc delete crd kubefedclusters.core.kubefed.io
 
 ###########################################################
 #
@@ -263,9 +263,9 @@ else
 		# it is not using OS 3 so we will install operator via CSV
 		$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
 		$(eval SUBSCRIPTION_NAME := $(shell sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f - | grep subscription | awk '{print $$1;}'))
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.k8s.io 2>/dev/null` ]]; do \
+		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]; do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster - see following info for debugging:"; \
+			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.io to be available in the cluster - see following info for debugging:"; \
 			   echo "================================ CatalogSource =================================="; \
 			   oc get ${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
 			   echo "================================ CatalogSource Pod Logs =================================="; \
@@ -276,7 +276,7 @@ else
 			   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
 			   exit 1; \
 			fi; \
-			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster; \
+			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.io to be available in the cluster; \
 			sleep 1; \
 		done
     else
