@@ -2,7 +2,6 @@ package wait
 
 import (
 	"context"
-	"reflect"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -147,7 +146,10 @@ func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster s
 
 func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
 	for _, status := range uaStatuses {
-		if reflect.DeepEqual(uaStatus, status) {
+		if uaStatus.TargetCluster == status.TargetCluster &&
+			uaStatus.SyncIndex == status.SyncIndex &&
+			test.ConditionsMatch(uaStatus.Conditions, status.Conditions...) &&
+			test.ConditionsMatch(uaStatus.UserAccountStatus.Conditions, status.UserAccountStatus.Conditions...) {
 			return true
 		}
 	}
