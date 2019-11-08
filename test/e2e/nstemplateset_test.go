@@ -103,7 +103,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	nsTmplSet, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, toBeProvisioned())
+	nsTmplSet, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, isProvisioned())
 	require.NoError(t, err)
 
 	// wait for Namespace

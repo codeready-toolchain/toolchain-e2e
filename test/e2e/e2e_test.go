@@ -40,11 +40,11 @@ func TestE2EFlow(t *testing.T) {
 	t.Logf("MasterUserRecord '%s' created", mur.Name)
 
 	verifyResources(t, awaitility, mur.Name,
-		wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-		wait.UntilUserAccountHasConditions(toBeProvisioned()))
+		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+		wait.UntilUserAccountHasConditions(isProvisioned()))
 	verifyResources(t, awaitility, extraMur.Name,
-		wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-		wait.UntilUserAccountHasConditions(toBeProvisioned()))
+		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+		wait.UntilUserAccountHasConditions(isProvisioned()))
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -60,11 +60,11 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			verifyResources(t, awaitility, mur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 			verifyResources(t, awaitility, extraMur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
 
 		t.Run("delete identity and wait until is recreated", func(t *testing.T) {
@@ -79,11 +79,11 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			verifyResources(t, awaitility, mur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 			verifyResources(t, awaitility, extraMur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
 
 		t.Run("delete user mapping and wait until is recreated", func(t *testing.T) {
@@ -99,11 +99,11 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			verifyResources(t, awaitility, mur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 			verifyResources(t, awaitility, extraMur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
 
 		t.Run("delete identity mapping and wait until is recreated", func(t *testing.T) {
@@ -119,11 +119,11 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			verifyResources(t, awaitility, mur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 			verifyResources(t, awaitility, extraMur.Name,
-				wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-				wait.UntilUserAccountHasConditions(toBeProvisioned()))
+				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
 	})
 
@@ -143,10 +143,10 @@ func TestE2EFlow(t *testing.T) {
 
 		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
 		verifyResources(t, awaitility, toBeModifiedMur.Name,
-			wait.UntilUserAccountHasConditions(toBeProvisioned()))
+			wait.UntilUserAccountHasConditions(isProvisioned()))
 		verifyResources(t, awaitility, mur.Name,
-			wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-			wait.UntilUserAccountHasConditions(toBeProvisioned()))
+			wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+			wait.UntilUserAccountHasConditions(isProvisioned()))
 	})
 
 	t.Run("update MasterUserRecord status when UserAccount status is modified", func(t *testing.T) {
@@ -166,14 +166,14 @@ func TestE2EFlow(t *testing.T) {
 		t.Logf("MasterUserRecord '%s' updated", mur.Name)
 
 		verifyResources(t, awaitility, currentMur.Name,
-			wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-			wait.UntilUserAccountHasConditions(toBeProvisioned(), coolStatus()))
+			wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+			wait.UntilUserAccountHasConditions(isProvisioned(), coolStatus()))
 
 		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
 		require.NoError(t, err)
 		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
 		verifyResources(t, awaitility, extraMur.Name,
-			wait.UntilUserAccountHasConditions(toBeProvisioned()))
+			wait.UntilUserAccountHasConditions(isProvisioned()))
 	})
 
 	t.Run("delete MasterUserRecord and expect UserAccount to be deleted", func(t *testing.T) {
@@ -193,13 +193,9 @@ func TestE2EFlow(t *testing.T) {
 		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
 		require.NoError(t, err)
 		verifyResources(t, awaitility, extraMur.Name,
-			wait.UntilUserAccountHasConditions(toBeProvisioned()))
+			wait.UntilUserAccountHasConditions(isProvisioned()))
 	})
 }
-
-// func verifyResourcesExpectingToBeProvisioned(awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterUserRecord) {
-// 	verifyResources(t, awaitility, mur, expectingMurConditions(toBeProvisioned()), expectingUaConditions(toBeProvisioned()))
-// }
 
 func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, mixedCriteria ...interface{}) {
 	masteruserrecordCriteria := []wait.MasterUserRecordWaitCriterion{}
@@ -260,7 +256,7 @@ func coolStatus() toolchainv1alpha1.Condition {
 	}
 }
 
-func toBeProvisioned() toolchainv1alpha1.Condition {
+func isProvisioned() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
 		Status: corev1.ConditionTrue,
@@ -279,8 +275,8 @@ func createMasterUserRecord(t *testing.T, awaitility *wait.Awaitility, ctx *fram
 	require.NoError(t, err)
 
 	verifyResources(t, awaitility, mur.Name,
-		wait.UntilMasterUserRecordHasConditions(toBeProvisioned()),
-		wait.UntilUserAccountHasConditions(toBeProvisioned()))
+		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+		wait.UntilUserAccountHasConditions(isProvisioned()))
 	return mur
 }
 
