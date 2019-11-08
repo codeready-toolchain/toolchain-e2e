@@ -25,7 +25,7 @@ const (
 	OperatorRetryInterval          = time.Millisecond * 200
 	OperatorTimeout                = time.Second * 60
 	RetryInterval                  = time.Millisecond * 200
-	Timeout                        = time.Second * 9
+	Timeout                        = time.Second * 20
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
@@ -121,7 +121,7 @@ func (a *SingleAwaitilityImpl) WaitForKubeFedClusterConditionWithName(name strin
 			a.T.Logf("found %s KubeFedCluster", name)
 			return true, nil
 		}
-		a.T.Logf("waiting for %s KubeFedCluster having the expected condition", name)
+		a.T.Logf("waiting for %s KubeFedCluster having the expected condition (expected: %+v vs actual: %+v)", name, condition, cluster.Status.Conditions)
 		return false, err
 	})
 }
