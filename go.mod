@@ -4,12 +4,11 @@ require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
 	github.com/codeready-toolchain/api v0.0.0-20191023231919-300ac3dd8c36
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20191008082920-e049a77c06ec
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20191104161227-62583e7d504a
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
-	github.com/openshift/client-go v3.9.0+incompatible // indirect
 	github.com/operator-framework/operator-sdk v0.10.0
 	github.com/rogpeppe/go-internal v1.4.0 // indirect
 	github.com/satori/go.uuid v1.2.0
@@ -46,5 +45,7 @@ replace (
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.1.10
 	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.11-0.20190411181648-9d55346c2bde
 )
+
+replace github.com/codeready-toolchain/toolchain-common v0.0.0-20191104161227-62583e7d504a => ../toolchain-common
 
 go 1.13
