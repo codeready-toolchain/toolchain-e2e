@@ -75,8 +75,24 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 	return userAccount, err
 }
 
+// NSTemplateSetWaitCriterion a function to check that an NSTemplateSet has the expected condition
+type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.NSTemplateSet) bool
+
+// UntilNSTemplateSetHasConditions returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet has exactly all the given status conditions
+func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
+	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
+		if test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
+			return true
+		}
+		a.T.Logf("waiting for correct status conditions [%+v] of NSTemplateSet '%s', the actual are: [%+v]", conditions, nsTmplSet.Name, nsTmplSet.Status.Conditions)
+		return false
+	}
+}
+
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
-func (a *MemberAwaitility) WaitForNSTmplSet(name string, conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.NSTemplateSet, error) {
+func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
 	nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
@@ -86,9 +102,10 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, conditions ...toolchain
 			}
 			return false, err
 		}
-		if len(conditions) != 0 && !test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...) {
-			a.T.Logf("waiting for correct status conditions [%+v] of NSTemplateSet '%s', the actual are: [%+v]", conditions, nsTmplSet.Name, nsTmplSet.Status.Conditions)
-			return false, nil
+		for _, match := range criteria {
+			if !match(a, nsTmplSet) {
+				return false, nil
+			}
 		}
 		a.T.Logf("found NSTemplateSet '%s'", name)
 		return true, nil
