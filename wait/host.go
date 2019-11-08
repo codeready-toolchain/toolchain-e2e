@@ -148,8 +148,7 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 	for _, status := range uaStatuses {
 		if uaStatus.TargetCluster == status.TargetCluster &&
 			uaStatus.SyncIndex == status.SyncIndex &&
-			test.ConditionsMatch(uaStatus.Conditions, status.Conditions...) &&
-			test.ConditionsMatch(uaStatus.UserAccountStatus.Conditions, status.UserAccountStatus.Conditions...) {
+			test.ConditionsMatch(uaStatus.Conditions, status.Conditions...) {
 			return true
 		}
 	}
