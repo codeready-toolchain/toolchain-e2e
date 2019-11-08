@@ -481,7 +481,6 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userSignup.Status.CompliantUsername, Namespace: s.namespace}, mur)
 	require.NoError(s.T(), err)
 
-	require.Equal(s.T(), userSignup.Name, mur.Spec.UserID)
 	require.Len(s.T(), mur.Spec.UserAccounts, 1)
 	require.Equal(s.T(), userSignup.Name, mur.Spec.UserAccounts[0].Spec.UserID)
 	require.Equal(s.T(), "default", mur.Spec.UserAccounts[0].Spec.NSLimit)
@@ -646,10 +645,9 @@ func (s *userSignupIntegrationTest) newMasterUserRecord(name string, userID stri
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
 			Namespace: s.namespace,
-			Labels: map[string]string{v1alpha1.MasterUserRecordUserIDLabelKey: name},
+			Labels: map[string]string{v1alpha1.MasterUserRecordUserIDLabelKey: userID},
 		},
 		Spec: v1alpha1.MasterUserRecordSpec{
-			UserID:       userID,
 			UserAccounts: userAccounts,
 		},
 	}
