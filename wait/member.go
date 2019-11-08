@@ -118,7 +118,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
 		opts := client.MatchingLabels(labels)
-		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
@@ -143,7 +143,7 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) 
 		labels := map[string]string{"owner": username, "type": typeName}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
-		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
