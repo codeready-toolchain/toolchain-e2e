@@ -27,12 +27,18 @@ func TestNSTemplateSet(t *testing.T) {
 	suite.Run(t, &nsTemplateSetTest{})
 }
 
-func (s *nsTemplateSetTest) SetupSuite() {
+func (s *nsTemplateSetTest) SetupTest() {
 	nsTmplSetList := &toolchainv1alpha1.NSTemplateSetList{}
 	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), nsTmplSetList)
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.MemberNs
 	s.basicTier = getBasicTier(s.T(), s.awaitility.Client, s.awaitility.HostNs)
+}
+
+func (s *nsTemplateSetTest) TearDownTest() {
+	if s.testCtx != nil {
+		s.testCtx.Cleanup()
+	}
 }
 
 func (s *nsTemplateSetTest) TestCreateOK() {
@@ -44,18 +50,23 @@ func (s *nsTemplateSetTest) TestCreateOK() {
 func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 	t := s.T()
 	username := "amit"
-
-	s.createAndVerifyNSTmplSet(username)
-
-	// delete Namespace dev
-	typeName := "dev"
-	t.Logf("Deleting Namespace type :%s", typeName)
-	devNs := s.memberAwait.GetNamespace(username, typeName)
-	err := s.awaitility.Client.Delete(context.TODO(), devNs)
+	nsTmplSet := s.createAndVerifyNSTmplSet(username)
+	// delete Namespace 'dev'
+	typ := "dev"
+	var revision string
+	for _, ns := range nsTmplSet.Spec.Namespaces {
+		if ns.Type == typ {
+			revision = ns.Revision
+		}
+	}
+	t.Logf("Deleting Namespace type :%s", typ)
+	devNs, err := s.memberAwait.WaitForNamespace(username, typ, revision)
+	require.NoError(t, err)
+	err = s.awaitility.Client.Delete(context.TODO(), devNs)
 	require.NoError(t, err)
 
 	// wait for Namespace dev to recreate
-	err = s.memberAwait.WaitForNamespace(username, devNs.Labels["type"], devNs.Labels["revision"])
+	_, err = s.memberAwait.WaitForNamespace(username, devNs.Labels["type"], devNs.Labels["revision"])
 	require.NoError(t, err)
 }
 
@@ -71,12 +82,12 @@ func (s *nsTemplateSetTest) TestDeleteOK() {
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	err = s.memberAwait.WaitForDeletedNSTmplSet(nsTmplSet.Name)
+	err = s.memberAwait.WaitUntilNSTemplateSetDeleted(nsTmplSet.Name)
 	require.NoError(t, err)
 
 	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitForDeletedNamespace(username, ns.Type)
+		err = s.memberAwait.WaitUntilNamespaceDeleted(username, ns.Type)
 		require.NoError(t, err)
 	}
 }
@@ -92,12 +103,12 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, toBeProvisioned())
+	nsTmplSet, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, wait.UntilNSTemplateSetHasConditions(isProvisioned()))
 	require.NoError(t, err)
 
 	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitForNamespace(username, ns.Type, ns.Revision)
+		_, err = s.memberAwait.WaitForNamespace(username, ns.Type, ns.Revision)
 		require.NoError(t, err)
 	}
 
