@@ -203,7 +203,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	// 2) the Approved reason is set to PendingApproval
 	// 3) the Complete condition is set to false
 	// 4) the Complete reason is set to PendingApproval
-	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
@@ -215,9 +215,6 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 			Reason: "PendingApproval",
 		}))
 	require.NoError(s.T(), err)
-
-	// Get the newly created UserSignup resource
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
 
 	// Confirm the CompliantUsername has NOT been set
 	require.Empty(s.T(), userSignup.Status.CompliantUsername)
@@ -235,7 +232,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Confirm that the conditions are the same as if no approval value was set
-	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
@@ -248,15 +245,15 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 		}))
 	require.NoError(s.T(), err)
 
-	// Now, reload the UserSignup, manually approve it (setting Approved to true) and update the resource
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	// Now, manually approve it (setting Approved to true) and update the resource
 	userSignup.Spec.Approved = true
 
 	err = s.awaitility.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
 	// Lookup the UserSignup again
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
 
 	require.NotEmpty(s.T(), userSignup.Status.CompliantUsername)
 
@@ -291,7 +288,8 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	require.NoError(s.T(), err)
 
 	// Lookup the UserSignup again
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created
 	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
@@ -332,7 +330,8 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Get the newly created UserSignup resource
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
 	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
@@ -381,7 +380,8 @@ func (s *userSignupIntegrationTest) TestDeletedUserSignupIsGarbageCollected() {
 	require.NoError(s.T(), err)
 
 	// Get the newly created UserSignup resource
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
 	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
@@ -416,7 +416,8 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalNoApprovalSet(
 	require.NoError(s.T(), err)
 
 	// Get the newly created UserSignup resource
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
 	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
@@ -455,7 +456,8 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 	require.NoError(s.T(), err)
 
 	// Get the newly created UserSignup resource
-	userSignup = s.hostAwait.GetUserSignup(userSignup.Name)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord was created
 	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
