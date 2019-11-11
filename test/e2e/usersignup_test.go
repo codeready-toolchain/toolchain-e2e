@@ -631,7 +631,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 	_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
 	require.NoError(s.T(), err)
 
-	// Create user signup with the same name but different UserID as the MUR
+	// Create user signup with the same UserID as the MURs
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
 	userSignup := s.newUserSignup(userID, "robert@hotel.com")
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
