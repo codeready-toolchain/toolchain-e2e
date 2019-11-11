@@ -595,15 +595,8 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	require.NoError(s.T(), err)
 
 	// Confirm that:
-	// 1) the Approved condition is set to true
-	// 2) the Approved reason is set to ApprovedAutomatically
-	// 3) the Complete condition is (eventually) set to true
+	// 1) the Complete condition is set to true
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
-		v1alpha1.Condition{
-			Type:   v1alpha1.UserSignupApproved,
-			Status: corev1.ConditionTrue,
-			Reason: "ApprovedAutomatically",
-		},
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
@@ -618,7 +611,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 	// Create a MUR
 	s.T().Logf("Creating MasterUserRecord with namespace %s", s.namespace)
 	userID := uuid.NewV4().String()
-	mur := s.newMasterUserRecord("paul-at-hotel-com", userID)
+	mur := s.newMasterUserRecord("robert-at-hotel-com", userID)
 	err := s.awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("MasterUserRecord '%s' created", mur.Name)
@@ -629,7 +622,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 
 	// Create a second MUR with the same UserID but different name
 	s.T().Logf("Creating MasterUserRecord with namespace %s", s.namespace)
-	mur = s.newMasterUserRecord("pauline-at-hotel-com", userID)
+	mur = s.newMasterUserRecord("roberta-at-hotel-com", userID)
 	err = s.awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("MasterUserRecord '%s' created", mur.Name)
@@ -640,25 +633,18 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 
 	// Create user signup with the same name but different UserID as the MUR
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(userID, "paul@hotel.com")
+	userSignup := s.newUserSignup(userID, "robert@hotel.com")
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
 
 	// Confirm the UserSignup was created
-	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
-	require.NoError(s.T(), err)
-
-	// Confirm that:
-	// 3) the Complete condition is set to false
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,
-			Reason: "InvalidMURState",
 		}))
 	require.NoError(s.T(), err)
-
 }
 
 func (s *userSignupIntegrationTest) newUserSignup(userID, username string) *v1alpha1.UserSignup {
