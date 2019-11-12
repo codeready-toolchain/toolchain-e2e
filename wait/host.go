@@ -26,9 +26,10 @@ func NewHostAwaitility(a *Awaitility) *HostAwaitility {
 
 // WaitForMasterUserRecord waits until there is MasterUserRecord with the given name and the optional conditions is available
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
-	mur := &toolchainv1alpha1.MasterUserRecord{}
+	var mur *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
+		obj := &toolchainv1alpha1.MasterUserRecord{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of MasterUserRecord '%s'", name)
 				return false, nil
@@ -36,11 +37,12 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(a, mur) {
+			if !match(a, obj) {
 				return false, nil
 			}
 		}
 		a.T.Logf("found MasterUserAccount '%s'", name)
+		mur = obj
 		return true, nil
 	})
 	return mur, err
@@ -98,9 +100,10 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
 func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
-	userSignup := &toolchainv1alpha1.UserSignup{}
+	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userSignup); err != nil {
+		obj := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of UserSignup '%s'", name)
 				return false, nil
@@ -108,11 +111,12 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(a, userSignup) {
+			if !match(a, obj) {
 				return false, nil
 			}
 		}
 		a.T.Logf("found UserSignup '%s'", name)
+		userSignup = obj
 		return true, nil
 	})
 	return userSignup, err
@@ -156,10 +160,11 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name and conditions is present
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
-	tier := &toolchainv1alpha1.NSTemplateTier{}
+	var tier *toolchainv1alpha1.NSTemplateTier
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Ns)
-		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, tier)
+		obj := &toolchainv1alpha1.NSTemplateTier{}
+		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
 			a.T.Logf("NSTemplateTier '%s' could not be fetched", name)
 			// return the error
@@ -171,13 +176,14 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 		}
 		for _, match := range criteria {
 			// if at least one criteria does not match, keep waiting
-			if !match(tier) {
+			if !match(obj) {
 				// keep waiting
 				a.T.Logf("NSTemplateTier '%s' in namespace '%s' is not matching the expected criteria", name, a.Ns)
 				return false, nil
 			}
 		}
 		// stop waiting
+		tier = obj
 		return true, nil
 	})
 	return tier, err

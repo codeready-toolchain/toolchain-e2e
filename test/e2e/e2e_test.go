@@ -15,6 +15,7 @@ import (
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,27 +25,12 @@ func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup ewith approval down to namespaces creation
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
-	defer ctx.Cleanup()
+	// defer ctx.Cleanup()
 
-	extraMur := createMasterUserRecord(t, awaitility, ctx, "extrajohn")
-	t.Log("extra MasterUserRecord created at start")
-	targetCluster := extraMur.Spec.UserAccounts[0].TargetCluster
-	mur := murtest.NewMasterUserRecord("johnsmith",
-		murtest.MetaNamespace(awaitility.HostNs), murtest.TargetCluster(targetCluster))
-
-	// when
-	err := awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(ctx))
-
-	// then
+	johnSignup, johnMur, err := setup(ctx, awaitility, "johnsmith")
 	require.NoError(t, err)
-	t.Logf("MasterUserRecord '%s' created", mur.Name)
-
-	verifyResources(t, awaitility, mur.Name,
-		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
-		wait.UntilUserAccountHasConditions(isProvisioned()))
-	verifyResources(t, awaitility, extraMur.Name,
-		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
-		wait.UntilUserAccountHasConditions(isProvisioned()))
+	_, extrajohnMur, err := setup(ctx, awaitility, "extrajohn")
+	require.NoError(t, err)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -59,10 +45,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, mur.Name,
+			verifyResources(t, awaitility, johnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extraMur.Name,
+			verifyResources(t, awaitility, extrajohnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -78,10 +64,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, mur.Name,
+			verifyResources(t, awaitility, johnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extraMur.Name,
+			verifyResources(t, awaitility, extrajohnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -98,10 +84,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, mur.Name,
+			verifyResources(t, awaitility, johnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extraMur.Name,
+			verifyResources(t, awaitility, extrajohnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -118,48 +104,83 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, mur.Name,
+			verifyResources(t, awaitility, johnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extraMur.Name,
+			verifyResources(t, awaitility, extrajohnMur.Name,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
 	})
 
-	t.Run("delete MasterUserRecord and expect UserAccount to be deleted", func(t *testing.T) {
+	t.Run("delete UserSignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
-		toBeModifiedMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
+		hostAwait := wait.NewHostAwaitility(awaitility)
+		memberAwait := wait.NewMemberAwaitility(awaitility)
+		johnSignup, err = hostAwait.WaitForUserSignup(johnSignup.Name)
 		require.NoError(t, err)
-		murtest.ModifyUaInMur(toBeModifiedMur, targetCluster, murtest.NsLimit("advanced"),
-			murtest.TierName("admin"), murtest.Namespace("che", "4321"))
 
 		// when
-		err = awaitility.Client.Update(context.TODO(), toBeModifiedMur)
+		err = awaitility.Client.Delete(context.TODO(), johnSignup)
 
 		// then
 		require.NoError(t, err)
 		t.Logf("MasterUserRecord '%s' deleted", johnMur.Name)
 
-		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
-		verifyResources(t, awaitility, toBeModifiedMur.Name,
-			wait.UntilUserAccountHasConditions(isProvisioned()))
-		verifyResources(t, awaitility, mur.Name,
-			wait.UntilMasterUserRecordHasConditions(isProvisioned()),
-			wait.UntilUserAccountHasConditions(isProvisioned()))
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(johnMur.Name)
+		assert.NoError(t, err, "MasterUserRecord is not deleted")
+
+		err = memberAwait.WaitUntilUserAccountDeleted(johnMur.Name)
+		assert.NoError(t, err, "UserAccount is not deleted")
+
+		err = memberAwait.WaitUntilUserDeleted(johnMur.Name)
+		assert.NoError(t, err, "User is not deleted")
+
+		err = memberAwait.WaitUntilIdentityDeleted(johnMur.Name)
+		assert.NoError(t, err, "Identity is not deleted")
+
+		err = memberAwait.WaitUntilNamespaceDeleted(johnMur.Name, "code")
+		assert.NoError(t, err, "johnsmith-code namnespace is not deleted")
+
+		err = memberAwait.WaitUntilNamespaceDeleted(johnMur.Name, "dev")
+		assert.NoError(t, err, "johnsmith-dev namnespace is not deleted")
+
+		err = memberAwait.WaitUntilNamespaceDeleted(johnMur.Name, "stage")
+		assert.NoError(t, err, "johnsmith-stage namnespace is not deleted")
+
+		// also, verify that other user's resource are left intact
+		extrajohnMur, err = hostAwait.WaitForMasterUserRecord(extrajohnMur.Name)
+		require.NoError(t, err)
+		verifyResources(t, awaitility, extrajohnMur.Name, wait.UntilMasterUserRecordHasConditions(isProvisioned()))
 	})
+}
 
-	t.Run("update MasterUserRecord status when UserAccount status is modified", func(t *testing.T) {
-		// given
-		currentMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(mur.Name)
-		require.NoError(t, err)
-		userAccount, err := wait.NewMemberAwaitility(awaitility).WaitForUserAccount(mur.Name)
-		require.NoError(t, err)
-		userAccount.Status.Conditions, _ = condition.AddOrUpdateStatusConditions(
-			userAccount.Status.Conditions, coolStatus())
+func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, error) {
+	memberCluster, ok, err := awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !ok {
+		return nil, nil, fmt.Errorf("KubeFedCluster should exist")
+	}
 
-		// when
-		err = awaitility.ControllerClient.Status().Update(context.TODO(), userAccount)
+	// 0. Verify that the `basic` NSTemplateTier resource exists (will be needed later)
+	basicTier := v1alpha1.NSTemplateTier{}
+	err = awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: awaitility.HostNs,
+		Name:      "basic",
+	}, &basicTier)
+	if err != nil {
+		return nil, nil, err
+	}
+	revisions := make(map[string]string, 3)
+	for _, typ := range []string{"code", "dev", "stage"} {
+		if r, found := namespaceRevision(basicTier, typ); found {
+			revisions[typ] = r
+			continue
+		}
+		return nil, nil, fmt.Errorf("unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
+	}
 
 	// 1. Create a UserSignup resource
 	userID := uuid.NewV4().String()
@@ -172,53 +193,132 @@ func TestE2EFlow(t *testing.T) {
 		return nil, nil, err
 	}
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err = awaitility.Host().WaitForUserSignupStatusConditions(userSignup.Name,
-		v1alpha1.Condition{
-			Type:   v1alpha1.UserSignupApproved,
-			Status: corev1.ConditionFalse,
-			Reason: "PendingApproval",
-		},
-		v1alpha1.Condition{
-			Type:   v1alpha1.UserSignupComplete,
-			Status: corev1.ConditionFalse,
-			Reason: "PendingApproval",
-		})
+	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupApproved,
+				Status: corev1.ConditionFalse,
+				Reason: "PendingApproval",
+			},
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupComplete,
+				Status: corev1.ConditionFalse,
+				Reason: "PendingApproval",
+			}))
 	if err != nil {
 		return nil, nil, err
 	}
 
-		verifyResources(t, awaitility, currentMur.Name,
-			wait.UntilMasterUserRecordHasConditions(isProvisioned()),
-			wait.UntilUserAccountHasConditions(isProvisioned(), coolStatus()))
+	// 2. approve the UserSignup
+	userSignup.Spec.Approved = true
+	err = awaitility.Host().Client.Update(context.TODO(), userSignup)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Check the updated conditions
+	_, err = awaitility.Host().WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupApproved,
+				Status: corev1.ConditionTrue,
+				Reason: "ApprovedByAdmin",
+			},
+			v1alpha1.Condition{
+				Type:   v1alpha1.UserSignupComplete,
+				Status: corev1.ConditionTrue,
+			}))
+	if err != nil {
+		return nil, nil, err
+	}
 
-		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
-		require.NoError(t, err)
-		// TODO: verify expected condition when the member operator has a logic that updates NsTemplateSet and its status
-		verifyResources(t, awaitility, extraMur.Name,
-			wait.UntilUserAccountHasConditions(isProvisioned()))
-	})
+	// 3. Wait for MUR to be created
+	mur, err := awaitility.Host().WaitForMasterUserRecord(username,
+		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+		wait.UntilMasterUserRecordHasUserAccountStatuses(
+			v1alpha1.UserAccountStatusEmbedded{
+				TargetCluster: memberCluster.Name,
+				UserAccountStatus: toolchainv1alpha1.UserAccountStatus{
+					Conditions: []toolchainv1alpha1.Condition{
+						isProvisioned(),
+					},
+				},
+			},
+		),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(mur.Spec.UserAccounts) != 1 {
+		return nil, nil, fmt.Errorf("unexpected number of user accounts: %d", len(mur.Spec.UserAccounts))
+	}
 
-	t.Run("delete MasterUserRecord and expect UserAccount to be deleted", func(t *testing.T) {
-		// given
-		currentMur, err := wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(mur.Name)
-		require.NoError(t, err)
+	// 4. Wait for UserAccount to be ready/provisioned with the expect spec
+	_, err = awaitility.Member().WaitForUserAccount(username,
+		wait.UntilUserAccountHasSpec(
+			v1alpha1.UserAccountSpec{
+				UserID:   userID,
+				Disabled: false,
+				NSLimit:  "default",
+				NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+					TierName: "basic",
+					Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
+						{
+							Type:     "code",
+							Revision: revisions["code"],
+							Template: "", // must be empty
+						},
+						{
+							Type:     "dev",
+							Revision: revisions["dev"],
+							Template: "", // must be empty
+						},
+						{
+							Type:     "stage",
+							Revision: revisions["stage"],
+							Template: "", // must be empty
+						},
+					},
+				},
+			}),
+		wait.UntilUserAccountHasConditions(isProvisioned()),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
 
-		// when
-		err = awaitility.Client.Delete(context.TODO(), currentMur)
+	// 5. Wait for User/Identity to be created
+	_, err = awaitility.Member().WaitForUser(username)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = awaitility.Member().WaitForIdentity("rhd:" + userID)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// 6. Wait for NSTemplateSet to be ready/provisioned
-	err = awaitility.Member().WaitForNSTmplSet(username, toBeProvisioned())
+	_, err = awaitility.Member().WaitForNSTmplSet(username,
+		wait.UntilNSTemplateSetHasConditions(isProvisioned()))
 	if err != nil {
 		return nil, nil, err
 	}
 
-		verifyDeletion(t, awaitility, currentMur)
+	// 7. Wait for Namespaces to be created
+	for typ, revision := range revisions {
+		if _, err := awaitility.Member().WaitForNamespace(username, typ, revision); err != nil {
+			return nil, nil, err
+		}
+	}
+	return userSignup, mur, nil
+}
 
-		extraMur, err = wait.NewHostAwaitility(awaitility).WaitForMasterUserRecord(extraMur.Name)
-		require.NoError(t, err)
-		verifyResources(t, awaitility, extraMur.Name,
-			wait.UntilUserAccountHasConditions(isProvisioned()))
-	})
+func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) {
+	for _, ns := range tier.Spec.Namespaces {
+		if ns.Type == typ {
+			return ns.Revision, true
+		}
+	}
+	return "", false
 }
 
 func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, mixedCriteria ...interface{}) {
@@ -271,17 +371,6 @@ func verifyNSTmplSet(t *testing.T, awaitility *wait.MemberAwaitility, userAcc *t
 	assert.NoError(t, err)
 }
 
-	err = awaitility.Member().WaitForUserIdentity(userAccount.Name, toIdentityName(userAccount.Spec.UserID))
-	require.NoError(awaitility.T, err)
-
-func isProvisioned() toolchainv1alpha1.Condition {
-	return toolchainv1alpha1.Condition{
-		Type:   toolchainv1alpha1.ConditionReady,
-		Status: corev1.ConditionTrue,
-		Reason: "Provisioned",
-	}
-}
-
 func createMasterUserRecord(t *testing.T, awaitility *wait.Awaitility, ctx *framework.TestCtx, name string) *toolchainv1alpha1.MasterUserRecord {
 	memberCluster, ok, err := awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
 	require.NoError(t, err)
@@ -300,21 +389,4 @@ func createMasterUserRecord(t *testing.T, awaitility *wait.Awaitility, ctx *fram
 
 func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
-}
-
-func verifyDeletion(t *testing.T, awaitility *wait.Awaitility, mur *toolchainv1alpha1.MasterUserRecord) {
-	hostAwait := wait.NewHostAwaitility(awaitility)
-	memberAwait := wait.NewMemberAwaitility(awaitility)
-
-	err := hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
-	assert.NoError(t, err, "MasterUserRecord is not deleted")
-
-	err = memberAwait.WaitUntilUserAccountDeleted(mur.Name)
-	assert.NoError(t, err, "UserAccount is not deleted")
-
-	err = memberAwait.WaitUntilUserDeleted(mur.Name)
-	assert.NoError(t, err, "User is not deleted")
-
-	err = memberAwait.WaitUntilIdentityDeleted(mur.Name)
-	assert.NoError(t, err, "Identity is not deleted")
 }
