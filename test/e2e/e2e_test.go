@@ -25,7 +25,7 @@ func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup ewith approval down to namespaces creation
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
-	// defer ctx.Cleanup()
+	defer ctx.Cleanup()
 
 	johnSignup, johnMur, err := setup(ctx, awaitility, "johnsmith")
 	require.NoError(t, err)
