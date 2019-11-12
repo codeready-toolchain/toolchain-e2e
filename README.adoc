@@ -127,6 +127,6 @@ All e2e resources (host operator, member operator, registration-service, CRDs, e
 
 By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 
-NOTE: you can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
+NOTE: You can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
 
 NOTE: If running in Minishift `eval $(minishift docker-env)` and `eval $(minishift oc-env)` are required. If running in CodeReady Containers `eval $(crc oc-env)` is required.
