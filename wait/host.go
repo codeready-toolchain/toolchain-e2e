@@ -28,6 +28,7 @@ func NewHostAwaitility(a *Awaitility) *HostAwaitility {
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	mur := &toolchainv1alpha1.MasterUserRecord{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		mur = &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of MasterUserRecord '%s'", name)
@@ -101,6 +102,7 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	userSignup := &toolchainv1alpha1.UserSignup{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		userSignup = &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userSignup); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of UserSignup '%s'", name)
@@ -159,6 +161,7 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	tier := &toolchainv1alpha1.NSTemplateTier{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		tier = &toolchainv1alpha1.NSTemplateTier{}
 		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Ns)
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, tier)
 		if err != nil && !errors.IsNotFound(err) {
