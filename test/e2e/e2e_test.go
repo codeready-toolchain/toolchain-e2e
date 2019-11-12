@@ -197,6 +197,28 @@ func TestE2EFlow(t *testing.T) {
 	})
 }
 
+func TestE2EFlowForMultipleAccounts(t *testing.T) {
+	// given
+	murList := &toolchainv1alpha1.MasterUserRecordList{}
+	ctx, awaitility := testsupport.WaitForDeployments(t, murList)
+	defer ctx.Cleanup()
+
+	// when
+	var murs []*toolchainv1alpha1.MasterUserRecord
+	for i := 0; i < 10; i++ {
+		mur := createMasterUserRecord(t, awaitility, ctx, fmt.Sprintf("johny-number-%d", i))
+		t.Logf("MasterUserRecord '%s' created", mur.Name)
+		murs = append(murs, mur)
+	}
+
+	// then
+	for _, mur := range murs {
+		verifyResources(t, awaitility, mur.Name,
+			wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+			wait.UntilUserAccountHasConditions(isProvisioned()))
+	}
+}
+
 func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, mixedCriteria ...interface{}) {
 	masteruserrecordCriteria := []wait.MasterUserRecordWaitCriterion{}
 	useraccountCriteria := []wait.UserAccountWaitCriterion{}
