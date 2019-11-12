@@ -162,6 +162,7 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	var tier *toolchainv1alpha1.NSTemplateTier
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		tier = &toolchainv1alpha1.NSTemplateTier{}
 		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Ns)
 		obj := &toolchainv1alpha1.NSTemplateTier{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj)

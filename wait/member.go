@@ -137,6 +137,7 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		namespaceList = &v1.NamespaceList{}
 		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
@@ -181,6 +182,7 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) 
 func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 	user := &userv1.User{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		user = &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of user '%s'", name)
@@ -201,6 +203,7 @@ func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error) {
 	identity := &userv1.Identity{}
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		identity = &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of identity '%s'", name)
