@@ -129,4 +129,4 @@ By default these targets deploy resources to `toolchain-host-operator` and `tool
 
 NOTE: you can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
 
-NOTE: if running in Minishift `eval $(minishift docker-env)` `eval $(minishift oc-env)` is required and if running in CodeReady Containers: `eval $(crc oc-env)`
+NOTE: If running in Minishift `eval $(minishift docker-env)` and `eval $(minishift oc-env)` are required. If running in CodeReady Containers `eval $(crc oc-env)` is required.
