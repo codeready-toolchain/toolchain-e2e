@@ -639,6 +639,17 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
 
 	// Confirm the UserSignup was created
+	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
+
+	s.T().Logf("Number of conditions found: %s", len(userSignup.Status.Conditions))
+
+	for i, _ := range userSignup.Status.Conditions {
+		cond := userSignup.Status.Conditions[i]
+		s.T().Logf("Condition type: %s, Status: %s", cond.Type, cond.Status)
+	}
+
+	// Confirm the UserSignup was created
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupComplete,
