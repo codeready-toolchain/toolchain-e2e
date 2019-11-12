@@ -16,14 +16,13 @@ IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.ser
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
-.PHONY: test-e2e-keep-namespaces
-test-e2e-keep-namespaces: login-as-admin deploy-member deploy-host deploy-registration setup-kubefed e2e-run
-
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e
-test-e2e: build-with-operators test-e2e-keep-namespaces clean-e2e-resources
+test-e2e: build-with-operators login-as-admin deploy-member deploy-host deploy-registration setup-kubefed e2e-run
+	@echo "The tests successfuly finished"
+	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host' and 'member' repositories
@@ -92,8 +91,8 @@ setup-kubefed:
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
 	$(Q)-oc get projects --output=name | grep -E "(member|host)\-operator\-[0-9]+|toolchain\-e2e\-[0-9]+" | xargs oc delete
-	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas" | xargs oc delete
-	$(Q)-oc delete crd kubefedclusters.core.kubefed.k8s.io
+	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas" | xargs oc delete -n openshift-marketplace
+	$(Q)-oc delete crd kubefedclusters.core.kubefed.io
 
 ###########################################################
 #
@@ -257,26 +256,32 @@ endif
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
 ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
-	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/deployment_dev.yaml | oc apply -f -
+	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/deployment.yaml \
+	    -p IMAGE=${IMAGE_NAME} \
+	    -p ENVIRONMENT=e2e-tests \
+        | oc apply -f -
 else
     ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
-		$(eval CATALOGSOURCE_NAME := $(shell sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/hack/deploy_csv.yaml | oc apply -f - | grep catalogsource | awk '{print $$1;}'))
-		$(eval SUBSCRIPTION_NAME := $(shell sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g' ${E2E_REPO_PATH}/hack/install_operator.yaml | oc apply -f - | grep subscription | awk '{print $$1;}'))
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.k8s.io 2>/dev/null` ]]; do \
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${DATE_SUFFIX}|;s|^  configMap: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/deploy_csv.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
+		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
+		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
+		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]; do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster - see following info for debugging:"; \
+			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas.*${DATE_SUFFIX}"`; \
+			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "codeready-toolchain-saas"`; \
+			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.io to be available in the cluster - see following info for debugging:"; \
 			   echo "================================ CatalogSource =================================="; \
-			   oc get ${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
+			   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
 			   echo "================================ CatalogSource Pod Logs =================================="; \
-			   CATALOGSOURCE_NAME=${CATALOGSOURCE_NAME}; \
-			   oc logs `oc get pods -n openshift-marketplace -o name | grep $${CATALOGSOURCE_NAME#*/}` -n openshift-marketplace; \
+			   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
 			   echo "================================ Subscription =================================="; \
-			   oc get ${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+			   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
 			   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
 			   exit 1; \
 			fi; \
-			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.k8s.io to be available in the cluster; \
+			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.io to be available in the cluster; \
 			sleep 1; \
 		done
     else

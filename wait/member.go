@@ -29,30 +29,72 @@ func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 		}}
 }
 
+// UserAccountWaitCriterion a function to check that a user account has the expected condition
+type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool
+
+// UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has the expected spec
+func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		return reflect.DeepEqual(ua.Spec, expected)
+	}
+}
+
+// UntilUserAccountHasConditions returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has exactly all the given status conditions
+func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
+			return true
+		}
+		a.T.Logf("waiting for correct status conditions [%+v] of UserAccount '%s', the actual are: [%+v]", conditions, ua.Name, ua.Status.Conditions)
+		return false
+	}
+}
+
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
-func (a *MemberAwaitility) WaitForUserAccount(name string, expSpec toolchainv1alpha1.UserAccountSpec, conditions ...toolchainv1alpha1.Condition) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		ua := &toolchainv1alpha1.UserAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
+func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
+	userAccount := &toolchainv1alpha1.UserAccount{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userAccount); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of useraccount '%s'", name)
 				return false, nil
 			}
 			return false, err
 		}
-		if reflect.DeepEqual(ua.Spec, expSpec) &&
-			test.ConditionsMatch(ua.Status.Conditions, conditions...) {
-			a.T.Logf("found UserAccount '%s' with expected spec and status condition", name)
-			return true, nil
+		for _, match := range criteria {
+			if !match(a, userAccount) {
+				return false, nil
+			}
 		}
-		a.T.Logf("waiting for UserAccount '%s' with expected spec and status condition", name)
-		return false, nil
+		a.T.Logf("found UserAccount '%s'", name)
+		return true, nil
 	})
+	return userAccount, err
 }
 
-func (a *MemberAwaitility) WaitForNSTmplSet(name string, waitCond ...toolchainv1alpha1.Condition) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+// NSTemplateSetWaitCriterion a function to check that an NSTemplateSet has the expected condition
+type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.NSTemplateSet) bool
+
+// UntilNSTemplateSetHasConditions returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet has exactly all the given status conditions
+func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
+	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
+		if test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
+			return true
+		}
+		a.T.Logf("waiting for correct status conditions [%+v] of NSTemplateSet '%s', the actual are: [%+v]", conditions, nsTmplSet.Name, nsTmplSet.Status.Conditions)
+		return false
+	}
+}
+
+// WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
+func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
+	nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
@@ -60,16 +102,19 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, waitCond ...toolchainv1
 			}
 			return false, err
 		}
-		if len(waitCond) != 0 && !test.ConditionsMatch(nsTmplSet.Status.Conditions, waitCond...) {
-			a.T.Logf("waiting for conditions match for NSTemplateSet '%s'", name)
-			return false, nil
+		for _, match := range criteria {
+			if !match(a, nsTmplSet) {
+				return false, nil
+			}
 		}
 		a.T.Logf("found NSTemplateSet '%s'", name)
 		return true, nil
 	})
+	return nsTmplSet, err
 }
 
-func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
+// WaitUntilNSTemplateSetDeleted waits until the NSTemplateSet with the given name is deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
@@ -84,22 +129,13 @@ func (a *MemberAwaitility) WaitForDeletedNSTmplSet(name string) error {
 	})
 }
 
-func (a *MemberAwaitility) GetNamespace(username, typeName string) *v1.Namespace {
-	labels := map[string]string{"owner": username, "type": typeName}
-	opts := client.MatchingLabels(labels)
+// WaitForNamespace waits until a namespace with the given owner (username), type and revision labels exists
+func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}
-	err := a.Client.List(context.TODO(), opts, namespaceList)
-	require.NoError(a.T, err)
-	require.Len(a.T, namespaceList.Items, 1)
-	return &namespaceList.Items[0]
-}
-
-func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
 		opts := client.MatchingLabels(labels)
-		namespaceList := &v1.NamespaceList{}
-		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
@@ -111,14 +147,20 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 		a.T.Logf("found Namespace type '%s' with revision '%s'", typeName, revision)
 		return true, nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	ns := namespaceList.Items[0]
+	return &ns, nil
 }
 
-func (a *MemberAwaitility) WaitForDeletedNamespace(username, typeName string) error {
+// WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		labels := map[string]string{"owner": username, "type": typeName}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
-		if err := a.Client.List(context.TODO(), opts, namespaceList); err != nil {
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
@@ -131,29 +173,10 @@ func (a *MemberAwaitility) WaitForDeletedNamespace(username, typeName string) er
 	})
 }
 
-// GetUserAccount returns a UserAccount with the given name if is available, otherwise it fails
-func (a *MemberAwaitility) GetUserAccount(name string) *toolchainv1alpha1.UserAccount {
-	ua := &toolchainv1alpha1.UserAccount{}
-	err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua)
-	require.NoError(a.T, err)
-	return ua
-}
-
-// WaitForUserIdentity waits until there is a User with the given name available,
-// and then waits for an Identity with the given name
-func (a *MemberAwaitility) WaitForUserIdentity(username, identityName string) error {
-	err := a.WaitForUser(username)
-	if err != nil {
-		return err
-	}
-	return a.WaitForIdentity(identityName)
-
-}
-
 // WaitForUser waits until there is a User with the given name available
-func (a *MemberAwaitility) WaitForUser(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		user := &userv1.User{}
+func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
+	user := &userv1.User{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of user '%s'", name)
@@ -167,12 +190,13 @@ func (a *MemberAwaitility) WaitForUser(name string) error {
 		}
 		return false, nil
 	})
+	return user, err
 }
 
 // WaitForIdentity waits until there is an Identity with the given name available
-func (a *MemberAwaitility) WaitForIdentity(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		identity := &userv1.Identity{}
+func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error) {
+	identity := &userv1.Identity{}
+	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of identity '%s'", name)
@@ -186,10 +210,11 @@ func (a *MemberAwaitility) WaitForIdentity(name string) error {
 		}
 		return false, nil
 	})
+	return identity, err
 }
 
-// WaitForDeletedUserAccount waits until the UserAccount with the given name is not found
-func (a *MemberAwaitility) WaitForDeletedUserAccount(name string) error {
+// WaitUntilUserAccountDeleted waits until the UserAccount with the given name is not found
+func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
@@ -204,8 +229,8 @@ func (a *MemberAwaitility) WaitForDeletedUserAccount(name string) error {
 	})
 }
 
-// WaitForDeletedUser waits until the User with the given name is not found
-func (a *MemberAwaitility) WaitForDeletedUser(name string) error {
+// WaitUntilUserDeleted waits until the User with the given name is not found
+func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		user := &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
@@ -220,8 +245,8 @@ func (a *MemberAwaitility) WaitForDeletedUser(name string) error {
 	})
 }
 
-// WaitForDeletedIdentity waits until the Identity with the given name is not found
-func (a *MemberAwaitility) WaitForDeletedIdentity(name string) error {
+// WaitUntilIdentityDeleted waits until the Identity with the given name is not found
+func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
 	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
 		identity := &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
