@@ -20,14 +20,22 @@ IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 
 deploy-ops: deploy-member deploy-host
 
 .PHONY: test-e2e
-test-e2e: build-with-operators login-as-admin deploy-member deploy-host deploy-registration setup-kubefed e2e-run
-	@echo "The tests successfuly finished"
+test-e2e: deploy-e2e e2e-run
+	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
+.PHONY: deploy-e2e
+deploy-e2e: build-with-operators login-as-admin deploy-ops deploy-registration setup-kubefed
+
 .PHONY: test-e2e-local
-## Run the e2e tests with the local 'host' and 'member' repositories
+## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
 	$(MAKE) test-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
+
+.PHONY: deploy-e2e-local
+## Deploy the e2e environment with the local 'host', 'member', and 'registration-service' repositories
+deploy-e2e-local:
+	$(MAKE) deploy-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: test-e2e-member-local
 ## Run the e2e tests with the local 'member' repository only
@@ -90,7 +98,7 @@ setup-kubefed:
 
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
-	$(Q)-oc get projects --output=name | grep -E "(member|host)\-operator\-[0-9]+|toolchain\-e2e\-[0-9]+" | xargs oc delete
+	$(Q)-oc get projects --output=name | grep -E "(toolchain\-)?(member|host)\-operator(\-[0-9]+)?|toolchain\-e2e\-[0-9]+" | xargs oc delete
 	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas" | xargs oc delete -n openshift-marketplace
 	$(Q)-oc delete crd kubefedclusters.core.kubefed.io
 
@@ -177,7 +185,9 @@ deploy-member:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 endif
+	@echo "Deploying member operator to $(MEMBER_NS)..."
 	-oc new-project $(MEMBER_NS) 1>/dev/null
+	-oc project $(MEMBER_NS)
 ifneq ($(IS_OS_3),)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
@@ -193,7 +203,9 @@ deploy-host:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
+	@echo "Deploying host operator to $(HOST_NS)..."
 	-oc new-project $(HOST_NS) 1>/dev/null
+	-oc project $(HOST_NS)
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
@@ -213,7 +225,9 @@ deploy-registration:
 ifeq ($(REG_REPO_PATH),)
 	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
 endif
+	@echo "Deploying registration-service to $(HOST_NS)..."
 	-oc new-project $(HOST_NS) 1>/dev/null
+	-oc project $(HOST_NS)
 	# deploy resources
 	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
