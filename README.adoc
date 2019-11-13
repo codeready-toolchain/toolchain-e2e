@@ -62,6 +62,7 @@ There are multiple Makefile targets that will execute the e2e tests, they just d
 The e2e tests will take care of creating all needed namespaces with random names (or see below for enforcing some specific namespace names).
 It will also create all required CRDs, role and role bindings for the service accounts, build the Docker images for both operators and push them to the OpenShift container registry. Finally, it will deploy the operators and run the tests using the operator-sdk.
 
+
 NOTE: you can override the default namespace names where the end-to-end tests are going to be executed - eg.: `make test-e2e HOST_NS=my-host MEMBER_NS=my-member` file.
 
 ===== What to do
@@ -115,3 +116,17 @@ ci-operator --config ../../openshift/release/ci-operator/config/codeready-toolch
 assuming that you have the https://github.com/openshift/release[OpenShift Release] repo in `$GOPATH`.
 
 NOTE: you can ignore the RBAC issues that are displayed in the console
+
+== Deploying e2e resources without running tests
+
+All e2e resources (host operator, member operator, registration-service, CRDs, etc) can be deployed without running tests:
+
+* `make dev-deploy-e2e-local` - deploys the same resources as `make test-e2e-local` but doesn't run tests.
+
+* `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
+
+By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
+
+NOTE: You can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
+
+NOTE: If running in Minishift `eval $(minishift docker-env)` and `eval $(minishift oc-env)` are required. If running in CodeReady Containers `eval $(crc oc-env)` is required.
