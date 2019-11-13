@@ -604,6 +604,60 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	require.NoError(s.T(), err)
 }
 
+func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMURAlreadyExists() {
+	// Set the user approval policy to automatic
+	s.setApprovalPolicyConfig("automatic")
+
+	// Create a MUR
+	s.T().Logf("Creating MasterUserRecord with namespace %s", s.namespace)
+	userID := uuid.NewV4().String()
+	mur := s.newMasterUserRecord("robert-at-hotel-com", userID)
+	err := s.awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(s.testCtx))
+	require.NoError(s.T(), err)
+	s.T().Logf("MasterUserRecord '%s' created", mur.Name)
+
+	// Confirm the MasterUserRecord was created
+	_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+	require.NoError(s.T(), err)
+
+	// Create a second MUR with the same UserID but different name
+	s.T().Logf("Creating MasterUserRecord with namespace %s", s.namespace)
+	mur = s.newMasterUserRecord("roberta-at-hotel-com", userID)
+	err = s.awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(s.testCtx))
+	require.NoError(s.T(), err)
+	s.T().Logf("MasterUserRecord '%s' created", mur.Name)
+
+	// Confirm the MasterUserRecord was created
+	_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+	require.NoError(s.T(), err)
+
+	// Create user signup with the same UserID as the MURs
+	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
+	userSignup := s.newUserSignup(userID, "robert@hotel.com")
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	require.NoError(s.T(), err)
+	s.T().Logf("UserSignup '%s' created", userSignup.Name)
+
+	// Confirm the UserSignup was created
+	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
+
+	s.T().Logf("Number of conditions found: %s", len(userSignup.Status.Conditions))
+
+	for i, _ := range userSignup.Status.Conditions {
+		cond := userSignup.Status.Conditions[i]
+		s.T().Logf("Condition type: %s, Status: %s", cond.Type, cond.Status)
+	}
+
+	// Confirm the UserSignup was created
+	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
+		v1alpha1.Condition{
+			Type:   v1alpha1.UserSignupComplete,
+			Status: corev1.ConditionFalse,
+		}))
+	require.NoError(s.T(), err)
+}
+
 func (s *userSignupIntegrationTest) newUserSignup(userID, username string) *v1alpha1.UserSignup {
 
 	memberCluster, ok, err := s.awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
