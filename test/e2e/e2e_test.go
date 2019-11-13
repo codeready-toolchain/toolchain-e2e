@@ -27,17 +27,28 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
-	johnSignup, johnMur, err := setup(ctx, awaitility, "johnsmith")
+	johnsmithName := "johnsmith"
+	johnSignup, expUaSpec, err := setup(ctx, awaitility, johnsmithName)
 	require.NoError(t, err)
-	_, extrajohnMur, err := setup(ctx, awaitility, "extrajohn")
+	extrajohnName := "extrajohn"
+	_, expExtraUaSpec, err := setup(ctx, awaitility, extrajohnName)
 	require.NoError(t, err)
+
+	verifyResources(t, awaitility, johnsmithName,
+		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+		wait.UntilUserAccountHasSpec(*expUaSpec),
+		wait.UntilUserAccountHasConditions(isProvisioned()))
+	verifyResources(t, awaitility, extrajohnName,
+		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
+		wait.UntilUserAccountHasSpec(*expExtraUaSpec),
+		wait.UntilUserAccountHasConditions(isProvisioned()))
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
 		t.Run("delete user and wait until is recreated", func(t *testing.T) {
 			// given
 			user := &userv1.User{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: johnMur.Name}, user)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: johnsmithName}, user)
 			require.NoError(t, err)
 
 			// when
@@ -45,10 +56,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnMur.Name,
+			verifyResources(t, awaitility, johnsmithName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extrajohnMur.Name,
+			verifyResources(t, awaitility, extrajohnName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -56,7 +67,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete identity and wait until is recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(johnMur.Spec.UserID)}, identity)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(expUaSpec.UserID)}, identity)
 			require.NoError(t, err)
 
 			// when
@@ -64,10 +75,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnMur.Name,
+			verifyResources(t, awaitility, johnsmithName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extrajohnMur.Name,
+			verifyResources(t, awaitility, extrajohnName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -75,7 +86,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete user mapping and wait until is recreated", func(t *testing.T) {
 			// given
 			user := &userv1.User{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: johnMur.Name}, user)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: johnsmithName}, user)
 			require.NoError(t, err)
 
 			// when
@@ -84,10 +95,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnMur.Name,
+			verifyResources(t, awaitility, johnsmithName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extrajohnMur.Name,
+			verifyResources(t, awaitility, extrajohnName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -95,7 +106,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete identity mapping and wait until is recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(johnMur.Spec.UserID)}, identity)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(expUaSpec.UserID)}, identity)
 			require.NoError(t, err)
 			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 
@@ -104,10 +115,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnMur.Name,
+			verifyResources(t, awaitility, johnsmithName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
-			verifyResources(t, awaitility, extrajohnMur.Name,
+			verifyResources(t, awaitility, extrajohnName,
 				wait.UntilMasterUserRecordHasConditions(isProvisioned()),
 				wait.UntilUserAccountHasConditions(isProvisioned()))
 		})
@@ -125,61 +136,41 @@ func TestE2EFlow(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		t.Logf("MasterUserRecord '%s' deleted", johnMur.Name)
+		t.Logf("MasterUserRecord '%s' deleted", johnsmithName)
 
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(johnMur.Name)
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(johnsmithName)
 		assert.NoError(t, err, "MasterUserRecord is not deleted")
 
-		err = memberAwait.WaitUntilUserAccountDeleted(johnMur.Name)
+		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
 		assert.NoError(t, err, "UserAccount is not deleted")
 
-		err = memberAwait.WaitUntilUserDeleted(johnMur.Name)
+		err = memberAwait.WaitUntilUserDeleted(johnsmithName)
 		assert.NoError(t, err, "User is not deleted")
 
-		err = memberAwait.WaitUntilIdentityDeleted(johnMur.Name)
+		err = memberAwait.WaitUntilIdentityDeleted(johnsmithName)
 		assert.NoError(t, err, "Identity is not deleted")
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnMur.Name, "code")
+		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "code")
 		assert.NoError(t, err, "johnsmith-code namnespace is not deleted")
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnMur.Name, "dev")
+		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
 		assert.NoError(t, err, "johnsmith-dev namnespace is not deleted")
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnMur.Name, "stage")
+		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "stage")
 		assert.NoError(t, err, "johnsmith-stage namnespace is not deleted")
 
 		// also, verify that other user's resource are left intact
-		extrajohnMur, err = hostAwait.WaitForMasterUserRecord(extrajohnMur.Name)
+		_, err = hostAwait.WaitForMasterUserRecord(extrajohnName)
 		require.NoError(t, err)
-		verifyResources(t, awaitility, extrajohnMur.Name, wait.UntilMasterUserRecordHasConditions(isProvisioned()))
+		verifyResources(t, awaitility, extrajohnName, wait.UntilMasterUserRecordHasConditions(isProvisioned()))
 	})
 }
 
-func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, error) {
-	memberCluster, ok, err := awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !ok {
-		return nil, nil, fmt.Errorf("KubeFedCluster should exist")
-	}
-
+func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.UserAccountSpec, error) {
 	// 0. Verify that the `basic` NSTemplateTier resource exists (will be needed later)
-	basicTier := v1alpha1.NSTemplateTier{}
-	err = awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: awaitility.HostNs,
-		Name:      "basic",
-	}, &basicTier)
+	revisions, err := getRevisions(awaitility)
 	if err != nil {
 		return nil, nil, err
-	}
-	revisions := make(map[string]string, 3)
-	for _, typ := range []string{"code", "dev", "stage"} {
-		if r, found := namespaceRevision(basicTier, typ); found {
-			revisions[typ] = r
-			continue
-		}
-		return nil, nil, fmt.Errorf("unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
 	}
 
 	// 1. Create a UserSignup resource
@@ -231,85 +222,51 @@ func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string)
 		return nil, nil, err
 	}
 
-	// 3. Wait for MUR to be created
-	mur, err := awaitility.Host().WaitForMasterUserRecord(username,
-		wait.UntilMasterUserRecordHasConditions(isProvisioned()),
-		wait.UntilMasterUserRecordHasUserAccountStatuses(
-			v1alpha1.UserAccountStatusEmbedded{
-				TargetCluster: memberCluster.Name,
-				UserAccountStatus: toolchainv1alpha1.UserAccountStatus{
-					Conditions: []toolchainv1alpha1.Condition{
-						isProvisioned(),
-					},
+	return userSignup, &v1alpha1.UserAccountSpec{
+		UserID:   userID,
+		Disabled: false,
+		NSLimit:  "default",
+		NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+			TierName: "basic",
+			Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
+				{
+					Type:     "code",
+					Revision: revisions["code"],
+					Template: "", // must be empty
+				},
+				{
+					Type:     "dev",
+					Revision: revisions["dev"],
+					Template: "", // must be empty
+				},
+				{
+					Type:     "stage",
+					Revision: revisions["stage"],
+					Template: "", // must be empty
 				},
 			},
-		),
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(mur.Spec.UserAccounts) != 1 {
-		return nil, nil, fmt.Errorf("unexpected number of user accounts: %d", len(mur.Spec.UserAccounts))
-	}
+		},
+	}, nil
+}
 
-	// 4. Wait for UserAccount to be ready/provisioned with the expect spec
-	_, err = awaitility.Member().WaitForUserAccount(username,
-		wait.UntilUserAccountHasSpec(
-			v1alpha1.UserAccountSpec{
-				UserID:   userID,
-				Disabled: false,
-				NSLimit:  "default",
-				NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
-					TierName: "basic",
-					Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
-						{
-							Type:     "code",
-							Revision: revisions["code"],
-							Template: "", // must be empty
-						},
-						{
-							Type:     "dev",
-							Revision: revisions["dev"],
-							Template: "", // must be empty
-						},
-						{
-							Type:     "stage",
-							Revision: revisions["stage"],
-							Template: "", // must be empty
-						},
-					},
-				},
-			}),
-		wait.UntilUserAccountHasConditions(isProvisioned()),
-	)
+func getRevisions(awaitility *wait.Awaitility) (map[string]string, error) {
+	basicTier := v1alpha1.NSTemplateTier{}
+	err := awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: awaitility.HostNs,
+		Name:      "basic",
+	}, &basicTier)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	// 5. Wait for User/Identity to be created
-	_, err = awaitility.Member().WaitForUser(username)
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = awaitility.Member().WaitForIdentity("rhd:" + userID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// 6. Wait for NSTemplateSet to be ready/provisioned
-	_, err = awaitility.Member().WaitForNSTmplSet(username,
-		wait.UntilNSTemplateSetHasConditions(isProvisioned()))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// 7. Wait for Namespaces to be created
-	for typ, revision := range revisions {
-		if _, err := awaitility.Member().WaitForNamespace(username, typ, revision); err != nil {
-			return nil, nil, err
+	revisions := make(map[string]string, 3)
+	for _, typ := range []string{"code", "dev", "stage"} {
+		if r, found := namespaceRevision(basicTier, typ); found {
+			revisions[typ] = r
+			continue
 		}
+		return nil, fmt.Errorf("unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
 	}
-	return userSignup, mur, nil
+	return revisions, nil
 }
 
 func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) {
