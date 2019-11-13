@@ -13,9 +13,9 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	//authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 
-	//uuid "github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -260,12 +260,11 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 		// key, err := tokenManager.AddPrivateKey(kid0)
 		// require.NoError(s.T(), err)
 
-		// // 2/3. Create Token. GenerateSignedToken(). Sign Token with Private Key. -- use func SignToken()
-		// //encodedToken, err := tokenManager.SignToken(token, kid0)
-		// identity := authsupport.NewIdentity()
-		// emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-		// token, err := tokenManager.GenerateSignedToken(*identity, kid0, emailClaim0)
-		// require.Nil(s.T(), err)
+		// 2/3. Create Token. GenerateSignedToken(). Sign Token with Private Key. -- use func SignToken()
+		identity := authsupport.NewIdentity()
+		emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+		token, err := tokenManager.GenerateSignedToken(*identity, kid0, emailClaim0)
+		require.Nil(s.T(), err)
 
 		// // // 4/5. Convert Public Key to JWK JSON Format and return
 		// keyServer := authsupport.NewJWKServer(key, kid0)
@@ -281,7 +280,7 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 		// Send Token in Header to Service.
 		req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
 		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer " + "abc123")
+		req.Header.Set("Authorization", "Bearer " + token)
 		req.Header.Set("content-type", "application/json")
 		client := &http.Client{
 			Timeout: time.Second * 10,
