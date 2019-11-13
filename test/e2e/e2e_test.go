@@ -23,7 +23,7 @@ import (
 
 func TestE2EFlow(t *testing.T) {
 	// given
-	// full flow from usersignup ewith approval down to namespaces creation
+	// full flow from usersignup with approval down to namespaces creation
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
