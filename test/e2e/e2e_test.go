@@ -319,7 +319,7 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 	// first, wait for the MasterUserRecord to exist, no matter its status
 	mur, err := hostAwait.WaitForMasterUserRecord(murName)
 	require.NoError(t, err)
-	
+
 	// then wait for the associated UserAccount to exist, with the given criteria
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name, append(useraccountCriteria, wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))...)
