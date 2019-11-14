@@ -36,6 +36,7 @@ type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.Us
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		a.T.Logf("waiting for useraccount specs: %+v vs %+v", expected, ua.Spec)
 		return reflect.DeepEqual(ua.Spec, expected)
 	}
 }
@@ -55,10 +56,10 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
-	userAccount := &toolchainv1alpha1.UserAccount{}
+	var userAccount *toolchainv1alpha1.UserAccount
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		userAccount = &toolchainv1alpha1.UserAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, userAccount); err != nil {
+		obj := &toolchainv1alpha1.UserAccount{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of useraccount '%s'", name)
 				return false, nil
@@ -66,11 +67,12 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(a, userAccount) {
+			if !match(a, obj) {
 				return false, nil
 			}
 		}
 		a.T.Logf("found UserAccount '%s'", name)
+		userAccount = obj
 		return true, nil
 	})
 	return userAccount, err
@@ -94,10 +96,10 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
 func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
-	nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
 	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
-		nsTmplSet = &toolchainv1alpha1.NSTemplateSet{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+		obj := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
 				return false, nil
@@ -105,11 +107,12 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(a, nsTmplSet) {
+			if !match(a, obj) {
 				return false, nil
 			}
 		}
 		a.T.Logf("found NSTemplateSet '%s'", name)
+		nsTmplSet = obj
 		return true, nil
 	})
 	return nsTmplSet, err
@@ -143,7 +146,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 		}
 
 		if len(namespaceList.Items) < 1 {
-			a.T.Logf("waiting for availability of Namespace type '%s' with revision '%s'", typeName, revision)
+			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s", typeName, revision, username)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")

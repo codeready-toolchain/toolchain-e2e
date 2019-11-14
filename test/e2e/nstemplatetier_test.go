@@ -23,6 +23,6 @@ func TestCreateOrUpdateNSTemplateTierAtStartup(t *testing.T) {
 
 	// check the "basic" NSTemplateTier exists, and all its Namespace revisions are different from `000000a`,
 	// which is the value specified in the initial manifest
-	_, err = hostAwait.WaitForNSTemplateTier("basic", NSTemplateTierSpecHaving(Not(NamespaceRevisions("000000a"))))
+	_, err = hostAwait.WaitForNSTemplateTier("basic", UntilNSTemplateTierSpec(Not(HasNamespaceRevisions("000000a"))))
 	require.NoError(t, err)
 }
