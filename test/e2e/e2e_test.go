@@ -250,17 +250,13 @@ func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string)
 }
 
 func getRevisions(awaitility *wait.Awaitility) (map[string]string, error) {
-	basicTier := v1alpha1.NSTemplateTier{}
-	err := awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: awaitility.HostNs,
-		Name:      "basic",
-	}, &basicTier)
+	basicTier, err := awaitility.Host().WaitForNSTemplateTier("basic", wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
 	if err != nil {
 		return nil, err
 	}
 	revisions := make(map[string]string, 3)
 	for _, typ := range []string{"code", "dev", "stage"} {
-		if r, found := namespaceRevision(basicTier, typ); found {
+		if r, found := namespaceRevision(*basicTier, typ); found {
 			revisions[typ] = r
 			continue
 		}

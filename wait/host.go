@@ -196,8 +196,8 @@ type NSTemplateTierWaitCriterion func(*toolchainv1alpha1.NSTemplateTier) bool
 // NSTemplateTierSpecMatcher a matcher for the
 type NSTemplateTierSpecMatcher func(s toolchainv1alpha1.NSTemplateTierSpec) bool
 
-// NSTemplateTierSpecHaving verify that the NSTemplateTier spec has the specified condition
-func NSTemplateTierSpecHaving(match NSTemplateTierSpecMatcher) NSTemplateTierWaitCriterion {
+// UntilNSTemplateTierSpec verify that the NSTemplateTier spec has the specified condition
+func UntilNSTemplateTierSpec(match NSTemplateTierSpecMatcher) NSTemplateTierWaitCriterion {
 	return func(tier *toolchainv1alpha1.NSTemplateTier) bool {
 		return match(tier.Spec)
 	}
@@ -210,8 +210,8 @@ func Not(match NSTemplateTierSpecMatcher) NSTemplateTierSpecMatcher {
 	}
 }
 
-// NamespaceRevisions checks that ALL namespaces' revision match the given value
-func NamespaceRevisions(r string) NSTemplateTierSpecMatcher {
+// HasNamespaceRevisions checks that ALL namespaces' revision match the given value
+func HasNamespaceRevisions(r string) NSTemplateTierSpecMatcher {
 	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
 		for _, ns := range s.Namespaces {
 			if ns.Revision != r {
