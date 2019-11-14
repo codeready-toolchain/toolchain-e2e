@@ -25,7 +25,7 @@ const (
 	OperatorRetryInterval          = time.Millisecond * 200
 	OperatorTimeout                = time.Second * 60
 	RetryInterval                  = time.Millisecond * 200
-	Timeout                        = time.Second * 20
+	Timeout                        = time.Second * 30
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
