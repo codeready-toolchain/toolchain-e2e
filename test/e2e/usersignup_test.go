@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -50,7 +51,9 @@ func (s *userSignupIntegrationTest) TestUserSignupCreated() {
 
 	// Create user signup
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "foo-somewhere-com")
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "foo@somewhere.com")
+	require.NoError(s.T(), err)
 
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -76,7 +79,10 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 
 	// Create user signup - no approval set
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "francis")
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "francis@domain.com")
+	require.NoError(s.T(), err)
+
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
@@ -105,7 +111,10 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 
 	// Create user signup - approval set to false
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup = s.newUserSignup(uuid.NewV4().String(), "gretel@somewhere.com")
+
+	userSignup, err = newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "gretel@somewhere.com")
+	require.NoError(s.T(), err)
+
 	userSignup.Spec.Approved = false
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -153,7 +162,10 @@ func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
 
 	// Create user signup - approval set to true
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup = s.newUserSignup(uuid.NewV4().String(), "harold@indigo.com")
+
+	userSignup, err = newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "harold@indigo.com")
+	require.NoError(s.T(), err)
+
 	userSignup.Spec.Approved = true
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -191,8 +203,10 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	s.T().Run("usersignup created first then manually approved", func(t *testing.T) {
 		// Create user signup - no approval set
 		s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-		userSignup := s.newUserSignup(uuid.NewV4().String(), "mariecurie@violet.com")
-		err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+		userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "mariecurie@violet.com")
+		require.NoError(s.T(), err)
+
+		err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -223,7 +237,9 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 
 		// Create user signup - approval set to false
 		s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-		userSignup = s.newUserSignup(uuid.NewV4().String(), "janedoe@cyan.com")
+		userSignup, err = newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "janedoe@cyan.com")
+		require.NoError(s.T(), err)
+
 		userSignup.Spec.Approved = false
 		err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 		require.NoError(s.T(), err)
@@ -279,9 +295,11 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	s.T().Run("usersignup created with approved set to true", func(t *testing.T) {
 		// Create user signup - approval set to true
 		s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-		userSignup := s.newUserSignup(uuid.NewV4().String(), "robertjones@magenta.com")
+		userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "robertjones@magenta.com")
+		require.NoError(s.T(), err)
+
 		userSignup.Spec.Approved = true
-		err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+		err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -307,6 +325,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	})
 }
 
+
 func (s *userSignupIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSignup) {
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
@@ -324,10 +343,13 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Create user signup - no approval set
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "reginald@alpha.com")
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "reginald@alpha.com")
+	require.NoError(s.T(), err)
+
 	// Remove the specified target cluster
 	userSignup.Spec.TargetCluster = ""
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -376,8 +398,11 @@ func (s *userSignupIntegrationTest) TestDeletedUserSignupIsGarbageCollected() {
 
 	// Create user signup - no approval set
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "oliver@bravo.com")
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "oliver@bravo.com")
+	require.NoError(s.T(), err)
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -412,8 +437,11 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalNoApprovalSet(
 
 	// Create user signup - no approval set
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "charles@charlie.com")
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "charles@charlie.com")
+	require.NoError(s.T(), err)
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -452,8 +480,11 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalMURValuesOK() 
 
 	// Create user signup - no approval set
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "theodore@delta.org")
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "theodore@delta.org")
+	require.NoError(s.T(), err)
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -491,9 +522,12 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 
 	// Create user signup - approval set to false
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "dorothy@echo.net")
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "dorothy@echo.net")
+	require.NoError(s.T(), err)
+
 	userSignup.Spec.Approved = false
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -529,9 +563,12 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalAndApprovalSet
 
 	// Create user signup - approval set to true
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(uuid.NewV4().String(), "edith@foxtrot.com")
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "edith@foxtrot.com")
+	require.NoError(s.T(), err)
+
 	userSignup.Spec.Approved = true
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -580,7 +617,10 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 
 	// Create user signup with the same name and UserID as the MUR
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(userID, "paul@hotel.com")
+
+	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "paul@hotel.com")
+	require.NoError(s.T(), err)
+
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
@@ -628,7 +668,9 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 
 	// Create user signup with the same UserID as the MURs
 	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-	userSignup := s.newUserSignup(userID, "robert@hotel.com")
+	userSignup, err := newUserSignup(s.awaitility.Host(), userID, "robert@hotel.com")
+	require.NoError(s.T(), err)
+
 	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup '%s' created", userSignup.Name)
@@ -662,8 +704,10 @@ func (s *userSignupIntegrationTest) TestUserSignupsWithTheSameUsername() {
 func (s *userSignupIntegrationTest) createAndAssertUserSignup(actualUsername, expectedCompliantUsername string) {
 	// Create user signup
 	userID := uuid.NewV4().String()
-	userSignup := s.newUserSignup(userID, actualUsername)
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	userSignup, err := newUserSignup(s.awaitility.Host(), userID, actualUsername)
+	require.NoError(s.T(), err)
+
+	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 	s.T().Logf("UserSignup with name '%s' and username %s created", userSignup.Name, userSignup.Spec.Username)
 
@@ -685,16 +729,19 @@ func (s *userSignupIntegrationTest) createAndAssertUserSignup(actualUsername, ex
 	s.assertCreatedMUR(userSignup)
 }
 
-func (s *userSignupIntegrationTest) newUserSignup(userID, username string) *v1alpha1.UserSignup {
-
-	memberCluster, ok, err := s.awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
-	require.NoError(s.awaitility.T, err)
-	require.True(s.awaitility.T, ok, "KubeFedCluster should exist")
+func newUserSignup(host *wait.HostAwaitility, userID, username string) (*v1alpha1.UserSignup, error) {
+	memberCluster, ok, err := host.GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("KubeFedCluster should exist")
+	}
 
 	userSignup := &v1alpha1.UserSignup{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      userID,
-			Namespace: s.namespace,
+			Namespace: host.Ns,
 		},
 		Spec: v1alpha1.UserSignupSpec{
 			Username:      username,
@@ -702,7 +749,7 @@ func (s *userSignupIntegrationTest) newUserSignup(userID, username string) *v1al
 		},
 	}
 
-	return userSignup
+	return userSignup, nil
 }
 
 func (s *userSignupIntegrationTest) newMasterUserRecord(name string, userID string) *v1alpha1.MasterUserRecord {

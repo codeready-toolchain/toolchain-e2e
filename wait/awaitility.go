@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	OperatorRetryInterval          = time.Millisecond * 200
-	OperatorTimeout                = time.Second * 60
-	RetryInterval                  = time.Millisecond * 200
-	Timeout                        = time.Second * 30
+	OperatorRetryInterval          = time.Millisecond * 500
+	OperatorTimeout                = time.Second * 120
+	RetryInterval                  = time.Millisecond * 500
+	Timeout                        = time.Second * 120
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
