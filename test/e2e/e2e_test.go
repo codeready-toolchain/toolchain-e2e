@@ -323,7 +323,8 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 	// then wait for the associated UserAccount to exist, with the given criteria
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name, append(useraccountCriteria, wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	require.NotNil(t, userAccount)
 
 	// and finally, check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
 	uaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
@@ -333,20 +334,13 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 	_, err = hostAwait.WaitForMasterUserRecord(mur.Name, append(masteruserrecordCriteria, wait.UntilMasterUserRecordHasUserAccountStatuses(uaStatus))...)
 	assert.NoError(t, err)
 
-	verifyUserResources(t, memberAwait, userAccount)
-	verifyNSTmplSet(t, memberAwait, userAccount)
-}
-
-func verifyUserResources(t *testing.T, awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
-	_, err := awaitility.WaitForUser(userAcc.Name)
+	_, err = memberAwait.WaitForUser(userAccount.Name)
 	assert.NoError(t, err)
 
-	_, err = awaitility.WaitForIdentity(toIdentityName(userAcc.Spec.UserID))
+	_, err = memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	assert.NoError(t, err)
-}
 
-func verifyNSTmplSet(t *testing.T, awaitility *wait.MemberAwaitility, userAcc *toolchainv1alpha1.UserAccount) {
-	_, err := awaitility.WaitForNSTmplSet(userAcc.Name)
+	_, err = memberAwait.WaitForNSTmplSet(userAccount.Name)
 	assert.NoError(t, err)
 }
 
