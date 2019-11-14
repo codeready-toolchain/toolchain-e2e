@@ -639,7 +639,7 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMultipleMU
 			Type:    v1alpha1.UserSignupComplete,
 			Status:  corev1.ConditionFalse,
 			Reason:  "InvalidMURState",
-			Message: "multiple matching MUR resources found",
+			Message: "multiple matching MasterUserRecord resources found",
 		}))
 	require.NoError(s.T(), err)
 }
