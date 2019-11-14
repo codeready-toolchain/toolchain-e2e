@@ -36,6 +36,7 @@ type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.Us
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		a.T.Logf("waiting for useraccount specs %+v vs %+v", expected, ua.Spec)
 		return reflect.DeepEqual(ua.Spec, expected)
 	}
 }

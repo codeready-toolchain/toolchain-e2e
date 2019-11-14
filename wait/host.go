@@ -41,7 +41,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 				return false, nil
 			}
 		}
-		a.T.Logf("found MasterUserAccount '%s'", name)
+		a.T.Logf("found MasterUserAccount '%s': %+v", name, obj)
 		mur = obj
 		return true, nil
 	})
