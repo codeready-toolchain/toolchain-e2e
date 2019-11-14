@@ -16,6 +16,8 @@ IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.ser
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
+ENVIRONMENT := e2e-tests
+
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
 
@@ -272,7 +274,7 @@ ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
 	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/deployment.yaml \
 	    -p IMAGE=${IMAGE_NAME} \
-	    -p ENVIRONMENT=e2e-tests \
+	    -p ENVIRONMENT=${ENVIRONMENT} \
         | oc apply -f -
 else
     ifeq ($(IS_OS_3),)
