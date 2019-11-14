@@ -115,12 +115,8 @@ build-with-operators: build get-member-operator-repo get-host-operator-repo get-
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
-	echo "1 MEMBER_REPO_PATH=$(MEMBER_REPO_PATH)"
-	echo "2 MEMBER_REPO_PATH=${MEMBER_REPO_PATH}"
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
-	echo "3 MEMBER_REPO_PATH=$(MEMBER_REPO_PATH)"
-	echo "4 MEMBER_REPO_PATH=${MEMBER_REPO_PATH}"
 	rm -rf ${MEMBER_REPO_PATH}
 	# clone
 	git clone https://github.com/codeready-toolchain/member-operator.git ${MEMBER_REPO_PATH}
