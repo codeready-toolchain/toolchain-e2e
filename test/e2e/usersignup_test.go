@@ -325,7 +325,6 @@ func (s *userSignupIntegrationTest) TestUserSignupWithManualApproval() {
 	})
 }
 
-
 func (s *userSignupIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSignup) {
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
@@ -632,6 +631,11 @@ func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalWhenMURAlready
 	// Confirm that:
 	// 1) the Complete condition is set to true
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(
+		v1alpha1.Condition{
+			Type:   v1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: "ApprovedAutomatically",
+		},
 		v1alpha1.Condition{
 			Type:   v1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
