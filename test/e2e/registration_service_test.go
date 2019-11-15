@@ -9,12 +9,14 @@ import (
 	"time"
 	"encoding/json"
     "io/ioutil"
+   // "fmt"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 
+   // "github.com/dgrijalva/jwt-go"
 	uuid "github.com/satori/go.uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
@@ -88,8 +90,8 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
      alive := mp["alive"]
      require.True(s.T(), alive.(bool))
 
-     testingMode := mp["testingMode"]
-     require.False(s.T(), testingMode.(bool))
+     environment := mp["environment"]
+     require.Equal(s.T(), "e2e-tests", environment.(string))
 
      revision := mp["revision"]
      require.NotNil(s.T(), revision)
@@ -263,15 +265,32 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 		// 2/3. Create Token. GenerateSignedToken(). Sign Token with Private Key. -- use func SignToken()
 		identity := authsupport.NewIdentity()
 		emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-		token, err := tokenManager.GenerateSignedToken(*identity, kid0, emailClaim0)
-		require.Nil(s.T(), err)
+        token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim0)
+       // time.Sleep(2 * time.Second)
+        // publicKeys := authsupport.GetE2ETestPublicKey()
+		// require.Len(s.T(), publicKeys, 1)
+		// publicKey := publicKeys[0]
+        // parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		// 	kid := token.Header["kid"]
+		// 	require.NotNil(s.T(), kid)
+		// 	kidStr := kid.(string)
+		// 	assert.Equal(s.T(), publicKey.KeyID, kidStr)
 
+		// 	return publicKey.Key, nil
+        // })
+        
+        // require.Nil(s.T(), err)
+        // fmt.Println("E2E-TESTS")
+        // fmt.Println(parsedToken.Claims.(jwt.MapClaims)["iat"])
+        // fmt.Println(parsedToken.Claims.(jwt.MapClaims)["nbf"])
+        // fmt.Println(parsedToken.Claims.(jwt.MapClaims)["exp"])
+        // fmt.Println(time.Now().Unix())
+        //require.Equal(s.T(), parsedToken, "")
 		// // // 4/5. Convert Public Key to JWK JSON Format and return
 		// keyServer := authsupport.NewJWKServer(key, kid0)
 		
 		// keysEndpointURL := keyServer.URL
 		// reg, err := configuration.New("")
-		// srv := server.New(reg)
 		
 		// // Set auth_client.public_keys_url  to that address.
 		// os.Setenv("REGISTRATION_AUTH_CLIENT_PUBLIC_KEYS_URL", keysEndpointURL)
@@ -300,12 +319,12 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 		require.Nil(s.T(), err)
 		require.NotNil(s.T(), body)
 
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		// mp := make(map[string]interface{})
+		// err = json.Unmarshal([]byte(body), &mp)
+		// require.Nil(s.T(), err)
 
-		tokenErr := mp["error"].(string)
-		require.Equal(s.T(), "token contains an invalid number of segments", tokenErr)
+		// tokenErr := mp["error"].(string)
+		// require.Equal(s.T(), "token contains an invalid number of segments", tokenErr)
 	 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
     })
