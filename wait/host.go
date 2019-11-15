@@ -61,7 +61,7 @@ func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Conditio
 			a.T.Logf("status conditions match in MasterUserRecord '%s`", mur.Name)
 			return true
 		}
-		a.T.Logf("waiting for correct status condition of MasterUserRecord '%s': '%+v' vs '%+v", mur.Name, mur.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Acutal: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, conditions)
 		return false
 	}
 }
@@ -96,7 +96,7 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 			a.T.Logf("status conditions match in UserSignup '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for correct status condition of UserSignup '%s': '%+v' vs '%+v", ua.Name, ua.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of UserSignup '%s'. Acutal: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
 		return false
 	}
 }
