@@ -16,12 +16,12 @@ func provisioned() toolchainv1alpha1.Condition {
 
 func pendingApproval() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
-		toolchainv1alpha1.Condition{
+		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
 			Reason: "PendingApproval",
 		},
-		toolchainv1alpha1.Condition{
+		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,
 			Reason: "PendingApproval",
@@ -31,12 +31,12 @@ func pendingApproval() []toolchainv1alpha1.Condition {
 
 func approvedByAdmin() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
-		toolchainv1alpha1.Condition{
+		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
 			Reason: "ApprovedByAdmin",
 		},
-		toolchainv1alpha1.Condition{
+		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
 		},
@@ -45,12 +45,12 @@ func approvedByAdmin() []toolchainv1alpha1.Condition {
 
 func approvedAutomatically() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
-		toolchainv1alpha1.Condition{
+		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
 			Reason: "ApprovedAutomatically",
 		},
-		toolchainv1alpha1.Condition{
+		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
 		},
