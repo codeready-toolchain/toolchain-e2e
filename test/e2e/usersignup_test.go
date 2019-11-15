@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -64,12 +65,8 @@ func (s *userSignupIntegrationTest) TestUserSignupCreated() {
 	require.NoError(s.T(), err)
 
 	// Confirm that a MasterUserRecord wasn't created
-	_, err = s.hostAwait.WaitForMasterUserRecord("foo-somewhere-com")
+	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord("foo-somewhere-com")
 	require.Error(s.T(), err)
-
-	// Delete the User Signup
-	err = s.awaitility.Client.Delete(context.TODO(), userSignup)
-	require.NoError(s.T(), err)
 }
 
 func (s *userSignupIntegrationTest) TestUserSignupWithNoApprovalConfig() {
@@ -389,45 +386,6 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Confirm the target cluster was set
 	require.NotEmpty(s.T(), mur.Spec.UserAccounts[0].TargetCluster)
-}
-
-func (s *userSignupIntegrationTest) TestDeletedUserSignupIsGarbageCollected() {
-	// Set the user approval policy to automatic
-	s.setApprovalPolicyConfig("automatic")
-
-	// Create user signup - no approval set
-	s.T().Logf("Creating UserSignup with namespace %s", s.namespace)
-
-	userSignup, err := newUserSignup(s.awaitility.Host(), uuid.NewV4().String(), "oliver@bravo.com")
-	require.NoError(s.T(), err)
-	err = s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
-
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	// Confirm the UserSignup was created
-	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
-	require.NoError(s.T(), err)
-
-	// Get the newly created UserSignup resource
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
-	require.NoError(s.T(), err)
-
-	// Confirm the MasterUserRecord was created
-	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.NoError(s.T(), err)
-
-	// Delete the UserSignup
-	err = s.awaitility.Client.Delete(context.TODO(), userSignup)
-	require.NoError(s.T(), err)
-
-	// Confirm the UserSignup was deleted
-	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
-	require.Error(s.T(), err)
-
-	// Confirm the MasterUserRecord was deleted
-	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Name)
-	require.Error(s.T(), err)
 }
 
 func (s *userSignupIntegrationTest) TestUserSignupWithAutoApprovalNoApprovalSet() {

@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,15 +23,18 @@ import (
 )
 
 const (
-	OperatorRetryInterval          = time.Millisecond * 500
-	OperatorTimeout                = time.Second * 120
-	RetryInterval                  = time.Millisecond * 500
-	Timeout                        = time.Second * 120
+	DefaultOperatorRetryInterval   = time.Millisecond * 500
+	DefaultOperatorTimeout         = time.Second * 120
+	DefaultRetryInterval           = time.Millisecond * 500
+	DefaultTimeout                 = time.Second * 120
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
 	KubeFedClusterConditionTimeout = 10*defaults.DefaultClusterHealthCheckPeriod + 5*time.Second
 )
+
+type RetryIntervalOption time.Duration
+type TimeoutOption time.Duration
 
 // Awaitility contains information necessary for verifying availability of resources in both operators
 type Awaitility struct {
@@ -58,6 +62,19 @@ type SingleAwaitilityImpl struct {
 	Client          framework.FrameworkClient
 	Ns              string
 	OtherOperatorNs string
+	RetryInterval   time.Duration
+	Timeout         time.Duration
+}
+
+func NewSingleAwaitility(t *testing.T, client framework.FrameworkClient, operatorNS, otherOperatorNS string) *SingleAwaitilityImpl {
+	return &SingleAwaitilityImpl{
+		T:               t,
+		Client:          client,
+		Ns:              operatorNS,
+		OtherOperatorNs: otherOperatorNS,
+		RetryInterval:   DefaultRetryInterval,
+		Timeout:         DefaultTimeout,
+	}
 }
 
 // Member creates SingleAwaitility for the member operator
@@ -87,15 +104,30 @@ func (a *Awaitility) WaitForReadyKubeFedClusters() error {
 	return nil
 }
 
+func (a *SingleAwaitilityImpl) WithRetryOptions(options ...interface{}) *SingleAwaitilityImpl {
+	newAwait := NewSingleAwaitility(a.T, a.Client, a.Ns, a.OtherOperatorNs)
+	for _, option := range options {
+		switch v := option.(type) {
+		case RetryIntervalOption:
+			newAwait.RetryInterval = time.Duration(v)
+		case TimeoutOption:
+			newAwait.Timeout = time.Duration(v)
+		default:
+			assert.Fail(a.T, "unsupported retry option type", "actual type: %T", v)
+		}
+	}
+	return newAwait
+}
+
 // WaitForKubeFedCluster waits until there is a KubeFedCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
 func (a *SingleAwaitilityImpl) WaitForKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) error {
-	timeout := Timeout
+	timeout := a.Timeout
 	if condition != nil {
 		timeout = KubeFedClusterConditionTimeout
 	}
-	return wait.Poll(RetryInterval, timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
 		_, ok, err := a.GetKubeFedCluster(clusterType, condition)
 		if ok {
 			return true, nil
@@ -108,11 +140,11 @@ func (a *SingleAwaitilityImpl) WaitForKubeFedCluster(clusterType cluster.Type, c
 // WaitForKubeFedClusterConditionWithName waits until there is a KubeFedCluster with the given name
 // and with the given ClusterCondition (if it the condition is nil, then it skips this check)
 func (a *SingleAwaitilityImpl) WaitForKubeFedClusterConditionWithName(name string, condition *v1beta1.ClusterCondition) error {
-	timeout := Timeout
+	timeout := a.Timeout
 	if condition != nil {
 		timeout = KubeFedClusterConditionTimeout
 	}
-	return wait.Poll(RetryInterval, timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
 		cluster := &v1beta1.KubeFedCluster{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, cluster); err != nil {
 			return false, err

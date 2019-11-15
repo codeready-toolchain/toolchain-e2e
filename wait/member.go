@@ -6,6 +6,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -21,12 +22,14 @@ type MemberAwaitility struct {
 
 func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 	return &MemberAwaitility{
-		SingleAwaitilityImpl: &SingleAwaitilityImpl{
-			T:               a.T,
-			Client:          a.Client,
-			Ns:              a.MemberNs,
-			OtherOperatorNs: a.HostNs,
-		}}
+		SingleAwaitilityImpl: NewSingleAwaitility(a.T, a.Client, a.MemberNs, a.HostNs),
+	}
+}
+
+func (a *MemberAwaitility) WithRetryOptions(options ...interface{}) *MemberAwaitility {
+	return &MemberAwaitility{
+		SingleAwaitilityImpl: a.SingleAwaitilityImpl.WithRetryOptions(options...),
+	}
 }
 
 // UserAccountWaitCriterion a function to check that a user account has the expected condition
@@ -57,7 +60,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
 	var userAccount *toolchainv1alpha1.UserAccount
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -97,7 +100,7 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
 func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -120,7 +123,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 
 // WaitUntilNSTemplateSetDeleted waits until the NSTemplateSet with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
 			if errors.IsNotFound(err) {
@@ -137,7 +140,7 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 // WaitForNamespace waits until a namespace with the given owner (username), type and revision labels exists
 func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
 		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
 		opts := client.MatchingLabels(labels)
@@ -162,7 +165,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{"owner": username, "type": typeName}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
@@ -182,7 +185,7 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) 
 // WaitForUser waits until there is a User with the given name available
 func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 	user := &userv1.User{}
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user = &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
@@ -203,7 +206,7 @@ func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 // WaitForIdentity waits until there is an Identity with the given name available
 func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error) {
 	identity := &userv1.Identity{}
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		identity = &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
@@ -223,7 +226,7 @@ func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error
 
 // WaitUntilUserAccountDeleted waits until the UserAccount with the given name is not found
 func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
 			if errors.IsNotFound(err) {
@@ -239,7 +242,7 @@ func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
 
 // WaitUntilUserDeleted waits until the User with the given name is not found
 func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user := &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
@@ -255,7 +258,7 @@ func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
 
 // WaitUntilIdentityDeleted waits until the Identity with the given name is not found
 func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		identity := &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
