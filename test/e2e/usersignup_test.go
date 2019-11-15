@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -64,7 +65,7 @@ func (s *userSignupIntegrationTest) TestUserSignupCreated() {
 	require.NoError(s.T(), err)
 
 	// Confirm that a MasterUserRecord wasn't created
-	_, err = s.hostAwait.WaitForMasterUserRecord("foo-somewhere-com")
+	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord("foo-somewhere-com")
 	require.Error(s.T(), err)
 
 	// Delete the User Signup
@@ -422,11 +423,11 @@ func (s *userSignupIntegrationTest) TestDeletedUserSignupIsGarbageCollected() {
 	require.NoError(s.T(), err)
 
 	// Confirm the UserSignup was deleted
-	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForUserSignup(userSignup.Name)
 	require.Error(s.T(), err)
 
 	// Confirm the MasterUserRecord was deleted
-	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Name)
+	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Name)
 	require.Error(s.T(), err)
 }
 

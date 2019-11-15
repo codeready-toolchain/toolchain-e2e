@@ -5,6 +5,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -16,18 +17,20 @@ type HostAwaitility struct {
 
 func NewHostAwaitility(a *Awaitility) *HostAwaitility {
 	return &HostAwaitility{
-		SingleAwaitilityImpl: &SingleAwaitilityImpl{
-			T:               a.T,
-			Client:          a.Client,
-			Ns:              a.HostNs,
-			OtherOperatorNs: a.MemberNs,
-		}}
+		SingleAwaitilityImpl: NewSingleAwaitility(a.T, a.Client, a.HostNs, a.MemberNs),
+	}
+}
+
+func (a *HostAwaitility) WithRetryOptions(options ...interface{}) *HostAwaitility {
+	return &HostAwaitility{
+		SingleAwaitilityImpl: a.SingleAwaitilityImpl.WithRetryOptions(options...),
+	}
 }
 
 // WaitForMasterUserRecord waits until there is MasterUserRecord with the given name and the optional conditions is available
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	var mur *toolchainv1alpha1.MasterUserRecord
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -101,7 +104,7 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
 func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -124,7 +127,7 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 
 // WaitUntilMasterUserRecordDeleted waits until MUR with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
-	return wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
@@ -161,7 +164,7 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name and conditions is present
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	var tier *toolchainv1alpha1.NSTemplateTier
-	err := wait.Poll(RetryInterval, Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		tier = &toolchainv1alpha1.NSTemplateTier{}
 		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Ns)
 		obj := &toolchainv1alpha1.NSTemplateTier{}

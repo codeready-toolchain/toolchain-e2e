@@ -46,18 +46,18 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.TestCtx, *
 	f := framework.Global
 
 	// wait for host operator to be ready
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, hostNs, "host-operator", 1, wait.OperatorRetryInterval, wait.OperatorTimeout)
+	err = e2eutil.WaitForDeployment(t, f.KubeClient, hostNs, "host-operator", 1, wait.DefaultOperatorRetryInterval, wait.DefaultOperatorTimeout)
 	require.NoError(t, err, "failed while waiting for host operator deployment")
 
 	// wait for member operator to be ready
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, memberNs, "member-operator", 1, wait.OperatorRetryInterval, wait.OperatorTimeout)
+	err = e2eutil.WaitForDeployment(t, f.KubeClient, memberNs, "member-operator", 1, wait.DefaultOperatorRetryInterval, wait.DefaultOperatorTimeout)
 	require.NoError(t, err, "failed while waiting for member operator deployment")
 
 	// wait for registration service to be ready
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, registrationServiceNs, "registration-service", 3, wait.RetryInterval, wait.OperatorTimeout)
+	err = e2eutil.WaitForDeployment(t, f.KubeClient, registrationServiceNs, "registration-service", 3, wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
 	require.NoError(t, err, "failed while waiting for registration service deployment")
 
-	registrationServiceRoute, err := waitForRoute(t, f, registrationServiceNs, "registration-service", wait.RetryInterval, wait.OperatorTimeout)
+	registrationServiceRoute, err := waitForRoute(t, f, registrationServiceNs, "registration-service", wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
 	require.NoError(t, err, "failed while waiting for registration service deployment")
 
 	registrationServiceURL := "http://" + registrationServiceRoute.Spec.Host
