@@ -175,7 +175,7 @@ func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string)
 
 	// 1. Create a UserSignup resource
 	userID := uuid.NewV4().String()
-	userSignup, err := newUserSignup(awaitility.Host(), userID, username, username)
+	userSignup, err := newUserSignup(awaitility.Host(), userID, username)
 	if err != nil {
 		return nil, nil, err
 	}
