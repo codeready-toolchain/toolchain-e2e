@@ -33,8 +33,6 @@ const (
 	KubeFedClusterConditionTimeout = 10*defaults.DefaultClusterHealthCheckPeriod + 5*time.Second
 )
 
-type OperatorRetryIntervalOption time.Duration
-type OperatorTimeoutOption time.Duration
 type RetryIntervalOption time.Duration
 type TimeoutOption time.Duration
 
@@ -60,26 +58,22 @@ type SingleAwaitility interface {
 }
 
 type SingleAwaitilityImpl struct {
-	T                     *testing.T
-	Client                framework.FrameworkClient
-	Ns                    string
-	OtherOperatorNs       string
-	OperatorRetryInterval time.Duration
-	OperatorTimeout       time.Duration
-	RetryInterval         time.Duration
-	Timeout               time.Duration
+	T               *testing.T
+	Client          framework.FrameworkClient
+	Ns              string
+	OtherOperatorNs string
+	RetryInterval   time.Duration
+	Timeout         time.Duration
 }
 
 func NewSingleAwaitility(t *testing.T, client framework.FrameworkClient, operatorNS, otherOperatorNS string) *SingleAwaitilityImpl {
 	return &SingleAwaitilityImpl{
-		T:                     t,
-		Client:                client,
-		Ns:                    operatorNS,
-		OtherOperatorNs:       otherOperatorNS,
-		OperatorRetryInterval: DefaultOperatorRetryInterval,
-		OperatorTimeout:       DefaultOperatorTimeout,
-		RetryInterval:         DefaultRetryInterval,
-		Timeout:               DefaultTimeout,
+		T:               t,
+		Client:          client,
+		Ns:              operatorNS,
+		OtherOperatorNs: otherOperatorNS,
+		RetryInterval:   DefaultRetryInterval,
+		Timeout:         DefaultTimeout,
 	}
 }
 
@@ -114,10 +108,6 @@ func (a *SingleAwaitilityImpl) WithRetryOptions(options ...interface{}) *SingleA
 	newAwait := NewSingleAwaitility(a.T, a.Client, a.Ns, a.OtherOperatorNs)
 	for _, option := range options {
 		switch v := option.(type) {
-		case OperatorRetryIntervalOption:
-			newAwait.OperatorRetryInterval = time.Duration(v)
-		case OperatorTimeoutOption:
-			newAwait.OperatorTimeout = time.Duration(v)
 		case RetryIntervalOption:
 			newAwait.RetryInterval = time.Duration(v)
 		case TimeoutOption:
