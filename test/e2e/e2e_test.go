@@ -28,9 +28,9 @@ func TestE2EFlow(t *testing.T) {
 	defer ctx.Cleanup()
 
 	johnsmithName := "johnsmith"
-	johnSignup, expUaSpec := setup(ctx, awaitility, johnsmithName)
+	johnSignup, expUaSpec := setup(t, ctx, awaitility, johnsmithName)
 	extrajohnName := "extrajohn"
-	_, expExtraUaSpec := setup(ctx, awaitility, extrajohnName)
+	_, expExtraUaSpec := setup(t, ctx, awaitility, extrajohnName)
 
 	verifyResources(t, awaitility, johnsmithName,
 		wait.UntilMasterUserRecordHasConditions(provisioned()),
@@ -167,27 +167,27 @@ func TestE2EFlow(t *testing.T) {
 	})
 }
 
-func setup(ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.UserAccountSpec) {
+func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.UserAccountSpec) {
 	// 0. Verify that the `basic` NSTemplateTier resource exists (will be needed later)
 	revisions, err := getRevisions(awaitility)
-	require.NoError(awaitility.T, err)
+	require.NoError(t, err)
 
 	// 1. Create a UserSignup resource
 	userID := uuid.NewV4().String()
-	userSignup := newUserSignup(awaitility.T, awaitility.Host(), userID, username)
+	userSignup := newUserSignup(t, awaitility.Host(), userID, username)
 	err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
-	require.NoError(awaitility.T, err)
+	require.NoError(t, err)
 	// at this stage, the usersignup should not be approved nor completed
 	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(pendingApproval()...))
-	require.NoError(awaitility.T, err)
+	require.NoError(t, err)
 
 	// 2. approve the UserSignup
 	userSignup.Spec.Approved = true
 	err = awaitility.Host().Client.Update(context.TODO(), userSignup)
-	require.NoError(awaitility.T, err)
+	require.NoError(t, err)
 	// Check the updated conditions
 	_, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
-	require.NoError(awaitility.T, err)
+	require.NoError(t, err)
 
 	return userSignup, &v1alpha1.UserAccountSpec{
 		UserID:   userID,
