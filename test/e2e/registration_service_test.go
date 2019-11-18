@@ -264,7 +264,8 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
     })
 
     s.Run("verify_signup_valid_token", func() {
-        // Get valid generated token for e2e tests.
+        // Get valid generated token for e2e tests. IAT claim is overriden 
+        // to avoid token used before issued error.
 		identity := authsupport.NewIdentity()
         emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
         iatClaim := authsupport.WithIATClaim(time.Now().Add(-60*time.Second))
