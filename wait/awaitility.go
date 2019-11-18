@@ -38,7 +38,6 @@ type TimeoutOption time.Duration
 
 // Awaitility contains information necessary for verifying availability of resources in both operators
 type Awaitility struct {
-	T                      *testing.T
 	Client                 framework.FrameworkClient
 	ControllerClient       client.Client
 	KubeClient             kubernetes.Interface
