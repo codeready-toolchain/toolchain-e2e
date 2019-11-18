@@ -42,6 +42,4 @@ replace (
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.0+incompatible
 
-replace github.com/codeready-toolchain/toolchain-common v0.0.0-20191104161227-62583e7d504a => ../toolchain-common
-
 go 1.13
