@@ -267,7 +267,7 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
         // Get valid generated token for e2e tests.
 		identity := authsupport.NewIdentity()
         emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-        iatClaim := authsupport.WithIATClaim(-60)
+        iatClaim := authsupport.WithIATClaim(time.Now().Add(-60*time.Second))
         token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, iatClaim)
        
 		// Call signup endpoint with an valid token.
