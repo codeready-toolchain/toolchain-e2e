@@ -65,7 +65,7 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 	s.T().Run("auto approval policy", func(t *testing.T) {
 		s.setApprovalPolicyConfig("automatic")
 
-		s.T().Run("approved set to false", func(t *testing.T) {
+		t.Run("approved set to false", func(t *testing.T) {
 			// UserSignup created with approved flag set to false but it should be approved anyway
 			s.createUserSignupAndAssertAutoApproval(false)
 		})
