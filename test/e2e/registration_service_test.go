@@ -62,6 +62,7 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 
 func (s *registrationServiceTestSuite) TestEndpoints() {
  s.Run("verify_healthcheck", func() {
+     // Call health endpoint.
      req, err := http.NewRequest("GET", s.route + "/api/v1/health", nil)
      require.NoError(s.T(), err)
      client := &http.Client{
@@ -80,13 +81,14 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
      defer resp.Body.Close()
 
      body, err := ioutil.ReadAll(resp.Body)
-     require.Nil(s.T(), err)
+     require.NoError(s.T(), err)
      require.NotNil(s.T(), body)
 
      mp := make(map[string]interface{})
      err = json.Unmarshal([]byte(body), &mp)
      require.Nil(s.T(), err)
 
+     // Verify that fields exist in response.
      alive := mp["alive"]
      require.True(s.T(), alive.(bool))
 
@@ -104,6 +106,7 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
  })
 
  s.Run("verify_authconfig", func() {
+     // Call authconfig endpoint.
      req, err := http.NewRequest("GET", s.route + "/api/v1/authconfig", nil)
      require.NoError(s.T(), err)
      client := &http.Client{
@@ -129,6 +132,7 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
      err = json.Unmarshal([]byte(body), &mp)
      require.Nil(s.T(), err)
 
+     // Verify that fields exist in response.
      alive := mp["auth-client-library-url"]
      require.Equal(s.T(), alive.(string), "https://sso.prod-preview.openshift.io/auth/js/keycloak.js")
 
@@ -151,12 +155,10 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 
      publicClient := mp1["public-client"]
      require.True(s.T(), publicClient.(bool))
-
-     // confidentialPort := mp1["confidential-port"]
-     // require.Equal(s.T(), int(confidentialPort.(float64)), 0)
  })
 
  s.Run("verify_signup_error_no_token", func() {
+     // Call signup endpoint without a token. 
      requestBody, err := json.Marshal(map[string]string{})
      require.Nil(s.T(), err)
      req, err := http.NewRequest("POST", s.route + "/api/v1/signup",  bytes.NewBuffer(requestBody))
@@ -173,6 +175,8 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 
      resp, err := client.Do(req)
      require.NoError(s.T(), err)
+
+     // Retrieve unauthorized http status code.
      assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
      defer resp.Body.Close()
@@ -185,11 +189,13 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
      err = json.Unmarshal([]byte(body), &mp)
      require.Nil(s.T(), err)
 
+     // Check token error.
      tokenErr := mp["error"].(string)
      require.Equal(s.T(), "no token found", tokenErr)
  })
 
  s.Run("verify_signup_error_unknown_auth_header", func() {
+     // Call signup endpoint with invalid authroization header.
      req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
      require.NoError(s.T(), err)
      req.Header.Set("Authorization", "1223123123")
@@ -205,6 +211,8 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 
      resp, err := client.Do(req)
      require.NoError(s.T(), err)
+
+     // Retrieve unauthorized http status code.
      assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
         
      defer resp.Body.Close()
@@ -217,11 +225,13 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
      err = json.Unmarshal([]byte(body), &mp)
      require.Nil(s.T(), err)
 
+     // Check token error.
      tokenErr := mp["error"].(string)
      require.Equal(s.T(), "found unknown authorization header:1223123123", tokenErr)
  })
 
     s.Run("verify_signup_error_invalid_token", func() {
+    // Call signup endpoint with an invalid token.
      req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
      require.NoError(s.T(), err)
      req.Header.Set("Authorization", "Bearer 1223123123")
@@ -237,6 +247,8 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 
      resp, err := client.Do(req)
      require.NoError(s.T(), err)
+
+     // Retrieve unauthorized http status code.
      assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
      defer resp.Body.Close()
@@ -249,54 +261,18 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
      err = json.Unmarshal([]byte(body), &mp)
      require.Nil(s.T(), err)
 
+      // Check token error.
      tokenErr := mp["error"].(string)
      require.Equal(s.T(), "token contains an invalid number of segments", tokenErr)
     })
 
     s.Run("verify_signup_valid_token", func() {
-
-		// tokenManager := authsupport.NewTokenManager()
-		// kid0 := uuid.NewV4().String()
-			
-		// //1. Create Keypair. --- AddPrivateKey() with kid
-		// key, err := tokenManager.AddPrivateKey(kid0)
-		// require.NoError(s.T(), err)
-
-		// 2/3. Create Token. GenerateSignedToken(). Sign Token with Private Key. -- use func SignToken()
+        // Get valid generated token for e2e tests.
 		identity := authsupport.NewIdentity()
 		emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
         token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim0)
-       // time.Sleep(2 * time.Second)
-        // publicKeys := authsupport.GetE2ETestPublicKey()
-		// require.Len(s.T(), publicKeys, 1)
-		// publicKey := publicKeys[0]
-        // parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		// 	kid := token.Header["kid"]
-		// 	require.NotNil(s.T(), kid)
-		// 	kidStr := kid.(string)
-		// 	assert.Equal(s.T(), publicKey.KeyID, kidStr)
-
-		// 	return publicKey.Key, nil
-        // })
-        
-        // require.Nil(s.T(), err)
-        // fmt.Println("E2E-TESTS")
-        // fmt.Println(parsedToken.Claims.(jwt.MapClaims)["iat"])
-        // fmt.Println(parsedToken.Claims.(jwt.MapClaims)["nbf"])
-        // fmt.Println(parsedToken.Claims.(jwt.MapClaims)["exp"])
-        // fmt.Println(time.Now().Unix())
-        //require.Equal(s.T(), parsedToken, "")
-		// // // 4/5. Convert Public Key to JWK JSON Format and return
-		// keyServer := authsupport.NewJWKServer(key, kid0)
-		
-		// keysEndpointURL := keyServer.URL
-		// reg, err := configuration.New("")
-		
-		// // Set auth_client.public_keys_url  to that address.
-		// os.Setenv("REGISTRATION_AUTH_CLIENT_PUBLIC_KEYS_URL", keysEndpointURL)
-		// os.Setenv("REGISTRATION_TESTINGMODE", "false")
-
-		// Send Token in Header to Service.
+       
+		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer " + token)
@@ -316,16 +292,8 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
-
-		// mp := make(map[string]interface{})
-		// err = json.Unmarshal([]byte(body), &mp)
-		// require.Nil(s.T(), err)
-
-		// tokenErr := mp["error"].(string)
-		// require.Equal(s.T(), "token contains an invalid number of segments", tokenErr)
-	 
-		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
     })
 }
