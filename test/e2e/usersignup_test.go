@@ -70,7 +70,7 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 			s.createUserSignupAndAssertAutoApproval(false)
 		})
 
-		s.T().Run("approved set to true", func(t *testing.T) {
+		t.Run("approved set to true", func(t *testing.T) {
 			// UserSignup created with approved flag set to true and it should be approved
 			s.createUserSignupAndAssertManualApproval(true)
 		})
