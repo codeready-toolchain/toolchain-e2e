@@ -266,8 +266,9 @@ func (s *registrationServiceTestSuite) TestEndpoints() {
     s.Run("verify_signup_valid_token", func() {
         // Get valid generated token for e2e tests.
 		identity := authsupport.NewIdentity()
-		emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-        token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim0)
+        emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+        iatClaim := authsupport.WithIATClaim(-60)
+        token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, iatClaim)
        
 		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("POST", s.route + "/api/v1/signup", nil)
