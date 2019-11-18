@@ -80,7 +80,7 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// Create user signup
 	s.setApprovalPolicyConfig("automatic")
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), uuid.NewV4().String(), "reginald@alpha.com")
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), "reginald@alpha.com")
 
 	// Remove the specified target cluster
 	userSignup.Spec.TargetCluster = ""
@@ -116,9 +116,8 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *v1alpha1.UserSignup {
 	// Create a new UserSignup with approved flag set to false
-	id := uuid.NewV4().String()
-	username := "testuser" + id
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), id, username)
+	username := "testuser" + uuid.NewV4().String()
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username)
 
 	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -143,7 +142,7 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertManualApproval(spec
 
 func (s *userSignupIntegrationTest) createUserSignupWithNameAndAssertManualApproval(specApproved bool, username string) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	// Create a new UserSignup with the given approved flag
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), uuid.NewV4().String(), username)
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username)
 	userSignup.Spec.Approved = specApproved
 	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -161,7 +160,7 @@ func (s *userSignupIntegrationTest) createUserSignupWithNameAndAssertManualAppro
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	// Create a new UserSignup with the given approved flag
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), uuid.NewV4().String(), "testuser"+uuid.NewV4().String())
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), "testuser"+uuid.NewV4().String())
 	userSignup.Spec.Approved = specApproved
 	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -221,14 +220,14 @@ func (s *userSignupIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSi
 	return mur
 }
 
-func newUserSignup(t *testing.T, host *wait.HostAwaitility, userID, username string) *v1alpha1.UserSignup {
+func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string) *v1alpha1.UserSignup {
 	memberCluster, ok, err := host.GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
 	require.NoError(t, err)
 	require.True(t, ok)
 
 	return &v1alpha1.UserSignup{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      userID,
+			Name:      uuid.NewV4().String(),
 			Namespace: host.Ns,
 		},
 		Spec: v1alpha1.UserSignupSpec{

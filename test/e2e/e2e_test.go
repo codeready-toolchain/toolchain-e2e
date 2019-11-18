@@ -11,7 +11,6 @@ import (
 	murtest "github.com/codeready-toolchain/toolchain-common/pkg/test/masteruserrecord"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	uuid "github.com/satori/go.uuid"
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -173,8 +172,7 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	require.NoError(t, err)
 
 	// 1. Create a UserSignup resource
-	userID := uuid.NewV4().String()
-	userSignup := newUserSignup(t, awaitility.Host(), userID, username)
+	userSignup := newUserSignup(t, awaitility.Host(), username)
 	err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
 	require.NoError(t, err)
 	// at this stage, the usersignup should not be approved nor completed
@@ -190,7 +188,7 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	require.NoError(t, err)
 
 	return userSignup, &v1alpha1.UserAccountSpec{
-		UserID:   userID,
+		UserID:   userSignup.Name,
 		Disabled: false,
 		NSLimit:  "default",
 		NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
