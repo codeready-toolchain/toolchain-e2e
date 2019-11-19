@@ -289,7 +289,7 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 	for key, revision := range expectedRevisions {
 		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision)
 		require.NoError(t, err)
-		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("%s-%s", ns.Labels["provider"], ns.Labels["type"]))
+		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)

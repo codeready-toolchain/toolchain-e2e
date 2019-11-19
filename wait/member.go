@@ -177,7 +177,12 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 		obj := &rbacv1.RoleBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of RoleBinding '%s' in namespace '%s'", name, namespace.Name)
+				allRBs := &rbacv1.RoleBindingList{}
+				ls := map[string]string{"provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), allRBs, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of RoleBinding '%s' in namespace '%s'. Currently available codeready-toolchain RoleBindings: '%+v'", name, namespace.Name, allRBs)
 				return false, nil
 			}
 			return false, err
