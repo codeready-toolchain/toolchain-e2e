@@ -4,7 +4,7 @@ require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
 	github.com/codeready-toolchain/api v0.0.0-20191115062940-693a0063cf16
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20191118164825-f66d82905ab5
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20191119153400-b1c168098261
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190730142803-0922aa5a655b+incompatible
@@ -41,5 +41,7 @@ replace (
 )
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.0+incompatible
+
+replace github.com/codeready-toolchain/toolchain-common v0.0.0-20191118164825-f66d82905ab5 => ../toolchain-common
 
 go 1.13

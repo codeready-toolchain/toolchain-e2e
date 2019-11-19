@@ -245,7 +245,40 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.IsType(s.T(), tokenErr, "")
 		require.Equal(s.T(), "token contains an invalid number of segments", tokenErr.(string))
 	})
+    s.Run("verify_post_signup_exp_token", func() {
+        expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
 
+		// Not identical to the token used in POST signup - should return resource not found.
+		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
+		require.NoError(s.T(), err)
+
+		// Call signup endpoint with an valid token.
+		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
+		require.NoError(s.T(), err)
+		req.Header.Set("Authorization", "Bearer "+token1)
+		req.Header.Set("content-type", "application/json")
+		client := getClient()
+
+		resp, err := client.Do(req)
+		require.NoError(s.T(), err)
+
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(s.T(), err)
+		require.NotNil(s.T(), body)
+
+		mp := make(map[string]interface{})
+		err = json.Unmarshal([]byte(body), &mp)
+		require.NoError(s.T(), err)
+
+		// Check token error.
+		tokenErr := mp["error"]
+		require.IsType(s.T(), tokenErr, "")
+        require.Contains(s.T(), tokenErr.(string), "token is expired by " )
+        
+		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
+	})
 	s.Run("verify_post_signup_valid_token", func() {
 		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
@@ -350,6 +383,40 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		tokenErr := mp["error"]
 		require.IsType(s.T(), tokenErr, "")
 		require.Equal(s.T(), "token contains an invalid number of segments", tokenErr.(string))
+    })
+    s.Run("verify_get_signup_exp_token", func() {
+        expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
+
+		// Not identical to the token used in POST signup - should return resource not found.
+		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
+		require.NoError(s.T(), err)
+
+		// Call signup endpoint with an valid token.
+		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
+		require.NoError(s.T(), err)
+		req.Header.Set("Authorization", "Bearer "+token1)
+		req.Header.Set("content-type", "application/json")
+		client := getClient()
+
+		resp, err := client.Do(req)
+		require.NoError(s.T(), err)
+
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(s.T(), err)
+		require.NotNil(s.T(), body)
+
+		mp := make(map[string]interface{})
+		err = json.Unmarshal([]byte(body), &mp)
+		require.NoError(s.T(), err)
+
+		// Check token error.
+		tokenErr := mp["error"]
+		require.IsType(s.T(), tokenErr, "")
+        require.Contains(s.T(), tokenErr.(string), "token is expired by " )
+        
+		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 	})
 	s.Run("verify_get_signup_valid_token_status_200OK", func() {
 		// Call signup endpoint with an valid token.
@@ -402,7 +469,7 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 
 		assert.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
-	})
+    })
 }
 
 // getClient create's a new client.
