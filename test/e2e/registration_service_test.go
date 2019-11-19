@@ -245,8 +245,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.IsType(s.T(), tokenErr, "")
 		require.Equal(s.T(), "token contains an invalid number of segments", tokenErr.(string))
 	})
-    s.Run("verify_post_signup_exp_token", func() {
-        expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
+	s.Run("verify_post_signup_exp_token", func() {
+		expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
 
 		// Not identical to the token used in POST signup - should return resource not found.
 		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
@@ -275,8 +275,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		// Check token error.
 		tokenErr := mp["error"]
 		require.IsType(s.T(), tokenErr, "")
-        require.Contains(s.T(), tokenErr.(string), "token is expired by " )
-        
+		require.Contains(s.T(), tokenErr.(string), "token is expired by ")
+
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 	})
 	s.Run("verify_post_signup_valid_token", func() {
@@ -383,9 +383,9 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		tokenErr := mp["error"]
 		require.IsType(s.T(), tokenErr, "")
 		require.Equal(s.T(), "token contains an invalid number of segments", tokenErr.(string))
-    })
-    s.Run("verify_get_signup_exp_token", func() {
-        expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
+	})
+	s.Run("verify_get_signup_exp_token", func() {
+		expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
 
 		// Not identical to the token used in POST signup - should return resource not found.
 		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
@@ -414,8 +414,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		// Check token error.
 		tokenErr := mp["error"]
 		require.IsType(s.T(), tokenErr, "")
-        require.Contains(s.T(), tokenErr.(string), "token is expired by " )
-        
+		require.Contains(s.T(), tokenErr.(string), "token is expired by ")
+
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 	})
 	s.Run("verify_get_signup_valid_token_status_200OK", func() {
@@ -469,7 +469,7 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 
 		assert.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
-    })
+	})
 }
 
 // getClient create's a new client.
