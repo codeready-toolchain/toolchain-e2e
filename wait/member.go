@@ -9,7 +9,8 @@ import (
 
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -149,7 +150,13 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 		}
 
 		if len(namespaceList.Items) < 1 {
-			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s", typeName, revision, username)
+			allNSs := &v1.NamespaceList{}
+			ls := map[string]string{"provider": "codeready-toolchain"}
+			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(ls)); err != nil {
+				return false, err
+			}
+
+			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s. Currently available NSs: '%v'", typeName, revision, username, allNSs)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
@@ -161,6 +168,25 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 	}
 	ns := namespaceList.Items[0]
 	return &ns, nil
+}
+
+// WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name string) (*rbacv1.RoleBinding, error) {
+	roleBinding := &rbacv1.RoleBinding{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &rbacv1.RoleBinding{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of RoleBinding '%s' in namespace '%s'", name, namespace.Name)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found RoleBinding '%s'", name)
+		roleBinding = obj
+		return true, nil
+	})
+	return roleBinding, err
 }
 
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
