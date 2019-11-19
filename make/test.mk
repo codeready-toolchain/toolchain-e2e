@@ -189,6 +189,7 @@ ifeq ($(MEMBER_REPO_PATH),)
 endif
 	@echo "Deploying member operator to $(MEMBER_NS)..."
 	-oc new-project $(MEMBER_NS) 1>/dev/null
+	-oc label ns $(MEMBER_NS) app=member-operator
 	-oc project $(MEMBER_NS)
 ifneq ($(IS_OS_3),)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
@@ -207,6 +208,7 @@ ifeq ($(HOST_REPO_PATH),)
 endif
 	@echo "Deploying host operator to $(HOST_NS)..."
 	-oc new-project $(HOST_NS) 1>/dev/null
+	-oc label ns $(MEMBER_NS) app=host-operator
 	-oc project $(HOST_NS)
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
@@ -230,6 +232,7 @@ endif
 	@echo "Deploying registration-service to $(HOST_NS)..."
 	-oc new-project $(HOST_NS) 1>/dev/null
 	-oc project $(HOST_NS)
+	-oc label ns $(HOST_NS) app=host-operator
 	# deploy resources
 	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
@@ -304,3 +307,11 @@ else
 		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
     endif
 endif
+
+.PHONY: display-eval
+display-eval:
+	@echo 'export HOST_NS=$(shell oc get projects -l app=host-operator --output=name --no-headers=true -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)'
+	@echo 'export MEMBER_NS=$(shell oc get projects -l app=member-operator --output=name --no-headers=true -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)'
+	@echo 'export REGISTRATION_SERVICE_NS=$$HOST_NS'
+	@echo '# Run this command to configure your shell:'
+	@echo '# eval $$(make display-eval)'
