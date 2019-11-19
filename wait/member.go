@@ -156,7 +156,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 				return false, err
 			}
 
-			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s. Currently available NSs: '%v'", typeName, revision, username, allNSs)
+			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, username, allNSs)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
