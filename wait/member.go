@@ -39,7 +39,7 @@ type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.Us
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		a.T.Logf("waiting for useraccount specs: %+v vs %+v", expected, ua.Spec)
+		a.T.Logf("waiting for useraccount specs. Actual: '%+v'; Expected: '%+v'", ua.Spec, expected)
 		return reflect.DeepEqual(ua.Spec, expected)
 	}
 }
@@ -52,7 +52,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for correct status conditions [%+v] of UserAccount '%s', the actual are: [%+v]", conditions, ua.Name, ua.Status.Conditions)
+		a.T.Logf("waiting for status condition of UserSignup '%s'. Acutal: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
 		return false
 	}
 }
@@ -92,7 +92,7 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
 			return true
 		}
-		a.T.Logf("waiting for correct status conditions [%+v] of NSTemplateSet '%s', the actual are: [%+v]", conditions, nsTmplSet.Name, nsTmplSet.Status.Conditions)
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Acutal: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
 		return false
 	}
 }
