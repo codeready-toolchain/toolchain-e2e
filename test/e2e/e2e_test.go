@@ -286,8 +286,8 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 
 	// Verify all namespaces and RoleBindings in these namespaces
 	assert.Len(t, expectedRevisions, 3)
-	for key, revsion := range expectedRevisions {
-		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revsion)
+	for key, revision := range expectedRevisions {
+		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision)
 		require.NoError(t, err)
 		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("%s-%s", ns.Labels["provider"], ns.Labels["type"]))
 		require.NoError(t, err)
