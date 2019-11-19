@@ -158,13 +158,13 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 }
 
 func (s *registrationServiceTestSuite) TestSignup() {
-    // Get valid generated token for e2e tests. IAT claim is overriden
-    // to avoid token used before issued error.
-    identity0 := authsupport.NewIdentity()
-    emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-    iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-    token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
-    require.NoError(s.T(), err)
+	// Get valid generated token for e2e tests. IAT claim is overriden
+	// to avoid token used before issued error.
+	identity0 := authsupport.NewIdentity()
+	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
+	require.NoError(s.T(), err)
 
 	s.Run("verify_post_signup_error_no_token", func() {
 		// Call signup endpoint without a token.
@@ -299,9 +299,9 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
-    })
-    
-    s.Run("verify_get_signup_error_no_token", func() {
+	})
+
+	s.Run("verify_get_signup_error_no_token", func() {
 		// Call signup endpoint without a token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -430,17 +430,17 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NotNil(s.T(), body)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-    })
+	})
 	s.Run("verify_get_signup_valid_token_status_404NotFound", func() {
-        // Get valid generated token for e2e tests. IAT claim is overriden
-        // to avoid token used before issued error.
-        identity1 := authsupport.NewIdentity()
-        emailClaim1 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-        iatClaim1 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+		// Get valid generated token for e2e tests. IAT claim is overriden
+		// to avoid token used before issued error.
+		identity1 := authsupport.NewIdentity()
+		emailClaim1 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+		iatClaim1 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 
-        // Not identical to the token used in POST signup - should return resource not found.
-        token1, err := authsupport.GenerateSignedE2ETestToken(*identity1, emailClaim1, iatClaim1)
-        require.NoError(s.T(), err)
+		// Not identical to the token used in POST signup - should return resource not found.
+		token1, err := authsupport.GenerateSignedE2ETestToken(*identity1, emailClaim1, iatClaim1)
+		require.NoError(s.T(), err)
 
 		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
