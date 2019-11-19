@@ -208,7 +208,7 @@ ifeq ($(HOST_REPO_PATH),)
 endif
 	@echo "Deploying host operator to $(HOST_NS)..."
 	-oc new-project $(HOST_NS) 1>/dev/null
-	-oc label ns $(MEMBER_NS) app=host-operator
+	-oc label ns $(HOST_NS) app=host-operator
 	-oc project $(HOST_NS)
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
