@@ -273,16 +273,16 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 		UserAccountStatus: userAccount.Status,
 	}
 	_, err = hostAwait.WaitForMasterUserRecord(mur.Name, append(masteruserrecordCriteria, wait.UntilMasterUserRecordHasUserAccountStatuses(uaStatus))...)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = memberAwait.WaitForUser(userAccount.Name)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	_, err = memberAwait.WaitForNSTmplSet(userAccount.Name)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	// Verify all namespaces and RoleBindings in these namespaces
 	assert.Len(t, expectedRevisions, 3)
