@@ -464,10 +464,6 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
 		assert.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
 	})
 }
