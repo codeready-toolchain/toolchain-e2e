@@ -157,11 +157,19 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 	})
 }
 
-func (s *registrationServiceTestSuite) TestPOSTSignup() {
+func (s *registrationServiceTestSuite) TestSignup() {
+    // Get valid generated token for e2e tests. IAT claim is overriden
+    // to avoid token used before issued error.
+    identity0 := authsupport.NewIdentity()
+    emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+    iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+    token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
+    require.NoError(s.T(), err)
+
 	s.Run("verify_post_signup_error_no_token", func() {
 		// Call signup endpoint without a token.
 		requestBody, err := json.Marshal(map[string]string{})
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", bytes.NewBuffer(requestBody))
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
@@ -183,12 +191,12 @@ func (s *registrationServiceTestSuite) TestPOSTSignup() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
 		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 
 		// Check token error.
 		tokenErr := mp["error"].(string)
@@ -219,12 +227,12 @@ func (s *registrationServiceTestSuite) TestPOSTSignup() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
 		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 
 		// Check token error.
 		tokenErr := mp["error"].(string)
@@ -255,12 +263,12 @@ func (s *registrationServiceTestSuite) TestPOSTSignup() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
 		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 
 		// Check token error.
 		tokenErr := mp["error"].(string)
@@ -268,17 +276,10 @@ func (s *registrationServiceTestSuite) TestPOSTSignup() {
 	})
 
 	s.Run("verify_post_signup_valid_token", func() {
-		// Get valid generated token for e2e tests. IAT claim is overriden
-		// to avoid token used before issued error.
-		identity := authsupport.NewIdentity()
-		emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-		iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, iatClaim)
-
 		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Authorization", "Bearer "+token0)
 		req.Header.Set("content-type", "application/json")
 		client := &http.Client{
 			Timeout: time.Second * 10,
@@ -298,11 +299,9 @@ func (s *registrationServiceTestSuite) TestPOSTSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
-	})
-}
-
-func (s *registrationServiceTestSuite) TestGETSignup() {
-	s.Run("verify_get_signup_error_no_token", func() {
+    })
+    
+    s.Run("verify_get_signup_error_no_token", func() {
 		// Call signup endpoint without a token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -325,12 +324,12 @@ func (s *registrationServiceTestSuite) TestGETSignup() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
 		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 
 		// Check token error.
 		tokenErr := mp["error"].(string)
@@ -360,19 +359,18 @@ func (s *registrationServiceTestSuite) TestGETSignup() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
 		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 
 		// Check token error.
 		tokenErr := mp["error"].(string)
 		require.Equal(s.T(), "found unknown authorization header:1223123123", tokenErr)
 	})
-
-	s.Run("verify_post_signup_error_invalid_token", func() {
+	s.Run("verify_get_signup_error_invalid_token", func() {
 		// Call signup endpoint with an invalid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -396,30 +394,58 @@ func (s *registrationServiceTestSuite) TestGETSignup() {
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
 		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-		require.Nil(s.T(), err)
+		require.NoError(s.T(), err)
 
 		// Check token error.
 		tokenErr := mp["error"].(string)
 		require.Equal(s.T(), "token contains an invalid number of segments", tokenErr)
 	})
+	s.Run("verify_get_signup_valid_token_status_200OK", func() {
+		// Call signup endpoint with an valid token.
+		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
+		require.NoError(s.T(), err)
+		req.Header.Set("Authorization", "Bearer "+token0)
+		req.Header.Set("content-type", "application/json")
+		client := &http.Client{
+			Timeout: time.Second * 10,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
 
-	s.Run("verify_post_signup_valid_token", func() {
-		// Get valid generated token for e2e tests. IAT claim is overriden
-		// to avoid token used before issued error.
-		identity := authsupport.NewIdentity()
-		emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-		iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, iatClaim)
+		resp, err := client.Do(req)
+		require.NoError(s.T(), err)
+
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(s.T(), err)
+		require.NotNil(s.T(), body)
+
+		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+    })
+	s.Run("verify_get_signup_valid_token_status_404NotFound", func() {
+        // Get valid generated token for e2e tests. IAT claim is overriden
+        // to avoid token used before issued error.
+        identity1 := authsupport.NewIdentity()
+        emailClaim1 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+        iatClaim1 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+
+        // Not identical to the token used in POST signup - should return resource not found.
+        token1, err := authsupport.GenerateSignedE2ETestToken(*identity1, emailClaim1, iatClaim1)
+        require.NoError(s.T(), err)
 
 		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
 		client := &http.Client{
 			Timeout: time.Second * 10,
