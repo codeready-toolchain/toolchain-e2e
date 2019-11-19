@@ -310,8 +310,8 @@ endif
 
 .PHONY: display-eval
 display-eval:
-	@echo 'export HOST_NS=$(shell oc get projects -l app=host-operator --output=name --no-headers=true -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)'
-	@echo 'export MEMBER_NS=$(shell oc get projects -l app=member-operator --output=name --no-headers=true -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)'
+	@echo 'export HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)'
+	@echo 'export MEMBER_NS=$(shell oc get projects -l app=member-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)'
 	@echo 'export REGISTRATION_SERVICE_NS=$$HOST_NS'
 	@echo '# Run this command to configure your shell:'
 	@echo '# eval $$(make display-eval)'
