@@ -70,28 +70,6 @@ func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 	require.NoError(t, err)
 }
 
-func (s *nsTemplateSetTest) TestDeleteOK() {
-	t := s.T()
-	username := "hemal"
-
-	nsTmplSet := s.createAndVerifyNSTmplSet(username)
-
-	// delete NSTmplSet
-	t.Logf("Deleting NSTmplSet with username:%s", username)
-	err := s.awaitility.Client.Delete(context.TODO(), nsTmplSet)
-	require.NoError(t, err)
-
-	// wait for NSTmplSet
-	err = s.memberAwait.WaitUntilNSTemplateSetDeleted(nsTmplSet.Name)
-	require.NoError(t, err)
-
-	// wait for Namespace
-	for _, ns := range nsTmplSet.Spec.Namespaces {
-		err = s.memberAwait.WaitUntilNamespaceDeleted(username, ns.Type)
-		require.NoError(t, err)
-	}
-}
-
 func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchainv1alpha1.NSTemplateSet {
 	t := s.T()
 
@@ -103,7 +81,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 	require.NoError(t, err)
 
 	// wait for NSTmplSet
-	nsTmplSet, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, wait.UntilNSTemplateSetHasConditions(isProvisioned()))
+	nsTmplSet, err = s.memberAwait.WaitForNSTmplSet(nsTmplSet.Name, wait.UntilNSTemplateSetHasConditions(provisioned()))
 	require.NoError(t, err)
 
 	// wait for Namespace
