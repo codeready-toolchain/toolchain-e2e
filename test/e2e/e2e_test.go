@@ -24,6 +24,11 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
+	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
+	// We will verify them in the end of the test
+	usernames := createMultipeSignups(t, ctx, awaitility, 5)
+
+	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
 	johnSignup, expUaSpec := setup(t, ctx, awaitility, johnsmithName)
 	extrajohnName := "extrajohn"
@@ -166,6 +171,11 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		verifyResources(t, awaitility, extrajohnName, revisions, wait.UntilMasterUserRecordHasConditions(provisioned()))
 	})
+
+	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
+		// Now when the main flow has been tested we can verify the signups we created in the very beginning
+		verifyMultipeSignups(t, ctx, awaitility, usernames, revisions)
+	})
 }
 
 func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.UserAccountSpec) {
@@ -213,6 +223,28 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 				},
 			},
 		},
+	}
+}
+
+func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []string {
+	usernames := make([]string, capacity)
+	for i := 0; i < capacity; i++ {
+		// Create an approved UserSignup resource
+		userSignup := newUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i))
+		userSignup.Spec.Approved = true
+		err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
+		awaitility.T.Logf("created UserSignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
+		require.NoError(t, err)
+		usernames[i] = userSignup.Spec.Username
+	}
+	return usernames
+}
+
+func verifyMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, usernames []string, revisions map[string]string) {
+	for _, username := range usernames {
+		verifyResources(t, awaitility, username, revisions,
+			wait.UntilMasterUserRecordHasConditions(provisioned()),
+			wait.UntilUserAccountHasConditions(provisioned()))
 	}
 }
 
