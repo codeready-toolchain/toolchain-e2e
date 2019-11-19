@@ -174,7 +174,7 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		verifyMultipeSignups(t, ctx, awaitility, usernames, revisions)
+		verifyMultipeSignups(t, awaitility, usernames, revisions)
 	})
 }
 
@@ -240,7 +240,7 @@ func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait
 	return usernames
 }
 
-func verifyMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, usernames []string, revisions map[string]string) {
+func verifyMultipeSignups(t *testing.T, awaitility *wait.Awaitility, usernames []string, revisions map[string]string) {
 	for _, username := range usernames {
 		verifyResources(t, awaitility, username, revisions,
 			wait.UntilMasterUserRecordHasConditions(provisioned()),
