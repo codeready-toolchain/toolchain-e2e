@@ -188,14 +188,14 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	require.NoError(t, err)
 
 	// 1. Create a UserSignup resource
-	identity0 := &authsupport.Identity{
+	identity := &authsupport.Identity{
 		ID:       uuid.NewV4(),
 		Username: username,
 	}
-	registration(t, awaitility.RegistrationServiceURL, *identity0)
+	registration(t, awaitility.RegistrationServiceURL, *identity)
 
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err := awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
+	userSignup, err := awaitility.Host().WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
 	require.NoError(t, err)
 
 	// 2. approve the UserSignup
