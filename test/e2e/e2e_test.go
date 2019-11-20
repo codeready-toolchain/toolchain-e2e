@@ -7,8 +7,6 @@ import (
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-	murtest "github.com/codeready-toolchain/toolchain-common/pkg/test/masteruserrecord"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
@@ -26,16 +24,25 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
+	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
+	// We will verify them in the end of the test
+	usernames := createMultipeSignups(t, ctx, awaitility, 5)
+
+	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
 	johnSignup, expUaSpec := setup(t, ctx, awaitility, johnsmithName)
 	extrajohnName := "extrajohn"
 	_, expExtraUaSpec := setup(t, ctx, awaitility, extrajohnName)
 
-	verifyResources(t, awaitility, johnsmithName,
+	// Expected ns template revisions
+	revisions, err := getRevisions(awaitility)
+	require.NoError(t, err)
+
+	verifyResources(t, awaitility, johnsmithName, revisions,
 		wait.UntilMasterUserRecordHasConditions(provisioned()),
 		wait.UntilUserAccountHasSpec(*expUaSpec),
 		wait.UntilUserAccountHasConditions(provisioned()))
-	verifyResources(t, awaitility, extrajohnName,
+	verifyResources(t, awaitility, extrajohnName, revisions,
 		wait.UntilMasterUserRecordHasConditions(provisioned()),
 		wait.UntilUserAccountHasSpec(*expExtraUaSpec),
 		wait.UntilUserAccountHasConditions(provisioned()))
@@ -53,10 +60,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName,
+			verifyResources(t, awaitility, johnsmithName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName,
+			verifyResources(t, awaitility, extrajohnName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
 		})
@@ -72,10 +79,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName,
+			verifyResources(t, awaitility, johnsmithName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName,
+			verifyResources(t, awaitility, extrajohnName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
 		})
@@ -92,10 +99,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName,
+			verifyResources(t, awaitility, johnsmithName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName,
+			verifyResources(t, awaitility, extrajohnName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
 		})
@@ -112,10 +119,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName,
+			verifyResources(t, awaitility, johnsmithName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName,
+			verifyResources(t, awaitility, extrajohnName, revisions,
 				wait.UntilMasterUserRecordHasConditions(provisioned()),
 				wait.UntilUserAccountHasConditions(provisioned()))
 		})
@@ -162,7 +169,12 @@ func TestE2EFlow(t *testing.T) {
 		// also, verify that other user's resource are left intact
 		_, err = hostAwait.WaitForMasterUserRecord(extrajohnName)
 		require.NoError(t, err)
-		verifyResources(t, awaitility, extrajohnName, wait.UntilMasterUserRecordHasConditions(provisioned()))
+		verifyResources(t, awaitility, extrajohnName, revisions, wait.UntilMasterUserRecordHasConditions(provisioned()))
+	})
+
+	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
+		// Now when the main flow has been tested we can verify the signups we created in the very beginning
+		verifyMultipeSignups(t, awaitility, usernames, revisions)
 	})
 }
 
@@ -214,6 +226,28 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	}
 }
 
+func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []string {
+	usernames := make([]string, capacity)
+	for i := 0; i < capacity; i++ {
+		// Create an approved UserSignup resource
+		userSignup := newUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i))
+		userSignup.Spec.Approved = true
+		err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
+		awaitility.T.Logf("created UserSignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
+		require.NoError(t, err)
+		usernames[i] = userSignup.Spec.Username
+	}
+	return usernames
+}
+
+func verifyMultipeSignups(t *testing.T, awaitility *wait.Awaitility, usernames []string, revisions map[string]string) {
+	for _, username := range usernames {
+		verifyResources(t, awaitility, username, revisions,
+			wait.UntilMasterUserRecordHasConditions(provisioned()),
+			wait.UntilUserAccountHasConditions(provisioned()))
+	}
+}
+
 func getRevisions(awaitility *wait.Awaitility) (map[string]string, error) {
 	basicTier, err := awaitility.Host().WaitForNSTemplateTier("basic", wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
 	if err != nil {
@@ -239,29 +273,7 @@ func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) 
 	return "", false
 }
 
-func TestE2EFlowForMultipleAccounts(t *testing.T) {
-	// given
-	murList := &toolchainv1alpha1.MasterUserRecordList{}
-	ctx, awaitility := testsupport.WaitForDeployments(t, murList)
-	defer ctx.Cleanup()
-
-	// when
-	var murs []*toolchainv1alpha1.MasterUserRecord
-	for i := 0; i < 10; i++ {
-		mur := createMasterUserRecord(t, awaitility, ctx, fmt.Sprintf("johny-number-%d", i))
-		t.Logf("MasterUserRecord '%s' created", mur.Name)
-		murs = append(murs, mur)
-	}
-
-	// then
-	for _, mur := range murs {
-		verifyResources(t, awaitility, mur.Name,
-			wait.UntilMasterUserRecordHasConditions(provisioned()),
-			wait.UntilUserAccountHasConditions(provisioned()))
-	}
-}
-
-func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, mixedCriteria ...interface{}) {
+func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, expectedRevisions map[string]string, mixedCriteria ...interface{}) {
 	masteruserrecordCriteria := []wait.MasterUserRecordWaitCriterion{}
 	useraccountCriteria := []wait.UserAccountWaitCriterion{}
 	for _, c := range mixedCriteria {
@@ -303,22 +315,19 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 
 	_, err = memberAwait.WaitForNSTmplSet(userAccount.Name)
 	assert.NoError(t, err)
-}
 
-func createMasterUserRecord(t *testing.T, awaitility *wait.Awaitility, ctx *framework.TestCtx, name string) *toolchainv1alpha1.MasterUserRecord {
-	memberCluster, ok, err := awaitility.Host().GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
-	require.NoError(t, err)
-	require.True(t, ok, "KubeFedCluster should exist")
-	mur := murtest.NewMasterUserRecord(name,
-		murtest.MetaNamespace(awaitility.HostNs), murtest.TargetCluster(memberCluster.Name))
-
-	err = awaitility.Client.Create(context.TODO(), mur, testsupport.CleanupOptions(ctx))
-	require.NoError(t, err)
-
-	verifyResources(t, awaitility, mur.Name,
-		wait.UntilMasterUserRecordHasConditions(provisioned()),
-		wait.UntilUserAccountHasConditions(provisioned()))
-	return mur
+	// Verify all namespaces and RoleBindings in these namespaces
+	assert.Len(t, expectedRevisions, 3)
+	for key, revision := range expectedRevisions {
+		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision)
+		require.NoError(t, err)
+		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
+		assert.Equal(t, "edit", rb.RoleRef.Name)
+	}
 }
 
 func toIdentityName(userID string) string {
