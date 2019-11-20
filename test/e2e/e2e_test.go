@@ -180,7 +180,7 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 		ID:       uuid.NewV4(),
 		Username: username,
 	}
-	registration(awaitility.RegistrationServiceURL, *identity0)
+	registration(t, awaitility.RegistrationServiceURL, *identity0)
 
 	// at this stage, the usersignup should not be approved nor completed
 	userSignup, err := awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
@@ -332,18 +332,20 @@ func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
 }
 
-func registration(route string, identity authsupport.Identity) {
+func registration(t *testing.T, route string, identity authsupport.Identity) {
 	// Call signup endpoint with an valid token.
-	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-	token0, _ := authsupport.GenerateSignedE2ETestToken(identity, emailClaim0, iatClaim0)
+	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	token, err := authsupport.GenerateSignedE2ETestToken(identity, emailClaim, iatClaim)
+	require.NoError(t, err)
 
-	req, _ := http.NewRequest("POST", route+"/api/v1/signup", nil)
-	req.Header.Set("Authorization", "Bearer "+token0)
+	req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
 	client := getClient()
 
-	resp, _ := client.Do(req)
-
-	resp.Body.Close()
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 }

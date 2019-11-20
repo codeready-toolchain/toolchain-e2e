@@ -74,11 +74,11 @@ func (s *registrationServiceTestSuite) TestHealth() {
 
 		// Verify JSON response.
 		alive := mp["alive"]
-		require.IsType(s.T(), alive, true)
+		require.IsType(s.T(), true, alive)
 		require.True(s.T(), alive.(bool))
 
 		environment := mp["environment"]
-		require.IsType(s.T(), environment, "")
+		require.IsType(s.T(), "", environment)
 		require.Equal(s.T(), "e2e-tests", environment.(string))
 
 		revision := mp["revision"]
@@ -108,41 +108,6 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
-		// Verify JSON response.
-		authClientLibraryURL := mp["auth-client-library-url"]
-		require.IsType(s.T(), authClientLibraryURL, "")
-		require.Equal(s.T(), authClientLibraryURL.(string), "https://sso.prod-preview.openshift.io/auth/js/keycloak.js")
-
-		authClientConfig := mp["auth-client-config"]
-		require.IsType(s.T(), authClientConfig, "")
-		mp1 := make(map[string]interface{})
-		err = json.Unmarshal([]byte(authClientConfig.(string)), &mp1)
-		require.NoError(s.T(), err)
-
-		realm := mp1["realm"]
-		require.IsType(s.T(), realm, "")
-		require.Equal(s.T(), realm.(string), "toolchain-public")
-
-		authServerURL := mp1["auth-server-url"]
-		require.IsType(s.T(), authServerURL, "")
-		require.Equal(s.T(), authServerURL.(string), "https://sso.prod-preview.openshift.io/auth")
-
-		sslRequired := mp1["ssl-required"]
-		require.IsType(s.T(), sslRequired, "")
-		require.Equal(s.T(), sslRequired.(string), "none")
-
-		resource := mp1["resource"]
-		require.IsType(s.T(), resource, "")
-		require.Equal(s.T(), resource.(string), "crt")
-
-		publicClient := mp1["public-client"]
-		require.IsType(s.T(), publicClient, true)
-		require.True(s.T(), publicClient.(bool))
 	})
 }
 
@@ -182,7 +147,7 @@ func (s *registrationServiceTestSuite) TestSignup() {
 
 		// Check token error.
 		tokenErr := mp["error"]
-		require.IsType(s.T(), tokenErr, "")
+		require.IsType(s.T(), "", tokenErr)
 		require.Equal(s.T(), "no token found", tokenErr.(string))
 	})
 
