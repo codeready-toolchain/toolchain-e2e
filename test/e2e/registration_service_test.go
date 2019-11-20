@@ -1,8 +1,8 @@
 package e2e
 
 import (
-    "bytes"
-    "context"
+	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
@@ -13,7 +13,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-    "github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
@@ -231,8 +231,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
-    })
-    s.Run("get signup error no token 401 Unauthorized", func() {
+	})
+	s.Run("get signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -259,8 +259,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		tokenErr := mp["error"]
 		require.IsType(s.T(), tokenErr, "")
 		require.Equal(s.T(), "no token found", tokenErr.(string))
-    })
-    s.Run("get signup error invalid token 401 Unauthorized", func() {
+	})
+	s.Run("get signup error invalid token 401 Unauthorized", func() {
 		// Call signup endpoint with an invalid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -340,29 +340,29 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
-        mp := make(map[string]interface{})
+		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-        require.NoError(s.T(), err)
+		require.NoError(s.T(), err)
 
-        mpStatus, ok := mp["status"].(map[string]interface{})
-        assert.True(s.T(), ok)
+		mpStatus, ok := mp["status"].(map[string]interface{})
+		assert.True(s.T(), ok)
 
-        assert.Nil(s.T(),mp["CompliantUsername"])
-        assert.Equal(s.T(), identity0.Username , mp["username"])
-        require.IsType(s.T(), false, mpStatus["ready"])
-        assert.False(s.T(), mpStatus["ready"].(bool))
-        assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
-    })
-    s.Run("get signup 200 OK approved", func() {
-        userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
-        require.NoError(s.T(), err)
+		assert.Nil(s.T(), mp["CompliantUsername"])
+		assert.Equal(s.T(), identity0.Username, mp["username"])
+		require.IsType(s.T(), false, mpStatus["ready"])
+		assert.False(s.T(), mpStatus["ready"].(bool))
+		assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+	})
+	s.Run("get signup 200 OK approved", func() {
+		userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
+		require.NoError(s.T(), err)
 
-        userSignup.Spec.Approved = true
-        err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
-        require.NoError(s.T(), err)
+		userSignup.Spec.Approved = true
+		err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
+		require.NoError(s.T(), err)
 
-        _, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
-        require.NoError(s.T(), err)
+		_, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
+		require.NoError(s.T(), err)
 
 		// Call signup endpoint with an valid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
@@ -380,19 +380,19 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
-        mp := make(map[string]interface{})
+		mp := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &mp)
-        require.NoError(s.T(), err)
+		require.NoError(s.T(), err)
 
-        mpStatus, ok := mp["status"].(map[string]interface{})
-        assert.True(s.T(), ok)
+		mpStatus, ok := mp["status"].(map[string]interface{})
+		assert.True(s.T(), ok)
 
-        assert.Nil(s.T(),mp["CompliantUsername"])
-        assert.Equal(s.T(), identity0.Username , mp["username"])
-        require.IsType(s.T(), false, mpStatus["ready"])
-        assert.False(s.T(), mpStatus["ready"].(bool))
-        assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
-    })
+		assert.Nil(s.T(), mp["CompliantUsername"])
+		assert.Equal(s.T(), identity0.Username, mp["username"])
+		require.IsType(s.T(), false, mpStatus["ready"])
+		assert.False(s.T(), mpStatus["ready"].(bool))
+		assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
+	})
 	s.Run("get signup 404 NotFound", func() {
 		// Get valid generated token for e2e tests. IAT claim is overriden
 		// to avoid token used before issued error.
