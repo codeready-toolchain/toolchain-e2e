@@ -26,7 +26,7 @@ const (
 	DefaultOperatorRetryInterval   = time.Millisecond * 500
 	DefaultOperatorTimeout         = time.Second * 120
 	DefaultRetryInterval           = time.Millisecond * 500
-	DefaultTimeout                 = time.Second * 120
+	DefaultTimeout                 = time.Second * 60
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"
 	RegistrationServiceVar         = "REGISTRATION_SERVICE_NS"
