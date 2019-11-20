@@ -231,6 +231,31 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
+    })
+    s.Run("post signup fail same usersignup", func() {
+		// Call signup endpoint with an valid token.
+		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
+		require.NoError(s.T(), err)
+		req.Header.Set("Authorization", "Bearer "+token0)
+		req.Header.Set("content-type", "application/json")
+		client := getClient()
+
+		resp, err := client.Do(req)
+		require.NoError(s.T(), err)
+
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(s.T(), err)
+        require.NotNil(s.T(), body)
+
+        mp := make(map[string]interface{})
+		err = json.Unmarshal([]byte(body), &mp)
+        require.NoError(s.T(), err)
+        
+        assert.Equal(s.T(), "usersignups.toolchain.dev.openshift.com \"" + identity0.ID.String() + "\" already exists", mp["message"])
+        assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
+		assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 	})
 	s.Run("get signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
