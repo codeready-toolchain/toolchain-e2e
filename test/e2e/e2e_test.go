@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
+	"net/http"
 
+	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -18,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	uuid "github.com/satori/go.uuid"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -172,11 +176,14 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	require.NoError(t, err)
 
 	// 1. Create a UserSignup resource
-	userSignup := newUserSignup(t, awaitility.Host(), username)
-	err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
-	require.NoError(t, err)
+	identity0 := &authsupport.Identity{
+		ID:       uuid.NewV4(),
+		Username: username,
+	}
+	registration(awaitility.RegistrationServiceURL, *identity0)
+
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(pendingApproval()...))
+	userSignup, err := awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
 	require.NoError(t, err)
 
 	// 2. approve the UserSignup
@@ -323,4 +330,20 @@ func createMasterUserRecord(t *testing.T, awaitility *wait.Awaitility, ctx *fram
 
 func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
+}
+
+func registration(route string, identity authsupport.Identity) {
+	// Call signup endpoint with an valid token.
+	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	token0, _ := authsupport.GenerateSignedE2ETestToken(identity, emailClaim0, iatClaim0)
+
+	req, _ := http.NewRequest("POST", route+"/api/v1/signup", nil)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+	client := getClient()
+
+	resp, _ := client.Do(req)
+
+	resp.Body.Close()
 }
