@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"reflect"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -74,9 +75,9 @@ func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alp
 			return false
 		}
 		for _, expUaStatus := range expUaStatuses {
-			expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.TargetCluster)
+			expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.Cluster.Name)
 			if !containsUserAccountStatus(mur.Status.UserAccounts, expUaStatus) {
-				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s`", mur.Name)
+				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s'. Actual status: '%v'; Expected status: '%v'", mur.Name, mur.Status.UserAccounts, expUaStatus)
 				return false
 			}
 		}
@@ -141,9 +142,9 @@ func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 	})
 }
 
-func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster string) string {
+func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, cluster string) string {
 	for _, ua := range mur.Spec.UserAccounts {
-		if ua.TargetCluster == targetCluster {
+		if ua.TargetCluster == cluster {
 			return ua.SyncIndex
 		}
 	}
@@ -152,7 +153,7 @@ func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, targetCluster s
 
 func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
 	for _, status := range uaStatuses {
-		if uaStatus.TargetCluster == status.TargetCluster &&
+		if reflect.DeepEqual(uaStatus.Cluster, status.Cluster) &&
 			uaStatus.SyncIndex == status.SyncIndex &&
 			test.ConditionsMatch(uaStatus.Conditions, status.Conditions...) {
 			return true

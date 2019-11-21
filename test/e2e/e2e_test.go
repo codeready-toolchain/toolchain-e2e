@@ -2,11 +2,16 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
@@ -38,14 +43,8 @@ func TestE2EFlow(t *testing.T) {
 	revisions, err := getRevisions(awaitility)
 	require.NoError(t, err)
 
-	verifyResources(t, awaitility, johnsmithName, revisions,
-		wait.UntilMasterUserRecordHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(*expUaSpec),
-		wait.UntilUserAccountHasConditions(provisioned()))
-	verifyResources(t, awaitility, extrajohnName, revisions,
-		wait.UntilMasterUserRecordHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(*expExtraUaSpec),
-		wait.UntilUserAccountHasConditions(provisioned()))
+	verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions, wait.UntilUserAccountHasSpec(*expUaSpec))
+	verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions, wait.UntilUserAccountHasSpec(*expExtraUaSpec))
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -60,12 +59,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
+			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
+			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
 		})
 
 		t.Run("delete identity and wait until is recreated", func(t *testing.T) {
@@ -79,12 +74,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
+			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
+			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
 		})
 
 		t.Run("delete user mapping and wait until is recreated", func(t *testing.T) {
@@ -99,12 +90,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
+			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
+			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
 		})
 
 		t.Run("delete identity mapping and wait until is recreated", func(t *testing.T) {
@@ -119,12 +106,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResources(t, awaitility, johnsmithName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
-			verifyResources(t, awaitility, extrajohnName, revisions,
-				wait.UntilMasterUserRecordHasConditions(provisioned()),
-				wait.UntilUserAccountHasConditions(provisioned()))
+			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
+			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
 		})
 	})
 
@@ -169,7 +152,7 @@ func TestE2EFlow(t *testing.T) {
 		// also, verify that other user's resource are left intact
 		_, err = hostAwait.WaitForMasterUserRecord(extrajohnName)
 		require.NoError(t, err)
-		verifyResources(t, awaitility, extrajohnName, revisions, wait.UntilMasterUserRecordHasConditions(provisioned()))
+		verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
 	})
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
@@ -242,9 +225,7 @@ func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait
 
 func verifyMultipeSignups(t *testing.T, awaitility *wait.Awaitility, usernames []string, revisions map[string]string) {
 	for _, username := range usernames {
-		verifyResources(t, awaitility, username, revisions,
-			wait.UntilMasterUserRecordHasConditions(provisioned()),
-			wait.UntilUserAccountHasConditions(provisioned()))
+		verifyResourcesProvisioned(t, awaitility, username, revisions)
 	}
 }
 
@@ -273,9 +254,10 @@ func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) 
 	return "", false
 }
 
-func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, expectedRevisions map[string]string, mixedCriteria ...interface{}) {
-	masteruserrecordCriteria := []wait.MasterUserRecordWaitCriterion{}
-	useraccountCriteria := []wait.UserAccountWaitCriterion{}
+func verifyResourcesProvisioned(t *testing.T, awaitility *wait.Awaitility, murName string, expectedRevisions map[string]string, mixedCriteria ...interface{}) {
+	masteruserrecordCriteria := []wait.MasterUserRecordWaitCriterion{wait.UntilMasterUserRecordHasConditions(provisioned())}
+	useraccountCriteria := []wait.UserAccountWaitCriterion{wait.UntilUserAccountHasConditions(provisioned())}
+	wait.UntilMasterUserRecordHasConditions(provisioned())
 	for _, c := range mixedCriteria {
 		switch c := c.(type) {
 		case wait.MasterUserRecordWaitCriterion:
@@ -289,7 +271,7 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 
 	hostAwait := wait.NewHostAwaitility(awaitility)
 
-	// first, wait for the MasterUserRecord to exist, no matter its status
+	// first, wait for the MasterUserRecord to exist, no matter what status
 	mur, err := hostAwait.WaitForMasterUserRecord(murName)
 	require.NoError(t, err)
 
@@ -299,9 +281,27 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
 
+	// Get member cluster to verify that it was used to provision user accounts
+	memberCluster, ok, err := hostAwait.GetKubeFedCluster(cluster.Member, nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// If OpenShift 3.x console available then we expect its URL in the status
+	expectedConsoleURL := openShift3XConsoleURL(memberCluster.Spec.APIEndpoint)
+	if expectedConsoleURL == "" {
+		// Expect OpenShift 4.x console URL
+		route, err := memberAwait.GetConsoleRoute()
+		require.NoError(t, err)
+		expectedConsoleURL = fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
+	}
+
 	// and finally, check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
 	uaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
-		TargetCluster:     mur.Spec.UserAccounts[0].TargetCluster,
+		Cluster: toolchainv1alpha1.Cluster{
+			Name:        mur.Spec.UserAccounts[0].TargetCluster,
+			APIEndpoint: memberCluster.Spec.APIEndpoint,
+			ConsoleURL:  expectedConsoleURL,
+		},
 		UserAccountStatus: userAccount.Status,
 	}
 	_, err = hostAwait.WaitForMasterUserRecord(mur.Name, append(masteruserrecordCriteria, wait.UntilMasterUserRecordHasUserAccountStatuses(uaStatus))...)
@@ -332,4 +332,28 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 
 func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
+}
+
+// openShift3XConsoleURL checks if <apiEndpoint>/console URL is reachable.
+// This URL is used by web console in OpenShift 3.x
+func openShift3XConsoleURL(apiEndpoint string) string {
+	client := http.Client{
+		Timeout: time.Duration(1 * time.Second),
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+	url := fmt.Sprintf("%s/console", apiEndpoint)
+	resp, err := client.Get(url)
+	if err != nil {
+		return ""
+	}
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+	defer func() {
+		_, _ = ioutil.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+	}()
+	return url
 }
