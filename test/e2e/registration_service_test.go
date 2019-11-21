@@ -111,16 +111,11 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		require.NotNil(s.T(), body)
 	})
 }
-
-func (s *registrationServiceTestSuite) TestSignup() {
-	// Get valid generated token for e2e tests. IAT claim is overriden
-	// to avoid token used before issued error.
-	identity0 := authsupport.NewIdentity()
+func (s *registrationServiceTestSuite) TestSignupFails() {
+    identity0 := authsupport.NewIdentity()
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
-	require.NoError(s.T(), err)
-
+    iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+    
 	s.Run("post signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
 		requestBody, err := json.Marshal(map[string]string{})
@@ -213,51 +208,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.Contains(s.T(), tokenErr.(string), "token is expired by ")
 
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-	})
-	s.Run("post signup 202 Accepted", func() {
-		// Call signup endpoint with an valid token.
-		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
-		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token0)
-		req.Header.Set("content-type", "application/json")
-		client := getClient()
-
-		resp, err := client.Do(req)
-		require.NoError(s.T(), err)
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
-	})
-	s.Run("post signup fail same usersignup", func() {
-		// Call signup endpoint with an valid token.
-		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
-		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token0)
-		req.Header.Set("content-type", "application/json")
-		client := getClient()
-
-		resp, err := client.Do(req)
-		require.NoError(s.T(), err)
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
-		assert.Equal(s.T(), "usersignups.toolchain.dev.openshift.com \""+identity0.ID.String()+"\" already exists", mp["message"])
-		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
-		assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
-	})
-	s.Run("get signup error no token 401 Unauthorized", func() {
+    })
+    s.Run("get signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -347,78 +299,8 @@ func (s *registrationServiceTestSuite) TestSignup() {
 		require.Contains(s.T(), tokenErr.(string), "token is expired by ")
 
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-	})
-	s.Run("get signup 200 OK not approved", func() {
-		// Call signup endpoint with an valid token.
-		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
-		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token0)
-		req.Header.Set("content-type", "application/json")
-		client := getClient()
-
-		resp, err := client.Do(req)
-		require.NoError(s.T(), err)
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
-		mpStatus, ok := mp["status"].(map[string]interface{})
-		assert.True(s.T(), ok)
-
-		assert.Nil(s.T(), mp["CompliantUsername"])
-		assert.Equal(s.T(), identity0.Username, mp["username"])
-		require.IsType(s.T(), false, mpStatus["ready"])
-		assert.False(s.T(), mpStatus["ready"].(bool))
-		assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
-	})
-	s.Run("get signup 200 OK approved", func() {
-		userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
-		require.NoError(s.T(), err)
-
-		userSignup.Spec.Approved = true
-		err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
-		require.NoError(s.T(), err)
-
-		_, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
-		require.NoError(s.T(), err)
-
-		// Call signup endpoint with an valid token.
-		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
-		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token0)
-		req.Header.Set("content-type", "application/json")
-		client := getClient()
-
-		resp, err := client.Do(req)
-		require.NoError(s.T(), err)
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
-		mpStatus, ok := mp["status"].(map[string]interface{})
-		assert.True(s.T(), ok)
-
-		assert.Nil(s.T(), mp["CompliantUsername"])
-		assert.Equal(s.T(), identity0.Username, mp["username"])
-		require.IsType(s.T(), false, mpStatus["ready"])
-		assert.False(s.T(), mpStatus["ready"].(bool))
-		assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
-	})
-	s.Run("get signup 404 NotFound", func() {
+    })
+    s.Run("get signup 404 NotFound", func() {
 		// Get valid generated token for e2e tests. IAT claim is overriden
 		// to avoid token used before issued error.
 		identity1 := authsupport.NewIdentity()
@@ -447,6 +329,113 @@ func (s *registrationServiceTestSuite) TestSignup() {
 
 		assert.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
 	})
+}
+
+func (s *registrationServiceTestSuite) TestSignupOK() {
+	// Get valid generated token for e2e tests. IAT claim is overriden
+	// to avoid token used before issued error.
+	identity0 := authsupport.NewIdentity()
+	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
+    require.NoError(s.T(), err)
+    
+    // Call signup endpoint with an valid token.
+    req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
+    require.NoError(s.T(), err)
+    req.Header.Set("Authorization", "Bearer "+token0)
+    req.Header.Set("content-type", "application/json")
+    client := getClient()
+
+    resp, err := client.Do(req)
+    require.NoError(s.T(), err)
+
+    defer resp.Body.Close()
+
+    body, err := ioutil.ReadAll(resp.Body)
+    require.NoError(s.T(), err)
+    require.NotNil(s.T(), body)
+    assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
+
+    // Attempt to create same usersignup by calling post signup with same token
+    resp, err = client.Do(req)
+    require.NoError(s.T(), err)
+
+    defer resp.Body.Close()
+
+    body, err = ioutil.ReadAll(resp.Body)
+    require.NoError(s.T(), err)
+    require.NotNil(s.T(), body)
+
+    mp := make(map[string]interface{})
+    err = json.Unmarshal([]byte(body), &mp)
+    require.NoError(s.T(), err)
+
+    assert.Equal(s.T(), "usersignups.toolchain.dev.openshift.com \""+identity0.ID.String()+"\" already exists", mp["message"])
+    assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
+    assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
+
+    // Call get signup endpoint with an valid token.
+    req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
+    require.NoError(s.T(), err)
+    req.Header.Set("Authorization", "Bearer "+token0)
+    req.Header.Set("content-type", "application/json")
+
+    resp, err = client.Do(req)
+    require.NoError(s.T(), err)
+
+    defer resp.Body.Close()
+
+    body, err = ioutil.ReadAll(resp.Body)
+    require.NoError(s.T(), err)
+    require.NotNil(s.T(), body)
+
+    mp = make(map[string]interface{})
+    err = json.Unmarshal([]byte(body), &mp)
+    require.NoError(s.T(), err)
+
+    mpStatus, ok := mp["status"].(map[string]interface{})
+    assert.True(s.T(), ok)
+
+    assert.Nil(s.T(), mp["CompliantUsername"])
+    assert.Equal(s.T(), identity0.Username, mp["username"])
+    require.IsType(s.T(), false, mpStatus["ready"])
+    assert.False(s.T(), mpStatus["ready"].(bool))
+    assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+
+    userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
+    require.NoError(s.T(), err)
+
+    // Approve usersignup.
+    userSignup.Spec.Approved = true
+    err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
+    require.NoError(s.T(), err)
+
+    _, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
+    require.NoError(s.T(), err)
+
+    // Call signup endpoint with same valid token to check if status changed.
+    resp, err = client.Do(req)
+    require.NoError(s.T(), err)
+
+    defer resp.Body.Close()
+
+    body, err = ioutil.ReadAll(resp.Body)
+    require.NoError(s.T(), err)
+    require.NotNil(s.T(), body)
+
+    mp = make(map[string]interface{})
+    err = json.Unmarshal([]byte(body), &mp)
+    require.NoError(s.T(), err)
+
+    mpStatus, ok = mp["status"].(map[string]interface{})
+    assert.True(s.T(), ok)
+
+    assert.Nil(s.T(), mp["CompliantUsername"])
+    assert.Equal(s.T(), identity0.Username, mp["username"])
+    require.IsType(s.T(), false, mpStatus["ready"])
+    assert.False(s.T(), mpStatus["ready"].(bool))
+    assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
 }
 
 // getClient create's a new client.
