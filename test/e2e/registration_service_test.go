@@ -47,7 +47,10 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	require.NoError(s.T(), err)
 	client := getClient()
 
-	resp, err := client.Do(req)
+    resp, err := client.Do(req)
+
+    defer close(s.T(), resp)
+
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
@@ -63,7 +66,7 @@ func (s *registrationServiceTestSuite) TestHealth() {
 		require.NoError(s.T(), err)
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -104,7 +107,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		require.NoError(s.T(), err)
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -131,7 +134,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -160,7 +163,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -192,7 +195,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		resp, err := client.Do(req)
 		require.NoError(s.T(), err)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -222,7 +225,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -251,7 +254,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -283,7 +286,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		resp, err := client.Do(req)
 		require.NoError(s.T(), err)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -321,7 +324,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		resp, err := client.Do(req)
 		require.NoError(s.T(), err)
 
-		defer resp.Body.Close()
+		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -350,7 +353,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	resp, err := client.Do(req)
 	require.NoError(s.T(), err)
 
-	defer resp.Body.Close()
+	defer close(s.T(), resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
@@ -361,7 +364,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	resp, err = client.Do(req)
 	require.NoError(s.T(), err)
 
-	defer resp.Body.Close()
+	defer close(s.T(), resp)
 
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
@@ -384,7 +387,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	resp, err = client.Do(req)
 	require.NoError(s.T(), err)
 
-	defer resp.Body.Close()
+	defer close(s.T(), resp)
 
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
@@ -418,7 +421,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	resp, err = client.Do(req)
 	require.NoError(s.T(), err)
 
-	defer resp.Body.Close()
+	defer close(s.T(), resp)
 
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
@@ -448,4 +451,11 @@ func getClient() *http.Client {
 			},
 		},
 	}
+}
+
+func close(t *testing.T, resp *http.Response) {
+    _, err := ioutil.ReadAll(resp.Body)
+    require.NoError(t, err)
+    err = resp.Body.Close()
+    require.NoError(t, err)
 }
