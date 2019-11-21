@@ -47,9 +47,9 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	require.NoError(s.T(), err)
 	client := getClient()
 
-    resp, err := client.Do(req)
+	resp, err := client.Do(req)
 
-    defer close(s.T(), resp)
+	defer close(s.T(), resp)
 
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
@@ -454,8 +454,8 @@ func getClient() *http.Client {
 }
 
 func close(t *testing.T, resp *http.Response) {
-    _, err := ioutil.ReadAll(resp.Body)
-    require.NoError(t, err)
-    err = resp.Body.Close()
-    require.NoError(t, err)
+	_, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	err = resp.Body.Close()
+	require.NoError(t, err)
 }
