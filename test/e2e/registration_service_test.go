@@ -413,7 +413,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	userSignup.Spec.Approved = true
 	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
-   
+
 	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(provisioned()))
 	require.NoError(s.T(), err)
 
