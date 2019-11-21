@@ -400,7 +400,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	mpStatus, ok := mp["status"].(map[string]interface{})
 	assert.True(s.T(), ok)
 
-	assert.Nil(s.T(), mp["CompliantUsername"])
+	assert.Equal(s.T(), "", mp["compliantUsername"])
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
@@ -413,8 +413,8 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	userSignup.Spec.Approved = true
 	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
-
-	_, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
+   
+	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(provisioned()))
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with same valid token to check if status changed.
@@ -434,11 +434,11 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	mpStatus, ok = mp["status"].(map[string]interface{})
 	assert.True(s.T(), ok)
 
-	assert.Nil(s.T(), mp["CompliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["compliantUsername"])
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
-	assert.False(s.T(), mpStatus["ready"].(bool))
-	assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
+	assert.True(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
 }
 
 // getClient create's a new client.
