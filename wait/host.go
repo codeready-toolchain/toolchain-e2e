@@ -77,7 +77,7 @@ func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alp
 		for _, expUaStatus := range expUaStatuses {
 			expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.Cluster.Name)
 			if !containsUserAccountStatus(mur.Status.UserAccounts, expUaStatus) {
-				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s'. Actual status: '%v'; Expected status: '%v'", mur.Name, mur.Status.UserAccounts, expUaStatus)
+				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s'. All actual statuses: '%v'; Expected status (to be present among all statuses): '%v'", mur.Name, mur.Status.UserAccounts, expUaStatus)
 				return false
 			}
 		}

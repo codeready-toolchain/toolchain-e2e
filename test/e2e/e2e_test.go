@@ -29,26 +29,26 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
-	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
-	// We will verify them in the end of the test
-	usernames := createMultipeSignups(t, ctx, awaitility, 5)
-
-	// Create and approve "johnsmith" and "extrajohn" signups
-	johnsmithName := "johnsmith"
-	johnSignup, expUaSpec := setup(t, ctx, awaitility, johnsmithName)
-	extrajohnName := "extrajohn"
-	_, expExtraUaSpec := setup(t, ctx, awaitility, extrajohnName)
-
 	// Expected ns template revisions
 	revisions, err := getRevisions(awaitility)
 	require.NoError(t, err)
 
-	verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions, wait.UntilUserAccountHasSpec(*expUaSpec))
-	verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions, wait.UntilUserAccountHasSpec(*expExtraUaSpec))
+	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
+	// We will verify them in the end of the test
+	signups := createMultipeSignups(t, ctx, awaitility, 5)
+
+	// Create and approve "johnsmith" and "extrajohn" signups
+	johnsmithName := "johnsmith"
+	johnSignup := createAndApproveSignup(t, ctx, awaitility, johnsmithName)
+	extrajohnName := "extrajohn"
+	johnExtraSignup := createAndApproveSignup(t, ctx, awaitility, extrajohnName)
+
+	verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
+	verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
-		t.Run("delete user and wait until is recreated", func(t *testing.T) {
+		t.Run("delete user and wait until recreated", func(t *testing.T) {
 			// given
 			user := &userv1.User{}
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: johnsmithName}, user)
@@ -59,14 +59,14 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
-			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
 		})
 
-		t.Run("delete identity and wait until is recreated", func(t *testing.T) {
+		t.Run("delete identity and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(expUaSpec.UserID)}, identity)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(johnSignup.Name)}, identity)
 			require.NoError(t, err)
 
 			// when
@@ -74,11 +74,11 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
-			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
 		})
 
-		t.Run("delete user mapping and wait until is recreated", func(t *testing.T) {
+		t.Run("delete user mapping and wait until recreated", func(t *testing.T) {
 			// given
 			user := &userv1.User{}
 			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: johnsmithName}, user)
@@ -90,14 +90,14 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
-			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
 		})
 
-		t.Run("delete identity mapping and wait until is recreated", func(t *testing.T) {
+		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(expUaSpec.UserID)}, identity)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(johnSignup.Name)}, identity)
 			require.NoError(t, err)
 			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 
@@ -106,8 +106,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisioned(t, awaitility, johnsmithName, revisions)
-			verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
 		})
 	})
 
@@ -150,25 +150,19 @@ func TestE2EFlow(t *testing.T) {
 		assert.NoError(t, err, "johnsmith-stage namnespace is not deleted")
 
 		// also, verify that other user's resource are left intact
-		_, err = hostAwait.WaitForMasterUserRecord(extrajohnName)
-		require.NoError(t, err)
-		verifyResourcesProvisioned(t, awaitility, extrajohnName, revisions)
+		verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
 	})
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		verifyMultipeSignups(t, awaitility, usernames, revisions)
+		verifyMultipeSignups(t, awaitility, signups, revisions)
 	})
 }
 
-func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.UserAccountSpec) {
-	// 0. Verify that the `basic` NSTemplateTier resource exists (will be needed later)
-	revisions, err := getRevisions(awaitility)
-	require.NoError(t, err)
-
+func createAndApproveSignup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
 	// 1. Create a UserSignup resource
 	userSignup := newUserSignup(t, awaitility.Host(), username)
-	err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
+	err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
 	require.NoError(t, err)
 	// at this stage, the usersignup should not be approved nor completed
 	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(pendingApproval()...))
@@ -182,8 +176,12 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	_, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
 	require.NoError(t, err)
 
-	return userSignup, &v1alpha1.UserAccountSpec{
-		UserID:   userSignup.Name,
+	return *userSignup
+}
+
+func expectedUserAccount(userID string, revisions map[string]string) v1alpha1.UserAccountSpec {
+	return v1alpha1.UserAccountSpec{
+		UserID:   userID,
 		Disabled: false,
 		NSLimit:  "default",
 		NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
@@ -209,8 +207,8 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	}
 }
 
-func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []string {
-	usernames := make([]string, capacity)
+func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
+	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		// Create an approved UserSignup resource
 		userSignup := newUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i))
@@ -218,14 +216,14 @@ func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait
 		err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
 		awaitility.T.Logf("created UserSignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 		require.NoError(t, err)
-		usernames[i] = userSignup.Spec.Username
+		signups[i] = *userSignup
 	}
-	return usernames
+	return signups
 }
 
-func verifyMultipeSignups(t *testing.T, awaitility *wait.Awaitility, usernames []string, revisions map[string]string) {
-	for _, username := range usernames {
-		verifyResourcesProvisioned(t, awaitility, username, revisions)
+func verifyMultipeSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup, revisions map[string]string) {
+	for _, signup := range signups {
+		verifyResourcesProvisionedForSignup(t, awaitility, signup, revisions)
 	}
 }
 
@@ -254,65 +252,31 @@ func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) 
 	return "", false
 }
 
-func verifyResourcesProvisioned(t *testing.T, awaitility *wait.Awaitility, murName string, expectedRevisions map[string]string, mixedCriteria ...interface{}) {
-	masteruserrecordCriteria := []wait.MasterUserRecordWaitCriterion{wait.UntilMasterUserRecordHasConditions(provisioned())}
-	useraccountCriteria := []wait.UserAccountWaitCriterion{wait.UntilUserAccountHasConditions(provisioned())}
-	wait.UntilMasterUserRecordHasConditions(provisioned())
-	for _, c := range mixedCriteria {
-		switch c := c.(type) {
-		case wait.MasterUserRecordWaitCriterion:
-			masteruserrecordCriteria = append(masteruserrecordCriteria, c)
-		case wait.UserAccountWaitCriterion:
-			useraccountCriteria = append(useraccountCriteria, c)
-		default:
-			t.Fatalf("unknown type of criterion: %T", c)
-		}
-	}
-
+func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, expectedRevisions map[string]string) {
 	hostAwait := wait.NewHostAwaitility(awaitility)
+	memberAwait := wait.NewMemberAwaitility(awaitility)
 
-	// first, wait for the MasterUserRecord to exist, no matter what status
-	mur, err := hostAwait.WaitForMasterUserRecord(murName)
+	// First, wait for the MasterUserRecord to exist, no matter what status
+	mur, err := hostAwait.WaitForMasterUserRecord(signup.Spec.Username)
 	require.NoError(t, err)
 
-	// then wait for the associated UserAccount to exist, with the given criteria
-	memberAwait := wait.NewMemberAwaitility(awaitility)
-	userAccount, err := memberAwait.WaitForUserAccount(mur.Name, append(useraccountCriteria, wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))...)
+	// Then wait for the associated UserAccount to be provisioned
+	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
+		wait.UntilUserAccountHasConditions(provisioned()),
+		wait.UntilUserAccountHasSpec(expectedUserAccount(signup.Name, expectedRevisions)),
+		wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
 
-	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetKubeFedCluster(cluster.Member, nil)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	// If OpenShift 3.x console available then we expect its URL in the status
-	expectedConsoleURL := openShift3XConsoleURL(memberCluster.Spec.APIEndpoint)
-	if expectedConsoleURL == "" {
-		// Expect OpenShift 4.x console URL
-		route, err := memberAwait.GetConsoleRoute()
-		require.NoError(t, err)
-		expectedConsoleURL = fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
-	}
-
-	// and finally, check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
-	uaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
-		Cluster: toolchainv1alpha1.Cluster{
-			Name:        mur.Spec.UserAccounts[0].TargetCluster,
-			APIEndpoint: memberCluster.Spec.APIEndpoint,
-			ConsoleURL:  expectedConsoleURL,
-		},
-		UserAccountStatus: userAccount.Status,
-	}
-	_, err = hostAwait.WaitForMasterUserRecord(mur.Name, append(masteruserrecordCriteria, wait.UntilMasterUserRecordHasUserAccountStatuses(uaStatus))...)
-	assert.NoError(t, err)
-
+	// Verify provisioned User
 	_, err = memberAwait.WaitForUser(userAccount.Name)
 	assert.NoError(t, err)
 
+	// Verify provisioned Identity
 	_, err = memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	assert.NoError(t, err)
 
+	// Verify provisioned NSTemplateSet
 	_, err = memberAwait.WaitForNSTmplSet(userAccount.Name)
 	assert.NoError(t, err)
 
@@ -328,6 +292,34 @@ func verifyResourcesProvisioned(t *testing.T, awaitility *wait.Awaitility, murNa
 		assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 	}
+
+	// Get member cluster to verify that it was used to provision user accounts
+	memberCluster, ok, err := hostAwait.GetKubeFedCluster(cluster.Member, nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// If OpenShift 3.x console available then we expect its URL in the status
+	expectedConsoleURL := openShift3XConsoleURL(memberCluster.Spec.APIEndpoint)
+	if expectedConsoleURL == "" {
+		// Expect OpenShift 4.x console URL
+		route, err := memberAwait.GetConsoleRoute()
+		require.NoError(t, err)
+		expectedConsoleURL = fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
+	}
+
+	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
+	expectedEmbededUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
+		Cluster: toolchainv1alpha1.Cluster{
+			Name:        mur.Spec.UserAccounts[0].TargetCluster,
+			APIEndpoint: memberCluster.Spec.APIEndpoint,
+			ConsoleURL:  expectedConsoleURL,
+		},
+		UserAccountStatus: userAccount.Status,
+	}
+	_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
+		wait.UntilMasterUserRecordHasConditions(provisioned()),
+		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbededUaStatus))
+	assert.NoError(t, err)
 }
 
 func toIdentityName(userID string) string {
@@ -348,12 +340,12 @@ func openShift3XConsoleURL(apiEndpoint string) string {
 	if err != nil {
 		return ""
 	}
-	if resp.StatusCode != http.StatusOK {
-		return ""
-	}
 	defer func() {
 		_, _ = ioutil.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 	}()
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
 	return url
 }
