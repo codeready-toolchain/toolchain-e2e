@@ -112,10 +112,10 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 	})
 }
 func (s *registrationServiceTestSuite) TestSignupFails() {
-    identity0 := authsupport.NewIdentity()
+	identity0 := authsupport.NewIdentity()
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-    iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-    
+	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+
 	s.Run("post signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
 		requestBody, err := json.Marshal(map[string]string{})
@@ -208,8 +208,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.Contains(s.T(), tokenErr.(string), "token is expired by ")
 
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-    })
-    s.Run("get signup error no token 401 Unauthorized", func() {
+	})
+	s.Run("get signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
@@ -299,8 +299,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.Contains(s.T(), tokenErr.(string), "token is expired by ")
 
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-    })
-    s.Run("get signup 404 NotFound", func() {
+	})
+	s.Run("get signup 404 NotFound", func() {
 		// Get valid generated token for e2e tests. IAT claim is overriden
 		// to avoid token used before issued error.
 		identity1 := authsupport.NewIdentity()
@@ -338,104 +338,104 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
 	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
-    require.NoError(s.T(), err)
-    
-    // Call signup endpoint with an valid token.
-    req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
-    require.NoError(s.T(), err)
-    req.Header.Set("Authorization", "Bearer "+token0)
-    req.Header.Set("content-type", "application/json")
-    client := getClient()
+	require.NoError(s.T(), err)
 
-    resp, err := client.Do(req)
-    require.NoError(s.T(), err)
+	// Call signup endpoint with an valid token.
+	req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+	client := getClient()
 
-    defer resp.Body.Close()
+	resp, err := client.Do(req)
+	require.NoError(s.T(), err)
 
-    body, err := ioutil.ReadAll(resp.Body)
-    require.NoError(s.T(), err)
-    require.NotNil(s.T(), body)
-    assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
+	defer resp.Body.Close()
 
-    // Attempt to create same usersignup by calling post signup with same token
-    resp, err = client.Do(req)
-    require.NoError(s.T(), err)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+	assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
 
-    defer resp.Body.Close()
+	// Attempt to create same usersignup by calling post signup with same token
+	resp, err = client.Do(req)
+	require.NoError(s.T(), err)
 
-    body, err = ioutil.ReadAll(resp.Body)
-    require.NoError(s.T(), err)
-    require.NotNil(s.T(), body)
+	defer resp.Body.Close()
 
-    mp := make(map[string]interface{})
-    err = json.Unmarshal([]byte(body), &mp)
-    require.NoError(s.T(), err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
 
-    assert.Equal(s.T(), "usersignups.toolchain.dev.openshift.com \""+identity0.ID.String()+"\" already exists", mp["message"])
-    assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
-    assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
+	mp := make(map[string]interface{})
+	err = json.Unmarshal([]byte(body), &mp)
+	require.NoError(s.T(), err)
 
-    // Call get signup endpoint with an valid token.
-    req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
-    require.NoError(s.T(), err)
-    req.Header.Set("Authorization", "Bearer "+token0)
-    req.Header.Set("content-type", "application/json")
+	assert.Equal(s.T(), "usersignups.toolchain.dev.openshift.com \""+identity0.ID.String()+"\" already exists", mp["message"])
+	assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
+	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
-    resp, err = client.Do(req)
-    require.NoError(s.T(), err)
+	// Call get signup endpoint with an valid token.
+	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
 
-    defer resp.Body.Close()
+	resp, err = client.Do(req)
+	require.NoError(s.T(), err)
 
-    body, err = ioutil.ReadAll(resp.Body)
-    require.NoError(s.T(), err)
-    require.NotNil(s.T(), body)
+	defer resp.Body.Close()
 
-    mp = make(map[string]interface{})
-    err = json.Unmarshal([]byte(body), &mp)
-    require.NoError(s.T(), err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
 
-    mpStatus, ok := mp["status"].(map[string]interface{})
-    assert.True(s.T(), ok)
+	mp = make(map[string]interface{})
+	err = json.Unmarshal([]byte(body), &mp)
+	require.NoError(s.T(), err)
 
-    assert.Nil(s.T(), mp["CompliantUsername"])
-    assert.Equal(s.T(), identity0.Username, mp["username"])
-    require.IsType(s.T(), false, mpStatus["ready"])
-    assert.False(s.T(), mpStatus["ready"].(bool))
-    assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+	mpStatus, ok := mp["status"].(map[string]interface{})
+	assert.True(s.T(), ok)
 
-    userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
-    require.NoError(s.T(), err)
+	assert.Nil(s.T(), mp["CompliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
 
-    // Approve usersignup.
-    userSignup.Spec.Approved = true
-    err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
-    require.NoError(s.T(), err)
+	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
+	require.NoError(s.T(), err)
 
-    _, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
-    require.NoError(s.T(), err)
+	// Approve usersignup.
+	userSignup.Spec.Approved = true
+	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
+	require.NoError(s.T(), err)
 
-    // Call signup endpoint with same valid token to check if status changed.
-    resp, err = client.Do(req)
-    require.NoError(s.T(), err)
+	_, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
+	require.NoError(s.T(), err)
 
-    defer resp.Body.Close()
+	// Call signup endpoint with same valid token to check if status changed.
+	resp, err = client.Do(req)
+	require.NoError(s.T(), err)
 
-    body, err = ioutil.ReadAll(resp.Body)
-    require.NoError(s.T(), err)
-    require.NotNil(s.T(), body)
+	defer resp.Body.Close()
 
-    mp = make(map[string]interface{})
-    err = json.Unmarshal([]byte(body), &mp)
-    require.NoError(s.T(), err)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
 
-    mpStatus, ok = mp["status"].(map[string]interface{})
-    assert.True(s.T(), ok)
+	mp = make(map[string]interface{})
+	err = json.Unmarshal([]byte(body), &mp)
+	require.NoError(s.T(), err)
 
-    assert.Nil(s.T(), mp["CompliantUsername"])
-    assert.Equal(s.T(), identity0.Username, mp["username"])
-    require.IsType(s.T(), false, mpStatus["ready"])
-    assert.False(s.T(), mpStatus["ready"].(bool))
-    assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
+	mpStatus, ok = mp["status"].(map[string]interface{})
+	assert.True(s.T(), ok)
+
+	assert.Nil(s.T(), mp["CompliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "Provisioning", mpStatus["reason"])
 }
 
 // getClient create's a new client.
