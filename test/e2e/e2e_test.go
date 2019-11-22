@@ -12,11 +12,14 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +38,7 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
-	signups := createMultipeSignups(t, ctx, awaitility, 5)
+	signups := createMultipleSignups(t, ctx, awaitility, 5)
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
@@ -155,17 +158,20 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		verifyMultipeSignups(t, awaitility, signups, revisions)
+		verifyMultipleSignups(t, awaitility, signups, revisions)
 	})
 }
 
 func createAndApproveSignup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
-	// 1. Create a UserSignup resource
-	userSignup := newUserSignup(t, awaitility.Host(), username)
-	err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
-	require.NoError(t, err)
+	// 1. Create a UserSignup resource via calling registration service
+	identity := &authsupport.Identity{
+		ID:       uuid.NewV4(),
+		Username: username,
+	}
+	postSignup(t, awaitility.RegistrationServiceURL, *identity)
+
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(pendingApproval()...))
+	userSignup, err := awaitility.Host().WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
 	require.NoError(t, err)
 
 	// 2. approve the UserSignup
@@ -177,6 +183,24 @@ func createAndApproveSignup(t *testing.T, ctx *framework.TestCtx, awaitility *wa
 	require.NoError(t, err)
 
 	return *userSignup
+}
+
+func postSignup(t *testing.T, route string, identity authsupport.Identity) {
+	// Call signup endpoint with a valid token.
+	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	token, err := authsupport.GenerateSignedE2ETestToken(identity, emailClaim, iatClaim)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("content-type", "application/json")
+	client := httpClient
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 }
 
 func expectedUserAccount(userID string, revisions map[string]string) v1alpha1.UserAccountSpec {
@@ -207,7 +231,7 @@ func expectedUserAccount(userID string, revisions map[string]string) v1alpha1.Us
 	}
 }
 
-func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
+func createMultipleSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
 	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		// Create an approved UserSignup resource
@@ -221,7 +245,7 @@ func createMultipeSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait
 	return signups
 }
 
-func verifyMultipeSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup, revisions map[string]string) {
+func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup, revisions map[string]string) {
 	for _, signup := range signups {
 		verifyResourcesProvisionedForSignup(t, awaitility, signup, revisions)
 	}
@@ -298,21 +322,12 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	// If OpenShift 3.x console available then we expect its URL in the status
-	expectedConsoleURL := openShift3XConsoleURL(memberCluster.Spec.APIEndpoint)
-	if expectedConsoleURL == "" {
-		// Expect OpenShift 4.x console URL
-		route, err := memberAwait.GetConsoleRoute()
-		require.NoError(t, err)
-		expectedConsoleURL = fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
-	}
-
 	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
 	expectedEmbededUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
 		Cluster: toolchainv1alpha1.Cluster{
 			Name:        mur.Spec.UserAccounts[0].TargetCluster,
 			APIEndpoint: memberCluster.Spec.APIEndpoint,
-			ConsoleURL:  expectedConsoleURL,
+			ConsoleURL:  expectedConsoleURL(t, memberAwait, memberCluster),
 		},
 		UserAccountStatus: userAccount.Status,
 	}
@@ -324,6 +339,18 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 
 func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
+}
+
+func expectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster v1beta1.KubeFedCluster) string {
+	// If OpenShift 3.x console available then we expect its URL in the status
+	consoleURL := openShift3XConsoleURL(cluster.Spec.APIEndpoint)
+	if consoleURL == "" {
+		// Expect OpenShift 4.x console URL
+		route, err := memberAwait.GetConsoleRoute()
+		require.NoError(t, err)
+		consoleURL = fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
+	}
+	return consoleURL
 }
 
 // openShift3XConsoleURL checks if <apiEndpoint>/console URL is reachable.
