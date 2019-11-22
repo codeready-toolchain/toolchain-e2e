@@ -42,9 +42,9 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup := createAndApproveSignup(t, ctx, awaitility, johnsmithName)
+	johnSignup := createAndApproveSignup(t, awaitility, johnsmithName)
 	extrajohnName := "extrajohn"
-	johnExtraSignup := createAndApproveSignup(t, ctx, awaitility, extrajohnName)
+	johnExtraSignup := createAndApproveSignup(t, awaitility, extrajohnName)
 
 	verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
 	verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
@@ -162,7 +162,7 @@ func TestE2EFlow(t *testing.T) {
 	})
 }
 
-func createAndApproveSignup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
+func createAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
 		ID:       uuid.NewV4(),
