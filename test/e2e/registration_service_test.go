@@ -11,16 +11,26 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+var httpClient = &http.Client{
+	Timeout: time.Second * 10,
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	},
+}
 
 func TestRegistrationService(t *testing.T) {
 	suite.Run(t, &registrationServiceTestSuite{})
@@ -45,13 +55,11 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	// just make sure that the landing page is reachable
 	req, err := http.NewRequest("GET", s.route, nil)
 	require.NoError(s.T(), err)
-	client := getClient()
 
-	resp, err := client.Do(req)
-
+	resp, err := httpClient.Do(req)
+	require.NoError(s.T(), err)
 	defer close(s.T(), resp)
 
-	require.NoError(s.T(), err)
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
 
@@ -60,13 +68,12 @@ func (s *registrationServiceTestSuite) TestHealth() {
 		// Call health endpoint.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/health", nil)
 		require.NoError(s.T(), err)
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-
 		defer close(s.T(), resp)
+
+		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -101,13 +108,12 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		// Call authconfig endpoint.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/authconfig", nil)
 		require.NoError(s.T(), err)
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-
 		defer close(s.T(), resp)
+
+		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -126,15 +132,13 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", bytes.NewBuffer(requestBody))
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
+		defer close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-
-		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -155,15 +159,13 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer 1223123123")
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
+		defer close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-
-		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -185,16 +187,14 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
 		require.NoError(s.T(), err)
 
-		// Call signup endpoint with an valid token.
+		// Call signup endpoint with a valid token.
 		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-
 		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
@@ -217,15 +217,13 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
+		defer close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-
-		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -246,15 +244,13 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer 1223123123")
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
+		defer close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
-
-		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
@@ -276,16 +272,14 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
 		require.NoError(s.T(), err)
 
-		// Call signup endpoint with an valid token.
+		// Call signup endpoint with a valid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-
 		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
@@ -314,16 +308,14 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		token1, err := authsupport.GenerateSignedE2ETestToken(*identity1, emailClaim1, iatClaim1)
 		require.NoError(s.T(), err)
 
-		// Call signup endpoint with an valid token.
+		// Call signup endpoint with a valid token.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
-		client := getClient()
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-
 		defer close(s.T(), resp)
 
 		body, err := ioutil.ReadAll(resp.Body)
@@ -343,16 +335,14 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
 	require.NoError(s.T(), err)
 
-	// Call signup endpoint with an valid token.
+	// Call signup endpoint with a valid token to initiate a signup process
 	req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("Authorization", "Bearer "+token0)
 	req.Header.Set("content-type", "application/json")
-	client := getClient()
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	require.NoError(s.T(), err)
-
 	defer close(s.T(), resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -360,10 +350,9 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	require.NotNil(s.T(), body)
 	assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
 
-	// Attempt to create same usersignup by calling post signup with same token
-	resp, err = client.Do(req)
+	// Attempt to create same usersignup by calling post signup with same token should return an error
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
-
 	defer close(s.T(), resp)
 
 	body, err = ioutil.ReadAll(resp.Body)
@@ -378,15 +367,18 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
-	// Call get signup endpoint with an valid token.
+	// Wait for the UserSignup to be created
+	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
+	require.NoError(s.T(), err)
+
+	// Call get signup endpoint with a valid token and make sure it's pending approval
 	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("Authorization", "Bearer "+token0)
 	req.Header.Set("content-type", "application/json")
 
-	resp, err = client.Do(req)
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
-
 	defer close(s.T(), resp)
 
 	body, err = ioutil.ReadAll(resp.Body)
@@ -406,21 +398,18 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.False(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
 
-	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
-	require.NoError(s.T(), err)
-
 	// Approve usersignup.
 	userSignup.Spec.Approved = true
 	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
+	// Wait the Master User Record to be provisioned
 	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(provisioned()))
 	require.NoError(s.T(), err)
 
-	// Call signup endpoint with same valid token to check if status changed.
-	resp, err = client.Do(req)
+	// Call signup endpoint with same valid token to check if status changed to Provisioned now
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
-
 	defer close(s.T(), resp)
 
 	body, err = ioutil.ReadAll(resp.Body)
@@ -436,21 +425,15 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 	assert.Equal(s.T(), identity0.Username, mp["compliantUsername"])
 	assert.Equal(s.T(), identity0.Username, mp["username"])
-	require.IsType(s.T(), false, mpStatus["ready"])
+	require.IsType(s.T(), true, mpStatus["ready"])
 	assert.True(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
-}
 
-// getClient create's a new client.
-func getClient() *http.Client {
-	return &http.Client{
-		Timeout: time.Second * 10,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
+	// Verify console URL
+	memberCluster, ok, err := s.awaitility.Host().GetKubeFedCluster(cluster.Member, nil)
+	require.NoError(s.T(), err)
+	require.True(s.T(), ok)
+	assert.Equal(s.T(), expectedConsoleURL(s.T(), s.awaitility.Member(), memberCluster), mp["consoleURL"])
 }
 
 func close(t *testing.T, resp *http.Response) {

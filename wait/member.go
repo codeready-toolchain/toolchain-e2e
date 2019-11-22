@@ -7,6 +7,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 
+	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/core/v1"
@@ -301,4 +302,17 @@ func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
 		a.T.Logf("waiting until Identity is deleted '%s'", name)
 		return false, nil
 	})
+}
+
+// GetConsoleRoute retrieves and returns a Web Console Route
+func (a *MemberAwaitility) GetConsoleRoute() (*routev1.Route, error) {
+	route := &routev1.Route{}
+	namespacedName := types.NamespacedName{Namespace: "openshift-console", Name: "console"}
+	err := a.Client.Get(context.TODO(), namespacedName, route)
+	if err != nil {
+		a.T.Log("didn't find Web Console Route")
+	} else {
+		a.T.Logf("found %s Web Console Route", route)
+	}
+	return route, err
 }
