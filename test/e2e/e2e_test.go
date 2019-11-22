@@ -323,7 +323,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	require.True(t, ok)
 
 	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
-	expectedEmbededUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
+	expectedEmbeddedUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
 		Cluster: toolchainv1alpha1.Cluster{
 			Name:        mur.Spec.UserAccounts[0].TargetCluster,
 			APIEndpoint: memberCluster.Spec.APIEndpoint,
@@ -333,7 +333,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	}
 	_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
 		wait.UntilMasterUserRecordHasConditions(provisioned()),
-		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbededUaStatus))
+		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
 }
 

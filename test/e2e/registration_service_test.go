@@ -55,9 +55,8 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	// just make sure that the landing page is reachable
 	req, err := http.NewRequest("GET", s.route, nil)
 	require.NoError(s.T(), err)
-	client := httpClient
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	require.NoError(s.T(), err)
 	defer close(s.T(), resp)
 
@@ -69,9 +68,8 @@ func (s *registrationServiceTestSuite) TestHealth() {
 		// Call health endpoint.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/health", nil)
 		require.NoError(s.T(), err)
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -110,9 +108,8 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		// Call authconfig endpoint.
 		req, err := http.NewRequest("GET", s.route+"/api/v1/authconfig", nil)
 		require.NoError(s.T(), err)
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -135,9 +132,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", bytes.NewBuffer(requestBody))
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -163,9 +159,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer 1223123123")
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -197,9 +192,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -223,9 +217,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -251,9 +244,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer 1223123123")
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -285,9 +277,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -322,9 +313,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token1)
 		req.Header.Set("content-type", "application/json")
-		client := httpClient
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
 		defer close(s.T(), resp)
 
@@ -350,9 +340,8 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	require.NoError(s.T(), err)
 	req.Header.Set("Authorization", "Bearer "+token0)
 	req.Header.Set("content-type", "application/json")
-	client := httpClient
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	require.NoError(s.T(), err)
 	defer close(s.T(), resp)
 
@@ -362,7 +351,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
 
 	// Attempt to create same usersignup by calling post signup with same token should return an error
-	resp, err = client.Do(req)
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
 	defer close(s.T(), resp)
 
@@ -388,7 +377,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	req.Header.Set("Authorization", "Bearer "+token0)
 	req.Header.Set("content-type", "application/json")
 
-	resp, err = client.Do(req)
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
 	defer close(s.T(), resp)
 
@@ -419,7 +408,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with same valid token to check if status changed to Provisioned now
-	resp, err = client.Do(req)
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
 	defer close(s.T(), resp)
 
