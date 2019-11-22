@@ -3,15 +3,19 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -184,11 +188,14 @@ func setup(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, us
 	require.NoError(t, err)
 
 	// 1. Create a UserSignup resource
-	userSignup := newUserSignup(t, awaitility.Host(), username)
-	err = awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
-	require.NoError(t, err)
+	identity := &authsupport.Identity{
+		ID:       uuid.NewV4(),
+		Username: username,
+	}
+	registration(t, awaitility.RegistrationServiceURL, *identity)
+
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(pendingApproval()...))
+	userSignup, err := awaitility.Host().WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
 	require.NoError(t, err)
 
 	// 2. approve the UserSignup
@@ -332,4 +339,22 @@ func verifyResources(t *testing.T, awaitility *wait.Awaitility, murName string, 
 
 func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
+}
+
+func registration(t *testing.T, route string, identity authsupport.Identity) {
+	// Call signup endpoint with an valid token.
+	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	token, err := authsupport.GenerateSignedE2ETestToken(identity, emailClaim, iatClaim)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("content-type", "application/json")
+	client := getClient()
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 }
