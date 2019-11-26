@@ -123,7 +123,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 func (s *registrationServiceTestSuite) TestSignupFails() {
 	identity0 := authsupport.NewIdentity()
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
+	//iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 
 	s.Run("post signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
@@ -184,7 +184,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
 
 		// Not identical to the token used in POST signup - should return resource not found.
-		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
+		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, expClaim1)
 		require.NoError(s.T(), err)
 
 		// Call signup endpoint with a valid token.
@@ -269,7 +269,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
 
 		// Not identical to the token used in POST signup - should return resource not found.
-		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0, expClaim1)
+		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, expClaim1)
 		require.NoError(s.T(), err)
 
 		// Call signup endpoint with a valid token.
@@ -331,8 +331,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	// to avoid token used before issued error.
 	identity0 := authsupport.NewIdentity()
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-	iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, iatClaim0)
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with a valid token to initiate a signup process
