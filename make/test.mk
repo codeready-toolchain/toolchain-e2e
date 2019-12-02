@@ -234,8 +234,6 @@ endif
 	-oc project $(HOST_NS)
 	-oc label ns $(HOST_NS) app=host-operator
 	# deploy resources
-	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
 	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${HOST_IMAGE_NAME} NAMESPACE=$(HOST_NS)
 
 .PHONY: build-and-deploy-operator
