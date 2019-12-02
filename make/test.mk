@@ -272,7 +272,7 @@ endif
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
 ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
-	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/deployment.yaml \
+	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/registration-service.yaml \
 	    -p IMAGE=${IMAGE_NAME} \
 	    -p ENVIRONMENT=${ENVIRONMENT} \
 	    -p NAMESPACE=${NAMESPACE} \
