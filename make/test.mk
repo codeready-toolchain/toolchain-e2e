@@ -234,9 +234,6 @@ endif
 	-oc project $(HOST_NS)
 	-oc label ns $(HOST_NS) app=host-operator
 	# deploy resources
-	oc apply -f ${REG_REPO_PATH}/deploy/service_account.yaml
-	oc apply -f ${REG_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${REG_REPO_PATH}/deploy/role_binding.yaml
 	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${HOST_IMAGE_NAME} NAMESPACE=$(HOST_NS)
 
 .PHONY: build-and-deploy-operator
@@ -275,9 +272,10 @@ endif
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
 ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
-	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/deployment.yaml \
+	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/registration-service.yaml \
 	    -p IMAGE=${IMAGE_NAME} \
 	    -p ENVIRONMENT=${ENVIRONMENT} \
+	    -p NAMESPACE=${NAMESPACE} \
         | oc apply -f -
 else
     ifeq ($(IS_OS_3),)
