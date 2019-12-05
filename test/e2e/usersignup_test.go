@@ -110,7 +110,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	require.Equal(s.T(), "paul-at-hotel-com-1", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the same original username but different user ID
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com","paul@hotel.com", approvedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", approvedByAdmin()...)
 	require.Equal(s.T(), "paul-at-hotel-com-2", userSignup.Status.CompliantUsername)
 }
 
