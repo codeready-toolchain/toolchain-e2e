@@ -219,7 +219,7 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 			Name:      uuid.NewV4().String(),
 			Namespace: host.Ns,
 			Annotations: map[string]string{
-				"toolchain.dev.openshift.com/user-email": email,
+				v1alpha1.UserSignupUserEmailLabelKey: email,
 			},
 		},
 		Spec: v1alpha1.UserSignupSpec{
