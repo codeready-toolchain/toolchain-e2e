@@ -49,7 +49,6 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 		// Clear the user approval policy
 		err := s.clearApprovalPolicyConfig()
 		require.NoError(s.T(), err)
-
 		// then
 		s.checkUserSignupManualApproval()
 	})
@@ -81,7 +80,7 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// Create user signup
 	s.setApprovalPolicyConfig("automatic")
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), "reginald@alpha.com")
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), "reginald@alpha.com", "reginald@alpha.com")
 
 	// Remove the specified target cluster
 	userSignup.Spec.TargetCluster = ""
@@ -99,26 +98,27 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create UserSignup with a username that we don't need to transform
-	userSignup, _ := s.createAndCheckUserSignup(true, "paul-no-need-to-transform", approvedByAdmin()...)
+	userSignup, _ := s.createAndCheckUserSignup(true, "paul-no-need-to-transform", "paulnoneedtotransform@hotel.com", approvedByAdmin()...)
 	require.Equal(s.T(), "paul-no-need-to-transform", userSignup.Status.CompliantUsername)
 
 	// Create UserSignup with a username to transform
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", approvedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", approvedByAdmin()...)
 	require.Equal(s.T(), "paul-at-hotel-com", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the original username matching the transformed username of the existing signup
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul-at-hotel-com", approvedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul-at-hotel-com", "paulathotel@hotel.com", approvedByAdmin()...)
 	require.Equal(s.T(), "paul-at-hotel-com-1", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the same original username but different user ID
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", approvedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com","paul@hotel.com", approvedByAdmin()...)
 	require.Equal(s.T(), "paul-at-hotel-com-2", userSignup.Status.CompliantUsername)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *v1alpha1.UserSignup {
 	// Create a new UserSignup with approved flag set to false
 	username := "testuser" + uuid.NewV4().String()
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username)
+	email := username + "@test.com"
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 
 	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -138,16 +138,18 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *
 }
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertManualApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
-	return s.createAndCheckUserSignup(specApproved, "testuser"+uuid.NewV4().String(), approvedByAdmin()...)
+	id := uuid.NewV4().String()
+	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedByAdmin()...)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
-	return s.createAndCheckUserSignup(specApproved, "testuser"+uuid.NewV4().String(), approvedAutomatically()...)
+	id := uuid.NewV4().String()
+	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedAutomatically()...)
 }
 
-func (s *userSignupIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
+func (s *userSignupIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	// Create a new UserSignup with the given approved flag
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username)
+	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved
 	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
@@ -207,7 +209,7 @@ func (s *userSignupIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSi
 	return mur
 }
 
-func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string) *v1alpha1.UserSignup {
+func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, email string) *v1alpha1.UserSignup {
 	memberCluster, ok, err := host.GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -216,6 +218,9 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string) *v1
 		ObjectMeta: v1.ObjectMeta{
 			Name:      uuid.NewV4().String(),
 			Namespace: host.Ns,
+			Annotations: map[string]string{
+                "toolchain.dev.openshift.com/user-email": email,
+            },
 		},
 		Spec: v1alpha1.UserSignupSpec{
 			Username:      username,
