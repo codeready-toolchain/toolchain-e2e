@@ -123,7 +123,6 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 func (s *registrationServiceTestSuite) TestSignupFails() {
 	identity0 := authsupport.NewIdentity()
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-	//iatClaim0 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 
 	s.Run("post signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
