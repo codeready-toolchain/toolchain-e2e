@@ -218,7 +218,7 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 		ObjectMeta: v1.ObjectMeta{
 			Name:      uuid.NewV4().String(),
 			Namespace: host.Ns,
-			Labels: map[string]string{
+			Annotations: map[string]string{
 				v1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
 		},
