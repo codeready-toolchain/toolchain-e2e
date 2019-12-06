@@ -329,7 +329,8 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	// Get valid generated token for e2e tests. IAT claim is overriden
 	// to avoid token used before issued error.
 	identity0 := authsupport.NewIdentity()
-	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	emailValue := uuid.NewV4().String() + "@email.tld"
+	emailClaim0 := authsupport.WithEmailClaim(emailValue)
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 	require.NoError(s.T(), err)
 
@@ -368,6 +369,8 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	// Wait for the UserSignup to be created
 	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
 	require.NoError(s.T(), err)
+	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	assert.Equal(s.T(), emailValue, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure it's pending approval
 	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
