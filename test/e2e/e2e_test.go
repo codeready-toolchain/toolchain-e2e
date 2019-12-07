@@ -235,7 +235,7 @@ func createMultipleSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wai
 	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		// Create an approved UserSignup resource
-		userSignup := newUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i))
+		userSignup := newUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i), fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
 		userSignup.Spec.Approved = true
 		err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
 		awaitility.T.Logf("created UserSignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
