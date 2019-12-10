@@ -157,6 +157,15 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	# get branch ref of the fork the PR was created from
 	$(eval REPO_URL := ${AUTHOR_LINK}/toolchain-e2e)
 	$(eval GET_BRANCH_NAME := curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_SHA})
+	if [[ `${GET_BRANCH_NAME} | wc -l` > 1 ]]; then \
+		echo "###################################  ERROR DURING THE E2E TEST SETUP  ###################################"; \
+		echo "There were found more branches with the same latest commit '${PULL_SHA}' in the repo ${REPO_URL} - see:"; \
+		echo "`${GET_BRANCH_NAME}`"; \
+		echo "It's not possible to detect the correct branch this PR is made for."; \
+		echo "Please delete the unreleated brach from your fork and rerun the e2e tests"; \
+		echo "##########################################################################################################"; \
+		exit 1; \
+	fi; \
 	BRANCH_REF=`${GET_BRANCH_NAME} | awk '{print $$2}')`; \
 	echo "detected branch ref $${BRANCH_REF}"; \
 	if [[ -n "$${BRANCH_REF}" ]]; then \
