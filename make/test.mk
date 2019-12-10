@@ -166,7 +166,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		echo "##########################################################################################################"; \
 		exit 1; \
 	fi; \
-	BRANCH_REF=`${GET_BRANCH_NAME} | awk '{print $$2}')`; \
+	BRANCH_REF=`${GET_BRANCH_NAME} | awk '{print $$2}'`; \
 	echo "detected branch ref $${BRANCH_REF}"; \
 	if [[ -n "$${BRANCH_REF}" ]]; then \
 		# check if a branch with the same ref exists in the user's fork of ${REPO_NAME} repo \
