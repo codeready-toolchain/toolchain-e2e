@@ -149,11 +149,22 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	@echo "using author link ${AUTHOR_LINK}"
 	@echo "using pull sha ${PULL_SHA}"
 	# get branch ref of the fork the PR was created from
-	$(eval BRANCH_REF := $(shell curl ${AUTHOR_LINK}/toolchain-e2e.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_SHA} | awk '{print $$2}'))
-	@echo "detected branch ref ${BRANCH_REF}"
-	if [[ -n "${BRANCH_REF}" ]]; then \
+	$(eval REPO_URL := ${AUTHOR_LINK}/toolchain-e2e)
+	$(eval GET_BRANCH_NAME := curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_SHA})
+	if [[ `${GET_BRANCH_NAME} | wc -l` > 1 ]]; then \
+		echo "###################################  ERROR DURING THE E2E TEST SETUP  ###################################"; \
+		echo "There were found more branches with the same latest commit '${PULL_SHA}' in the repo ${REPO_URL} - see:"; \
+		echo "`${GET_BRANCH_NAME}`"; \
+		echo "It's not possible to detect the correct branch this PR is made for."; \
+		echo "Please delete the unreleated brach from your fork and rerun the e2e tests"; \
+		echo "##########################################################################################################"; \
+		exit 1; \
+	fi; \
+	BRANCH_REF=`${GET_BRANCH_NAME} | awk '{print $$2}')`; \
+	echo "detected branch ref $${BRANCH_REF}"; \
+	if [[ -n "$${BRANCH_REF}" ]]; then \
 		# check if a branch with the same ref exists in the user's fork of ${REPO_NAME} repo \
-		REMOTE_E2E_BRANCH=`curl ${AUTHOR_LINK}/${REPO_NAME}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "${BRANCH_REF}$$" | awk '{print $$2}'`; \
+		REMOTE_E2E_BRANCH=`curl ${AUTHOR_LINK}/${REPO_NAME}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "$${BRANCH_REF}$$" | awk '{print $$2}'`; \
 		echo "branch ref of the user's fork: \"$${REMOTE_E2E_BRANCH}\" - if empty then not found"; \
 		# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master \
 		if [[ -n "$${REMOTE_E2E_BRANCH}" ]]; then \
@@ -162,11 +173,11 @@ ifneq ($(CLONEREFS_OPTIONS),)
 				git config --global user.name "Devtools"; \
 			fi; \
 			# retrieve the branch name \
-			BRANCH_NAME=`echo ${BRANCH_REF} | awk -F'/' '{print $$3}'`; \
+			BRANCH_NAME=`echo $${BRANCH_REF} | awk -F'/' '{print $$3}'`; \
 			# add the user's fork as remote repo \
 			git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} remote add external ${AUTHOR_LINK}/${REPO_NAME}.git; \
 			# fetch the branch; \
-			git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} fetch external ${BRANCH_REF}; \
+			git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} fetch external $${BRANCH_REF}; \
 			# merge the branch with master \
 			git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} merge --allow-unrelated-histories --no-commit FETCH_HEAD; \
 		fi; \
