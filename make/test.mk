@@ -18,6 +18,8 @@ IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 
 
 ENVIRONMENT := e2e-tests
 
+WAS_ALREADY_PAIRED_FILE := /tmp/${GO_PACKAGE_ORG_NAME}_${GO_PACKAGE_REPO_NAME}_already_paired
+
 .PHONY: deploy-ops
 deploy-ops: deploy-member deploy-host
 
@@ -111,7 +113,11 @@ clean-e2e-resources:
 ###########################################################
 
 .PHONY: build-with-operators
-build-with-operators: build get-member-operator-repo get-host-operator-repo get-registration-service-repo
+build-with-operators: build clean-before-e2e get-member-operator-repo get-host-operator-repo get-registration-service-repo
+
+.PHONY: clean-before-e2e
+clean-before-e2e:
+	rm -f ${WAS_ALREADY_PAIRED_FILE} 2>/dev/null || echo true
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
@@ -168,12 +174,23 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		echo "branch ref of the user's fork: \"$${REMOTE_E2E_BRANCH}\" - if empty then not found"; \
 		# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master \
 		if [[ -n "$${REMOTE_E2E_BRANCH}" ]]; then \
+			if [[ -f ${WAS_ALREADY_PAIRED_FILE} ]]; then \
+                echo "####################################  ERROR WHILE TRYING TO PAIR PRs  ####################################"; \
+				echo "There was an error while trying to pair this e2e PR with ${REPO_URL}@$${BRANCH_REF}"; \
+				echo "The reason is that there was alraedy detected a branch from another repo this PR could be paired with - see:"; \
+				cat ${WAS_ALREADY_PAIRED_FILE}; \
+				echo "It's not possible to pair a PR with multiple branches from other repositories."; \
+				echo "Please delete one of the braches from your fork and rerun the e2e tests"; \
+				echo "##########################################################################################################"; \
+				exit 1; \
+            fi; \
 			if [[ -n "$(OPENSHIFT_BUILD_NAMESPACE)" ]]; then \
 				git config --global user.email "devtools@redhat.com"; \
 				git config --global user.name "Devtools"; \
 			fi; \
 			# retrieve the branch name \
 			BRANCH_NAME=`echo $${BRANCH_REF} | awk -F'/' '{print $$3}'`; \
+			echo -e "repository: ${AUTHOR_LINK}/${REPO_NAME} \nbranch: $${BRANCH_NAME}" > ${WAS_ALREADY_PAIRED_FILE}; \
 			# add the user's fork as remote repo \
 			git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} remote add external ${AUTHOR_LINK}/${REPO_NAME}.git; \
 			# fetch the branch; \
