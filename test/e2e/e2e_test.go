@@ -309,7 +309,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	for key, revision := range expectedRevisions {
 		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision)
 		require.NoError(t, err)
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
+		rb, err := memberAwait.WaitForRoleBinding(ns, "user-admin")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
