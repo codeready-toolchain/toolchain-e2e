@@ -190,7 +190,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 			fi; \
 			# retrieve the branch name \
 			BRANCH_NAME=`echo $${BRANCH_REF} | awk -F'/' '{print $$3}'`; \
-			echo "repository: ${AUTHOR_LINK}/${REPO_NAME} \nbranch: $${BRANCH_NAME}" > ${WAS_ALREADY_PAIRED_FILE}; \
+			echo -e "repository: ${AUTHOR_LINK}/${REPO_NAME} \nbranch: $${BRANCH_NAME}" > ${WAS_ALREADY_PAIRED_FILE}; \
 			# add the user's fork as remote repo \
 			git --git-dir=${E2E_REPO_PATH}/.git --work-tree=${E2E_REPO_PATH} remote add external ${AUTHOR_LINK}/${REPO_NAME}.git; \
 			# fetch the branch; \
