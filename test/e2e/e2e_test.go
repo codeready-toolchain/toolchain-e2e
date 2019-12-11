@@ -314,7 +314,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
-		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "admin", rb.RoleRef.Name)
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
