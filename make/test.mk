@@ -178,7 +178,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
                 echo "####################################  ERROR WHILE TRYING TO PAIR PRs  ####################################"; \
 				echo "There was an error while trying to pair this e2e PR with ${REPO_URL}@$${BRANCH_REF}"; \
 				echo "The reason is that there was alraedy detected a branch from another repo this PR could be paired with - see:"; \
-				echo ${WAS_ALREADY_PAIRED_FILE}; \
+				cat ${WAS_ALREADY_PAIRED_FILE}; \
 				echo "It's not possible to pair a PR with multiple branches from other repositories."; \
 				echo "Please delete one of the braches from your fork and rerun the e2e tests"; \
 				echo "##########################################################################################################"; \
