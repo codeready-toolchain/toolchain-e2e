@@ -309,12 +309,35 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	for key, revision := range expectedRevisions {
 		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision)
 		require.NoError(t, err)
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-admin")
+		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
-		assert.Equal(t, "admin", rb.RoleRef.Name)
+		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+
+		// {user}-code namespace should have additional role and rolebinding required by che
+		if key == "code" {
+			rb, err := memberAwait.WaitForRoleBinding(ns, "user-toolchain-che-edit")
+			require.NoError(t, err)
+			assert.Len(t, rb.Subjects, 1)
+			assert.Equal(t, "User", rb.Subjects[0].Kind)
+			assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
+			assert.Equal(t, "toolchain-che-edit", rb.RoleRef.Name)
+			assert.Equal(t, "Role", rb.RoleRef.Kind)
+			assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+
+			role, err := memberAwait.WaitForRole(ns, "toolchain-che-edit")
+			require.NoError(t, err)
+			assert.Len(t, role.Rules, 1)
+			assert.Equal(t, "rbac.authorization.k8s.io", role.Rules[0].APIGroups)
+			assert.Len(t, role.Rules[0].Resources, 2)
+			assert.Contains(t, role.Rules[0].Resources, []string{"role", "rolebindings"})
+			assert.Len(t, role.Rules[0].Verbs, 6)
+			assert.Contains(t, role.Rules[0].Verbs, []string{"get", "list", "create", "update", "patch", "delete"})
+		}
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
