@@ -332,11 +332,14 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 			role, err := memberAwait.WaitForRole(ns, "toolchain-che-edit")
 			require.NoError(t, err)
 			assert.Len(t, role.Rules, 1)
-			assert.Equal(t, "rbac.authorization.k8s.io", role.Rules[0].APIGroups)
+			assert.Len(t, role.Rules[0].APIGroups, 2)
+			assert.Contains(t, role.Rules[0].APIGroups, "rbac.authorization.k8s.io")
+			assert.Contains(t, role.Rules[0].APIGroups, "authorization.openshift.io")
 			assert.Len(t, role.Rules[0].Resources, 2)
-			assert.Contains(t, role.Rules[0].Resources, []string{"role", "rolebindings"})
-			assert.Len(t, role.Rules[0].Verbs, 6)
-			assert.Contains(t, role.Rules[0].Verbs, []string{"get", "list", "create", "update", "patch", "delete"})
+			assert.Contains(t, role.Rules[0].Resources, "rolebindings")
+			assert.Contains(t, role.Rules[0].Resources, "roles")
+			assert.Len(t, role.Rules[0].Verbs, 1)
+			assert.Contains(t, role.Rules[0].Verbs, "*")
 		}
 	}
 
