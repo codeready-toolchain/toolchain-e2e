@@ -195,6 +195,30 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 	return roleBinding, err
 }
 
+// WaitForRole waits until a Role with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*rbacv1.Role, error) {
+	role := &rbacv1.Role{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &rbacv1.Role{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				allRoles := &rbacv1.RoleList{}
+				ls := map[string]string{"provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), allRoles, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of Role '%s' in namespace '%s'. Currently available codeready-toolchain Roles: '%+v'", name, namespace.Name, allRoles)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found Role '%s'", name)
+		role = obj
+		return true, nil
+	})
+	return role, err
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
