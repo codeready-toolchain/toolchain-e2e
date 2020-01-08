@@ -315,6 +315,32 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
 		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+
+		// {user}-code namespace should have additional role and rolebinding required by che
+		if key == "code" {
+			rb, err := memberAwait.WaitForRoleBinding(ns, "user-toolchain-che-edit")
+			require.NoError(t, err)
+			assert.Len(t, rb.Subjects, 1)
+			assert.Equal(t, "User", rb.Subjects[0].Kind)
+			assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
+			assert.Equal(t, "toolchain-che-edit", rb.RoleRef.Name)
+			assert.Equal(t, "Role", rb.RoleRef.Kind)
+			assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+
+			role, err := memberAwait.WaitForRole(ns, "toolchain-che-edit")
+			require.NoError(t, err)
+			assert.Len(t, role.Rules, 1)
+			assert.Len(t, role.Rules[0].APIGroups, 2)
+			assert.Contains(t, role.Rules[0].APIGroups, "rbac.authorization.k8s.io")
+			assert.Contains(t, role.Rules[0].APIGroups, "authorization.openshift.io")
+			assert.Len(t, role.Rules[0].Resources, 2)
+			assert.Contains(t, role.Rules[0].Resources, "rolebindings")
+			assert.Contains(t, role.Rules[0].Resources, "roles")
+			assert.Len(t, role.Rules[0].Verbs, 1)
+			assert.Contains(t, role.Rules[0].Verbs, "*")
+		}
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
