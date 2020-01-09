@@ -4,7 +4,7 @@ build/_test
 
 out/
 coverage.txt
-bin/
+_output/
 tmp/
 
 # Created by https://www.gitignore.io/api/go,vim,git,macos,linux,emacs,windows,eclipse,intellij+all,visualstudiocode
@@ -12,7 +12,6 @@ tmp/
 
 ### Eclipse ###
 .metadata
-bin/
 tmp/
 *.tmp
 *.bak

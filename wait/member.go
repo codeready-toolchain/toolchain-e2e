@@ -144,7 +144,11 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
-		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
+		labels := map[string]string{
+			toolchainv1alpha1.OwnerLabelKey:    username,
+			toolchainv1alpha1.TypeLabelKey:     typeName,
+			toolchainv1alpha1.RevisionLabelKey: revision,
+		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
@@ -222,7 +226,10 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{"owner": username, "type": typeName}
+		labels := map[string]string{
+			toolchainv1alpha1.OwnerLabelKey: username,
+			toolchainv1alpha1.TypeLabelKey:  typeName,
+		}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
