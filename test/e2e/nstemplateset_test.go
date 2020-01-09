@@ -66,7 +66,7 @@ func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 	require.NoError(t, err)
 
 	// wait for Namespace dev to recreate
-	_, err = s.memberAwait.WaitForNamespace(username, devNs.Labels[toolchainv1alpha1.TypeLabelKey], devNs.Labels[toolchainv1alpha1.RevisionLabelKey])
+	_, err = s.memberAwait.WaitForNamespace(username, devNs.Labels["toolchain.dev.openshift.com/type"], devNs.Labels["toolchain.dev.openshift.com/revision"])
 	require.NoError(t, err)
 }
 
