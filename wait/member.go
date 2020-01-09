@@ -144,7 +144,11 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
-		labels := map[string]string{"owner": username, "type": typeName, "revision": revision}
+		labels := map[string]string{
+			"toolchain.dev.openshift.com/owner":    username,
+			"toolchain.dev.openshift.com/type":     typeName,
+			"toolchain.dev.openshift.com/revision": revision,
+		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
@@ -157,7 +161,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 				return false, err
 			}
 
-			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, username, allNSs)
+			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, username, allNSs)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
@@ -222,7 +226,10 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{"owner": username, "type": typeName}
+		labels := map[string]string{
+			"toolchain.dev.openshift.com/owner": username,
+			"toolchain.dev.openshift.com/type":  typeName,
+		}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &v1.NamespaceList{}
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
