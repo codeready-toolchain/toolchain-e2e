@@ -315,9 +315,8 @@ else
 	$(eval REG_SERVICE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
     ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
-		$(eval CAPITALIZED_REPO_NAME := $(shell echo "${REPO_NAME}' | awk '{ print toupper($0) }' | tr '-' '_'))
-		curl -sSL https://raw.githubusercontent.com/MatousJobanek/api/enrich-by-envs-from-yaml/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/e2e-tests.yaml ${CAPITALIZED_REPO_NAME}_DYNAMIC_KEYS > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${DATE_SUFFIX}|;s|^  configMap: .*|&-${DATE_SUFFIX}|' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+		curl -sSL https://raw.githubusercontent.com/MatousJobanek/api/enrich-by-envs-from-yaml/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/e2e-tests.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${DATE_SUFFIX}|;s|^  configMap: .*|&-${DATE_SUFFIX}|${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
 		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
