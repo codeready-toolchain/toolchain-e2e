@@ -338,7 +338,9 @@ else
 			sleep 1; \
 		done
     else
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
+		echo "before curl ${REPO_NAME}"
+		curl -sSL https://raw.githubusercontent.com/MatousJobanek/api/enrich-by-envs-from-yaml/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/deploy/operator.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml | oc apply -f -
     endif
 endif
 
