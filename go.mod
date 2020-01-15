@@ -3,7 +3,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20191206004733-862cefb68396
+	github.com/codeready-toolchain/api v0.0.0-20200113054908-d895c3a1acdf
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20191205223917-60807877b9e7
 	github.com/emicklei/go-restful v2.10.0+incompatible // indirect
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
