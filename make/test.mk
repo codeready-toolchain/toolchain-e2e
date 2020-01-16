@@ -30,7 +30,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-with-operators login-as-admin deploy-ops deploy-registration setup-kubefed
+deploy-e2e: build-with-operators login-as-admin deploy-registration deploy-ops setup-kubefed
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
