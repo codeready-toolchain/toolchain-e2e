@@ -1,5 +1,5 @@
-DEV_MEMBER_NS := toolchain-member-operator
-DEV_HOST_NS := toolchain-host-operator
+DEV_MEMBER_NS := ${QUAY_NAMESPACE}-toolchain-member-operator
+DEV_HOST_NS := ${QUAY_NAMESPACE}-toolchain-host-operator
 DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 

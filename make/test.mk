@@ -4,11 +4,12 @@
 #
 ###########################################################
 
+QUAY_NAMESPACE ?= codeready-toolchain
 DATE_SUFFIX := $(shell date +'%s')
-MEMBER_NS := member-operator-${DATE_SUFFIX}
-HOST_NS := host-operator-${DATE_SUFFIX}
+MEMBER_NS := ${QUAY_NAMESPACE}-member-operator-${DATE_SUFFIX}
+HOST_NS := ${QUAY_NAMESPACE}-host-operator-${DATE_SUFFIX}
 REGISTRATION_SERVICE_NS := $(HOST_NS)
-TEST_NS := toolchain-e2e-${DATE_SUFFIX}
+TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 
@@ -102,9 +103,8 @@ setup-kubefed:
 
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
-	$(Q)-oc get projects --output=name | grep -E "(toolchain\-)?(member|host)\-operator(\-[0-9]+)?|toolchain\-e2e\-[0-9]+" | xargs oc delete
-	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas" | xargs oc delete -n openshift-marketplace
-	$(Q)-oc delete crd kubefedclusters.core.kubefed.io
+	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)\-operator(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
+	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
 
 ###########################################################
 #
@@ -308,14 +308,15 @@ ifeq ($(REPO_NAME),registration-service)
 else
     ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${DATE_SUFFIX}|;s|^  configMap: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/deploy_csv.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+		$(eval RESOURCES_SUFFIX := ${QUAY_NAMESPACE}-${DATE_SUFFIX})
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${RESOURCES_SUFFIX}|;s|^  configMap: .*|&-${RESOURCES_SUFFIX}|' ${E2E_REPO_PATH}/hack/deploy_csv.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
-		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
+		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${RESOURCES_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
 		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]; do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "codeready-toolchain-saas.*${DATE_SUFFIX}"`; \
-			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "codeready-toolchain-saas"`; \
+			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${RESOURCES_SUFFIX}"`; \
+			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
 			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.io to be available in the cluster - see following info for debugging:"; \
 			   echo "================================ CatalogSource =================================="; \
 			   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
