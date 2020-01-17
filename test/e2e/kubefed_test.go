@@ -29,20 +29,27 @@ func verifyKubeFedCluster(ctx *test.TestCtx, awaitility *wait.Awaitility, kubeFe
 	current, ok, err := singleAwait.GetKubeFedCluster(kubeFedClusterType, nil)
 	require.NoError(awaitility.T, err)
 	require.True(awaitility.T, ok, "KubeFedCluster should exist")
-	labels := testsupport.KubeFedLabels(kubeFedClusterType, current.Labels["namespace"], current.Labels["ownerClusterName"])
+	// labels := testsupport.KubeFedLabels(kubeFedClusterType, current.Labels["namespace"], current.Labels["ownerClusterName"])
 
 	awaitility.T.Run("create new KubeFedCluster with correct data and expect to be ready for cluster type "+string(kubeFedClusterType), func(t *testing.T) {
 		// given
-		newName := "new-ready-" + string(kubeFedClusterType)
-		newFedCluster := singleAwait.NewKubeFedCluster(newName, current.Spec.CABundle,
-			current.Spec.APIEndpoint, current.Spec.SecretRef.Name, labels)
+		name := "new-ready-" + string(kubeFedClusterType)
+		fedCluster := singleAwait.NewKubeFedCluster(name,
+			wait.Type(kubeFedClusterType),
+			wait.APIEndpoint(current.Spec.APIEndpoint),
+			wait.CABundle(current.Spec.CABundle),
+			wait.SecretRef(current.Spec.SecretRef.Name),
+			wait.Owner(current.Labels["ownerClusterName"]),
+			wait.Namespace(current.Labels["namespace"]),
+			wait.CapacityExhausted, // make sure this cluster cannot be used in other e2e tests
+		)
 
 		// when
-		err := awaitility.Client.Create(context.TODO(), newFedCluster, testsupport.CleanupOptions(ctx))
+		err := awaitility.Client.Create(context.TODO(), fedCluster, testsupport.CleanupOptions(ctx))
 
 		// then the KubeFedCluster should be ready
 		require.NoError(t, err)
-		err = singleAwait.WaitForKubeFedClusterConditionWithName(newFedCluster.Name, wait.ReadyKubeFedCluster)
+		err = singleAwait.WaitForKubeFedClusterConditionWithName(fedCluster.Name, wait.ReadyKubeFedCluster)
 		require.NoError(t, err)
 		err = awaitility.WaitForReadyKubeFedClusters()
 		require.NoError(t, err)
@@ -51,16 +58,22 @@ func verifyKubeFedCluster(ctx *test.TestCtx, awaitility *wait.Awaitility, kubeFe
 	})
 	awaitility.T.Run("create new KubeFedCluster with incorrect data and expect to be offline for cluster type "+string(kubeFedClusterType), func(t *testing.T) {
 		// given
-		newName := "new-offline-" + string(kubeFedClusterType)
-		newFedCluster := singleAwait.NewKubeFedCluster(newName, current.Spec.CABundle,
-			"https://1.2.3.4:8443", current.Spec.SecretRef.Name, labels)
-
+		name := "new-offline-" + string(kubeFedClusterType)
+		fedCluster := singleAwait.NewKubeFedCluster(name,
+			wait.Type(kubeFedClusterType),
+			wait.APIEndpoint("https://1.2.3.4:8443"),
+			wait.CABundle(current.Spec.CABundle),
+			wait.SecretRef(current.Spec.SecretRef.Name),
+			wait.Owner(current.Labels["ownerClusterName"]),
+			wait.Namespace(current.Labels["namespace"]),
+			wait.CapacityExhausted, // make sure this cluster cannot be used in other e2e tests
+		)
 		// when
-		err := awaitility.Client.Create(context.TODO(), newFedCluster, testsupport.CleanupOptions(ctx))
+		err := awaitility.Client.Create(context.TODO(), fedCluster, testsupport.CleanupOptions(ctx))
 
 		// then the KubeFedCluster should be offline
 		require.NoError(t, err)
-		err = singleAwait.WaitForKubeFedClusterConditionWithName(newFedCluster.Name, &v1beta1.ClusterCondition{
+		err = singleAwait.WaitForKubeFedClusterConditionWithName(fedCluster.Name, &v1beta1.ClusterCondition{
 			Type:   common.ClusterOffline,
 			Status: corev1.ConditionTrue,
 		})

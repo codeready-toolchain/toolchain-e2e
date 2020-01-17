@@ -10,7 +10,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -160,8 +160,11 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(ls)); err != nil {
 				return false, err
 			}
-
-			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, username, allNSs)
+			allNSNames := make(map[string]map[string]string, len(allNSs.Items))
+			for _, ns := range allNSs.Items {
+				allNSNames[ns.Name] = ns.Labels
+			}
+			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, username, allNSNames)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")

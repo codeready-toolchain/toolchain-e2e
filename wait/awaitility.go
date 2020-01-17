@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -54,7 +55,8 @@ type SingleAwaitility interface {
 	WaitForKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) error
 	WaitForKubeFedClusterConditionWithName(name string, condition *v1beta1.ClusterCondition) error
 	GetKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) (v1beta1.KubeFedCluster, bool, error)
-	NewKubeFedCluster(name string, caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster
+	// NewKubeFedCluster(name string, caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster
+	NewKubeFedCluster(name string, options ...ClusterOption) *v1beta1.KubeFedCluster
 }
 
 type SingleAwaitilityImpl struct {
@@ -181,23 +183,99 @@ func (a *SingleAwaitilityImpl) GetKubeFedCluster(clusterType cluster.Type, condi
 	return v1beta1.KubeFedCluster{}, false, nil
 }
 
-// NewKubeFedCluster creates KubeFedCluster CR object with the given values
-func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster {
-	return &v1beta1.KubeFedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: a.Ns,
-			Name:      name,
-			Labels:    labels,
-		},
+// ClusterOption an option to configure the cluster to use in the tests
+type ClusterOption func(*v1beta1.KubeFedCluster)
+
+// CapacityExhausted an option to state that the cluster capacity has exhausted
+var CapacityExhausted ClusterOption = func(c *v1beta1.KubeFedCluster) {
+	c.Labels["toolchain.dev.openshift.com/capacity-exhausted"] = strconv.FormatBool(true)
+}
+
+// Type sets the label which defines the type of cluster
+func Type(t cluster.Type) ClusterOption {
+	return func(c *v1beta1.KubeFedCluster) {
+		c.Labels["type"] = string(t)
+	}
+}
+
+// Owner sets the 'ownerClusterName' label
+func Owner(name string) ClusterOption {
+	return func(c *v1beta1.KubeFedCluster) {
+		c.Labels["ownerClusterName"] = name
+	}
+}
+
+// Namespace sets the 'namespace' label
+func Namespace(name string) ClusterOption {
+	return func(c *v1beta1.KubeFedCluster) {
+		c.Labels["namespace"] = name
+	}
+}
+
+// SecretRef sets the SecretRef in the cluster's Spec
+func SecretRef(ref string) ClusterOption {
+	return func(c *v1beta1.KubeFedCluster) {
+		c.Spec.SecretRef = v1beta1.LocalSecretReference{
+			Name: ref,
+		}
+	}
+}
+
+// APIEndpoint sets the APIEndpoint in the cluster's Spec
+func APIEndpoint(url string) ClusterOption {
+	return func(c *v1beta1.KubeFedCluster) {
+		c.Spec.APIEndpoint = url
+	}
+}
+
+// CABundle sets the CABundle in the cluster's Spec
+func CABundle(bundle []byte) ClusterOption {
+	return func(c *v1beta1.KubeFedCluster) {
+		c.Spec.CABundle = bundle
+	}
+}
+
+func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, options ...ClusterOption) *v1beta1.KubeFedCluster { //caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster {
+	kubeFedCluster := &v1beta1.KubeFedCluster{
 		Spec: v1beta1.KubeFedClusterSpec{
-			CABundle:    caBundle,
-			APIEndpoint: apiEndpoint,
 			SecretRef: v1beta1.LocalSecretReference{
-				Name: secretRef,
+				Name: "", // default
+			},
+			APIEndpoint: "",       // default
+			CABundle:    []byte{}, // default
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: a.Ns,
+			Labels: map[string]string{
+				"type":             "member",
+				"ownerClusterName": "east",
 			},
 		},
 	}
+	for _, configure := range options {
+		configure(kubeFedCluster)
+	}
+	return kubeFedCluster
 }
+
+// // NewKubeFedCluster creates KubeFedCluster CR object with the given values
+// func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster {
+// 	return &v1beta1.KubeFedCluster{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Namespace: a.Ns,
+// 			Name:      name,
+// 			Labels:    labels,
+// 		},
+// 		Spec: v1beta1.KubeFedClusterSpec{
+// 			CABundle:    caBundle,
+// 			APIEndpoint: apiEndpoint,
+// 			SecretRef: v1beta1.LocalSecretReference{
+// 				Name: secretRef,
+// 			},
+// 		},
+// 	}
+// }
 
 func containsClusterCondition(conditions []v1beta1.ClusterCondition, contains *v1beta1.ClusterCondition) bool {
 	if contains == nil {
