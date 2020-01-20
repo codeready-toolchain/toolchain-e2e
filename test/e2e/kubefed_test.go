@@ -29,7 +29,6 @@ func verifyKubeFedCluster(ctx *test.TestCtx, awaitility *wait.Awaitility, kubeFe
 	current, ok, err := singleAwait.GetKubeFedCluster(kubeFedClusterType, nil)
 	require.NoError(awaitility.T, err)
 	require.True(awaitility.T, ok, "KubeFedCluster should exist")
-	// labels := testsupport.KubeFedLabels(kubeFedClusterType, current.Labels["namespace"], current.Labels["ownerClusterName"])
 
 	awaitility.T.Run("create new KubeFedCluster with correct data and expect to be ready for cluster type "+string(kubeFedClusterType), func(t *testing.T) {
 		// given

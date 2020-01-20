@@ -55,7 +55,6 @@ type SingleAwaitility interface {
 	WaitForKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) error
 	WaitForKubeFedClusterConditionWithName(name string, condition *v1beta1.ClusterCondition) error
 	GetKubeFedCluster(clusterType cluster.Type, condition *v1beta1.ClusterCondition) (v1beta1.KubeFedCluster, bool, error)
-	// NewKubeFedCluster(name string, caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster
 	NewKubeFedCluster(name string, options ...ClusterOption) *v1beta1.KubeFedCluster
 }
 
@@ -235,7 +234,7 @@ func CABundle(bundle []byte) ClusterOption {
 	}
 }
 
-func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, options ...ClusterOption) *v1beta1.KubeFedCluster { //caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster {
+func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, options ...ClusterOption) *v1beta1.KubeFedCluster {
 	kubeFedCluster := &v1beta1.KubeFedCluster{
 		Spec: v1beta1.KubeFedClusterSpec{
 			SecretRef: v1beta1.LocalSecretReference{
@@ -258,24 +257,6 @@ func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, options ...Cluster
 	}
 	return kubeFedCluster
 }
-
-// // NewKubeFedCluster creates KubeFedCluster CR object with the given values
-// func (a *SingleAwaitilityImpl) NewKubeFedCluster(name string, caBundle []byte, apiEndpoint, secretRef string, labels map[string]string) *v1beta1.KubeFedCluster {
-// 	return &v1beta1.KubeFedCluster{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Namespace: a.Ns,
-// 			Name:      name,
-// 			Labels:    labels,
-// 		},
-// 		Spec: v1beta1.KubeFedClusterSpec{
-// 			CABundle:    caBundle,
-// 			APIEndpoint: apiEndpoint,
-// 			SecretRef: v1beta1.LocalSecretReference{
-// 				Name: secretRef,
-// 			},
-// 		},
-// 	}
-// }
 
 func containsClusterCondition(conditions []v1beta1.ClusterCondition, contains *v1beta1.ClusterCondition) bool {
 	if contains == nil {
