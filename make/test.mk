@@ -17,11 +17,12 @@ IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
 
 ENVIRONMENT := e2e-tests
+IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
 WAS_ALREADY_PAIRED_FILE := /tmp/${GO_PACKAGE_ORG_NAME}_${GO_PACKAGE_REPO_NAME}_already_paired
 
 .PHONY: deploy-ops
-deploy-ops: deploy-member deploy-host
+deploy-ops: deploy-host deploy-member
 
 .PHONY: test-e2e
 test-e2e: deploy-e2e e2e-run
@@ -29,7 +30,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-with-operators login-as-admin deploy-ops deploy-registration setup-kubefed
+deploy-e2e: build-with-operators login-as-admin deploy-registration deploy-ops setup-kubefed
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -297,6 +298,8 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
+	mkdir ${IMAGE_NAMES_DIR} || true
+	echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
 ifeq ($(REPO_NAME),registration-service)
 	# registration service is not integrated with OLM yet, so deploy it directly
@@ -306,9 +309,13 @@ ifeq ($(REPO_NAME),registration-service)
 	    -p NAMESPACE=${NAMESPACE} \
         | oc apply -f -
 else
+	$(eval REGISTRATION_SERVICE_IMAGE_NAME := $(shell cat ${IMAGE_NAMES_DIR}/registration-service))
+	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
+	$(eval REG_SERVICE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
     ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${DATE_SUFFIX}|;s|^  configMap: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/deploy_csv.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${DATE_SUFFIX}|;s|^  configMap: .*|&-${DATE_SUFFIX}|${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
 		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${DATE_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
@@ -330,7 +337,9 @@ else
 			sleep 1; \
 		done
     else
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g' ${E2E_REPO_PATH}/deploy/operator.yaml | oc apply -f -
+		echo "before curl ${REPO_NAME}"
+		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/deploy/operator.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml | oc apply -f -
     endif
 endif
 
