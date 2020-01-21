@@ -4,6 +4,7 @@ DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
 .PHONY: dev-deploy-e2e
+## deploys the resources
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
 
 .PHONY: deploy-e2e-to-dev-namespaces
