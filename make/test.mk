@@ -5,9 +5,9 @@
 ###########################################################
 
 QUAY_NAMESPACE ?= codeready-toolchain
-DATE_SUFFIX := $(shell date +'%s')
-MEMBER_NS := ${QUAY_NAMESPACE}-member-operator-${DATE_SUFFIX}
-HOST_NS := ${QUAY_NAMESPACE}-host-operator-${DATE_SUFFIX}
+DATE_SUFFIX := $(shell date +'%m%H%M%S')
+MEMBER_NS := ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
+HOST_NS := ${QUAY_NAMESPACE}-host-${DATE_SUFFIX}
 REGISTRATION_SERVICE_NS := $(HOST_NS)
 TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
