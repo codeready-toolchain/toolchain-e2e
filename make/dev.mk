@@ -1,9 +1,10 @@
-DEV_MEMBER_NS := toolchain-member-operator
-DEV_HOST_NS := toolchain-host-operator
+DEV_MEMBER_NS := ${QUAY_NAMESPACE}-member-operator
+DEV_HOST_NS := ${QUAY_NAMESPACE}-host-operator
 DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
 .PHONY: dev-deploy-e2e
+## deploys the resources
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
 
 .PHONY: deploy-e2e-to-dev-namespaces

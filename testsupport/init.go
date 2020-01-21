@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -111,17 +110,4 @@ func newSchemeBuilder() runtime.SchemeBuilder {
 	addToSchemes = append(addToSchemes, templatev1.AddToScheme)
 	addToSchemes = append(addToSchemes, routev1.AddToScheme)
 	return addToSchemes
-}
-
-// KubeFedLabels takes the label values and returns a key-value map containing label names key and values
-func KubeFedLabels(clType cluster.Type, ns, ownerClusterName string) map[string]string {
-	labels := map[string]string{}
-	if clType != "" {
-		labels["type"] = string(clType)
-	}
-	if ns != "" {
-		labels["namespace"] = ns
-	}
-	labels["ownerClusterName"] = ownerClusterName
-	return labels
 }
