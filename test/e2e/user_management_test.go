@@ -3,10 +3,8 @@ package e2e
 import (
 	"context"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
-	userv1 "github.com/openshift/api/user/v1"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -96,14 +94,10 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 
 	// Get User
-	user := &userv1.User{}
-	s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
-	//err = s.memberAwait.WaitUntilUserDeleted(userAccount.Name)
+	err = s.memberAwait.WaitUntilUserDeleted(userAccount.Name)
 	require.Error(s.T(), err)
 
 	// Get Identity
-	//err = s.memberAwait.WaitUntilIdentityDeleted(toIdentityName(userAccount.Spec.UserID))
-	identity := &userv1.Identity{}
-	s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(userAccount.Spec.UserID)}, identity)
+	err = s.memberAwait.WaitUntilIdentityDeleted(toIdentityName(userAccount.Spec.UserID))
 	require.Error(s.T(), err)
 }
