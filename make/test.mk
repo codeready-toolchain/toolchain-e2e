@@ -5,7 +5,7 @@
 ###########################################################
 
 QUAY_NAMESPACE ?= codeready-toolchain
-DATE_SUFFIX := $(shell date +'%m%H%M%S')
+DATE_SUFFIX := $(shell date +'%d%H%M%S')
 MEMBER_NS := ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
 HOST_NS := ${QUAY_NAMESPACE}-host-${DATE_SUFFIX}
 REGISTRATION_SERVICE_NS := $(HOST_NS)
@@ -22,16 +22,13 @@ IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
 WAS_ALREADY_PAIRED_FILE := /tmp/${GO_PACKAGE_ORG_NAME}_${GO_PACKAGE_REPO_NAME}_already_paired
 
-.PHONY: deploy-ops
-deploy-ops: deploy-host deploy-member
-
 .PHONY: test-e2e
 test-e2e: deploy-e2e e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-with-operators login-as-admin build-registration deploy-ops setup-kubefed
+deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member setup-kubefed
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -104,7 +101,7 @@ setup-kubefed:
 
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
-	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)\-operator(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
+	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
 	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
 
 ###########################################################
@@ -114,7 +111,13 @@ clean-e2e-resources:
 ###########################################################
 
 .PHONY: build-with-operators
-build-with-operators: build clean-before-e2e get-member-operator-repo get-host-operator-repo get-registration-service-repo
+build-with-operators: build-and-pre-clean get-host-and-reg-service get-member-operator-repo
+
+.PHONY: build-and-pre-clean
+build-and-pre-clean: build clean-before-e2e
+
+.PHONY: get-host-and-reg-service
+get-host-and-reg-service: get-registration-service-repo get-host-operator-repo
 
 .PHONY: clean-before-e2e
 clean-before-e2e:
@@ -232,7 +235,7 @@ endif
 	$(MAKE) deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator NAMESPACE=$(MEMBER_NS)
 
 .PHONY: deploy-host
-deploy-host:
+deploy-host: build-registration
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif

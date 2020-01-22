@@ -53,7 +53,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.TestCtx, *
 	require.NoError(t, err, "failed while waiting for member operator deployment")
 
 	// wait for registration service to be ready
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, registrationServiceNs, "registration-service", 3, wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
+	err = e2eutil.WaitForDeployment(t, f.KubeClient, registrationServiceNs, "registration-service", 1, wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
 	require.NoError(t, err, "failed while waiting for registration service deployment")
 
 	registrationServiceRoute, err := waitForRoute(t, f, registrationServiceNs, "registration-service", wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
