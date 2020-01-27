@@ -5,7 +5,7 @@
 ###########################################################
 
 QUAY_NAMESPACE ?= codeready-toolchain
-DATE_SUFFIX := $(shell date +'%m%H%M%S')
+DATE_SUFFIX := $(shell date +'%d%H%M%S')
 MEMBER_NS := ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
 HOST_NS := ${QUAY_NAMESPACE}-host-${DATE_SUFFIX}
 REGISTRATION_SERVICE_NS := $(HOST_NS)
@@ -22,16 +22,13 @@ IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
 WAS_ALREADY_PAIRED_FILE := /tmp/${GO_PACKAGE_ORG_NAME}_${GO_PACKAGE_REPO_NAME}_already_paired
 
-.PHONY: deploy-ops
-deploy-ops: deploy-host deploy-member
-
 .PHONY: test-e2e
 test-e2e: deploy-e2e e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-with-operators login-as-admin deploy-registration deploy-ops setup-kubefed
+deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member setup-kubefed
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -104,7 +101,7 @@ setup-kubefed:
 
 .PHONY: clean-e2e-resources
 clean-e2e-resources:
-	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)\-operator(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
+	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
 	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
 
 ###########################################################
@@ -114,7 +111,13 @@ clean-e2e-resources:
 ###########################################################
 
 .PHONY: build-with-operators
-build-with-operators: build clean-before-e2e get-member-operator-repo get-host-operator-repo get-registration-service-repo
+build-with-operators: build-and-pre-clean get-host-and-reg-service get-member-operator-repo
+
+.PHONY: build-and-pre-clean
+build-and-pre-clean: build clean-before-e2e
+
+.PHONY: get-host-and-reg-service
+get-host-and-reg-service: get-registration-service-repo get-host-operator-repo
 
 .PHONY: clean-before-e2e
 clean-before-e2e:
@@ -228,10 +231,11 @@ ifneq ($(IS_OS_3),)
 	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
 endif
-	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME} NAMESPACE=$(MEMBER_NS)
+	$(MAKE) build-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME}
+	$(MAKE) deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator NAMESPACE=$(MEMBER_NS)
 
 .PHONY: deploy-host
-deploy-host:
+deploy-host: build-registration
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
@@ -248,13 +252,14 @@ ifneq ($(IS_OS_3),)
 	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds
 endif
-	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${REG_IMAGE_NAME} NAMESPACE=$(HOST_NS)
+	$(MAKE) build-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${REG_IMAGE_NAME}
+	$(MAKE) deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator NAMESPACE=$(HOST_NS)
 	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
 	# as the controller starts (which is a use-case for CRT-231)
 	oc apply -f test/e2e/nstemplatetier-basic.yaml -n $(HOST_NS)
 
-.PHONY: deploy-registration
-deploy-registration:
+.PHONY: build-registration
+build-registration:
 ifeq ($(REG_REPO_PATH),)
 	$(eval REG_REPO_PATH = /tmp/codeready-toolchain/registration-service)
 endif
@@ -262,11 +267,10 @@ endif
 	-oc new-project $(HOST_NS) 1>/dev/null
 	-oc project $(HOST_NS)
 	-oc label ns $(HOST_NS) app=host-operator
-	# deploy resources
-	$(MAKE) build-and-deploy-operator E2E_REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${HOST_IMAGE_NAME} NAMESPACE=$(HOST_NS)
+	$(MAKE) build-operator E2E_REPO_PATH=${REG_REPO_PATH} REPO_NAME=registration-service SET_IMAGE_NAME=${REG_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${HOST_IMAGE_NAME}
 
-.PHONY: build-and-deploy-operator
-build-and-deploy-operator:
+.PHONY: build-operator
+build-operator:
 # when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
 ifeq ($(SET_IMAGE_NAME),)
     # now we know that the image of the targeted operator is not provided, but can be still triggered in the same use case, but the image of the other operator can be provided
@@ -300,19 +304,15 @@ else
 endif
 	mkdir ${IMAGE_NAMES_DIR} || true
 	echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}
-	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
-ifeq ($(REPO_NAME),registration-service)
-	# registration service is not integrated with OLM yet, so deploy it directly
-	$(Q)oc process -f ${E2E_REPO_PATH}/deploy/registration-service.yaml \
-	    -p IMAGE=${IMAGE_NAME} \
-	    -p ENVIRONMENT=${ENVIRONMENT} \
-	    -p NAMESPACE=${NAMESPACE} \
-        | oc apply -f -
-else
+
+
+.PHONY: deploy-operator
+deploy-operator:
+	$(eval IMAGE_NAME := $(shell cat ${IMAGE_NAMES_DIR}/${REPO_NAME}))
 	$(eval REGISTRATION_SERVICE_IMAGE_NAME := $(shell cat ${IMAGE_NAMES_DIR}/registration-service))
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
 	$(eval REG_SERVICE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
-    ifeq ($(IS_OS_3),)
+ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
 		$(eval RESOURCES_SUFFIX := ${QUAY_NAMESPACE}-${DATE_SUFFIX})
 		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
@@ -337,11 +337,10 @@ else
 			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.io to be available in the cluster; \
 			sleep 1; \
 		done
-    else
+else
 		echo "before curl ${REPO_NAME}"
 		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/deploy/operator.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml
 		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml | oc apply -f -
-    endif
 endif
 
 .PHONY: display-eval
