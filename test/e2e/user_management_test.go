@@ -5,6 +5,7 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -58,14 +59,16 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
+	_, err = s.awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
+	require.NoError(s.T(), err)
+
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
 	require.NoError(s.T(), err)
 
 	// Get the UserAccount
 	userAccount, err := s.memberAwait.WaitForUserAccount(mur.Name,
-		wait.UntilUserAccountHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))
+		wait.UntilUserAccountHasConditions(provisioned()))
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
@@ -75,6 +78,10 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Get Identity
 	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
+	require.NoError(s.T(), err)
+
+	tmplTier := &v1alpha1.NSTemplateTier{}
+	err = s.awaitility.Member().Client.Get(context.TODO(), types.NamespacedName{Namespace: s.awaitility.HostNs, Name: "basic"}, tmplTier)
 	require.NoError(s.T(), err)
 
 	// Get the latest UserAccount
@@ -87,17 +94,39 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	err = s.awaitility.Member().Client.Update(context.TODO(), userAccount)
 	require.NoError(s.T(), err)
 
+	tmplTier = &v1alpha1.NSTemplateTier{}
+	err = s.awaitility.Member().Client.Get(context.TODO(), types.NamespacedName{Namespace: s.awaitility.HostNs, Name: "basic"}, tmplTier)
+	require.NoError(s.T(), err)
+
+
+	// Get User - should be not found
+	err = s.memberAwait.WaitUntilUserDeleted(userAccount.Name)
+	require.NoError(s.T(), err)
+
+	// Get Identity - should be not found
+	err = s.memberAwait.WaitUntilIdentityDeleted(toIdentityName(userAccount.Spec.UserID))
+	require.NoError(s.T(), err)
+
 	// Get the latest UserAccount
-	userAccount, err = s.memberAwait.WaitForUserAccount(userAccount.Name)
+	userAccount, err = s.memberAwait.WaitForUserAccount(userAccount.Name,
+		wait.UntilUserAccountHasConditions(disabled()))
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
+	// Disable account
+	userAccount.Spec.Disabled = false
+	err = s.awaitility.Member().Client.Update(context.TODO(), userAccount)
+	require.NoError(s.T(), err)
 
 	// Get User
-	err = s.memberAwait.WaitUntilUserDeleted(userAccount.Name)
-	require.Error(s.T(), err)
+	_, err = s.memberAwait.WaitForUser(userAccount.Name)
+	require.NoError(s.T(), err)
 
 	// Get Identity
-	err = s.memberAwait.WaitUntilIdentityDeleted(toIdentityName(userAccount.Spec.UserID))
-	require.Error(s.T(), err)
+	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
+	require.NoError(s.T(), err)
+
+	tmplTier = &v1alpha1.NSTemplateTier{}
+	err = s.awaitility.Member().Client.Get(context.TODO(), types.NamespacedName{Namespace: s.awaitility.HostNs, Name: "basic"}, tmplTier)
+	require.NoError(s.T(), err)
 }
