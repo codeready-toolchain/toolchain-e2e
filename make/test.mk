@@ -302,8 +302,15 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-	mkdir ${IMAGE_NAMES_DIR} || true
+ifneq ($(IS_OS_3),)
+	# is running locally, then use the normal image def with tag
 	echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}
+else
+	# is using OS4, then use digest instead of tag for defining image
+	mkdir ${IMAGE_NAMES_DIR} || true
+	docker pull ${IMAGE_NAME}
+	echo `docker inspect --format='{{index .RepoDigests 0}}' ${IMAGE_NAME}` > ${IMAGE_NAMES_DIR}/${REPO_NAME}
+endif
 
 
 .PHONY: deploy-operator
