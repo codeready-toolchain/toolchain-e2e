@@ -271,6 +271,7 @@ endif
 
 .PHONY: build-operator
 build-operator:
+	mkdir ${IMAGE_NAMES_DIR} || true
 # when e2e tests are triggered from different repo - eg. as part of PR in host-operator repo - and the image of the operator is (not) provided
 ifeq ($(SET_IMAGE_NAME),)
     # now we know that the image of the targeted operator is not provided, but can be still triggered in the same use case, but the image of the other operator can be provided
@@ -289,6 +290,7 @@ ifeq ($(SET_IMAGE_NAME),)
 				$(MAKE) -C ${E2E_REPO_PATH} build
 				docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
 				docker push ${IMAGE_NAME}
+				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
             endif
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
@@ -302,15 +304,12 @@ else
 	# use the provided image name
 	$(eval IMAGE_NAME := ${SET_IMAGE_NAME})
 endif
-ifneq ($(IS_OS_3),)
-	# is running locally, then use the normal image def with tag
-	echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}
-else
-	# is using OS4, then use digest instead of tag for defining image
-	mkdir ${IMAGE_NAMES_DIR} || true
-	docker pull ${IMAGE_NAME}
-	echo `docker inspect --format='{{index .RepoDigests 0}}' ${IMAGE_NAME}` > ${IMAGE_NAMES_DIR}/${REPO_NAME}
-endif
+	if [[ -f ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest ]]; then \
+	    DIGEST=`cat ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest`; \
+	    echo quay.io/${QUAY_NAMESPACE}/${REPO_NAME}@$${DIGEST} > ${IMAGE_NAMES_DIR}/${REPO_NAME}; \
+	else \
+		echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}; \
+    fi
 
 
 .PHONY: deploy-operator
