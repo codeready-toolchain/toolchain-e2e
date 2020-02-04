@@ -1,5 +1,5 @@
-DEV_MEMBER_NS := toolchain-member-operator
-DEV_HOST_NS := toolchain-host-operator
+DEV_MEMBER_NS := ${QUAY_NAMESPACE}-member-operator
+DEV_HOST_NS := ${QUAY_NAMESPACE}-host-operator
 DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
@@ -21,7 +21,18 @@ deploy-e2e-local-to-dev-namespaces:
 .PHONY: print-reg-service-link
 print-reg-service-link:
 	@echo ""
-	@echo "Deployment complete!"
+	@echo "Deployment complete! Waiting for the registration-service route being available"
+	@echo -n "."
+	@while [[ -z `oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null` ]]; do \
+		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
+            echo ""; \
+            echo "The timeout of waiting for the registration-service route has been reached. Try to run 'make  print-reg-service-link' later or check the deployment logs"; \
+            exit 1; \
+		fi; \
+		echo -n "."; \
+		sleep 1; \
+	done
+	@echo ""
 	$(eval ROUTE = $(shell oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}'))
 	@echo Access the Landing Page here: https://${ROUTE}
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
