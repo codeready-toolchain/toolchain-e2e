@@ -19,7 +19,7 @@ import (
 
 	userv1 "github.com/openshift/api/user/v1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -106,6 +106,26 @@ func TestE2EFlow(t *testing.T) {
 
 			// when
 			err = awaitility.Client.Update(context.TODO(), identity)
+
+			// then
+			require.NoError(t, err)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions)
+		})
+
+		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
+			// given
+			namespaces := make([]*corev1.Namespace, 0, 3)
+			for key, revision := range revisions {
+				ns, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, key, revision)
+				require.NoError(t, err)
+				namespaces = append(namespaces, ns)
+			}
+			// when
+			for _, ns := range namespaces {
+				err = awaitility.Client.Delete(context.TODO(), ns)
+				require.NoError(t, err)
+			}
 
 			// then
 			require.NoError(t, err)
