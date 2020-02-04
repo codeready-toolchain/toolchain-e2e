@@ -54,7 +54,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for status condition of UserSignup '%s'. Acutal: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
 		return false
 	}
 }
@@ -94,7 +94,7 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
 			return true
 		}
-		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Acutal: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
 		return false
 	}
 }
