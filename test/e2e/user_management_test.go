@@ -42,3 +42,10 @@ func (s *userManagementIntegrationTest) TestUserDeactivation() {
 	err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 	require.NoError(s.T(), err)
 }
+
+func (s *userManagementIntegrationTest) TestUserBanning() {
+	s.setApprovalPolicyConfig("automatic")
+
+
+
+}

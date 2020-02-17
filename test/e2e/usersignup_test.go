@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -168,6 +170,10 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 	require.NoError(t, err)
 	require.True(t, ok)
 
+	md5hash := md5.New()
+	_, _ = md5hash.Write([]byte(email))
+	emailHash := hex.EncodeToString(md5hash.Sum(nil))
+
 	return &v1alpha1.UserSignup{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      uuid.NewV4().String(),
@@ -175,10 +181,31 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 			Annotations: map[string]string{
 				v1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
+			Labels: map[string]string{
+				v1alpha1.UserSignupUserEmailHashAnnotationKey: emailHash,
+			},
 		},
 		Spec: v1alpha1.UserSignupSpec{
 			Username:      username,
 			TargetCluster: memberCluster.Name,
+		},
+	}
+}
+
+func newBannedUser(t *testing.T, email string) *v1alpha1.BannedUser {
+	md5hash := md5.New()
+	_, _ = md5hash.Write([]byte(email))
+	emailHash := hex.EncodeToString(md5hash.Sum(nil))
+
+	return &v1alpha1.BannedUser{
+		ObjectMeta: v1.ObjectMeta{
+			Name: uuid.NewV4().String(),
+			Labels: map[string]string{
+				v1alpha1.BannedUserEmailHashLabelKey: emailHash,
+			},
+		},
+		Spec:       v1alpha1.BannedUserSpec{
+			Email: email,
 		},
 	}
 }
