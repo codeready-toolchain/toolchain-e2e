@@ -195,7 +195,7 @@ func (s *userSignupIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSi
 
 	require.Len(s.T(), mur.Spec.UserAccounts, 1)
 	assert.Equal(s.T(), userSignup.Name, mur.Labels["toolchain.dev.openshift.com/user-id"])
-	assert.Equal(s.T(), userSignup.Name, mur.Spec.UserAccounts[0].Spec.UserID)
+	assert.Equal(s.T(), userSignup.Name, mur.Spec.UserID)
 	assert.Equal(s.T(), "default", mur.Spec.UserAccounts[0].Spec.NSLimit)
 	assert.NotNil(s.T(), mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
 	if userSignup.Spec.TargetCluster != "" {
