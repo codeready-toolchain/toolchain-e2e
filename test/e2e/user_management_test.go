@@ -13,6 +13,12 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
+
+	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 )
 
 type userManagementIntegrationTest struct {
@@ -132,3 +138,4 @@ func newBannedUser(t *testing.T, host *wait.HostAwaitility, email string) *v1alp
 		},
 	}
 }
+

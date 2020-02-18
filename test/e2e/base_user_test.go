@@ -65,6 +65,7 @@ func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
 
 func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string,
 	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
+
 	// Create a new UserSignup with the given approved flag
 	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved

@@ -192,4 +192,3 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 	}
 }
 
-
