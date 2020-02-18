@@ -2,7 +2,10 @@ package wait
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -124,6 +127,35 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 		return true, nil
 	})
 	return userSignup, err
+}
+
+// WaitForBannedUser waits until there is a BannedUser available with the given email
+func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv1alpha1.BannedUser, err error) {
+	md5hash := md5.New()
+	// Ignore the error, as this implementation cannot return one
+	_, _ = md5hash.Write([]byte(email))
+	emailHash := hex.EncodeToString(md5hash.Sum(nil))
+	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: emailHash}
+	opts := client.MatchingLabels(labels)
+
+	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.BannedUser{}
+		bannedUserList := &toolchainv1alpha1.BannedUserList{}
+
+		if err = a.Client.List(context.TODO(), bannedUserList, opts); err != nil {
+			if len(bannedUserList.Items) == 0 {
+				a.T.Logf("waiting for availability of BannedUser with email '%s'", email)
+				return false, nil
+			}
+			return false, err
+		}
+		obj = &bannedUserList.Items[0]
+		a.T.Logf("found BannedUser with email '%s'", email)
+		bannedUser = obj
+		return true, nil
+	})
+
+	return
 }
 
 // WaitUntilMasterUserRecordDeleted waits until MUR with the given name is deleted (ie, not found)

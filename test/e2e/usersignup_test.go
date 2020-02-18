@@ -192,20 +192,4 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 	}
 }
 
-func newBannedUser(t *testing.T, email string) *v1alpha1.BannedUser {
-	md5hash := md5.New()
-	_, _ = md5hash.Write([]byte(email))
-	emailHash := hex.EncodeToString(md5hash.Sum(nil))
 
-	return &v1alpha1.BannedUser{
-		ObjectMeta: v1.ObjectMeta{
-			Name: uuid.NewV4().String(),
-			Labels: map[string]string{
-				v1alpha1.BannedUserEmailHashLabelKey: emailHash,
-			},
-		},
-		Spec:       v1alpha1.BannedUserSpec{
-			Email: email,
-		},
-	}
-}

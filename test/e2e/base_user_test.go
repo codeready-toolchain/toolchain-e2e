@@ -63,7 +63,8 @@ func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
 	require.Equal(s.T(), policy, cm.Data["user-approval-policy"])
 }
 
-func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
+func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string,
+	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	// Create a new UserSignup with the given approved flag
 	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved
@@ -79,6 +80,20 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	mur := s.assertCreatedMUR(userSignup)
 
 	return userSignup, mur
+}
+
+func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) (*v1alpha1.BannedUser) {
+	// Create the BannedUser
+	bannedUser := newBannedUser(s.T(), s.awaitility.Host(), email)
+	err := s.awaitility.Client.Create(context.TODO(), bannedUser, testsupport.CleanupOptions(s.testCtx))
+	require.NoError(s.T(), err)
+
+	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)
+
+	bannedUser, err = s.hostAwait.WaitForBannedUser(email)
+	require.NoError(s.T(), err)
+
+	return bannedUser
 }
 
 func (s *baseUserIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSignup) *v1alpha1.MasterUserRecord {
