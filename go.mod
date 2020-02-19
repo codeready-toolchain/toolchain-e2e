@@ -3,7 +3,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20191206004733-862cefb68396
+	github.com/codeready-toolchain/api v0.0.0-20200217143846-eaa75f9b390c
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20191205223917-60807877b9e7
 	github.com/emicklei/go-restful v2.10.0+incompatible // indirect
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
@@ -28,7 +28,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/multierr v1.2.0 // indirect
-	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20190926180335-cea2066c6411 // indirect
 	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17 // indirect
 	golang.org/x/sys v0.0.0-20190927073244-c990c680b611 // indirect
@@ -36,7 +35,6 @@ require (
 	golang.org/x/tools v0.0.0-20190927052746-69890759d905 // indirect
 	google.golang.org/appengine v1.6.4 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/h2non/gock.v1 v1.0.14
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
