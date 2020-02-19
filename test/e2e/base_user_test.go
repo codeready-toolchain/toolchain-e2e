@@ -83,9 +83,9 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	return userSignup, mur
 }
 
-func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) (*v1alpha1.BannedUser) {
+func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alpha1.BannedUser {
 	// Create the BannedUser
-	bannedUser := newBannedUser(s.T(), s.awaitility.Host(), email)
+	bannedUser := newBannedUser(s.awaitility.Host(), email)
 	err := s.awaitility.Client.Create(context.TODO(), bannedUser, testsupport.CleanupOptions(s.testCtx))
 	require.NoError(s.T(), err)
 

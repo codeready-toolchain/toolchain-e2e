@@ -139,7 +139,6 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 	opts := client.MatchingLabels(labels)
 
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.BannedUser{}
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
 
 		if err = a.Client.List(context.TODO(), bannedUserList, opts); err != nil {
@@ -149,9 +148,8 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 			}
 			return false, err
 		}
-		obj = &bannedUserList.Items[0]
 		a.T.Logf("found BannedUser with email '%s'", email)
-		bannedUser = obj
+		bannedUser = &bannedUserList.Items[0]
 		return true, nil
 	})
 

@@ -59,13 +59,12 @@ func (s *userManagementIntegrationTest) TestUserBanning() {
 		s.checkUserBanned()
 	})
 
-
 }
 
 func (s *userManagementIntegrationTest) checkUserBanned() {
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 		s.setApprovalPolicyConfig("automatic")
-		
+
 		// Create a new UserSignup with approved flag set to true
 		userSignup, _ := s.createUserSignupAndAssertAutoApproval(true)
 
@@ -88,7 +87,7 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 		s.setApprovalPolicyConfig("automatic")
 
 		id := uuid.NewV4().String()
-		email := "testuser"+id+"@test.com"
+		email := "testuser" + id + "@test.com"
 		s.createAndCheckBannedUser(email)
 
 		userSignup, _ := s.createAndCheckUserSignup(true, "testuser"+id, email, approvedAutomatically()...)
@@ -104,30 +103,7 @@ func (s *userManagementIntegrationTest) createUserSignupAndAssertAutoApproval(sp
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedAutomatically()...)
 }
 
-func (s *userManagementIntegrationTest) createUserSignupAndAssertPendingApproval() *v1alpha1.UserSignup {
-	// Create a new UserSignup with approved flag set to false
-	username := "testuser" + uuid.NewV4().String()
-	email := username + "@test.com"
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
-
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	// Check the UserSignup is pending approval now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(pendingApproval()...))
-	require.NoError(s.T(), err)
-
-	// Confirm the CompliantUsername has NOT been set
-	require.Empty(s.T(), userSignup.Status.CompliantUsername)
-
-	// Confirm that a MasterUserRecord wasn't created
-	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(username)
-	require.Error(s.T(), err)
-	return userSignup
-}
-
-func newBannedUser(t *testing.T, host *wait.HostAwaitility, email string) *v1alpha1.BannedUser {
+func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser {
 	md5hash := md5.New()
 	_, _ = md5hash.Write([]byte(email))
 	emailHash := hex.EncodeToString(md5hash.Sum(nil))
@@ -139,9 +115,8 @@ func newBannedUser(t *testing.T, host *wait.HostAwaitility, email string) *v1alp
 				v1alpha1.BannedUserEmailHashLabelKey: emailHash,
 			},
 		},
-		Spec:       v1alpha1.BannedUserSpec{
+		Spec: v1alpha1.BannedUserSpec{
 			Email: email,
 		},
 	}
 }
-
