@@ -51,7 +51,7 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 func UntilUserAccountMatchesMur(expectedMurSpec toolchainv1alpha1.MasterUserRecordSpec, expected toolchainv1alpha1.UserAccountSpecEmbedded) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		a.T.Logf("waiting for UserAccountSpecBase specs: Actual: '%+v'; Expected: '%+v', MasterUserRecordSpecs.UserID: Actual: '%+v'; Expected: '%+v' and MasterUserRecordSpecs.Disabled: Actual: '%+v'; Expected: '%+v'", ua.Spec.UserAccountSpecBase, expected.UserAccountSpecBase, ua.Spec.UserID, expectedMurSpec.UserID, ua.Spec.Disabled, expectedMurSpec.Disabled)
-		if  ua.Spec.UserID != expectedMurSpec.UserID {
+		if ua.Spec.UserID != expectedMurSpec.UserID {
 			return false
 		}
 

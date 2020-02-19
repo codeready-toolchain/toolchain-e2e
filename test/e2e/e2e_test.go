@@ -225,10 +225,10 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 
 func expectedUserAccount(userID string, revisions map[string]string) v1alpha1.UserAccountSpec {
 	return v1alpha1.UserAccountSpec{
-		UserID:              userID,
-		Disabled:            false,
+		UserID:   userID,
+		Disabled: false,
 		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
-			NSLimit:       "default",
+			NSLimit: "default",
 			NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
 				TierName: "basic",
 				Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
