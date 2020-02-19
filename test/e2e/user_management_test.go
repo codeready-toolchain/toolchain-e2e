@@ -13,12 +13,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
-
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-
 )
 
 type userManagementIntegrationTest struct {
@@ -69,11 +63,11 @@ func (s *userManagementIntegrationTest) TestUserBanning() {
 }
 
 func (s *userManagementIntegrationTest) checkUserBanned() {
-	var userSignup *v1alpha1.UserSignup
-
-	s.T().Run("usersignup created first with auto approval and not banned", func(t *testing.T) {
+	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
+		s.setApprovalPolicyConfig("automatic")
+		
 		// Create a new UserSignup with approved flag set to true
-		userSignup, _ = s.createUserSignupAndAssertAutoApproval(true)
+		userSignup, _ := s.createUserSignupAndAssertAutoApproval(true)
 
 		// Check the UserSignup is approved now
 		userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
@@ -81,15 +75,27 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 
 		// Confirm the MUR was created
 		s.assertCreatedMUR(userSignup)
-	})
 
-	s.T().Run("banneduser created with approved set to true", func(t *testing.T) {
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm that a MasterUserRecord is deleted
-		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
+		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
 		require.Error(s.T(), err)
+	})
+
+	s.T().Run("create usersignup with preexisting banneduser", func(t *testing.T) {
+		s.setApprovalPolicyConfig("automatic")
+
+		id := uuid.NewV4().String()
+		email := "testuser"+id+"@test.com"
+		s.createAndCheckBannedUser(email)
+
+		userSignup, _ := s.createAndCheckUserSignup(true, "testuser"+id, email, approvedAutomatically()...)
+
+		// Check the UserSignup is banned
+		userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedAutomaticallyButBanned()...))
+		require.NoError(s.T(), err)
 	})
 }
 

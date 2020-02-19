@@ -71,10 +71,6 @@ github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1/go.mod h1:/iP1
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/codeready-toolchain/api v0.0.0-20191203182149-f994640853b0 h1:APb57ts/dN2/vJb+9Fjc5I3QpOx/OBWzObGKj6zdPPU=
 github.com/codeready-toolchain/api v0.0.0-20191203182149-f994640853b0/go.mod h1:K2iSNSOwpQf+Wo3LdmrGaPlha2BLwuywwWrnbuiy8Pg=
-github.com/codeready-toolchain/api v0.0.0-20191206004733-862cefb68396 h1:OTMOZninxzV2p2gTfyF825h4rUNb8rBQ5JwvPOVN1nk=
-github.com/codeready-toolchain/api v0.0.0-20191206004733-862cefb68396/go.mod h1:K2iSNSOwpQf+Wo3LdmrGaPlha2BLwuywwWrnbuiy8Pg=
-github.com/codeready-toolchain/api v0.0.0-20200113054908-d895c3a1acdf h1:FsaI7EqSD00pZGWWipqng2UBYhn0Ij1S8KQwXXRR9xQ=
-github.com/codeready-toolchain/api v0.0.0-20200113054908-d895c3a1acdf/go.mod h1:zPbdWiEiv9SpZMvyRkY6E6n7Eynm5Y0uhJhBiGXjkg0=
 github.com/codeready-toolchain/api v0.0.0-20200204002410-9b0bcf96feca h1:u30N0mGaeR3aJrehwh+/PxH49LVZZ3EI71Z9f55jMFo=
 github.com/codeready-toolchain/api v0.0.0-20200204002410-9b0bcf96feca/go.mod h1:zPbdWiEiv9SpZMvyRkY6E6n7Eynm5Y0uhJhBiGXjkg0=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20191205223917-60807877b9e7 h1:F8dyoI19Xp+eScSlmUYy2aLCe0dh2DTwk0FaAqFWpqE=
