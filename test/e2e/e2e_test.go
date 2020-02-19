@@ -225,26 +225,28 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 
 func expectedUserAccount(userID string, revisions map[string]string) v1alpha1.UserAccountSpec {
 	return v1alpha1.UserAccountSpec{
-		UserID:   userID,
-		Disabled: false,
-		NSLimit:  "default",
-		NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
-			TierName: "basic",
-			Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
-				{
-					Type:     "code",
-					Revision: revisions["code"],
-					Template: "", // must be empty
-				},
-				{
-					Type:     "dev",
-					Revision: revisions["dev"],
-					Template: "", // must be empty
-				},
-				{
-					Type:     "stage",
-					Revision: revisions["stage"],
-					Template: "", // must be empty
+		UserID:              userID,
+		Disabled:            false,
+		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
+			NSLimit:       "default",
+			NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+				TierName: "basic",
+				Namespaces: []toolchainv1alpha1.NSTemplateSetNamespace{
+					{
+						Type:     "code",
+						Revision: revisions["code"],
+						Template: "", // must be empty
+					},
+					{
+						Type:     "dev",
+						Revision: revisions["dev"],
+						Template: "", // must be empty
+					},
+					{
+						Type:     "stage",
+						Revision: revisions["stage"],
+						Template: "", // must be empty
+					},
 				},
 			},
 		},
@@ -308,7 +310,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
 		wait.UntilUserAccountHasSpec(expectedUserAccount(signup.Name, expectedRevisions)),
-		wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))
+		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
 
