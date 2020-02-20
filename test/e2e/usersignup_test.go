@@ -182,7 +182,7 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 				v1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
 			Labels: map[string]string{
-				v1alpha1.UserSignupUserEmailHashAnnotationKey: emailHash,
+				v1alpha1.UserSignupUserEmailHashLabelKey: emailHash,
 			},
 		},
 		Spec: v1alpha1.UserSignupSpec{
