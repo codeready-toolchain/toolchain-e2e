@@ -66,6 +66,17 @@ func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
 func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string,
 	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 
+	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, conditions...)
+
+	// Confirm the MUR was created
+	mur := s.assertCreatedMUR(userSignup)
+
+	return userSignup, mur
+}
+
+func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string,
+	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup) {
+
 	// Create a new UserSignup with the given approved flag
 	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved
@@ -77,10 +88,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(conditions...))
 	require.NoError(s.T(), err)
 
-	// Confirm the MUR was created
-	mur := s.assertCreatedMUR(userSignup)
-
-	return userSignup, mur
+	return userSignup
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alpha1.BannedUser {
@@ -103,7 +111,6 @@ func (s *baseUserIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSign
 
 	require.Len(s.T(), mur.Spec.UserAccounts, 1)
 	assert.Equal(s.T(), userSignup.Name, mur.Labels["toolchain.dev.openshift.com/user-id"])
-	assert.Equal(s.T(), userSignup.Name, mur.Spec.UserAccounts[0].Spec.UserID)
 	assert.Equal(s.T(), "default", mur.Spec.UserAccounts[0].Spec.NSLimit)
 	assert.NotNil(s.T(), mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
 	if userSignup.Spec.TargetCluster != "" {

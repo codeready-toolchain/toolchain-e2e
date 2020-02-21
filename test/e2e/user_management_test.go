@@ -65,21 +65,14 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 		s.setApprovalPolicyConfig("automatic")
 
-		// Create a new UserSignup with approved flag set to true
-		userSignup, _ := s.createUserSignupAndAssertAutoApproval(true)
-
-		// Check the UserSignup is approved now
-		userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedByAdmin()...))
-		require.NoError(s.T(), err)
-
-		// Confirm the MUR was created
-		s.assertCreatedMUR(userSignup)
+		// Create a new UserSignup and confirm it was approved automatically
+		userSignup, _ := s.createUserSignupAndAssertAutoApproval(false)
 
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm that a MasterUserRecord is deleted
-		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
+		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
 		require.Error(s.T(), err)
 	})
 
@@ -90,11 +83,7 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 		email := "testuser" + id + "@test.com"
 		s.createAndCheckBannedUser(email)
 
-		userSignup, _ := s.createAndCheckUserSignup(true, "testuser"+id, email, approvedAutomatically()...)
-
-		// Check the UserSignup is banned
-		userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(approvedAutomaticallyButBanned()...))
-		require.NoError(s.T(), err)
+		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, banned()...)
 	})
 }
 
@@ -111,6 +100,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 	return &v1alpha1.BannedUser{
 		ObjectMeta: v1.ObjectMeta{
 			Name: uuid.NewV4().String(),
+			Namespace: host.Ns,
 			Labels: map[string]string{
 				v1alpha1.BannedUserEmailHashLabelKey: emailHash,
 			},
