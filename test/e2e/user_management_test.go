@@ -99,7 +99,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 
 	return &v1alpha1.BannedUser{
 		ObjectMeta: v1.ObjectMeta{
-			Name: uuid.NewV4().String(),
+			Name:      uuid.NewV4().String(),
 			Namespace: host.Ns,
 			Labels: map[string]string{
 				v1alpha1.BannedUserEmailHashLabelKey: emailHash,
