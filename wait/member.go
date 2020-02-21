@@ -46,6 +46,23 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 	}
 }
 
+// UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which checks that the given
+// MasterUserRecordSpec and UserAccountSpecEmbedded are the expected specs
+func UntilUserAccountMatchesMur(expectedMurSpec toolchainv1alpha1.MasterUserRecordSpec, expected toolchainv1alpha1.UserAccountSpecEmbedded) UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		a.T.Logf("waiting for UserAccountSpecBase specs: Actual: '%+v'; Expected: '%+v', MasterUserRecordSpecs.UserID: Actual: '%+v'; Expected: '%+v' and MasterUserRecordSpecs.Disabled: Actual: '%+v'; Expected: '%+v'", ua.Spec.UserAccountSpecBase, expected.UserAccountSpecBase, ua.Spec.UserID, expectedMurSpec.UserID, ua.Spec.Disabled, expectedMurSpec.Disabled)
+		if ua.Spec.UserID != expectedMurSpec.UserID {
+			return false
+		}
+
+		if ua.Spec.Disabled != expectedMurSpec.Disabled {
+			return false
+		}
+
+		return reflect.DeepEqual(ua.Spec.UserAccountSpecBase, expected.UserAccountSpecBase)
+	}
+}
+
 // UntilUserAccountHasConditions returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount has exactly all the given status conditions
 func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
@@ -54,7 +71,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for status condition of UserSignup '%s'. Acutal: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
 		return false
 	}
 }
@@ -94,7 +111,7 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
 			return true
 		}
-		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Acutal: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
 		return false
 	}
 }
