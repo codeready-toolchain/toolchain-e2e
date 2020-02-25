@@ -25,14 +25,13 @@ func TestUserManagement(t *testing.T) {
 
 type userManagementTestSuite struct {
 	suite.Suite
-	namespace  string
-	route      string
-	testCtx    *framework.TestCtx
-	awaitility *wait.Awaitility
-	hostAwait  *wait.HostAwaitility
+	namespace   string
+	route       string
+	testCtx     *framework.TestCtx
+	awaitility  *wait.Awaitility
+	hostAwait   *wait.HostAwaitility
 	memberAwait *wait.MemberAwaitility
 }
-
 
 func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
