@@ -46,7 +46,7 @@ func (s *userManagementTestSuite) TearDownTest() {
 
 func (s *userManagementTestSuite) TestUserDisabled() {
 	// Create UserSignup
-	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoetina117")
+	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
