@@ -26,7 +26,6 @@ func TestUserManagement(t *testing.T) {
 type userManagementTestSuite struct {
 	suite.Suite
 	namespace   string
-	route       string
 	testCtx     *framework.TestCtx
 	awaitility  *wait.Awaitility
 	hostAwait   *wait.HostAwaitility
@@ -118,13 +117,10 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.False(s.T(), userAccount.Spec.Disabled)
 
 	// Get User
-	user = &userv1.User{}
 	_, err = s.memberAwait.WaitForUser(userAccount.Name)
 	require.NoError(s.T(), err)
 
 	// Get Identity
-	identity = &userv1.Identity{}
 	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	require.NoError(s.T(), err)
-
 }
