@@ -69,12 +69,10 @@ github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBT
 github.com/census-instrumentation/opencensus-proto v0.2.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1/go.mod h1:/iP1qXHoty45bqomnu2LM+VVyAEdWN+vtSHGlQgyxbw=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
-github.com/codeready-toolchain/api v0.0.0-20191203182149-f994640853b0 h1:APb57ts/dN2/vJb+9Fjc5I3QpOx/OBWzObGKj6zdPPU=
-github.com/codeready-toolchain/api v0.0.0-20191203182149-f994640853b0/go.mod h1:K2iSNSOwpQf+Wo3LdmrGaPlha2BLwuywwWrnbuiy8Pg=
-github.com/codeready-toolchain/api v0.0.0-20200217143846-eaa75f9b390c h1:wScGz8CP42fAa3ZE9Q3v/UCzwSQyU+dkqM4rC1Bqu3w=
-github.com/codeready-toolchain/api v0.0.0-20200217143846-eaa75f9b390c/go.mod h1:zPbdWiEiv9SpZMvyRkY6E6n7Eynm5Y0uhJhBiGXjkg0=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20191205223917-60807877b9e7 h1:F8dyoI19Xp+eScSlmUYy2aLCe0dh2DTwk0FaAqFWpqE=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20191205223917-60807877b9e7/go.mod h1:c5EL9bEskD3ViC/ma1OhyIWNdGQMu+0K2nhGs+vfb9M=
+github.com/codeready-toolchain/api v0.0.0-20200220052945-b24517fc619f h1:xQCr+FkzucMzruSv0bHW0sCOF4ifNkje/+9hR9FFCbE=
+github.com/codeready-toolchain/api v0.0.0-20200220052945-b24517fc619f/go.mod h1:zPbdWiEiv9SpZMvyRkY6E6n7Eynm5Y0uhJhBiGXjkg0=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20200220062916-1c35a15f0e30 h1:E5aq0v0w7verL5XuK+34sKom02p50TG+q6c8VrJH2rY=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20200220062916-1c35a15f0e30/go.mod h1:w+XlpU0KTQS4KlyJnoNfjJ180Gsurdyn2a3QchbJ+RQ=
 github.com/coreos/bbolt v1.3.0/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/bbolt v1.3.3/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.9+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
@@ -188,6 +186,8 @@ github.com/gobuffalo/packd v0.3.0/go.mod h1:zC7QkmNkYVGKPw4tHpBQ+ml7W/3tIebgeo1b
 github.com/gobuffalo/packr v1.30.1/go.mod h1:ljMyFO2EcrnzsHsN99cvbq055Y9OhRrIaviy289eRuk=
 github.com/gobuffalo/packr/v2 v2.5.1/go.mod h1:8f9c96ITobJlPzI44jj+4tHnEKNt0xXWSVlXRN9X1Iw=
 github.com/gobwas/glob v0.2.3/go.mod h1:d3Ez4x06l9bZtSvzIay5+Yzi0fmZzPgnTbPcKjJAkT8=
+github.com/gofrs/uuid v3.2.0+incompatible h1:y12jRkkFxsd7GpqdSZ+/KCs/fJbqpEXSGd4+jfEaewE=
+github.com/gofrs/uuid v3.2.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.0/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=

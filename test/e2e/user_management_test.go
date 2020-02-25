@@ -1,16 +1,21 @@
 package e2e
 
 import (
+	"context"
 	userv1 "github.com/openshift/api/user/v1"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
+	apierros "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 
+	//"k8s.io/apimachinery/pkg/types"
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	//userv1 "github.com/openshift/api/user/v1"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,23 +47,8 @@ func (s *userManagementTestSuite) TearDownTest() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	require.True(s.T(), true)
-	//testUserIdentity := &authsupport.Identity{
-	//	ID:       uuid.NewV4(),
-	//	Username: "janedoe",
-	//}
-
-	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoetina")
-
-	// Post signUp
-	//postSignup(s.T(), s.awaitility.RegistrationServiceURL, *testUserIdentity)
-	//userSignup, err := s.awaitility.Host().WaitForUserSignup(testUserIdentity.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
-	//require.NoError(s.T(), err)
-
-	// Approve signUp
-	//userSignup.Spec.Approved = true
-	//err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)oc
-	//require.NoError(s.T(), err)
+	// Create UserSignup
+	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoetina117")
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
@@ -67,7 +57,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	// Get the UserAccount
 	userAccount, err := s.memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(mur.Spec.UserAccounts[0].Spec))
+		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
@@ -79,36 +69,63 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	require.NoError(s.T(), err)
 
-	// Get the latest UserAccount
-	userAccount, err = s.memberAwait.WaitForUserAccount(userAccount.Name)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), userAccount)
-
-	// Disable account
+	// Get MasterUserRecord
 	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
 	require.NoError(s.T(), err)
 
+	// Disable Accounts
 	mur.Spec.Disabled = true
 	err = s.awaitility.Host().Client.Update(context.TODO(), mur)
 	require.NoError(s.T(), err)
 
-	// Get the latest UserAccount
-	userAccount, err = s.memberAwait.WaitForUserAccount(userAccount.Name)
+	// Get UserAccount
+	userAccount, err = s.memberAwait.WaitForUserAccount(mur.Name,
+		wait.UntilUserAccountHasConditions(disabled()))
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
 	// Check that the UserAccount is now set to disabled
 	require.True(s.T(), userAccount.Spec.Disabled)
 
-	//// Get User
-	//user := &userv1.User{}
-	//s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
-	////err = s.memberAwait.WaitUntilUserDeleted(userAccount.Name)
-	//require.Error(s.T(), err)
-	//
-	//// Get Identity
-	////err = s.memberAwait.WaitUntilIdentityDeleted(toIdentityName(userAccount.Spec.UserID))
-	//identity := &userv1.Identity{}
-	//s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(userAccount.Spec.UserID)}, identity)
-	//require.Error(s.T(), err)
+	// Get User
+	user := &userv1.User{}
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
+	require.Error(s.T(), err)
+	assert.True(s.T(), apierros.IsNotFound(err))
+
+	// Get Identity
+	identity := &userv1.Identity{}
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(userAccount.Spec.UserID)}, identity)
+	require.Error(s.T(), err)
+	assert.True(s.T(), apierros.IsNotFound(err))
+
+	// Get MasterUserRecord
+	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
+	require.NoError(s.T(), err)
+
+	// Enable Accounts
+	mur.Spec.Disabled = false
+	err = s.awaitility.Host().Client.Update(context.TODO(), mur)
+	require.NoError(s.T(), err)
+
+	// Get UserAccount
+	userAccount, err = s.memberAwait.WaitForUserAccount(mur.Name,
+		wait.UntilUserAccountHasConditions(provisioned()),
+		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), userAccount)
+
+	// Check that the UserAccount is now enabled
+	require.False(s.T(), userAccount.Spec.Disabled)
+
+	// Get User
+	user = &userv1.User{}
+	_, err = s.memberAwait.WaitForUser(userAccount.Name)
+	require.NoError(s.T(), err)
+
+	// Get Identity
+	identity = &userv1.Identity{}
+	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
+	require.NoError(s.T(), err)
+
 }
