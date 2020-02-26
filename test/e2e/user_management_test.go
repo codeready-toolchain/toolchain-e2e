@@ -4,13 +4,17 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -84,6 +88,38 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 		s.createAndCheckBannedUser(email)
 
 		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, banned()...)
+	})
+
+	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
+		s.setApprovalPolicyConfig("automatic")
+
+		id := uuid.NewV4().String()
+		email := "testuser" + id + "@test.com"
+		s.createAndCheckBannedUser(email)
+
+		// Get valid generated token for e2e tests. IAT claim is overriden
+		// to avoid token used before issued error.
+		identity0 := authsupport.NewIdentity()
+		emailClaim0 := authsupport.WithEmailClaim(email)
+		token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
+		require.NoError(s.T(), err)
+
+		route := s.awaitility.RegistrationServiceURL
+
+		// Call signup endpoint with a valid token to initiate a signup process
+		req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
+		require.NoError(s.T(), err)
+		req.Header.Set("Authorization", "Bearer "+token0)
+		req.Header.Set("content-type", "application/json")
+
+		resp, err := httpClient.Do(req)
+		require.NoError(s.T(), err)
+		defer close(s.T(), resp)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(s.T(), err)
+		require.NotNil(s.T(), body)
+		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
 	})
 }
 
