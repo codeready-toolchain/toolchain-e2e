@@ -57,11 +57,11 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
-	// Get User
+	// User should be created
 	_, err = s.memberAwait.WaitForUser(userAccount.Name)
 	require.NoError(s.T(), err)
 
-	// Get Identity
+	// Identity should be created
 	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	require.NoError(s.T(), err)
 
@@ -69,27 +69,33 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
 	require.NoError(s.T(), err)
 
-	// Disable Accounts
+	// Disable MUR
 	mur.Spec.Disabled = true
 	err = s.awaitility.Host().Client.Update(context.TODO(), mur)
 	require.NoError(s.T(), err)
 
-	// Get UserAccount
+	// Wait until the UserAccount status is disabled
 	userAccount, err = s.memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(disabled()))
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
+	// Wait until the MUR status is disabled
+	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username,
+		wait.UntilMasterUserRecordHasConditions(disabled()))
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), mur)
+
 	// Check that the UserAccount is now set to disabled
 	require.True(s.T(), userAccount.Spec.Disabled)
 
-	// Get User
+	// Check the User is deleted
 	user := &userv1.User{}
 	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierros.IsNotFound(err))
 
-	// Get Identity
+	// Check the Identity is deleted
 	identity := &userv1.Identity{}
 	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(userAccount.Spec.UserID)}, identity)
 	require.Error(s.T(), err)
@@ -99,26 +105,32 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
 	require.NoError(s.T(), err)
 
-	// Enable Accounts
+	// Re-enable MUR
 	mur.Spec.Disabled = false
 	err = s.awaitility.Host().Client.Update(context.TODO(), mur)
 	require.NoError(s.T(), err)
 
-	// Get UserAccount
+	// Wait until the UserAccount status is provisioned
 	userAccount, err = s.memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
 		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), userAccount)
 
+	// Wait until the MUR status is provisioned
+	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username,
+		wait.UntilMasterUserRecordHasConditions(provisioned()))
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), mur)
+
 	// Check that the UserAccount is now enabled
 	require.False(s.T(), userAccount.Spec.Disabled)
 
-	// Get User
+	// Check User re-created
 	_, err = s.memberAwait.WaitForUser(userAccount.Name)
 	require.NoError(s.T(), err)
 
-	// Get Identity
+	// Check Identity re-created
 	_, err = s.memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	require.NoError(s.T(), err)
 }
