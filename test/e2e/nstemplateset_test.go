@@ -60,13 +60,14 @@ func (s *nsTemplateSetTest) TestDeleteNamespaceOK() {
 		}
 	}
 	t.Logf("Deleting Namespace type :%s", typ)
-	devNs, err := s.memberAwait.WaitForNamespace(username, typ, revision)
+	devNs, err := s.memberAwait.WaitForNamespace(username, typ, revision, nsTmplSet.Spec.TierName)
 	require.NoError(t, err)
 	err = s.awaitility.Client.Delete(context.TODO(), devNs)
 	require.NoError(t, err)
 
 	// wait for Namespace dev to recreate
-	_, err = s.memberAwait.WaitForNamespace(username, devNs.Labels["toolchain.dev.openshift.com/type"], devNs.Labels["toolchain.dev.openshift.com/revision"])
+	_, err = s.memberAwait.WaitForNamespace(username, devNs.Labels["toolchain.dev.openshift.com/type"],
+		devNs.Labels["toolchain.dev.openshift.com/revision"], devNs.Labels["toolchain.dev.openshift.com/tier"])
 	require.NoError(t, err)
 }
 
@@ -86,7 +87,7 @@ func (s *nsTemplateSetTest) createAndVerifyNSTmplSet(username string) *toolchain
 
 	// wait for Namespace
 	for _, ns := range nsTmplSet.Spec.Namespaces {
-		_, err = s.memberAwait.WaitForNamespace(username, ns.Type, ns.Revision)
+		_, err = s.memberAwait.WaitForNamespace(username, ns.Type, ns.Revision, nsTmplSet.Spec.TierName)
 		require.NoError(t, err)
 	}
 
