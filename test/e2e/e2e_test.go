@@ -145,6 +145,7 @@ func TestE2EFlow(t *testing.T) {
 		err = awaitility.Client.Update(context.TODO(), mur)
 
 		// then
+		require.NoError(t, err)
 		verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "advanced")
 		verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
 
@@ -158,6 +159,7 @@ func TestE2EFlow(t *testing.T) {
 			err = awaitility.Client.Update(context.TODO(), mur)
 
 			// then
+			require.NoError(t, err)
 			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
 			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
 		})
