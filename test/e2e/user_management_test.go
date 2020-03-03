@@ -86,11 +86,11 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierros.IsNotFound(err))
 
-	// Get MasterUserRecord
-	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
-	require.NoError(s.T(), err)
-
 	s.Run("re-enabled mur", func() {
+		// Get MasterUserRecord
+		mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
+		require.NoError(s.T(), err)
+
 		// Re-enable MUR
 		mur.Spec.Disabled = false
 		err = s.awaitility.Host().Client.Update(context.TODO(), mur)
