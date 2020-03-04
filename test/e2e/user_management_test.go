@@ -2,44 +2,51 @@ package e2e
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
-	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	"testing"
+
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"github.com/prometheus/common/log"
-	uuid "github.com/satori/go.uuid"
+
+	userv1 "github.com/openshift/api/user/v1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/stretchr/testify/assert"
+	apierros "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"crypto/md5"
+	"encoding/hex"
+	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	"github.com/prometheus/common/log"
+	uuid "github.com/satori/go.uuid"
 	"io/ioutil"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
-	"testing"
 	"time"
 )
 
-type userManagementIntegrationTest struct {
+func TestUserManagement(t *testing.T) {
+	suite.Run(t, &userManagementTestSuite{})
+}
+
+type userManagementTestSuite struct {
 	baseUserIntegrationTest
+	memberAwait *wait.MemberAwaitility
 }
 
-func TestRunUserManagementIntegrationTest(t *testing.T) {
-	suite.Run(t, &userManagementIntegrationTest{})
-}
-
-func (s *userManagementIntegrationTest) SetupSuite() {
+func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
 	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
 	s.hostAwait = s.awaitility.Host()
+	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.HostNs
 }
 
-func (s *userManagementIntegrationTest) TearDownTest() {
+func (s *userManagementTestSuite) TearDownTest() {
 	s.testCtx.Cleanup()
 }
 
-func (s *userManagementIntegrationTest) TestUserDeactivation() {
+func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.setApprovalPolicyConfig("automatic")
 
 	userSignup, mur := s.createAndCheckUserSignup(true, "iris-at-redhat-com", "iris@redhat.com", approvedByAdmin()...)
@@ -54,7 +61,7 @@ func (s *userManagementIntegrationTest) TestUserDeactivation() {
 	require.NoError(s.T(), err)
 }
 
-func (s *userManagementIntegrationTest) TestUserBanning() {
+func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("user banning", func(t *testing.T) {
 		// when
@@ -66,7 +73,7 @@ func (s *userManagementIntegrationTest) TestUserBanning() {
 
 }
 
-func (s *userManagementIntegrationTest) checkUserBanned() {
+func (s *userManagementTestSuite) checkUserBanned() {
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 		s.setApprovalPolicyConfig("automatic")
 
@@ -129,7 +136,65 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 	})
 }
 
-func (s *userManagementIntegrationTest) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
+func (s *userManagementTestSuite) TestUserDisabled() {
+	// Create UserSignup
+	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
+
+	// Expected revisions
+	revisions, err := getRevisions(s.awaitility)
+	require.NoError(s.T(), err)
+
+	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions)
+
+	// Get MasterUserRecord
+	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
+	require.NoError(s.T(), err)
+
+	// Disable MUR
+	mur.Spec.Disabled = true
+	err = s.awaitility.Host().Client.Update(context.TODO(), mur)
+	require.NoError(s.T(), err)
+
+	// Wait until the UserAccount status is disabled
+	userAccount, err := s.memberAwait.WaitForUserAccount(mur.Name,
+		wait.UntilUserAccountHasConditions(disabled()))
+	require.NoError(s.T(), err)
+
+	// Wait until the MUR status is disabled
+	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username,
+		wait.UntilMasterUserRecordHasConditions(disabled()))
+	require.NoError(s.T(), err)
+
+	// Check that the UserAccount is now set to disabled
+	require.True(s.T(), userAccount.Spec.Disabled)
+
+	// Check the User is deleted
+	user := &userv1.User{}
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
+	require.Error(s.T(), err)
+	assert.True(s.T(), apierros.IsNotFound(err))
+
+	// Check the Identity is deleted
+	identity := &userv1.Identity{}
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(userAccount.Spec.UserID)}, identity)
+	require.Error(s.T(), err)
+	assert.True(s.T(), apierros.IsNotFound(err))
+
+	s.Run("re-enabled mur", func() {
+		// Get MasterUserRecord
+		mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
+		require.NoError(s.T(), err)
+
+		// Re-enable MUR
+		mur.Spec.Disabled = false
+		err = s.awaitility.Host().Client.Update(context.TODO(), mur)
+		require.NoError(s.T(), err)
+
+		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions)
+	})
+}
+
+func (s *userManagementTestSuite) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	id := uuid.NewV4().String()
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedAutomatically()...)
 }
