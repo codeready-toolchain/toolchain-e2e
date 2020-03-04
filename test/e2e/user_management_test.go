@@ -8,19 +8,19 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
-	userv1 "github.com/openshift/api/user/v1"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	apierros "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"crypto/md5"
 	"encoding/hex"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/prometheus/common/log"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"io/ioutil"
+	apierros "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"time"
 )
@@ -84,7 +84,7 @@ func (s *userManagementTestSuite) checkUserBanned() {
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm the user is banned
-		s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForUserSignup(userSignup.Name,
+		s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(approvedAutomaticallyAndBanned()...))
 
 		// Confirm that a MasterUserRecord is deleted
