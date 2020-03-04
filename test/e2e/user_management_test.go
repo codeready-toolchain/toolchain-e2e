@@ -8,6 +8,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/prometheus/common/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -75,8 +76,13 @@ func (s *userManagementIntegrationTest) checkUserBanned() {
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
 
+		// Confirm the user is banned
+		s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(approvedAutomaticallyAndBanned()...))
+
 		// Confirm that a MasterUserRecord is deleted
-		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
+		mur, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
+		log.Infof("### Found MUR: ", mur.Name)
 		require.Error(s.T(), err)
 	})
 

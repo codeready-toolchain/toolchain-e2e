@@ -57,6 +57,21 @@ func approvedAutomatically() []toolchainv1alpha1.Condition {
 	}
 }
 
+func approvedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: "ApprovedAutomatically",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: "Banned",
+		},
+	}
+}
+
 func banned() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
