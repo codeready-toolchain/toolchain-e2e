@@ -142,10 +142,10 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
 	// Expected revisions
-	revisions, err := getRevisions(s.awaitility)
+	revisions, err := getRevisions(s.awaitility, "basic")
 	require.NoError(s.T(), err)
 
-	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions)
+	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
@@ -191,7 +191,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		err = s.awaitility.Host().Client.Update(context.TODO(), mur)
 		require.NoError(s.T(), err)
 
-		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions)
+		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
 	})
 }
 
