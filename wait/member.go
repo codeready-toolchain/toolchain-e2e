@@ -116,6 +116,18 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 	}
 }
 
+// UntilNSTemplateSetHasTier checks if the NSTemplateTier has the expected tierName
+func UntilNSTemplateSetHasTier(tier string) NSTemplateSetWaitCriterion {
+	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
+		if nsTmplSet.Spec.TierName == tier {
+			a.T.Logf("tierName in NSTemplateSet '%s` matches the expected tier", nsTmplSet.Name)
+			return true
+		}
+		a.T.Logf("waiting for NSTemplateSet '%s' having the expected tierName. Actual: '%s'; Expected: '%s'", nsTmplSet.Name, nsTmplSet.Spec.TierName, tier)
+		return false
+	}
+}
+
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
 func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
@@ -156,8 +168,8 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 	})
 }
 
-// WaitForNamespace waits until a namespace with the given owner (username), type and revision labels exists
-func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string) (*v1.Namespace, error) {
+// WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
+func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision, tier string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
@@ -165,6 +177,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision string)
 			"toolchain.dev.openshift.com/owner":    username,
 			"toolchain.dev.openshift.com/type":     typeName,
 			"toolchain.dev.openshift.com/revision": revision,
+			"toolchain.dev.openshift.com/tier":     tier,
 		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
