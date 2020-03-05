@@ -84,8 +84,9 @@ func (s *userManagementTestSuite) checkUserBanned() {
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm the user is banned
-		s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
+		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(approvedAutomaticallyAndBanned()...))
+		require.NoError(s.T(), err)
 
 		// Confirm that a MasterUserRecord is deleted
 		mur, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
