@@ -143,15 +143,16 @@ func TestE2EFlow(t *testing.T) {
 		mur, err := hostAwaitility.WaitForMasterUserRecord(johnsmithName)
 		require.NoError(t, err)
 		teamRevisions, err := getRevisions(awaitility, "team", "dev", "stage")
+		require.NoError(t, err)
 		basicNSTemplateSet := mur.Spec.UserAccounts[0].Spec.NSTemplateSet.DeepCopy()
 		mur.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName = "team"
 		mur.Spec.UserAccounts[0].Spec.NSTemplateSet.Namespaces = []toolchainv1alpha1.NSTemplateSetNamespace{
 			{
-				Type: "dev",
+				Type:     "dev",
 				Revision: teamRevisions["dev"],
 			},
 			{
-				Type: "stage",
+				Type:     "stage",
 				Revision: teamRevisions["stage"],
 			},
 		}
