@@ -42,7 +42,11 @@ type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.Us
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		a.T.Logf("waiting for useraccount specs. Actual: '%+v'; Expected: '%+v'", ua.Spec, expected)
-		return reflect.DeepEqual(ua.Spec, expected)
+		userAccount := ua.DeepCopy()
+		userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+		expectedSpec := expected.DeepCopy()
+		expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+		return reflect.DeepEqual(userAccount.Spec, *expectedSpec) && ua.Spec.NSTemplateSet.CompareTo(expected.NSTemplateSet)
 	}
 }
 
