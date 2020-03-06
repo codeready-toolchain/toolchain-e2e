@@ -21,10 +21,13 @@ func TestCreateOrUpdateNSTemplateTierAtStartup(t *testing.T) {
 	_, err := hostAwait.WaitForNSTemplateTier("advanced")
 	require.NoError(t, err)
 
+	// check the "team" NSTemplateTier exists (just created)
+	_, err = hostAwait.WaitForNSTemplateTier("team")
+	require.NoError(t, err)
+
 	// check the "basic" NSTemplateTier exists, and all its
 	// namespaces and cluster resource revisions
-	// are different from `000000a`,
-	// which is the value specified in the initial manifest
+	// are different from `000000a` (which is the value specified in the initial manifest)
 	_, err = hostAwait.WaitForNSTemplateTier("basic",
 		UntilNSTemplateTierSpec(Not(HasNamespaceRevisions("000000a"))),
 		UntilNSTemplateTierSpec(Not(HasClusterResources("000000a"))),
