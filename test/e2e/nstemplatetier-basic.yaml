@@ -91,7 +91,7 @@ spec:
         metadata:
           name: for-${USERNAME}
         spec:
-          quota: 
+          quota:
             hard:
               limits.cpu: 1750m
               limits.memory: 7Gi
