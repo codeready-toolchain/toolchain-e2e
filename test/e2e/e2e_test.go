@@ -18,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	"k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
 
 	userv1 "github.com/openshift/api/user/v1"
@@ -140,44 +141,61 @@ func TestE2EFlow(t *testing.T) {
 	t.Run("promote to team tier", func(t *testing.T) {
 		// given
 		hostAwaitility := wait.NewHostAwaitility(awaitility)
-		mur, err := hostAwaitility.WaitForMasterUserRecord(johnsmithName)
-		require.NoError(t, err)
 		teamRevisions, err := getRevisions(awaitility, "team", "dev", "stage")
 		require.NoError(t, err)
-		basicNSTemplateSet := mur.Spec.UserAccounts[0].Spec.NSTemplateSet.DeepCopy()
-		mur.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName = "team"
-		mur.Spec.UserAccounts[0].Spec.NSTemplateSet.Namespaces = []toolchainv1alpha1.NSTemplateSetNamespace{
-			{
-				Type:     "dev",
-				Revision: teamRevisions["dev"],
+		changeTierRequestToTeam := &toolchainv1alpha1.ChangeTierRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: hostAwaitility.Ns,
 			},
-			{
-				Type:     "stage",
-				Revision: teamRevisions["stage"],
+			Spec: toolchainv1alpha1.ChangeTierRequestSpec{
+				TierName: "team",
+				MurName:  johnsmithName,
 			},
 		}
 
 		// when
-		err = awaitility.Client.Update(context.TODO(), mur)
+		err = awaitility.Client.Create(context.TODO(), changeTierRequestToTeam, testsupport.CleanupOptions(ctx))
 
 		// then
 		require.NoError(t, err)
 		verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, teamRevisions, "team")
 		verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+		assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToTeam.Name)
+
+		t.Run("reusing the same ChangeTierRequest resource won't have any effect as it's already complete", func(t *testing.T) {
+			// given
+			changeTierRequestToTeam.Spec.TierName = "advanced"
+
+			// when
+			err = awaitility.Client.Update(context.TODO(), changeTierRequestToTeam)
+
+			// then
+			require.NoError(t, err)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, teamRevisions, "team")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToTeam.Name)
+		})
 
 		t.Run("downgrade back to basic tier", func(t *testing.T) {
 			// given
-			mur, err := hostAwaitility.WaitForMasterUserRecord(johnsmithName)
-			require.NoError(t, err)
-			mur.Spec.UserAccounts[0].Spec.NSTemplateSet = *basicNSTemplateSet
+			changeTierRequestToBasic := &toolchainv1alpha1.ChangeTierRequest{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: hostAwaitility.Ns,
+				},
+				Spec: toolchainv1alpha1.ChangeTierRequestSpec{
+					TierName: "team",
+					MurName:  johnsmithName,
+				},
+			}
 
 			// when
-			err = awaitility.Client.Update(context.TODO(), mur)
+			err = awaitility.Client.Create(context.TODO(), changeTierRequestToBasic, testsupport.CleanupOptions(ctx))
 
 			// then
 			require.NoError(t, err)
 			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
 			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToBasic.Name)
 		})
 	})
 
@@ -227,6 +245,21 @@ func TestE2EFlow(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
 		verifyMultipleSignups(t, awaitility, signups, revisions)
 	})
+}
+
+func assertThatChangeTierRequestIsComplete(t *testing.T, host *wait.HostAwaitility, name string) {
+	changeTierRequest := &v1alpha1.ChangeTierRequest{}
+	err := host.Client.Get(context.TODO(), test.NamespacedName(test.HostOperatorNs, name), changeTierRequest)
+	require.NoError(t, err)
+	test.AssertConditionsMatch(t, changeTierRequest.Status.Conditions, v1alpha1.Condition{
+		Type:   v1alpha1.ChangeTierRequestComplete,
+		Status: corev1.ConditionTrue,
+		Reason: v1alpha1.ChangeTierRequestChangedReason,
+	})
+	assert.False(t, changeTierRequest.GetDeletionTimestamp().IsZero())
+	diff := time.Since(changeTierRequest.GetDeletionTimestamp().Time)
+	assert.True(t, diff.Seconds() <= 86400)
+	assert.True(t, diff.Seconds() > 85400)
 }
 
 func createAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
