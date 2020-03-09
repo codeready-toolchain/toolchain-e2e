@@ -42,7 +42,11 @@ type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.Us
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		a.T.Logf("waiting for useraccount specs. Actual: '%+v'; Expected: '%+v'", ua.Spec, expected)
-		return reflect.DeepEqual(ua.Spec, expected)
+		userAccount := ua.DeepCopy()
+		userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+		expectedSpec := expected.DeepCopy()
+		expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+		return reflect.DeepEqual(userAccount.Spec, *expectedSpec) && ua.Spec.NSTemplateSet.CompareTo(expected.NSTemplateSet)
 	}
 }
 
@@ -194,7 +198,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision, tier s
 			for _, ns := range allNSs.Items {
 				allNSNames[ns.Name] = ns.Labels
 			}
-			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, username, allNSNames)
+			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s', tier '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, tier, username, allNSNames)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
