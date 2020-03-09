@@ -89,8 +89,7 @@ func (s *userManagementTestSuite) checkUserBanned() {
 		require.NoError(s.T(), err)
 
 		// Confirm that a MasterUserRecord is deleted
-		mur, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
-		log.Infof("### Found MUR: ", mur.Name)
+		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
 		require.Error(s.T(), err)
 	})
 
