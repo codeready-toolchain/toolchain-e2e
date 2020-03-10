@@ -250,7 +250,7 @@ func TestE2EFlow(t *testing.T) {
 func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {
 	return &toolchainv1alpha1.ChangeTierRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
+			Namespace:    namespace,
 			GenerateName: "changetierrequest-",
 		},
 		Spec: toolchainv1alpha1.ChangeTierRequestSpec{
