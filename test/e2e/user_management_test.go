@@ -131,11 +131,13 @@ func (s *userManagementTestSuite) checkUserBanned() {
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
-		assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
+		assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 	})
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
+	s.setApprovalPolicyConfig("manual")
+
 	// Create UserSignup
 	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 

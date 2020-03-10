@@ -1,12 +1,12 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	cloud.google.com/go v0.46.3 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20200226154004-addd941b675c
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200226154024-2462d05d9606
+	github.com/codeready-toolchain/api v0.0.0-20200305152414-a958daa81263
+	github.com/codeready-toolchain/host-operator v0.0.0-20200306134032-ba201c72fe2b // indirect
+	github.com/codeready-toolchain/member-operator v0.0.0-20200305072445-1691a6259bfe // indirect
+	github.com/codeready-toolchain/registration-service v0.0.0-20200305025344-33697732d256 // indirect
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200302163208-e719aea988e2
 	github.com/gobuffalo/envy v1.7.1 // indirect
-	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/prometheus/common v0.7.0
@@ -14,7 +14,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/multierr v1.2.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v12.0.0+incompatible
