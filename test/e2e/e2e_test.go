@@ -143,15 +143,7 @@ func TestE2EFlow(t *testing.T) {
 		hostAwaitility := wait.NewHostAwaitility(awaitility)
 		teamRevisions, err := getRevisions(awaitility, "team", "dev", "stage")
 		require.NoError(t, err)
-		changeTierRequestToTeam := &toolchainv1alpha1.ChangeTierRequest{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: hostAwaitility.Ns,
-			},
-			Spec: toolchainv1alpha1.ChangeTierRequestSpec{
-				TierName: "team",
-				MurName:  johnsmithName,
-			},
-		}
+		changeTierRequestToTeam := newChangeTierRequest(hostAwaitility.Ns, "team", johnsmithName)
 
 		// when
 		err = awaitility.Client.Create(context.TODO(), changeTierRequestToTeam, testsupport.CleanupOptions(ctx))
@@ -176,17 +168,25 @@ func TestE2EFlow(t *testing.T) {
 			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToTeam.Name)
 		})
 
+		t.Run("promote to advanced tier", func(t *testing.T) {
+			// given
+			changeTierRequestToBasic := newChangeTierRequest(hostAwaitility.Ns, "advanced", johnsmithName)
+			advancedRevisions, err := getRevisions(awaitility, "advanced", "code", "dev", "stage")
+			require.NoError(t, err)
+
+			// when
+			err = awaitility.Client.Create(context.TODO(), changeTierRequestToBasic, testsupport.CleanupOptions(ctx))
+
+			// then
+			require.NoError(t, err)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, advancedRevisions, "advanced")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToBasic.Name)
+		})
+
 		t.Run("downgrade back to basic tier", func(t *testing.T) {
 			// given
-			changeTierRequestToBasic := &toolchainv1alpha1.ChangeTierRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: hostAwaitility.Ns,
-				},
-				Spec: toolchainv1alpha1.ChangeTierRequestSpec{
-					TierName: "team",
-					MurName:  johnsmithName,
-				},
-			}
+			changeTierRequestToBasic := newChangeTierRequest(hostAwaitility.Ns, "basic", johnsmithName)
 
 			// when
 			err = awaitility.Client.Create(context.TODO(), changeTierRequestToBasic, testsupport.CleanupOptions(ctx))
@@ -245,6 +245,19 @@ func TestE2EFlow(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
 		verifyMultipleSignups(t, awaitility, signups, revisions)
 	})
+}
+
+func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {
+	return &toolchainv1alpha1.ChangeTierRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			GenerateName: "changetierrequest-",
+		},
+		Spec: toolchainv1alpha1.ChangeTierRequestSpec{
+			TierName: tier,
+			MurName:  murName,
+		},
+	}
 }
 
 func assertThatChangeTierRequestIsComplete(t *testing.T, host *wait.HostAwaitility, name string) {
