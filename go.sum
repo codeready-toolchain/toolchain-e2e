@@ -116,6 +116,7 @@ github.com/codeready-toolchain/api v0.0.0-20200226022556-bb2d9dd17828 h1:lWjwDBd
 github.com/codeready-toolchain/api v0.0.0-20200226022556-bb2d9dd17828/go.mod h1:w07CIyd2cCp1i38hdPrG4aZPbwISzMkxOmtCWE4EtdY=
 github.com/codeready-toolchain/api v0.0.0-20200305152414-a958daa81263 h1:LyzNCGqUwk6j9q48vFdLriHPEyGsZcQcvOtq/ZbHA6w=
 github.com/codeready-toolchain/api v0.0.0-20200305152414-a958daa81263/go.mod h1:w07CIyd2cCp1i38hdPrG4aZPbwISzMkxOmtCWE4EtdY=
+github.com/codeready-toolchain/api v0.0.0-20200310091613-eb1bd0c28840/go.mod h1:w07CIyd2cCp1i38hdPrG4aZPbwISzMkxOmtCWE4EtdY=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20200226154024-2462d05d9606 h1:7XfNG1fG9DUnFKyzBjDkQre68GcBk1k+6hfosZ60+P0=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20200226154024-2462d05d9606/go.mod h1:IEeTz/1TH638XupkjY9miTKMSjwu7Z7eobHm0+EuxKk=
 github.com/container-storage-interface/spec v1.1.0/go.mod h1:6URME8mwIBbpVyZV93Ce5St17xBiQJQY67NDsuohiy4=
