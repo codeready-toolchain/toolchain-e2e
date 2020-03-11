@@ -225,3 +225,43 @@ func HasNamespaceRevisions(r string) NSTemplateTierSpecMatcher {
 		return true
 	}
 }
+
+// WaitForChangeTierRequest waits until there a ChangeTierRequest is available with the given status conditions
+func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolchainv1alpha1.Condition) (*toolchainv1alpha1.ChangeTierRequest, error) {
+	var changeTierRequest *toolchainv1alpha1.ChangeTierRequest
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.ChangeTierRequest{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of ChangeTierRequest '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if test.ConditionsMatch(obj.Status.Conditions, condition) {
+			a.T.Logf("status conditions match in ChangeTierRequest '%s`", obj.Name)
+			changeTierRequest = obj
+			return true, nil
+		}
+		a.T.Logf("waiting for status condition of ChangeTierRequest '%s'. Actual: '%+v'; Expected: '%+v'",
+			obj.Name, obj.Status.Conditions, condition)
+		return false, nil
+	})
+	return changeTierRequest, err
+}
+
+// WaitUntilChangeTierRequestDeleted waits until ChangeTierRequest with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		changeTierRequest := &toolchainv1alpha1.ChangeTierRequest{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, changeTierRequest); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("ChangeTierRequest is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until ChangeTierRequest is deleted '%s'", name)
+		return false, nil
+	})
+}

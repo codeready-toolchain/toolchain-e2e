@@ -12,13 +12,10 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
 
 	userv1 "github.com/openshift/api/user/v1"
@@ -37,7 +34,7 @@ func TestE2EFlow(t *testing.T) {
 	defer ctx.Cleanup()
 
 	// Expected ns template revisions
-	revisions, err := getRevisions(awaitility, "basic", "code", "dev", "stage")
+	revisions, err := tiers.GetRevisions(awaitility, "basic", "code", "dev", "stage")
 	require.NoError(t, err)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
@@ -138,67 +135,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
-	t.Run("promote to team tier", func(t *testing.T) {
-		// given
-		hostAwaitility := wait.NewHostAwaitility(awaitility)
-		teamRevisions, err := getRevisions(awaitility, "team", "dev", "stage")
-		require.NoError(t, err)
-		changeTierRequestToTeam := newChangeTierRequest(hostAwaitility.Ns, "team", johnsmithName)
-
-		// when
-		err = awaitility.Client.Create(context.TODO(), changeTierRequestToTeam, testsupport.CleanupOptions(ctx))
-
-		// then
-		require.NoError(t, err)
-		verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, teamRevisions, "team")
-		verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
-		assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToTeam.Name)
-
-		t.Run("reusing the same ChangeTierRequest resource won't have any effect as it's already complete", func(t *testing.T) {
-			// given
-			changeTierRequestToTeam.Spec.TierName = "advanced"
-
-			// when
-			err = awaitility.Client.Update(context.TODO(), changeTierRequestToTeam)
-
-			// then
-			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, teamRevisions, "team")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
-			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToTeam.Name)
-		})
-
-		t.Run("promote to advanced tier", func(t *testing.T) {
-			// given
-			changeTierRequestToBasic := newChangeTierRequest(hostAwaitility.Ns, "advanced", johnsmithName)
-			advancedRevisions, err := getRevisions(awaitility, "advanced", "code", "dev", "stage")
-			require.NoError(t, err)
-
-			// when
-			err = awaitility.Client.Create(context.TODO(), changeTierRequestToBasic, testsupport.CleanupOptions(ctx))
-
-			// then
-			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, advancedRevisions, "advanced")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
-			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToBasic.Name)
-		})
-
-		t.Run("downgrade back to basic tier", func(t *testing.T) {
-			// given
-			changeTierRequestToBasic := newChangeTierRequest(hostAwaitility.Ns, "basic", johnsmithName)
-
-			// when
-			err = awaitility.Client.Create(context.TODO(), changeTierRequestToBasic, testsupport.CleanupOptions(ctx))
-
-			// then
-			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
-			assertThatChangeTierRequestIsComplete(t, hostAwaitility, changeTierRequestToBasic.Name)
-		})
-	})
-
 	t.Run("delete UserSignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
 		hostAwait := wait.NewHostAwaitility(awaitility)
@@ -245,34 +181,6 @@ func TestE2EFlow(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
 		verifyMultipleSignups(t, awaitility, signups, revisions)
 	})
-}
-
-func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {
-	return &toolchainv1alpha1.ChangeTierRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    namespace,
-			GenerateName: "changetierrequest-",
-		},
-		Spec: toolchainv1alpha1.ChangeTierRequestSpec{
-			TierName: tier,
-			MurName:  murName,
-		},
-	}
-}
-
-func assertThatChangeTierRequestIsComplete(t *testing.T, host *wait.HostAwaitility, name string) {
-	changeTierRequest := &v1alpha1.ChangeTierRequest{}
-	err := host.Client.Get(context.TODO(), test.NamespacedName(test.HostOperatorNs, name), changeTierRequest)
-	require.NoError(t, err)
-	test.AssertConditionsMatch(t, changeTierRequest.Status.Conditions, v1alpha1.Condition{
-		Type:   v1alpha1.ChangeTierRequestComplete,
-		Status: corev1.ConditionTrue,
-		Reason: v1alpha1.ChangeTierRequestChangedReason,
-	})
-	assert.False(t, changeTierRequest.GetDeletionTimestamp().IsZero())
-	diff := time.Since(changeTierRequest.GetDeletionTimestamp().Time)
-	assert.True(t, diff.Seconds() <= 86400)
-	assert.True(t, diff.Seconds() > 85400)
 }
 
 func createAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
@@ -358,33 +266,6 @@ func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []
 	}
 }
 
-func getRevisions(awaitility *wait.Awaitility, tier string, nsTypes ...string) (map[string]string, error) {
-	templateTier, err := awaitility.Host().WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
-	if err != nil {
-		return nil, err
-	}
-	require.Len(awaitility.T, templateTier.Spec.Namespaces, len(nsTypes))
-	revisions := make(map[string]string, len(nsTypes))
-	for _, typ := range nsTypes {
-		if r, found := namespaceRevision(*templateTier, typ); found {
-			revisions[typ] = r
-			continue
-		}
-		return nil, fmt.Errorf("unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
-	}
-	require.Len(awaitility.T, revisions, len(nsTypes))
-	return revisions, nil
-}
-
-func namespaceRevision(tier v1alpha1.NSTemplateTier, typ string) (string, bool) {
-	for _, ns := range tier.Spec.Namespaces {
-		if ns.Type == typ {
-			return ns.Revision, true
-		}
-	}
-	return "", false
-}
-
 func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, expectedRevisions map[string]string, tier string) {
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
@@ -409,61 +290,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	_, err = memberAwait.WaitForIdentity(toIdentityName(userAccount.Spec.UserID))
 	assert.NoError(t, err)
 
-	// Verify provisioned NSTemplateSet
-	_, err = memberAwait.WaitForNSTmplSet(userAccount.Name, wait.UntilNSTemplateSetHasTier(tier))
-	assert.NoError(t, err)
-
-	// Verify all namespaces and RoleBindings in these namespaces
-	for key, revision := range expectedRevisions {
-		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision, tier)
-		require.NoError(t, err)
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
-		require.NoError(t, err)
-		assert.Len(t, rb.Subjects, 1)
-		assert.Equal(t, "User", rb.Subjects[0].Kind)
-		assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
-		assert.Equal(t, "edit", rb.RoleRef.Name)
-		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-
-		// {user}-code namespace and namespaces in team tier should have additional role and rolebinding required by che
-		roleName := fmt.Sprintf("toolchain-%s-edit", key)
-		if key == "code" {
-			roleName = "toolchain-che-edit"
-		}
-		if key == "code" || tier == "team" {
-			rb, err := memberAwait.WaitForRoleBinding(ns, "user-"+roleName)
-			require.NoError(t, err)
-			assert.Len(t, rb.Subjects, 1)
-			assert.Equal(t, "User", rb.Subjects[0].Kind)
-			assert.Equal(t, userAccount.Name, rb.Subjects[0].Name)
-			assert.Equal(t, roleName, rb.RoleRef.Name)
-			assert.Equal(t, "Role", rb.RoleRef.Kind)
-			assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-
-			role, err := memberAwait.WaitForRole(ns, roleName)
-			require.NoError(t, err)
-			assert.Len(t, role.Rules, 1)
-			assert.Len(t, role.Rules[0].APIGroups, 2)
-			assert.Contains(t, role.Rules[0].APIGroups, "rbac.authorization.k8s.io")
-			assert.Contains(t, role.Rules[0].APIGroups, "authorization.openshift.io")
-			assert.Len(t, role.Rules[0].Resources, 2)
-			assert.Contains(t, role.Rules[0].Resources, "rolebindings")
-			assert.Contains(t, role.Rules[0].Resources, "roles")
-			assert.Len(t, role.Rules[0].Verbs, 1)
-			assert.Contains(t, role.Rules[0].Verbs, "*")
-		} else {
-			roleBinding := &v1.RoleBinding{}
-			err := awaitility.Client.Get(context.TODO(), test.NamespacedName(ns.Name, "user-"+roleName), roleBinding)
-			require.Error(t, err)
-			assert.True(t, errors.IsNotFound(err))
-
-			role := &v1.Role{}
-			err = awaitility.Client.Get(context.TODO(), test.NamespacedName(ns.Name, roleName), role)
-			require.Error(t, err)
-			assert.True(t, errors.IsNotFound(err))
-		}
-	}
+	tiers.VerifyNsTemplateSet(t, awaitility, userAccount, tier)
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetKubeFedCluster(cluster.Member, nil)
