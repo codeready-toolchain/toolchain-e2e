@@ -58,7 +58,7 @@ func TestNSTemplateTiers(t *testing.T) {
 		// which is the value specified in the initial manifest (used for basic tier)
 		_, err := hostAwaitility.WaitForNSTemplateTier(tierToCheck, UntilNSTemplateTierSpec(Not(HasNamespaceRevisions("000000a"))))
 		require.NoError(t, err)
-		tierChecks, err := tiers.NewTierChecks(tierToCheck)
+		tierChecks, err := tiers.NewChecks(tierToCheck)
 		require.NoError(t, err)
 
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {

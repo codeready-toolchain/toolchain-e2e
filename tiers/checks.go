@@ -17,7 +17,7 @@ var (
 	providerMatchingLabels = client.MatchingLabels(map[string]string{"provider": "codeready-toolchain"})
 )
 
-func NewTierChecks(tier string) (TierChecks, error) {
+func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case "basic":
 		return &basicTierChecks{}, nil

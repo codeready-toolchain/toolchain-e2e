@@ -15,7 +15,7 @@ func VerifyNsTemplateSet(t *testing.T, awaitility *wait.Awaitility, userAccount 
 	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(userAccount.Name, wait.UntilNSTemplateSetHasTier(tier))
 	assert.NoError(t, err)
 
-	tierChecks, err := NewTierChecks(tier)
+	tierChecks, err := NewChecks(tier)
 	require.NoError(t, err)
 
 	expectedRevisions := tierChecks.GetExpectedRevisions(awaitility)
