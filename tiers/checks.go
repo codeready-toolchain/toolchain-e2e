@@ -23,7 +23,7 @@ func NewChecks(tier string) (TierChecks, error) {
 		return &basicTierChecks{}, nil
 
 	case "advanced":
-		return &advancedTierChecks{basicTierChecks: &basicTierChecks{}}, nil
+		return &advancedTierChecks{}, nil
 
 	case "team":
 		return &teamTierChecks{}, nil
@@ -42,6 +42,10 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
+	return getDefaultChecks(nsType)
+}
+
+func getDefaultChecks(nsType string) []innerObjectCheck {
 	if nsType == "code" {
 		return []innerObjectCheck{
 			userEditRoleBinding(),
@@ -65,7 +69,10 @@ func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revi
 }
 
 type advancedTierChecks struct {
-	*basicTierChecks
+}
+
+func (a *advancedTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
+	return getDefaultChecks(nsType)
 }
 
 func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
