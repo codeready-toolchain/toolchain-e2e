@@ -63,8 +63,7 @@ func getDefaultChecks(nsType string) []innerObjectCheck {
 }
 
 func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	revisions, err := GetRevisions(awaitility, "basic", "code", "dev", "stage")
-	require.NoError(awaitility.T, err)
+	revisions := GetRevisions(awaitility, "basic", "code", "dev", "stage")
 	return revisions
 }
 
@@ -76,8 +75,7 @@ func (a *advancedTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCh
 }
 
 func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	revisions, err := GetRevisions(awaitility, "advanced", "code", "dev", "stage")
-	require.NoError(awaitility.T, err)
+	revisions := GetRevisions(awaitility, "advanced", "code", "dev", "stage")
 	return revisions
 }
 
@@ -96,8 +94,7 @@ func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck 
 }
 
 func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	revisions, err := GetRevisions(awaitility, "team", "dev", "stage")
-	require.NoError(awaitility.T, err)
+	revisions := GetRevisions(awaitility, "team", "dev", "stage")
 	return revisions
 }
 

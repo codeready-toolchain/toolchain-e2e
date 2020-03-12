@@ -34,8 +34,7 @@ func TestE2EFlow(t *testing.T) {
 	defer ctx.Cleanup()
 
 	// Expected ns template revisions
-	revisions, err := tiers.GetRevisions(awaitility, "basic", "code", "dev", "stage")
-	require.NoError(t, err)
+	revisions := tiers.GetRevisions(awaitility, "basic", "code", "dev", "stage")
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
