@@ -123,12 +123,11 @@ func TestE2EFlow(t *testing.T) {
 			}
 			// when
 			for _, ns := range namespaces {
-				err = awaitility.Client.Delete(context.TODO(), ns)
+				err := awaitility.Client.Delete(context.TODO(), ns)
 				require.NoError(t, err)
 			}
 
 			// then
-			require.NoError(t, err)
 			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
 			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
 		})
