@@ -84,7 +84,7 @@ spec:
       metadata:
         labels:
           toolchain.dev.openshift.com/provider: codeready-toolchain
-        name: advanced-cluster-resources
+        name: basic-cluster-resources
       objects:
       - apiVersion: quota.openshift.io/v1
         kind: ClusterResourceQuota
