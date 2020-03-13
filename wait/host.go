@@ -2,13 +2,12 @@ package wait
 
 import (
 	"context"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	"github.com/codeready-toolchain/toolchain-e2e/test/e2e"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -130,7 +129,7 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv1alpha1.BannedUser, err error) {
-	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: e2e.CalcMd5(email)}
+	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email)}
 	opts := client.MatchingLabels(labels)
 
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {

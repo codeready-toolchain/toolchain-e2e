@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"testing"
 	"time"
 
@@ -176,7 +177,7 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 				v1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
 			Labels: map[string]string{
-				v1alpha1.UserSignupUserEmailHashLabelKey: CalcMD5(email),
+				v1alpha1.UserSignupUserEmailHashLabelKey: md5.CalcMd5(email),
 			},
 		},
 		Spec: v1alpha1.UserSignupSpec{

@@ -2,12 +2,14 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
+	regerrors "github.com/codeready-toolchain/registration-service/pkg/errors"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	userv1 "github.com/openshift/api/user/v1"
 	uuid "github.com/satori/go.uuid"
@@ -44,17 +46,33 @@ func (s *userManagementTestSuite) TearDownTest() {
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.setApprovalPolicyConfig("automatic")
-
 	userSignup, mur := s.createAndCheckUserSignup(true, "iris-at-redhat-com", "iris@redhat.com", approvedByAdmin()...)
 
-	// Deactivate the user
-	userSignup.Spec.Deactivated = true
-	err := s.awaitility.Client.Update(context.TODO(), userSignup)
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
+	s.T().Run("deactivate a user", func(t *testing.T) {
+		userSignup.Spec.Deactivated = true
+		err := s.awaitility.Client.Update(context.TODO(), userSignup)
+		require.NoError(s.T(), err)
+		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
-	err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
-	require.NoError(s.T(), err)
+		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+		require.NoError(s.T(), err)
+	})
+
+	s.T().Run("reactivate a deactivated user", func(t *testing.T) {
+		err := s.awaitility.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: userSignup.Namespace,
+			Name:      userSignup.Name,
+		}, userSignup)
+		require.NoError(s.T(), err)
+		
+		userSignup.Spec.Deactivated = false
+		err = s.awaitility.Client.Update(context.TODO(), userSignup)
+		require.NoError(s.T(), err)
+		s.T().Logf("user signup '%s' reactivated", userSignup.Name)
+
+		_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+		require.NoError(s.T(), err)
+	})
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
@@ -117,6 +135,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 		assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
+
+		var statusErr regerrors.Error
+		err = json.Unmarshal([]byte(body), &statusErr)
+		require.NoError(t, err)
+		require.Equal(s.T(), "user has been banned", statusErr.Message)
 	})
 }
 

@@ -2,15 +2,14 @@ package e2e
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	uuid "github.com/satori/go.uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
@@ -129,17 +128,11 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 			Name:      uuid.NewV4().String(),
 			Namespace: host.Ns,
 			Labels: map[string]string{
-				v1alpha1.BannedUserEmailHashLabelKey: CalcMd5(email),
+				v1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
 			},
 		},
 		Spec: v1alpha1.BannedUserSpec{
 			Email: email,
 		},
 	}
-}
-
-func CalcMd5(value string) string {
-	md5hash := md5.New()
-	_, _ = md5hash.Write([]byte(value))
-	return hex.EncodeToString(md5hash.Sum(nil))
 }
