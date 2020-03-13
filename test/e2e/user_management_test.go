@@ -8,8 +8,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
-	"crypto/md5"
-	"encoding/hex"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	userv1 "github.com/openshift/api/user/v1"
 	uuid "github.com/satori/go.uuid"
@@ -18,7 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	apierros "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"time"
@@ -61,18 +58,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
-
-	s.T().Run("user banning", func(t *testing.T) {
-		// when
-		s.setApprovalPolicyConfig("automatic")
-
-		// then
-		s.checkUserBanned()
-	})
-
-}
-
-func (s *userManagementTestSuite) checkUserBanned() {
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 		s.setApprovalPolicyConfig("automatic")
 
@@ -198,23 +183,4 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 func (s *userManagementTestSuite) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	id := uuid.NewV4().String()
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedAutomatically()...)
-}
-
-func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser {
-	md5hash := md5.New()
-	_, _ = md5hash.Write([]byte(email))
-	emailHash := hex.EncodeToString(md5hash.Sum(nil))
-
-	return &v1alpha1.BannedUser{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      uuid.NewV4().String(),
-			Namespace: host.Ns,
-			Labels: map[string]string{
-				v1alpha1.BannedUserEmailHashLabelKey: emailHash,
-			},
-		},
-		Spec: v1alpha1.BannedUserSpec{
-			Email: email,
-		},
-	}
 }

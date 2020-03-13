@@ -2,11 +2,14 @@ package e2e
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	uuid "github.com/satori/go.uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -98,10 +101,6 @@ func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alph
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)
-
-	bannedUser, err = s.hostAwait.WaitForBannedUser(email)
-	require.NoError(s.T(), err)
-
 	return bannedUser
 }
 
@@ -122,4 +121,25 @@ func (s *baseUserIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSign
 	}
 
 	return mur
+}
+
+func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser {
+	return &v1alpha1.BannedUser{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      uuid.NewV4().String(),
+			Namespace: host.Ns,
+			Labels: map[string]string{
+				v1alpha1.BannedUserEmailHashLabelKey: CalcMd5(email),
+			},
+		},
+		Spec: v1alpha1.BannedUserSpec{
+			Email: email,
+		},
+	}
+}
+
+func CalcMd5(value string) string {
+	md5hash := md5.New()
+	_, _ = md5hash.Write([]byte(value))
+	return hex.EncodeToString(md5hash.Sum(nil))
 }
