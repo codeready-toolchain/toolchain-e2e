@@ -2,8 +2,6 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20200313034016-bd3872e24562
-	github.com/codeready-toolchain/host-operator v0.0.0-20200306134032-ba201c72fe2b // indirect
-	github.com/codeready-toolchain/member-operator v0.0.0-20200305072445-1691a6259bfe // indirect
 	github.com/codeready-toolchain/registration-service v0.0.0-20200305025344-33697732d256
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200302163208-e719aea988e2
 	github.com/gobuffalo/envy v1.7.1 // indirect

@@ -150,6 +150,22 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 	return
 }
 
+// WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		mur := &toolchainv1alpha1.BannedUser{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("BannedUser is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until BannedUser is deleted '%s'", name)
+		return false, nil
+	})
+}
+
 // WaitUntilMasterUserRecordDeleted waits until MUR with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
