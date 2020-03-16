@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/stretchr/testify/assert"
 
@@ -70,7 +71,10 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 
 	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, conditions...)
 
-	// Confirm the MUR was created
+	// Confirm the MUR was created and ready
+	r, err := getBasicTierRevisions(s.awaitility)
+	require.NoError(s.T(), err)
+	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 	mur := s.assertCreatedMUR(userSignup)
 
 	return userSignup, mur

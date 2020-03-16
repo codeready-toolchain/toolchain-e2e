@@ -7,7 +7,6 @@ require (
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.15.2
-	github.com/prometheus/common v0.7.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0

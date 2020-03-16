@@ -2,8 +2,9 @@ package wait
 
 import (
 	"context"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"reflect"
+
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -46,11 +47,28 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 				return false, nil
 			}
 		}
-		a.T.Logf("found MasterUserAccount '%s': %+v", name, obj)
+		a.T.Logf("found MasterUserRecord '%s': %+v", name, obj)
 		mur = obj
 		return true, nil
 	})
 	return mur, err
+}
+
+func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
+	murList := &toolchainv1alpha1.MasterUserRecordList{}
+	if err := a.Client.List(context.TODO(), murList); err != nil {
+		return nil, err
+	}
+	for _, mur := range murList.Items {
+		for _, match := range criteria {
+			if match(a, &mur) {
+				a.T.Logf("found MasterUserRecord: %+v", mur)
+				return &mur, nil
+			}
+			a.T.Logf("found MasterUserRecord doesn't match the given criteria: %+v", mur)
+		}
+	}
+	return nil, nil
 }
 
 // MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
@@ -65,6 +83,12 @@ func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Conditio
 		}
 		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, conditions)
 		return false
+	}
+}
+
+func WithMurName(name string) MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		return mur.Name == name
 	}
 }
 

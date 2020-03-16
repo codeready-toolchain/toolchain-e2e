@@ -9,6 +9,10 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
+	"io/ioutil"
+	"net/http"
+	"time"
+
 	regerrors "github.com/codeready-toolchain/registration-service/pkg/errors"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	userv1 "github.com/openshift/api/user/v1"
@@ -16,11 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"io/ioutil"
 	apierros "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"net/http"
-	"time"
 )
 
 func TestUserManagement(t *testing.T) {
@@ -102,7 +103,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		email := "testuser" + id + "@test.com"
 		s.createAndCheckBannedUser(email)
 
+		// Check that no MUR created
 		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, banned()...)
+		mur, err := s.awaitility.Host().GetMasterUserRecord(wait.WithMurName("testuser" + id))
+		require.NoError(s.T(), err)
+		assert.Nil(s.T(), mur)
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
@@ -186,7 +191,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
 	// Expected revisions
-	revisions, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
+	revisions, err := getBasicTierRevisions(s.awaitility)
 	require.NoError(s.T(), err)
 
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
