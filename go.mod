@@ -3,21 +3,33 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20200310091613-eb1bd0c28840
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200226154024-2462d05d9606
+	github.com/codeready-toolchain/api v0.0.0-20200317080847-786ad7121001
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200313133601-c2ea1e0f2ed6
+	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
+	github.com/go-openapi/spec v0.19.6 // indirect
+	github.com/go-openapi/swag v0.19.7 // indirect
 	github.com/gobuffalo/envy v1.7.1 // indirect
+	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
+	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/satori/go.uuid v1.2.0
+	github.com/spf13/cobra v0.0.6 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/multierr v1.2.0 // indirect
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
+	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
+	golang.org/x/tools v0.0.0-20200305140159-d7d444866696 // indirect
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // indirect
+	k8s.io/utils v0.0.0-20200229041039-0a110f9eb7ab // indirect
 	sigs.k8s.io/controller-runtime v0.5.0
 	sigs.k8s.io/kubefed v0.1.0-rc6.0.20200224204536-6207193c49f7
+	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
 // Pinned to kubernetes-1.16.2

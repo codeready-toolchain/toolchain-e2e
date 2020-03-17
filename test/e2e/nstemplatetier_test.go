@@ -54,9 +54,12 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	for _, tierToCheck := range tiersToCheck {
 
-		// check that the tier exists, and all its Namespace revisions are different from `000000a`,
-		// which is the value specified in the initial manifest (used for basic tier)
-		_, err := hostAwaitility.WaitForNSTemplateTier(tierToCheck, UntilNSTemplateTierSpec(Not(HasNamespaceRevisions("000000a"))))
+		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
+		// are different from `000000a` which is the value specified in the initial manifest (used for basic tier)
+		_, err := hostAwaitility.WaitForNSTemplateTier(tierToCheck,
+			UntilNSTemplateTierSpec(Not(HasNamespaceRevisions("000000a"))),
+			UntilNSTemplateTierSpec(Not(HasClusterResources("000000a"))),
+		)
 		require.NoError(t, err)
 		tierChecks, err := tiers.NewChecks(tierToCheck)
 		require.NoError(t, err)

@@ -226,6 +226,13 @@ func HasNamespaceRevisions(r string) NSTemplateTierSpecMatcher {
 	}
 }
 
+// HasClusterResources checks that the clusterResources revision match the given value
+func HasClusterResources(r string) NSTemplateTierSpecMatcher {
+	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
+		return s.ClusterResources.Revision == r
+	}
+}
+
 // WaitForChangeTierRequest waits until there a ChangeTierRequest is available with the given status conditions
 func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolchainv1alpha1.Condition) (*toolchainv1alpha1.ChangeTierRequest, error) {
 	var changeTierRequest *toolchainv1alpha1.ChangeTierRequest
