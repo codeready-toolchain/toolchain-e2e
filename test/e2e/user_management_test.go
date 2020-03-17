@@ -147,7 +147,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.Equal(s.T(), "user has been banned", statusErr["message"])
 	})
 
-	s.T().Run("ban provisioned usersignup then unban", func(t *testing.T) {
+	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 		s.setApprovalPolicyConfig("automatic")
 
 		// Create a new UserSignup and confirm it was approved automatically
@@ -165,22 +165,24 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
 		require.Error(s.T(), err)
 
-		// Unban the user
-		err = s.awaitility.Client.Delete(context.TODO(), bannedUser)
-		require.NoError(s.T(), err)
+		t.Run("unban the banned user", func(t *testing.T) {
+			// Unban the user
+			err = s.awaitility.Client.Delete(context.TODO(), bannedUser)
+			require.NoError(s.T(), err)
 
-		// Confirm the BannedUser is deleted
-		err = s.hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
-		require.NoError(s.T(), err)
+			// Confirm the BannedUser is deleted
+			err = s.hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
+			require.NoError(s.T(), err)
 
-		// Confirm the user is provisioned
-		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(approvedAutomatically()...))
-		require.NoError(s.T(), err)
+			// Confirm the user is provisioned
+			_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(approvedAutomatically()...))
+			require.NoError(s.T(), err)
 
-		// Confirm the MUR is created
-		_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
-		require.NoError(s.T(), err)
+			// Confirm the MUR is created
+			_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+			require.NoError(s.T(), err)
+		})
 	})
 }
 
