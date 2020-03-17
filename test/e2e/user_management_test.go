@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"time"
 
-	regerrors "github.com/codeready-toolchain/registration-service/pkg/errors"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	userv1 "github.com/openshift/api/user/v1"
 	uuid "github.com/satori/go.uuid"
@@ -141,10 +140,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NotNil(s.T(), body)
 		assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
-		var statusErr regerrors.Error
+		// Check the error.
+		statusErr := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &statusErr)
-		require.NoError(t, err)
-		require.Equal(s.T(), "user has been banned", statusErr.Message)
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), "user has been banned", statusErr["message"])
 	})
 
 	s.T().Run("ban provisioned usersignup then unban", func(t *testing.T) {
