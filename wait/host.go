@@ -225,3 +225,10 @@ func HasNamespaceRevisions(r string) NSTemplateTierSpecMatcher {
 		return true
 	}
 }
+
+// HasClusterResources checks that the clusterResources revision match the given value
+func HasClusterResources(r string) NSTemplateTierSpecMatcher {
+	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
+		return s.ClusterResources.Revision == r
+	}
+}
