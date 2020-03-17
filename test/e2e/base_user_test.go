@@ -3,12 +3,11 @@ package e2e
 import (
 	"context"
 
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
@@ -75,7 +74,8 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	r, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
 	require.NoError(s.T(), err)
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
-	mur := s.assertCreatedMUR(userSignup)
+	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
+	require.NoError(s.T(), err)
 
 	return userSignup, mur
 }
@@ -105,25 +105,6 @@ func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alph
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)
 	return bannedUser
-}
-
-func (s *baseUserIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSignup) *v1alpha1.MasterUserRecord {
-	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.NoError(s.T(), err)
-
-	require.Len(s.T(), mur.Spec.UserAccounts, 1)
-	assert.Equal(s.T(), userSignup.Name, mur.Labels["toolchain.dev.openshift.com/user-id"])
-	assert.Equal(s.T(), "default", mur.Spec.UserAccounts[0].Spec.NSLimit)
-	assert.NotNil(s.T(), mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
-	if userSignup.Spec.TargetCluster != "" {
-		// Target cluster set manually from spec
-		assert.Equal(s.T(), userSignup.Spec.TargetCluster, mur.Spec.UserAccounts[0].TargetCluster)
-	} else {
-		// Target cluster set automatically
-		assert.NotEmpty(s.T(), mur.Spec.UserAccounts[0].TargetCluster)
-	}
-
-	return mur
 }
 
 func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser {
