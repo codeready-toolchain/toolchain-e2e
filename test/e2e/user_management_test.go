@@ -191,7 +191,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
 	// Expected revisions
-	revisions, err := getBasicTierRevisions(s.awaitility)
+	revisions, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
 	require.NoError(s.T(), err)
 
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")

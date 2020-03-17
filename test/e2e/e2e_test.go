@@ -36,7 +36,7 @@ func TestE2EFlow(t *testing.T) {
 	defer ctx.Cleanup()
 
 	// Expected ns template revisions
-	revisions, err := getBasicTierRevisions(awaitility)
+	revisions, err := getRevisions(awaitility, "basic", "code", "dev", "stage")
 	require.NoError(t, err)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
@@ -142,7 +142,7 @@ func TestE2EFlow(t *testing.T) {
 		hostAwaitility := wait.NewHostAwaitility(awaitility)
 		mur, err := hostAwaitility.WaitForMasterUserRecord(johnsmithName)
 		require.NoError(t, err)
-		teamRevisions, err := getTeamTierRevisions(awaitility)
+		teamRevisions, err := getRevisions(awaitility, "team", "dev", "stage")
 		require.NoError(t, err)
 		basicNSTemplateSet := mur.Spec.UserAccounts[0].Spec.NSTemplateSet.DeepCopy()
 		mur.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName = "team"
@@ -310,14 +310,6 @@ func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []
 	for _, signup := range signups {
 		verifyResourcesProvisionedForSignup(t, awaitility, signup, revisions, "basic")
 	}
-}
-
-func getBasicTierRevisions(awaitility *wait.Awaitility) (map[string]string, error) {
-	return getRevisions(awaitility, "basic", "code", "dev", "stage")
-}
-
-func getTeamTierRevisions(awaitility *wait.Awaitility) (map[string]string, error) {
-	return getRevisions(awaitility, "team", "dev", "stage")
 }
 
 func getRevisions(awaitility *wait.Awaitility, tier string, nsTypes ...string) (map[string]string, error) {

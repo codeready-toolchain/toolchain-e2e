@@ -72,7 +72,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, conditions...)
 
 	// Confirm the MUR was created and ready
-	r, err := getBasicTierRevisions(s.awaitility)
+	r, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
 	require.NoError(s.T(), err)
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 	mur := s.assertCreatedMUR(userSignup)
