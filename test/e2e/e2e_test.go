@@ -343,14 +343,18 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 
+	// Get the latest signup version
+	userSignup, err := awaitility.Host().WaitForUserSignup(signup.Name)
+	require.NoError(t, err)
+
 	// First, wait for the MasterUserRecord to exist, no matter what status
-	mur, err := hostAwait.WaitForMasterUserRecord(signup.Spec.Username)
+	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
 
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(expectedUserAccount(signup.Name, expectedRevisions, tier)),
+		wait.UntilUserAccountHasSpec(expectedUserAccount(userSignup.Name, expectedRevisions, tier)),
 		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
