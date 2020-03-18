@@ -190,7 +190,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision, tier s
 
 		if len(namespaceList.Items) < 1 {
 			allNSs := &v1.NamespaceList{}
-			ls := map[string]string{"provider": "codeready-toolchain"}
+			ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
 			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(ls)); err != nil {
 				return false, err
 			}
@@ -220,7 +220,7 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				allRBs := &rbacv1.RoleBindingList{}
-				ls := map[string]string{"provider": "codeready-toolchain"}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
 				if err := a.Client.List(context.TODO(), allRBs, client.MatchingLabels(ls)); err != nil {
 					return false, err
 				}
@@ -244,7 +244,7 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				allRoles := &rbacv1.RoleList{}
-				ls := map[string]string{"provider": "codeready-toolchain"}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
 				if err := a.Client.List(context.TODO(), allRoles, client.MatchingLabels(ls)); err != nil {
 					return false, err
 				}
