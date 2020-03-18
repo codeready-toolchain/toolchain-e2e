@@ -71,6 +71,24 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 	return nil, nil
 }
 
+// UpdateMasterUserRecord tries to update the given MasterUserRecord
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and
+func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshMur := &toolchainv1alpha1.MasterUserRecord{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: murName}, freshMur); err != nil {
+			return true, err
+		}
+
+		modifyMur(freshMur)
+		if err := a.Client.Update(context.TODO(), freshMur); err != nil {
+			a.T.Logf("error updating MasterUserRecord '%s': %s. Will retry again...", murName, err.Error())
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
 // MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 

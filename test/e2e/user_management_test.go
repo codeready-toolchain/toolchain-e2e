@@ -203,8 +203,9 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.NoError(s.T(), err)
 
 	// Disable MUR
-	mur.Spec.Disabled = true
-	err = s.awaitility.Host().Client.Update(context.TODO(), mur)
+	err = s.awaitility.Host().UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		mur.Spec.Disabled = true
+	})
 	require.NoError(s.T(), err)
 
 	// Wait until the UserAccount status is disabled
@@ -233,13 +234,10 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	assert.True(s.T(), apierros.IsNotFound(err))
 
 	s.Run("re-enabled mur", func() {
-		// Get MasterUserRecord
-		mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
-		require.NoError(s.T(), err)
-
 		// Re-enable MUR
-		mur.Spec.Disabled = false
-		err = s.awaitility.Host().Client.Update(context.TODO(), mur)
+		err = s.awaitility.Host().UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+			mur.Spec.Disabled = false
+		})
 		require.NoError(s.T(), err)
 
 		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
