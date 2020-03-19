@@ -3,8 +3,8 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20200305152414-a958daa81263
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200303193540-5a398889df30
+	github.com/codeready-toolchain/api v0.0.0-20200317080847-786ad7121001
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200313133601-c2ea1e0f2ed6
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/go-openapi/spec v0.19.6 // indirect
 	github.com/go-openapi/swag v0.19.7 // indirect

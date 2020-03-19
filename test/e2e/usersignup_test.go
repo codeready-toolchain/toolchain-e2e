@@ -8,24 +8,18 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/satori/go.uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type userSignupIntegrationTest struct {
-	suite.Suite
-	namespace  string
-	testCtx    *framework.TestCtx
-	awaitility *wait.Awaitility
-	hostAwait  *wait.HostAwaitility
+	baseUserIntegrationTest
 }
 
 func TestRunUserSignupIntegrationTest(t *testing.T) {
@@ -93,7 +87,8 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	s.assertCreatedMUR(userSignup)
+	r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
+	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
@@ -147,24 +142,6 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specAp
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedAutomatically()...)
 }
 
-func (s *userSignupIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
-	// Create a new UserSignup with the given approved flag
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
-	userSignup.Spec.Approved = specApproved
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	// Check the UserSignup is approved now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(conditions...))
-	require.NoError(s.T(), err)
-
-	// Confirm the MUR was created
-	mur := s.assertCreatedMUR(userSignup)
-
-	return userSignup, mur
-}
-
 func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 	s.T().Run("usersignup created first then manually approved", func(t *testing.T) {
 		// Create a new UserSignup with approved flag set to false
@@ -180,33 +157,14 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 		require.NoError(s.T(), err)
 
 		// Confirm the MUR was created
-		s.assertCreatedMUR(userSignup)
+		r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
+		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 	})
 
 	s.T().Run("usersignup created with approved set to true", func(t *testing.T) {
 		// Create a new UserSignup with approved flag set to true and assert approval
 		s.createUserSignupAndAssertManualApproval(true)
 	})
-}
-
-func (s *userSignupIntegrationTest) assertCreatedMUR(userSignup *v1alpha1.UserSignup) *v1alpha1.MasterUserRecord {
-	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.NoError(s.T(), err)
-
-	require.Len(s.T(), mur.Spec.UserAccounts, 1)
-	assert.Equal(s.T(), userSignup.Name, mur.Labels["toolchain.dev.openshift.com/user-id"])
-	assert.Equal(s.T(), userSignup.Name, mur.Spec.UserID)
-	assert.Equal(s.T(), "default", mur.Spec.UserAccounts[0].Spec.NSLimit)
-	assert.NotNil(s.T(), mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
-	if userSignup.Spec.TargetCluster != "" {
-		// Target cluster set manually from spec
-		assert.Equal(s.T(), userSignup.Spec.TargetCluster, mur.Spec.UserAccounts[0].TargetCluster)
-	} else {
-		// Target cluster set automatically
-		assert.NotEmpty(s.T(), mur.Spec.UserAccounts[0].TargetCluster)
-	}
-
-	return mur
 }
 
 func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, email string) *v1alpha1.UserSignup {
@@ -221,50 +179,13 @@ func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, ema
 			Annotations: map[string]string{
 				v1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
+			Labels: map[string]string{
+				v1alpha1.UserSignupUserEmailHashLabelKey: md5.CalcMd5(email),
+			},
 		},
 		Spec: v1alpha1.UserSignupSpec{
 			Username:      username,
 			TargetCluster: memberCluster.Name,
 		},
 	}
-}
-
-func (s *userSignupIntegrationTest) setApprovalPolicyConfig(policy string) {
-	// Create a new ConfigMap
-	cm := &corev1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "toolchain-saas-config",
-		},
-	}
-
-	// Clear the current approval policy
-	err := s.clearApprovalPolicyConfig()
-	require.NoError(s.T(), err)
-
-	cmValues := make(map[string]string)
-	cmValues["user-approval-policy"] = policy
-	cm.Data = cmValues
-	_, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Create(cm)
-	require.NoError(s.T(), err)
-
-	// Confirm it was updated
-	cm, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Get("toolchain-saas-config", v1.GetOptions{})
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), policy, cm.Data["user-approval-policy"])
-}
-
-func (s *userSignupIntegrationTest) clearApprovalPolicyConfig() error {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "toolchain-saas-config",
-		},
-	}
-
-	err := s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Delete(cm.Name, nil)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
 }
