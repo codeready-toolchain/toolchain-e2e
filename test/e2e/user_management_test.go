@@ -7,6 +7,7 @@ import (
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	"io/ioutil"
@@ -193,8 +194,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
 	// Expected revisions
-	revisions, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
-	require.NoError(s.T(), err)
+	revisions := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
 
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
 

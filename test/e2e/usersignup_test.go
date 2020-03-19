@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	"github.com/satori/go.uuid"
@@ -86,8 +87,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	r, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
-	require.NoError(s.T(), err)
+	r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 }
 
@@ -157,8 +157,7 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 		require.NoError(s.T(), err)
 
 		// Confirm the MUR was created
-		r, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
-		require.NoError(s.T(), err)
+		r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
 		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 	})
 

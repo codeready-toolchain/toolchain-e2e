@@ -6,6 +6,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -71,8 +72,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, conditions...)
 
 	// Confirm the MUR was created and ready
-	r, err := getRevisions(s.awaitility, "basic", "code", "dev", "stage")
-	require.NoError(s.T(), err)
+	r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
 	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
