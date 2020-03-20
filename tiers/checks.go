@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	providerMatchingLabels = client.MatchingLabels(map[string]string{"provider": "codeready-toolchain"})
+	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
 )
 
 func NewChecks(tier string) (TierChecks, error) {
