@@ -93,6 +93,7 @@ func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck 
 		toolchainUserEditRoleBinding(roleName),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
+		numberOfToolchainLimitRanges(1),
 	}
 }
 
