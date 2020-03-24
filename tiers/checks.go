@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 )
 
 var (
-	providerMatchingLabels = client.MatchingLabels(map[string]string{"provider": "codeready-toolchain"})
+	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
 )
 
 func NewChecks(tier string) (TierChecks, error) {
@@ -53,12 +54,14 @@ func getDefaultChecks(nsType string) []innerObjectCheck {
 			toolchainUserEditRoleBinding("toolchain-che-edit"),
 			numberOfToolchainRoles(1),
 			numberOfToolchainRoleBindings(2),
+			numberOfToolchainLimitRanges(1),
 		}
 	}
 	return []innerObjectCheck{
 		userEditRoleBinding(),
 		numberOfToolchainRoles(0),
 		numberOfToolchainRoleBindings(1),
+		numberOfToolchainLimitRanges(1),
 	}
 }
 
@@ -90,6 +93,7 @@ func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck 
 		toolchainUserEditRoleBinding(roleName),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
+		numberOfToolchainLimitRanges(1),
 	}
 }
 
@@ -153,9 +157,18 @@ func numberOfToolchainRoles(number int) innerObjectCheck {
 
 func numberOfToolchainRoleBindings(number int) innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		roleBindingss := &rbacv1.RoleBindingList{}
-		err := memberAwait.Client.List(context.TODO(), roleBindingss, providerMatchingLabels, client.InNamespace(ns.Name))
+		roleBindings := &rbacv1.RoleBindingList{}
+		err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 		require.NoError(t, err)
-		assert.Len(t, roleBindingss.Items, number)
+		assert.Len(t, roleBindings.Items, number)
+	}
+}
+
+func numberOfToolchainLimitRanges(number int) innerObjectCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		limitRanges := &v1.LimitRangeList{}
+		err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
+		require.NoError(t, err)
+		assert.Len(t, limitRanges.Items, number)
 	}
 }
