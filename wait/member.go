@@ -11,6 +11,7 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -234,6 +235,54 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 		return true, nil
 	})
 	return roleBinding, err
+}
+
+// WaitForLimitRange waits until a LimitRange with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForLimitRange(namespace *v1.Namespace, name string) (*v1.LimitRange, error) {
+	lr := &v1.LimitRange{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &v1.LimitRange{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				allLRs := &v1.LimitRangeList{}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), allLRs, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of LimitRange '%s' in namespace '%s'. Currently available codeready-toolchain LimitRanges: '%+v'", name, namespace.Name, allLRs)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found LimitRange '%s'", name)
+		lr = obj
+		return true, nil
+	})
+	return lr, err
+}
+
+// WaitForNetworkPolicy waits until a NetworkPolicy with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *v1.Namespace, name string) (*netv1.NetworkPolicy, error) {
+	np := &netv1.NetworkPolicy{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &netv1.NetworkPolicy{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				allNPs := &netv1.NetworkPolicyList{}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), allNPs, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of NetworkPolicy '%s' in namespace '%s'. Currently available codeready-toolchain NetworkPolicies: '%+v'", name, namespace.Name, allNPs)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found NetworkPolicy '%s'", name)
+		np = obj
+		return true, nil
+	})
+	return np, err
 }
 
 // WaitForRole waits until a Role with the given name exists in the given namespace
