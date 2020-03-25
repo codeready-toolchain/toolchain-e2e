@@ -9,13 +9,26 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
+	commonChecks           = []innerObjectCheck{
+		userEditRoleBinding(),
+		limitRange(),
+		networkPolicySameNamespace(),
+		networkPolicyAllowFromMonitoring(),
+		networkPolicyAllowFromIngress(),
+		numberOfLimitRanges(1),
+		numberOfNetworkPolicies(3),
+	}
 )
 
 func NewChecks(tier string) (TierChecks, error) {
@@ -48,21 +61,15 @@ func (a *basicTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck
 
 func getDefaultChecks(nsType string) []innerObjectCheck {
 	if nsType == "code" {
-		return []innerObjectCheck{
-			userEditRoleBinding(),
+		return append(commonChecks,
 			toolchainUserEditRole("toolchain-che-edit"),
 			toolchainUserEditRoleBinding("toolchain-che-edit"),
 			numberOfToolchainRoles(1),
-			numberOfToolchainRoleBindings(2),
-			numberOfToolchainLimitRanges(1),
-		}
+			numberOfToolchainRoleBindings(2))
 	}
-	return []innerObjectCheck{
-		userEditRoleBinding(),
+	return append(commonChecks,
 		numberOfToolchainRoles(0),
-		numberOfToolchainRoleBindings(1),
-		numberOfToolchainLimitRanges(1),
-	}
+		numberOfToolchainRoleBindings(1))
 }
 
 func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
@@ -87,14 +94,12 @@ type teamTierChecks struct {
 
 func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
 	roleName := fmt.Sprintf("toolchain-%s-edit", nsType)
-	return []innerObjectCheck{
-		userEditRoleBinding(),
+	return append(commonChecks,
 		toolchainUserEditRole(roleName),
 		toolchainUserEditRoleBinding(roleName),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
-		numberOfToolchainLimitRanges(1),
-	}
+	)
 }
 
 func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
@@ -146,6 +151,90 @@ func toolchainUserEditRoleBinding(roleName string) innerObjectCheck {
 	}
 }
 
+func limitRange() innerObjectCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
+		require.NoError(t, err)
+		def := make(map[v1.ResourceName]resource.Quantity)
+		def[corev1.ResourceCPU], err = resource.ParseQuantity("150m")
+		require.NoError(t, err)
+		def[corev1.ResourceMemory], err = resource.ParseQuantity("512Mi")
+		require.NoError(t, err)
+		defReq := make(map[v1.ResourceName]resource.Quantity)
+		defReq[corev1.ResourceCPU], err = resource.ParseQuantity("100m")
+		require.NoError(t, err)
+		defReq[corev1.ResourceMemory], err = resource.ParseQuantity("64Mi")
+		require.NoError(t, err)
+		expected := &v1.LimitRange{
+			Spec: v1.LimitRangeSpec{
+				Limits: []v1.LimitRangeItem{
+					{
+						Type:           "Container",
+						Default:        def,
+						DefaultRequest: defReq,
+					},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, lr.Spec)
+	}
+}
+
+func networkPolicySameNamespace() innerObjectCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		np, err := memberAwait.WaitForNetworkPolicy(ns, "allow-same-namespace")
+		require.NoError(t, err)
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				Ingress: []netv1.NetworkPolicyIngressRule{
+					{
+						From: []netv1.NetworkPolicyPeer{
+							{
+								PodSelector: &metav1.LabelSelector{},
+							},
+						},
+					},
+				},
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func networkPolicyAllowFromIngress() innerObjectCheck {
+	return networkPolicyIngress("allow-from-openshift-ingress", "ingress")
+}
+
+func networkPolicyAllowFromMonitoring() innerObjectCheck {
+	return networkPolicyIngress("allow-from-openshift-monitoring", "monitoring")
+}
+
+func networkPolicyIngress(name, group string) innerObjectCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		np, err := memberAwait.WaitForNetworkPolicy(ns, name)
+		require.NoError(t, err)
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				Ingress: []netv1.NetworkPolicyIngressRule{
+					{
+						From: []netv1.NetworkPolicyPeer{
+							{
+								NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"network.openshift.io/policy-group": group}},
+							},
+						},
+					},
+				},
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
 func numberOfToolchainRoles(number int) innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		roles := &rbacv1.RoleList{}
@@ -164,11 +253,20 @@ func numberOfToolchainRoleBindings(number int) innerObjectCheck {
 	}
 }
 
-func numberOfToolchainLimitRanges(number int) innerObjectCheck {
+func numberOfLimitRanges(number int) innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		limitRanges := &v1.LimitRangeList{}
 		err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 		require.NoError(t, err)
 		assert.Len(t, limitRanges.Items, number)
+	}
+}
+
+func numberOfNetworkPolicies(number int) innerObjectCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		nps := &netv1.NetworkPolicyList{}
+		err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
+		require.NoError(t, err)
+		assert.Len(t, nps.Items, number)
 	}
 }
