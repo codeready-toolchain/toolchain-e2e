@@ -20,12 +20,9 @@ func GetRevisions(awaitility *wait.Awaitility, tier string, nsTypes ...string) R
 		Namespaces: make(map[string]string, len(nsTypes)),
 	}
 	for _, typ := range nsTypes {
-		if r, found := namespaceRevision(*templateTier, typ); found {
-			revisions.Namespaces[typ] = r
-			continue
-		}
-		require.FailNowf(awaitility.T, "unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
-		return Revisions{}
+		r, found := namespaceRevision(*templateTier, typ)
+		require.True(awaitility.T, found, "unable to find revision for '%s' namespace in the '%s' NSTemplateTier", typ, tier)
+		revisions.Namespaces[typ] = r
 	}
 	if templateTier.Spec.ClusterResources != nil {
 		revisions.ClusterResources = templateTier.Spec.ClusterResources.Revision

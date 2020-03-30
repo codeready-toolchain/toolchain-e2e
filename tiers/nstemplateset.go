@@ -36,12 +36,13 @@ Revisions:
 	if expectedRevisions.ClusterResources == "" {
 		assert.Nil(t, nsTemplateSet.Spec.ClusterResources)
 	} else {
-		require.NotNil(t, nsTemplateSet.Spec.ClusterResources)
-		assert.Equal(t, expectedRevisions.ClusterResources, nsTemplateSet.Spec.ClusterResources.Revision)
-		assert.Empty(t, nsTemplateSet.Spec.ClusterResources.Template)
+		// Do not check if Cluster Resources are set in NSTemplate Set until it's implemented in User Account Controller
+		//require.NotNil(t, nsTemplateSet.Spec.ClusterResources)
+		//assert.Equal(t, expectedRevisions.ClusterResources, nsTemplateSet.Spec.ClusterResources.Revision)
+		//assert.Empty(t, nsTemplateSet.Spec.ClusterResources.Template)
 	}
 
-	// Verify all namespaces and RoleBindings in these namespaces
+	// Verify all namespaces and RoleBindings and other resources defined in the tier in these namespaces
 	for key, revision := range expectedRevisions.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision, tier)
 		require.NoError(t, err)
