@@ -236,7 +236,9 @@ func expectedUserAccount(userID string, revisions tiers.Revisions, tier string) 
 		Namespaces: namespaces,
 	}
 	if revisions.ClusterResources != "" {
-		set.ClusterResources.Revision = revisions.ClusterResources
+		set.ClusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
+			Revision: revisions.ClusterResources,
+		}
 	}
 	return v1alpha1.UserAccountSpec{
 		UserID:   userID,
