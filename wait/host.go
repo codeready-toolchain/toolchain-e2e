@@ -47,7 +47,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 				return false, nil
 			}
 		}
-		a.T.Logf("found MasterUserRecord '%s': %+v", name, obj)
+		a.T.Logf("found MasterUserRecord '%s': %+v with ClusterResources: %v", name, obj, obj.Spec.UserAccounts[0].Spec.NSTemplateSet.ClusterResources)
 		mur = obj
 		return true, nil
 	})
