@@ -30,7 +30,7 @@ func GetRevisions(awaitility *wait.Awaitility, tier string, nsTypes ...string) R
 	if templateTier.Spec.ClusterResources != nil {
 		revisions.ClusterResources = templateTier.Spec.ClusterResources.Revision
 	}
-	require.Len(awaitility.T, revisions, len(nsTypes))
+	require.Len(awaitility.T, revisions.Namespaces, len(nsTypes))
 	return revisions
 }
 
