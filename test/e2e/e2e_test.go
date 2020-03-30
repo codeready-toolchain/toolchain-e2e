@@ -116,7 +116,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
 			// given
 			namespaces := make([]*corev1.Namespace, 0, 3)
-			for key, revision := range revisions {
+			for key, revision := range revisions.Namespaces {
 				ns, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, key, revision, "basic")
 				require.NoError(t, err)
 				namespaces = append(namespaces, ns)
@@ -222,24 +222,28 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	defer resp.Body.Close()
 }
 
-func expectedUserAccount(userID string, revisions map[string]string, tier string) v1alpha1.UserAccountSpec {
-	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(revisions))
-	for nsType, rev := range revisions {
+func expectedUserAccount(userID string, revisions tiers.Revisions, tier string) v1alpha1.UserAccountSpec {
+	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(revisions.Namespaces))
+	for nsType, rev := range revisions.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
 			Type:     nsType,
 			Revision: rev,
 			Template: "", // must be empty
 		})
 	}
+	set := toolchainv1alpha1.NSTemplateSetSpec{
+		TierName:   tier,
+		Namespaces: namespaces,
+	}
+	if revisions.ClusterResources != "" {
+		set.ClusterResources.Revision = revisions.ClusterResources
+	}
 	return v1alpha1.UserAccountSpec{
 		UserID:   userID,
 		Disabled: false,
 		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
-			NSLimit: "default",
-			NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
-				TierName:   tier,
-				Namespaces: namespaces,
-			},
+			NSLimit:       "default",
+			NSTemplateSet: set,
 		},
 	}
 }
@@ -258,13 +262,13 @@ func createMultipleSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wai
 	return signups
 }
 
-func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup, revisions map[string]string) {
+func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup, revisions tiers.Revisions) {
 	for _, signup := range signups {
 		verifyResourcesProvisionedForSignup(t, awaitility, signup, revisions, "basic")
 	}
 }
 
-func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, expectedRevisions map[string]string, tier string) {
+func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, expectedRevisions tiers.Revisions, tier string) {
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
 

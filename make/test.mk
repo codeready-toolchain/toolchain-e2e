@@ -121,7 +121,8 @@ get-host-and-reg-service: get-registration-service-repo get-host-operator-repo
 
 .PHONY: clean-before-e2e
 clean-before-e2e:
-	rm -f ${WAS_ALREADY_PAIRED_FILE} 2>/dev/null || echo true
+	rm -f ${WAS_ALREADY_PAIRED_FILE} 2>/dev/null || true
+	rm -rf ${IMAGE_NAMES_DIR} 2>/dev/null || true
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:

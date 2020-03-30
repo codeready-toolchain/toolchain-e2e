@@ -6,21 +6,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type Revisions map[string]string
+type Revisions struct {
+	Namespaces       map[string]string
+	ClusterResources string
+}
 
 func GetRevisions(awaitility *wait.Awaitility, tier string, nsTypes ...string) Revisions {
 	templateTier, err := awaitility.Host().WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
 	require.NoError(awaitility.T, err)
 
 	require.Len(awaitility.T, templateTier.Spec.Namespaces, len(nsTypes))
-	revisions := make(map[string]string, len(nsTypes))
+	revisions := Revisions{
+		Namespaces: make(map[string]string, len(nsTypes)),
+	}
 	for _, typ := range nsTypes {
 		if r, found := namespaceRevision(*templateTier, typ); found {
-			revisions[typ] = r
+			revisions.Namespaces[typ] = r
 			continue
 		}
 		require.FailNowf(awaitility.T, "unable to find revision for '%s' namespace in the 'basic' NSTemplateTier", typ)
-		return nil
+		return Revisions{}
+	}
+	if templateTier.Spec.ClusterResources != nil {
+		revisions.ClusterResources = templateTier.Spec.ClusterResources.Revision
 	}
 	require.Len(awaitility.T, revisions, len(nsTypes))
 	return revisions
