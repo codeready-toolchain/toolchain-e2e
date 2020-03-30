@@ -35,7 +35,7 @@ Revisions:
 
 	if expectedRevisions.ClusterResources == "" {
 		assert.Nil(t, nsTemplateSet.Spec.ClusterResources)
-	} else {
+		//} else {
 		// Do not check if Cluster Resources are set in NSTemplate Set until it's implemented in User Account Controller
 		//require.NotNil(t, nsTemplateSet.Spec.ClusterResources)
 		//assert.Equal(t, expectedRevisions.ClusterResources, nsTemplateSet.Spec.ClusterResources.Revision)
