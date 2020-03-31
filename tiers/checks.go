@@ -62,8 +62,8 @@ func (a *basicTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck
 func getDefaultChecks(nsType string) []innerObjectCheck {
 	if nsType == "code" {
 		return append(commonChecks,
-			toolchainUserEditRole("toolchain-che-edit"),
-			toolchainUserEditRoleBinding("toolchain-che-edit"),
+			rbacEditRoleBinding(),
+			rbacEditRole(),
 			numberOfToolchainRoles(1),
 			numberOfToolchainRoleBindings(2))
 	}
@@ -93,10 +93,9 @@ type teamTierChecks struct {
 }
 
 func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
-	roleName := fmt.Sprintf("toolchain-%s-edit", nsType)
 	return append(commonChecks,
-		toolchainUserEditRole(roleName),
-		toolchainUserEditRoleBinding(roleName),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
 	)
@@ -122,22 +121,22 @@ func userEditRoleBinding() innerObjectCheck {
 	}
 }
 
-func toolchainUserEditRole(roleName string) innerObjectCheck {
+func rbacEditRoleBinding() innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-"+roleName)
+		rb, err := memberAwait.WaitForRoleBinding(ns, "user-rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userName, rb.Subjects[0].Name)
-		assert.Equal(t, roleName, rb.RoleRef.Name)
+		assert.Equal(t, "rbac-edit", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 	}
 }
 
-func toolchainUserEditRoleBinding(roleName string) innerObjectCheck {
+func rbacEditRole() innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		role, err := memberAwait.WaitForRole(ns, roleName)
+		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 1)
 		assert.Len(t, role.Rules[0].APIGroups, 2)
