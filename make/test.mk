@@ -121,7 +121,8 @@ get-host-and-reg-service: get-registration-service-repo get-host-operator-repo
 
 .PHONY: clean-before-e2e
 clean-before-e2e:
-	rm -f ${WAS_ALREADY_PAIRED_FILE} 2>/dev/null || echo true
+	rm -f ${WAS_ALREADY_PAIRED_FILE} 2>/dev/null || true
+	rm -rf ${IMAGE_NAMES_DIR} 2>/dev/null || true
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
@@ -294,7 +295,7 @@ ifeq ($(SET_IMAGE_NAME),)
             endif
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
-			$(eval IMAGE_NAME := registry.svc.ci.openshift.org/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
+			$(eval IMAGE_NAME := default-route-openshift-image-registry.apps.build01.ci.devcluster.openshift.com/${OPENSHIFT_BUILD_NAMESPACE}/stable:${REPO_NAME})
         endif
     else
 		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
