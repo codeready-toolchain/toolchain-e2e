@@ -22,7 +22,6 @@ var (
 	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
 	commonChecks           = []innerObjectCheck{
 		userEditRoleBinding(),
-		limitRange(),
 		networkPolicySameNamespace(),
 		networkPolicyAllowFromMonitoring(),
 		networkPolicyAllowFromIngress(),
@@ -60,14 +59,15 @@ func (a *basicTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck
 }
 
 func getDefaultChecks(nsType string) []innerObjectCheck {
+	defaultCommonChecks := append(commonChecks, limitRange("300m", "1400Mi"))
 	if nsType == "code" {
-		return append(commonChecks,
+		return append(defaultCommonChecks,
 			rbacEditRoleBinding(),
 			rbacEditRole(),
 			numberOfToolchainRoles(1),
 			numberOfToolchainRoleBindings(2))
 	}
-	return append(commonChecks,
+	return append(defaultCommonChecks,
 		numberOfToolchainRoles(0),
 		numberOfToolchainRoleBindings(1))
 }
@@ -94,6 +94,7 @@ type teamTierChecks struct {
 
 func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
 	return append(commonChecks,
+		limitRange("400m", "2Gi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -150,14 +151,14 @@ func rbacEditRole() innerObjectCheck {
 	}
 }
 
-func limitRange() innerObjectCheck {
+func limitRange(cpuLimit, memoryLimit string) innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
 		require.NoError(t, err)
 		def := make(map[v1.ResourceName]resource.Quantity)
-		def[corev1.ResourceCPU], err = resource.ParseQuantity("300m")
+		def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
 		require.NoError(t, err)
-		def[corev1.ResourceMemory], err = resource.ParseQuantity("1400Mi")
+		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		defReq := make(map[v1.ResourceName]resource.Quantity)
 		defReq[corev1.ResourceCPU], err = resource.ParseQuantity("100m")
