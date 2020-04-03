@@ -13,7 +13,7 @@ require (
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/mailru/easyjson v0.7.1 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
-	github.com/operator-framework/operator-sdk v0.15.2
+	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v0.0.6 // indirect
 	github.com/spf13/pflag v1.0.5
