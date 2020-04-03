@@ -7,7 +7,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
@@ -38,10 +37,6 @@ func TestNSTemplateTiers(t *testing.T) {
 	// all tiers to check - keep the basic as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "team", "basic"}
 
-	// when
-	// created on startup
-
-	// then
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	err := awaitility.Client.List(context.TODO(), allTiers, client.InNamespace(awaitility.HostNs))
 	require.NoError(t, err)
@@ -61,12 +56,13 @@ func TestNSTemplateTiers(t *testing.T) {
 			UntilNSTemplateTierSpec(Not(HasClusterResources("000000a"))),
 		)
 		require.NoError(t, err)
-		tierChecks, err := tiers.NewChecks(tierToCheck)
+		// check resources before starting the tier promotions
+		mur, err := hostAwaitility.WaitForMasterUserRecord(testingTiersName, UntilMasterUserRecordHasConditions(provisioned()))
 		require.NoError(t, err)
+		verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, mur.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName)
 
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
 			// given
-			tierRevisions := tierChecks.GetExpectedRevisions(awaitility)
 			changeTierRequest := newChangeTierRequest(hostAwaitility.Ns, tierToCheck, testingTiersName)
 
 			// when
@@ -76,7 +72,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			require.NoError(t, err)
 			_, err := hostAwaitility.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, tierRevisions, tierToCheck)
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, tierToCheck)
 			changeTierRequestNames = append(changeTierRequestNames, changeTierRequest.Name)
 		})
 	}

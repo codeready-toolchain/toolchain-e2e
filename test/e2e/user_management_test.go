@@ -7,7 +7,6 @@ import (
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	"io/ioutil"
@@ -193,10 +192,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	// Create UserSignup
 	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
-	// Expected revisions
-	revisions := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
-
-	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
+	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
@@ -240,7 +236,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, revisions, "basic")
+		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
 	})
 }
 
