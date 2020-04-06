@@ -102,11 +102,11 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 
 	// Create another UserSignup with the original username matching the transformed username of the existing signup
 	userSignup, _ = s.createAndCheckUserSignup(true, "paul", "paulathotel@hotel.com", approvedByAdmin()...)
-	require.Equal(s.T(), "paul-1", userSignup.Status.CompliantUsername)
+	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the same original username but different user ID
 	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", approvedByAdmin()...)
-	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
+	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *v1alpha1.UserSignup {
