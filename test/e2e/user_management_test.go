@@ -46,7 +46,7 @@ func (s *userManagementTestSuite) TearDownTest() {
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.setApprovalPolicyConfig("automatic")
-	userSignup, mur := s.createAndCheckUserSignup(true, "iris-at-redhat-com", "iris@redhat.com", approvedByAdmin()...)
+	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", approvedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
 		userSignup.Spec.Deactivated = true
