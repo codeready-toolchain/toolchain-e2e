@@ -23,6 +23,7 @@ IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 WAS_ALREADY_PAIRED_FILE := /tmp/${GO_PACKAGE_ORG_NAME}_${GO_PACKAGE_REPO_NAME}_already_paired
 
 .PHONY: test-e2e
+## Run the e2e tests
 test-e2e: deploy-e2e e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
