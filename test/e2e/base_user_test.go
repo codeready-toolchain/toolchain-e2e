@@ -21,7 +21,7 @@ import (
 type baseUserIntegrationTest struct {
 	suite.Suite
 	namespace  string
-	testCtx    *framework.TestCtx
+	ctx        *framework.Context
 	awaitility *wait.Awaitility
 	hostAwait  *wait.HostAwaitility
 }
@@ -86,7 +86,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 	// Create a new UserSignup with the given approved flag
 	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -100,7 +100,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alpha1.BannedUser {
 	// Create the BannedUser
 	bannedUser := newBannedUser(s.awaitility.Host(), email)
-	err := s.awaitility.Client.Create(context.TODO(), bannedUser, testsupport.CleanupOptions(s.testCtx))
+	err := s.awaitility.Client.Create(context.TODO(), bannedUser, testsupport.CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)

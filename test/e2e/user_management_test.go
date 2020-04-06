@@ -35,14 +35,14 @@ type userManagementTestSuite struct {
 
 func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
 	s.hostAwait = s.awaitility.Host()
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.HostNs
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
-	s.testCtx.Cleanup()
+	s.ctx.Cleanup()
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
