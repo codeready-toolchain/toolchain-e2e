@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"context"
+	"testing"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
@@ -10,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/kubefed/pkg/apis/core/common"
 	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
-	"testing"
 )
 
 func TestKubeFedE2E(t *testing.T) {
@@ -24,7 +25,7 @@ func TestKubeFedE2E(t *testing.T) {
 
 // verifyKubeFedCluster verifies existence and correct conditions of KubeFedCluster CRD
 // in the target cluster type operator
-func verifyKubeFedCluster(ctx *test.TestCtx, awaitility *wait.Awaitility, kubeFedClusterType cluster.Type, singleAwait wait.SingleAwaitility) {
+func verifyKubeFedCluster(ctx *test.Context, awaitility *wait.Awaitility, kubeFedClusterType cluster.Type, singleAwait wait.SingleAwaitility) {
 	// given
 	current, ok, err := singleAwait.GetKubeFedCluster(kubeFedClusterType, nil)
 	require.NoError(awaitility.T, err)

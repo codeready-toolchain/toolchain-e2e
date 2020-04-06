@@ -12,6 +12,6 @@ const (
 )
 
 // CleanupOptions returns a CleanupOptions for the given test context and set with CleanupTimeout and CleanupRetryInterval
-func CleanupOptions(ctx *framework.TestCtx) *framework.CleanupOptions {
+func CleanupOptions(ctx *framework.Context) *framework.CleanupOptions {
 	return &framework.CleanupOptions{TestContext: ctx, Timeout: CleanupTimeout, RetryInterval: CleanupRetryInterval}
 }

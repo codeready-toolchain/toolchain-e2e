@@ -15,9 +15,8 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -40,13 +39,13 @@ type registrationServiceTestSuite struct {
 	suite.Suite
 	namespace  string
 	route      string
-	testCtx    *framework.TestCtx
+	ctx        *framework.Context
 	awaitility *wait.Awaitility
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
 	s.namespace = s.awaitility.RegistrationServiceNs
 	s.route = s.awaitility.RegistrationServiceURL
 }
