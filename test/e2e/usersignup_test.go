@@ -10,8 +10,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	uuid "github.com/satori/go.uuid"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,13 +27,13 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.testCtx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
 	s.hostAwait = s.awaitility.Host()
 	s.namespace = s.awaitility.HostNs
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
-	s.testCtx.Cleanup()
+	s.ctx.Cleanup()
 }
 
 func (s *userSignupIntegrationTest) TestUserSignupApproval() {
@@ -77,7 +77,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Remove the specified target cluster
 	userSignup.Spec.TargetCluster = ""
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -113,7 +113,7 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *
 	email := username + "@test.com"
 	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
 
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.testCtx))
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 

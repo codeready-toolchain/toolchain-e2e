@@ -249,7 +249,7 @@ func expectedUserAccount(userID string, tier string, revisions tiers.Revisions) 
 	}
 }
 
-func createMultipleSignups(t *testing.T, ctx *framework.TestCtx, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
+func createMultipleSignups(t *testing.T, ctx *framework.Context, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
 	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		// Create an approved UserSignup resource

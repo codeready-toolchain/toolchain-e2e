@@ -27,7 +27,7 @@ import (
 // that represents the current operator that is the target of the e2e test it retrieves namespace names.
 // Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.TestCtx, *wait.Awaitility) {
+func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *wait.Awaitility) {
 	schemeBuilder := newSchemeBuilder()
 	err := framework.AddToFrameworkScheme(schemeBuilder.AddToScheme, obj)
 	require.NoError(t, err, "failed to add custom resource scheme to framework")
