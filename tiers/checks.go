@@ -146,14 +146,18 @@ func rbacEditRole() innerObjectCheck {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 1)
-		assert.Len(t, role.Rules[0].APIGroups, 2)
-		assert.Contains(t, role.Rules[0].APIGroups, "rbac.authorization.k8s.io")
-		assert.Contains(t, role.Rules[0].APIGroups, "authorization.openshift.io")
-		assert.Len(t, role.Rules[0].Resources, 2)
-		assert.Contains(t, role.Rules[0].Resources, "rolebindings")
-		assert.Contains(t, role.Rules[0].Resources, "roles")
-		assert.Len(t, role.Rules[0].Verbs, 1)
-		assert.Contains(t, role.Rules[0].Verbs, "*")
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"authorization.openshift.io", "rbac.authorization.k8s.io"},
+					Resources: []string{"roles", "rolebindings"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
 
