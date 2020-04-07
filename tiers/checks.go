@@ -59,7 +59,13 @@ func (a *basicTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck
 }
 
 func getDefaultChecks(nsType string) []innerObjectCheck {
-	defaultCommonChecks := append(commonChecks, limitRange("300m", "1400Mi"))
+	cpuLimit := "150m"
+	memoryLimit := "512Mi"
+	if nsType == "dev" {
+		cpuLimit = "250m"
+		memoryLimit = "1Gi"
+	}
+	defaultCommonChecks := append(commonChecks, limitRange(cpuLimit, memoryLimit))
 	if nsType == "code" {
 		return append(defaultCommonChecks,
 			rbacEditRoleBinding(),
@@ -94,7 +100,7 @@ type teamTierChecks struct {
 
 func (a *teamTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
 	return append(commonChecks,
-		limitRange("400m", "2Gi"),
+		limitRange("500m", "2Gi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
