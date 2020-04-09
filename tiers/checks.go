@@ -125,6 +125,7 @@ func userEditRoleBinding() innerObjectCheck {
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
 
@@ -138,6 +139,7 @@ func rbacEditRoleBinding() innerObjectCheck {
 		assert.Equal(t, "rbac-edit", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
 
@@ -175,6 +177,7 @@ func limitRange(cpuLimit, memoryLimit string) innerObjectCheck {
 		require.NoError(t, err)
 		defReq[corev1.ResourceMemory], err = resource.ParseQuantity("64Mi")
 		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", lr.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &v1.LimitRange{
 			Spec: v1.LimitRangeSpec{
 				Limits: []v1.LimitRangeItem{
@@ -195,6 +198,7 @@ func networkPolicySameNamespace() innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, "allow-same-namespace")
 		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
@@ -226,6 +230,7 @@ func networkPolicyIngress(name, group string) innerObjectCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, name)
 		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
