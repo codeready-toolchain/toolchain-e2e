@@ -55,10 +55,6 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
-	return getDefaultChecks(nsType)
-}
-
-func getDefaultChecks(nsType string) []innerObjectCheck {
 	cpuLimit := "150m"
 	memoryLimit := "512Mi"
 	if nsType == "dev" {
@@ -87,7 +83,18 @@ type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetInnerObjectChecks(nsType string) []innerObjectCheck {
-	return getDefaultChecks(nsType)
+	cpuLimit := "150m"
+	memoryLimit := "512Mi"
+	if nsType == "dev" {
+		cpuLimit = "250m"
+		memoryLimit = "1Gi"
+	}
+	return append(commonChecks,
+		limitRange(cpuLimit, memoryLimit),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2))
 }
 
 func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
