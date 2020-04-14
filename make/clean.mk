@@ -20,8 +20,7 @@ clean-e2e-files:
 
 .PHONY: clean-toolchain-resources-in-dev
 ## Deletes resources in the OpenShift cluster. The deleted resources are:
-##    * namesapces created only during the dev setup (for both operators host and member)
-##    * all toolchain.dev.openshift.com CRs in both host a member namespaces
+##    * all toolchain.dev.openshift.com CRs in both host and member namespaces created during the dev setup
 ##    * all ClusterresourceQuotas with the label toolchain.dev.openshift.com/provider=codeready-toolchain in member namespace
 ##    * pods of both operators host and member
 clean-toolchain-resources-in-dev:
