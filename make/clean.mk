@@ -27,14 +27,10 @@ clean-e2e-files:
 clean-toolchain-resources-in-dev:
 	$(Q)echo "cleaning resources in $(DEV_HOST_NS) and $(DEV_MEMBER_NS)..."
 	$(Q)oc get usersignups -n $(DEV_HOST_NS) -o name | xargs -i oc delete -n $(DEV_HOST_NS) {}
-	$(Q)for CRD in `oc get crd -o name -n $(DEV_HOST_NS) | grep toolchain`; do \
-		echo "deleting $${CRD} in $(DEV_HOST_NS)"; \
+	$(Q)for CRD in `oc get crd -o name | grep toolchain`; do \
+		echo "deleting $${CRD} in $(DEV_HOST_NS) and $(DEV_MEMBER_NS)"; \
 		CRD_NAME=`oc get $${CRD} --template '{{.metadata.name}}'`; \
 		oc get $${CRD_NAME} -n $(DEV_HOST_NS) -o name | xargs -i oc delete {}; \
-	done
-	$(Q)for CRD in `oc get crd -o name -n $(DEV_MEMBER_NS) | grep toolchain`; do \
-		echo "deleting $${CRD} in $(DEV_MEMBER_NS)"; \
-		CRD_NAME=`oc get $${CRD} --template '{{.metadata.name}}'`; \
 		oc get $${CRD_NAME} -n $(DEV_MEMBER_NS) -o name | xargs -i oc delete {}; \
 	done
 	$(Q)oc get clusterresourcequotas -l "toolchain.dev.openshift.com/provider"=codeready-toolchain -o name -n $(DEV_MEMBER_NS) | xargs -i oc delete {}
