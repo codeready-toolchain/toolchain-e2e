@@ -6,7 +6,7 @@ clean:
 
 .PHONY: clean-e2e-resources
 ## Deletes resources in the OpenShift cluster. The deleted resources are:
-##    * namesapces created during both the dev and e2e test setup (for both operators host and member)
+##    * namespaces created during both the dev and e2e test setup (for both operators host and member)
 ##    * all CatalogSources that were created as part of operator deployment
 clean-e2e-resources:
 	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
