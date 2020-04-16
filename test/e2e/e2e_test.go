@@ -160,6 +160,9 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
 		assert.NoError(t, err, "NSTemplateSet id not deleted")
 
+		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(johnsmithName)
+		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
+
 		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "code")
 		assert.NoError(t, err, "johnsmith-code namespace is not deleted")
 

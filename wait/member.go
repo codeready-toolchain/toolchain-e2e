@@ -6,6 +6,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	quotav1 "github.com/openshift/api/quota/v1"
 
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
@@ -432,4 +433,22 @@ func (a *MemberAwaitility) GetConsoleRoute() (*routev1.Route, error) {
 		a.T.Logf("found %s Web Console Route", route)
 	}
 	return route, err
+}
+
+// WaitUntilClusterResourceQuotasDeleted waits until all ClusterResourceQuotas with the given owner label are deleted (ie, none is found)
+func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		labels := map[string]string{"toolchain.dev.openshift.com/owner": username}
+		opts := client.MatchingLabels(labels)
+		quotaList := &quotav1.ClusterResourceQuotaList{}
+		if err := a.Client.List(context.TODO(), quotaList, opts); err != nil {
+			return false, err
+		}
+		if len(quotaList.Items) == 0 {
+			a.T.Logf("deleted all ClusterResourceQuotas with the owner label '%s'", username)
+			return true, nil
+		}
+		a.T.Logf("waiting for deletion of the following ClusterResourceQuotas '%v'", quotaList.Items)
+		return false, nil
+	})
 }
