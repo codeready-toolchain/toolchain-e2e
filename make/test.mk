@@ -100,11 +100,6 @@ setup-kubefed:
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 
-.PHONY: clean-e2e-resources
-clean-e2e-resources:
-	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
-	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
-
 ###########################################################
 #
 # Fetching and building Member and Host Operators
@@ -115,15 +110,10 @@ clean-e2e-resources:
 build-with-operators: build-and-pre-clean get-host-and-reg-service get-member-operator-repo
 
 .PHONY: build-and-pre-clean
-build-and-pre-clean: build clean-before-e2e
+build-and-pre-clean: build clean-e2e-files
 
 .PHONY: get-host-and-reg-service
 get-host-and-reg-service: get-registration-service-repo get-host-operator-repo
-
-.PHONY: clean-before-e2e
-clean-before-e2e:
-	rm -f ${WAS_ALREADY_PAIRED_FILE} 2>/dev/null || true
-	rm -rf ${IMAGE_NAMES_DIR} 2>/dev/null || true
 
 .PHONY: get-member-operator-repo
 get-member-operator-repo:
