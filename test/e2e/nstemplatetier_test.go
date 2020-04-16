@@ -48,6 +48,8 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 	var changeTierRequestNames []string
 
+	// wait for the user to be provisioned for the first time
+	verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
 	for _, tierToCheck := range tiersToCheck {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -57,10 +59,6 @@ func TestNSTemplateTiers(t *testing.T) {
 			UntilNSTemplateTierSpec(Not(HasClusterResources("000000a"))),
 		)
 		require.NoError(t, err)
-		// check resources before starting the tier promotions
-		mur, err := hostAwaitility.WaitForMasterUserRecord(testingTiersName, UntilMasterUserRecordHasConditions(provisioned()))
-		require.NoError(t, err)
-		verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, mur.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName)
 
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
 			// given
