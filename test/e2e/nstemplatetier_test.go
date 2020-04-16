@@ -37,6 +37,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	// all tiers to check - keep the basic as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "team", "basic"}
 
+	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	err := awaitility.Client.List(context.TODO(), allTiers, client.InNamespace(awaitility.HostNs))
 	require.NoError(t, err)
