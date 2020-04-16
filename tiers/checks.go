@@ -57,10 +57,6 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return getDefaultChecks(nsType)
-}
-
-func getDefaultChecks(nsType string) []namespaceObjectsCheck {
 	cpuLimit := "150m"
 	memoryLimit := "512Mi"
 	if nsType == "dev" {
@@ -94,7 +90,18 @@ type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return getDefaultChecks(nsType)
+	cpuLimit := "150m"
+	memoryLimit := "512Mi"
+	if nsType == "dev" {
+		cpuLimit = "250m"
+		memoryLimit = "1Gi"
+	}
+	return append(commonChecks,
+		limitRange(cpuLimit, memoryLimit),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2))
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -144,6 +151,7 @@ func userEditRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
 
@@ -157,6 +165,7 @@ func rbacEditRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "rbac-edit", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
 
@@ -165,14 +174,18 @@ func rbacEditRole() namespaceObjectsCheck {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 1)
-		assert.Len(t, role.Rules[0].APIGroups, 2)
-		assert.Contains(t, role.Rules[0].APIGroups, "rbac.authorization.k8s.io")
-		assert.Contains(t, role.Rules[0].APIGroups, "authorization.openshift.io")
-		assert.Len(t, role.Rules[0].Resources, 2)
-		assert.Contains(t, role.Rules[0].Resources, "rolebindings")
-		assert.Contains(t, role.Rules[0].Resources, "roles")
-		assert.Len(t, role.Rules[0].Verbs, 1)
-		assert.Contains(t, role.Rules[0].Verbs, "*")
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"authorization.openshift.io", "rbac.authorization.k8s.io"},
+					Resources: []string{"roles", "rolebindings"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
 
@@ -190,6 +203,7 @@ func limitRange(cpuLimit, memoryLimit string) namespaceObjectsCheck {
 		require.NoError(t, err)
 		defReq[corev1.ResourceMemory], err = resource.ParseQuantity("64Mi")
 		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", lr.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &v1.LimitRange{
 			Spec: v1.LimitRangeSpec{
 				Limits: []v1.LimitRangeItem{
@@ -210,6 +224,7 @@ func networkPolicySameNamespace() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, "allow-same-namespace")
 		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
@@ -241,6 +256,7 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, name)
 		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
