@@ -278,7 +278,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername) // , wait.UntilMasterUserRecordHasConditions(provisioned())
+	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
 
 	// Then wait for the associated UserAccount to be provisioned
