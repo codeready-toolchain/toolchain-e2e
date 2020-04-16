@@ -77,7 +77,9 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 }
 
 func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	return GetRevisions(awaitility.Host(), "basic")
+	revisions := GetRevisions(awaitility.Host(), "basic")
+	verifyNsTypes(awaitility.T, revisions, "code", "dev", "stage")
+	return revisions
 }
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -111,7 +113,9 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	return GetRevisions(awaitility.Host(), "advanced")
+	revisions := GetRevisions(awaitility.Host(), "advanced")
+	verifyNsTypes(awaitility.T, revisions, "code", "dev", "stage")
+	return revisions
 }
 
 type teamTierChecks struct {
@@ -128,12 +132,21 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 }
 
 func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	return GetRevisions(awaitility.Host(), "team")
+	revisions := GetRevisions(awaitility.Host(), "team")
+	verifyNsTypes(awaitility.T, revisions, "dev", "stage")
+	return revisions
 }
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		numberOfClusterResourceQuotas(1),
+	}
+}
+
+func verifyNsTypes(t *testing.T, revisions Revisions, nsTypes ...string) {
+	assert.Len(t, revisions.Namespaces, len(nsTypes))
+	for _, expNsType := range nsTypes {
+		assert.Contains(t, expNsType, revisions.Namespaces)
 	}
 }
 
