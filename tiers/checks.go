@@ -84,6 +84,7 @@ func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revi
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
+		clusterResourceQuota("1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -108,6 +109,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
+		clusterResourceQuota("1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -139,6 +141,7 @@ func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revis
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
+		clusterResourceQuota("2000m", "10Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -286,6 +289,53 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+		require.NoError(t, err)
+		hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
+		require.NoError(t, err)
+		hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("5Gi")
+		require.NoError(t, err)
+		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuLimit)
+		require.NoError(t, err)
+		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
+		require.NoError(t, err)
+		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("5Gi")
+		require.NoError(t, err)
+		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("5Gi")
+		require.NoError(t, err)
+		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("2")
+		require.NoError(t, err)
+		hard[corev1.ResourcePods], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+		hard[corev1.ResourceReplicationControllers], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+		hard[corev1.ResourceServices], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+		hard[corev1.ResourceSecrets], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+		hard[corev1.ResourceConfigMaps], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+
+		expetedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
+			Selector: quotav1.ClusterResourceQuotaSelector{
+				AnnotationSelector: map[string]string{
+					"openshift.io/requester": userName,
+				},
+			},
+			Quota: v1.ResourceQuotaSpec{
+				Hard: hard,
+			},
+		}
+		assert.Equal(t, expetedQuotaSpec, quota.Spec)
 	}
 }
 

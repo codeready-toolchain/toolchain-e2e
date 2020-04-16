@@ -310,6 +310,30 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 	return role, err
 }
 
+// WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
+func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.ClusterResourceQuota, error) {
+	quota := &quotav1.ClusterResourceQuota{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &quotav1.ClusterResourceQuota{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				quotaList := &quotav1.ClusterResourceQuotaList{}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), quotaList, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of ClusterResourceQuota '%s'. Currently available codeready-toolchain ClusterResourceQuotas: '%+v'", name, quotaList)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found ClusterResourceQuota '%s'", name)
+		quota = obj
+		return true, nil
+	})
+	return quota, err
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
