@@ -149,7 +149,7 @@ func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 func verifyNsTypes(t *testing.T, revisions Revisions, nsTypes ...string) {
 	assert.Len(t, revisions.Namespaces, len(nsTypes))
 	for _, expNsType := range nsTypes {
-		assert.Contains(t, expNsType, revisions.Namespaces)
+		assert.Contains(t, revisions.Namespaces, expNsType)
 	}
 }
 
