@@ -330,7 +330,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	identity0 := authsupport.NewIdentity()
 	emailValue := uuid.NewV4().String() + "@email.tld"
 	emailClaim0 := authsupport.WithEmailClaim(emailValue)
-	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, companyClaim, givenNameClaim, familyNameClaim)
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with a valid token to initiate a signup process
