@@ -330,9 +330,6 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	identity0 := authsupport.NewIdentity()
 	emailValue := uuid.NewV4().String() + "@email.tld"
 	emailClaim0 := authsupport.WithEmailClaim(emailValue)
-	companyClaim := authsupport.WithCompanyClaim("red hat")
-	givenNameClaim := authsupport.WithGivenNameClaim("jane")
-	familyNameClaim := authsupport.WithFamilyNameClaim("doe")
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, companyClaim, givenNameClaim, familyNameClaim)
 	require.NoError(s.T(), err)
 
