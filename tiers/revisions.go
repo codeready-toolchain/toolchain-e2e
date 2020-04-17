@@ -8,34 +8,31 @@ import (
 
 type Revisions struct {
 	Namespaces       map[string]string
-	ClusterResources string
+	ClusterResources *string
 }
 
-func GetRevisions(awaitility *wait.Awaitility, tier string, nsTypes ...string) Revisions {
-	templateTier, err := awaitility.Host().WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
-	require.NoError(awaitility.T, err)
+const (
+	// ClusterResources the key to retrieve the cluster resources template
+	ClusterResources string = "clusterResources"
+)
 
-	require.Len(awaitility.T, templateTier.Spec.Namespaces, len(nsTypes))
-	revisions := Revisions{
-		Namespaces: make(map[string]string, len(nsTypes)),
+// GetRevisions returns the expected revisions for all the namespace templates and the optional cluster resources template for the given tier
+func GetRevisions(hostAwait *wait.HostAwaitility, tier string) Revisions {
+	templateTier, err := hostAwait.WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
+	require.NoError(hostAwait.T, err)
+	nsRevisions := make(map[string]string, len(templateTier.Spec.Namespaces))
+	for _, ns := range templateTier.Spec.Namespaces {
+		nsRevisions[ns.Type] = ns.Revision
 	}
-	for _, typ := range nsTypes {
-		r, found := namespaceRevision(*templateTier, typ)
-		require.True(awaitility.T, found, "unable to find revision for '%s' namespace in the '%s' NSTemplateTier", typ, tier)
-		revisions.Namespaces[typ] = r
+	return Revisions{
+		Namespaces:       nsRevisions,
+		ClusterResources: clusterResourcesRevision(*templateTier),
 	}
-	if templateTier.Spec.ClusterResources != nil {
-		revisions.ClusterResources = templateTier.Spec.ClusterResources.Revision
-	}
-	require.Len(awaitility.T, revisions.Namespaces, len(nsTypes))
-	return revisions
 }
 
-func namespaceRevision(tier toolchainv1alpha1.NSTemplateTier, typ string) (string, bool) {
-	for _, ns := range tier.Spec.Namespaces {
-		if ns.Type == typ {
-			return ns.Revision, true
-		}
+func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
+	if tier.Spec.ClusterResources != nil {
+		return &(tier.Spec.ClusterResources.Revision)
 	}
-	return "", false
+	return nil
 }

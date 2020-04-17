@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
+	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	userv1 "github.com/openshift/api/user/v1"
@@ -109,5 +110,6 @@ func newSchemeBuilder() runtime.SchemeBuilder {
 	addToSchemes := append(apis.AddToSchemes, userv1.AddToScheme)
 	addToSchemes = append(addToSchemes, templatev1.AddToScheme)
 	addToSchemes = append(addToSchemes, routev1.AddToScheme)
+	addToSchemes = append(addToSchemes, quotav1.AddToScheme)
 	return addToSchemes
 }

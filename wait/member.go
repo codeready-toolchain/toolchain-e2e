@@ -6,6 +6,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	quotav1 "github.com/openshift/api/quota/v1"
 
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
@@ -309,6 +310,30 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 	return role, err
 }
 
+// WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
+func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.ClusterResourceQuota, error) {
+	quota := &quotav1.ClusterResourceQuota{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &quotav1.ClusterResourceQuota{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				quotaList := &quotav1.ClusterResourceQuotaList{}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), quotaList, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of ClusterResourceQuota '%s'. Currently available codeready-toolchain ClusterResourceQuotas: '%+v'", name, quotaList)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found ClusterResourceQuota '%s'", name)
+		quota = obj
+		return true, nil
+	})
+	return quota, err
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -432,4 +457,22 @@ func (a *MemberAwaitility) GetConsoleRoute() (*routev1.Route, error) {
 		a.T.Logf("found %s Web Console Route", route)
 	}
 	return route, err
+}
+
+// WaitUntilClusterResourceQuotasDeleted waits until all ClusterResourceQuotas with the given owner label are deleted (ie, none is found)
+func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		labels := map[string]string{"toolchain.dev.openshift.com/owner": username}
+		opts := client.MatchingLabels(labels)
+		quotaList := &quotav1.ClusterResourceQuotaList{}
+		if err := a.Client.List(context.TODO(), quotaList, opts); err != nil {
+			return false, err
+		}
+		if len(quotaList.Items) == 0 {
+			a.T.Logf("deleted all ClusterResourceQuotas with the owner label '%s'", username)
+			return true, nil
+		}
+		a.T.Logf("waiting for deletion of the following ClusterResourceQuotas '%v'", quotaList.Items)
+		return false, nil
+	})
 }

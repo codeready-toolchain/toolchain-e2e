@@ -33,9 +33,6 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
-	// Expected ns template revisions
-	revisions := tiers.GetRevisions(awaitility, "basic", "code", "dev", "stage")
-
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
 	signups := createMultipleSignups(t, ctx, awaitility, 5)
@@ -46,8 +43,8 @@ func TestE2EFlow(t *testing.T) {
 	extrajohnName := "extrajohn"
 	johnExtraSignup := createAndApproveSignup(t, awaitility, extrajohnName)
 
-	verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-	verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+	verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+	verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -62,8 +59,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete identity and wait until recreated", func(t *testing.T) {
@@ -77,8 +74,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete user mapping and wait until recreated", func(t *testing.T) {
@@ -93,8 +90,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
@@ -109,13 +106,14 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
 			// given
 			namespaces := make([]*corev1.Namespace, 0, 3)
+			revisions := tiers.GetRevisions(awaitility.Host(), "basic")
 			for key, revision := range revisions.Namespaces {
 				ns, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, key, revision, "basic")
 				require.NoError(t, err)
@@ -128,12 +126,12 @@ func TestE2EFlow(t *testing.T) {
 			}
 
 			// then
-			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, revisions, "basic")
-			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 	})
 
-	t.Run("delete UserSignup and expect all resources to be deleted", func(t *testing.T) {
+	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
 		hostAwait := wait.NewHostAwaitility(awaitility)
 		memberAwait := wait.NewMemberAwaitility(awaitility)
@@ -145,7 +143,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		t.Logf("MasterUserRecord '%s' deleted", johnsmithName)
+		t.Logf("usersignup '%s' deleted (resource name='%s')", johnsmithName, johnSignup.Name)
 
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(johnsmithName)
 		assert.NoError(t, err, "MasterUserRecord is not deleted")
@@ -162,22 +160,25 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
 		assert.NoError(t, err, "NSTemplateSet id not deleted")
 
+		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(johnsmithName)
+		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
+
 		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "code")
-		assert.NoError(t, err, "johnsmith-code namnespace is not deleted")
+		assert.NoError(t, err, "johnsmith-code namespace is not deleted")
 
 		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
-		assert.NoError(t, err, "johnsmith-dev namnespace is not deleted")
+		assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
 
 		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "stage")
-		assert.NoError(t, err, "johnsmith-stage namnespace is not deleted")
+		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
-		verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, revisions, "basic")
+		verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 	})
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		verifyMultipleSignups(t, awaitility, signups, revisions)
+		verifyMultipleSignups(t, awaitility, signups)
 	})
 }
 
@@ -222,7 +223,7 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	defer resp.Body.Close()
 }
 
-func expectedUserAccount(userID string, revisions tiers.Revisions, tier string) v1alpha1.UserAccountSpec {
+func expectedUserAccount(userID string, tier string, revisions tiers.Revisions) v1alpha1.UserAccountSpec {
 	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(revisions.Namespaces))
 	for nsType, rev := range revisions.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
@@ -231,21 +232,22 @@ func expectedUserAccount(userID string, revisions tiers.Revisions, tier string) 
 			Template: "", // must be empty
 		})
 	}
-	set := toolchainv1alpha1.NSTemplateSetSpec{
-		TierName:   tier,
-		Namespaces: namespaces,
-	}
-	if revisions.ClusterResources != "" {
-		set.ClusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-			Revision: revisions.ClusterResources,
+	var clusterResources *toolchainv1alpha1.NSTemplateSetClusterResources
+	if revisions.ClusterResources != nil {
+		clusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
+			Revision: *revisions.ClusterResources,
 		}
 	}
 	return v1alpha1.UserAccountSpec{
 		UserID:   userID,
 		Disabled: false,
 		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
-			NSLimit:       "default",
-			NSTemplateSet: set,
+			NSLimit: "default",
+			NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+				TierName:         tier,
+				Namespaces:       namespaces,
+				ClusterResources: clusterResources,
+			},
 		},
 	}
 }
@@ -257,23 +259,23 @@ func createMultipleSignups(t *testing.T, ctx *framework.Context, awaitility *wai
 		userSignup := newUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i), fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
 		userSignup.Spec.Approved = true
 		err := awaitility.Host().Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(ctx))
-		awaitility.T.Logf("created UserSignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
+		awaitility.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 		require.NoError(t, err)
 		signups[i] = *userSignup
 	}
 	return signups
 }
 
-func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup, revisions tiers.Revisions) {
+func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
-		verifyResourcesProvisionedForSignup(t, awaitility, signup, revisions, "basic")
+		verifyResourcesProvisionedForSignup(t, awaitility, signup, "basic")
 	}
 }
 
-func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, expectedRevisions tiers.Revisions, tier string) {
+func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, tier string) {
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
-
+	revisions := tiers.GetRevisions(hostAwait, tier)
 	// Get the latest signup version
 	userSignup, err := awaitility.Host().WaitForUserSignup(signup.Name)
 	require.NoError(t, err)
@@ -285,7 +287,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(expectedUserAccount(userSignup.Name, expectedRevisions, tier)),
+		wait.UntilUserAccountHasSpec(expectedUserAccount(userSignup.Name, tier, revisions)),
 		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
