@@ -192,6 +192,9 @@ func createAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username 
 	// at this stage, the usersignup should not be approved nor completed
 	userSignup, err := awaitility.Host().WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
 	require.NoError(t, err)
+	require.Equal(t, userSignup.Spec.GivenName, "jane")
+	require.Equal(t, userSignup.Spec.FamilyName, "doe")
+	require.Equal(t, userSignup.Spec.Company, "red hat")
 
 	// 2. approve the UserSignup
 	userSignup.Spec.Approved = true
@@ -207,9 +210,9 @@ func createAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username 
 func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	// Call signup endpoint with a valid token.
 	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
-	companyClaim := authsupport.WithCompanyClaim("red hat")
 	givenNameClaim := authsupport.WithGivenNameClaim("jane")
-	familyNameClaim := authsupport.WithGivenNameClaim("doe")
+	familyNameClaim := authsupport.WithFamilyNameClaim("doe")
+	companyClaim := authsupport.WithCompanyClaim("red hat")
 	iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 	token, err := authsupport.GenerateSignedE2ETestToken(identity, emailClaim, companyClaim, givenNameClaim, familyNameClaim, iatClaim)
 	require.NoError(t, err)
