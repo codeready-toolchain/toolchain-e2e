@@ -33,21 +33,18 @@ Revisions:
 		assert.FailNowf(t, "the namespace type '%s' wasn't found in '%v'", nsType, nsTemplateSet)
 	}
 
-	if expectedRevisions.ClusterResources == "" {
-		assert.Nil(t, nsTemplateSet.Spec.ClusterResources)
-		//} else {
-		// Do not check if Cluster Resources are set in NSTemplate Set until it's implemented in User Account Controller
-		//require.NotNil(t, nsTemplateSet.Spec.ClusterResources)
-		//assert.Equal(t, expectedRevisions.ClusterResources, nsTemplateSet.Spec.ClusterResources.Revision)
-		//assert.Empty(t, nsTemplateSet.Spec.ClusterResources.Template)
-	}
-
-	// Verify all namespaces and RoleBindings and other resources defined in the tier in these namespaces
+	// Verify all namespaces and objects within
 	for key, revision := range expectedRevisions.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision, tier)
 		require.NoError(t, err)
-		for _, check := range tierChecks.GetInnerObjectChecks(key) {
+		for _, check := range tierChecks.GetNamespaceObjectChecks(key) {
 			check(t, ns, memberAwait, userAccount.Name)
 		}
 	}
+	if expectedRevisions.ClusterResources != nil {
+		for _, check := range tierChecks.GetClusterObjectChecks() {
+			check(t, memberAwait, userAccount.Name)
+		}
+	}
+
 }

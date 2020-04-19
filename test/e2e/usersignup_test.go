@@ -9,7 +9,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	uuid "github.com/satori/go.uuid"
@@ -87,8 +86,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
-	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
+	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
@@ -157,8 +155,7 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 		require.NoError(s.T(), err)
 
 		// Confirm the MUR was created
-		r := tiers.GetRevisions(s.awaitility, "basic", "code", "dev", "stage")
-		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, r, "basic")
+		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
 	})
 
 	s.T().Run("usersignup created with approved set to true", func(t *testing.T) {
