@@ -60,8 +60,7 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 	cpuLimit := "150m"
 	memoryLimit := "512Mi"
 	if nsType == "dev" {
-		cpuLimit = "250m"
-		memoryLimit = "1Gi"
+		memoryLimit = "750Mi"
 	}
 	defaultCommonChecks := append(commonChecks, limitRange(cpuLimit, memoryLimit))
 	if nsType == "code" {
@@ -96,8 +95,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 	cpuLimit := "150m"
 	memoryLimit := "512Mi"
 	if nsType == "dev" {
-		cpuLimit = "250m"
-		memoryLimit = "1Gi"
+		memoryLimit = "750Mi"
 	}
 	return append(commonChecks,
 		limitRange(cpuLimit, memoryLimit),
@@ -125,7 +123,7 @@ type teamTierChecks struct {
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
-		limitRange("500m", "2Gi"),
+		limitRange("150m", "1Gi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -141,7 +139,7 @@ func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revis
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("2000m", "10Gi"),
+		clusterResourceQuota("2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
