@@ -329,7 +329,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 }
 
 func toIdentityName(userID string) string {
-	return fmt.Sprintf("%s:%s", "rhd", userID)
+	return fmt.Sprintf("%s:%s", "testIdP", userID)
 }
 
 func expectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster v1beta1.KubeFedCluster) string {
