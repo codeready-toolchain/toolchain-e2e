@@ -83,7 +83,7 @@ func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revi
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("4000m", "7Gi"),
+		clusterResourceQuota("1750m", "4000m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -107,7 +107,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("4000m", "7Gi"),
+		clusterResourceQuota("1750m", "4000m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -139,7 +139,7 @@ func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revis
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("4000m", "15Gi"),
+		clusterResourceQuota("4000m", "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -290,7 +290,7 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 	}
 }
 
-func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
 		require.NoError(t, err)
@@ -302,7 +302,7 @@ func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
 		require.NoError(t, err)
 		hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuLimit)
+		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
