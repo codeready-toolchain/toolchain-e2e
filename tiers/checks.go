@@ -83,7 +83,7 @@ func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revi
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("1750m", "4000m", "7Gi"),
+		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -107,7 +107,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("1750m", "4000m", "7Gi"),
+		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
