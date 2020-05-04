@@ -57,7 +57,7 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	cpuLimit := "300m"
+	cpuLimit := "150m"
 	memoryLimit := "512Mi"
 	if nsType == "dev" {
 		memoryLimit = "750Mi"
@@ -92,7 +92,7 @@ type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	cpuLimit := "300m"
+	cpuLimit := "150m"
 	memoryLimit := "512Mi"
 	if nsType == "dev" {
 		memoryLimit = "750Mi"
@@ -123,7 +123,7 @@ type teamTierChecks struct {
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
-		limitRange("300m", "1Gi"),
+		limitRange("150m", "1Gi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
