@@ -83,7 +83,7 @@ func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revi
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("1750m", "7Gi"),
+		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -107,7 +107,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("1750m", "7Gi"),
+		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -139,7 +139,7 @@ func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revis
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("2000m", "15Gi"),
+		clusterResourceQuota("4000m", "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -213,7 +213,7 @@ func limitRange(cpuLimit, memoryLimit string) namespaceObjectsCheck {
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		defReq := make(map[v1.ResourceName]resource.Quantity)
-		defReq[corev1.ResourceCPU], err = resource.ParseQuantity("100m")
+		defReq[corev1.ResourceCPU], err = resource.ParseQuantity("10m")
 		require.NoError(t, err)
 		defReq[corev1.ResourceMemory], err = resource.ParseQuantity("64Mi")
 		require.NoError(t, err)
@@ -290,7 +290,7 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 	}
 }
 
-func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
 		require.NoError(t, err)
@@ -300,17 +300,17 @@ func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
 		require.NoError(t, err)
 		hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("5Gi")
+		hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuLimit)
+		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("5Gi")
+		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("5Gi")
+		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("2")
+		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
 		hard[corev1.ResourcePods], err = resource.ParseQuantity("100")
 		require.NoError(t, err)
