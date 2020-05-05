@@ -6,6 +6,7 @@
 
 QUAY_NAMESPACE ?= codeready-toolchain
 DATE_SUFFIX := $(shell date +'%d%H%M%S')
+RESOURCES_SUFFIX := ${DATE_SUFFIX}
 MEMBER_NS := ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
 HOST_NS := ${QUAY_NAMESPACE}-host-${DATE_SUFFIX}
 REGISTRATION_SERVICE_NS := $(HOST_NS)
@@ -312,15 +313,19 @@ deploy-operator:
 	$(eval REG_SERVICE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
 ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
-		$(eval RESOURCES_SUFFIX := ${QUAY_NAMESPACE}-${DATE_SUFFIX})
+		$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
 		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${RESOURCES_SUFFIX}|;s|^  configMap: .*|&-${RESOURCES_SUFFIX}|${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
-		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${RESOURCES_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
+		# if the namespace already contains the CSV then update it
+		if [[ -n `oc get csv 2>/dev/null || true | grep 'toolchain-${REPO_NAME}'` ]]; then \
+			oc get cm `grep "^  name: cm" /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | awk '{print $$2}'` -n openshift-marketplace --template '{{.data.clusterServiceVersions}}' | sed 's/^. //g;s/namespace: placeholder/namespace: ${NAMESPACE}/'  | oc apply -f -; \
+		fi
+		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
 		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]; do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${RESOURCES_SUFFIX}"`; \
+			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
 			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
 			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.io to be available in the cluster - see following info for debugging:"; \
 			   echo "================================ CatalogSource =================================="; \
