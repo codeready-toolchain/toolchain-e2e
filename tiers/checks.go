@@ -196,7 +196,7 @@ func rbacEditRole() namespaceObjectsCheck {
 func limitRangeByType(nsType string) namespaceObjectsCheck {
 	switch nsType {
 	case "code":
-		return limitRange("1000m", "512Mi", "60m", "307Mi")
+		return limitRange("1", "512Mi", "60m", "307Mi")
 	case "dev":
 		return limitRange("150m", "750Mi", "10m", "64Mi")
 	default:
