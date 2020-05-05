@@ -57,7 +57,7 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	defaultCommonChecks := append(commonChecks, limitRangeByType(nsType))
+	defaultCommonChecks := append(commonChecks, a.limitRangeByType(nsType))
 	if nsType == "code" {
 		return append(defaultCommonChecks,
 			rbacEditRoleBinding(),
@@ -83,12 +83,23 @@ func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	}
 }
 
+func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
+	switch nsType {
+	case "code":
+		return limitRange("1", "512Mi", "60m", "307Mi")
+	case "dev":
+		return limitRange("150m", "750Mi", "10m", "64Mi")
+	default:
+		return limitRange("150m", "512Mi", "10m", "64Mi")
+	}
+}
+
 type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
-		limitRangeByType(nsType),
+		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -108,12 +119,23 @@ func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) R
 	return revisions
 }
 
+func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
+	switch nsType {
+	case "code":
+		return limitRange("1", "512Mi", "60m", "307Mi")
+	case "dev":
+		return limitRange("150m", "750Mi", "10m", "64Mi")
+	default:
+		return limitRange("150m", "512Mi", "10m", "64Mi")
+	}
+}
+
 type teamTierChecks struct {
 }
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
-		limitRangeByType(nsType),
+		limitRange("150m", "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -190,17 +212,6 @@ func rbacEditRole() namespaceObjectsCheck {
 
 		assert.Equal(t, expected.Rules, role.Rules)
 		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-	}
-}
-
-func limitRangeByType(nsType string) namespaceObjectsCheck {
-	switch nsType {
-	case "code":
-		return limitRange("1", "512Mi", "60m", "307Mi")
-	case "dev":
-		return limitRange("150m", "750Mi", "10m", "64Mi")
-	default:
-		return limitRange("150m", "512Mi", "10m", "64Mi")
 	}
 }
 
