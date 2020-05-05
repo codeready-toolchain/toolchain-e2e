@@ -57,12 +57,7 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	cpuLimit := "150m"
-	memoryLimit := "512Mi"
-	if nsType == "dev" {
-		memoryLimit = "750Mi"
-	}
-	defaultCommonChecks := append(commonChecks, limitRange(cpuLimit, memoryLimit))
+	defaultCommonChecks := append(commonChecks, limitRangeByType(nsType))
 	if nsType == "code" {
 		return append(defaultCommonChecks,
 			rbacEditRoleBinding(),
@@ -92,13 +87,8 @@ type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	cpuLimit := "150m"
-	memoryLimit := "512Mi"
-	if nsType == "dev" {
-		memoryLimit = "750Mi"
-	}
 	return append(commonChecks,
-		limitRange(cpuLimit, memoryLimit),
+		limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -123,7 +113,7 @@ type teamTierChecks struct {
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
-		limitRange("150m", "1Gi"),
+		limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -203,7 +193,18 @@ func rbacEditRole() namespaceObjectsCheck {
 	}
 }
 
-func limitRange(cpuLimit, memoryLimit string) namespaceObjectsCheck {
+func limitRangeByType(nsType string) namespaceObjectsCheck {
+	switch nsType {
+	case "code":
+		return limitRange("1000m", "512Mi", "60m", "307Mi")
+	case "dev":
+		return limitRange("150m", "750Mi", "10m", "64Mi")
+	default:
+		return limitRange("150m", "512Mi", "10m", "64Mi")
+	}
+}
+
+func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
 		require.NoError(t, err)
@@ -213,9 +214,9 @@ func limitRange(cpuLimit, memoryLimit string) namespaceObjectsCheck {
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		defReq := make(map[v1.ResourceName]resource.Quantity)
-		defReq[corev1.ResourceCPU], err = resource.ParseQuantity("10m")
+		defReq[corev1.ResourceCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
-		defReq[corev1.ResourceMemory], err = resource.ParseQuantity("64Mi")
+		defReq[corev1.ResourceMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", lr.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &v1.LimitRange{
