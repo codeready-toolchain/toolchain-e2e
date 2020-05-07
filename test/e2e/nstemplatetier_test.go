@@ -83,6 +83,20 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 }
 
+func TestTierTemplates(t *testing.T) {
+	// given
+	tierList := &toolchainv1alpha1.NSTemplateTierList{}
+	ctx, awaitility := testsupport.WaitForDeployments(t, tierList)
+	defer ctx.Cleanup()
+	// when the tiers are created during the startup then we can verify them
+	allTiers := &toolchainv1alpha1.TierTemplateList{}
+	err := awaitility.Client.List(context.TODO(), allTiers, client.InNamespace(awaitility.HostNs))
+	// verify that we have 11 tier templates (4+4+3)
+	require.NoError(t, err)
+	assert.Len(t, allTiers.Items, 11)
+
+}
+
 func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {
 	return &toolchainv1alpha1.ChangeTierRequest{
 		ObjectMeta: metav1.ObjectMeta{
