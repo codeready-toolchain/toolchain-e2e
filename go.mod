@@ -5,13 +5,9 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
 	github.com/codeready-toolchain/api v0.0.0-20200427134136-024db3a3f3bd
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200416163051-c331c7b2b2d7
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/fatih/color v1.9.0 // indirect
 	github.com/go-openapi/swag v0.19.9 // indirect
 	github.com/gobuffalo/envy v1.7.1 // indirect
-	github.com/gobuffalo/flect v0.2.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/satori/go.uuid v1.2.0
@@ -22,16 +18,13 @@ require (
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
 	golang.org/x/sys v0.0.0-20200427175716-29b57079015a // indirect
 	golang.org/x/tools v0.0.0-20200428021058-7ae4988eb4d9 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
 	k8s.io/api v0.18.2
+	k8s.io/apiextensions-apiserver v0.18.2 // indirect
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.18.2 // indirect
-	k8s.io/gengo v0.0.0-20200422151552-d283a8840aab // indirect
 	k8s.io/kube-openapi v0.0.0-20200427153329-656914f816f9 // indirect
 	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 // indirect
 	sigs.k8s.io/controller-runtime v0.5.0
-	sigs.k8s.io/controller-tools v0.3.0 // indirect
 	sigs.k8s.io/kubefed v0.1.0-rc6.0.20200224204536-6207193c49f7
 )
 
