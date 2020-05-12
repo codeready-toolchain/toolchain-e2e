@@ -3,22 +3,27 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20200417005724-848dc61f6f9d
+	github.com/codeready-toolchain/api v0.0.0-20200427134136-024db3a3f3bd
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200416163051-c331c7b2b2d7
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/go-openapi/swag v0.19.9 // indirect
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/spf13/cobra v0.0.6 // indirect
+	github.com/spf13/cobra v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/multierr v1.2.0 // indirect
-	golang.org/x/tools v0.0.0-20200305140159-d7d444866696 // indirect
-	k8s.io/api v0.17.4
-	k8s.io/apimachinery v0.17.4
+	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
+	golang.org/x/sys v0.0.0-20200427175716-29b57079015a // indirect
+	golang.org/x/tools v0.0.0-20200428021058-7ae4988eb4d9 // indirect
+	k8s.io/api v0.18.2
+	k8s.io/apiextensions-apiserver v0.18.2 // indirect
+	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kube-openapi v0.0.0-20200427153329-656914f816f9 // indirect
+	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 // indirect
 	sigs.k8s.io/controller-runtime v0.5.0
 	sigs.k8s.io/kubefed v0.1.0-rc6.0.20200224204536-6207193c49f7
 )
@@ -52,6 +57,7 @@ replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.0+incompatible
 	github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm (inderectly by operator-sdk)
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190927182313-d4a64ec2cbd8 // Using openshift/api 4.3
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // avoids case-insensitive import collision: "github.com/googleapis/gnostic/openapiv2" and "github.com/googleapis/gnostic/OpenAPIv2"
 )
 
 go 1.13

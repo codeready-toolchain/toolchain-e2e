@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
@@ -269,7 +270,7 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 	return false
 }
 
-// WaitForNSTemplateTier waits until an NSTemplateTier with the given name and conditions is present
+// WaitForNSTemplateTier waits until an NSTemplateTier with the given name exists and matches the given conditions
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	var tier *toolchainv1alpha1.NSTemplateTier
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -298,7 +299,46 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 		tier = obj
 		return true, nil
 	})
+	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
+	// and that there's a TierTemplate resource with the same name
+	for _, ns := range tier.Spec.Namespaces {
+		if ns.TemplateRef == "" {
+			return nil, fmt.Errorf("missing 'templateRef' in namespace of type '%s' in NSTemplateTier '%s'", ns.Type, tier.Name)
+		}
+		if err := a.WaitForTierTemplate(ns.TemplateRef); err != nil {
+			return nil, err
+		}
+	}
+	if tier.Spec.ClusterResources != nil {
+		if tier.Spec.ClusterResources.TemplateRef == "" {
+			return nil, fmt.Errorf("missing 'templateRef' for the cluster resources in NSTemplateTier '%s'", tier.Name)
+		}
+		if err := a.WaitForTierTemplate(tier.Spec.ClusterResources.TemplateRef); err != nil {
+			return nil, err
+		}
+	}
 	return tier, err
+}
+
+
+// WaitForTierTemplate waits until a TierTemplate with the given name exists
+// Returns an error if the resource did not exist (or something wrong happened)
+func (a *HostAwaitility) WaitForTierTemplate(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Ns)
+		obj := &toolchainv1alpha1.TierTemplate{}
+		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj)
+		if err != nil && !errors.IsNotFound(err) {
+			a.T.Logf("TierTemplate '%s' could not be fetched", name)
+			// return the error
+			return false, err
+		} else if errors.IsNotFound(err) {
+			a.T.Logf("Waiting for TierTemplate '%s' '%s'", name, a.Ns)
+			// keep waiting
+			return false, nil
+		}
+		return true, nil
+	})
 }
 
 // NSTemplateTierWaitCriterion the criterion that must be met so the wait is over

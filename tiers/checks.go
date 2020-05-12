@@ -57,13 +57,7 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	cpuLimit := "150m"
-	memoryLimit := "512Mi"
-	if nsType == "dev" {
-		cpuLimit = "250m"
-		memoryLimit = "1Gi"
-	}
-	defaultCommonChecks := append(commonChecks, limitRange(cpuLimit, memoryLimit))
+	defaultCommonChecks := append(commonChecks, a.limitRangeByType(nsType))
 	if nsType == "code" {
 		return append(defaultCommonChecks,
 			rbacEditRoleBinding(),
@@ -84,8 +78,19 @@ func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revi
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("1750m", "7Gi"),
+		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
+	}
+}
+
+func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
+	switch nsType {
+	case "code":
+		return limitRange("1", "512Mi", "60m", "307Mi")
+	case "dev":
+		return limitRange("150m", "750Mi", "10m", "64Mi")
+	default:
+		return limitRange("150m", "512Mi", "10m", "64Mi")
 	}
 }
 
@@ -93,14 +98,8 @@ type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	cpuLimit := "150m"
-	memoryLimit := "512Mi"
-	if nsType == "dev" {
-		cpuLimit = "250m"
-		memoryLimit = "1Gi"
-	}
 	return append(commonChecks,
-		limitRange(cpuLimit, memoryLimit),
+		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -109,7 +108,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("1750m", "7Gi"),
+		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -120,12 +119,23 @@ func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) R
 	return revisions
 }
 
+func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
+	switch nsType {
+	case "code":
+		return limitRange("1", "512Mi", "60m", "307Mi")
+	case "dev":
+		return limitRange("150m", "750Mi", "10m", "64Mi")
+	default:
+		return limitRange("150m", "512Mi", "10m", "64Mi")
+	}
+}
+
 type teamTierChecks struct {
 }
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
-		limitRange("500m", "2Gi"),
+		limitRange("150m", "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -141,7 +151,7 @@ func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revis
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("2000m", "10Gi"),
+		clusterResourceQuota("4000m", "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -205,7 +215,7 @@ func rbacEditRole() namespaceObjectsCheck {
 	}
 }
 
-func limitRange(cpuLimit, memoryLimit string) namespaceObjectsCheck {
+func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
 		require.NoError(t, err)
@@ -215,9 +225,9 @@ func limitRange(cpuLimit, memoryLimit string) namespaceObjectsCheck {
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		defReq := make(map[v1.ResourceName]resource.Quantity)
-		defReq[corev1.ResourceCPU], err = resource.ParseQuantity("100m")
+		defReq[corev1.ResourceCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
-		defReq[corev1.ResourceMemory], err = resource.ParseQuantity("64Mi")
+		defReq[corev1.ResourceMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", lr.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		expected := &v1.LimitRange{
@@ -292,7 +302,7 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 	}
 }
 
-func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
 		require.NoError(t, err)
@@ -302,17 +312,17 @@ func clusterResourceQuota(cpuLimit, memoryLimit string) clusterObjectsCheck {
 		require.NoError(t, err)
 		hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("5Gi")
+		hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuLimit)
+		hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("5Gi")
+		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("5Gi")
+		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("2")
+		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
 		hard[corev1.ResourcePods], err = resource.ParseQuantity("100")
 		require.NoError(t, err)
