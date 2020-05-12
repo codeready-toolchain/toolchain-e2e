@@ -73,7 +73,7 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 }
 
 func (a *HostAwaitility) GetNotification(criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
-	notificationList := &toolchainv1alpha1.Notification{}
+	notificationList := &toolchainv1alpha1.NotificationList{}
 	if err := a.Client.List(context.TODO(), notificationList); err != nil {
 		return nil, err
 	}
@@ -130,9 +130,9 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 	}
 }
 
-func WithTemplate(notificationName, notificationType string) NotificationWaitCriterion {
+func WithNotificationNameAndType(notificationName, notificationType string) NotificationWaitCriterion {
 	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
-		return notification.Name == notificationName
+		return notification.Name == notificationName && notification.Spec.Template == notificationType
 	}
 }
 
@@ -319,7 +319,6 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	}
 	return tier, err
 }
-
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
