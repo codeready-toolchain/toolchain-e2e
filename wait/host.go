@@ -71,6 +71,23 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 	return nil, nil
 }
 
+func (a *HostAwaitility) GetNotification(criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
+	notificationList := &toolchainv1alpha1.Notification{}
+	if err := a.Client.List(context.TODO(), notificationList); err != nil {
+		return nil, err
+	}
+	for _, notification := range notificationList.Items {
+		for _, match := range criteria {
+			if match(a, &notification) {
+				a.T.Logf("found notification: %+v", notification)
+				return &notification, nil
+			}
+			a.T.Logf("found notification doesn't match the given criteria: %+v", notification)
+		}
+	}
+	return nil, nil
+}
+
 // UpdateMasterUserRecord tries to update the given MasterUserRecord
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and
 func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) error {
@@ -92,6 +109,8 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 // MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
+type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
+
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
 func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
@@ -107,6 +126,12 @@ func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Conditio
 func WithMurName(name string) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		return mur.Name == name
+	}
+}
+
+func WithTemplate(notificationName, notificationType string) NotificationWaitCriterion {
+	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
+		return notification.Name == notificationName
 	}
 }
 

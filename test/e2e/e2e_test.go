@@ -326,6 +326,13 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 		wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
+
+	notification, err := hostAwait.GetNotification(wait.WithTemplate(userAccount.Name, "userprovisioned"))
+	assert.NoError(t, err)
+	assert.Equal(t, notification.Name, userAccount.Name+"-tina")
+	assert.Equal(t, notification.Namespace, mur.Namespace)
+	assert.Equal(t, notification.Spec.Template, "userprovisioned")
+	assert.Equal(t, notification.Spec.UserID, userAccount.Spec.UserID)
 }
 
 func toIdentityName(userID string) string {
