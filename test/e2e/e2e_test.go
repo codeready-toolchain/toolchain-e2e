@@ -323,7 +323,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 		UserAccountStatus: userAccount.Status,
 	}
 	_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
-		wait.UntilMasterUserRecordHasConditions(provisioned()),
+		wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
 }
