@@ -7,6 +7,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
@@ -94,7 +95,35 @@ func TestTierTemplates(t *testing.T) {
 	// verify that we have 11 tier templates (4+4+3)
 	require.NoError(t, err)
 	assert.Len(t, allTiers.Items, 11)
+}
 
+func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
+	// given
+	tierList := &toolchainv1alpha1.NSTemplateTierList{}
+	ctx, awaitility := testsupport.WaitForDeployments(t, tierList)
+	defer ctx.Cleanup()
+	for _, nsType := range []string{"code", "dev", "stage"} {
+		revisions := tiers.GetRevisions(awaitility.Host(), "basic")
+		err := awaitility.Client.Create(context.TODO(), &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "legacy-" + nsType,
+				Labels: map[string]string{
+					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+					"toolchain.dev.openshift.com/owner":    "legacy",
+					"toolchain.dev.openshift.com/tier":     "basic",
+					"toolchain.dev.openshift.com/type":     nsType,
+					"toolchain.dev.openshift.com/revision": revisions.Namespaces[nsType],
+				},
+			},
+		}, testsupport.CleanupOptions(ctx))
+		require.NoError(t, err)
+	}
+
+	// when
+	legacySignup := createAndApproveSignup(t, awaitility, "legacy")
+
+	// then
+	verifyResourcesProvisionedForSignup(t, awaitility, legacySignup, "basic")
 }
 
 func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {

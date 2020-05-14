@@ -295,7 +295,6 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	return tier, err
 }
 
-
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
 func (a *HostAwaitility) WaitForTierTemplate(name string) error {
