@@ -233,15 +233,17 @@ func expectedUserAccount(userID string, tier string, revisions tiers.Revisions) 
 	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(revisions.Namespaces))
 	for nsType, rev := range revisions.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
-			Type:     nsType,
-			Revision: rev,
-			Template: "", // must be empty
+			Type:        nsType,
+			Revision:    rev,
+			Template:    "", // must be empty
+			TemplateRef: tier + "-" + nsType + "-" + rev,
 		})
 	}
 	var clusterResources *toolchainv1alpha1.NSTemplateSetClusterResources
 	if revisions.ClusterResources != nil {
 		clusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-			Revision: *revisions.ClusterResources,
+			Revision:    *revisions.ClusterResources,
+			TemplateRef: tier + "-" + "clusterresources" + "-" + *revisions.ClusterResources,
 		}
 	}
 	return v1alpha1.UserAccountSpec{
