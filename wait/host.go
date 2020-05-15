@@ -114,8 +114,6 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 // MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
-type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
-
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
 func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
