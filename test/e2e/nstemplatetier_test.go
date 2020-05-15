@@ -115,7 +115,7 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 					"toolchain.dev.openshift.com/revision": revisions.Namespaces[nsType],
 				},
 			},
-		}, testsupport.CleanupOptions(ctx))
+		}, &test.CleanupOptions{})
 		require.NoError(t, err)
 	}
 
