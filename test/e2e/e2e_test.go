@@ -327,7 +327,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
 
-	notification, err := hostAwait.GetNotification(wait.WithNotificationNameAndType(userAccount.Name+"-provisioned", "userprovisioned"))
+	notification, err := hostAwait.WaitForNotification(userAccount.Name + "-provisioned")
 	assert.NoError(t, err)
 	require.NotNil(t, notification)
 	assert.Equal(t, notification.Name, userAccount.Name+"-provisioned")

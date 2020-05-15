@@ -55,6 +55,27 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
+// WaitForNotification waits until there is the notification with the given name available
+func (a *HostAwaitility) WaitForNotification(name string) (*toolchainv1alpha1.Notification, error) {
+	notification := &toolchainv1alpha1.Notification{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of notification '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if notification.Name != "" && notification.Spec.UserID != "" {
+			a.T.Logf("found notification '%s'", name)
+			return true, nil
+		}
+		return false, nil
+	})
+	return notification, err
+}
+
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
 	if err := a.Client.List(context.TODO(), murList); err != nil {
@@ -67,23 +88,6 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 				return &mur, nil
 			}
 			a.T.Logf("found MasterUserRecord doesn't match the given criteria: %+v", mur)
-		}
-	}
-	return nil, nil
-}
-
-func (a *HostAwaitility) GetNotification(criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
-	notificationList := &toolchainv1alpha1.NotificationList{}
-	if err := a.Client.List(context.TODO(), notificationList); err != nil {
-		return nil, err
-	}
-	for _, notification := range notificationList.Items {
-		for _, match := range criteria {
-			if match(a, &notification) {
-				a.T.Logf("found notification: %+v", notification)
-				return &notification, nil
-			}
-			a.T.Logf("found notification doesn't match the given criteria: %+v", notification)
 		}
 	}
 	return nil, nil
@@ -127,12 +131,6 @@ func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Conditio
 func WithMurName(name string) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		return mur.Name == name
-	}
-}
-
-func WithNotificationNameAndType(notificationName, notificationType string) NotificationWaitCriterion {
-	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
-		return notification.Name == notificationName && notification.Spec.Template == notificationType
 	}
 }
 
