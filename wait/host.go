@@ -67,11 +67,10 @@ func (a *HostAwaitility) WaitForNotification(name string) (*toolchainv1alpha1.No
 			}
 			return false, err
 		}
-		if notification.Name != "" && notification.Spec.UserID != "" {
-			a.T.Logf("found notification '%s'", name)
-			return true, nil
-		}
-		return false, nil
+
+		a.T.Logf("found notification '%s'", name)
+		return true, nil
+
 	})
 	return notification, err
 }
