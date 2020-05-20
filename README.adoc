@@ -33,6 +33,16 @@ If you still don't know what to do with e2e tests in some use-cases, go to <<Wha
 
 ==== Prerequisites if running locally
 
+===== Pre-installed tools
+* go
+* git
+* operator-sdk
+* sed
+* yamllint
+* jq
+* yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
+* docker (if building from source)
+
 ===== Minishift or CRC (CodeReady Containers)
 If you are running these tests locally in Minishift or CRC, make sure that you have exposed necessary environments, so deployment can use the locally built image. You can expose it by running the following commands.
 
