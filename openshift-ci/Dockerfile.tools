@@ -14,7 +14,7 @@ ENV LANG=en_US.utf8 \
 ARG GO_PACKAGE_PATH=github.com/codeready-toolchain/toolchain-e2e
 
 RUN yum install epel-release -y \
-    && yum install  https://centos7.iuscommunity.org/ius-release.rpm -y \
+    && yum install https://repo.ius.io/ius-release-el7.rpm -y \
     && yum install --enablerepo=centosplus install -y --quiet \
     findutils \
     git2u-all \
