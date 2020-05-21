@@ -55,6 +55,26 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
+// WaitForNotification waits until there is the notification with the given name available
+func (a *HostAwaitility) WaitForNotification(name string) (*toolchainv1alpha1.Notification, error) {
+	notification := &toolchainv1alpha1.Notification{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of notification '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+
+		a.T.Logf("found notification '%s'", name)
+		return true, nil
+
+	})
+	return notification, err
+}
+
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
 	if err := a.Client.List(context.TODO(), murList); err != nil {

@@ -404,7 +404,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	require.NoError(s.T(), err)
 
 	// Wait the Master User Record to be provisioned
-	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(provisioned()))
+	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with same valid token to check if status changed to Provisioned now
