@@ -330,12 +330,12 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	assert.NoError(t, err)
 
 	notification, err := hostAwait.WaitForNotification(userAccount.Name + "-provisioned")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, notification)
-	assert.Equal(t, notification.Name, userAccount.Name+"-provisioned")
-	assert.Equal(t, notification.Namespace, mur.Namespace)
-	assert.Equal(t, notification.Spec.Template, "userprovisioned")
-	assert.Equal(t, notification.Spec.UserID, userAccount.Spec.UserID)
+	assert.Equal(t, userAccount.Name+"-provisioned", notification.Name)
+	assert.Equal(t, mur.Namespace, notification.Namespace)
+	assert.Equal(t, "userprovisioned", notification.Spec.Template)
+	assert.Equal(t, userAccount.Spec.UserID, notification.Spec.UserID)
 }
 
 func toIdentityName(userID string) string {
