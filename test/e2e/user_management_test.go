@@ -211,7 +211,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Wait until the MUR status is disabled
 	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username,
-		wait.UntilMasterUserRecordHasConditions(disabled()))
+		wait.UntilMasterUserRecordHasConditions(disabled(), provisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
 	// Check that the UserAccount is now set to disabled
