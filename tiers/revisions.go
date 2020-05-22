@@ -11,11 +11,6 @@ type Revisions struct {
 	ClusterResources *string
 }
 
-const (
-	// ClusterResources the key to retrieve the cluster resources template
-	ClusterResources string = "clusterResources"
-)
-
 // GetRevisions returns the expected revisions for all the namespace templates and the optional cluster resources template for the given tier
 func GetRevisions(hostAwait *wait.HostAwaitility, tier string) Revisions {
 	templateTier, err := hostAwait.WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceRevisions("000000a"))))
