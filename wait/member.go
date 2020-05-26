@@ -180,8 +180,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
 		labels := map[string]string{
-			"toolchain.dev.openshift.com/owner": username,
-			// "toolchain.dev.openshift.com/type":        typeName,
+			"toolchain.dev.openshift.com/owner":       username,
 			"toolchain.dev.openshift.com/templateref": ref,
 		}
 		opts := client.MatchingLabels(labels)
