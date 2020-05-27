@@ -5,6 +5,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +32,7 @@ func VerifyNsTemplateSet(t *testing.T, awaitility *wait.Awaitility, userAccount 
 	for _, templateRef := range expectedRevisions.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(userAccount.Name, templateRef)
 		require.NoError(t, err)
-		_, nsType, _, err := split(templateRef)
+		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
 		for _, check := range tierChecks.GetNamespaceObjectChecks(nsType) {
 			check(t, ns, memberAwait, userAccount.Name)

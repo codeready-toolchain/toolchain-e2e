@@ -6,8 +6,8 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	quotav1 "github.com/openshift/api/quota/v1"
 
+	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
@@ -179,9 +179,16 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
+		tier, kind, _, err := Split(ref)
+		if err != nil {
+			return false, err
+		}
 		labels := map[string]string{
 			"toolchain.dev.openshift.com/owner":       username,
 			"toolchain.dev.openshift.com/templateref": ref,
+			"toolchain.dev.openshift.com/tier":        tier,
+			"toolchain.dev.openshift.com/type":        kind,
+			"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {

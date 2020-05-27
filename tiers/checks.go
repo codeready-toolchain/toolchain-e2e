@@ -3,11 +3,9 @@ package tiers
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,16 +44,6 @@ func NewChecks(tier string) (TierChecks, error) {
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier)
 	}
-}
-
-// Type splits the templateRef into a triple of string corresponding to the `tier`, `type` and `revision`
-// returns an error if this TemplateRef's format is invalid
-func split(templateRef string) (string, string, string, error) { // nolint: unparam
-	parts := strings.Split(templateRef, "-") // "<tier>-<type>-<revision>"
-	if len(parts) != 3 {
-		return "", "", "", fmt.Errorf("invalid templateref: '%v'", templateRef)
-	}
-	return parts[0], parts[1], parts[2], nil
 }
 
 type TierChecks interface {
@@ -172,7 +160,7 @@ func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expecte
 	require.Len(t, templateRefs.Namespaces, len(expectedNSTypes))
 	actualNSTypes := make([]string, len(expectedNSTypes))
 	for i, templateRef := range templateRefs.Namespaces {
-		actualTier, actualType, _, err := split(templateRef)
+		actualTier, actualType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
 		require.Equal(t, tier, actualTier)
 		actualNSTypes[i] = actualType
