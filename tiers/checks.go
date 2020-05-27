@@ -53,7 +53,7 @@ type TemplateRef string
 
 // Type splits the templateRef into a triple of string corresponding to the `tier`, `type` and `revision`
 // returns an error if this TemplateRef's format is invalid
-func split(templateRef string) (string, string, string, error) {
+func split(templateRef string) (string, string, string, error) { // nolint: unparam
 	parts := strings.Split(string(templateRef), "-") // "<tier>-<type>-<revision>"
 	if len(parts) != 3 {
 		return "", "", "", fmt.Errorf("invalid templateref: '%v'", templateRef)

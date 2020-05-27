@@ -9,4 +9,3 @@ spec:
   - templateRef: basic-stage-000000a
   clusterResources:
     templateRef: basic-clusterresources-000000a
-    
