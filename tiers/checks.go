@@ -144,7 +144,7 @@ func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsChe
 type teamTierChecks struct {
 }
 
-func (a *teamTierChecks) GetNamespaceObjectChecks(templateRef string) []namespaceObjectsCheck {
+func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	return append(commonChecks,
 		limitRange("150m", "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
