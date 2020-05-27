@@ -48,9 +48,6 @@ func NewChecks(tier string) (TierChecks, error) {
 	}
 }
 
-// TemplateRef a template reference
-type TemplateRef string
-
 // Type splits the templateRef into a triple of string corresponding to the `tier`, `type` and `revision`
 // returns an error if this TemplateRef's format is invalid
 func split(templateRef string) (string, string, string, error) { // nolint: unparam
