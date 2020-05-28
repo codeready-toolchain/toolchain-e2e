@@ -113,9 +113,9 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
 			// given
 			namespaces := make([]*corev1.Namespace, 0, 3)
-			revisions := tiers.GetRevisions(awaitility.Host(), "basic")
-			for key, revision := range revisions.Namespaces {
-				ns, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, key, revision, "basic")
+			templateRefs := tiers.GetTemplateRefs(awaitility.Host(), "basic")
+			for _, ref := range templateRefs.Namespaces {
+				ns, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, ref)
 				require.NoError(t, err)
 				namespaces = append(namespaces, ns)
 			}
@@ -229,21 +229,19 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	defer resp.Body.Close()
 }
 
-func expectedUserAccount(userID string, tier string, revisions tiers.Revisions) v1alpha1.UserAccountSpec {
-	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(revisions.Namespaces))
-	for nsType, rev := range revisions.Namespaces {
+func expectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs) v1alpha1.UserAccountSpec {
+	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
+	for _, ref := range templateRefs.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
-			Type:        nsType,
-			Revision:    rev,
 			Template:    "", // must be empty
-			TemplateRef: tier + "-" + nsType + "-" + rev,
+			TemplateRef: ref,
 		})
 	}
 	var clusterResources *toolchainv1alpha1.NSTemplateSetClusterResources
-	if revisions.ClusterResources != nil {
+	if templateRefs.ClusterResources != nil {
 		clusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-			Revision:    *revisions.ClusterResources,
-			TemplateRef: tier + "-" + "clusterresources" + "-" + *revisions.ClusterResources,
+			Revision:    *templateRefs.ClusterResources,
+			TemplateRef: tier + "-" + "clusterresources" + "-" + *templateRefs.ClusterResources,
 		}
 	}
 	return v1alpha1.UserAccountSpec{
@@ -283,7 +281,7 @@ func verifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []
 func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, tier string) {
 	hostAwait := wait.NewHostAwaitility(awaitility)
 	memberAwait := wait.NewMemberAwaitility(awaitility)
-	revisions := tiers.GetRevisions(hostAwait, tier)
+	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
 	// Get the latest signup version
 	userSignup, err := awaitility.Host().WaitForUserSignup(signup.Name)
 	require.NoError(t, err)
@@ -295,7 +293,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
-		wait.UntilUserAccountHasSpec(expectedUserAccount(userSignup.Name, tier, revisions)),
+		wait.UntilUserAccountHasSpec(expectedUserAccount(userSignup.Name, tier, templateRefs)),
 		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)

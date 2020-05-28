@@ -2,14 +2,12 @@ package wait
 
 import (
 	"context"
-	"fmt"
 	"reflect"
-	"strings"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	quotav1 "github.com/openshift/api/quota/v1"
 
+	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
@@ -177,14 +175,20 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 }
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision, tier string) (*v1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
+		tier, kind, _, err := Split(ref)
+		if err != nil {
+			return false, err
+		}
 		labels := map[string]string{
 			"toolchain.dev.openshift.com/owner":       username,
-			"toolchain.dev.openshift.com/type":        typeName,
-			"toolchain.dev.openshift.com/templateref": strings.ToLower(fmt.Sprintf("%s-%s-%s", tier, typeName, revision)),
+			"toolchain.dev.openshift.com/templateref": ref,
+			"toolchain.dev.openshift.com/tier":        tier,
+			"toolchain.dev.openshift.com/type":        kind,
+			"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
@@ -201,11 +205,11 @@ func (a *MemberAwaitility) WaitForNamespace(username, typeName, revision, tier s
 			for _, ns := range allNSs.Items {
 				allNSNames[ns.Name] = ns.Labels
 			}
-			a.T.Logf("waiting for availability of namespace of type '%s' with revision '%s', tier '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", typeName, revision, tier, username, allNSNames)
+			a.T.Logf("waiting for availability of namespace with templateRef '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", ref, username, allNSNames)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
-		a.T.Logf("found Namespace type '%s' with revision '%s'", typeName, revision)
+		a.T.Logf("found Namespace with templateRef '%s'", ref)
 		return true, nil
 	})
 	if err != nil {
