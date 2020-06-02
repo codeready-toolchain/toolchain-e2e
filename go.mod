@@ -3,16 +3,19 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	cloud.google.com/go v0.46.3 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.6.0 // indirect
-	github.com/codeready-toolchain/api v0.0.0-20200528065459-3e3f8c07df39
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200528070449-7c8b2f895b25
+	github.com/codeready-toolchain/api v0.0.0-20200602152926-20f91753faab
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200602160631-319809018d01
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gophercloud/gophercloud v0.3.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/satori/go.uuid v1.2.0
+	github.com/spf13/cobra v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
 	go.uber.org/multierr v1.2.0 // indirect
+	golang.org/x/mod v0.3.0 // indirect
+	golang.org/x/tools v0.0.0-20200527183253-8e7acdbce89d // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible
@@ -51,9 +54,5 @@ replace (
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190927182313-d4a64ec2cbd8 // Using openshift/api 4.3
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // avoids case-insensitive import collision: "github.com/googleapis/gnostic/openapiv2" and "github.com/googleapis/gnostic/OpenAPIv2"
 )
-
-replace github.com/codeready-toolchain/api v0.0.0-20200528065459-3e3f8c07df39 => github.com/tinakurian/api v0.0.0-20200528175500-de4844132cd6
-
-replace github.com/codeready-toolchain/toolchain-common v0.0.0-20200528070449-7c8b2f895b25 => github.com/tinakurian/toolchain-common v0.0.0-20200602133639-e5f1900fc95d
 
 go 1.13
