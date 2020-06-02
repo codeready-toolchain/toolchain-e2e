@@ -339,6 +339,30 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.Cl
 	return quota, err
 }
 
+// WaitForClusterRoleBinding waits until a ClusterRoleBinding with the given name exists
+func (a *MemberAwaitility) WaitForClusterRoleBinding(name string) (*rbacv1.ClusterRoleBinding, error) {
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj :=&rbacv1.ClusterRoleBinding{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				quotaList := &rbacv1.ClusterRoleBindingList{}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), quotaList, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of ClusterRoleBinding '%s'. Currently available codeready-toolchain ClusterRoleBindings: '%+v'", name, quotaList)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found ClusterRoleBinding '%s'", name)
+		clusterRoleBinding = obj
+		return true, nil
+	})
+	return clusterRoleBinding, err
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {

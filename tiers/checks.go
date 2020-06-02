@@ -78,7 +78,9 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) T
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
+		clusterRoleBinding(),
 		numberOfClusterResourceQuotas(1),
+		numberOfClusterRoleBindings(1),
 	}
 }
 
@@ -108,7 +110,9 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
+		clusterRoleBinding(),
 		numberOfClusterResourceQuotas(1),
+		numberOfClusterRoleBindings(1),
 	}
 }
 
@@ -150,8 +154,10 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) Te
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
+		clusterRoleBinding(),
 		clusterResourceQuota("4000m", "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
+		numberOfClusterRoleBindings(1),
 	}
 }
 
@@ -355,6 +361,21 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 	}
 }
 
+func clusterRoleBinding() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		crb, err := memberAwait.WaitForClusterRoleBinding(fmt.Sprintf("%s-tekton-view", userName))
+		require.NoError(t, err)
+
+		assert.Len(t, crb.Subjects, 1)
+		assert.Equal(t, "User", crb.Subjects[0].Kind)
+		assert.Equal(t, userName, crb.Subjects[0].Name)
+		assert.Equal(t, "tekton-view", crb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", crb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", crb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", crb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
 func numberOfToolchainRoles(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		roles := &rbacv1.RoleList{}
@@ -401,5 +422,18 @@ func numberOfClusterResourceQuotas(number int) clusterObjectsCheck {
 		err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
 		require.NoError(t, err)
 		assert.Len(t, quotas.Items, number)
+	}
+}
+
+func numberOfClusterRoleBindings(number int) clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		bindings := &rbacv1.ClusterRoleBindingList{}
+		matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterRoleBinding resources associated with the given "userName"
+			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+			"toolchain.dev.openshift.com/owner":    userName,
+		})
+		err := memberAwait.Client.List(context.TODO(), bindings, matchingLabels)
+		require.NoError(t, err)
+		assert.Len(t, bindings.Items, number)
 	}
 }
