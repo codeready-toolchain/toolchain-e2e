@@ -30,7 +30,7 @@ func GetTemplateRefs(hostAwait *wait.HostAwaitility, tier string) TemplateRefs {
 	}
 }
 
-// GetTemplateRefs returns the expected templateRefs for TierTemplates containing the given tier and revisions
+// GetTemplateRefsForTierAndRevision returns the expected templateRefs for TierTemplates containing the given tier and revisions
 func GetTemplateRefsForTierAndRevision(hostAwait *wait.HostAwaitility, tier, revisions string) TemplateRefs {
 	templates := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), templates, client.InNamespace(hostAwait.Ns))
