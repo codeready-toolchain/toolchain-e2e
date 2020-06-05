@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,7 +49,7 @@ func NewChecks(tier string) (TierChecks, error) {
 type TierChecks interface {
 	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetClusterObjectChecks() []clusterObjectsCheck
-	GetExpectedRevisions(awaitility *wait.Awaitility) Revisions
+	GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs
 }
 
 type basicTierChecks struct {
@@ -70,10 +69,10 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 		numberOfToolchainRoleBindings(1))
 }
 
-func (a *basicTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	revisions := GetRevisions(awaitility.Host(), "basic")
-	verifyNsTypes(awaitility.T, revisions, "code", "dev", "stage")
-	return revisions
+func (a *basicTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(awaitility.Host(), "basic")
+	verifyNsTypes(awaitility.T, "basic", templateRefs, "code", "dev", "stage")
+	return templateRefs
 }
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -113,10 +112,10 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	}
 }
 
-func (a *advancedTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	revisions := GetRevisions(awaitility.Host(), "advanced")
-	verifyNsTypes(awaitility.T, revisions, "code", "dev", "stage")
-	return revisions
+func (a *advancedTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(awaitility.Host(), "advanced")
+	verifyNsTypes(awaitility.T, "advanced", templateRefs, "code", "dev", "stage")
+	return templateRefs
 }
 
 func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
@@ -143,10 +142,10 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	)
 }
 
-func (a *teamTierChecks) GetExpectedRevisions(awaitility *wait.Awaitility) Revisions {
-	revisions := GetRevisions(awaitility.Host(), "team")
-	verifyNsTypes(awaitility.T, revisions, "dev", "stage")
-	return revisions
+func (a *teamTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(awaitility.Host(), "team")
+	verifyNsTypes(awaitility.T, "team", templateRefs, "dev", "stage")
+	return templateRefs
 }
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -156,11 +155,18 @@ func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	}
 }
 
-func verifyNsTypes(t *testing.T, revisions Revisions, nsTypes ...string) {
-	assert.Len(t, revisions.Namespaces, len(nsTypes))
-	for _, expNsType := range nsTypes {
-		assert.Contains(t, revisions.Namespaces, expNsType)
+// verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
+func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expectedNSTypes ...string) {
+	require.Len(t, templateRefs.Namespaces, len(expectedNSTypes))
+	actualNSTypes := make([]string, len(expectedNSTypes))
+	for i, templateRef := range templateRefs.Namespaces {
+		actualTier, actualType, _, err := wait.Split(templateRef)
+		require.NoError(t, err)
+		require.Equal(t, tier, actualTier)
+		actualNSTypes[i] = actualType
 	}
+	// now compare with the given `nsTypes`
+	assert.ElementsMatch(t, expectedNSTypes, actualNSTypes)
 }
 
 type namespaceObjectsCheck func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string)

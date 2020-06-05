@@ -296,9 +296,9 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	})
 	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
 	// and that there's a TierTemplate resource with the same name
-	for _, ns := range tier.Spec.Namespaces {
+	for i, ns := range tier.Spec.Namespaces {
 		if ns.TemplateRef == "" {
-			return nil, fmt.Errorf("missing 'templateRef' in namespace of type '%s' in NSTemplateTier '%s'", ns.Type, tier.Name)
+			return nil, fmt.Errorf("missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
 		}
 		if err := a.WaitForTierTemplate(ns.TemplateRef); err != nil {
 			return nil, err
@@ -355,11 +355,11 @@ func Not(match NSTemplateTierSpecMatcher) NSTemplateTierSpecMatcher {
 	}
 }
 
-// HasNamespaceRevisions checks that ALL namespaces' revision match the given value
-func HasNamespaceRevisions(r string) NSTemplateTierSpecMatcher {
+// HasNamespaceTemplateRefs checks that ALL namespaces' `TemplateRef` match the given value
+func HasNamespaceTemplateRefs(r string) NSTemplateTierSpecMatcher {
 	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
 		for _, ns := range s.Namespaces {
-			if ns.Revision != r {
+			if ns.TemplateRef != r {
 				return false
 			}
 		}
@@ -367,10 +367,10 @@ func HasNamespaceRevisions(r string) NSTemplateTierSpecMatcher {
 	}
 }
 
-// HasClusterResources checks that the clusterResources revision match the given value
-func HasClusterResources(r string) NSTemplateTierSpecMatcher {
+// HasClusterResourcesTemplateRef checks that the clusterResources `TemplateRef` match the given value
+func HasClusterResourcesTemplateRef(r string) NSTemplateTierSpecMatcher {
 	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
-		return s.ClusterResources.Revision == r
+		return s.ClusterResources.TemplateRef == r
 	}
 }
 

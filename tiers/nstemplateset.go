@@ -5,6 +5,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,26 +19,22 @@ func VerifyNsTemplateSet(t *testing.T, awaitility *wait.Awaitility, userAccount 
 	tierChecks, err := NewChecks(tier)
 	require.NoError(t, err)
 
-	expectedRevisions := tierChecks.GetExpectedRevisions(awaitility)
+	expectedRevisions := tierChecks.GetExpectedTemplateRefs(awaitility)
 	assert.Len(t, nsTemplateSet.Spec.Namespaces, len(expectedRevisions.Namespaces))
 
-Revisions:
-	for nsType, revision := range expectedRevisions.Namespaces {
-		for _, ns := range nsTemplateSet.Spec.Namespaces {
-			if ns.Type == nsType {
-				assert.Equal(t, revision, ns.Revision)
-				assert.Empty(t, ns.Template)
-				continue Revisions
-			}
-		}
-		assert.FailNowf(t, "the namespace type '%s' wasn't found in '%v'", nsType, nsTemplateSet)
+	actualTemplateRefs := []string{}
+	for _, ns := range nsTemplateSet.Spec.Namespaces {
+		actualTemplateRefs = append(actualTemplateRefs, ns.TemplateRef)
 	}
+	assert.ElementsMatch(t, expectedRevisions.Namespaces, actualTemplateRefs)
 
 	// Verify all namespaces and objects within
-	for key, revision := range expectedRevisions.Namespaces {
-		ns, err := memberAwait.WaitForNamespace(userAccount.Name, key, revision, tier)
+	for _, templateRef := range expectedRevisions.Namespaces {
+		ns, err := memberAwait.WaitForNamespace(userAccount.Name, templateRef)
 		require.NoError(t, err)
-		for _, check := range tierChecks.GetNamespaceObjectChecks(key) {
+		_, nsType, _, err := wait.Split(templateRef)
+		require.NoError(t, err)
+		for _, check := range tierChecks.GetNamespaceObjectChecks(nsType) {
 			check(t, ns, memberAwait, userAccount.Name)
 		}
 	}

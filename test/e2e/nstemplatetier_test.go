@@ -7,7 +7,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
@@ -56,8 +55,10 @@ func TestNSTemplateTiers(t *testing.T) {
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for basic tier)
 		_, err := hostAwaitility.WaitForNSTemplateTier(tierToCheck,
-			UntilNSTemplateTierSpec(Not(HasNamespaceRevisions("000000a"))),
-			UntilNSTemplateTierSpec(Not(HasClusterResources("000000a"))),
+			UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-code-000000a"))),
+			UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-dev-000000a"))),
+			UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-stage-000000a"))),
+			UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
 		)
 		require.NoError(t, err)
 
@@ -103,7 +104,6 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, tierList)
 	defer ctx.Cleanup()
 	for _, nsType := range []string{"code", "dev", "stage"} {
-		revisions := tiers.GetRevisions(awaitility.Host(), "basic")
 		err := awaitility.Client.Create(context.TODO(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "legacy-" + nsType,
@@ -112,7 +112,6 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 					"toolchain.dev.openshift.com/owner":    "legacy",
 					"toolchain.dev.openshift.com/tier":     "basic",
 					"toolchain.dev.openshift.com/type":     nsType,
-					"toolchain.dev.openshift.com/revision": revisions.Namespaces[nsType],
 				},
 			},
 		}, &test.CleanupOptions{})
