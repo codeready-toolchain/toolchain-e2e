@@ -300,7 +300,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 		if ns.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
 		}
-		if err := a.WaitForTierTemplate(ns.TemplateRef); err != nil {
+		if _, err := a.WaitForTierTemplate(ns.TemplateRef); err != nil {
 			return nil, err
 		}
 	}
@@ -308,7 +308,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 		if tier.Spec.ClusterResources.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' for the cluster resources in NSTemplateTier '%s'", tier.Name)
 		}
-		if err := a.WaitForTierTemplate(tier.Spec.ClusterResources.TemplateRef); err != nil {
+		if _, err := a.WaitForTierTemplate(tier.Spec.ClusterResources.TemplateRef); err != nil {
 			return nil, err
 		}
 	}
@@ -317,8 +317,9 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplate(name string) error {
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) {
+	tierTemplate := &toolchainv1alpha1.TierTemplate{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Ns)
 		obj := &toolchainv1alpha1.TierTemplate{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj)
@@ -331,8 +332,10 @@ func (a *HostAwaitility) WaitForTierTemplate(name string) error {
 			// keep waiting
 			return false, nil
 		}
+		tierTemplate = obj
 		return true, nil
 	})
+	return tierTemplate, err
 }
 
 // NSTemplateTierWaitCriterion the criterion that must be met so the wait is over
