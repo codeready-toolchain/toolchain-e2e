@@ -89,9 +89,9 @@ ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
 			oc login -u system:admin 1>/dev/null
         endif
     else
-        ifneq ($(IS_KUBE_ADMIN),)
-			$(info logging as kube:admin")
-			oc login -u=kubeadmin -p=`cat ~/.crc/cache/crc_libvirt_*/kubeadmin-password` 1>/dev/null
+        # Running on CRC
+        ifeq ($(IS_KUBE_ADMIN),)
+            $(error You must be logged in as kube:admin")
         endif
     endif
 endif
