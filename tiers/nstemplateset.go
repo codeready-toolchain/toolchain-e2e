@@ -19,28 +19,34 @@ func VerifyNsTemplateSet(t *testing.T, awaitility *wait.Awaitility, userAccount 
 	tierChecks, err := NewChecks(tier)
 	require.NoError(t, err)
 
-	expectedRevisions := tierChecks.GetExpectedTemplateRefs(awaitility)
-	assert.Len(t, nsTemplateSet.Spec.Namespaces, len(expectedRevisions.Namespaces))
+	VerifyGivenNsTemplateSet(t, memberAwait, nsTemplateSet, tierChecks, tierChecks.GetExpectedTemplateRefs(awaitility))
 
-	actualTemplateRefs := []string{}
-	for _, ns := range nsTemplateSet.Spec.Namespaces {
+}
+
+func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, tierChecks TierChecks, expectedRevisions TemplateRefs) {
+
+	assert.Len(t, nsTmplSet.Spec.Namespaces, len(expectedRevisions.Namespaces))
+
+	var actualTemplateRefs []string
+	for _, ns := range nsTmplSet.Spec.Namespaces {
 		actualTemplateRefs = append(actualTemplateRefs, ns.TemplateRef)
 	}
 	assert.ElementsMatch(t, expectedRevisions.Namespaces, actualTemplateRefs)
+	assert.Equal(t, expectedRevisions.ClusterResources, expectedRevisions.ClusterResources)
 
 	// Verify all namespaces and objects within
 	for _, templateRef := range expectedRevisions.Namespaces {
-		ns, err := memberAwait.WaitForNamespace(userAccount.Name, templateRef)
+		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef)
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
 		for _, check := range tierChecks.GetNamespaceObjectChecks(nsType) {
-			check(t, ns, memberAwait, userAccount.Name)
+			check(t, ns, memberAwait, nsTmplSet.Name)
 		}
 	}
 	if expectedRevisions.ClusterResources != nil {
 		for _, check := range tierChecks.GetClusterObjectChecks() {
-			check(t, memberAwait, userAccount.Name)
+			check(t, memberAwait, nsTmplSet.Name)
 		}
 	}
 

@@ -240,7 +240,6 @@ func expectedUserAccount(userID string, tier string, templateRefs tiers.Template
 	var clusterResources *toolchainv1alpha1.NSTemplateSetClusterResources
 	if templateRefs.ClusterResources != nil {
 		clusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-			Revision:    *templateRefs.ClusterResources,
 			TemplateRef: tier + "-" + "clusterresources" + "-" + *templateRefs.ClusterResources,
 		}
 	}
