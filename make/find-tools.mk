@@ -30,5 +30,5 @@ endef
 
 # On MacOS, the default sed install will cause a malformed target YAML, use gnu-sed instead
 ifeq ($(shell uname -s),Darwin)
-$(if $(shell sed --version 2&>1 > /dev/null || echo "bad sed"),$(error ${SED_MSG}))
+$(if $(shell sed --version 2>&1 > /dev/null || echo "bad sed"),$(error ${SED_MSG}))
 endif
