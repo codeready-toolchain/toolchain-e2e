@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/host-operator/pkg/controller/nstemplatetier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 	"github.com/operator-framework/operator-sdk/pkg/test"
@@ -24,6 +23,10 @@ var toBeComplete = toolchainv1alpha1.Condition{
 	Status: corev1.ConditionTrue,
 	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
 }
+
+const (
+	MaxPoolSize = 5 // same as hard-coded value in host operator
+)
 
 func TestPromoteToOtherTier(t *testing.T) {
 	// given
@@ -119,7 +122,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	err = hostAwaitility.Client.Create(context.TODO(), cheesecake, testsupport.CleanupOptions(ctx))
 	require.NoError(t, err)
 	// now, let's create a few users (more than `maxPoolSize`)
-	count := nstemplatetier.MaxPoolSize + 1
+	count := MaxPoolSize + 1
 	users := make([]toolchainv1alpha1.UserSignup, count)
 	nameFmt := "cheesecakelover%d"
 	for i := 0; i < count; i++ {
@@ -155,7 +158,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	// and there should be `MaxPoolSize` TemplateUpdateRequests created
-	err = hostAwaitility.WaitForTemplateUpdateRequests(hostAwaitility.Ns, nstemplatetier.MaxPoolSize)
+	err = hostAwaitility.WaitForTemplateUpdateRequests(hostAwaitility.Ns, MaxPoolSize)
 	require.NoError(t, err)
 }
 

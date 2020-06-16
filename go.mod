@@ -2,7 +2,6 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20200608101253-f0555f65f63d
-	github.com/codeready-toolchain/host-operator v0.0.0-00010101000000-000000000000
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200608102500-f81c6b7e77cf
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
