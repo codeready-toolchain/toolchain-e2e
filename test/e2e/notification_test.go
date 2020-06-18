@@ -3,13 +3,14 @@ package e2e
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/stretchr/testify/require"
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,7 +19,11 @@ func TestNotifications(t *testing.T) {
 }
 
 type notificationTestSuite struct {
-	baseUserIntegrationTest
+	suite.Suite
+	namespace   string
+	ctx         *framework.Context
+	awaitility  *wait.Awaitility
+	hostAwait   *wait.HostAwaitility
 	memberAwait *wait.MemberAwaitility
 }
 
