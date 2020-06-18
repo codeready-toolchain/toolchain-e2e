@@ -401,18 +401,34 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 	return changeTierRequest, err
 }
 
-// WaitUntilChangeTierRequestDeleted waits until ChangeTierRequest with the given name is deleted (ie, not found)
+// WaitUntilChangeTierRequestDeleted waits until the ChangeTierRequest with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		changeTierRequest := &toolchainv1alpha1.ChangeTierRequest{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, changeTierRequest); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("ChangeTierRequest is checked as deleted '%s'", name)
+				a.T.Logf("ChangeTierRequest has been deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
 		a.T.Logf("waiting until ChangeTierRequest is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		notification := &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Notification has been deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until Notification is deleted '%s'", name)
 		return false, nil
 	})
 }
