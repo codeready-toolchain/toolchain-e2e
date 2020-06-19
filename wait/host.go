@@ -412,7 +412,6 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 			}
 			return false, err
 		}
-
 		for _, match := range criteria {
 			if !match(a, obj) {
 				return false, nil
@@ -421,7 +420,6 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 		a.T.Logf("found notification '%s'", name)
 		notification = obj
 		return true, nil
-
 	})
 	return notification, err
 }
