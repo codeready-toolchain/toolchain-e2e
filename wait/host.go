@@ -31,7 +31,7 @@ func (a *HostAwaitility) WithRetryOptions(options ...interface{}) *HostAwaitilit
 	}
 }
 
-// WaitForMasterUserRecord waits until there is MasterUserRecord with the given name and the optional conditions is available
+// WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	var mur *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -400,7 +400,7 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 // NotificationWaitCriterion represents a function checking if Notification meets the given condition
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 
-// WaitForNotification waits until there is the notification with the given name available
+// WaitForNotification waits until there is a Notification available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
 	var notification *toolchainv1alpha1.Notification
 	//notification := &toolchainv1alpha1.Notification{}
