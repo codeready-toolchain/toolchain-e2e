@@ -55,26 +55,6 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
-// WaitForNotification waits until there is the notification with the given name available
-func (a *HostAwaitility) WaitForNotification(name string) (*toolchainv1alpha1.Notification, error) {
-	notification := &toolchainv1alpha1.Notification{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		notification = &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of notification '%s'", name)
-				return false, nil
-			}
-			return false, err
-		}
-
-		a.T.Logf("found notification '%s'", name)
-		return true, nil
-
-	})
-	return notification, err
-}
-
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
 	if err := a.Client.List(context.TODO(), murList); err != nil {
@@ -417,6 +397,36 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	})
 }
 
+// NotificationWaitCriterion represents a function checking if Notification meets the given condition
+type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
+
+// WaitForNotification waits until there is the notification with the given name available
+func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
+	var notification *toolchainv1alpha1.Notification
+	//notification := &toolchainv1alpha1.Notification{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of notification '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+
+		for _, match := range criteria {
+			if !match(a, obj) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found notification '%s'", name)
+		notification = obj
+		return true, nil
+
+	})
+	return notification, err
+}
+
 // WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -431,4 +441,16 @@ func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
 		a.T.Logf("waiting until Notification is deleted '%s'", name)
 		return false, nil
 	})
+}
+
+// UntilNotificationHasConditions checks if Notification status has the given set of conditions
+func UntilNotificationHasConditions(conditions ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
+	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
+		if test.ConditionsMatch(notification.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in Notification '%s`", notification.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of Notification '%s'. Actual: '%+v'; Expected: '%+v'", notification.Name, notification.Status.Conditions, conditions)
+		return false
+	}
 }

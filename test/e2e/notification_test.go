@@ -43,36 +43,23 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 
 	// Create and approve "janedoe"
 	janedoeName := "janedoe"
-	janeSignup := createAndApproveSignup(s.T(), s.awaitility, janedoeName)
+	createAndApproveSignup(s.T(), s.awaitility, janedoeName)
 
 	s.T().Run("notification created and deleted", func(t *testing.T) {
-
 		hostAwait := wait.NewHostAwaitility(s.awaitility)
-		memberAwait := wait.NewMemberAwaitility(s.awaitility)
 
-		// Get the latest signup version
-		userSignup, err := s.awaitility.Host().WaitForUserSignup(janeSignup.Name)
-		require.NoError(t, err)
-
-		// First, wait for the MasterUserRecord to exist, no matter what status
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-		require.NoError(t, err)
-
-		// Then wait for the associated UserAccount to be provisioned
-		userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
-			wait.UntilUserAccountHasConditions(provisioned()))
-
-		_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
+		mur, err := hostAwait.WaitForMasterUserRecord(janedoeName,
 			wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()))
+		require.NoError(t, err)
 
-		notification, err := hostAwait.WaitForNotification(userAccount.Name + "-provisioned")
+		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(sent()))
 		require.NoError(t, err)
 		require.NotNil(t, notification)
-		assert.Equal(t, userAccount.Name+"-provisioned", notification.Name)
+		assert.Equal(t, mur.Name+"-provisioned", notification.Name)
 		assert.Equal(t, mur.Namespace, notification.Namespace)
 		assert.Equal(t, "userprovisioned", notification.Spec.Template)
-		assert.Equal(t, userAccount.Spec.UserID, notification.Spec.UserID)
+		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 
-		hostAwait.WaitUntilNotificationDeleted(userAccount.Name + "-provisioned")
+		hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
 	})
 }

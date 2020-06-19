@@ -97,3 +97,11 @@ func provisionedNotificationCRCreated() toolchainv1alpha1.Condition {
 		Reason: "NotificationCRCreated",
 	}
 }
+
+func sent() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.NotificationSent,
+		Status: corev1.ConditionTrue,
+		Reason: "Sent",
+	}
+}
