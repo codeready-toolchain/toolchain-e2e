@@ -90,7 +90,7 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 	})
 }
 
-// MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
+// MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
@@ -397,13 +397,12 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	})
 }
 
-// NotificationWaitCriterion represents a function checking if Notification meets the given condition
+// NotificationWaitCriterion checks if a Notification meets the given condition
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 
 // WaitForNotification waits until there is a Notification available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
 	var notification *toolchainv1alpha1.Notification
-	//notification := &toolchainv1alpha1.Notification{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
