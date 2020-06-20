@@ -26,7 +26,7 @@ import (
 const (
 	DefaultOperatorRetryInterval   = time.Millisecond * 500
 	DefaultOperatorTimeout         = time.Second * 120
-	DefaultRetryInterval           = time.Millisecond * 500
+	DefaultRetryInterval           = time.Millisecond * 100
 	DefaultTimeout                 = time.Second * 60
 	MemberNsVar                    = "MEMBER_NS"
 	HostNsVar                      = "HOST_NS"

@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type HostAwaitility struct {
@@ -31,7 +31,7 @@ func (a *HostAwaitility) WithRetryOptions(options ...interface{}) *HostAwaitilit
 	}
 }
 
-// WaitForMasterUserRecord waits until there is MasterUserRecord with the given name and the optional conditions is available
+// WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	var mur *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -53,26 +53,6 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 		return true, nil
 	})
 	return mur, err
-}
-
-// WaitForNotification waits until there is the notification with the given name available
-func (a *HostAwaitility) WaitForNotification(name string) (*toolchainv1alpha1.Notification, error) {
-	notification := &toolchainv1alpha1.Notification{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		notification = &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of notification '%s'", name)
-				return false, nil
-			}
-			return false, err
-		}
-
-		a.T.Logf("found notification '%s'", name)
-		return true, nil
-
-	})
-	return notification, err
 }
 
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
@@ -110,7 +90,7 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 	})
 }
 
-// MasterUserRecordWaitCriterion represents a function checking if MasterUserRecord meets the given condition
+// MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
@@ -401,13 +381,13 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 	return changeTierRequest, err
 }
 
-// WaitUntilChangeTierRequestDeleted waits until ChangeTierRequest with the given name is deleted (ie, not found)
+// WaitUntilChangeTierRequestDeleted waits until the ChangeTierRequest with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		changeTierRequest := &toolchainv1alpha1.ChangeTierRequest{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, changeTierRequest); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("ChangeTierRequest is checked as deleted '%s'", name)
+				a.T.Logf("ChangeTierRequest has been deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
@@ -415,4 +395,59 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 		a.T.Logf("waiting until ChangeTierRequest is deleted '%s'", name)
 		return false, nil
 	})
+}
+
+// NotificationWaitCriterion checks if a Notification meets the given condition
+type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
+
+// WaitForNotification waits until there is a Notification available with the given name and the optional conditions
+func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
+	var notification *toolchainv1alpha1.Notification
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for availability of notification '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, obj) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found notification '%s'", name)
+		notification = obj
+		return true, nil
+	})
+	return notification, err
+}
+
+// WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		notification := &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Notification has been deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until Notification is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// UntilNotificationHasConditions checks if Notification status has the given set of conditions
+func UntilNotificationHasConditions(conditions ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
+	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
+		if test.ConditionsMatch(notification.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in Notification '%s`", notification.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of Notification '%s'. Actual: '%+v'; Expected: '%+v'", notification.Name, notification.Status.Conditions, conditions)
+		return false
+	}
 }
