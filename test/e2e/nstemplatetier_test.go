@@ -279,7 +279,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// this test verifies that `maxPoolSize` TemplateUpdateRequests are created when the `cheesecake` NSTemplateTier is updated
 	// with new templates and there are MUR accounts associated with this tier.
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
-	// defer ctx.Cleanup()
+	defer ctx.Cleanup()
 	hostAwaitility := NewHostAwaitility(awaitility)
 
 	// first, let's create the `cheesecake` NSTemplateTier (to avoid messing with other tiers)

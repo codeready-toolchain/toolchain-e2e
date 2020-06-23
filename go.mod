@@ -27,4 +27,4 @@ replace (
 
 replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20200623094806-f548c1c2d2a9
 
-go 1.13
+go 1.13 
