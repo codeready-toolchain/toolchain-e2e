@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20200619175042-339fd47c60d5
+	github.com/codeready-toolchain/api v0.0.0-20200623145816-ddd6c21322c5
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200608102500-f81c6b7e77cf
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
@@ -25,4 +25,4 @@ replace (
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // avoids case-insensitive import collision: "github.com/googleapis/gnostic/openapiv2" and "github.com/googleapis/gnostic/OpenAPIv2"
 )
 
-go 1.13
+go 1.13 
