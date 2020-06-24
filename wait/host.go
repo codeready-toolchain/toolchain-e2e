@@ -397,6 +397,21 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	})
 }
 
+// WaitForTemplateUpdateRequests waits until there is exactly `count` number of TemplateUpdateRequests
+func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count int) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
+		if err := a.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(namespace)); err != nil {
+			return false, err
+		}
+		if len(templateUpdateRequests.Items) == count {
+			return true, nil
+		}
+		a.T.Logf("waiting %d TemplateUpdateRequests are found (currently: %d)", count, len(templateUpdateRequests.Items))
+		return false, nil
+	})
+}
+
 // NotificationWaitCriterion checks if a Notification meets the given condition
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 

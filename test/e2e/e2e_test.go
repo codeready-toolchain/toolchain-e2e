@@ -126,6 +126,11 @@ func TestE2EFlow(t *testing.T) {
 			}
 
 			// then
+			// wait for the namespaces to be re-created before validating all other resources to avoid race condition
+			for _, ref := range templateRefs.Namespaces {
+				_, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, ref)
+				require.NoError(t, err)
+			}
 			verifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
 			verifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})

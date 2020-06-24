@@ -195,7 +195,8 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 			return false, err
 		}
 
-		if len(namespaceList.Items) < 1 {
+		// no match found, so we display the current list of namespaces
+		if len(namespaceList.Items) == 0 {
 			allNSs := &v1.NamespaceList{}
 			ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
 			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(ls)); err != nil {
@@ -209,6 +210,12 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
+		// exclude namespace if it's not `Active` phase
+		ns := namespaceList.Items[0]
+		if ns.Status.Phase != v1.NamespaceActive {
+			a.T.Logf("waiting for namespace with templateRef '%s' and owned by '%s' to be in 'Active' phase. Current phase: '%s'", ref, username, ns.Status.Phase)
+			return false, nil
+		}
 		a.T.Logf("found Namespace with templateRef '%s'", ref)
 		return true, nil
 	})
