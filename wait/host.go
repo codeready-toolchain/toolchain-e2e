@@ -93,6 +93,18 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
+// UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
+func UntilMasterUserRecordHasCondition(condition toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		if test.ContainsCondition(mur.Status.Conditions, condition) {
+			a.T.Logf("status conditions match in MasterUserRecord '%s`", mur.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, condition)
+		return false
+	}
+}
+
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
 func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
@@ -102,6 +114,17 @@ func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Conditio
 		}
 		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, conditions)
 		return false
+	}
+}
+
+// UntilMasterUserRecordHasNotSyncIndex checks if MasterUserRecord has a
+// sync index *different* from the given value for the given target cluster
+func UntilMasterUserRecordHasNotSyncIndex(syncIndex string) MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		// lookup user account with target cluster
+		ua := mur.Spec.UserAccounts[0]
+		a.T.Logf("expecting sync indexes '%s' != '%s'", ua.SyncIndex, syncIndex)
+		return ua.SyncIndex != syncIndex
 	}
 }
 

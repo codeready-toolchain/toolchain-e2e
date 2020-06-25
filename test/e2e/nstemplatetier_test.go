@@ -306,10 +306,10 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	}
 	err = hostAwaitility.Client.Create(context.TODO(), cheesecake, testsupport.CleanupOptions(ctx))
 	require.NoError(t, err)
-	// now, let's create a few users (more than `maxPoolSize`)
-	count := MaxPoolSize + 1
+	// let's create a few users (more than `maxPoolSize`)
+	count := 2*MaxPoolSize + 1
 	users := make([]toolchainv1alpha1.UserSignup, count)
-	nameFmt := "cheesecakelover%d"
+	nameFmt := "cheesecakelover%02d"
 	for i := 0; i < count; i++ {
 		users[i] = createAndApproveSignup(t, awaitility, fmt.Sprintf(nameFmt, i))
 	}
@@ -318,31 +318,44 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 		_, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
 		require.NoError(t, err)
 	}
-	// now, let's promote to users the `cheesecake` tier
+	// let's promote to users the `cheesecake` tier and retain the SyncIndexes
+	syncIndexes := make([]string, len(users))
 	for i := range users {
 		changeTierRequest := newChangeTierRequest(hostAwaitility.Ns, cheesecake.Name, fmt.Sprintf(nameFmt, i))
 		err = awaitility.Client.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
 		require.NoError(t, err)
 		_, err = hostAwaitility.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 		require.NoError(t, err)
-		_, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
+		mur, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
+			UntilMasterUserRecordHasCondition(provisioned())) // ignore other conditions, such as notification sent, etc.
 		require.NoError(t, err)
+		syncIndexes[i] = mur.Spec.UserAccounts[0].SyncIndex
+		t.Logf("'%s' initial syncIndex: '%s'", mur.Name, syncIndexes[i])
 	}
-
-	// now, let's update the NSTemplateTier using the namespace templates of the `advanced` tier
+	// finally, let's update the NSTemplateTier using the namespace templates of the `advanced` tier
 	advanced := &toolchainv1alpha1.NSTemplateTier{}
 	err = hostAwaitility.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: hostAwaitility.Ns,
 		Name:      "advanced",
 	}, advanced)
 	require.NoError(t, err)
-	// when
+
+	// when the `cheesecake` tier is updated
 	cheesecake.Spec.ClusterResources = advanced.Spec.ClusterResources
 	cheesecake.Spec.Namespaces = advanced.Spec.Namespaces
 	err = hostAwaitility.Client.Update(context.TODO(), cheesecake)
+
 	// then
 	require.NoError(t, err)
-	// and there should be `MaxPoolSize` TemplateUpdateRequests created
-	err = hostAwaitility.WaitForTemplateUpdateRequests(hostAwaitility.Ns, MaxPoolSize)
-	require.NoError(t, err)
+	// now, let's wait until all MasterUserRecords have been updated
+	for i := range users {
+		_, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
+			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
+			UntilMasterUserRecordHasNotSyncIndex(syncIndexes[i]),
+		)
+		require.NoError(t, err)
+	}
+
+	// and verify that all TemplateUpdateRequests were deleted
+	hostAwaitility.WaitForTemplateUpdateRequests(hostAwaitility.Ns, 0)
 }
