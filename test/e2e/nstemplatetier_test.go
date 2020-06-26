@@ -3,12 +3,12 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
@@ -92,47 +92,106 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 }
 
-func TestUpdateToOtherRevisionOfTierTemplates(t *testing.T) {
-	// given
-	tierList := &toolchainv1alpha1.NSTemplateTierList{}
-	ctx, awaitility := testsupport.WaitForDeployments(t, tierList)
-	defer ctx.Cleanup()
+func TestUpdateNSTemplateTier(t *testing.T) {
+	// this test verifies that `maxPoolSize` TemplateUpdateRequests are created when the `cheesecake` NSTemplateTier is updated
+	// with new templates and there are MUR accounts associated with this tier.
+	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
+	// defer ctx.Cleanup()
+	hostAwaitility := NewHostAwaitility(awaitility)
+	memberAwaitility := NewMemberAwaitility(awaitility)
 
-	// Create and approve "testing-template-updates" user
-	murName := "testingtemplateupdates"
-	userSignup := createAndApproveSignup(t, awaitility, murName)
+	// first, let's create the `cheesecake` NSTemplateTier (to avoid messing with other tiers)
+	// We'll use the `basic` tier as a source of inspiration.
+	_, err := hostAwaitility.WaitForNSTemplateTier("basic",
+		UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-code-000000a"))),
+		UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-dev-000000a"))),
+		UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-stage-000000a"))),
+		UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
+	)
+	require.NoError(t, err)
+	basicTier := &toolchainv1alpha1.NSTemplateTier{}
+	err = hostAwaitility.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: hostAwaitility.Ns,
+		Name:      "basic",
+	}, basicTier)
+	require.NoError(t, err)
 
-	tierTemplatesByTier := getTierTemplatesMappedByTier(t, awaitility)
-	templatesFromAdvanced := createBasicTierTemplate(t, ctx, awaitility, tierTemplatesByTier["advanced"], "123abcd")
-	templatesFromTeam := createBasicTierTemplate(t, ctx, awaitility, tierTemplatesByTier["team"], "456efgh")
-	templatesFromBasic := createBasicTierTemplate(t, ctx, awaitility, tierTemplatesByTier["basic"], "789ijkl")
+	// now let's create the new NSTemplateTier with the same templates as the "basic" tier
+	cheesecakeTier := &toolchainv1alpha1.NSTemplateTier{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: basicTier.Namespace,
+			Name:      "cheesecake",
+		},
+		Spec: basicTier.Spec,
+	}
+	err = hostAwaitility.Client.Create(context.TODO(), cheesecakeTier, testsupport.CleanupOptions(ctx))
+	require.NoError(t, err)
+	// let's create a few users (more than `maxPoolSize`)
+	count := 2*MaxPoolSize + 1
+	users := make([]toolchainv1alpha1.UserSignup, count)
+	nameFmt := "cheesecakelover%02d"
+	for i := 0; i < count; i++ {
+		users[i] = createAndApproveSignup(t, awaitility, fmt.Sprintf(nameFmt, i))
+	}
+	// and wait until there are all provisioned
+	for i := range users {
+		_, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
+		require.NoError(t, err)
+	}
+	// let's promote to users the `cheesecake` tier and retain the SyncIndexes
+	syncIndexes := make([]string, len(users))
+	for i := range users {
+		changeTierRequest := newChangeTierRequest(hostAwaitility.Ns, cheesecakeTier.Name, fmt.Sprintf(nameFmt, i))
+		err = awaitility.Client.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
+		require.NoError(t, err)
+		_, err = hostAwaitility.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
+		require.NoError(t, err)
+		mur, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
+			UntilMasterUserRecordHasCondition(provisioned())) // ignore other conditions, such as notification sent, etc.
+		require.NoError(t, err)
+		syncIndexes[i] = mur.Spec.UserAccounts[0].SyncIndex
+		t.Logf("'%s' initial syncIndex: '%s'", mur.Name, syncIndexes[i])
+	}
+	// finally, let's retrieve the `advanced` NSTemplateTier
+	advancedTier := &toolchainv1alpha1.NSTemplateTier{}
+	err = hostAwaitility.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: hostAwaitility.Ns,
+		Name:      "advanced",
+	}, advancedTier)
+	require.NoError(t, err)
 
-	// wait for the user to be provisioned for the first time
-	verifyResourcesProvisionedForSignup(t, awaitility, userSignup, "basic")
+	// when the `cheesecake` tier is updated using the `advanced` templates
+	cheesecakeTier.Spec.ClusterResources = advancedTier.Spec.ClusterResources
+	cheesecakeTier.Spec.Namespaces = advancedTier.Spec.Namespaces
+	err = hostAwaitility.Client.Update(context.TODO(), cheesecakeTier)
 
-	t.Run("update to refs basic-*-123abcd made out of the advanced TierTemplates", func(t *testing.T) {
-		// when update to basic-*-123abcd
-		replaceMurRefs(t, awaitility, murName, templatesFromAdvanced)
+	// then
+	require.NoError(t, err)
 
-		// then
-		verifyMurIsProvisionedForRevisionMadeOutOfOtherTier(t, awaitility, murName, "advanced", "123abcd")
-	})
+	// now, let's wait until all MasterUserRecords have been updated
+	cheesecakeTier, err = hostAwaitility.WaitForNSTemplateTier(cheesecakeTier.Name,
+		UntilNSTemplateTierSpec(HasClusterResourcesTemplateRef(advancedTier.Spec.ClusterResources.TemplateRef)))
+	require.NoError(t, err)
 
-	t.Run("update to refs basic-*-456efgh made out of the team TierTemplates", func(t *testing.T) {
-		// when update to basic-*-456efgh
-		replaceMurRefs(t, awaitility, murName, templatesFromTeam)
+	templateRefs := tiers.GetTemplateRefs(hostAwaitility, cheesecakeTier.Name)
+	for i, user := range users {
+		mur, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
+			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
+			UntilMasterUserRecordHasNotSyncIndex(syncIndexes[i]),
+		)
+		require.NoError(t, err)
+		userAccount, err := memberAwaitility.WaitForUserAccount(fmt.Sprintf(nameFmt, i),
+			wait.UntilUserAccountHasConditions(provisioned()),
+			wait.UntilUserAccountHasSpec(expectedUserAccount(user.Name, cheesecakeTier.Name, templateRefs)),
+			wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
+		require.NoError(t, err)
+		require.NotNil(t, userAccount)
+	}
 
-		// then
-		verifyMurIsProvisionedForRevisionMadeOutOfOtherTier(t, awaitility, murName, "team", "456efgh")
-	})
+	// and verify that all TemplateUpdateRequests were deleted
+	err = hostAwaitility.WaitForTemplateUpdateRequests(hostAwaitility.Ns, 0)
+	require.NoError(t, err)
 
-	t.Run("update to refs basic-*-789ijkl made out of the basic TierTemplates", func(t *testing.T) {
-		// when update to basic-*-789ijkl
-		replaceMurRefs(t, awaitility, murName, templatesFromBasic)
-
-		// then
-		verifyMurIsProvisionedForRevisionMadeOutOfOtherTier(t, awaitility, murName, "basic", "789ijkl")
-	})
 }
 
 func TestTierTemplates(t *testing.T) {
@@ -186,176 +245,4 @@ func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.Ch
 			MurName:  murName,
 		},
 	}
-}
-
-func verifyMurIsProvisionedForRevisionMadeOutOfOtherTier(t *testing.T, awaitility *Awaitility, murName, originalTier, revision string) {
-	_, err := awaitility.Host().WaitForMasterUserRecord(murName, UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()))
-	require.NoError(t, err)
-
-	memberAwait := awaitility.Member()
-	userAccount, err := memberAwait.WaitForUserAccount(murName)
-	require.NoError(t, err)
-	templateRefs := tiers.GetTemplateRefsForTierAndRevision(awaitility.Host(), "basic", revision)
-
-	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(userAccount.Name, UntilNSTemplateSetHasTier("basic"))
-	assert.NoError(t, err)
-
-	tierChecks, err := tiers.NewChecks(originalTier)
-	require.NoError(t, err)
-
-	tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTemplateSet, tierChecks, templateRefs)
-}
-
-func getTierTemplatesMappedByTier(t *testing.T, awaitility *Awaitility) map[string][]*toolchainv1alpha1.TierTemplate {
-	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
-	err := awaitility.Client.List(context.TODO(), allTiers, client.InNamespace(awaitility.HostNs))
-	require.NoError(t, err)
-	mappedTierTemplates := map[string][]*toolchainv1alpha1.TierTemplate{}
-	for _, tier := range allTiers.Items {
-		for _, ns := range tier.Spec.Namespaces {
-			tierTemplate, err := awaitility.Host().WaitForTierTemplate(ns.TemplateRef)
-			require.NoError(t, err)
-			mappedTierTemplates[tier.Name] = append(mappedTierTemplates[tier.Name], tierTemplate)
-		}
-		if tier.Spec.ClusterResources != nil {
-			tierTemplate, err := awaitility.Host().WaitForTierTemplate(tier.Spec.ClusterResources.TemplateRef)
-			require.NoError(t, err)
-			mappedTierTemplates[tier.Name] = append(mappedTierTemplates[tier.Name], tierTemplate)
-		}
-	}
-	return mappedTierTemplates
-}
-
-func createBasicTierTemplate(t *testing.T, ctx *test.Context, awaitility *Awaitility, tierTemplates []*toolchainv1alpha1.TierTemplate, revision string) []string {
-	var refs []string
-	for _, tierTemplate := range tierTemplates {
-		_, typeName, _, err := Split(tierTemplate.Name)
-		require.NoError(t, err)
-		ref := strings.ToLower(fmt.Sprintf("%s-%s-%s", "basic", typeName, revision))
-		newTierTemplate := &toolchainv1alpha1.TierTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      ref,
-				Namespace: awaitility.HostNs,
-			},
-			Spec: toolchainv1alpha1.TierTemplateSpec{
-				Type:     typeName,
-				TierName: "basic",
-				Revision: revision,
-				Template: tierTemplate.Spec.Template,
-			},
-		}
-
-		newTierTemplate.Name = ref
-		refs = append(refs, ref)
-		err = awaitility.Client.Create(context.TODO(), newTierTemplate, testsupport.CleanupOptions(ctx))
-		require.NoError(t, err)
-	}
-	return refs
-}
-
-func replaceMurRefs(t *testing.T, awaitility *Awaitility, murName string, refs []string) {
-	masterUserRecord, err := awaitility.Host().WaitForMasterUserRecord(murName)
-	require.NoError(t, err)
-	var namespaces []toolchainv1alpha1.NSTemplateSetNamespace
-	masterUserRecord.Spec.UserAccounts[0].Spec.NSTemplateSet.ClusterResources = nil
-	for _, ref := range refs {
-		if strings.Contains(ref, "clusterresources") {
-			masterUserRecord.Spec.UserAccounts[0].Spec.NSTemplateSet.ClusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-				TemplateRef: ref,
-			}
-		} else {
-			namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
-				TemplateRef: ref,
-			})
-		}
-	}
-	masterUserRecord.Spec.UserAccounts[0].Spec.NSTemplateSet.Namespaces = namespaces
-
-	err = awaitility.Client.Update(context.TODO(), masterUserRecord)
-	require.NoError(t, err)
-}
-
-func TestUpdateNSTemplateTier(t *testing.T) {
-	// this test verifies that `maxPoolSize` TemplateUpdateRequests are created when the `cheesecake` NSTemplateTier is updated
-	// with new templates and there are MUR accounts associated with this tier.
-	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
-	defer ctx.Cleanup()
-	hostAwaitility := NewHostAwaitility(awaitility)
-
-	// first, let's create the `cheesecake` NSTemplateTier (to avoid messing with other tiers)
-	// We'll use the `basic` tier as a source of inspiration.
-	_, err := hostAwaitility.WaitForNSTemplateTier("basic",
-		UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-code-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-dev-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNamespaceTemplateRefs("basic-stage-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
-	)
-	require.NoError(t, err)
-	basic := &toolchainv1alpha1.NSTemplateTier{}
-	err = hostAwaitility.Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: hostAwaitility.Ns,
-		Name:      "basic",
-	}, basic)
-	// now let's create the new NSTemplateTier with the same templates as the "basic" tier
-	cheesecake := &toolchainv1alpha1.NSTemplateTier{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: basic.Namespace,
-			Name:      "cheesecake",
-		},
-		Spec: basic.Spec,
-	}
-	err = hostAwaitility.Client.Create(context.TODO(), cheesecake, testsupport.CleanupOptions(ctx))
-	require.NoError(t, err)
-	// let's create a few users (more than `maxPoolSize`)
-	count := 2*MaxPoolSize + 1
-	users := make([]toolchainv1alpha1.UserSignup, count)
-	nameFmt := "cheesecakelover%02d"
-	for i := 0; i < count; i++ {
-		users[i] = createAndApproveSignup(t, awaitility, fmt.Sprintf(nameFmt, i))
-	}
-	// and wait until there are all provisioned
-	for i := range users {
-		_, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
-		require.NoError(t, err)
-	}
-	// let's promote to users the `cheesecake` tier and retain the SyncIndexes
-	syncIndexes := make([]string, len(users))
-	for i := range users {
-		changeTierRequest := newChangeTierRequest(hostAwaitility.Ns, cheesecake.Name, fmt.Sprintf(nameFmt, i))
-		err = awaitility.Client.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
-		require.NoError(t, err)
-		_, err = hostAwaitility.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
-		require.NoError(t, err)
-		mur, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
-			UntilMasterUserRecordHasCondition(provisioned())) // ignore other conditions, such as notification sent, etc.
-		require.NoError(t, err)
-		syncIndexes[i] = mur.Spec.UserAccounts[0].SyncIndex
-		t.Logf("'%s' initial syncIndex: '%s'", mur.Name, syncIndexes[i])
-	}
-	// finally, let's update the NSTemplateTier using the namespace templates of the `advanced` tier
-	advanced := &toolchainv1alpha1.NSTemplateTier{}
-	err = hostAwaitility.Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: hostAwaitility.Ns,
-		Name:      "advanced",
-	}, advanced)
-	require.NoError(t, err)
-
-	// when the `cheesecake` tier is updated
-	cheesecake.Spec.ClusterResources = advanced.Spec.ClusterResources
-	cheesecake.Spec.Namespaces = advanced.Spec.Namespaces
-	err = hostAwaitility.Client.Update(context.TODO(), cheesecake)
-
-	// then
-	require.NoError(t, err)
-	// now, let's wait until all MasterUserRecords have been updated
-	for i := range users {
-		_, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
-			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
-			UntilMasterUserRecordHasNotSyncIndex(syncIndexes[i]),
-		)
-		require.NoError(t, err)
-	}
-
-	// and verify that all TemplateUpdateRequests were deleted
-	hostAwaitility.WaitForTemplateUpdateRequests(hostAwaitility.Ns, 0)
 }

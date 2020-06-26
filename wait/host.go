@@ -320,7 +320,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) {
+func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint: unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Ns)

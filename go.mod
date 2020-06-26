@@ -4,13 +4,17 @@ require (
 	github.com/codeready-toolchain/api v0.0.0-20200623145816-ddd6c21322c5
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200608102500-f81c6b7e77cf
 	github.com/gobuffalo/envy v1.7.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.17.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.5.1
-	golang.org/x/tools v0.0.0-20200428021058-7ae4988eb4d9 // indirect
+	golang.org/x/tools v0.0.0-20200502202811-ed308ab3e770 // indirect
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4
 	k8s.io/client-go v12.0.0+incompatible
