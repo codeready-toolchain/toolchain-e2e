@@ -488,3 +488,50 @@ func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string
 		return false, nil
 	})
 }
+
+// MemberStatusWaitCriterion a function to check that an MemberStatus has the expected condition
+type MemberStatusWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.MemberStatus) bool
+
+// UntilMemberStatusHasConditions returns a `MemberStatusWaitCriterion` which checks that the given
+// MemberStatus has exactly all the given status conditions
+func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
+	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
+		if test.ConditionsMatch(memberStatus.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in NSTemplateSet '%s`", memberStatus.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", memberStatus.Name, memberStatus.Status.Conditions, conditions)
+		return false
+	}
+}
+
+// WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any
+func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCriterion) (toolchainv1alpha1.MemberStatus, error) {
+	// there should only be one member status with the name toolchain-member-status
+	name := "toolchain-member-status"
+	var memberStatus toolchainv1alpha1.MemberStatus
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		// retrieve the memberstatus from the member namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Ns,
+				Name:      name,
+			},
+			&memberStatus)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of memberstatus '%s' in namespace '%s'...\n", name, a.Ns)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, &memberStatus) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found memberstatus '%s': %+v", memberStatus.Name, memberStatus)
+		return true, nil
+	})
+	return memberStatus, err
+}
