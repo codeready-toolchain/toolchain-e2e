@@ -173,7 +173,11 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 		UntilNSTemplateTierSpec(HasClusterResourcesTemplateRef(advancedTier.Spec.ClusterResources.TemplateRef)))
 	require.NoError(t, err)
 
-	templateRefs := tiers.GetTemplateRefs(hostAwaitility, cheesecakeTier.Name)
+	templateRefs := tiers.GetTemplateRefs(hostAwaitility, cheesecakeTier.Name) // here we need to use the `advanced` tier name so we can init the tier checks :|
+	require.NoError(t, err)
+	checks, err := tiers.NewChecks("advanced")
+	require.NoError(t, err)
+
 	for i, user := range users {
 		mur, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
 			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
@@ -186,6 +190,9 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 			wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(fmt.Sprintf(nameFmt, i))
+		require.NoError(t, err)
+		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, checks, templateRefs)
 	}
 
 	// and verify that all TemplateUpdateRequests were deleted
