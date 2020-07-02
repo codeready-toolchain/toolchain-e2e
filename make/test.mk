@@ -67,9 +67,11 @@ e2e-run:
 
 .PHONY: print-logs
 print-logs:
+ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs REPO_NAME=host-operator NAMESPACE=${HOST_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS}
 	$(MAKE) print-operator-logs REPO_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
+endif
 
 .PHONY: print-operator-logs
 print-operator-logs:

@@ -59,6 +59,7 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 		assert.Equal(t, "userprovisioned", notification.Spec.Template)
 		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 
-		hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
+		err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
+		require.NoError(t, err)
 	})
 }
