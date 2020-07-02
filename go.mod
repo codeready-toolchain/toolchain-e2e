@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20200623145816-ddd6c21322c5
+	github.com/codeready-toolchain/api v0.0.0-20200702155133-4e0f9a1d7b18
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200608102500-f81c6b7e77cf
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -28,7 +28,5 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.17.4 // Required by prometheus-operator
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe // avoids case-insensitive import collision: "github.com/googleapis/gnostic/openapiv2" and "github.com/googleapis/gnostic/OpenAPIv2"
 )
-
-replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20200630081021-4d177ed6d634
 
 go 1.13
