@@ -115,6 +115,11 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// then
 	verifyResourceUpdates(t, awaitility, cheesecakeSyncIndexes, cheesecakeTier.Name, "advanced")
 	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, cookieTier.Name, "team")
+	// and when updating the "cookie" tier back to the "basic" template refs (ie, different number of namespaces)
+	updateTemplateTier(t, awaitility, cookieTier, "basic")
+	
+	// then
+	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, cookieTier.Name, "basic")
 }
 
 // setupAccounts takes care of:
