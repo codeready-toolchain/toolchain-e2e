@@ -176,7 +176,7 @@ func (a *SingleAwaitilityImpl) GetKubeFedCluster(clusterType cluster.Type, condi
 				a.T.Logf("found %s KubeFedCluster running in namespace '%s' but with insufficient conditions: %+v", clusterType, a.OtherOperatorNs, cl.Status.Conditions)
 			}
 		} else {
-			fmt.Println(fmt.Sprintf("cluster no match %s != %s, %s != %s", cl.Labels["namespace"], a.OtherOperatorNs, cluster.Type(cl.Labels["type"]), clusterType))
+			fmt.Printf("cluster no match %s != %s, %s != %s\n", cl.Labels["namespace"], a.OtherOperatorNs, cluster.Type(cl.Labels["type"]), clusterType)
 		}
 	}
 	return v1beta1.KubeFedCluster{}, false, nil

@@ -93,6 +93,18 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
+// UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
+func UntilMasterUserRecordHasCondition(condition toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		if test.ContainsCondition(mur.Status.Conditions, condition) {
+			a.T.Logf("status conditions match in MasterUserRecord '%s`", mur.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, condition)
+		return false
+	}
+}
+
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
 func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
@@ -102,6 +114,17 @@ func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Conditio
 		}
 		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, conditions)
 		return false
+	}
+}
+
+// UntilMasterUserRecordHasNotSyncIndex checks if MasterUserRecord has a
+// sync index *different* from the given value for the given target cluster
+func UntilMasterUserRecordHasNotSyncIndex(syncIndex string) MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		// lookup user account with target cluster
+		ua := mur.Spec.UserAccounts[0]
+		a.T.Logf("expecting sync indexes '%s' != '%s'", ua.SyncIndex, syncIndex)
+		return ua.SyncIndex != syncIndex
 	}
 }
 
@@ -297,7 +320,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) {
+func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint: unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Ns)
