@@ -105,3 +105,11 @@ func sent() toolchainv1alpha1.Condition {
 		Reason: "Sent",
 	}
 }
+
+func memberStatusReady() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ConditionReady,
+		Status: corev1.ConditionTrue,
+		Reason: "AllComponentsReady",
+	}
+}

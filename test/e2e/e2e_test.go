@@ -33,6 +33,13 @@ func TestE2EFlow(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
+	// host and member cluster statuses should be available at this point
+	t.Run("verify cluster statuses are valid", func(t *testing.T) {
+		t.Run("verify member cluster status", func(t *testing.T) {
+			verifyMemberStatus(t, awaitility.Member())
+		})
+	})
+
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
 	signups := createMultipleSignups(t, ctx, awaitility, 5)
@@ -330,6 +337,11 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 		wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
+}
+
+func verifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility) {
+	_, err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(memberStatusReady()))
+	require.NoError(t, err, "failed while waiting for toolchain member status")
 }
 
 func toIdentityName(userID string) string {
