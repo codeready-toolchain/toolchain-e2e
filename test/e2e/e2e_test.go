@@ -305,7 +305,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(provisioned()),
 		wait.UntilUserAccountHasSpec(expectedUserAccount(userSignup.Name, tier, templateRefs)),
-		wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
+		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
 
