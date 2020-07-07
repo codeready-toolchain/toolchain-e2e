@@ -52,8 +52,8 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 	}
 }
 
-// UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which checks that the given
-// MasterUserRecordSpec and UserAccountSpecEmbedded are the expected specs
+// UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which loads the existing MUR
+// and compares the first UserAccountSpecEmbedded in the MUR with the actual UserAccount spec
 func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(ua.Name))
