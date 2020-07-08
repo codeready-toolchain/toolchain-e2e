@@ -117,7 +117,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, cookieTier.Name, "team")
 	// and when updating the "cookie" tier back to the "basic" template refs (ie, different number of namespaces)
 	updateTemplateTier(t, awaitility, cookieTier, "basic")
-	
+
 	// then
 	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, cookieTier.Name, "basic")
 }
@@ -220,15 +220,16 @@ func verifyResourceUpdates(t *testing.T, awaitility *wait.Awaitility, syncIndexe
 	memberAwaitility := NewMemberAwaitility(awaitility)
 	for userID, syncIndex := range syncIndexes {
 		usersignup, err := hostAwaitility.WaitForUserSignup(userID)
-		mur, err := hostAwaitility.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
-			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
-			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
-		)
 		require.NoError(t, err)
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
 			wait.UntilUserAccountHasConditions(provisioned()),
 			wait.UntilUserAccountHasSpec(expectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
-			wait.UntilUserAccountMatchesMur(mur.Spec, mur.Spec.UserAccounts[0].Spec))
+			wait.UntilUserAccountMatchesMur(hostAwaitility))
+		require.NoError(t, err)
+		_, err = hostAwaitility.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
+			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
+			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
+		)
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)

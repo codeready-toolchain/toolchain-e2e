@@ -52,20 +52,26 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 	}
 }
 
-// UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which checks that the given
-// MasterUserRecordSpec and UserAccountSpecEmbedded are the expected specs
-func UntilUserAccountMatchesMur(expectedMurSpec toolchainv1alpha1.MasterUserRecordSpec, expected toolchainv1alpha1.UserAccountSpecEmbedded) UserAccountWaitCriterion {
+// UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which loads the existing MUR
+// and compares the first UserAccountSpecEmbedded in the MUR with the actual UserAccount spec
+func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		a.T.Logf("waiting for UserAccountSpecBase specs: Actual: '%+v'; Expected: '%+v', MasterUserRecordSpecs.UserID: Actual: '%+v'; Expected: '%+v' and MasterUserRecordSpecs.Disabled: Actual: '%+v'; Expected: '%+v'", ua.Spec.UserAccountSpecBase, expected.UserAccountSpecBase, ua.Spec.UserID, expectedMurSpec.UserID, ua.Spec.Disabled, expectedMurSpec.Disabled)
-		if ua.Spec.UserID != expectedMurSpec.UserID {
+		mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(ua.Name))
+		if err != nil {
+			a.T.Logf("error while getting MUR: %s", err)
+			return false
+		}
+		expAccountSpecBase := mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase
+		a.T.Logf("waiting for UserAccountSpecBase specs: Actual: '%+v'; Expected: '%+v', MasterUserRecordSpecs.UserID: Actual: '%+v'; Expected: '%+v' and MasterUserRecordSpecs.Disabled: Actual: '%+v'; Expected: '%+v'", ua.Spec.UserAccountSpecBase, expAccountSpecBase, ua.Spec.UserID, mur.Spec.UserID, ua.Spec.Disabled, mur.Spec.Disabled)
+		if ua.Spec.UserID != mur.Spec.UserID {
 			return false
 		}
 
-		if ua.Spec.Disabled != expectedMurSpec.Disabled {
+		if ua.Spec.Disabled != mur.Spec.Disabled {
 			return false
 		}
 
-		return reflect.DeepEqual(ua.Spec.UserAccountSpecBase, expected.UserAccountSpecBase)
+		return reflect.DeepEqual(ua.Spec.UserAccountSpecBase, expAccountSpecBase)
 	}
 }
 
