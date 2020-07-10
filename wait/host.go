@@ -430,7 +430,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 		if len(templateUpdateRequests.Items) == count {
 			return true, nil
 		}
-		a.T.Logf("waiting %d TemplateUpdateRequests are found (currently: %d)", count, len(templateUpdateRequests.Items))
+		a.T.Logf("waiting until %d TemplateUpdateRequest(s) are found (current count: %d)", count, len(templateUpdateRequests.Items))
 		return false, nil
 	})
 }
