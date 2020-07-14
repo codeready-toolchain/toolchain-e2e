@@ -496,17 +496,17 @@ func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string
 }
 
 // MemberStatusWaitCriterion a function to check that an MemberStatus has the expected condition
-type MemberStatusWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.MemberStatus) bool
+type MemberStatusWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.MemberStatus) bool
 
 // UntilMemberStatusHasConditions returns a `MemberStatusWaitCriterion` which checks that the given
 // MemberStatus has exactly all the given status conditions
 func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
 	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
 		if test.ConditionsMatch(memberStatus.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in NSTemplateSet '%s`", memberStatus.Name)
+			a.T.Logf("status conditions match in MemberStatus '%s`", memberStatus.Name)
 			return true
 		}
-		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", memberStatus.Name, memberStatus.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", memberStatus.Name, memberStatus.Status.Conditions, conditions)
 		return false
 	}
 }
