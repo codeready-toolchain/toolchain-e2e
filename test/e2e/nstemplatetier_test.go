@@ -101,7 +101,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	count := 2*MaxPoolSize + 1
 	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
-	// defer ctx.Cleanup()
+	defer ctx.Cleanup()
 
 	// first group of users: the "cheesecake lovers"
 	cheesecakeTier, cheesecakeSyncIndexes := setupAccounts(t, ctx, awaitility, "cheesecake", "cheesecakelover%02d", count)
