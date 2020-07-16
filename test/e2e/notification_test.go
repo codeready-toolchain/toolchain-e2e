@@ -51,7 +51,7 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 			wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()))
 		require.NoError(t, err)
 
-		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned"/*, wait.UntilNotificationHasConditions(sent())*/)
+		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(sent()))
 		require.NoError(t, err)
 		require.NotNil(t, notification)
 		assert.Equal(t, mur.Name+"-provisioned", notification.Name)
@@ -59,7 +59,7 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 		assert.Equal(t, "userprovisioned", notification.Spec.Template)
 		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 
-		//err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
-		//require.NoError(t, err)
+		err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
+		require.NoError(t, err)
 	})
 }
