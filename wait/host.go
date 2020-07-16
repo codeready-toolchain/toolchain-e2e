@@ -489,3 +489,51 @@ func UntilNotificationHasConditions(conditions ...toolchainv1alpha1.Condition) N
 		return false
 	}
 }
+
+// ToolchainStatusWaitCriterion a function to check that an ToolchainStatus has the expected condition
+type ToolchainStatusWaitCriterion func(*HostAwaitility, *toolchainv1alpha1.ToolchainStatus) bool
+
+// UntilToolchainStatusHasConditions returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has exactly all the given status conditions
+func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition) ToolchainStatusWaitCriterion {
+	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
+		if test.ConditionsMatch(toolchainStatus.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in ToolchainStatus '%s`", toolchainStatus.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of ToolchainStatus '%s'. Actual: '%+v'; Expected: '%+v'", toolchainStatus.Name, toolchainStatus.Status.Conditions, conditions)
+		return false
+	}
+}
+
+// WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) (toolchainv1alpha1.ToolchainStatus, error) {
+	// there should only be one toolchain status with the name toolchain-status
+	name := "toolchain-status"
+	var toolchainStatus *toolchainv1alpha1.ToolchainStatus
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		toolchainStatus = &toolchainv1alpha1.ToolchainStatus{}
+		// retrieve the toolchainstatus from the host namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Ns,
+				Name:      name,
+			},
+			toolchainStatus)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of toolchainstatus '%s' in namespace '%s'...\n", name, a.Ns)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, toolchainStatus) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found toolchainstatus '%s': %+v", toolchainStatus.Name, toolchainStatus)
+		return true, nil
+	})
+	return *toolchainStatus, err
+}

@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20200702155133-4e0f9a1d7b18
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200608102500-f81c6b7e77cf
+	github.com/codeready-toolchain/api v0.0.0-20200715195555-28ba37e37ddd
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200715201956-5cea174a453d
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect

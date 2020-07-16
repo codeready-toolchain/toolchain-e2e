@@ -38,6 +38,10 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("verify member cluster status", func(t *testing.T) {
 			verifyMemberStatus(t, awaitility.Member())
 		})
+
+		t.Run("verify overall toolchain status", func(t *testing.T) {
+			verifyToolchainStatus(t, awaitility.Host())
+		})
 	})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
@@ -340,8 +344,13 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 }
 
 func verifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility) {
-	_, err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(memberStatusReady()))
-	require.NoError(t, err, "failed while waiting for toolchain member status")
+	_, err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(toolchainStatusReady()))
+	require.NoError(t, err, "failed while waiting for MemberStatus")
+}
+
+func verifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility) {
+	_, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(toolchainStatusReady()))
+	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
 
 func toIdentityName(userID string) string {

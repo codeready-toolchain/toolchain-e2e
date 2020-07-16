@@ -11,7 +11,7 @@ Requires Go version 1.13 - download for your development environment https://gol
 
 This repository uses https://github.com/golang/go/wiki/Modules[Go modules]. You may need to `export GO111MODULE=on` to turn modules support "on".
 
-== End-to-End tests
+== End-to-End Tests
 
 The e2e tests are executed against host and member operators running in OpenShift. The operators are built from the https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator] repositories.
 
@@ -31,9 +31,9 @@ It would work analogically also for the cases when the repositories either both 
 
 If you still don't know what to do with e2e tests in some use-cases, go to <<What to do>> section where all use-cases are covered.
 
-==== Prerequisites if running locally
+==== Prerequisites if Running Locally
 
-===== Pre-installed tools
+===== Pre-installed Tools
 * go
 * git
 * operator-sdk
@@ -75,7 +75,7 @@ It will also create all required CRDs, role and role bindings for the service ac
 
 NOTE: you can override the default namespace names where the end-to-end tests are going to be executed - eg.: `make test-e2e HOST_NS=my-host MEMBER_NS=my-member` file.
 
-===== What to do
+===== What To Do
 
 If you are still confused by the different e2e/operator location, execution and branch pairing, see the following cases and needed steps:
 
@@ -110,7 +110,7 @@ If you are still confused by the different e2e/operator location, execution and 
 *** 4. push all changes into all your forks
 *** 5. create a PRs for all repos https://github.com/codeready-toolchain/toolchain-e2e[toolchain-e2e], https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]
 
-=== Verifying the OpenShift CI configuration
+=== Verifying the OpenShift CI Configuration
 
  It's possible to verify the OpenShift CI config from the developer's laptop while all the jobs are executed on the remote, online CI platform:
 
@@ -127,7 +127,7 @@ assuming that you have the https://github.com/openshift/release[OpenShift Releas
 
 NOTE: you can ignore the RBAC issues that are displayed in the console
 
-== Deploying e2e resources without running tests
+== Deploying End-to-End Resources Without Running Tests
 
 All e2e resources (host operator, member operator, registration-service, CRDs, etc) can be deployed without running tests:
 
@@ -140,3 +140,25 @@ By default these targets deploy resources to `toolchain-host-operator` and `tool
 NOTE: You can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
 
 NOTE: If running in Minishift `eval $(minishift docker-env)` and `eval $(minishift oc-env)` are required. If running in CodeReady Containers `eval $(crc oc-env)` is required.
+
+== How to Test Mailgun Notification in Dev Environment
+* Get a cluster and setup the following env vars
+** `export QUAY_NAMESPACE=<your-quay-namespace>`
+** `export KUBECONFIG=<location-to-kubeconfig>`
+* Run `docker login quay.io`
+* Create https://github.com/codeready-toolchain/toolchain-infra/tree/master/config/oauth[IdP]
+* Create `<username>-host-operator` namespace
+* Create https://github.com/codeready-toolchain/toolchain-infra/blob/master/config/host_operator_secret.yaml[host-operator-secret]  on `<username>-host-operator` namespace
+* Create https://github.com/codeready-toolchain/toolchain-infra/blob/master/config/host-operator-config.yaml[host-operator-config]  on `<username>-host-operator` namespace
+* In https://github.com/codeready-toolchain/host-operator/blob/master/deploy/env/dev.yaml[host-operator/deploy/env/dev.yaml] add the following (similar to what is found in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/env/prod.yaml[host-operator/deploy/env/prod.yaml]): 
+```
+host-operator:
+  secret:
+    name: host-operator-secret
+  config-map:
+    name: host-operator-config
+```
+* Run `make dev-deploy-e2e-local`
+* Go to the registration-service link and sign in
+* Click on the `Get Started With CodeReady Toolchain` button
+* Approve your usersignup found on the `<username>-host-operator` namespace
