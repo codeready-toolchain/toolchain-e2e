@@ -149,11 +149,14 @@ NOTE: If running in Minishift `eval $(minishift docker-env)` and `eval $(minishi
 * Create https://github.com/codeready-toolchain/toolchain-infra/tree/master/config/oauth[IdP]
 * Create `<username>-host-operator` namespace
 * Create https://github.com/codeready-toolchain/toolchain-infra/blob/master/config/host_operator_secret.yaml[host-operator-secret]  on `<username>-host-operator` namespace
+* Create https://github.com/codeready-toolchain/toolchain-infra/blob/master/config/host-operator-config.yaml[host-operator-config]  on `<username>-host-operator` namespace
 * In https://github.com/codeready-toolchain/host-operator/blob/master/deploy/env/dev.yaml[host-operator/deploy/env/dev.yaml] add the following (similar to what is found in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/env/prod.yaml[host-operator/deploy/env/prod.yaml]): 
 ```
 host-operator:
   secret:
     name: host-operator-secret
+  config-map:
+    name: host-operator-config
 ```
 * Run `make dev-deploy-e2e-local`
 * Go to the registration-service link and sign in
