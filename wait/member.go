@@ -61,17 +61,21 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			a.T.Logf("error while getting MUR: %s", err)
 			return false
 		}
-		expAccountSpecBase := mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase
-		a.T.Logf("waiting for UserAccountSpecBase specs: Actual: '%+v'; Expected: '%+v', MasterUserRecordSpecs.UserID: Actual: '%+v'; Expected: '%+v' and MasterUserRecordSpecs.Disabled: Actual: '%+v'; Expected: '%+v'", ua.Spec.UserAccountSpecBase, expAccountSpecBase, ua.Spec.UserID, mur.Spec.UserID, ua.Spec.Disabled, mur.Spec.Disabled)
-		if ua.Spec.UserID != mur.Spec.UserID {
-			return false
-		}
-
-		if ua.Spec.Disabled != mur.Spec.Disabled {
-			return false
-		}
-
-		return reflect.DeepEqual(ua.Spec.UserAccountSpecBase, expAccountSpecBase)
+		a.T.Logf("comparing UserAccount '%s' vs MasterUserRecord '%s:"+
+			"\nUserAccountSpecBase specs: '%+v' vs '%+v',"+
+			"\nUserID: '%+v' vs '%+v'"+
+			"\nDisabled: '%+v' vs '%+v'",
+			ua.Name,
+			mur.Name,
+			ua.Spec.UserAccountSpecBase,
+			mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase,
+			ua.Spec.UserID,
+			mur.Spec.UserID,
+			ua.Spec.Disabled,
+			mur.Spec.Disabled)
+		return ua.Spec.UserID == mur.Spec.UserID &&
+			ua.Spec.Disabled == mur.Spec.Disabled &&
+			reflect.DeepEqual(ua.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
 	}
 }
 

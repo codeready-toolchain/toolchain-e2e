@@ -10,6 +10,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -103,23 +104,32 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	defer ctx.Cleanup()
 
 	// first group of users: the "cheesecake lovers"
-	cheesecakeTier, cheesecakeSyncIndexes := setupAccounts(t, ctx, awaitility, "cheesecake", "cheesecakelover%02d", count)
+	cheesecakeSyncIndexes := setupAccounts(t, ctx, awaitility, "cheesecake", "cheesecakelover%02d", count)
 	// second group of users: the "cookie lovers"
-	cookieTier, cookieSyncIndexes := setupAccounts(t, ctx, awaitility, "cookie", "cookielover%02d", count)
+	cookieSyncIndexes := setupAccounts(t, ctx, awaitility, "cookie", "cookielover%02d", count)
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs (ie, same number of namespaces)
-	updateTemplateTier(t, awaitility, cheesecakeTier, "advanced")
+	updateTemplateTier(t, awaitility, "cheesecake", "advanced")
 	// when updating the "cookie" tier with the "team" template refs (ie, different number of namespaces)
-	updateTemplateTier(t, awaitility, cookieTier, "team")
+	updateTemplateTier(t, awaitility, "cookie", "team")
 
 	// then
-	verifyResourceUpdates(t, awaitility, cheesecakeSyncIndexes, cheesecakeTier.Name, "advanced")
-	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, cookieTier.Name, "team")
+	verifyResourceUpdates(t, awaitility, cheesecakeSyncIndexes, "cheesecake", "advanced")
+	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, "cookie", "team")
 	// and when updating the "cookie" tier back to the "basic" template refs (ie, different number of namespaces)
-	updateTemplateTier(t, awaitility, cookieTier, "basic")
+	updateTemplateTier(t, awaitility, "cookie", "basic")
 
 	// then
-	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, cookieTier.Name, "basic")
+	verifyResourceUpdates(t, awaitility, cookieSyncIndexes, "cookie", "basic")
+
+	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
+	// cheesecake tier
+	// there should be 2 entries in the status.history (1 create + 1 update)
+	verifyStatus(t, awaitility, "cheesecake", 2)
+
+	// cookie tier
+	// there should be 3 entries in the status.history (1 create + 2 updates)
+	verifyStatus(t, awaitility, "cookie", 3)
 }
 
 // setupAccounts takes care of:
@@ -127,7 +137,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the `cheesecake` tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, ctx *test.Context, awaitility *wait.Awaitility, tierName, nameFmt string, count int) (*toolchainv1alpha1.NSTemplateTier, map[string]string) {
+func setupAccounts(t *testing.T, ctx *test.Context, awaitility *wait.Awaitility, tierName, nameFmt string, count int) map[string]string {
 	hostAwaitility := NewHostAwaitility(awaitility)
 	// first, let's create the `cheesecake` NSTemplateTier (to avoid messing with other tiers)
 	// We'll use the `basic` tier as a source of inspiration.
@@ -179,11 +189,11 @@ func setupAccounts(t *testing.T, ctx *test.Context, awaitility *wait.Awaitility,
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}
-	return tier, syncIndexes
+	return syncIndexes
 }
 
 // updateTemplateTier updates the given "tier" using the templateRefs of the "aliasTier" (basically, we reuse the templates of the "alias" tier)
-func updateTemplateTier(t *testing.T, awaitility *wait.Awaitility, tier *toolchainv1alpha1.NSTemplateTier, aliasTierName string) {
+func updateTemplateTier(t *testing.T, awaitility *wait.Awaitility, tierName string, aliasTierName string) {
 	hostAwaitility := NewHostAwaitility(awaitility)
 
 	// let's retrieve the `aliasTierName` NSTemplateTier
@@ -193,12 +203,33 @@ func updateTemplateTier(t *testing.T, awaitility *wait.Awaitility, tier *toolcha
 		Name:      aliasTierName,
 	}, otherTier)
 	require.NoError(t, err)
-
+	// make sure we have the very latest version of the given tier (to avoid the update conflict on the server-side)
+	// make sure we have the latest revision before updating
+	tier := &toolchainv1alpha1.NSTemplateTier{}
+	err = hostAwaitility.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: hostAwaitility.Ns,
+		Name:      tierName,
+	}, tier)
+	require.NoError(t, err)
 	// when the users' tier is updated using the `advanced` templates
 	tier.Spec.ClusterResources = otherTier.Spec.ClusterResources
 	tier.Spec.Namespaces = otherTier.Spec.Namespaces
 	err = hostAwaitility.Client.Update(context.TODO(), tier)
 	require.NoError(t, err)
+}
+
+func verifyStatus(t *testing.T, awaitility *wait.Awaitility, tierName string, expectedCount int) {
+	var tier *toolchainv1alpha1.NSTemplateTier
+	tier, err := awaitility.Host().WaitForNSTemplateTier(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+	require.NoError(t, err)
+	// first update: creation -> 0 MasterUserRecords affected
+	assert.Equal(t, 0, tier.Status.Updates[0].Failures)
+	assert.NotNil(t, tier.Status.Updates[0].CompletionTime)
+	// other updates
+	for i := range tier.Status.Updates[1:] {
+		assert.Equal(t, 0, tier.Status.Updates[i+1].Failures)
+		assert.NotNil(t, tier.Status.Updates[i+1].CompletionTime)
+	}
 }
 
 func verifyResourceUpdates(t *testing.T, awaitility *wait.Awaitility, syncIndexes map[string]string, tierName, aliasTierName string) {

@@ -57,7 +57,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
-	if err := a.Client.List(context.TODO(), murList); err != nil {
+	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Ns)); err != nil {
 		return nil, err
 	}
 	for _, mur := range murList.Items {
@@ -354,6 +354,14 @@ func UntilNSTemplateTierSpec(match NSTemplateTierSpecMatcher) NSTemplateTierWait
 	}
 }
 
+// UntilNSTemplateTierStatusUpdates verify that the NSTemplateTier status.Updates has the specified number of entries
+func UntilNSTemplateTierStatusUpdates(count int) NSTemplateTierWaitCriterion {
+	return func(tier *toolchainv1alpha1.NSTemplateTier) bool {
+		fmt.Printf("tier '%s' status.updates count: actual='%d' vs expected='%d'\n", tier.Name, len(tier.Status.Updates), count)
+		return len(tier.Status.Updates) == count
+	}
+}
+
 // Not negates the given matcher
 func Not(match NSTemplateTierSpecMatcher) NSTemplateTierSpecMatcher {
 	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
@@ -430,7 +438,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 		if len(templateUpdateRequests.Items) == count {
 			return true, nil
 		}
-		a.T.Logf("waiting %d TemplateUpdateRequests are found (currently: %d)", count, len(templateUpdateRequests.Items))
+		a.T.Logf("waiting until %d TemplateUpdateRequest(s) are found (current count: %d)", count, len(templateUpdateRequests.Items))
 		return false, nil
 	})
 }
