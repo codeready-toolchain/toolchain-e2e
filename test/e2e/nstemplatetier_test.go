@@ -263,10 +263,9 @@ func verifyResourceUpdates(t *testing.T, awaitility *wait.Awaitility, syncIndexe
 		)
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
-		// TODO: restore these assertions (commented out for now because they take a bit of time to complete)
-		// nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
-		// require.NoError(t, err)
-		// tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, checks, templateRefs)
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
+		require.NoError(t, err)
+		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, checks, templateRefs)
 	}
 
 	// and verify that all TemplateUpdateRequests were deleted
