@@ -245,9 +245,8 @@ func verifyResourceUpdates(t *testing.T, awaitility *wait.Awaitility, syncIndexe
 
 	templateRefs := tiers.GetTemplateRefs(hostAwaitility, tier.Name)
 	require.NoError(t, err)
-	// TODO: restore
-	// checks, err := tiers.NewChecks(aliasTierName) // here we need to use the `advanced` tier name so we can init the tier checks :|
-	// require.NoError(t, err)
+	checks, err := tiers.NewChecks(aliasTierName) // here we need to use the `advanced` tier name so we can init the tier checks :|
+	require.NoError(t, err)
 
 	memberAwaitility := NewMemberAwaitility(awaitility)
 	for userID, syncIndex := range syncIndexes {
