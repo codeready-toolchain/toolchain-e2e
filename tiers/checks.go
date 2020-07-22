@@ -79,6 +79,7 @@ func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
+		idlers("code", "dev", "stage"),
 	}
 }
 
@@ -109,6 +110,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
+		idlers("code", "dev", "stage"),
 	}
 }
 
@@ -152,6 +154,7 @@ func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
+		idlers("dev", "stage"),
 	}
 }
 
@@ -305,6 +308,17 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func idlers(namespaceTypes ...string) clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		for _, nt := range namespaceTypes {
+			idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt))
+			require.NoError(t, err)
+			assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+			assert.Equal(t, int32(28800), idler.Spec.TimeoutSeconds)
+		}
 	}
 }
 
