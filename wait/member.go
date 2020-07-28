@@ -356,6 +356,30 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.Cl
 	return quota, err
 }
 
+// WaitForIdler waits until an Idler with the given name exists
+func (a *MemberAwaitility) WaitForIdler(name string) (*toolchainv1alpha1.Idler, error) {
+	idler := &toolchainv1alpha1.Idler{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.Idler{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				idlerList := &toolchainv1alpha1.IdlerList{}
+				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				if err := a.Client.List(context.TODO(), idlerList, client.MatchingLabels(ls)); err != nil {
+					return false, err
+				}
+				a.T.Logf("waiting for availability of Idler '%s'. Currently available codeready-toolchain Idlers: '%+v'", name, idlerList)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found Idler '%s'", name)
+		idler = obj
+		return true, nil
+	})
+	return idler, err
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {

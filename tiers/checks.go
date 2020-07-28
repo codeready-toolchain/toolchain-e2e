@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
@@ -79,6 +81,7 @@ func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
+		idlers("code", "dev", "stage"),
 	}
 }
 
@@ -109,6 +112,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
+		idlers("code", "dev", "stage"),
 	}
 }
 
@@ -152,6 +156,7 @@ func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
+		idlers("dev", "stage"),
 	}
 }
 
@@ -305,6 +310,27 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func idlers(namespaceTypes ...string) clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		for _, nt := range namespaceTypes {
+			idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt))
+			require.NoError(t, err)
+			assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+			assert.Equal(t, int32(28800), idler.Spec.TimeoutSeconds)
+		}
+
+		// Make sure there is no unexpected idlers
+		idlers := &v1alpha1.IdlerList{}
+		err := memberAwait.Client.List(context.TODO(), idlers,
+			client.MatchingLabels(map[string]string{
+				"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+				"toolchain.dev.openshift.com/owner":    userName,
+			}))
+		require.NoError(t, err)
+		assert.Len(t, idlers.Items, len(namespaceTypes))
 	}
 }
 

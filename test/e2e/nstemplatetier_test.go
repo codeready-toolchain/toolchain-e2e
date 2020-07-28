@@ -8,7 +8,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/tiers"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	"github.com/operator-framework/operator-sdk/pkg/test"
@@ -137,7 +136,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the `cheesecake` tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, ctx *test.Context, awaitility *wait.Awaitility, tierName, nameFmt string, count int) map[string]string {
+func setupAccounts(t *testing.T, ctx *test.Context, awaitility *Awaitility, tierName, nameFmt string, count int) map[string]string {
 	hostAwaitility := NewHostAwaitility(awaitility)
 	// first, let's create the `cheesecake` NSTemplateTier (to avoid messing with other tiers)
 	// We'll use the `basic` tier as a source of inspiration.
@@ -193,7 +192,7 @@ func setupAccounts(t *testing.T, ctx *test.Context, awaitility *wait.Awaitility,
 }
 
 // updateTemplateTier updates the given "tier" using the templateRefs of the "aliasTier" (basically, we reuse the templates of the "alias" tier)
-func updateTemplateTier(t *testing.T, awaitility *wait.Awaitility, tierName string, aliasTierName string) {
+func updateTemplateTier(t *testing.T, awaitility *Awaitility, tierName string, aliasTierName string) {
 	hostAwaitility := NewHostAwaitility(awaitility)
 
 	// let's retrieve the `aliasTierName` NSTemplateTier
@@ -218,7 +217,7 @@ func updateTemplateTier(t *testing.T, awaitility *wait.Awaitility, tierName stri
 	require.NoError(t, err)
 }
 
-func verifyStatus(t *testing.T, awaitility *wait.Awaitility, tierName string, expectedCount int) {
+func verifyStatus(t *testing.T, awaitility *Awaitility, tierName string, expectedCount int) {
 	var tier *toolchainv1alpha1.NSTemplateTier
 	tier, err := awaitility.Host().WaitForNSTemplateTier(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
@@ -232,7 +231,7 @@ func verifyStatus(t *testing.T, awaitility *wait.Awaitility, tierName string, ex
 	}
 }
 
-func verifyResourceUpdates(t *testing.T, awaitility *wait.Awaitility, syncIndexes map[string]string, tierName, aliasTierName string) {
+func verifyResourceUpdates(t *testing.T, awaitility *Awaitility, syncIndexes map[string]string, tierName, aliasTierName string) {
 	hostAwaitility := NewHostAwaitility(awaitility)
 	//
 	aliasTier, err := hostAwaitility.WaitForNSTemplateTier(aliasTierName)
@@ -253,9 +252,9 @@ func verifyResourceUpdates(t *testing.T, awaitility *wait.Awaitility, syncIndexe
 		usersignup, err := hostAwaitility.WaitForUserSignup(userID)
 		require.NoError(t, err)
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
-			wait.UntilUserAccountHasConditions(provisioned()),
-			wait.UntilUserAccountHasSpec(expectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
-			wait.UntilUserAccountMatchesMur(hostAwaitility))
+			UntilUserAccountHasConditions(provisioned()),
+			UntilUserAccountHasSpec(expectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
+			UntilUserAccountMatchesMur(hostAwaitility))
 		require.NoError(t, err)
 		_, err = hostAwaitility.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
