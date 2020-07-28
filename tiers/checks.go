@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
@@ -319,6 +321,16 @@ func idlers(namespaceTypes ...string) clusterObjectsCheck {
 			assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
 			assert.Equal(t, int32(28800), idler.Spec.TimeoutSeconds)
 		}
+
+		// Make sure there is no unexpected idlers
+		idlers := &v1alpha1.IdlerList{}
+		err := memberAwait.Client.List(context.TODO(), idlers,
+			client.MatchingLabels(map[string]string{
+				"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+				"toolchain.dev.openshift.com/owner":    userName,
+			}))
+		require.NoError(t, err)
+		assert.Len(t, idlers.Items, len(namespaceTypes))
 	}
 }
 
