@@ -88,9 +88,10 @@ If you are still confused by the different e2e/operator location, execution and 
 ** *You are working in both repos `toolchain-e2e` and `host-operator` with a matching branch name, so you need to run e2e tests against your current code located in `../host-operator` directory:*
 *** run `make test-e2e-host-local`
 ** *You are working in all three repos `toolchain-e2e`, `host-operator` and `member-operator`*
-*** This is prohibited and will result in an error like `ERROR WHILE TRYING TO PAIR PRs` in the CI build. See the explanation in <<End-to-End Tests>> section. You should make functional changes to the operator repositories independently.
+*** run `make test-e2e-local`
+*** *Note:* PRs will fail when branches of the same name exist in your host-operator, member-operator and e2e repos at the same time. See the reasoning behind this in the <<End-to-End Tests>> section. However, it may still be useful to test all changes together since that represents the eventual state of the system.
 
-* *Creating a PR:*
+* *Creating PRs:*
 ** *Your PR doesn't need any changes in https://github.com/codeready-toolchain/host-operator[host-operator] repo nor https://github.com/codeready-toolchain/member-operator[member-operator] repo:*
 *** 1. check the name of a branch you are going to create a PR for
 *** 2. make sure that your forks of both repos (https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]) don't contain a branch with the same name
@@ -105,11 +106,7 @@ If you are still confused by the different e2e/operator location, execution and 
 ** *Your PR requires changes in https://github.com/codeready-toolchain/member-operator[member-operator] repo but not in https://github.com/codeready-toolchain/host-operator[host-operator] repo:*
 *** See the previous case and just swap member-operator and host-operator.
 ** *Your PR requires changes in both repos https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]:*
-*** 1. check the name of a branch you are going to create a PR for
-*** 2. create a branch with the same name within your fork of https://github.com/codeready-toolchain/host-operator[host-operator] repo and put all necessary changes there
-*** 3. create a branch with the same name within your fork of https://github.com/codeready-toolchain/member-operator[member-operator] repo and put all necessary changes there
-*** 4. push all changes into all your forks
-*** 5. create a PRs for all repos https://github.com/codeready-toolchain/toolchain-e2e[toolchain-e2e], https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]
+*** This is prohibited and will result in an error like `ERROR WHILE TRYING TO PAIR PRs` in the CI build. See the reasoning behind this in the <<End-to-End Tests>> section.
 
 === Verifying the OpenShift CI Configuration
 
