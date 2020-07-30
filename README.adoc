@@ -83,13 +83,12 @@ If you are still confused by the different e2e/operator location, execution and 
 * *Working locally:*
 ** *Need to verify changes in e2e tests against the latest version of both operators:*
 *** run `make test-e2e`
-** *You are working in both repos `toolchain-e2e` and `member-operator` with a matching branch name, so you need to run e2e tests against your current code located in `../member-operator` directory:*
+** *You are working in both repos `toolchain-e2e` and `member-operator`, so you need to run e2e tests against your current code located in `../member-operator` directory:*
 *** run `make test-e2e-member-local`
-** *You are working in both repos `toolchain-e2e` and `host-operator` with a matching branch name, so you need to run e2e tests against your current code located in `../host-operator` directory:*
+** *You are working in both repos `toolchain-e2e` and `host-operator`, so you need to run e2e tests against your current code located in `../host-operator` directory:*
 *** run `make test-e2e-host-local`
-** *You are working in all three repos `toolchain-e2e`, `host-operator` and `member-operator`*
+** *You are working in all three repos `toolchain-e2e`, `host-operator` and `member-operator`, so you need to run e2e tests against your current code located in both directories `../host-operator` and `../member-operator`:*
 *** run `make test-e2e-local`
-*** *Note:* PRs will fail when branches of the same name exist in your host-operator, member-operator and e2e repos at the same time. See the reasoning behind this in the <<End-to-End Tests>> section. However, it may still be useful to test all changes together since that represents the eventual state of the system.
 
 * *Creating PRs:*
 ** *Your PR doesn't need any changes in https://github.com/codeready-toolchain/host-operator[host-operator] repo nor https://github.com/codeready-toolchain/member-operator[member-operator] repo:*
