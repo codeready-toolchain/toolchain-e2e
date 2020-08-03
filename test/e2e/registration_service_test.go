@@ -430,7 +430,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
 
 	// Verify console URL
-	memberCluster, ok, err := s.awaitility.Host().GetKubeFedCluster(cluster.Member, nil)
+	memberCluster, ok, err := s.awaitility.Host().GetToolchainCluster(cluster.Member, nil)
 	require.NoError(s.T(), err)
 	require.True(s.T(), ok)
 	assert.Equal(s.T(), expectedConsoleURL(s.T(), s.awaitility.Member(), memberCluster), mp["consoleURL"])

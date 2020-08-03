@@ -100,8 +100,8 @@ endif
 
 .PHONY: setup-kubefed
 setup-kubefed:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/MatousJobanek/toolchain-common/toolchain-cluster-script/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh  | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 
 ###########################################################
 #
@@ -325,7 +325,7 @@ ifeq ($(IS_OS_3),)
 		fi
 		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]; do \
+		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || ([[ ${REPO_NAME} == "member-operator" ]] && [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]); do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
 			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
 			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \

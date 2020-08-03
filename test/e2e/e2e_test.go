@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/kubefed/pkg/apis/core/v1beta1"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -324,7 +323,7 @@ func verifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	tiers.VerifyNsTemplateSet(t, awaitility, userAccount, tier)
 
 	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetKubeFedCluster(cluster.Member, nil)
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -357,7 +356,7 @@ func toIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "testIdP", userID)
 }
 
-func expectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster v1beta1.KubeFedCluster) string {
+func expectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster toolchainv1alpha1.ToolchainCluster) string {
 	// If OpenShift 3.x console available then we expect its URL in the status
 	consoleURL := openShift3XConsoleURL(cluster.Spec.APIEndpoint)
 	if consoleURL == "" {
