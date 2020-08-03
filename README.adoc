@@ -15,11 +15,11 @@ This repository uses https://github.com/golang/go/wiki/Modules[Go modules]. You 
 
 The e2e tests are executed against host and member operators running in OpenShift. The operators are built from the https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator] repositories.
 
-Since the changes in e2e repo sometimes require also changes in some of the operator repositories, the logic that executes the e2e tests supports a feature of pairing PRs based on branch names.
+Since the changes in the e2e repo sometimes require changes in some of the operator repositories at the same time, the logic that executes the e2e tests supports a feature of pairing the e2e PR with *one* other PR based on branch names.
 Before the e2e tests are executed in openshift-ci, the logic automatically tries to pair a PR opened for this (toolchain-e2e) repository with a branch of the same name that potentially could exist in any of the developer's fork of the operator repositories.
 
 For example, if a developer with GH account `cooljohn` opens a PR (for toolchain-e2e repo) from a branch `fix-reconcile`, then the logic checks if there is a branch `fix-reconcile` also in the `cooljohn/host-operator` and `cooljohn/member-operator` forks.
-Let say that `cooljohn/host-operator` contains such a branch but `cooljohn/member-operator` doesn't, then the logic:
+Let's say that `cooljohn/host-operator` contains such a branch but `cooljohn/member-operator` doesn't, then the logic:
 
 1. clones latest changes of both repos https://github.com/codeready-toolchain/host-operator[codeready-toolchain/host-operator] and https://github.com/codeready-toolchain/member-operator[codeready-toolchain/member-operator]
 2. fetches the `fix-reconcile` branch from `cooljohn/host-operator` fork
@@ -27,9 +27,10 @@ Let say that `cooljohn/host-operator` contains such a branch but `cooljohn/membe
 4. builds images from the merge branch of `host-operator` repo and from `master` branch of `member-operator` repo & deploys them to OpenShift
 5. runs e2e tests taken from the opened PR
 
-It would work analogically also for the cases when the repositories either both or none of them contain the branch name.
+It would work analogically also for the case when none of the repositories contain the branch name. However, if *both* repositories contain the branch name then it will result in an error.
+This is by design because OLM does not ensure that both the host-operator and member-operator will be updated at the same time in production. Prohibiting PR pairing with more than one repo helps ensure they do not depend on one another and can be updated separately.
 
-If you still don't know what to do with e2e tests in some use-cases, go to <<What to do>> section where all use-cases are covered.
+If you still don't know what to do with e2e tests in some use-cases, go to <<What To Do>> section where all use-cases are covered.
 
 ==== Prerequisites if Running Locally
 
@@ -89,7 +90,7 @@ If you are still confused by the different e2e/operator location, execution and 
 ** *You are working in all three repos `toolchain-e2e`, `host-operator` and `member-operator`, so you need to run e2e tests against your current code located in both directories `../host-operator` and `../member-operator`:*
 *** run `make test-e2e-local`
 
-* *Creating a PR:*
+* *Creating PRs:*
 ** *Your PR doesn't need any changes in https://github.com/codeready-toolchain/host-operator[host-operator] repo nor https://github.com/codeready-toolchain/member-operator[member-operator] repo:*
 *** 1. check the name of a branch you are going to create a PR for
 *** 2. make sure that your forks of both repos (https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]) don't contain a branch with the same name
@@ -104,11 +105,7 @@ If you are still confused by the different e2e/operator location, execution and 
 ** *Your PR requires changes in https://github.com/codeready-toolchain/member-operator[member-operator] repo but not in https://github.com/codeready-toolchain/host-operator[host-operator] repo:*
 *** See the previous case and just swap member-operator and host-operator.
 ** *Your PR requires changes in both repos https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]:*
-*** 1. check the name of a branch you are going to create a PR for
-*** 2. create a branch with the same name within your fork of https://github.com/codeready-toolchain/host-operator[host-operator] repo and put all necessary changes there
-*** 3. create a branch with the same name within your fork of https://github.com/codeready-toolchain/member-operator[member-operator] repo and put all necessary changes there
-*** 4. push all changes into all your forks
-*** 5. create a PRs for all repos https://github.com/codeready-toolchain/toolchain-e2e[toolchain-e2e], https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]
+*** This is prohibited and will result in an error like `ERROR WHILE TRYING TO PAIR PRs` in the CI build. See the reasoning behind this in the <<End-to-End Tests>> section.
 
 === Verifying the OpenShift CI Configuration
 
