@@ -545,6 +545,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	name := "toolchain-member-status"
 	var memberStatus toolchainv1alpha1.MemberStatus
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		memberStatus = toolchainv1alpha1.MemberStatus{}
 		// retrieve the memberstatus from the member namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
