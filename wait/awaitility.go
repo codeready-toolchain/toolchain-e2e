@@ -88,9 +88,9 @@ func (a *Awaitility) WaitForReadyToolchainClusters() error {
 	if err := a.Host().WaitForToolchainCluster(cluster.Member, ReadyToolchainCluster); err != nil {
 		return err
 	}
-	//if err := a.Member().WaitForToolchainCluster(cluster.Host, ReadyToolchainCluster); err != nil {
-	//	return err
-	//}
+	if err := a.Member().WaitForToolchainCluster(cluster.Host, ReadyToolchainCluster); err != nil {
+		return err
+	}
 	return nil
 }
 

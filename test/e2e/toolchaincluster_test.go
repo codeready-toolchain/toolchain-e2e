@@ -18,7 +18,7 @@ func TestToolchainClusterE2E(t *testing.T) {
 	ctx, awaitility := testsupport.WaitForDeployments(t, toolchainClusterList)
 	defer ctx.Cleanup()
 
-	//verifyToolchainCluster(ctx, awaitility, cluster.Host, awaitility.Member().SingleAwaitility)
+	verifyToolchainCluster(ctx, awaitility, cluster.Host, awaitility.Member().SingleAwaitility)
 	verifyToolchainCluster(ctx, awaitility, cluster.Member, awaitility.Host().SingleAwaitility)
 }
 
