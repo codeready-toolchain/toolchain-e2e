@@ -30,7 +30,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member setup-kubefed
+deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member setup-toolchainclusters
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -59,8 +59,8 @@ test-e2e-registration-local:
 
 .PHONY: e2e-run
 e2e-run:
-	oc get kubefedcluster -n $(HOST_NS)
-	oc get kubefedcluster -n $(MEMBER_NS)
+	oc get toolchaincluster -n $(HOST_NS)
+	oc get toolchaincluster -n $(MEMBER_NS)
 	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
 	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace $(TEST_NS) --verbose --go-test-flags "-timeout=30m -failfast" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
@@ -71,6 +71,11 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs REPO_NAME=host-operator NAMESPACE=${HOST_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS}
 	$(MAKE) print-operator-logs REPO_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
+else
+	@echo "you can print logs using the commands:"
+	@echo "oc logs deployment.apps/host-operator --namespace ${HOST_NS}"
+	@echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS}"
+	@echo "oc logs deployment.apps/registration-service --namespace ${REGISTRATION_SERVICE_NS}"
 endif
 
 .PHONY: print-operator-logs
@@ -93,15 +98,15 @@ ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
     else
         # Running on CRC
         ifeq ($(IS_KUBE_ADMIN),)
-            $(error You must be logged in as kube:admin")
+			$(error You must be logged in as kube:admin")
         endif
     endif
 endif
 
-.PHONY: setup-kubefed
-setup-kubefed:
-	curl -sSL https://raw.githubusercontent.com/MatousJobanek/toolchain-common/toolchain-cluster-script/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh  | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+.PHONY: setup-toolchainclusters
+setup-toolchainclusters:
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 
 ###########################################################
 #
@@ -325,11 +330,11 @@ ifeq ($(IS_OS_3),)
 		fi
 		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || ([[ ${REPO_NAME} == "member-operator" ]] && [[ -z `oc get crd kubefedclusters.core.kubefed.io 2>/dev/null` ]]); do \
+		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]]; do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
 			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
 			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
-			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} and CRD kubefedclusters.core.kubefed.io to be available in the cluster - see following info for debugging:"; \
+			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} - see following info for debugging:"; \
 			   echo "================================ CatalogSource =================================="; \
 			   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
 			   echo "================================ CatalogSource Pod Logs =================================="; \
@@ -339,7 +344,7 @@ ifeq ($(IS_OS_3),)
 			   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
 			   exit 1; \
 			fi; \
-			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}" and CRD kubefedclusters.core.kubefed.io to be available in the cluster; \
+			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
 			sleep 1; \
 		done
 else
