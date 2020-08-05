@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20200730091449-94992fef0c87
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200717175027-3b8c7e68e409
+	github.com/codeready-toolchain/api v0.0.0-20200805071634-c62858ce3204
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200805140615-5132f35e5270
 	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
@@ -20,10 +20,6 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.5.2
 )
-
-replace github.com/codeready-toolchain/toolchain-common => github.com/MatousJobanek/toolchain-common v0.0.0-20200804092049-b1806c3fe973
-
-replace github.com/codeready-toolchain/api => github.com/MatousJobanek/api v0.0.0-20200803150704-20052fba4e3f
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.0.0+incompatible

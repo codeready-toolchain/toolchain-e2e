@@ -353,7 +353,7 @@ func verifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility) {
 }
 
 func toIdentityName(userID string) string {
-	return fmt.Sprintf("%s:%s", "testIdP", userID)
+	return fmt.Sprintf("%s:%s", "rhd", userID)
 }
 
 func expectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster toolchainv1alpha1.ToolchainCluster) string {

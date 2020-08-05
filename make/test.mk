@@ -98,15 +98,15 @@ ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
     else
         # Running on CRC
         ifeq ($(IS_KUBE_ADMIN),)
-            $(error You must be logged in as kube:admin")
+			$(error You must be logged in as kube:admin")
         endif
     endif
 endif
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	curl -sSL https://raw.githubusercontent.com/MatousJobanek/toolchain-common/toolchain-cluster-script/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/MatousJobanek/toolchain-common/toolchain-cluster-script/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
 
 ###########################################################
 #
