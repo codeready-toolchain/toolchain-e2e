@@ -21,18 +21,18 @@ import (
 )
 
 type MemberAwaitility struct {
-	*SingleAwaitilityImpl
+	*SingleAwaitility
 }
 
 func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
 	return &MemberAwaitility{
-		SingleAwaitilityImpl: NewSingleAwaitility(a.T, a.Client, a.MemberNs, a.HostNs),
+		SingleAwaitility: NewSingleAwaitility(a.T, a.Client, a.MemberNs, a.HostNs),
 	}
 }
 
 func (a *MemberAwaitility) WithRetryOptions(options ...interface{}) *MemberAwaitility {
 	return &MemberAwaitility{
-		SingleAwaitilityImpl: a.SingleAwaitilityImpl.WithRetryOptions(options...),
+		SingleAwaitility: a.SingleAwaitility.WithRetryOptions(options...),
 	}
 }
 
@@ -48,7 +48,7 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 		userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
 		expectedSpec := expected.DeepCopy()
 		expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
-		return reflect.DeepEqual(userAccount.Spec, *expectedSpec) && ua.Spec.NSTemplateSet.CompareTo(expected.NSTemplateSet)
+		return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
 	}
 }
 
@@ -545,6 +545,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	name := "toolchain-member-status"
 	var memberStatus toolchainv1alpha1.MemberStatus
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		memberStatus = toolchainv1alpha1.MemberStatus{}
 		// retrieve the memberstatus from the member namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{

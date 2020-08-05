@@ -165,7 +165,7 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 }
 
 func newUserSignup(t *testing.T, host *wait.HostAwaitility, username string, email string) *v1alpha1.UserSignup {
-	memberCluster, ok, err := host.GetKubeFedCluster(cluster.Member, wait.ReadyKubeFedCluster)
+	memberCluster, ok, err := host.GetToolchainCluster(cluster.Member, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	require.True(t, ok)
 

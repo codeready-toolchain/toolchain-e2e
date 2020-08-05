@@ -16,18 +16,18 @@ import (
 )
 
 type HostAwaitility struct {
-	*SingleAwaitilityImpl
+	*SingleAwaitility
 }
 
 func NewHostAwaitility(a *Awaitility) *HostAwaitility {
 	return &HostAwaitility{
-		SingleAwaitilityImpl: NewSingleAwaitility(a.T, a.Client, a.HostNs, a.MemberNs),
+		SingleAwaitility: NewSingleAwaitility(a.T, a.Client, a.HostNs, a.MemberNs),
 	}
 }
 
 func (a *HostAwaitility) WithRetryOptions(options ...interface{}) *HostAwaitility {
 	return &HostAwaitility{
-		SingleAwaitilityImpl: a.SingleAwaitilityImpl.WithRetryOptions(options...),
+		SingleAwaitility: a.SingleAwaitility.WithRetryOptions(options...),
 	}
 }
 

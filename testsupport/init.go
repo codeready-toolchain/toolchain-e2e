@@ -23,7 +23,7 @@ import (
 )
 
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
-// and corresponding KubeFedCluster CRDs are present, running and ready. Based on the given cluster type
+// and corresponding ToolchainCluster CRDs are present, running and ready. Based on the given cluster type
 // that represents the current operator that is the target of the e2e test it retrieves namespace names.
 // Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
@@ -76,7 +76,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 		RegistrationServiceURL: registrationServiceURL,
 	}
 
-	err = awaitility.WaitForReadyKubeFedClusters()
+	err = awaitility.WaitForReadyToolchainClusters()
 	require.NoError(t, err)
 
 	t.Log("both operators are ready and in running state")
