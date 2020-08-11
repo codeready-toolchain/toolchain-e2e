@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -28,7 +28,7 @@ type notificationTestSuite struct {
 
 func (s *notificationTestSuite) SetupSuite() {
 	notificationList := &v1alpha1.NotificationList{}
-	s.ctx, s.awaitility = testsupport.WaitForDeployments(s.T(), notificationList)
+	s.ctx, s.awaitility = WaitForDeployments(s.T(), notificationList)
 	s.hostAwait = s.awaitility.Host()
 	s.memberAwait = s.awaitility.Member()
 	s.namespace = s.awaitility.HostNs
@@ -42,16 +42,16 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 
 	// Create and approve "janedoe"
 	janedoeName := "janedoe"
-	testsupport.CreateAndApproveSignup(s.T(), s.awaitility, janedoeName)
+	CreateAndApproveSignup(s.T(), s.awaitility, janedoeName)
 
 	s.T().Run("notification created and deleted", func(t *testing.T) {
 		hostAwait := wait.NewHostAwaitility(s.awaitility)
 
 		mur, err := hostAwait.WaitForMasterUserRecord(janedoeName,
-			wait.UntilMasterUserRecordHasConditions(testsupport.Provisioned(), testsupport.ProvisionedNotificationCRCreated()))
+			wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 		require.NoError(t, err)
 
-		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(testsupport.Sent()))
+		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(Sent()))
 		require.NoError(t, err)
 		require.NotNil(t, notification)
 		assert.Equal(t, mur.Name+"-provisioned", notification.Name)

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
@@ -72,7 +72,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 
 	// Confirm the MUR was created and ready
 
-	testsupport.VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 
@@ -83,9 +83,9 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
 	// Create a new UserSignup with the given approved flag
-	userSignup := testsupport.NewUserSignup(s.T(), s.awaitility.Host(), username, email)
+	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -99,7 +99,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alpha1.BannedUser {
 	// Create the BannedUser
 	bannedUser := newBannedUser(s.awaitility.Host(), email)
-	err := s.awaitility.Client.Create(context.TODO(), bannedUser, testsupport.CleanupOptions(s.ctx))
+	err := s.awaitility.Client.Create(context.TODO(), bannedUser, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)

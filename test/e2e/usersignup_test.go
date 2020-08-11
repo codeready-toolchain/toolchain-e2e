@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	uuid "github.com/satori/go.uuid"
@@ -24,7 +24,7 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.awaitility = testsupport.WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.awaitility = WaitForDeployments(s.T(), userSignupList)
 	s.hostAwait = s.awaitility.Host()
 	s.namespace = s.awaitility.HostNs
 }
@@ -70,37 +70,37 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// Create user signup
 	s.setApprovalPolicyConfig("automatic")
-	userSignup := testsupport.NewUserSignup(s.T(), s.awaitility.Host(), "reginald@alpha.com", "reginald@alpha.com")
+	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), "reginald@alpha.com", "reginald@alpha.com")
 
 	// Remove the specified target cluster
 	userSignup.Spec.TargetCluster = ""
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	// Check the UserSignup is approved now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(testsupport.ApprovedAutomatically()...))
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	testsupport.VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create UserSignup with a username that we don't need to transform
-	userSignup, _ := s.createAndCheckUserSignup(true, "paul-no-need-to-transform", "paulnoneedtotransform@hotel.com", testsupport.ApprovedByAdmin()...)
+	userSignup, _ := s.createAndCheckUserSignup(true, "paul-no-need-to-transform", "paulnoneedtotransform@hotel.com", ApprovedByAdmin()...)
 	require.Equal(s.T(), "paul-no-need-to-transform", userSignup.Status.CompliantUsername)
 
 	// Create UserSignup with a username to transform
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", testsupport.ApprovedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", ApprovedByAdmin()...)
 	require.Equal(s.T(), "paul", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the original username matching the transformed username of the existing signup
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul", "paulathotel@hotel.com", testsupport.ApprovedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul", "paulathotel@hotel.com", ApprovedByAdmin()...)
 	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the same original username but different user ID
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", testsupport.ApprovedByAdmin()...)
+	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", ApprovedByAdmin()...)
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
 }
 
@@ -108,14 +108,14 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *
 	// Create a new UserSignup with approved flag set to false
 	username := "testuser" + uuid.NewV4().String()
 	email := username + "@test.com"
-	userSignup := testsupport.NewUserSignup(s.T(), s.awaitility.Host(), username, email)
+	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), username, email)
 
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	// Check the UserSignup is pending approval now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(testsupport.PendingApproval()...))
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(PendingApproval()...))
 	require.NoError(s.T(), err)
 
 	// Confirm the CompliantUsername has NOT been set
@@ -129,12 +129,12 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertManualApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	id := uuid.NewV4().String()
-	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", testsupport.ApprovedByAdmin()...)
+	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", ApprovedByAdmin()...)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	id := uuid.NewV4().String()
-	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", testsupport.ApprovedAutomatically()...)
+	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", ApprovedAutomatically()...)
 }
 
 func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
@@ -148,11 +148,11 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 		require.NoError(s.T(), err)
 
 		// Check the UserSignup is approved now
-		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(testsupport.ApprovedByAdmin()...))
+		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
 		require.NoError(s.T(), err)
 
 		// Confirm the MUR was created
-		testsupport.VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+		VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
 	})
 
 	s.T().Run("usersignup created with approved set to true", func(t *testing.T) {

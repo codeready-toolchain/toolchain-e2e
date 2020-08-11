@@ -102,16 +102,6 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 	}
 }
 
-func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility) {
-	_, err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(ToolchainStatusReady()))
-	require.NoError(t, err, "failed while waiting for MemberStatus")
-}
-
-func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility) {
-	_, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
-	require.NoError(t, err, "failed while waiting for ToolchainStatus")
-}
-
 func ExpectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster toolchainv1alpha1.ToolchainCluster) string {
 	// If OpenShift 3.x console available then we expect its URL in the status
 	consoleURL := openShift3XConsoleURL(cluster.Spec.APIEndpoint)

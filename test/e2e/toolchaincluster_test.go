@@ -6,7 +6,7 @@ import (
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 
 func TestToolchainClusterE2E(t *testing.T) {
 	toolchainClusterList := &v1alpha1.ToolchainClusterList{}
-	ctx, awaitility := testsupport.WaitForDeployments(t, toolchainClusterList)
+	ctx, awaitility := WaitForDeployments(t, toolchainClusterList)
 	defer ctx.Cleanup()
 
 	verifyToolchainCluster(ctx, awaitility, cluster.Host, awaitility.Member().SingleAwaitility)
@@ -44,7 +44,7 @@ func verifyToolchainCluster(ctx *test.Context, awaitility *wait.Awaitility, tool
 		)
 
 		// when
-		err := awaitility.Client.Create(context.TODO(), toolchainCluster, testsupport.CleanupOptions(ctx))
+		err := awaitility.Client.Create(context.TODO(), toolchainCluster, CleanupOptions(ctx))
 
 		// then the ToolchainCluster should be ready
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func verifyToolchainCluster(ctx *test.Context, awaitility *wait.Awaitility, tool
 			wait.CapacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 		// when
-		err := awaitility.Client.Create(context.TODO(), toolchainCluster, testsupport.CleanupOptions(ctx))
+		err := awaitility.Client.Create(context.TODO(), toolchainCluster, CleanupOptions(ctx))
 
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)

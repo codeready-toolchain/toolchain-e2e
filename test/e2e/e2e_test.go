@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
@@ -19,32 +19,32 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, awaitility := testsupport.WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, awaitility := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
 		t.Run("verify member cluster status", func(t *testing.T) {
-			testsupport.VerifyMemberStatus(t, awaitility.Member())
+			VerifyMemberStatus(t, awaitility.Member())
 		})
 
 		t.Run("verify overall toolchain status", func(t *testing.T) {
-			testsupport.VerifyToolchainStatus(t, awaitility.Host())
+			VerifyToolchainStatus(t, awaitility.Host())
 		})
 	})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
-	signups := testsupport.CreateMultipleSignups(t, ctx, awaitility, 5)
+	signups := CreateMultipleSignups(t, ctx, awaitility, 5)
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup := testsupport.CreateAndApproveSignup(t, awaitility, johnsmithName)
+	johnSignup := CreateAndApproveSignup(t, awaitility, johnsmithName)
 	extrajohnName := "extrajohn"
-	johnExtraSignup := testsupport.CreateAndApproveSignup(t, awaitility, extrajohnName)
+	johnExtraSignup := CreateAndApproveSignup(t, awaitility, extrajohnName)
 
-	testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
-	testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+	VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+	VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -59,14 +59,14 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete identity and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: testsupport.ToIdentityName(johnSignup.Name)}, identity)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(johnSignup.Name)}, identity)
 			require.NoError(t, err)
 
 			// when
@@ -74,8 +74,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete user mapping and wait until recreated", func(t *testing.T) {
@@ -90,14 +90,14 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: testsupport.ToIdentityName(johnSignup.Name)}, identity)
+			err := awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(johnSignup.Name)}, identity)
 			require.NoError(t, err)
 			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 
@@ -106,8 +106,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
@@ -131,8 +131,8 @@ func TestE2EFlow(t *testing.T) {
 				_, err := awaitility.Member().WaitForNamespace(johnSignup.Spec.Username, ref)
 				require.NoError(t, err)
 			}
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
-			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
 	})
 
@@ -178,11 +178,11 @@ func TestE2EFlow(t *testing.T) {
 		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
-		testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
+		VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 	})
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		testsupport.VerifyMultipleSignups(t, awaitility, signups)
+		VerifyMultipleSignups(t, awaitility, signups)
 	})
 }
