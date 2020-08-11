@@ -46,7 +46,7 @@ func (s *userManagementTestSuite) TearDownTest() {
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.setApprovalPolicyConfig("automatic")
-	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", approvedByAdmin()...)
+	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", testsupport.ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
 		userSignup.Spec.Deactivated = true
@@ -87,7 +87,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Confirm the user is banned
 		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(approvedAutomaticallyAndBanned()...))
+			wait.UntilUserSignupHasConditions(testsupport.ApprovedAutomaticallyAndBanned()...))
 		require.NoError(s.T(), err)
 
 		// Confirm that a MasterUserRecord is deleted
@@ -103,7 +103,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.createAndCheckBannedUser(email)
 
 		// Check that no MUR created
-		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, banned()...)
+		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, testsupport.Banned()...)
 		mur, err := s.awaitility.Host().GetMasterUserRecord(wait.WithMurName("testuser" + id))
 		require.NoError(s.T(), err)
 		assert.Nil(s.T(), mur)
@@ -158,7 +158,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Confirm the user is banned
 		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(approvedAutomaticallyAndBanned()...))
+			wait.UntilUserSignupHasConditions(testsupport.ApprovedAutomaticallyAndBanned()...))
 		require.NoError(s.T(), err)
 
 		// Confirm that a MasterUserRecord is deleted
@@ -176,7 +176,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 			// Confirm the user is provisioned
 			_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(approvedAutomatically()...))
+				wait.UntilUserSignupHasConditions(testsupport.ApprovedAutomatically()...))
 			require.NoError(s.T(), err)
 
 			// Confirm the MUR is created
@@ -190,9 +190,9 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	s.setApprovalPolicyConfig("manual")
 
 	// Create UserSignup
-	userSignup := createAndApproveSignup(s.T(), s.awaitility, "janedoe")
+	userSignup := testsupport.CreateAndApproveSignup(s.T(), s.awaitility, "janedoe")
 
-	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
+	testsupport.VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
@@ -206,12 +206,12 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Wait until the UserAccount status is disabled
 	userAccount, err := s.memberAwait.WaitForUserAccount(mur.Name,
-		wait.UntilUserAccountHasConditions(disabled()))
+		wait.UntilUserAccountHasConditions(testsupport.Disabled()))
 	require.NoError(s.T(), err)
 
 	// Wait until the MUR status is disabled
 	mur, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username,
-		wait.UntilMasterUserRecordHasConditions(disabled(), provisionedNotificationCRCreated()))
+		wait.UntilMasterUserRecordHasConditions(testsupport.Disabled(), testsupport.ProvisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
 	// Check that the UserAccount is now set to disabled
@@ -225,7 +225,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Check the Identity is deleted
 	identity := &userv1.Identity{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: toIdentityName(userAccount.Spec.UserID)}, identity)
+	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: testsupport.ToIdentityName(userAccount.Spec.UserID)}, identity)
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierros.IsNotFound(err))
 
@@ -236,11 +236,11 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		verifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
+		testsupport.VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
 	})
 }
 
 func (s *userManagementTestSuite) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	id := uuid.NewV4().String()
-	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", approvedAutomatically()...)
+	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", testsupport.ApprovedAutomatically()...)
 }

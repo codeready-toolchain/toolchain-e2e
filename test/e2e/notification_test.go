@@ -42,16 +42,16 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 
 	// Create and approve "janedoe"
 	janedoeName := "janedoe"
-	createAndApproveSignup(s.T(), s.awaitility, janedoeName)
+	testsupport.CreateAndApproveSignup(s.T(), s.awaitility, janedoeName)
 
 	s.T().Run("notification created and deleted", func(t *testing.T) {
 		hostAwait := wait.NewHostAwaitility(s.awaitility)
 
 		mur, err := hostAwait.WaitForMasterUserRecord(janedoeName,
-			wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()))
+			wait.UntilMasterUserRecordHasConditions(testsupport.Provisioned(), testsupport.ProvisionedNotificationCRCreated()))
 		require.NoError(t, err)
 
-		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(sent()))
+		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(testsupport.Sent()))
 		require.NoError(t, err)
 		require.NotNil(t, notification)
 		assert.Equal(t, mur.Name+"-provisioned", notification.Name)

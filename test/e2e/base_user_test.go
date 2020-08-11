@@ -72,7 +72,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 
 	// Confirm the MUR was created and ready
 
-	verifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+	testsupport.VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 
@@ -83,7 +83,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
 	// Create a new UserSignup with the given approved flag
-	userSignup := newUserSignup(s.T(), s.awaitility.Host(), username, email)
+	userSignup := testsupport.NewUserSignup(s.T(), s.awaitility.Host(), username, email)
 	userSignup.Spec.Approved = specApproved
 	err := s.awaitility.Client.Create(context.TODO(), userSignup, testsupport.CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)

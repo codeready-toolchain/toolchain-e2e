@@ -39,7 +39,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
-	testingtiers := createAndApproveSignup(t, awaitility, testingTiersName)
+	testingtiers := testsupport.CreateAndApproveSignup(t, awaitility, testingTiersName)
 
 	// all tiers to check - keep the basic as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "team", "basic"}
@@ -56,7 +56,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	var changeTierRequestNames []string
 
 	// wait for the user to be provisioned for the first time
-	verifyResourcesProvisionedForSignup(t, awaitility, testingtiers, "basic")
+	testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, testingtiers, "basic")
 	for _, tierToCheck := range tiersToCheck {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -80,7 +80,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			require.NoError(t, err)
 			_, err := hostAwaitility.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 			require.NoError(t, err)
-			verifyResourcesProvisionedForSignup(t, awaitility, testingtiers, tierToCheck)
+			testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, testingtiers, tierToCheck)
 			changeTierRequestNames = append(changeTierRequestNames, changeTierRequest.Name)
 		})
 	}
@@ -171,7 +171,7 @@ func setupAccounts(t *testing.T, ctx *test.Context, awaitility *Awaitility, tier
 	// let's create a few users (more than `maxPoolSize`)
 	users := make([]toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		users[i] = createAndApproveSignup(t, awaitility, fmt.Sprintf(nameFmt, i))
+		users[i] = testsupport.CreateAndApproveSignup(t, awaitility, fmt.Sprintf(nameFmt, i))
 	}
 	// and wait until there are all provisioned
 	for i := range users {
@@ -187,7 +187,7 @@ func setupAccounts(t *testing.T, ctx *test.Context, awaitility *Awaitility, tier
 		_, err = hostAwaitility.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 		require.NoError(t, err)
 		mur, err := hostAwaitility.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
-			UntilMasterUserRecordHasCondition(provisioned())) // ignore other conditions, such as notification sent, etc.
+			UntilMasterUserRecordHasCondition(testsupport.Provisioned())) // ignore other conditions, such as notification sent, etc.
 		require.NoError(t, err)
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
@@ -260,12 +260,12 @@ func verifyResourceUpdates(t *testing.T, awaitility *Awaitility, syncIndexes map
 		usersignup, err := hostAwaitility.WaitForUserSignup(userID)
 		require.NoError(t, err)
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
-			UntilUserAccountHasConditions(provisioned()),
-			UntilUserAccountHasSpec(expectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
+			UntilUserAccountHasConditions(testsupport.Provisioned()),
+			UntilUserAccountHasSpec(testsupport.ExpectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
 			UntilUserAccountMatchesMur(hostAwaitility))
 		require.NoError(t, err)
 		_, err = hostAwaitility.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
-			UntilMasterUserRecordHasCondition(provisioned()), // ignore other conditions, such as notification sent, etc.
+			UntilMasterUserRecordHasCondition(testsupport.Provisioned()), // ignore other conditions, such as notification sent, etc.
 			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
 		)
 		require.NoError(t, err)
@@ -314,10 +314,10 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 	}
 
 	// when
-	legacySignup := createAndApproveSignup(t, awaitility, "legacy")
+	legacySignup := testsupport.CreateAndApproveSignup(t, awaitility, "legacy")
 
 	// then
-	verifyResourcesProvisionedForSignup(t, awaitility, legacySignup, "basic")
+	testsupport.VerifyResourcesProvisionedForSignup(t, awaitility, legacySignup, "basic")
 }
 
 func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {

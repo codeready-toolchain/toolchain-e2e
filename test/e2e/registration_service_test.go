@@ -3,7 +3,6 @@ package e2e
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -22,14 +21,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var httpClient = &http.Client{
-	Timeout: time.Second * 10,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	},
-}
+var httpClient = testsupport.HttpClient
 
 func TestRegistrationService(t *testing.T) {
 	suite.Run(t, &registrationServiceTestSuite{})
@@ -366,7 +358,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(pendingApproval()...))
+	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(testsupport.PendingApproval()...))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
@@ -404,7 +396,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	require.NoError(s.T(), err)
 
 	// Wait the Master User Record to be provisioned
-	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(provisioned(), provisionedNotificationCRCreated()))
+	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(testsupport.Provisioned(), testsupport.ProvisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with same valid token to check if status changed to Provisioned now
@@ -433,7 +425,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	memberCluster, ok, err := s.awaitility.Host().GetToolchainCluster(cluster.Member, nil)
 	require.NoError(s.T(), err)
 	require.True(s.T(), ok)
-	assert.Equal(s.T(), expectedConsoleURL(s.T(), s.awaitility.Member(), memberCluster), mp["consoleURL"])
+	assert.Equal(s.T(), testsupport.ExpectedConsoleURL(s.T(), s.awaitility.Member(), memberCluster), mp["consoleURL"])
 }
 
 func close(t *testing.T, resp *http.Response) {
