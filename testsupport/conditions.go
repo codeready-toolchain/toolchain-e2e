@@ -1,4 +1,4 @@
-package e2e
+package testsupport
 
 import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -6,7 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func provisioned() toolchainv1alpha1.Condition {
+func Provisioned() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
 		Status: corev1.ConditionTrue,
@@ -14,7 +14,7 @@ func provisioned() toolchainv1alpha1.Condition {
 	}
 }
 
-func pendingApproval() []toolchainv1alpha1.Condition {
+func PendingApproval() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
@@ -29,7 +29,7 @@ func pendingApproval() []toolchainv1alpha1.Condition {
 	}
 }
 
-func approvedByAdmin() []toolchainv1alpha1.Condition {
+func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
@@ -43,7 +43,7 @@ func approvedByAdmin() []toolchainv1alpha1.Condition {
 	}
 }
 
-func approvedAutomatically() []toolchainv1alpha1.Condition {
+func ApprovedAutomatically() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
@@ -57,7 +57,7 @@ func approvedAutomatically() []toolchainv1alpha1.Condition {
 	}
 }
 
-func approvedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
+func ApprovedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
@@ -72,7 +72,7 @@ func approvedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
 	}
 }
 
-func banned() []toolchainv1alpha1.Condition {
+func Banned() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
@@ -82,7 +82,7 @@ func banned() []toolchainv1alpha1.Condition {
 	}
 }
 
-func disabled() toolchainv1alpha1.Condition {
+func Disabled() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
 		Status: corev1.ConditionFalse,
@@ -90,7 +90,7 @@ func disabled() toolchainv1alpha1.Condition {
 	}
 }
 
-func provisionedNotificationCRCreated() toolchainv1alpha1.Condition {
+func ProvisionedNotificationCRCreated() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.MasterUserRecordUserProvisionedNotificationCreated,
 		Status: corev1.ConditionTrue,
@@ -98,7 +98,7 @@ func provisionedNotificationCRCreated() toolchainv1alpha1.Condition {
 	}
 }
 
-func sent() toolchainv1alpha1.Condition {
+func Sent() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.NotificationSent,
 		Status: corev1.ConditionTrue,
@@ -106,7 +106,7 @@ func sent() toolchainv1alpha1.Condition {
 	}
 }
 
-func toolchainStatusReady() toolchainv1alpha1.Condition {
+func ToolchainStatusReady() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
 		Status: corev1.ConditionTrue,
