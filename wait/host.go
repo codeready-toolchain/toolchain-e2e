@@ -554,7 +554,7 @@ func (a *HostAwaitility) WaitForMetricsService() (corev1.Service, error) {
 	var metricsSvc *corev1.Service
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		metricsSvc = &corev1.Service{}
-		// retrieve the toolchainstatus from the host namespace
+		// retrieve the metrics service from the namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Ns,
