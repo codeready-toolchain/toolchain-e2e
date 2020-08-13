@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -544,4 +545,31 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		return true, nil
 	})
 	return *toolchainStatus, err
+}
+
+// WaitForMetricsService waits until there's a service called `host-operator-metrics` in the host
+// operator namespace
+func (a *HostAwaitility) WaitForMetricsService() (corev1.Service, error) {
+	name := "host-operator-metrics"
+	var metricsSvc *corev1.Service
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		metricsSvc = &corev1.Service{}
+		// retrieve the toolchainstatus from the host namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Ns,
+				Name:      name,
+			},
+			metricsSvc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of service '%s' in namespace '%s'...\n", name, a.Ns)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found service '%s'", metricsSvc.Name)
+		return true, nil
+	})
+	return *metricsSvc, err
 }
