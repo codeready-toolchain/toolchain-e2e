@@ -33,6 +33,14 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
+	// host metrics should be available at this point
+	t.Run("verify metrics servers", func(t *testing.T) {
+
+		t.Run("verify host metrics server", func(t *testing.T) {
+			VerifyHostMetricsService(t, awaitility.Host())
+		})
+	})
+
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
 	signups := CreateMultipleSignups(t, ctx, awaitility, 5)
