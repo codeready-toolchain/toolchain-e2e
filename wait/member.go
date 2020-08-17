@@ -572,7 +572,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	return memberStatus, err
 }
 
-// WaitForMetricsService waits until there's a service called `host-operator-metrics` in the host
+// WaitForMetricsService waits until there's a service called `member-operator-metrics` in the host
 // operator namespace
 func (a *MemberAwaitility) WaitForMetricsService() (corev1.Service, error) {
 	name := "member-operator-metrics"
