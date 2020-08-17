@@ -11,6 +11,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -569,4 +570,31 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 		return true, nil
 	})
 	return memberStatus, err
+}
+
+// WaitForMetricsService waits until there's a service called `host-operator-metrics` in the host
+// operator namespace
+func (a *MemberAwaitility) WaitForMetricsService() (corev1.Service, error) {
+	name := "member-operator-metrics"
+	var metricsSvc *corev1.Service
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		metricsSvc = &corev1.Service{}
+		// retrieve the metrics service from the namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Ns,
+				Name:      name,
+			},
+			metricsSvc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of service '%s' in namespace '%s'...\n", name, a.Ns)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found service '%s'", metricsSvc.Name)
+		return true, nil
+	})
+	return *metricsSvc, err
 }
