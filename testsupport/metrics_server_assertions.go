@@ -15,7 +15,7 @@ func VerifyHostMetricsService(t *testing.T, hostAwait *wait.HostAwaitility) {
 }
 
 // VerifyMemberMetricsService verifies that there is a service called `member-operator-metrics`
-// in the host namespace.
+// in the member namespace.
 func VerifyMemberMetricsService(t *testing.T, memberAwait *wait.MemberAwaitility) {
 	_, err := memberAwait.WaitForMetricsService()
 	require.NoError(t, err, "failed while waiting for 'host-operator-metrics' service")
