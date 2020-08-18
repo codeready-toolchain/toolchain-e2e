@@ -2,19 +2,29 @@ package wait
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+
+	routev1 "github.com/openshift/api/route/v1"
+	"github.com/operator-framework/operator-sdk/pkg/test"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -257,4 +267,150 @@ func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, c
 		}
 	}
 	return false
+}
+
+// WaitForMetricsService waits until there's a service called `host-operator-metrics` in the host
+// operator namespace
+func (a *SingleAwaitility) WaitForMetricsService(name string) (corev1.Service, error) {
+	var metricsSvc *corev1.Service
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		metricsSvc = &corev1.Service{}
+		// retrieve the metrics service from the namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Ns,
+				Name:      name,
+			},
+			metricsSvc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of service '%s' in namespace '%s'...", name, a.Ns)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found service '%s'", metricsSvc.Name)
+		return true, nil
+	})
+	return *metricsSvc, err
+}
+
+// SetupRouteForService if needed, creates a route for the given service (with the same namespace/name)
+// It waits until the route is avaiable (or returns an error) by first checking the resource status
+// and then making a call to the given endpoint
+func (a *SingleAwaitility) SetupRouteForService(service corev1.Service, endpoint string) (routev1.Route, error) {
+	// now, create the route for the service (if needed)
+	route := routev1.Route{}
+	if err := a.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: service.Namespace,
+		Name:      service.Name,
+	}, &route); err != nil {
+		require.True(a.T, errors.IsNotFound(err), "failed to get route to access the '%s' service", service.Name)
+		route = routev1.Route{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: service.Namespace,
+				Name:      service.Name,
+			},
+			Spec: routev1.RouteSpec{
+				Port: &routev1.RoutePort{
+					TargetPort: intstr.FromString("http-metrics"),
+				},
+				TLS: &routev1.TLSConfig{
+					Termination: routev1.TLSTerminationEdge,
+				},
+				To: routev1.RouteTargetReference{
+					Kind: service.Kind,
+					Name: service.Name,
+				},
+			},
+		}
+		if err = a.Client.Create(context.TODO(), &route, &test.CleanupOptions{}); err != nil {
+			return route, err
+		}
+	}
+	return a.WaitForRouteToBeAvailable(route.Namespace, route.Name, endpoint)
+}
+
+// WaitForRouteToBeAvailable wais until the given route is available, ie, it has an Ingress with a host configured
+// and the endpoint is reachable (with a `200 OK` status response)
+func (a *SingleAwaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (routev1.Route, error) {
+	route := routev1.Route{}
+	// retrieve the route for the registration service
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: ns,
+				Name:      name,
+			}, &route); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for creation of route '%s' in namespace '%s'...\n", name, ns)
+				return false, nil
+			}
+			return false, err
+		}
+		// assume there's a single Ingress and that its host will not be empty when the route is ready
+		if len(route.Status.Ingress) == 0 || route.Status.Ingress[0].Host == "" {
+			a.T.Logf("Waiting for availability of route '%s' in namespace '%s'...\n", name, ns)
+			return false, nil
+		}
+		// verify that the endpoint gives a `200 OK` response on a GET request
+		var location string
+		client := http.Client{
+			Timeout: time.Duration(1 * time.Second),
+		}
+		if route.Spec.TLS != nil {
+			location = "https://" + route.Status.Ingress[0].Host + endpoint
+			client.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+		} else {
+			location = "http://" + route.Status.Ingress[0].Host + endpoint
+		}
+		resp, err := client.Get(location)
+		if err, ok := err.(*url.Error); ok && err.Timeout() {
+			// keep waiting if there was a timeout: the endpoint is not available yet (pod is still re-starting)
+			a.T.Logf("Waiting for availability of route '%s' in namespace '%s' (endpoint timeout)...\n", name, ns)
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+		return resp.StatusCode == http.StatusOK, nil
+	})
+	return route, err
+}
+
+// WaitUntilMetricsCounterHasValue waits until the exposed metric counter with of the given family
+// and with the given label key/value has reached the expected value
+func (a *SingleAwaitility) WaitUntilMetricsCounterHasValue(url string, family string, labelKey string, labelValue string, expectedValue float64) error {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		value, err := getCounter(url, family, labelKey, labelValue)
+		if err != nil {
+			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' but error occurred: %s", family, labelKey, labelValue, expectedValue, err.Error())
+			return false, nil
+		}
+		if value != expectedValue {
+			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' (currently: %v)", family, labelKey, labelValue, expectedValue, value)
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
+}
+
+// DeletePods deletes the pods matching the given criteria
+func (a *SingleAwaitility) DeletePods(criteria ...client.ListOption) error {
+	pods := corev1.PodList{}
+	err := a.Client.List(context.TODO(), &pods, criteria...)
+	if err != nil {
+		return err
+	}
+	for _, p := range pods.Items {
+		if err := a.Client.Delete(context.TODO(), &p); err != nil {
+			return err
+		}
+	}
+	return nil
 }

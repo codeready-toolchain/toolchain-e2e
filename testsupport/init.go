@@ -1,10 +1,8 @@
 package testsupport
 
 import (
-	"context"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
@@ -16,10 +14,7 @@ import (
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	"github.com/stretchr/testify/require"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	k8swait "k8s.io/apimachinery/pkg/util/wait"
 )
 
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
@@ -57,53 +52,30 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	err = e2eutil.WaitForDeployment(t, f.KubeClient, registrationServiceNs, "registration-service", 2, wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
 	require.NoError(t, err, "failed while waiting for registration service deployment")
 
-	registrationServiceRoute, err := waitForRoute(t, f, registrationServiceNs, "registration-service", wait.DefaultRetryInterval, wait.DefaultOperatorTimeout)
+	awaitility := &wait.Awaitility{
+		T:                     t,
+		Client:                f.Client,
+		KubeClient:            f.KubeClient,
+		ControllerClient:      f.Client.Client,
+		Scheme:                f.Scheme,
+		HostNs:                hostNs,
+		MemberNs:              memberNs,
+		RegistrationServiceNs: registrationServiceNs,
+	}
+
+	registrationServiceRoute, err := awaitility.Host().WaitForRouteToBeAvailable(registrationServiceNs, "registration-service", "/")
 	require.NoError(t, err, "failed while waiting for registration service deployment")
 
 	registrationServiceURL := "http://" + registrationServiceRoute.Spec.Host
 	if registrationServiceRoute.Spec.TLS != nil {
 		registrationServiceURL = "https://" + registrationServiceRoute.Spec.Host
 	}
-	awaitility := &wait.Awaitility{
-		T:                      t,
-		Client:                 f.Client,
-		KubeClient:             f.KubeClient,
-		ControllerClient:       f.Client.Client,
-		Scheme:                 f.Scheme,
-		HostNs:                 hostNs,
-		MemberNs:               memberNs,
-		RegistrationServiceNs:  registrationServiceNs,
-		RegistrationServiceURL: registrationServiceURL,
-	}
-
+	awaitility.RegistrationServiceURL = registrationServiceURL
 	err = awaitility.WaitForReadyToolchainClusters()
 	require.NoError(t, err)
 
 	t.Log("both operators are ready and in running state")
 	return ctx, awaitility
-}
-
-// waitForRoute
-func waitForRoute(t *testing.T, f *framework.Framework, ns, name string, retryInterval time.Duration, timeout time.Duration) (routev1.Route, error) {
-	var route routev1.Route
-	// retrieve the route for the registration service
-	err := k8swait.Poll(retryInterval, timeout, func() (done bool, err error) {
-		err = f.Client.Get(context.TODO(),
-			types.NamespacedName{
-				Namespace: ns,
-				Name:      name,
-			},
-			&route)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				t.Logf("Waiting for availability of route '%s' in namespace '%s'...\n", name, ns)
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	})
-	return route, err
 }
 
 func newSchemeBuilder() runtime.SchemeBuilder {

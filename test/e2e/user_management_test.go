@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	apierros "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -220,13 +220,13 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	user := &userv1.User{}
 	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
 	require.Error(s.T(), err)
-	assert.True(s.T(), apierros.IsNotFound(err))
+	assert.True(s.T(), apierrors.IsNotFound(err))
 
 	// Check the Identity is deleted
 	identity := &userv1.Identity{}
 	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(userAccount.Spec.UserID)}, identity)
 	require.Error(s.T(), err)
-	assert.True(s.T(), apierros.IsNotFound(err))
+	assert.True(s.T(), apierrors.IsNotFound(err))
 
 	s.Run("re-enabled mur", func() {
 		// Re-enable MUR
