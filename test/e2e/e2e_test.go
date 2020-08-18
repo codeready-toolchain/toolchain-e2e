@@ -39,6 +39,10 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("verify host metrics server", func(t *testing.T) {
 			VerifyHostMetricsService(t, awaitility.Host())
 		})
+
+		t.Run("verify member metrics server", func(t *testing.T) {
+			VerifyMemberMetricsService(t, awaitility.Member())
+		})
 	})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
