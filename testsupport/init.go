@@ -27,7 +27,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	err := framework.AddToFrameworkScheme(schemeBuilder.AddToScheme, obj)
 	require.NoError(t, err, "failed to add custom resource scheme to framework")
 
-	ctx := framework.NewTestCtx(t)
+	ctx := framework.NewContext(t)
 
 	err = ctx.InitializeClusterResources(CleanupOptions(ctx))
 	require.NoError(t, err, "failed to initialize cluster resources")

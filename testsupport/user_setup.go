@@ -18,13 +18,22 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func CreateMultipleSignups(t *testing.T, ctx *framework.Context, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
 	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
+		name := fmt.Sprintf("multiple-signup-testuser-%d", i)
+		// check if there is already a MUR with the expected name, in which case, continue with the next one
+		mur := toolchainv1alpha1.MasterUserRecord{}
+		if err := awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{Namespace: awaitility.HostNs, Name: name}, &mur); err == nil {
+			t.Logf("no need to create a UserSignup for '%s', the MasterUserRecord resource already exists", name)
+			// skip this one, it already exists
+			continue
+		}
 		// Create an approved UserSignup resource
-		userSignup := NewUserSignup(t, awaitility.Host(), fmt.Sprintf("multiple-signup-testuser-%d", i), fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
+		userSignup := NewUserSignup(t, awaitility.Host(), name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
 		userSignup.Spec.Approved = true
 		err := awaitility.Host().Client.Create(context.TODO(), userSignup, CleanupOptions(ctx))
 		awaitility.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)

@@ -1,9 +1,6 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
-	github.com/alecthomas/colour v0.1.0 // indirect
-	github.com/alecthomas/repr v0.0.0-20200325044227-4184120f674c // indirect
 	github.com/codeready-toolchain/api v0.0.0-20200805071634-c62858ce3204
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200805140615-5132f35e5270
 	github.com/gobuffalo/envy v1.7.1 // indirect

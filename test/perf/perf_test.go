@@ -23,7 +23,7 @@ func TestPerformances(t *testing.T) {
 	metricsService, err := awaitility.Host().WaitForMetricsService("host-operator-metrics")
 	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
 
-	count := 10
+	count := 1000
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
 		// given
 		users := CreateMultipleSignups(t, ctx, awaitility, count)
