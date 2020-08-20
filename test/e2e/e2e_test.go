@@ -146,6 +146,19 @@ func TestE2EFlow(t *testing.T) {
 			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
 			VerifyResourcesProvisionedForSignup(t, awaitility, johnExtraSignup, "basic")
 		})
+
+		t.Run("delete useraccount and expect recreation", func(t *testing.T) {
+			// given
+			memberAwait := wait.NewMemberAwaitility(awaitility)
+	
+			// when deleting the user account
+			err := memberAwait.DeleteUserAccount(johnSignup.Status.CompliantUsername)
+	
+			// then the user account should be recreated
+			require.NoError(t, err)
+			_, err = memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername)
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
@@ -197,4 +210,5 @@ func TestE2EFlow(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
 		VerifyMultipleSignups(t, awaitility, signups)
 	})
+
 }
