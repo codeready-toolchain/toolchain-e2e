@@ -67,6 +67,16 @@ func (s *userSignupIntegrationTest) TestUserSignupApproval() {
 	})
 }
 
+func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
+	s.T().Run("manual approval with verification required", func(t *testing.T) {
+		s.setApprovalPolicyConfig("manual")
+
+		t.Run("verification required set to true", func(t *testing.T) {
+			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
+		})
+	})
+}
+
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// Create user signup
 	s.setApprovalPolicyConfig("automatic")
@@ -135,6 +145,35 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertManualApproval(spec
 func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 	id := uuid.NewV4().String()
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", ApprovedAutomatically()...)
+}
+
+func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() (*v1alpha1.UserSignup) {
+	// Create a new UserSignup
+	username := "testuser" + uuid.NewV4().String()
+	email := username + "@test.com"
+	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), username, email)
+
+	// Set approved to true
+	userSignup.Spec.Approved = true
+
+	// Set verification required
+	userSignup.Spec.VerificationRequired = true
+
+	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	require.NoError(s.T(), err)
+	s.T().Logf("user signup '%s' created", userSignup.Name)
+
+	// Check the UserSignup is pending approval now
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(VerificationRequired()...))
+	require.NoError(s.T(), err)
+
+	// Confirm the CompliantUsername has NOT been set
+	require.Empty(s.T(), userSignup.Status.CompliantUsername)
+
+	// Confirm that a MasterUserRecord wasn't created
+	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(username)
+	require.Error(s.T(), err)
+	return userSignup
 }
 
 func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
