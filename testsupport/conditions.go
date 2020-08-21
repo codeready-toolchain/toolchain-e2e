@@ -18,7 +18,7 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
-			Status: corev1.ConditionTrue,
+			Status: corev1.ConditionFalse,
 			Reason: "PendingApproval",
 		},
 		{
