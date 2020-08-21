@@ -150,14 +150,13 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete useraccount and expect recreation", func(t *testing.T) {
 			// given
 			memberAwait := wait.NewMemberAwaitility(awaitility)
-	
+
 			// when deleting the user account
 			err := memberAwait.DeleteUserAccount(johnSignup.Status.CompliantUsername)
-	
+
 			// then the user account should be recreated
 			require.NoError(t, err)
-			_, err = memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername)
-			require.NoError(t, err)
+			VerifyResourcesProvisionedForSignup(t, awaitility, johnSignup, "basic")
 		})
 	})
 
