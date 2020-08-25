@@ -31,7 +31,7 @@ func TestPerformances(t *testing.T) {
 			awaitility.Host().WaitForMasterUserRecord(user.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
 		}
 
-		// when deleting the host-operator pod
+		// when deleting the host-operator pod to emulate an operator restart during redeployment.
 		err := awaitility.Host().DeletePods(client.MatchingLabels{"name": "host-operator"})
 
 		// then check how much time it takes to restart and process all existing resources
