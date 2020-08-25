@@ -63,7 +63,7 @@ func CreateAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username 
 	err = awaitility.Host().Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
 	// Check the updated conditions
-	_, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
 	require.NoError(t, err)
 
 	return *userSignup

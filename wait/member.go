@@ -570,3 +570,17 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	})
 	return memberStatus, err
 }
+
+// DeleteUserAccount deletes the user account resource with the given name and
+// waits until it was actually deleted
+func (a *MemberAwaitility) DeleteUserAccount(name string) error {
+	ua, err := a.WaitForUserAccount(name)
+	if err != nil {
+		return err
+	}
+	if err = a.Client.Delete(context.TODO(), ua); err != nil {
+		return err
+	}
+	return a.WaitUntilUserAccountDeleted(name)
+
+}
