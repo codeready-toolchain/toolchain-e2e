@@ -25,14 +25,13 @@ func getCounter(url string, family string, labelKey string, labelValue string) (
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	if resp.StatusCode != http.StatusOK {
-		return -1, fmt.Errorf("unexpected response status code: '%d'", resp.StatusCode)
-	}
 	metrics, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
-
+	if resp.StatusCode != http.StatusOK {
+		return -1, fmt.Errorf("unexpected response status code: '%d'", resp.StatusCode)
+	}
 	// parse the metrics
 	parser := expfmt.TextParser{}
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
