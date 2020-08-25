@@ -14,21 +14,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestPerformances(t *testing.T) {
+func TestPerformance(t *testing.T) {
 	// given
 	ctx, awaitility := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
-	// defer ctx.Cleanup()
+	defer ctx.Cleanup()
 
 	// host metrics should become available at this point
 	metricsService, err := awaitility.Host().WaitForMetricsService("host-operator-metrics")
 	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
 
-	count := 1000
+	count := 10
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
 		// given
 		users := CreateMultipleSignups(t, ctx, awaitility, count)
 		for _, user := range users {
-			awaitility.Host().WaitForMasterUserRecord(user.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
+			_, err := awaitility.Host().WaitForMasterUserRecord(user.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
+			require.NoError(t, err)
 		}
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
