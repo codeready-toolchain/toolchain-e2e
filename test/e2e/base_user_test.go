@@ -32,7 +32,7 @@ func (s *baseUserIntegrationTest) clearApprovalPolicyConfig() error {
 		},
 	}
 
-	err := s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Delete(cm.Name, nil)
+	err := s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Delete(context.TODO(), cm.Name, v1.DeleteOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -56,11 +56,11 @@ func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
 	cmValues := make(map[string]string)
 	cmValues["user-approval-policy"] = policy
 	cm.Data = cmValues
-	_, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Create(cm)
+	_, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Create(context.TODO(), cm, v1.CreateOptions{})
 	require.NoError(s.T(), err)
 
 	// Confirm it was updated
-	cm, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Get("toolchain-saas-config", v1.GetOptions{})
+	cm, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Get(context.TODO(), "toolchain-saas-config", v1.GetOptions{})
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), policy, cm.Data["user-approval-policy"])
 }

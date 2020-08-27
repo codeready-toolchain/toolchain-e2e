@@ -147,7 +147,7 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specAp
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", ApprovedAutomatically()...)
 }
 
-func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() (*v1alpha1.UserSignup) {
+func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
 	// Create a new UserSignup
 	username := "testuser" + uuid.NewV4().String()
 	email := username + "@test.com"

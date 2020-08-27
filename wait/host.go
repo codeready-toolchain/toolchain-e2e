@@ -545,5 +545,3 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 	})
 	return *toolchainStatus, err
 }
-
-
