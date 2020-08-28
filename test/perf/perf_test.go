@@ -32,7 +32,7 @@ func TestPerformance(t *testing.T) {
 	metricsService, err := awaitility.Host().WaitForMetricsService("host-operator-metrics")
 	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
 
-	count := 10
+	count := 1000
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
 		// given
 		users := CreateMultipleSignups(t, ctx, awaitility, count)
@@ -71,7 +71,7 @@ func TestPerformance(t *testing.T) {
 // - the target directory will be created on-the-fly if needed
 // - it's up to the caller to close the returned file at the end of the tests
 func initLogger() (logr.Logger, *os.File, error) {
-	// log messages that need to be retained after the OpenShift CI job completion must be written in a file located in `${ARTIFACT_DIR}` to
+	// log messages that need to be retained after the OpenShift CI job completion must be written in a file located in `${ARTIFACT_DIR}`
 	var artifactDir string
 	if artifactDir = os.Getenv("ARTIFACT_DIR"); artifactDir == "" {
 		pwd, err := os.Getwd()
