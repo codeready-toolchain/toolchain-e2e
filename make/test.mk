@@ -62,7 +62,7 @@ e2e-run:
 	oc get toolchaincluster -n $(HOST_NS)
 	oc get toolchaincluster -n $(MEMBER_NS)
 	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
-	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace $(TEST_NS) --verbose --go-test-flags "-timeout=60m -failfast" || \
+	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace $(TEST_NS) --verbose --go-test-flags "-test.timeout=60m -test.failfast" || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
