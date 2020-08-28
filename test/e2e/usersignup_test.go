@@ -24,9 +24,7 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.awaitility = WaitForDeployments(s.T(), userSignupList)
-	s.hostAwait = s.awaitility.Host()
-	s.namespace = s.awaitility.HostNs
+	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
@@ -80,11 +78,11 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// Create user signup
 	s.setApprovalPolicyConfig("automatic")
-	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), "reginald@alpha.com", "reginald@alpha.com")
+	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, "reginald@alpha.com", "reginald@alpha.com")
 
 	// Remove the specified target cluster
 	userSignup.Spec.TargetCluster = ""
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -93,7 +91,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
@@ -118,9 +116,9 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *
 	// Create a new UserSignup with approved flag set to false
 	username := "testuser" + uuid.NewV4().String()
 	email := username + "@test.com"
-	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), username, email)
+	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email)
 
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -147,11 +145,11 @@ func (s *userSignupIntegrationTest) createUserSignupAndAssertAutoApproval(specAp
 	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", ApprovedAutomatically()...)
 }
 
-func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() (*v1alpha1.UserSignup) {
+func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
 	// Create a new UserSignup
 	username := "testuser" + uuid.NewV4().String()
 	email := username + "@test.com"
-	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), username, email)
+	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email)
 
 	// Set approved to true
 	userSignup.Spec.Approved = true
@@ -159,7 +157,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	// Set verification required
 	userSignup.Spec.VerificationRequired = true
 
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -183,7 +181,7 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 
 		// Manually approve the UserSignup
 		userSignup.Spec.Approved = true
-		err := s.awaitility.Client.Update(context.TODO(), userSignup)
+		err := s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
 
 		// Check the UserSignup is approved now
@@ -191,7 +189,7 @@ func (s *userSignupIntegrationTest) checkUserSignupManualApproval() {
 		require.NoError(s.T(), err)
 
 		// Confirm the MUR was created
-		VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 	})
 
 	s.T().Run("usersignup created with approved set to true", func(t *testing.T) {

@@ -16,32 +16,32 @@ import (
 
 func TestPerformance(t *testing.T) {
 	// given
-	ctx, awaitility := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, hostAwait, memberAwait := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
 	// host metrics should become available at this point
-	metricsService, err := awaitility.Host().WaitForMetricsService("host-operator-metrics")
+	metricsService, err := hostAwait.WaitForMetricsService("host-operator-metrics")
 	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
 
 	count := 1000
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
 		// given
-		users := CreateMultipleSignups(t, ctx, awaitility, count)
+		users := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, count)
 		for _, user := range users {
-			_, err := awaitility.Host().WaitForMasterUserRecord(user.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
+			_, err := hostAwait.WaitForMasterUserRecord(user.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
 			require.NoError(t, err)
 		}
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
-		err := awaitility.Host().DeletePods(client.MatchingLabels{"name": "host-operator"})
+		err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
 
 		// then check how much time it takes to restart and process all existing resources
 		require.NoError(t, err)
 
-		host := awaitility.Host()
+		host := hostAwait
 		host.Timeout = 30 * time.Minute
 		// host metrics should become available again at this point
-		metricsRoute, err := awaitility.Host().SetupRouteForService(metricsService, "/metrics")
+		metricsRoute, err := hostAwait.SetupRouteForService(metricsService, "/metrics")
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 		start := time.Now()

@@ -18,7 +18,7 @@ type TemplateRefs struct {
 
 // GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
 func GetTemplateRefs(hostAwait *wait.HostAwaitility, tier string) TemplateRefs {
-	templateTier, err := hostAwait.WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNamespaceTemplateRefs("000000a"))))
+	templateTier, err := hostAwait.WaitForNSTemplateTier(tier, wait.UntilNSTemplateTierSpec(wait.Not(wait.HasNSTemplateRefs("000000a"))))
 	require.NoError(hostAwait.T, err)
 	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
 	for _, ns := range templateTier.Spec.Namespaces {
@@ -33,7 +33,7 @@ func GetTemplateRefs(hostAwait *wait.HostAwaitility, tier string) TemplateRefs {
 // GetTemplateRefsForTierAndRevision returns the expected templateRefs for TierTemplates containing the given tier and revisions
 func GetTemplateRefsForTierAndRevision(hostAwait *wait.HostAwaitility, tier, revisions string) TemplateRefs {
 	templates := &toolchainv1alpha1.TierTemplateList{}
-	err := hostAwait.Client.List(context.TODO(), templates, client.InNamespace(hostAwait.Ns))
+	err := hostAwait.Client.List(context.TODO(), templates, client.InNamespace(hostAwait.Namespace))
 	require.NoError(hostAwait.T, err)
 
 	refs := TemplateRefs{}

@@ -29,17 +29,18 @@ func TestRegistrationService(t *testing.T) {
 
 type registrationServiceTestSuite struct {
 	suite.Suite
-	namespace  string
-	route      string
-	ctx        *framework.Context
-	awaitility *wait.Awaitility
+	namespace   string
+	route       string
+	ctx         *framework.Context
+	hostAwait   *wait.HostAwaitility
+	memberAwait *wait.MemberAwaitility
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.awaitility = WaitForDeployments(s.T(), userSignupList)
-	s.namespace = s.awaitility.RegistrationServiceNs
-	s.route = s.awaitility.RegistrationServiceURL
+	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
+	s.namespace = s.hostAwait.RegistrationServiceNs
+	s.route = s.hostAwait.RegistrationServiceURL
 }
 
 func (s *registrationServiceTestSuite) TestLandingPageReachable() {
@@ -358,7 +359,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
@@ -392,11 +393,11 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 	// Approve usersignup.
 	userSignup.Spec.Approved = true
-	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
+	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
 	// Wait the Master User Record to be provisioned
-	_, err = s.awaitility.Host().WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+	_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
 	// Call signup endpoint with same valid token to check if status changed to Provisioned now
@@ -422,10 +423,10 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
 
 	// Verify console URL
-	memberCluster, ok, err := s.awaitility.Host().GetToolchainCluster(cluster.Member, nil)
+	memberCluster, ok, err := s.hostAwait.GetToolchainCluster(cluster.Member, s.memberAwait.Namespace, nil)
 	require.NoError(s.T(), err)
 	require.True(s.T(), ok)
-	assert.Equal(s.T(), ExpectedConsoleURL(s.T(), s.awaitility.Member(), memberCluster), mp["consoleURL"])
+	assert.Equal(s.T(), ExpectedConsoleURL(s.T(), s.memberAwait, memberCluster), mp["consoleURL"])
 }
 
 func close(t *testing.T, resp *http.Response) {

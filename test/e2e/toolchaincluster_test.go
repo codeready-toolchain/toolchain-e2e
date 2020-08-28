@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -11,73 +12,161 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestToolchainClusterE2E(t *testing.T) {
 	toolchainClusterList := &v1alpha1.ToolchainClusterList{}
-	ctx, awaitility := WaitForDeployments(t, toolchainClusterList)
+	ctx, hostAwait, memberAwait := WaitForDeployments(t, toolchainClusterList)
 	defer ctx.Cleanup()
 
-	verifyToolchainCluster(ctx, awaitility, cluster.Host, awaitility.Member().SingleAwaitility)
-	verifyToolchainCluster(ctx, awaitility, cluster.Member, awaitility.Host().SingleAwaitility)
+	verifyToolchainCluster(t, ctx, hostAwait.Awaitility, memberAwait.Awaitility)
+	verifyToolchainCluster(t, ctx, memberAwait.Awaitility, hostAwait.Awaitility)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(ctx *test.Context, awaitility *wait.Awaitility, toolchainClusterType cluster.Type, singleAwait *wait.SingleAwaitility) {
+func verifyToolchainCluster(t *testing.T, ctx *test.Context, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
-	current, ok, err := singleAwait.GetToolchainCluster(toolchainClusterType, nil)
-	require.NoError(awaitility.T, err)
-	require.True(awaitility.T, ok, "ToolchainCluster should exist")
+	current, ok, err := await.GetToolchainCluster(await.Type, await.Namespace, nil)
+	require.NoError(t, err)
+	require.True(t, ok, "ToolchainCluster should exist")
 
-	awaitility.T.Run("create new ToolchainCluster with correct data and expect to be ready for cluster type "+string(toolchainClusterType), func(t *testing.T) {
+	t.Run("create new ToolchainCluster with correct data and expect to be ready for cluster type "+string(await.Type), func(t *testing.T) {
 		// given
-		name := "new-ready-" + string(toolchainClusterType)
-		toolchainCluster := singleAwait.NewToolchainCluster(name,
-			wait.Type(toolchainClusterType),
-			wait.APIEndpoint(current.Spec.APIEndpoint),
-			wait.CABundle(current.Spec.CABundle),
-			wait.SecretRef(current.Spec.SecretRef.Name),
-			wait.Owner(current.Labels["ownerClusterName"]),
-			wait.Namespace(current.Labels["namespace"]),
-			wait.CapacityExhausted, // make sure this cluster cannot be used in other e2e tests
+		name := "new-ready-" + string(await.Type)
+		toolchainCluster := newToolchainCluster(await.Namespace, name,
+			clusterType(await.Type),
+			apiEndpoint(current.Spec.APIEndpoint),
+			caBundle(current.Spec.CABundle),
+			secretRef(current.Spec.SecretRef.Name),
+			owner(current.Labels["ownerClusterName"]),
+			namespace(current.Labels["namespace"]),
+			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
+		defer func() {
+			await.Client.Delete(context.TODO(), toolchainCluster)
+		}()
 
 		// when
-		err := awaitility.Client.Create(context.TODO(), toolchainCluster, CleanupOptions(ctx))
+		err := await.Client.Create(context.TODO(), toolchainCluster)
 
 		// then the ToolchainCluster should be ready
 		require.NoError(t, err)
-		err = singleAwait.WaitForToolchainClusterConditionWithName(toolchainCluster.Name, wait.ReadyToolchainCluster)
+		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		err = awaitility.WaitForReadyToolchainClusters()
+		// other ToolchainCluster should be ready, too
+		_, err = await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		err = singleAwait.WaitForToolchainClusterConditionWithName(current.Name, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 	})
-	awaitility.T.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(toolchainClusterType), func(t *testing.T) {
-		// given
-		name := "new-offline-" + string(toolchainClusterType)
-		toolchainCluster := singleAwait.NewToolchainCluster(name,
-			wait.Type(toolchainClusterType),
-			wait.APIEndpoint("https://1.2.3.4:8443"),
-			wait.CABundle(current.Spec.CABundle),
-			wait.SecretRef(current.Spec.SecretRef.Name),
-			wait.Owner(current.Labels["ownerClusterName"]),
-			wait.Namespace(current.Labels["namespace"]),
-			wait.CapacityExhausted, // make sure this cluster cannot be used in other e2e tests
-		)
-		// when
-		err := awaitility.Client.Create(context.TODO(), toolchainCluster, CleanupOptions(ctx))
 
+	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
+		// given
+		name := "new-offline-" + string(await.Type)
+		toolchainCluster := newToolchainCluster(await.Namespace, name,
+			clusterType(await.Type),
+			apiEndpoint("https://1.2.3.4:8443"),
+			caBundle(current.Spec.CABundle),
+			secretRef(current.Spec.SecretRef.Name),
+			owner(current.Labels["ownerClusterName"]),
+			namespace(current.Labels["namespace"]),
+			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
+		)
+		defer func() {
+			await.Client.Delete(context.TODO(), toolchainCluster)
+		}()
+
+		// when
+		err := await.Client.Create(context.TODO(), toolchainCluster)
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)
-		err = singleAwait.WaitForToolchainClusterConditionWithName(toolchainCluster.Name, &v1alpha1.ToolchainClusterCondition{
+		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &v1alpha1.ToolchainClusterCondition{
 			Type:   v1alpha1.ToolchainClusterOffline,
 			Status: corev1.ConditionTrue,
 		})
 		require.NoError(t, err)
-		err = awaitility.WaitForReadyToolchainClusters()
+		// other ToolchainCluster should be ready, too
+		_, err = await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		require.NoError(t, err)
+		_, err = otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 	})
+}
+
+func newToolchainCluster(namespace, name string, options ...clusterOption) *v1alpha1.ToolchainCluster {
+	toolchainCluster := &v1alpha1.ToolchainCluster{
+		Spec: v1alpha1.ToolchainClusterSpec{
+			SecretRef: v1alpha1.LocalSecretReference{
+				Name: "", // default
+			},
+			APIEndpoint: "", // default
+			CABundle:    "", // default
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+			Labels: map[string]string{
+				"type":             "member",
+				"ownerClusterName": "east",
+			},
+		},
+	}
+	for _, configure := range options {
+		configure(toolchainCluster)
+	}
+	return toolchainCluster
+}
+
+// clusterOption an option to configure the cluster to use in the tests
+type clusterOption func(*v1alpha1.ToolchainCluster)
+
+// capacityExhausted an option to state that the cluster capacity has exhausted
+var capacityExhausted clusterOption = func(c *v1alpha1.ToolchainCluster) {
+	c.Labels["toolchain.dev.openshift.com/capacity-exhausted"] = strconv.FormatBool(true)
+}
+
+// Type sets the label which defines the type of cluster
+func clusterType(t cluster.Type) clusterOption {
+	return func(c *v1alpha1.ToolchainCluster) {
+		c.Labels["type"] = string(t)
+	}
+}
+
+// Owner sets the 'ownerClusterName' label
+func owner(name string) clusterOption {
+	return func(c *v1alpha1.ToolchainCluster) {
+		c.Labels["ownerClusterName"] = name
+	}
+}
+
+// Namespace sets the 'namespace' label
+func namespace(name string) clusterOption {
+	return func(c *v1alpha1.ToolchainCluster) {
+		c.Labels["namespace"] = name
+	}
+}
+
+// SecretRef sets the SecretRef in the cluster's Spec
+func secretRef(ref string) clusterOption {
+	return func(c *v1alpha1.ToolchainCluster) {
+		c.Spec.SecretRef = v1alpha1.LocalSecretReference{
+			Name: ref,
+		}
+	}
+}
+
+// APIEndpoint sets the APIEndpoint in the cluster's Spec
+func apiEndpoint(url string) clusterOption {
+	return func(c *v1alpha1.ToolchainCluster) {
+		c.Spec.APIEndpoint = url
+	}
+}
+
+// CABundle sets the CABundle in the cluster's Spec
+func caBundle(bundle string) clusterOption {
+	return func(c *v1alpha1.ToolchainCluster) {
+		c.Spec.CABundle = bundle
+	}
 }

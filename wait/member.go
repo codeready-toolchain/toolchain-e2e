@@ -3,8 +3,10 @@ package wait
 import (
 	"context"
 	"reflect"
+	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -21,18 +23,25 @@ import (
 )
 
 type MemberAwaitility struct {
-	*SingleAwaitility
+	*Awaitility
 }
 
-func NewMemberAwaitility(a *Awaitility) *MemberAwaitility {
+func NewMemberAwaitility(t *testing.T, cl client.Client, ns string) *MemberAwaitility {
 	return &MemberAwaitility{
-		SingleAwaitility: NewSingleAwaitility(a.T, a.Client, a.MemberNs, a.HostNs),
+		Awaitility: &Awaitility{
+			Client:        cl,
+			T:             t,
+			Namespace:     ns,
+			Type:          cluster.Member,
+			RetryInterval: DefaultRetryInterval,
+			Timeout:       DefaultTimeout,
+		},
 	}
 }
 
-func (a *MemberAwaitility) WithRetryOptions(options ...interface{}) *MemberAwaitility {
+func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwaitility {
 	return &MemberAwaitility{
-		SingleAwaitility: a.SingleAwaitility.WithRetryOptions(options...),
+		Awaitility: a.Awaitility.WithRetryOptions(options...),
 	}
 }
 
@@ -97,7 +106,7 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 	var userAccount *toolchainv1alpha1.UserAccount
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of useraccount '%s'", name)
 				return false, nil
@@ -149,7 +158,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateSet{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
 				return false, nil
@@ -172,7 +181,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Ns}, nsTmplSet); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, nsTmplSet); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("deleted NSTemplateSet '%s'", name)
 				return true, nil
@@ -448,7 +457,7 @@ func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error
 func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, ua); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, ua); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("UserAccount is checked as deleted '%s'", name)
 				return true, nil
@@ -543,19 +552,18 @@ func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) M
 func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCriterion) (toolchainv1alpha1.MemberStatus, error) {
 	// there should only be one member status with the name toolchain-member-status
 	name := "toolchain-member-status"
-	var memberStatus toolchainv1alpha1.MemberStatus
+	memberStatus := toolchainv1alpha1.MemberStatus{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		memberStatus = toolchainv1alpha1.MemberStatus{}
 		// retrieve the memberstatus from the member namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
-				Namespace: a.Ns,
+				Namespace: a.Namespace,
 				Name:      name,
 			},
 			&memberStatus)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of memberstatus '%s' in namespace '%s'...\n", name, a.Ns)
+				a.T.Logf("Waiting for availability of memberstatus '%s' in namespace '%s'...\n", name, a.Namespace)
 				return false, nil
 			}
 			return false, err

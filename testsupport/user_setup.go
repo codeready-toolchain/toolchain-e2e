@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -21,38 +22,38 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func CreateMultipleSignups(t *testing.T, ctx *framework.Context, awaitility *wait.Awaitility, capacity int) []toolchainv1alpha1.UserSignup {
+func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, capacity int) []toolchainv1alpha1.UserSignup {
 	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		name := fmt.Sprintf("multiple-signup-testuser-%d", i)
 		// check if there is already a MUR with the expected name, in which case, continue with the next one
 		mur := toolchainv1alpha1.MasterUserRecord{}
-		if err := awaitility.Host().Client.Get(context.TODO(), types.NamespacedName{Namespace: awaitility.HostNs, Name: name}, &mur); err == nil {
+		if err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: hostAwait.Namespace, Name: name}, &mur); err == nil {
 			t.Logf("no need to create a UserSignup for '%s', the MasterUserRecord resource already exists", name)
 			// skip this one, it already exists
 			continue
 		}
 		// Create an approved UserSignup resource
-		userSignup := NewUserSignup(t, awaitility.Host(), name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
+		userSignup := NewUserSignup(t, hostAwait, memberAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
 		userSignup.Spec.Approved = true
-		err := awaitility.Host().Client.Create(context.TODO(), userSignup, CleanupOptions(ctx))
-		awaitility.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
+		err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
+		hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 		require.NoError(t, err)
 		signups[i] = *userSignup
 	}
 	return signups
 }
 
-func CreateAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username string) toolchainv1alpha1.UserSignup {
+func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) toolchainv1alpha1.UserSignup {
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
 		ID:       uuid.NewV4(),
 		Username: username,
 	}
-	postSignup(t, awaitility.RegistrationServiceURL, *identity)
+	postSignup(t, hostAwait.RegistrationServiceURL, *identity)
 
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err := awaitility.Host().WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
 	require.NoError(t, err)
 	require.Equal(t, userSignup.Spec.GivenName, identity.Username+"-First-Name")
 	require.Equal(t, userSignup.Spec.FamilyName, identity.Username+"-Last-Name")
@@ -60,24 +61,24 @@ func CreateAndApproveSignup(t *testing.T, awaitility *wait.Awaitility, username 
 
 	// 2. approve the UserSignup
 	userSignup.Spec.Approved = true
-	err = awaitility.Host().Client.Update(context.TODO(), userSignup)
+	err = hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
 	// Check the updated conditions
-	userSignup, err = awaitility.Host().WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
 	require.NoError(t, err)
 
 	return *userSignup
 }
 
-func NewUserSignup(t *testing.T, host *wait.HostAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
-	memberCluster, ok, err := host.GetToolchainCluster(cluster.Member, wait.ReadyToolchainCluster)
+func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	require.True(t, ok)
 
 	return &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      uuid.NewV4().String(),
-			Namespace: host.Ns,
+			Namespace: hostAwait.Namespace,
 			Annotations: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
@@ -102,6 +103,7 @@ var HttpClient = &http.Client{
 }
 
 func postSignup(t *testing.T, route string, identity authsupport.Identity) {
+	require.NotEmpty(t, route)
 	// Call signup endpoint with a valid token.
 	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
 	givenNameClaim := authsupport.WithGivenNameClaim(identity.Username + "-First-Name")
@@ -119,6 +121,8 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
+	r, err := ioutil.ReadAll(resp.Body)
+	require.True(t, resp.StatusCode < 300, "unexpected status code after posting user signup: '%d' ('%s')", resp.StatusCode, string(r))
 }
 
 func ToIdentityName(userID string) string {

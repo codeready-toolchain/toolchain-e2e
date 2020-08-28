@@ -4,30 +4,50 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// HostAwaitility the Awaitility for the Host cluster
 type HostAwaitility struct {
-	*SingleAwaitility
+	*Awaitility
+	FrameworkClient        framework.FrameworkClient
+	RegistrationServiceNs  string
+	RegistrationServiceURL string
 }
 
-func NewHostAwaitility(a *Awaitility) *HostAwaitility {
+// NewHostAwaitility initializes a HostAwaitility
+func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
-		SingleAwaitility: NewSingleAwaitility(a.T, a.Client, a.HostNs, a.MemberNs),
+		Awaitility: &Awaitility{
+			T:             t,
+			Client:        cl,
+			Namespace:     ns,
+			Type:          cluster.Host,
+			RetryInterval: DefaultRetryInterval,
+			Timeout:       DefaultTimeout,
+		},
+		FrameworkClient:       fcl,
+		RegistrationServiceNs: registrationServiceNs,
 	}
 }
 
-func (a *HostAwaitility) WithRetryOptions(options ...interface{}) *HostAwaitility {
+// WithRetryOptions returns a new HostAwaitility with the given RetryOptions applied
+func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
-		SingleAwaitility: a.SingleAwaitility.WithRetryOptions(options...),
+		Awaitility:             a.Awaitility.WithRetryOptions(options...),
+		RegistrationServiceNs:  a.RegistrationServiceNs,
+		RegistrationServiceURL: a.RegistrationServiceURL,
 	}
 }
 
@@ -36,7 +56,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	var mur *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.MasterUserRecord{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of MasterUserRecord '%s'", name)
 				return false, nil
@@ -57,7 +77,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
-	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Ns)); err != nil {
+	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, mur := range murList.Items {
@@ -77,7 +97,7 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshMur := &toolchainv1alpha1.MasterUserRecord{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: murName}, freshMur); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: murName}, freshMur); err != nil {
 			return true, err
 		}
 
@@ -174,7 +194,7 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of UserSignup '%s'", name)
 				return false, nil
@@ -220,7 +240,7 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.BannedUser{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("BannedUser is checked as deleted '%s'", name)
 				return true, nil
@@ -236,7 +256,7 @@ func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, mur); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("MasterUserAccount is checked as deleted '%s'", name)
 				return true, nil
@@ -273,15 +293,15 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	var tier *toolchainv1alpha1.NSTemplateTier
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		tier = &toolchainv1alpha1.NSTemplateTier{}
-		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Ns)
+		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Namespace)
 		obj := &toolchainv1alpha1.NSTemplateTier{}
-		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj)
+		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
 			a.T.Logf("NSTemplateTier '%s' could not be fetched", name)
 			// return the error
 			return false, err
 		} else if errors.IsNotFound(err) {
-			a.T.Logf("NSTemplateTier '%s' not found in '%s'", name, a.Ns)
+			a.T.Logf("NSTemplateTier '%s' not found in '%s'", name, a.Namespace)
 			// keep waiting
 			return false, nil
 		}
@@ -289,7 +309,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 			// if at least one criteria does not match, keep waiting
 			if !match(obj) {
 				// keep waiting
-				a.T.Logf("NSTemplateTier '%s' in namespace '%s' is not matching the expected criteria", name, a.Ns)
+				a.T.Logf("NSTemplateTier '%s' in namespace '%s' is not matching the expected criteria", name, a.Namespace)
 				return false, nil
 			}
 		}
@@ -323,15 +343,15 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint: unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Ns)
+		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
 		obj := &toolchainv1alpha1.TierTemplate{}
-		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj)
+		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
 			a.T.Logf("TierTemplate '%s' could not be fetched", name)
 			// return the error
 			return false, err
 		} else if errors.IsNotFound(err) {
-			a.T.Logf("Waiting for TierTemplate '%s' '%s'", name, a.Ns)
+			a.T.Logf("Waiting for TierTemplate '%s' '%s'", name, a.Namespace)
 			// keep waiting
 			return false, nil
 		}
@@ -369,8 +389,8 @@ func Not(match NSTemplateTierSpecMatcher) NSTemplateTierSpecMatcher {
 	}
 }
 
-// HasNamespaceTemplateRefs checks that ALL namespaces' `TemplateRef` match the given value
-func HasNamespaceTemplateRefs(r string) NSTemplateTierSpecMatcher {
+// Has.NSTemplateRefs checks that ALL namespaces' `TemplateRef` match the given value
+func HasNSTemplateRefs(r string) NSTemplateTierSpecMatcher {
 	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
 		for _, ns := range s.Namespaces {
 			if ns.TemplateRef != r {
@@ -393,7 +413,7 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 	var changeTierRequest *toolchainv1alpha1.ChangeTierRequest
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.ChangeTierRequest{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of ChangeTierRequest '%s'", name)
 				return false, nil
@@ -416,7 +436,7 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		changeTierRequest := &toolchainv1alpha1.ChangeTierRequest{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, changeTierRequest); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, changeTierRequest); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("ChangeTierRequest has been deleted '%s'", name)
 				return true, nil
@@ -451,7 +471,7 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 	var notification *toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of notification '%s'", name)
 				return false, nil
@@ -474,7 +494,7 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		notification := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Ns, Name: name}, notification); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, notification); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("Notification has been deleted '%s'", name)
 				return true, nil
@@ -524,13 +544,13 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		// retrieve the toolchainstatus from the host namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
-				Namespace: a.Ns,
+				Namespace: a.Namespace,
 				Name:      name,
 			},
 			toolchainStatus)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of toolchainstatus '%s' in namespace '%s'...\n", name, a.Ns)
+				a.T.Logf("Waiting for availability of toolchainstatus '%s' in namespace '%s'...\n", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -545,5 +565,3 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 	})
 	return *toolchainStatus, err
 }
-
-

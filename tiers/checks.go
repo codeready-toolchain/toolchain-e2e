@@ -51,7 +51,7 @@ func NewChecks(tier string) (TierChecks, error) {
 type TierChecks interface {
 	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetClusterObjectChecks() []clusterObjectsCheck
-	GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs
+	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
 }
 
 type basicTierChecks struct {
@@ -71,9 +71,9 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 		numberOfToolchainRoleBindings(1))
 }
 
-func (a *basicTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(awaitility.Host(), "basic")
-	verifyNsTypes(awaitility.T, "basic", templateRefs, "code", "dev", "stage")
+func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, "basic")
+	verifyNsTypes(hostAwait.T, "basic", templateRefs, "code", "dev", "stage")
 	return templateRefs
 }
 
@@ -116,9 +116,9 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	}
 }
 
-func (a *advancedTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(awaitility.Host(), "advanced")
-	verifyNsTypes(awaitility.T, "advanced", templateRefs, "code", "dev", "stage")
+func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, "advanced")
+	verifyNsTypes(hostAwait.T, "advanced", templateRefs, "code", "dev", "stage")
 	return templateRefs
 }
 
@@ -146,9 +146,9 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	)
 }
 
-func (a *teamTierChecks) GetExpectedTemplateRefs(awaitility *wait.Awaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(awaitility.Host(), "team")
-	verifyNsTypes(awaitility.T, "team", templateRefs, "dev", "stage")
+func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, "team")
+	verifyNsTypes(hostAwait.T, "team", templateRefs, "dev", "stage")
 	return templateRefs
 }
 
