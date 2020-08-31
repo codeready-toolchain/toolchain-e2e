@@ -4,6 +4,7 @@ require (
 	github.com/codeready-toolchain/api v0.0.0-20200827094533-2721a660825a
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200827095351-b2cb9e622a9a
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/onsi/ginkgo v1.13.0 // indirect
