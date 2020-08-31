@@ -28,7 +28,7 @@ func TestToolchainClusterE2E(t *testing.T) {
 // in the target cluster type operator
 func verifyToolchainCluster(t *testing.T, ctx *test.Context, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
-	current, ok, err := await.GetToolchainCluster(await.Type, await.Namespace, nil)
+	current, ok, err := await.GetToolchainCluster(otherAwait.Type, otherAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, ok, "ToolchainCluster should exist")
 

@@ -46,6 +46,7 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
+		FrameworkClient:        a.FrameworkClient,
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
 	}
@@ -535,12 +536,11 @@ func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition
 }
 
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) (toolchainv1alpha1.ToolchainStatus, error) {
+func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) error {
 	// there should only be one toolchain status with the name toolchain-status
 	name := "toolchain-status"
-	var toolchainStatus *toolchainv1alpha1.ToolchainStatus
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		toolchainStatus = &toolchainv1alpha1.ToolchainStatus{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
 		// retrieve the toolchainstatus from the host namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
@@ -563,5 +563,5 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		a.T.Logf("found toolchainstatus '%s': %+v", toolchainStatus.Name, toolchainStatus)
 		return true, nil
 	})
-	return *toolchainStatus, err
+	return err
 }

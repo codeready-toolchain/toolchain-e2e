@@ -28,7 +28,6 @@ func TestUserManagement(t *testing.T) {
 
 type userManagementTestSuite struct {
 	baseUserIntegrationTest
-	memberAwait *wait.MemberAwaitility
 }
 
 func (s *userManagementTestSuite) SetupSuite() {

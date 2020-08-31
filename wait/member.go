@@ -549,12 +549,12 @@ func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) M
 }
 
 // WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any
-func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCriterion) (toolchainv1alpha1.MemberStatus, error) {
+func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCriterion) error {
 	// there should only be one member status with the name toolchain-member-status
 	name := "toolchain-member-status"
-	memberStatus := toolchainv1alpha1.MemberStatus{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		// retrieve the memberstatus from the member namespace
+		memberStatus := toolchainv1alpha1.MemberStatus{}
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
@@ -576,7 +576,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 		a.T.Logf("found memberstatus '%s': %+v", memberStatus.Name, memberStatus)
 		return true, nil
 	})
-	return memberStatus, err
+	return err
 }
 
 // DeleteUserAccount deletes the user account resource with the given name and

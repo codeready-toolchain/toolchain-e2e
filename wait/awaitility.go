@@ -53,6 +53,8 @@ var ReadyToolchainCluster = &v1alpha1.ToolchainClusterCondition{
 func (a *Awaitility) WithRetryOptions(options ...RetryOption) *Awaitility {
 	result := &Awaitility{
 		T:             a.T,
+		Type:          a.Type,
+		Client:        a.Client,
 		Namespace:     a.Namespace,
 		RetryInterval: DefaultRetryInterval,
 		Timeout:       DefaultTimeout,
