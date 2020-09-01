@@ -59,7 +59,7 @@ func TestPerformance(t *testing.T) {
 		err = host.WaitUntilMetricsCounterHasValue(metricsRoute.Status.Ingress[0].Host, "workqueue_depth", "name", "usersignup-controller", 0)
 		assert.NoError(t, err, "failed to reach the expected queue depth")
 		end := time.Now()
-		logger.Info("done processing resources", "count", count, "duration (ms)", end.Sub(start).Milliseconds())
+		logger.Info("done processing resources", "provisioned_users_count", count, "usersignup_processing_duration_ms", end.Sub(start).Milliseconds())
 	})
 
 }
