@@ -85,7 +85,7 @@ type TimeoutOption time.Duration
 var _ RetryOption = TimeoutOption(0)
 
 func (o TimeoutOption) apply(a *Awaitility) {
-	a.RetryInterval = time.Duration(o)
+	a.Timeout = time.Duration(o)
 }
 
 // WaitForMetricsService waits until there's a service with the given name in the current namespace
