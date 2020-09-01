@@ -142,7 +142,7 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, cond
 	}
 	c := v1alpha1.ToolchainCluster{}
 	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
-	        c = v1alpha1.ToolchainCluster{}
+		c = v1alpha1.ToolchainCluster{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, &c); err != nil {
 			return false, err
 		}
