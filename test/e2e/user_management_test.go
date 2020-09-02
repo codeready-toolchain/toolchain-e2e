@@ -28,15 +28,11 @@ func TestUserManagement(t *testing.T) {
 
 type userManagementTestSuite struct {
 	baseUserIntegrationTest
-	memberAwait *wait.MemberAwaitility
 }
 
 func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.awaitility = WaitForDeployments(s.T(), userSignupList)
-	s.hostAwait = s.awaitility.Host()
-	s.memberAwait = s.awaitility.Member()
-	s.namespace = s.awaitility.HostNs
+	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
@@ -49,7 +45,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
 		userSignup.Spec.Deactivated = true
-		err := s.awaitility.Client.Update(context.TODO(), userSignup)
+		err := s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
@@ -58,14 +54,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-		err := s.awaitility.Client.Get(context.TODO(), types.NamespacedName{
+		err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: userSignup.Namespace,
 			Name:      userSignup.Name,
 		}, userSignup)
 		require.NoError(s.T(), err)
 
 		userSignup.Spec.Deactivated = false
-		err = s.awaitility.Client.Update(context.TODO(), userSignup)
+		err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' reactivated", userSignup.Name)
 
@@ -103,7 +99,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Check that no MUR created
 		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, Banned()...)
-		mur, err := s.awaitility.Host().GetMasterUserRecord(wait.WithMurName("testuser" + id))
+		mur, err := s.hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
 		require.NoError(s.T(), err)
 		assert.Nil(s.T(), mur)
 	})
@@ -122,7 +118,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 		require.NoError(s.T(), err)
 
-		route := s.awaitility.RegistrationServiceURL
+		route := s.hostAwait.RegistrationServiceURL
 
 		// Call signup endpoint with a valid token to initiate a signup process
 		req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
@@ -166,7 +162,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		t.Run("unban the banned user", func(t *testing.T) {
 			// Unban the user
-			err = s.awaitility.Client.Delete(context.TODO(), bannedUser)
+			err = s.hostAwait.Client.Delete(context.TODO(), bannedUser)
 			require.NoError(s.T(), err)
 
 			// Confirm the BannedUser is deleted
@@ -189,16 +185,16 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	s.setApprovalPolicyConfig("manual")
 
 	// Create UserSignup
-	userSignup := CreateAndApproveSignup(s.T(), s.awaitility, "janedoe")
+	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe")
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
 	require.NoError(s.T(), err)
 
 	// Disable MUR
-	err = s.awaitility.Host().UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+	err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 		mur.Spec.Disabled = true
 	})
 	require.NoError(s.T(), err)
@@ -218,24 +214,24 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Check the User is deleted
 	user := &userv1.User{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: userAccount.Namespace}, user)
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierrors.IsNotFound(err))
 
 	// Check the Identity is deleted
 	identity := &userv1.Identity{}
-	err = s.awaitility.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(userAccount.Spec.UserID)}, identity)
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(userAccount.Spec.UserID)}, identity)
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierrors.IsNotFound(err))
 
 	s.Run("re-enabled mur", func() {
 		// Re-enable MUR
-		err = s.awaitility.Host().UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Spec.Disabled = false
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, userSignup, "basic")
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
 	})
 }
 

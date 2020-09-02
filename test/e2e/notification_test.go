@@ -19,19 +19,14 @@ func TestNotifications(t *testing.T) {
 
 type notificationTestSuite struct {
 	suite.Suite
-	namespace   string
 	ctx         *framework.Context
-	awaitility  *wait.Awaitility
 	hostAwait   *wait.HostAwaitility
 	memberAwait *wait.MemberAwaitility
 }
 
 func (s *notificationTestSuite) SetupSuite() {
 	notificationList := &v1alpha1.NotificationList{}
-	s.ctx, s.awaitility = WaitForDeployments(s.T(), notificationList)
-	s.hostAwait = s.awaitility.Host()
-	s.memberAwait = s.awaitility.Member()
-	s.namespace = s.awaitility.HostNs
+	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), notificationList)
 }
 
 func (s *notificationTestSuite) TearDownTest() {
@@ -42,16 +37,14 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 
 	// Create and approve "janedoe"
 	janedoeName := "janedoe"
-	CreateAndApproveSignup(s.T(), s.awaitility, janedoeName)
+	CreateAndApproveSignup(s.T(), s.hostAwait, janedoeName)
 
 	s.T().Run("notification created and deleted", func(t *testing.T) {
-		hostAwait := wait.NewHostAwaitility(s.awaitility)
-
-		mur, err := hostAwait.WaitForMasterUserRecord(janedoeName,
+		mur, err := s.hostAwait.WaitForMasterUserRecord(janedoeName,
 			wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 		require.NoError(t, err)
 
-		notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(Sent()))
+		notification, err := s.hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(Sent()))
 		require.NoError(t, err)
 		require.NotNil(t, notification)
 		assert.Equal(t, mur.Name+"-provisioned", notification.Name)
@@ -59,7 +52,7 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 		assert.Equal(t, "userprovisioned", notification.Spec.Template)
 		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 
-		err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
+		err = s.hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
 		require.NoError(t, err)
 	})
 }

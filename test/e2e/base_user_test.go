@@ -15,24 +15,25 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	namespace  string
-	ctx        *framework.Context
-	awaitility *wait.Awaitility
-	hostAwait  *wait.HostAwaitility
+	ctx         *framework.Context
+	hostAwait   *wait.HostAwaitility
+	memberAwait *wait.MemberAwaitility
 }
 
 func (s *baseUserIntegrationTest) clearApprovalPolicyConfig() error {
 	cm := &corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
-			Name: "toolchain-saas-config",
+			Namespace: s.hostAwait.Namespace,
+			Name:      "toolchain-saas-config",
 		},
 	}
 
-	err := s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Delete(context.TODO(), cm.Name, v1.DeleteOptions{})
+	err := s.hostAwait.Client.Delete(context.TODO(), cm)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -45,7 +46,8 @@ func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
 	// Create a new ConfigMap
 	cm := &corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
-			Name: "toolchain-saas-config",
+			Namespace: s.hostAwait.Namespace,
+			Name:      "toolchain-saas-config",
 		},
 	}
 
@@ -56,11 +58,14 @@ func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
 	cmValues := make(map[string]string)
 	cmValues["user-approval-policy"] = policy
 	cm.Data = cmValues
-	_, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Create(context.TODO(), cm, v1.CreateOptions{})
+	err = s.hostAwait.FrameworkClient.Create(context.TODO(), cm, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 
 	// Confirm it was updated
-	cm, err = s.awaitility.KubeClient.CoreV1().ConfigMaps(s.namespace).Get(context.TODO(), "toolchain-saas-config", v1.GetOptions{})
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: s.hostAwait.Namespace,
+		Name:      "toolchain-saas-config"},
+		cm)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), policy, cm.Data["user-approval-policy"])
 }
@@ -72,7 +77,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 
 	// Confirm the MUR was created and ready
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.awaitility, *userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 
@@ -83,9 +88,9 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
 	// Create a new UserSignup with the given approved flag
-	userSignup := NewUserSignup(s.T(), s.awaitility.Host(), username, email)
+	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email)
 	userSignup.Spec.Approved = specApproved
-	err := s.awaitility.Client.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -98,8 +103,8 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *v1alpha1.BannedUser {
 	// Create the BannedUser
-	bannedUser := newBannedUser(s.awaitility.Host(), email)
-	err := s.awaitility.Client.Create(context.TODO(), bannedUser, CleanupOptions(s.ctx))
+	bannedUser := newBannedUser(s.hostAwait, email)
+	err := s.hostAwait.FrameworkClient.Create(context.TODO(), bannedUser, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)
@@ -110,7 +115,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 	return &v1alpha1.BannedUser{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      uuid.NewV4().String(),
-			Namespace: host.Ns,
+			Namespace: host.Namespace,
 			Labels: map[string]string{
 				v1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
 			},

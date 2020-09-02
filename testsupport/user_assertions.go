@@ -18,18 +18,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyMultipleSignups(t *testing.T, awaitility *wait.Awaitility, signups []toolchainv1alpha1.UserSignup) {
+func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, signups []toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
-		VerifyResourcesProvisionedForSignup(t, awaitility, signup, "basic")
+		VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, signup, "basic")
 	}
 }
 
-func VerifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitility, signup toolchainv1alpha1.UserSignup, tier string) {
-	hostAwait := wait.NewHostAwaitility(awaitility)
-	memberAwait := wait.NewMemberAwaitility(awaitility)
+func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, signup toolchainv1alpha1.UserSignup, tier string) {
 	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
 	// Get the latest signup version
-	userSignup, err := awaitility.Host().WaitForUserSignup(signup.Name)
+	userSignup, err := hostAwait.WaitForUserSignup(signup.Name)
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
@@ -52,10 +50,10 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitility *wait.Awaitili
 	_, err = memberAwait.WaitForIdentity(ToIdentityName(userAccount.Spec.UserID))
 	assert.NoError(t, err)
 
-	tiers.VerifyNsTemplateSet(t, awaitility, userAccount, tier)
+	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tier)
 
 	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, nil)
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 
