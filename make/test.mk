@@ -7,8 +7,12 @@
 QUAY_NAMESPACE ?= codeready-toolchain
 DATE_SUFFIX := $(shell date +'%d%H%M%S')
 RESOURCES_SUFFIX := ${DATE_SUFFIX}
-MEMBER_NS := ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
+ifeq ($(HOST_NS),) # unless it's already defined as an env var
 HOST_NS := ${QUAY_NAMESPACE}-host-${DATE_SUFFIX}
+endif
+ifeq ($(MEMBER_NS),) # unless it's already defined as an env var
+MEMBER_NS := ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
+endif
 REGISTRATION_SERVICE_NS := $(HOST_NS)
 TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
