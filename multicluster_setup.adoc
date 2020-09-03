@@ -103,20 +103,24 @@ $ curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-comm
 	
 
 # verify
+$ oc config use-context host-admin && oc get toolchainstatus -n ${HOST_NS}
+NAME               READY   LAST UPDATED
+toolchain-status   True    ...
+
 $ oc config use-context host-admin && oc get toolchainclusters -n ${HOST_NS}
 Switched to context "host-admin".
 NAME                               AGE   READY
 member-...                         ...   True
 
+# on the member cluster
+$ oc config use-context member-admin && oc get memberstatus -n ${MEMBER_NS}
+NAME                      READY   LAST UPDATED
+toolchain-member-status   True    ...
+
 $ oc config use-context member-admin && oc get toolchainclusters -n ${MEMBER_NS}
 Switched to context "member-admin".
 NAME                               AGE   READY
 host-...                           ...   True
-
-$ oc config use-context host-admin && oc get toolchainstatus -n ${HOST_NS} 
-Switched to context "host-admin".
-NAME               READY   LAST UPDATED
-toolchain-status   True    ...
 ----
 
 At this point, Host and Member clusters are ready to use.
