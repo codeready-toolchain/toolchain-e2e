@@ -97,12 +97,6 @@ toolchain-member-status   False   ...
 
 [source,bash]
 ----
-## on the member cluster
-
-# retrieve the API endpoint of the member cluster
-$ oc config use-context member-admin && oc get infrastructure cluster -o jsonpath='{.status.apiServerURL}' 
-https://api.<member_cluster_name>.devcluster.openshift.com:6443  
-
 # create/configure the ToolchainCluster resources on host and member clusters
 $ curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn ${MEMBER_NS} -hn ${HOST_NS}
 $ curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn ${MEMBER_NS} -hn ${HOST_NS}
