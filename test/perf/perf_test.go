@@ -45,10 +45,11 @@ func TestPerformance(t *testing.T) {
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
 		err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
-
-		// then check how much time it takes to restart and process all existing resources
+		require.NoError(t, err)
+		_, err = hostAwait.WaitForRouteToBeAvailable(metricsRoute.Namespace, metricsRoute.Name, "/metrics")
 		require.NoError(t, err)
 
+		// then check how much time it takes to restart and process all existing resources
 		host := hostAwait
 		host.Timeout = 30 * time.Minute
 
