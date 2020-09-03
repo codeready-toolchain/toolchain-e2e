@@ -57,8 +57,7 @@ To measure how much time a controller takes to process existing resources after 
 5. Wait until the `controller_runtime_reconcile_total(controller,usersignup-controller)` metric reaches the number of user accounts provisioned in step 1. Stop the stopwatch and log the results.
 
 
-Note:: With a limit of 5000 namespaces per member cluster and 3 namespaces per user provisioned with the `basic` tier, multiple member clusters may be needed to support the test case. With 1000 users, a
-single member cluster is enough.
+Note:: With a limit of 5000 namespaces per member cluster and 3 namespaces per user provisioned with the `basic` tier, multiple member clusters may be needed to support the test case. With 1000 users, a single member cluster is enough.
 
 == Show me the results
 
