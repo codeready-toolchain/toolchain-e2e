@@ -1,0 +1,66 @@
+= Performance Testing
+
+Before running the performance tests locally, ensure that you have one or more clusters. 
+See the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/multicluster_setup.adoc[multi-cluster setup] doc for instructions on how to configure multiple clusters.
+
+== How performance is measured
+
+All metrics collected during the performance tests come from the `/metrics` endpoint provided by the metrics server running within the operator pod.
+Each controller automatically exposes its own metrics via the Operator SDK, so we don't need to add anything in our code, unless we want to expose extra data.
+
+While the metrics evolve with time, the `/metrics` endpoint only provides "instantaneous" values so we need to poll the data from this endpoint to track changes (eg: memory or CPU) or wait until a certain value or threshold is reached (eg: number of resources processed).
+
+A `Service` is associated with the `/metrics` endpoint on each operator pod, and the performance test creates a `Route` to expose the service. This is a requirement since the test runs outside of the cluster.
+
+Here's an example of the metrics for the Host operator:
+
+----
+...
+
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 6.1227008e+07
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 7.62011648e+08
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes -1
+
+...
+
+# HELP controller_runtime_reconcile_total Total number of reconciliations per controller
+# TYPE controller_runtime_reconcile_total counter
+controller_runtime_reconcile_total{controller="masteruserrecord-controller",result="success"} 24
+controller_runtime_reconcile_total{controller="notification-controller",result="success"} 18
+controller_runtime_reconcile_total{controller="nstemplatetier-controller",result="success"} 3
+controller_runtime_reconcile_total{controller="registrationservice-controller",result="success"} 2
+controller_runtime_reconcile_total{controller="templateupdaterequest-controller",result="success"} 30
+controller_runtime_reconcile_total{controller="toolchaincluster-controller",result="success"} 16
+controller_runtime_reconcile_total{controller="toolchainstatus-controller",result="requeue_after"} 30
+controller_runtime_reconcile_total{controller="usersignup-controller",result="success"} 40
+
+...
+
+----
+
+== What is measured
+
+=== Processing existing resources after a new deployment
+
+To measure how much time a controller takes to process existing resources after a new deployment, the test does the following steps:
+
+1. Provision the user accounts.
+2. Create (if needed) a route to expose the `/metrics` endpoint to the outside world.
+3. Delete the operator pod. The Deployment controller will immediately trigger a new pod.
+4. Wait until the `/metrics` endpoint is available. At this point, the controller has fully bootstrapped, so the test can start the stopwatch.
+5. Wait until the `controller_runtime_reconcile_total(controller,usersignup-controller)` metric reaches the number of user accounts provisioned in step 1. Stop the stopwatch and log the results.
+
+
+Note:: With a limit of 5000 namespaces per member cluster and 3 namespaces per user provisioned with the `basic` tier, multiple member clusters may be needed to support the test case. With 1000 users, a
+single member cluster is enough.
+
+== Show me the results
+
+Sure! The jobs run https://github.com/openshift/release/blob/master/ci-operator/config/codeready-toolchain/toolchain-e2e/codeready-toolchain-toolchain-e2e-master.yaml#L56-L60[periodically] on OpenShift CI. 
+All results are published on the https://prow.ci.openshift.org/?type=periodic&job=periodic-ci-codeready-toolchain-toolchain-e2e-master-perf[Prow dashboard] and each job’s build log page provides a link named “Artifacts”, which contain a `perf` directory which contains a `perf-<20060102-030405>.log` file.

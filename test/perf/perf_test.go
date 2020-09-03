@@ -30,8 +30,11 @@ func TestPerformance(t *testing.T) {
 	// host metrics should become available at this point
 	metricsService, err := hostAwait.WaitForMetricsService("host-operator-metrics")
 	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
+	// host metrics should become available again at this point
+	metricsRoute, err := hostAwait.SetupRouteForService(metricsService, "/metrics")
+	require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
-	count := 1000
+	count := 10
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
 		// given
 		users := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, count)
@@ -48,9 +51,6 @@ func TestPerformance(t *testing.T) {
 
 		host := hostAwait
 		host.Timeout = 30 * time.Minute
-		// host metrics should become available again at this point
-		metricsRoute, err := hostAwait.SetupRouteForService(metricsService, "/metrics")
-		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 		start := time.Now()
 		// measure time it takes to have an empty queue on the master-user-records
