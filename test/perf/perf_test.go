@@ -34,7 +34,7 @@ func TestPerformance(t *testing.T) {
 	metricsRoute, err := hostAwait.SetupRouteForService(metricsService, "/metrics")
 	require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
-	count := 10
+	count := 1000
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
 		// given
 		users := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, count)
