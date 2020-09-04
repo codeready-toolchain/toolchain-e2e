@@ -131,7 +131,7 @@ $ oc config use-context host-admin && oc project ${HOST_NS}
 Switched to context "host-admin".
 Now using project "toolchain-host-operator" on server ...
 
-$ HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace toolchain-e2e --verbose --go-test-flags "-timeout=30m -failfast -run TestE2E -v"
+$ HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace toolchain-e2e --verbose --go-test-flags "-test.timeout=30m -test.failfast -run TestE2E -v"
 ----
 
 Have fun!
