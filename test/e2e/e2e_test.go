@@ -7,6 +7,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +45,10 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
+	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
+	require.NoError(t, err, "failed while waiting for ToolchainStatus")
+	originalMurCount := originalToolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount
+
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
 	signups := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5)
@@ -56,6 +61,9 @@ func TestE2EFlow(t *testing.T) {
 
 	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
 	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+
+	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
+	require.NoError(t, err)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -156,6 +164,16 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
+	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
+		// Now when the main flow has been tested we can verify the signups we created in the very beginning
+		VerifyMultipleSignups(t, hostAwait, memberAwait, signups)
+
+		// check if the MUR and UA counts match
+		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()), wait.UntilHasMurCount(originalMurCount+7))
+		require.NoError(t, err)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
+	})
+
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
 		johnSignup, err := hostAwait.WaitForUserSignup(johnSignup.Name)
@@ -197,11 +215,10 @@ func TestE2EFlow(t *testing.T) {
 
 		// also, verify that other user's resource are left intact
 		VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
-	})
 
-	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
-		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		VerifyMultipleSignups(t, hostAwait, memberAwait, signups)
+		// check if the MUR and UA counts match
+		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()), wait.UntilHasMurCount(originalMurCount+6))
+		require.NoError(t, err)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
 	})
-
 }

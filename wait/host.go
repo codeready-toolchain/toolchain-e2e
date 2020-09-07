@@ -535,12 +535,30 @@ func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition
 	}
 }
 
+// UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has the given count of MasterUserRecords
+func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
+	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
+		if toolchainStatus.Status.HostOperator != nil {
+			if toolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount == murCount {
+				a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
+				return true
+			}
+			a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'",
+				toolchainStatus.Name, toolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount, murCount)
+		}
+		a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
+		return false
+	}
+}
+
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) error {
+func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) (*toolchainv1alpha1.ToolchainStatus, error) {
 	// there should only be one toolchain status with the name toolchain-status
 	name := "toolchain-status"
+	toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
+		toolchainStatus = &toolchainv1alpha1.ToolchainStatus{}
 		// retrieve the toolchainstatus from the host namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
@@ -563,5 +581,5 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		a.T.Logf("found toolchainstatus '%s': %+v", toolchainStatus.Name, toolchainStatus)
 		return true, nil
 	})
-	return err
+	return toolchainStatus, err
 }
