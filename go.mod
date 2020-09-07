@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20200827094533-2721a660825a
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200827095351-b2cb9e622a9a
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200903074939-0e6cc580a886
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/kr/text v0.2.0 // indirect
@@ -10,7 +10,6 @@ require (
 	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.19.2
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.11.1
 	github.com/rogpeppe/go-internal v1.6.0 // indirect
 	github.com/satori/go.uuid v1.2.0
