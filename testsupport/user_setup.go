@@ -14,6 +14,7 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/stretchr/testify/assert"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
@@ -58,6 +59,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.Equal(t, userSignup.Spec.GivenName, identity.Username+"-First-Name")
 	require.Equal(t, userSignup.Spec.FamilyName, identity.Username+"-Last-Name")
 	require.Equal(t, userSignup.Spec.Company, identity.Username+"-Company-Name")
+	assert.Equal(t, toolchainv1alpha1.UserSignupApprovedLabelValueFalse, userSignup.Labels[toolchainv1alpha1.UserSignupApprovedLabelKey])
 
 	// 2. approve the UserSignup
 	userSignup.Spec.Approved = true
