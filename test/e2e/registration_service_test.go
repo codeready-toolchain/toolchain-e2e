@@ -429,6 +429,67 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), ExpectedConsoleURL(s.T(), s.memberAwait, memberCluster), mp["consoleURL"])
 }
 
+func (s *registrationServiceTestSuite) TestPhoneVerification() {
+	// Create a token and identity to sign up with
+	identity0 := authsupport.NewIdentity()
+	emailValue := uuid.NewV4().String() + "@acme.com"
+	emailClaim0 := authsupport.WithEmailClaim(emailValue)
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
+	require.NoError(s.T(), err)
+
+	// Call the signup endpoint
+	req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+	resp, err := httpClient.Do(req)
+	require.NoError(s.T(), err)
+	defer close(s.T(), resp)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+	assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
+
+	// Wait for the UserSignup to be created
+	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	require.NoError(s.T(), err)
+	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	assert.Equal(s.T(), emailValue, emailAnnotation)
+
+	// Call get signup endpoint with a valid token and make sure it's pending approval
+	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+
+	resp, err = httpClient.Do(req)
+	require.NoError(s.T(), err)
+	defer close(s.T(), resp)
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+
+	mp := make(map[string]interface{})
+	err = json.Unmarshal([]byte(body), &mp)
+	require.NoError(s.T(), err)
+
+	mpStatus, ok := mp["status"].(map[string]interface{})
+	assert.True(s.T(), ok)
+
+	assert.Equal(s.T(), "", mp["compliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+
+	// Approve usersignup.
+	userSignup.Spec.Approved = true
+	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
+	require.NoError(s.T(), err)
+}
+
 func close(t *testing.T, resp *http.Response) {
 	_, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
