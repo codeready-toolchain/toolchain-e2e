@@ -48,6 +48,7 @@ func TestE2EFlow(t *testing.T) {
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMurCount := originalToolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount
+	t.Logf("the original MasterUserRecord count: %+d", originalMurCount)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
