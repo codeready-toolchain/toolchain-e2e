@@ -10,6 +10,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/stretchr/testify/require"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -544,8 +545,11 @@ func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
 				a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
 				return true
 			}
-			a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'",
-				toolchainStatus.Name, toolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount, murCount)
+			murList := &toolchainv1alpha1.MasterUserRecordList{}
+			err := a.Client.List(context.TODO(), murList, client.InNamespace(toolchainStatus.Namespace))
+			require.NoError(a.T, err)
+			a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'. The actual number of MURs is: '%d'",
+				toolchainStatus.Name, toolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount, murCount, len(murList.Items))
 		}
 		a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
 		return false
