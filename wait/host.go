@@ -550,8 +550,9 @@ func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
 			require.NoError(a.T, err)
 			a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'. The actual number of MURs is: '%d'",
 				toolchainStatus.Name, toolchainStatus.Status.HostOperator.CapacityUsage.MasterUserRecordCount, murCount, len(murList.Items))
+		} else {
+			a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
 		}
-		a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
 		return false
 	}
 }
