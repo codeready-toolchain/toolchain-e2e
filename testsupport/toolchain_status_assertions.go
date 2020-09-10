@@ -14,6 +14,6 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility) {
 }
 
 func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility) {
-	err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()), wait.UntilAllMembersHaveUsageSet())
+	err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
