@@ -535,6 +535,19 @@ func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition
 	}
 }
 
+// UntilAllMembersHaveUsageSet returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has all members with some non-zero resource usage
+func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
+	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
+		for _, member := range toolchainStatus.Status.Members {
+			if !hasMemberStatusUsageSet(a.T, member.ClusterName, member.MemberStatus) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) error {
 	// there should only be one toolchain status with the name toolchain-status
