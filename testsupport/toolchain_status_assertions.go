@@ -28,16 +28,16 @@ CurrentMembers:
 		for _, previousMemberStatus := range previous.Status.Members {
 			if previousMemberStatus.ClusterName == currentMemberStatus.ClusterName {
 				if currentMemberStatus.ClusterName == memberClusterName {
-					assert.Equal(t, previousMemberStatus.CapacityUsage.UserAccountCount+increase, currentMemberStatus.CapacityUsage.UserAccountCount)
+					assert.Equal(t, previousMemberStatus.UserAccountCount+increase, currentMemberStatus.UserAccountCount)
 					found = true
 				} else {
-					assert.Equal(t, previousMemberStatus.CapacityUsage.UserAccountCount, currentMemberStatus.CapacityUsage.UserAccountCount)
+					assert.Equal(t, previousMemberStatus.UserAccountCount, currentMemberStatus.UserAccountCount)
 				}
 				continue CurrentMembers
 			}
 		}
 		if currentMemberStatus.ClusterName == memberClusterName {
-			assert.Equal(t, increase, currentMemberStatus.CapacityUsage.UserAccountCount)
+			assert.Equal(t, increase, currentMemberStatus.UserAccountCount)
 			found = true
 		} else {
 			assert.Fail(t, fmt.Sprintf("There is an extra UserAccount count for member cluster %s", currentMemberStatus.ClusterName))
