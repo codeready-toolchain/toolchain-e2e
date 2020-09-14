@@ -32,9 +32,9 @@ This is by design because OLM does not ensure that both the host-operator and me
 
 If you still don't know what to do with e2e tests in some use-cases, go to <<What To Do>> section where all use-cases are covered.
 
-==== Prerequisites if Running Locally
+=== Prerequisites if Running Locally
 
-===== Pre-installed Tools
+==== Pre-installed Tools
 * go
 * git
 * operator-sdk 0.19.2
@@ -44,7 +44,7 @@ If you still don't know what to do with e2e tests in some use-cases, go to <<Wha
 * yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
 * docker (if building from source)
 
-===== Minishift or CRC (CodeReady Containers)
+==== Minishift or CRC (CodeReady Containers)
 If you are running these tests locally in Minishift or CRC, make sure that you have exposed necessary environments, so deployment can use the locally built image. You can expose it by running the following commands.
 
 * for Minishift `eval $(minishift docker-env)` `eval $(minishift oc-env)`
@@ -53,14 +53,18 @@ If you are running these tests locally in Minishift or CRC, make sure that you h
 
 NOTE: This is not required for openshift-ci environment
 
-===== OpenShift 4.2+
+==== OpenShift 4.2+
 
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
 * Log in to the quay.io using `docker login quay.io`
 * Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
 * Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
 
-==== Running End-to-End Tests
+==== Multi-cluster Environment
+
+See the procedure to configure a Host cluster and a Member cluster at link:multicluster_setup.adoc[here].
+
+=== Running End-to-End Tests
 
 Although the e2e tests are in the separated repository than the actual operators are, it's still possible to run them against the current code that is at HEAD of the operator repositories.
 There are multiple Makefile targets that will execute the e2e tests, they just differ in where the operators' code is taken from:
