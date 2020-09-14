@@ -10,6 +10,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/stretchr/testify/require"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -535,12 +536,34 @@ func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition
 	}
 }
 
+// UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has the given count of MasterUserRecords
+func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
+	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
+		if toolchainStatus.Status.HostOperator != nil {
+			if toolchainStatus.Status.HostOperator.MasterUserRecordCount == murCount {
+				a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
+				return true
+			}
+			murList := &toolchainv1alpha1.MasterUserRecordList{}
+			err := a.Client.List(context.TODO(), murList, client.InNamespace(toolchainStatus.Namespace))
+			require.NoError(a.T, err)
+			a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'. The actual number of MURs is: '%d'",
+				toolchainStatus.Name, toolchainStatus.Status.HostOperator.MasterUserRecordCount, murCount, len(murList.Items))
+		} else {
+			a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
+		}
+		return false
+	}
+}
+
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) error {
+func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) (*toolchainv1alpha1.ToolchainStatus, error) {
 	// there should only be one toolchain status with the name toolchain-status
 	name := "toolchain-status"
+	toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
+		toolchainStatus = &toolchainv1alpha1.ToolchainStatus{}
 		// retrieve the toolchainstatus from the host namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
@@ -563,5 +586,5 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		a.T.Logf("found toolchainstatus '%s': %+v", toolchainStatus.Name, toolchainStatus)
 		return true, nil
 	})
-	return err
+	return toolchainStatus, err
 }
