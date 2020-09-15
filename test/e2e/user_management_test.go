@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -66,6 +67,35 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Logf("user signup '%s' reactivated", userSignup.Name)
 
 		_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+		require.NoError(s.T(), err)
+	})
+
+	s.T().Run("check that auto deactivation deactivates a user", func(t *testing.T) {
+		tierDeactivationPeriod := 30
+		ctx, hostAwait, _ := WaitForDeployments(t, &v1alpha1.NSTemplateTier{})
+		defer ctx.Cleanup()
+
+		// Let's create a tier with deactivation enabled
+		deactivationTier := CreateNSTemplateTier(t, ctx, hostAwait, "deactivation-tier", DeactivationTimeoutDays(tierDeactivationPeriod))
+
+		mur := MoveUserToTier(t, hostAwait, userSignup.Spec.Username, *deactivationTier)
+
+		err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: mur.Namespace,
+			Name:      mur.Name,
+		}, mur)
+		require.NoError(s.T(), err)
+
+		// We cannot wait days for deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
+		// in the past to trigger auto deactivation. Subtracting the tier deactivation period from the current time and setting this as the provisioned
+		// time should cause the deactivation controller to reconcile and see the mur is ready for deactivation.
+		tierDeactivationDuration := time.Duration(tierDeactivationPeriod*24) * time.Hour
+		mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+		err = s.hostAwait.Client.Status().Update(context.TODO(), mur)
+		require.NoError(s.T(), err)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
+
+		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.NoError(s.T(), err)
 	})
 }
