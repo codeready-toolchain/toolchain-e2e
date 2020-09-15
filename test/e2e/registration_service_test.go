@@ -452,7 +452,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.awaitility.Host().WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
@@ -483,11 +483,16 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+	//assert.True(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Approve usersignup.
 	userSignup.Spec.Approved = true
-	err = s.awaitility.Host().Client.Update(context.TODO(), userSignup)
+	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
+
+	// Ensure the Master User Record is NOT provisioned
+	//_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username)
+	//require.Error(s.T(), err)
 }
 
 func close(t *testing.T, resp *http.Response) {
