@@ -75,7 +75,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
 		require.NoError(s.T(), err)
 		require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
 	})

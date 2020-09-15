@@ -134,7 +134,7 @@ func Deactivated() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
-			Reason: "ApprovedAutomatically",
+			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
