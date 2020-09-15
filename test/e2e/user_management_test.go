@@ -52,6 +52,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.NoError(s.T(), err)
+
+		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(Deactivated()...))
+		require.NoError(s.T(), err)
+		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
 	})
 
 	s.T().Run("reactivate a deactivated user", func(t *testing.T) {
@@ -68,6 +73,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
 		require.NoError(s.T(), err)
+
+		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+		require.NoError(s.T(), err)
+		require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
 	})
 
 	s.T().Run("check that auto deactivation deactivates a user", func(t *testing.T) {
@@ -91,6 +101,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.NoError(s.T(), err)
+
+		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(Deactivated()...))
+		require.NoError(s.T(), err)
+		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
 	})
 }
 
