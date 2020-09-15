@@ -68,6 +68,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	// Check the updated conditions
 	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
 	require.NoError(t, err)
+	assert.Equal(t, toolchainv1alpha1.UserSignupApprovedLabelValueTrue, userSignup.Labels[toolchainv1alpha1.UserSignupApprovedLabelKey])
 
 	return *userSignup
 }
