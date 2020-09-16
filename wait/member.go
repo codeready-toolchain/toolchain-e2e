@@ -540,12 +540,30 @@ type MemberStatusWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.Member
 func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
 	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
 		if test.ConditionsMatch(memberStatus.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in MemberStatus '%s`", memberStatus.Name)
+			a.T.Logf("status conditions match in MemberStatus '%s'", memberStatus.Name)
 			return true
 		}
 		a.T.Logf("waiting for status condition of MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", memberStatus.Name, memberStatus.Status.Conditions, conditions)
 		return false
 	}
+}
+
+// UntilMemberStatusHasUsageSet returns a `MemberStatusWaitCriterion` which checks that the given
+// MemberStatus has some non-zero resource usage set
+func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
+	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
+		return hasMemberStatusUsageSet(a.T, memberStatus.Name, memberStatus.Status)
+	}
+}
+
+func hasMemberStatusUsageSet(t *testing.T, name string, status toolchainv1alpha1.MemberStatusStatus) bool {
+	usage := status.ResourceUsage.MemoryUsagePerNodeRole
+	if len(usage) == 2 && usage["worker"] > 0 && usage["master"] > 0 {
+		t.Logf("the MemberStatus '%s' has resource usage set for both worker and master nodes: %v", name, usage)
+		return true
+	}
+	t.Logf("the MemberStatus '%s' doesn't have resource usage set for both worker and master nodes, actual: %v", name, usage)
+	return false
 }
 
 // WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any
