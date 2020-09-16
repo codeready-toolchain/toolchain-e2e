@@ -12,7 +12,7 @@ import (
 )
 
 func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility) {
-	err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(ToolchainStatusReady()))
+	err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(ToolchainStatusReady()), wait.UntilMemberStatusHasUsageSet())
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
