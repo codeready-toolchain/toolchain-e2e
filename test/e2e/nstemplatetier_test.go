@@ -70,7 +70,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
 			// given
-			changeTierRequest := newChangeTierRequest(hostAwait.Namespace, tierToCheck, testingTiersName)
+			changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, testingTiersName, tierToCheck)
 
 			// when
 			err = hostAwait.FrameworkClient.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
@@ -135,37 +135,14 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 }
 
 // setupAccounts takes care of:
-// 1. creating a new `cheesecake` tier with the TemplateRefs of the "basic" tier.
+// 1. creating a new tier with the TemplateRefs of the "basic" tier.
 // 2. creating 10 users (signups, MURs, etc.)
-// 3. promoting the users to the `cheesecake` tier
+// 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
 func setupAccounts(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, tierName, nameFmt string, count int) map[string]string {
-	// first, let's create the `cheesecake` NSTemplateTier (to avoid messing with other tiers)
-	// We'll use the `basic` tier as a source of inspiration.
-	_, err := hostAwait.WaitForNSTemplateTier("basic",
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-code-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-dev-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-stage-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
-	)
-	require.NoError(t, err)
-	basicTier := &toolchainv1alpha1.NSTemplateTier{}
-	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: hostAwait.Namespace,
-		Name:      "basic",
-	}, basicTier)
-	require.NoError(t, err)
+	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
+	tier := CreateNSTemplateTier(t, ctx, hostAwait, tierName)
 
-	// now let's create the new NSTemplateTier with the same templates as the "basic" tier
-	tier := &toolchainv1alpha1.NSTemplateTier{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: basicTier.Namespace,
-			Name:      tierName,
-		},
-		Spec: basicTier.Spec,
-	}
-	err = hostAwait.FrameworkClient.Create(context.TODO(), tier, CleanupOptions(ctx))
-	require.NoError(t, err)
 	// let's create a few users (more than `maxPoolSize`)
 	users := make([]toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
@@ -176,17 +153,10 @@ func setupAccounts(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, t
 		_, err := hostAwait.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
 		require.NoError(t, err)
 	}
-	// let's promote to users the `cheesecake` tier and retain the SyncIndexes (indexes by usersignup.Name)
+	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {
-		changeTierRequest := newChangeTierRequest(hostAwait.Namespace, tier.Name, fmt.Sprintf(nameFmt, i))
-		err = hostAwait.FrameworkClient.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
-		require.NoError(t, err)
-		_, err = hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
-		require.NoError(t, err)
-		mur, err := hostAwait.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i),
-			UntilMasterUserRecordHasCondition(Provisioned())) // ignore other conditions, such as notification sent, etc.
-		require.NoError(t, err)
+		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), *tier)
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}
@@ -313,17 +283,4 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 
 	// then
 	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, legacySignup, "basic")
-}
-
-func newChangeTierRequest(namespace, tier, murName string) *toolchainv1alpha1.ChangeTierRequest {
-	return &toolchainv1alpha1.ChangeTierRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    namespace,
-			GenerateName: "changetierrequest-",
-		},
-		Spec: toolchainv1alpha1.ChangeTierRequestSpec{
-			TierName: tier,
-			MurName:  murName,
-		},
-	}
 }
