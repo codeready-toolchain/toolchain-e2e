@@ -11,9 +11,10 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -689,4 +690,16 @@ func (a *HostAwaitility) UpdateHostOperatorConfig(options ...test.HostOperatorCo
 			require.NoError(a.T, err)
 		}
 	})
+}
+
+// GetHostOperatorPod returns the pod running the host operator controllers
+func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
+	pods := corev1.PodList{}
+	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "host-operator"}); err != nil {
+		return corev1.Pod{}, err
+	}
+	if len(pods.Items) != 1 {
+		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=host-operator' in namespace '%s': %d ", a.Namespace, len(pods.Items))
+	}
+	return pods.Items[0], nil
 }
