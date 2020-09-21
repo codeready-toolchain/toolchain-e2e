@@ -432,7 +432,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Create a token and identity to sign up with
 	identity0 := authsupport.NewIdentity()
-	emailValue := uuid.NewV4().String() + "@acme.com"
+	emailValue := uuid.NewV4().String() + "@some.domain"
 	emailClaim0 := authsupport.WithEmailClaim(emailValue)
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 	require.NoError(s.T(), err)
@@ -483,7 +483,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
-	//assert.True(s.T(), mpStatus["verificationRequired"].(bool))
+	require.True(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Approve usersignup.
 	userSignup.Spec.Approved = true
@@ -491,8 +491,31 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Ensure the Master User Record is NOT provisioned
-	//_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username)
-	//require.Error(s.T(), err)
+	_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username)
+	require.Error(s.T(), err)
+
+	// Initiate the verification process
+
+	// Retrieve the updated UserSignup
+
+	// Confirm there is a verification code label
+
+	// Confirm the expiry time has been set
+
+	// Attempt to verify with an incorrect verification code
+
+	// Retrieve the updated UserSignup
+
+	// Check attempts has been incremented
+
+	// Verify with the correct code
+
+	// Retrieve the updated UserSignup
+
+	// Confirm all unrequired labels have been removed
+
+	// Confirm the MasterUserRecord is provisioned
+
 }
 
 func close(t *testing.T, resp *http.Response) {
