@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -37,9 +38,10 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 
 	// Create and approve "janedoe"
 	janedoeName := "janedoe"
-	CreateAndApproveSignup(s.T(), s.hostAwait, janedoeName)
+	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, janedoeName)
+	s.T().Logf("user signup '%s' created and approved", userSignup.Name)
 
-	s.T().Run("notification created and deleted", func(t *testing.T) {
+	s.T().Run("provisioned notification created and deleted", func(t *testing.T) {
 		mur, err := s.hostAwait.WaitForMasterUserRecord(janedoeName,
 			wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 		require.NoError(t, err)
@@ -53,6 +55,24 @@ func (s *notificationTestSuite) TestNotificationCleanup() {
 		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 
 		err = s.hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
+		require.NoError(t, err)
+	})
+
+	s.T().Run("deactivation notification created and deleted", func(t *testing.T) {
+		userSignup.Spec.Deactivated = true
+		err := s.hostAwait.Client.Update(context.TODO(), &userSignup)
+		require.NoError(s.T(), err)
+		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
+
+		notification, err := s.hostAwait.WaitForNotification(userSignup.Status.CompliantUsername+"-deactivated", wait.UntilNotificationHasConditions(Sent()))
+		require.NoError(t, err)
+		require.NotNil(t, notification)
+		assert.Equal(t, userSignup.Status.CompliantUsername+"-deactivated", notification.Name)
+		assert.Equal(t, userSignup.Namespace, notification.Namespace)
+		assert.Equal(t, "userdeactivated", notification.Spec.Template)
+		assert.Equal(t, userSignup.Name, notification.Spec.UserID)
+
+		err = s.hostAwait.WaitUntilNotificationDeleted(userSignup.Status.CompliantUsername + "-deactivated")
 		require.NoError(t, err)
 	})
 }
