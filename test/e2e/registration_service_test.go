@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -495,27 +497,106 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Error(s.T(), err)
 
 	// Initiate the verification process
+	requestBody := `{ "country_code":"61", "phone_number":"0408999888" }`
+	req, err = http.NewRequest("PUT", s.route+"/api/v1/signup/verification",
+		strings.NewReader(requestBody))
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+	resp, err = httpClient.Do(req)
+	require.NoError(s.T(), err)
+	defer close(s.T(), resp)
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+	assert.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
 
 	// Retrieve the updated UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	require.NoError(s.T(), err)
 
 	// Confirm there is a verification code label
+	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Confirm the expiry time has been set
+	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
 
 	// Attempt to verify with an incorrect verification code
+	req, err = http.NewRequest("GET", s.route+"/api/v1/signup/verification/invalid",
+		strings.NewReader(requestBody))
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+	resp, err = httpClient.Do(req)
+	require.NoError(s.T(), err)
+	defer close(s.T(), resp)
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+	assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 
 	// Retrieve the updated UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	require.NoError(s.T(), err)
 
 	// Check attempts has been incremented
+	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
 
 	// Verify with the correct code
+	// Attempt to verify with an incorrect verification code
+	req, err = http.NewRequest("GET", s.route + fmt.Sprintf("/api/v1/signup/verification/%s",
+		userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]),
+		strings.NewReader(requestBody))
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+	resp, err = httpClient.Do(req)
+	require.NoError(s.T(), err)
+	defer close(s.T(), resp)
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
 	// Retrieve the updated UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	require.NoError(s.T(), err)
 
-	// Confirm all unrequired labels have been removed
+	// Confirm all unrequired annotations have been removed
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationTimestampAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCounterAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
 
 	// Confirm the MasterUserRecord is provisioned
+	_, err = s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
+	require.NoError(s.T(), err)
 
+	// Retrieve the UserSignup from the GET endpoint
+	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token0)
+	req.Header.Set("content-type", "application/json")
+
+	resp, err = httpClient.Do(req)
+	require.NoError(s.T(), err)
+	defer close(s.T(), resp)
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+
+	mp = make(map[string]interface{})
+	err = json.Unmarshal([]byte(body), &mp)
+	require.NoError(s.T(), err)
+
+	// Confirm that VerificationRequired is no longer true
+	require.False(s.T(), mpStatus["verificationRequired"].(bool))
 }
 
 func close(t *testing.T, resp *http.Response) {
