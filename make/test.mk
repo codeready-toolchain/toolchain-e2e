@@ -243,8 +243,10 @@ endif
 	-oc new-project $(HOST_NS) 1>/dev/null
 	-oc label ns $(HOST_NS) app=host-operator
 	-oc project $(HOST_NS)
+	-oc apply -f ${HOST_REPO_PATH}/deploy/host-operator/secrets.yaml
 ifneq ($(IS_OS_3),)
-	# is using OS 3, so we need to deploy the manifests manually
+	# if using OS 3, so we need to deploy the manifests manually
+    oc apply -f ${HOST_REPO_PATH}/deploy/host-operator/secrets.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
