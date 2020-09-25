@@ -245,7 +245,7 @@ endif
 	-oc project $(HOST_NS)
 	-oc apply -f deploy/host-operator/secrets.yaml -n $(HOST_NS)
 ifneq ($(IS_OS_3),)
-	# if using OS 3, so we need to deploy the manifests manually
+	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
 	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
