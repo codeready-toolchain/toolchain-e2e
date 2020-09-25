@@ -34,6 +34,23 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 	}
 }
 
+func PendingApprovalNoCluster() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: "PendingApproval",
+			Message: "no suitable member cluster found - capacity was reached",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionFalse,
+			Reason: "NoClusterAvailable",
+			Message: "no suitable member cluster found - capacity was reached",
+		},
+	}
+}
+
 func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
@@ -49,6 +66,22 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
 			Status: corev1.ConditionFalse,
 			Reason: "UserIsActive",
+		},
+	}
+}
+
+func ApprovedByAdminNoCluster() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: "ApprovedByAdmin",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionFalse,
+			Reason: "NoClusterAvailable",
+			Message: "no suitable member cluster found - capacity was reached",
 		},
 	}
 }
@@ -94,11 +127,6 @@ func ApprovedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
 
 func VerificationRequired() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
-		{
-			Type:   toolchainv1alpha1.UserSignupApproved,
-			Status: corev1.ConditionTrue,
-			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
-		},
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,

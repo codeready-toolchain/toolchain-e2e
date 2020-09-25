@@ -7,15 +7,11 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type baseUserIntegrationTest struct {
@@ -25,55 +21,10 @@ type baseUserIntegrationTest struct {
 	memberAwait *wait.MemberAwaitility
 }
 
-func (s *baseUserIntegrationTest) clearApprovalPolicyConfig() error {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: s.hostAwait.Namespace,
-			Name:      "toolchain-saas-config",
-		},
-	}
-
-	err := s.hostAwait.Client.Delete(context.TODO(), cm)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *baseUserIntegrationTest) setApprovalPolicyConfig(policy string) {
-	// Create a new ConfigMap
-	cm := &corev1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: s.hostAwait.Namespace,
-			Name:      "toolchain-saas-config",
-		},
-	}
-
-	// Clear the current approval policy
-	err := s.clearApprovalPolicyConfig()
-	require.NoError(s.T(), err)
-
-	cmValues := make(map[string]string)
-	cmValues["user-approval-policy"] = policy
-	cm.Data = cmValues
-	err = s.hostAwait.FrameworkClient.Create(context.TODO(), cm, CleanupOptions(s.ctx))
-	require.NoError(s.T(), err)
-
-	// Confirm it was updated
-	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: s.hostAwait.Namespace,
-		Name:      "toolchain-saas-config"},
-		cm)
-	require.NoError(s.T(), err)
-	require.Equal(s.T(), policy, cm.Data["user-approval-policy"])
-}
-
-func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string,
+func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, setTargetCluster bool,
 	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 
-	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, conditions...)
+	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, setTargetCluster, conditions...)
 
 	// Confirm the MUR was created and ready
 
@@ -84,11 +35,11 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	return userSignup, mur
 }
 
-func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string,
+func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, setTargetCluster bool,
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
 	// Create a new UserSignup with the given approved flag
-	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email)
+	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email, setTargetCluster)
 	userSignup.Spec.Approved = specApproved
 	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
