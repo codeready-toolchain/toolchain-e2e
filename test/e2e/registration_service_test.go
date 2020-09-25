@@ -497,7 +497,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Error(s.T(), err)
 
 	// Initiate the verification process
-	requestBody := `{ "country_code":"61", "phone_number":"0408999888" }`
+	requestBody := `{ "country_code":"+61", "phone_number":"408999999" }`
 	req, err = http.NewRequest("PUT", s.route+"/api/v1/signup/verification",
 		strings.NewReader(requestBody))
 	require.NoError(s.T(), err)
@@ -535,7 +535,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), body)
-	assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
+	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
@@ -559,7 +559,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), body)
-	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
@@ -594,6 +594,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	mp = make(map[string]interface{})
 	err = json.Unmarshal([]byte(body), &mp)
 	require.NoError(s.T(), err)
+
+	mpStatus, ok = mp["status"].(map[string]interface{})
+	assert.True(s.T(), ok)
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
