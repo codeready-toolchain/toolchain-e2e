@@ -26,6 +26,11 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 			Status: corev1.ConditionFalse,
 			Reason: "PendingApproval",
 		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
 	}
 }
 
@@ -40,6 +45,11 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
 		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
 	}
 }
 
@@ -53,6 +63,11 @@ func ApprovedAutomatically() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
 		},
 	}
 }
@@ -69,6 +84,11 @@ func ApprovedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
 			Status: corev1.ConditionTrue,
 			Reason: "Banned",
 		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
 	}
 }
 
@@ -83,6 +103,11 @@ func VerificationRequired() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,
 			Reason: toolchainv1alpha1.UserSignupVerificationRequiredReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
 		},
 	}
 }
@@ -140,6 +165,11 @@ func Deactivated() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
 			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
 		},
 	}
 }
