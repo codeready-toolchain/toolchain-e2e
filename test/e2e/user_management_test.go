@@ -43,6 +43,7 @@ func (s *userManagementTestSuite) TearDownTest() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.setApprovalPolicyConfig("automatic")
 	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", ApprovedByAdmin()...)
+	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
 		userSignup.Spec.Deactivated = true
@@ -91,15 +92,16 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
 	})
 
-	s.T().Run("check that auto deactivation deactivates a user", func(t *testing.T) {
+	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
 		tierDeactivationPeriod := 30
 		ctx, hostAwait, _ := WaitForDeployments(t, &v1alpha1.NSTemplateTier{})
 		defer ctx.Cleanup()
-
 		// Let's create a tier with deactivation enabled
 		deactivationTier := CreateNSTemplateTier(t, ctx, hostAwait, "deactivation-tier", DeactivationTimeoutDays(tierDeactivationPeriod))
 
-		mur := MoveUserToTier(t, hostAwait, userSignup.Spec.Username, *deactivationTier)
+		// Move 2 users to the new tier with deactivation enabled - 1 with a domain that matches the deactivation exclusion list and 1 that does not
+		excludedMur = MoveUserToTier(t, hostAwait, deactivationExcludedUserSignup.Spec.Username, *deactivationTier)
+		mur = MoveUserToTier(t, hostAwait, userSignup.Spec.Username, *deactivationTier)
 
 		// We cannot wait days for deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
 		// in the past to trigger auto deactivation. Subtracting the tier deactivation period from the current time and setting this as the provisioned
@@ -110,13 +112,29 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
 
+		// Use the same method above to change the provisioned time for the excluded user
+		excludedMur, err = s.hostAwait.GetMasterUserRecord(wait.WithMurName(excludedMur.Name))
+		require.NoError(s.T(), err)
+		excludedMur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+		err = s.hostAwait.Client.Status().Update(context.TODO(), excludedMur)
+		require.NoError(s.T(), err)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMur.Name)
+
+		// The non-excluded user should be deactivated
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.NoError(s.T(), err)
-
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(Deactivated()...))
 		require.NoError(s.T(), err)
 		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
+
+		// The excluded user should still be active
+		_, err = s.hostAwait.WaitForMasterUserRecord(excludedMur.Name)
+		require.NoError(s.T(), err)
+		deactivationExcludedUserSignup, err = s.hostAwait.WaitForUserSignup(deactivationExcludedUserSignup.Name,
+			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+		require.NoError(s.T(), err)
+		require.False(t, deactivationExcludedUserSignup.Spec.Deactivated, "deactivationExcludedUserSignup should not be deactivated")
 	})
 }
 
