@@ -70,6 +70,22 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.NoError(t, err)
 	assert.Equal(t, toolchainv1alpha1.UserSignupApprovedLabelValueTrue, userSignup.Labels[toolchainv1alpha1.UserSignupApprovedLabelKey])
 
+	// First, wait for the MasterUserRecord to exist, no matter what status
+	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+	require.NoError(t, err)
+
+	// Wait for the the notification CR to be created & sent
+	notification, err := hostAwait.WaitForNotification(mur.Name+"-provisioned", wait.UntilNotificationHasConditions(Sent()))
+	require.NoError(t, err)
+	require.NotNil(t, notification)
+	assert.Equal(t, mur.Name+"-provisioned", notification.Name)
+	assert.Equal(t, mur.Namespace, notification.Namespace)
+	assert.Equal(t, "userprovisioned", notification.Spec.Template)
+	assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
+
+	err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
+	require.NoError(t, err)
+
 	return *userSignup
 }
 
