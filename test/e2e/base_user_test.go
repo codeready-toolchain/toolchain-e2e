@@ -21,6 +21,13 @@ type baseUserIntegrationTest struct {
 	memberAwait *wait.MemberAwaitility
 }
 
+// createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
+// specApproved defines if the UserSignup should be manually approved
+// username defines the required username set in the spec
+// email is set in "user-email" annotation
+// setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
+//
+// The method then waits until the UserSignup contains the given set of conditions and the corresponding MUR is created
 func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, setTargetCluster bool,
 	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 
@@ -35,6 +42,13 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	return userSignup, mur
 }
 
+// createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
+// specApproved defines if the UserSignup should be manually approved
+// username defines the required username set in the spec
+// email is set in "user-email" annotation
+// setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
+//
+// The method then waits until the UserSignup contains the given set of conditions
 func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, setTargetCluster bool,
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
