@@ -32,7 +32,7 @@ func (s *userSignupIntegrationTest) TearDownTest() {
 	s.ctx.Cleanup()
 }
 
-func (s *userManagementTestSuite) TestAutomaticApproval() {
+func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	// given
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
