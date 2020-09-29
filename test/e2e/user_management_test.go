@@ -126,7 +126,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, _ := s.createUserSignupAndAssertAutoApproval(false)
+		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", true, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -197,7 +197,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, mur := s.createUserSignupAndAssertAutoApproval(false)
+		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", true, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		bannedUser := s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -284,9 +284,4 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
 	})
-}
-
-func (s *userManagementTestSuite) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
-	id := uuid.NewV4().String()
-	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", true, ApprovedAutomatically()...)
 }
