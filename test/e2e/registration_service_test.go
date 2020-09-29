@@ -440,18 +440,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Call the signup endpoint
-	req, err := http.NewRequest("POST", s.route+"/api/v1/signup", nil)
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token0)
-	req.Header.Set("content-type", "application/json")
-	resp, err := httpClient.Do(req)
-	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), body)
-	assert.Equal(s.T(), http.StatusAccepted, resp.StatusCode)
+	invokeEndpoint(s.T(), "POST", s.route + "/api/v1/signup", token0, "", http.StatusAccepted)
 
 	// Wait for the UserSignup to be created
 	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
@@ -460,26 +449,16 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	assert.Equal(s.T(), emailValue, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure it's pending approval
-	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token0)
-	req.Header.Set("content-type", "application/json")
+	body := invokeEndpoint(s.T(), "GET", s.route + "/api/v1/signup", token0, "", http.StatusOK)
 
-	resp, err = httpClient.Do(req)
-	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), body)
-
+	// Convert the signup response into a map so that we can examine its values
 	mp := make(map[string]interface{})
 	err = json.Unmarshal([]byte(body), &mp)
 	require.NoError(s.T(), err)
 
+	// Check that the response looks fine
 	mpStatus, ok := mp["status"].(map[string]interface{})
 	assert.True(s.T(), ok)
-
 	assert.Equal(s.T(), "", mp["compliantUsername"])
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
@@ -487,30 +466,18 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
 	require.True(s.T(), mpStatus["verificationRequired"].(bool))
 
-	// Approve usersignup.
+	// Now approve the usersignup.
 	userSignup.Spec.Approved = true
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
 	// Ensure the Master User Record is NOT provisioned
-	_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username)
-	require.Error(s.T(), err)
+	err = s.hostAwait.WaitUntilMasterUserRecordDeleted(identity0.Username)
+	require.NoError(s.T(), err)
 
 	// Initiate the verification process
-	requestBody := `{ "country_code":"+61", "phone_number":"408999999" }`
-	req, err = http.NewRequest("PUT", s.route+"/api/v1/signup/verification",
-		strings.NewReader(requestBody))
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token0)
-	req.Header.Set("content-type", "application/json")
-	resp, err = httpClient.Do(req)
-	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), body)
-	assert.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
+	invokeEndpoint(s.T(), "PUT", s.route + "/api/v1/signup/verification", token0,
+		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
@@ -523,19 +490,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
 
 	// Attempt to verify with an incorrect verification code
-	req, err = http.NewRequest("GET", s.route+"/api/v1/signup/verification/invalid",
-		strings.NewReader(requestBody))
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token0)
-	req.Header.Set("content-type", "application/json")
-	resp, err = httpClient.Do(req)
-	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), body)
-	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
+	invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
@@ -545,27 +500,14 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
 
 	// Verify with the correct code
-	// Attempt to verify with an incorrect verification code
-	req, err = http.NewRequest("GET", s.route + fmt.Sprintf("/api/v1/signup/verification/%s",
-		userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]),
-		strings.NewReader(requestBody))
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token0)
-	req.Header.Set("content-type", "application/json")
-	resp, err = httpClient.Do(req)
-	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), body)
-	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	invokeEndpoint(s.T(), "GET", s.route + fmt.Sprintf("/api/v1/signup/verification/%s",
+		userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
 	require.NoError(s.T(), err)
 
-	// Confirm all unrequired annotations have been removed
+	// Confirm all unrequired verification-related annotations have been removed
 	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
 	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
 	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
@@ -578,19 +520,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Retrieve the UserSignup from the GET endpoint
-	req, err = http.NewRequest("GET", s.route+"/api/v1/signup", nil)
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token0)
-	req.Header.Set("content-type", "application/json")
+	body = invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK)
 
-	resp, err = httpClient.Do(req)
-	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(s.T(), err)
-	require.NotNil(s.T(), body)
-
+	// Parse the body of the response into a map
 	mp = make(map[string]interface{})
 	err = json.Unmarshal([]byte(body), &mp)
 	require.NoError(s.T(), err)
@@ -600,6 +532,24 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
+}
+
+func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) ([]byte) {
+	req, err := http.NewRequest(method, path, strings.NewReader(requestBody))
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("content-type", "application/json")
+	resp, err := httpClient.Do(req)
+	require.NoError(t, err)
+
+	defer close(t, resp)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NotNil(t, body)
+	require.Equal(t, requiredStatus, resp.StatusCode)
+
+	return body
 }
 
 func close(t *testing.T, resp *http.Response) {
