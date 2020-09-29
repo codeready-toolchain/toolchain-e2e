@@ -105,7 +105,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 
 }
 
-func (s *userManagementTestSuite) TestCapacityManagementWithManualApproval() {
+func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	// given
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 
