@@ -483,8 +483,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
 	require.NoError(s.T(), err)
 
-	// Confirm there is a verification code label
-	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	// Confirm there is a verification code annotation value, and store it in a variable
+	verificationCode := userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]
+	require.NotEmpty(s.T(), verificationCode)
 
 	// Confirm the expiry time has been set
 	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
@@ -498,6 +499,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Check attempts has been incremented
 	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
+
+	// Confirm the verification code has not changed
+	require.Equal(s.T(), verificationCode, userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Verify with the correct code
 	invokeEndpoint(s.T(), "GET", s.route + fmt.Sprintf("/api/v1/signup/verification/%s",
@@ -546,7 +550,6 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	require.NotNil(t, body)
 	require.Equal(t, requiredStatus, resp.StatusCode)
 
 	return body
