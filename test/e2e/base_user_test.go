@@ -42,7 +42,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	return userSignup, mur
 }
 
-// createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
+// createAndCheckUserSignupNoMUR creates a new UserSignup resoruce with the given values:
 // specApproved defines if the UserSignup should be manually approved
 // username defines the required username set in the spec
 // email is set in "user-email" annotation

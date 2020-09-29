@@ -88,6 +88,11 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	return *userSignup
 }
 
+// NewUserSignup creates a new UserSignup resoruce with the given values:
+// specApproved defines if the UserSignup should be manually approved
+// username defines the required username set in the spec
+// email is set in "user-email" annotation
+// setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
 func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, username string, email string, setTargetCluster bool) *toolchainv1alpha1.UserSignup {
 	targetCluster := ""
 	if setTargetCluster {
