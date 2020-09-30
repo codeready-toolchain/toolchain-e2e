@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20200925000842-d2e82e080a5a
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200914140500-5543daea3180
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20200930070243-e124e69e7a0d
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/kr/text v0.2.0 // indirect
@@ -23,8 +23,6 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.6.0
 )
-
-replace github.com/codeready-toolchain/toolchain-common => github.com/matousjobanek/toolchain-common v0.0.0-20200928152329-5b6dcb769095
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
