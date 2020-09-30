@@ -48,6 +48,11 @@ func PendingApprovalNoCluster() []toolchainv1alpha1.Condition {
 			Reason:  "NoClusterAvailable",
 			Message: "no suitable member cluster found - capacity was reached",
 		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
 	}
 }
 
@@ -82,6 +87,11 @@ func ApprovedByAdminNoCluster() []toolchainv1alpha1.Condition {
 			Status:  corev1.ConditionFalse,
 			Reason:  "NoClusterAvailable",
 			Message: "no suitable member cluster found - capacity was reached",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
 		},
 	}
 }
