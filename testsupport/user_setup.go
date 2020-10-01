@@ -132,7 +132,7 @@ var HttpClient = &http.Client{
 func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	require.NotEmpty(t, route)
 	// Call signup endpoint with a valid token.
-	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@email.tld")
+	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
 	givenNameClaim := authsupport.WithGivenNameClaim(identity.Username + "-First-Name")
 	familyNameClaim := authsupport.WithFamilyNameClaim(identity.Username + "-Last-Name")
 	companyClaim := authsupport.WithCompanyClaim(identity.Username + "-Company-Name")
