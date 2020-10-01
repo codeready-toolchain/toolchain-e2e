@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"strings"
 	"testing"
@@ -459,6 +460,11 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm the status of the UserSignup is correct
 	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(NotApprovedAndVerificationRequired()...))
+
+	// Confirm that a MUR hasn't been created
+	obj := &v1alpha1.MasterUserRecord{}
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: identity0.Username}, obj)
+	require.Error(s.T(), err)
 
 	// Initiate the verification process
 	invokeEndpoint(s.T(), "PUT", s.route + "/api/v1/signup/verification", token0,
