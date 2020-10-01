@@ -25,14 +25,8 @@ func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet,
 	tierChecksNamespaces, tierChecksClusterResources TierChecks, expectedRevisions TemplateRefs) {
 
-	assert.Len(t, nsTmplSet.Spec.Namespaces, len(expectedRevisions.Namespaces))
-
-	var actualTemplateRefs []string
-	for _, ns := range nsTmplSet.Spec.Namespaces {
-		actualTemplateRefs = append(actualTemplateRefs, ns.TemplateRef)
-	}
-	assert.ElementsMatch(t, expectedRevisions.Namespaces, actualTemplateRefs)
-	assert.Equal(t, expectedRevisions.ClusterResources, expectedRevisions.ClusterResources)
+	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedRevisions))
+	assert.NoError(t, err)
 
 	// Verify all namespaces and objects within
 	for _, templateRef := range expectedRevisions.Namespaces {
@@ -50,4 +44,45 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 		}
 	}
 
+}
+
+// UntilNSTemplateSetHasTemplateRefs checks if the NSTemplateTier has the expected template refs
+func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
+	return func(a *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
+		acutalNamespaces := nsTmplSet.Spec.Namespaces
+		if len(acutalNamespaces) != len(expectedRevisions.Namespaces) {
+			a.T.Logf("waiting for NSTemplateSet '%s' having the expected namespace template refs. Actual: '%s'; Expected: '%s'",
+				nsTmplSet.Name, acutalNamespaces, expectedRevisions.Namespaces)
+			return false
+		}
+		if expectedRevisions.ClusterResources == nil && nsTmplSet.Spec.ClusterResources != nil {
+			a.T.Logf("waiting for NSTemplateSet '%s' having the expected cluster resource template ref - it should be nil but it is not. Actual: '%v'",
+				nsTmplSet.Name, nsTmplSet.Spec.ClusterResources)
+			return false
+		}
+		if expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources == nil {
+			a.T.Logf("waiting for NSTemplateSet '%s' having the expected cluster resource template ref - it should not be nil but it is. Expected: '%v'",
+				nsTmplSet.Name, expectedRevisions.Namespaces)
+			return false
+		}
+		if (expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources != nil) &&
+			*expectedRevisions.ClusterResources != nsTmplSet.Spec.ClusterResources.TemplateRef {
+			a.T.Logf("waiting for NSTemplateSet '%s' having the expected cluster resource template ref. Actual: '%v'; Expected: '%v'",
+				nsTmplSet.Name, nsTmplSet.Spec.ClusterResources, expectedRevisions.ClusterResources)
+			return false
+		}
+
+	ExpectedNamespaces:
+		for _, expectedNsRef := range expectedRevisions.Namespaces {
+			for _, ns := range acutalNamespaces {
+				if expectedNsRef == ns.TemplateRef {
+					continue ExpectedNamespaces
+				}
+			}
+			a.T.Logf("waiting for NSTemplateSet '%s' having the expected namespace template refs. Actual: '%s'; Expected: '%s'; Missing: '%s'",
+				nsTmplSet.Name, acutalNamespaces, expectedRevisions.Namespaces, expectedNsRef)
+			return false
+		}
+		return true
+	}
 }
