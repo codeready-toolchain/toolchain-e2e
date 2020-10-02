@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -427,6 +431,139 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	require.NoError(s.T(), err)
 	require.True(s.T(), ok)
 	assert.Equal(s.T(), ExpectedConsoleURL(s.T(), s.memberAwait, memberCluster), mp["consoleURL"])
+}
+
+func (s *registrationServiceTestSuite) TestPhoneVerification() {
+	// Create a token and identity to sign up with
+	identity0 := authsupport.NewIdentity()
+	emailValue := uuid.NewV4().String() + "@some.domain"
+	emailClaim0 := authsupport.WithEmailClaim(emailValue)
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
+	require.NoError(s.T(), err)
+
+	// Call the signup endpoint
+	invokeEndpoint(s.T(), "POST", s.route + "/api/v1/signup", token0, "", http.StatusAccepted)
+
+	// Wait for the UserSignup to be created
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	require.NoError(s.T(), err)
+	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	assert.Equal(s.T(), emailValue, emailAnnotation)
+
+	// Call get signup endpoint with a valid token and make sure verificationRequired is true
+	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route + "/api/v1/signup", token0, "", http.StatusOK))
+	assert.Equal(s.T(), "", mp["compliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+	require.True(s.T(), mpStatus["verificationRequired"].(bool))
+
+	// Confirm the status of the UserSignup is correct
+	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(NotApprovedAndVerificationRequired()...))
+
+	// Confirm that a MUR hasn't been created
+	obj := &v1alpha1.MasterUserRecord{}
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: identity0.Username}, obj)
+	require.Error(s.T(), err)
+	require.True(s.T(), errors.IsNotFound(err))
+
+	// Initiate the verification process
+	invokeEndpoint(s.T(), "PUT", s.route + "/api/v1/signup/verification", token0,
+		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
+
+	// Retrieve the updated UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	require.NoError(s.T(), err)
+
+	// Confirm there is a verification code annotation value, and store it in a variable
+	verificationCode := userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]
+	require.NotEmpty(s.T(), verificationCode)
+
+	// Confirm the expiry time has been set
+	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
+
+	// Attempt to verify with an incorrect verification code
+	invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+
+	// Retrieve the updated UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	require.NoError(s.T(), err)
+
+	// Check attempts has been incremented
+	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
+
+	// Confirm the verification code has not changed
+	require.Equal(s.T(), verificationCode, userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+
+	// Verify with the correct code
+	invokeEndpoint(s.T(), "GET", s.route + fmt.Sprintf("/api/v1/signup/verification/%s",
+		userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
+
+	// Retrieve the updated UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	require.NoError(s.T(), err)
+
+	// Confirm all unrequired verification-related annotations have been removed
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationTimestampAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCounterAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
+
+	// Call get signup endpoint with a valid token and make sure it's pending approval
+	mp, mpStatus = parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route + "/api/v1/signup", token0, "", http.StatusOK))
+	assert.Equal(s.T(), "", mp["compliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+	require.False(s.T(), mpStatus["verificationRequired"].(bool))
+
+	// Now approve the usersignup.
+	userSignup.Spec.Approved = true
+	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
+	require.NoError(s.T(), err)
+
+	// Confirm the MasterUserRecord is provisioned
+	_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	require.NoError(s.T(), err)
+
+	// Retrieve the UserSignup from the GET endpoint
+	_, mpStatus = parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK))
+
+	// Confirm that VerificationRequired is no longer true
+	require.False(s.T(), mpStatus["verificationRequired"].(bool))
+}
+
+func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) []byte {
+	req, err := http.NewRequest(method, path, strings.NewReader(requestBody))
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+authToken)
+	req.Header.Set("content-type", "application/json")
+	resp, err := httpClient.Do(req)
+	require.NoError(t, err)
+
+	defer close(t, resp)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, requiredStatus, resp.StatusCode)
+
+	return body
+}
+
+func parseResponse(t *testing.T, responseBody []byte) (response map[string]interface{}, status map[string]interface{}) {
+	// Convert the signup response into a map so that we can examine its values
+	response = make(map[string]interface{})
+	err := json.Unmarshal(responseBody, &response)
+	require.NoError(t, err)
+
+	// Check that the response looks fine
+	status, ok := response["status"].(map[string]interface{})
+	require.True(t, ok)
+	return
 }
 
 func close(t *testing.T, resp *http.Response) {
