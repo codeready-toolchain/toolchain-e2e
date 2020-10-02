@@ -61,7 +61,7 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 			return false
 		}
 		if expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources == nil {
-			a.T.Logf("waiting for NSTemplateSet '%s' having the expected cluster resource template ref - it should not be nil but it is. Expected: '%v'",
+			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref - it should not be nil but it is. Expected: '%v'",
 				nsTmplSet.Name, expectedRevisions.Namespaces)
 			return false
 		}
