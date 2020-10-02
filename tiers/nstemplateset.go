@@ -49,10 +49,10 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 // UntilNSTemplateSetHasTemplateRefs checks if the NSTemplateTier has the expected template refs
 func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
 	return func(a *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
-		acutalNamespaces := nsTmplSet.Spec.Namespaces
-		if len(acutalNamespaces) != len(expectedRevisions.Namespaces) {
+		actualNamespaces := nsTmplSet.Spec.Namespaces
+		if len(actualNamespaces) != len(expectedRevisions.Namespaces) {
 			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'",
-				nsTmplSet.Name, acutalNamespaces, expectedRevisions.Namespaces)
+				nsTmplSet.Name, actualNamespaces, expectedRevisions.Namespaces)
 			return false
 		}
 		if expectedRevisions.ClusterResources == nil && nsTmplSet.Spec.ClusterResources != nil {
@@ -74,13 +74,13 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 
 	ExpectedNamespaces:
 		for _, expectedNsRef := range expectedRevisions.Namespaces {
-			for _, ns := range acutalNamespaces {
+			for _, ns := range actualNamespaces {
 				if expectedNsRef == ns.TemplateRef {
 					continue ExpectedNamespaces
 				}
 			}
 			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'; Missing: '%s'",
-				nsTmplSet.Name, acutalNamespaces, expectedRevisions.Namespaces, expectedNsRef)
+				nsTmplSet.Name, actualNamespaces, expectedRevisions.Namespaces, expectedNsRef)
 			return false
 		}
 		return true
