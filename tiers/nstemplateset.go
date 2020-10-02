@@ -79,7 +79,7 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 					continue ExpectedNamespaces
 				}
 			}
-			a.T.Logf("waiting for NSTemplateSet '%s' having the expected namespace template refs. Actual: '%s'; Expected: '%s'; Missing: '%s'",
+			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'; Missing: '%s'",
 				nsTmplSet.Name, acutalNamespaces, expectedRevisions.Namespaces, expectedNsRef)
 			return false
 		}
