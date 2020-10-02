@@ -51,7 +51,7 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 	return func(a *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
 		acutalNamespaces := nsTmplSet.Spec.Namespaces
 		if len(acutalNamespaces) != len(expectedRevisions.Namespaces) {
-			a.T.Logf("waiting for NSTemplateSet '%s' having the expected namespace template refs. Actual: '%s'; Expected: '%s'",
+			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'",
 				nsTmplSet.Name, acutalNamespaces, expectedRevisions.Namespaces)
 			return false
 		}
