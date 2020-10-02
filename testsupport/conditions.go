@@ -118,6 +118,7 @@ func NotApprovedAndVerificationRequired() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupPendingApprovalReason,
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,

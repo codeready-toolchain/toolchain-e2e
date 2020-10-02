@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"strings"
@@ -465,6 +466,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	obj := &v1alpha1.MasterUserRecord{}
 	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: identity0.Username}, obj)
 	require.Error(s.T(), err)
+	require.True(s.T(), errors.IsNotFound(err))
 
 	// Initiate the verification process
 	invokeEndpoint(s.T(), "PUT", s.route + "/api/v1/signup/verification", token0,
@@ -525,7 +527,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MasterUserRecord is provisioned
-	_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username)
+	_, err = s.hostAwait.WaitForMasterUserRecord(identity0.Username, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 	require.NoError(s.T(), err)
 
 	// Retrieve the UserSignup from the GET endpoint
