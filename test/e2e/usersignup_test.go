@@ -251,7 +251,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	// Check the UserSignup is pending approval now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedAndVerificationRequired()...))
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(VerificationRequired()...))
 	require.NoError(s.T(), err)
 
 	// Confirm the CompliantUsername has NOT been set

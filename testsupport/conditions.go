@@ -140,7 +140,7 @@ func ApprovedAndVerificationRequired() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,
-			Reason: toolchainv1alpha1.UserSignupVerificationRequiredReason,
+			Reason: "VerificationRequired",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -151,17 +151,12 @@ func ApprovedAndVerificationRequired() []toolchainv1alpha1.Condition {
 }
 
 
-func NotApprovedAndVerificationRequired() []toolchainv1alpha1.Condition {
+func VerificationRequired() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
-		{
-			Type:   toolchainv1alpha1.UserSignupApproved,
-			Status: corev1.ConditionFalse,
-			Reason: toolchainv1alpha1.UserSignupPendingApprovalReason,
-		},
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,
-			Reason: toolchainv1alpha1.UserSignupVerificationRequiredReason,
+			Reason: "VerificationRequired",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
