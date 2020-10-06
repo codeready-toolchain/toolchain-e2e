@@ -389,6 +389,67 @@ func (a *MemberAwaitility) WaitForIdler(name string) (*toolchainv1alpha1.Idler, 
 	return idler, err
 }
 
+// PodWaitCriterion a function to check that a Pod has the expected condition
+type PodWaitCriterion func(a *MemberAwaitility, pod v1.Pod) bool
+
+// WaitForPods waits until "n" number of pods with the given labels exists in the given namespace
+func (a *MemberAwaitility) WaitForPods(namespace string, labels map[string]string, n int, criteria ...PodWaitCriterion) ([]*v1.Pod, error) {
+	pods := make([]*v1.Pod, 0, n)
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		foundPods := &v1.PodList{}
+		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}, client.MatchingLabels(labels)); err != nil {
+			return false, err
+		}
+		if len(foundPods.Items) < n {
+			if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
+				return false, err
+			}
+			a.T.Logf("waiting for pods with labels '%v' in namespace '%s'. Currently available pods: '%v'", labels, namespace, foundPods)
+			return false, nil
+		}
+		for _, p := range foundPods.Items {
+			for _, match := range criteria {
+				if !match(a, p) {
+					a.T.Logf("waiting for pods with labels '%v' in namespace '%s'. Currently available pods: '%v'", labels, namespace, foundPods)
+					return false, nil
+				}
+			}
+			pods = append(pods, &p)
+		}
+		a.T.Logf("found Pods '%v'", foundPods)
+		return true, nil
+	})
+	return pods, err
+}
+
+// WaitUntilPodDeleted waits until the pod with the given name is deleted from the given namespace
+func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &v1.Pod{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("deleted Pod with name %s", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting for deletion of Pod with name '%s' in namespace %s", name, namespace)
+		return false, nil
+	})
+}
+
+// UntilPodRunning checks if the Pod in the running phase
+func UntilPodRunning() PodWaitCriterion {
+	return func(a *MemberAwaitility, pod v1.Pod) bool {
+		if pod.Status.Phase == v1.PodRunning {
+			a.T.Logf("pod '%s` in the running phase", pod.Name)
+			return true
+		}
+		a.T.Logf("waiting for Pod '%s' having the expected phase. Actual: '%s'; Expected: '%s'", pod.Name, pod.Status.Phase, v1.PodRunning)
+		return false
+	}
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
