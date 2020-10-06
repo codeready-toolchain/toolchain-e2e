@@ -58,8 +58,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	}
 
 	// Noise pods are still there
-	labels := make(map[string]string)
-	labels["app"] = "idler-hello-openshift"
+	labels := map[string]string{"app": "idler-hello-openshift"}
 	_, err = s.memberAwait.WaitForPods(idlerNoise.Name, labels, len(podsNoise), wait.UntilPodRunning())
 	require.NoError(s.T(), err)
 }
