@@ -67,8 +67,7 @@ func (s *userWorkloadsTestSuite) prepareWorkloads(idler *v1alpha1.Idler) []*core
 	// Create a Deployment with two pods
 	var err error
 	replicas := int32(2)
-	labels := make(map[string]string)
-	labels["app"] = "idler-hello-openshift"
+	labels := map[string]string{"app": "idler-hello-openshift"}
 	require.NoError(s.T(), err)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-deployment", Namespace: idler.Name},
