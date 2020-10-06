@@ -404,17 +404,18 @@ func (a *MemberAwaitility) WaitForPods(namespace string, labels map[string]strin
 			if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
 				return false, err
 			}
-			a.T.Logf("waiting for pods with labels '%v' in namespace '%s'. Currently available pods: '%v'", labels, namespace, foundPods)
+			a.T.Logf("waiting for %d pods with labels '%v' in namespace '%s'. Currently available pods: '%v'", n, labels, namespace, foundPods)
 			return false, nil
 		}
 		for _, p := range foundPods.Items {
 			for _, match := range criteria {
 				if !match(a, p) {
-					a.T.Logf("waiting for pods with labels '%v' in namespace '%s'. Currently available pods: '%v'", labels, namespace, foundPods)
+					a.T.Logf("waiting for %d pods with labels '%v' in namespace '%s' with a criteria. Currently available pods: '%v'", n, labels, namespace, foundPods)
 					return false, nil
 				}
 			}
-			pods = append(pods, &p)
+			pod := p // copy
+			pods = append(pods, &pod)
 		}
 		a.T.Logf("found Pods '%v'", foundPods)
 		return true, nil

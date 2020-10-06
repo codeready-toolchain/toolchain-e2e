@@ -37,18 +37,19 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", ApprovedByAdmin()...)
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev")
 	require.NoError(s.T(), err)
-	idler.Spec.TimeoutSeconds = 3
-	err = s.memberAwait.Client.Update(context.TODO(), idler)
-	require.NoError(s.T(), err)
 
 	// Noise
-	s.createAndCheckUserSignup(true, "test-idler-noise", "test-idler-noise@redhat.com", ApprovedByAdmin()...)
-	idlerNoise, err := s.memberAwait.WaitForIdler("test-idler-noise-dev")
+	idlerNoise, err := s.memberAwait.WaitForIdler("test-idler-stage")
 	require.NoError(s.T(), err)
 
 	// Create payloads for both users
 	podsToIdle := s.prepareWorkloads(idler)
 	podsNoise := s.prepareWorkloads(idlerNoise)
+
+	// Set a short timeout for one of the idler to trigger pod idling
+	idler.Spec.TimeoutSeconds = 3
+	err = s.memberAwait.Client.Update(context.TODO(), idler)
+	require.NoError(s.T(), err)
 
 	// Wait for the pods to be deleted
 	for _, p := range podsToIdle {
