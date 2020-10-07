@@ -363,7 +363,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(VerificationRequired()...))
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
