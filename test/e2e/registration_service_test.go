@@ -445,7 +445,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	invokeEndpoint(s.T(), "POST", s.route + "/api/v1/signup", token0, "", http.StatusAccepted)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(VerificationRequired()...))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
@@ -456,11 +456,11 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
-	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+	assert.Equal(s.T(), "VerificationRequired", mpStatus["reason"])
 	require.True(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Confirm the status of the UserSignup is correct
-	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(NotApprovedAndVerificationRequired()...))
+	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(VerificationRequired()...))
 
 	// Confirm that a MUR hasn't been created
 	obj := &v1alpha1.MasterUserRecord{}
