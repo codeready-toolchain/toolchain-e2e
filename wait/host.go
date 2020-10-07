@@ -11,6 +11,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -600,4 +601,78 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		return true, nil
 	})
 	return toolchainStatus, err
+}
+
+// GetHostOperatorConfig returns HostOperatorConfig instance, nil if not found
+func (a *HostAwaitility) GetHostOperatorConfig() *toolchainv1alpha1.HostOperatorConfig {
+	config := &toolchainv1alpha1.HostOperatorConfig{}
+	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "config"), config); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		require.NoError(a.T, err)
+	}
+	return config
+}
+
+// UpdateHostOperatorConfig updates the current resource of the HostOperatorConfig CR with the given options.
+// If there is no existing resource already, then it creates a new one.
+// At the end of the test it returns the resource back to the original value/state.
+func (a *HostAwaitility) UpdateHostOperatorConfig(options ...test.HostOperatorConfigOption) {
+	var originalConfig *toolchainv1alpha1.HostOperatorConfig
+	// try to get the current HostOperatorConfig
+	config := a.GetHostOperatorConfig()
+	if config == nil {
+		// if it doesn't exist, then create a new one
+		config = &toolchainv1alpha1.HostOperatorConfig{
+			ObjectMeta: v1.ObjectMeta{
+				Namespace: a.Namespace,
+				Name:      "config",
+			},
+		}
+	} else {
+		// if it exists then create a copy to store the original values
+		originalConfig = config.DeepCopy()
+	}
+
+	// modify using the given options
+	for _, option := range options {
+		option.Apply(config)
+	}
+
+	// if it didn't exist before
+	if originalConfig == nil {
+		// then create a new one
+		err := a.Client.Create(context.TODO(), config)
+		require.NoError(a.T, err)
+
+		// and as a cleanup function delete it at the end of the test
+		a.T.Cleanup(func() {
+			err := a.Client.Delete(context.TODO(), config)
+			if err != nil && !errors.IsNotFound(err) {
+				require.NoError(a.T, err)
+			}
+		})
+		return
+	}
+
+	// if the config did exist before the tests, then update it
+	err := a.Client.Update(context.TODO(), config)
+	require.NoError(a.T, err)
+
+	// and as a cleanup function update it back to the original value
+	a.T.Cleanup(func() {
+		config := a.GetHostOperatorConfig()
+		// if the current config wasn't found
+		if config == nil {
+			// then create it back with the original values
+			err := a.Client.Create(context.TODO(), originalConfig)
+			require.NoError(a.T, err)
+		} else {
+			// otherwise just update it
+			originalConfig.ResourceVersion = config.ResourceVersion
+			err := a.Client.Update(context.TODO(), originalConfig)
+			require.NoError(a.T, err)
+		}
+	})
 }
