@@ -12,6 +12,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,9 +45,11 @@ func verifyToolchainCluster(t *testing.T, ctx *test.Context, await *wait.Awaitil
 			namespace(current.Labels["namespace"]),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
-		defer func() {
-			await.Client.Delete(context.TODO(), toolchainCluster)
-		}()
+		t.Cleanup(func() {
+			if err := await.Client.Delete(context.TODO(), toolchainCluster); err != nil && !errors.IsNotFound(err) {
+				require.NoError(t, err)
+			}
+		})
 
 		// when
 		err := await.Client.Create(context.TODO(), toolchainCluster)
@@ -74,9 +77,11 @@ func verifyToolchainCluster(t *testing.T, ctx *test.Context, await *wait.Awaitil
 			namespace(current.Labels["namespace"]),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
-		defer func() {
-			await.Client.Delete(context.TODO(), toolchainCluster)
-		}()
+		t.Cleanup(func() {
+			if err := await.Client.Delete(context.TODO(), toolchainCluster); err != nil && !errors.IsNotFound(err) {
+				require.NoError(t, err)
+			}
+		})
 
 		// when
 		err := await.Client.Create(context.TODO(), toolchainCluster)
