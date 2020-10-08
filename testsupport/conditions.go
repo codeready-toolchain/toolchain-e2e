@@ -150,7 +150,6 @@ func ApprovedAndVerificationRequired() []toolchainv1alpha1.Condition {
 	}
 }
 
-
 func VerificationRequired() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{

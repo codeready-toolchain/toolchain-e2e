@@ -363,7 +363,9 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(),
+		wait.UntilUserSignupHasConditions(PendingApproval()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
@@ -442,16 +444,18 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Call the signup endpoint
-	invokeEndpoint(s.T(), "POST", s.route + "/api/v1/signup", token0, "", http.StatusAccepted)
+	invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token0, "", http.StatusAccepted)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(VerificationRequired()...))
+	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(),
+		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure verificationRequired is true
-	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route + "/api/v1/signup", token0, "", http.StatusOK))
+	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK))
 	assert.Equal(s.T(), "", mp["compliantUsername"])
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
@@ -460,7 +464,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.True(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Confirm the status of the UserSignup is correct
-	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(), wait.UntilUserSignupHasConditions(VerificationRequired()...))
+	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
+		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
 
 	// Confirm that a MUR hasn't been created
 	obj := &v1alpha1.MasterUserRecord{}
@@ -469,7 +475,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.True(s.T(), errors.IsNotFound(err))
 
 	// Initiate the verification process
-	invokeEndpoint(s.T(), "PUT", s.route + "/api/v1/signup/verification", token0,
+	invokeEndpoint(s.T(), "PUT", s.route+"/api/v1/signup/verification", token0,
 		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
 	// Retrieve the updated UserSignup
@@ -497,11 +503,12 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Equal(s.T(), verificationCode, userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Verify with the correct code
-	invokeEndpoint(s.T(), "GET", s.route + fmt.Sprintf("/api/v1/signup/verification/%s",
+	invokeEndpoint(s.T(), "GET", s.route+fmt.Sprintf("/api/v1/signup/verification/%s",
 		userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
 
 	// Retrieve the updated UserSignup
-	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String())
+	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(s.T(), err)
 
 	// Confirm all unrequired verification-related annotations have been removed
@@ -513,7 +520,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
 
 	// Call get signup endpoint with a valid token and make sure it's pending approval
-	mp, mpStatus = parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route + "/api/v1/signup", token0, "", http.StatusOK))
+	mp, mpStatus = parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK))
 	assert.Equal(s.T(), "", mp["compliantUsername"])
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])

@@ -192,6 +192,20 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 	}
 }
 
+// UntilUserSignupHasStateLabel returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has toolchain.dev.openshift.com/state equal to the given value
+func UntilUserSignupHasStateLabel(expLabelValue string) UserSignupWaitCriterion {
+	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
+		if ua.Labels != nil && ua.Labels[toolchainv1alpha1.UserSignupStateLabelKey] == expLabelValue {
+			a.T.Logf("the toolchain.dev.openshift.com/state label value matches '%s`", expLabelValue)
+			return true
+		}
+		a.T.Logf("the toolchain.dev.openshift.com/state label of '%s' UserSignup doesn't match. Actual labels: '%v'; Expected value: '%s'",
+			ua.Name, ua.Labels, expLabelValue)
+		return false
+	}
+}
+
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
 func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
