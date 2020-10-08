@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 
@@ -30,7 +31,6 @@ type userWorkloadsTestSuite struct {
 
 func (s *userWorkloadsTestSuite) SetupSuite() {
 	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), &v1alpha1.UserSignupList{})
-	s.setApprovalPolicyConfig("automatic")
 }
 
 func (s *userWorkloadsTestSuite) TearDownTest() {
@@ -60,7 +60,8 @@ var podTemplateSpec = corev1.PodTemplateSpec{
 
 func (s *userWorkloadsTestSuite) TestIdler() {
 	// Provision a user to idle with a short idling timeout
-	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", ApprovedByAdmin()...)
+	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", true, ApprovedByAdmin()...)
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev")
 	require.NoError(s.T(), err)
 
