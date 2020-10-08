@@ -82,7 +82,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	require.NoError(s.T(), err)
 }
 
-func (s *userWorkloadsTestSuite) prepareWorkloads(idler *v1alpha1.Idler) []*corev1.Pod {
+func (s *userWorkloadsTestSuite) prepareWorkloads(idler *v1alpha1.Idler) []corev1.Pod {
 	s.createStandalonePod(idler)
 	d := s.createDeployment(idler)
 	n := 1 + int(*d.Spec.Replicas) // total number of created pods

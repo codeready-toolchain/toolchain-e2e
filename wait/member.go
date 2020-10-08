@@ -394,9 +394,10 @@ func (a *MemberAwaitility) WaitForIdler(name string) (*toolchainv1alpha1.Idler, 
 type PodWaitCriterion func(a *MemberAwaitility, pod v1.Pod) bool
 
 // WaitForPods waits until "n" number of pods exist in the given namespace
-func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]*v1.Pod, error) {
-	pods := make([]*v1.Pod, 0, n)
+func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]v1.Pod, error) {
+	pods := make([]v1.Pod, 0, n)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		pds := make([]v1.Pod, 0, n)
 		foundPods := &v1.PodList{}
 		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
 			return false, err
@@ -410,23 +411,29 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 		}
 		for _, p := range foundPods.Items {
 			for _, match := range criteria {
-				if !match(a, p) {
-					a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s' with a criterion. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
-					return false, nil
+				if match(a, p) {
+					pod := p // copy
+					pds = append(pds, pod)
 				}
 			}
-			pod := p // copy
-			pods = append(pods, &pod)
 		}
-		a.T.Logf("found Pods: '%s'", a.listPods(*foundPods))
-		return true, nil
+		if len(pds) == n {
+			a.T.Logf("found Pods: '%s'", a.listPodsAsArray(pds))
+			return true, nil
+		}
+		a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s' with a criterion. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
+		return false, nil
 	})
 	return pods, err
 }
 
 func (a *MemberAwaitility) listPods(pods v1.PodList) string {
+	return a.listPodsAsArray(pods.Items)
+}
+
+func (a *MemberAwaitility) listPodsAsArray(pods []v1.Pod) string {
 	var s string
-	for _, p := range pods.Items {
+	for _, p := range pods {
 		s = fmt.Sprintf("%s\n%s", s, a.formatPod(p))
 	}
 	return s
