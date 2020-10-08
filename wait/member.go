@@ -399,31 +399,29 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		pds := make([]v1.Pod, 0, n)
 		foundPods := &v1.PodList{}
-		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
+		if err := a.Client.List(context.TODO(), foundPods, client.InNamespace(namespace)); err != nil {
 			return false, err
 		}
-		if len(foundPods.Items) < n {
-			if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
-				return false, err
+	pods:
+		for _, p := range foundPods.Items {
+			for _, match := range criteria {
+				if !match(a, p) {
+					// skip as soon as one criterion does not match
+					continue pods
+				}
 			}
+			pod := p // copy
+			pds = append(pds, pod)
+		}
+		if len(pds) != n {
 			a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s'. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
 			return false, nil
 		}
-		for _, p := range foundPods.Items {
-			for _, match := range criteria {
-				if match(a, p) {
-					pod := p // copy
-					pds = append(pds, pod)
-				}
-			}
-		}
-		if len(pds) == n {
-			a.T.Logf("found Pods: '%s'", a.listPodsAsArray(pds))
-			return true, nil
-		}
-		a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s' with a criterion. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
-		return false, nil
+		a.T.Logf("found Pods: '%s'", a.listPodsAsArray(pds))
+		pods = pds
+		return true, nil
 	})
+	a.T.Logf("found %d pods", len(pods))
 	return pods, err
 }
 
@@ -482,14 +480,14 @@ func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
 	})
 }
 
-// UntilPodRunning checks if the Pod in the running phase
-func UntilPodRunning() PodWaitCriterion {
+// PodRunning checks if the Pod in the running phase
+func PodRunning() PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
 		if pod.Status.Phase == v1.PodRunning {
 			a.T.Logf("pod '%s` in the running phase", pod.Name)
 			return true
 		}
-		a.T.Logf("waiting for Pod '%s' having the expected phase. Actual: '%s'; Expected: '%s'", pod.Name, pod.Status.Phase, v1.PodRunning)
+		a.T.Logf("Pod '%s' actual phase: '%s'; Expected: '%s'", pod.Name, pod.Status.Phase, v1.PodRunning)
 		return false
 	}
 }
@@ -501,15 +499,10 @@ func WithPodName(name string) PodWaitCriterion {
 	}
 }
 
-// WithPodLabels checks if the Pod has the expected labels
-func WithPodLabels(labels map[string]string) PodWaitCriterion {
+// WithPodLabel checks if the Pod has the expected label
+func WithPodLabel(key, value string) PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
-		for k, v := range labels {
-			if pod.Labels[k] == v {
-				return true
-			}
-		}
-		return false
+		return pod.Labels[key] == value
 	}
 }
 
