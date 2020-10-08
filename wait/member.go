@@ -366,8 +366,24 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.Cl
 	return quota, err
 }
 
+// IdlerWaitCriterion a function to check that an Idler has the expected condition
+type IdlerWaitCriterion func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool
+
+// IdlerConditions returns a `IdlerWaitCriterion` which checks that the given
+// Idler has exactly all the given status conditions
+func IdlerConditions(conditions ...toolchainv1alpha1.Condition) IdlerWaitCriterion {
+	return func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool {
+		if test.ConditionsMatch(idler.Status.Conditions, conditions...) {
+			a.T.Logf("status conditions match in Idler '%s'", idler.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of Idler '%s'. Actual: '%+v'; Expected: '%+v'", idler.Name, idler.Status.Conditions, conditions)
+		return false
+	}
+}
+
 // WaitForIdler waits until an Idler with the given name exists
-func (a *MemberAwaitility) WaitForIdler(name string) (*toolchainv1alpha1.Idler, error) {
+func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
 	idler := &toolchainv1alpha1.Idler{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Idler{}
@@ -383,8 +399,26 @@ func (a *MemberAwaitility) WaitForIdler(name string) (*toolchainv1alpha1.Idler, 
 			}
 			return false, err
 		}
+		for _, match := range criteria {
+			if !match(a, *obj) {
+				return false, nil
+			}
+		}
 		a.T.Logf("found Idler '%s'", name)
 		idler = obj
+		return true, nil
+	})
+	return idler, err
+}
+
+// UpdateIdler tries to update the Idler until success
+func (a *MemberAwaitility) UpdateIdler(idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Update(context.TODO(), idler); err != nil {
+			a.T.Logf("trying to update Idler %s. Error: %s", idler.Name, err.Error())
+			err = a.Client.Get(context.TODO(), types.NamespacedName{Name: idler.Name}, idler)
+			return false, err
+		}
 		return true, nil
 	})
 	return idler, err

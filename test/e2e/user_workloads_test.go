@@ -41,11 +41,11 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	// Provision a user to idle with a short idling timeout
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", true, ApprovedByAdmin()...)
-	idler, err := s.memberAwait.WaitForIdler("test-idler-dev")
+	idler, err := s.memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
 
 	// Noise
-	idlerNoise, err := s.memberAwait.WaitForIdler("test-idler-stage")
+	idlerNoise, err := s.memberAwait.WaitForIdler("test-idler-stage", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
 
 	// Create payloads for both users
@@ -54,7 +54,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	idler.Spec.TimeoutSeconds = 3
-	err = s.memberAwait.Client.Update(context.TODO(), idler)
+	idler, err = s.memberAwait.UpdateIdler(idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
 	require.NoError(s.T(), err)
 
 	// Wait for the pods to be deleted
