@@ -52,7 +52,7 @@ To measure how much time a controller takes to process existing resources after 
 
 1. Create (if needed) a route to expose the `/metrics` endpoint to the outside world.
 2. Provision the user accounts.
-3. Delete the member operator pod. The Deployment controller will immediately trigger a new one.
+3. Delete the host operator pod. The Deployment controller will immediately trigger a new one.
 4. Wait until the `/metrics` endpoint is available again. At this point, the controller has fully bootstrapped, so the stopwatch can be started.
 5. Wait until the `controller_runtime_reconcile_total(controller,usersignup-controller)` metric reaches the number of user accounts provisioned in step 1. Also, as an extra measure, wait until the `workqueue_depth(name, usersignup-controller)` metric value is `0`.
 6. At this point, the controller has processed all the existing resources, so the stopwatch can be stopped, and the duration can be output in the logs.
