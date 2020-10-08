@@ -8,8 +8,8 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
@@ -17,8 +17,10 @@ import (
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	sdkutil "github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
@@ -93,5 +95,12 @@ const (
 )
 
 func newSchemeBuilder() runtime.SchemeBuilder {
-	return append(apis.AddToSchemes, userv1.AddToScheme, templatev1.AddToScheme, routev1.AddToScheme, quotav1.AddToScheme)
+	return append(apis.AddToSchemes,
+		userv1.Install,
+		templatev1.Install,
+		routev1.Install,
+		quotav1.Install,
+		openshiftappsv1.Install,
+		corev1.AddToScheme,
+	)
 }

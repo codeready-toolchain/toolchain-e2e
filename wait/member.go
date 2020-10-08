@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -392,35 +393,47 @@ func (a *MemberAwaitility) WaitForIdler(name string) (*toolchainv1alpha1.Idler, 
 // PodWaitCriterion a function to check that a Pod has the expected condition
 type PodWaitCriterion func(a *MemberAwaitility, pod v1.Pod) bool
 
-// WaitForPods waits until "n" number of pods with the given labels exists in the given namespace
-func (a *MemberAwaitility) WaitForPods(namespace string, labels map[string]string, n int, criteria ...PodWaitCriterion) ([]*v1.Pod, error) {
+// WaitForPods waits until "n" number of pods exist in the given namespace
+func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]*v1.Pod, error) {
 	pods := make([]*v1.Pod, 0, n)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		foundPods := &v1.PodList{}
-		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}, client.MatchingLabels(labels)); err != nil {
+		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
 			return false, err
 		}
 		if len(foundPods.Items) < n {
 			if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
 				return false, err
 			}
-			a.T.Logf("waiting for %d pods with labels '%v' in namespace '%s'. Currently available pods: '%v'", n, labels, namespace, foundPods)
+			a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s'. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
 			return false, nil
 		}
 		for _, p := range foundPods.Items {
 			for _, match := range criteria {
 				if !match(a, p) {
-					a.T.Logf("waiting for %d pods with labels '%v' in namespace '%s' with a criterion. Currently available pods: '%v'", n, labels, namespace, foundPods)
+					a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s' with a criterion. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
 					return false, nil
 				}
 			}
 			pod := p // copy
 			pods = append(pods, &pod)
 		}
-		a.T.Logf("found Pods '%v'", foundPods)
+		a.T.Logf("found Pods: '%s'", a.listPods(*foundPods))
 		return true, nil
 	})
 	return pods, err
+}
+
+func (a *MemberAwaitility) listPods(pods v1.PodList) string {
+	var s string
+	for _, p := range pods.Items {
+		s = fmt.Sprintf("%s\n%s", s, a.formatPod(p))
+	}
+	return s
+}
+
+func (a *MemberAwaitility) formatPod(pod v1.Pod) string {
+	return fmt.Sprintf("Name: %s; Namespace: %s; Labels: %v; Phase: %s", pod.Name, pod.Namespace, pod.Labels, pod.Status.Phase)
 }
 
 // WaitUntilPodsDeleted waits until the pods are deleted from the given namespace
@@ -436,7 +449,7 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...Po
 		for _, p := range foundPods.Items {
 			for _, match := range criteria {
 				if !match(a, p) {
-					a.T.Logf("waiting for pods in namespace %s with a specific criterion to be deleted. Found pod which matches the criterion: '%v'", namespace, p)
+					a.T.Logf("waiting for pods in namespace %s with a specific criterion to be deleted. Found pod which matches the criterion: '%s'", namespace, a.formatPod(p))
 					return false, nil
 				}
 			}
@@ -474,15 +487,15 @@ func UntilPodRunning() PodWaitCriterion {
 	}
 }
 
-// PodName checks if the Pod has the expected name
-func PodName(name string) PodWaitCriterion {
+// WithPodName checks if the Pod has the expected name
+func WithPodName(name string) PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
 		return pod.Name == name
 	}
 }
 
-// PodLabels checks if the Pod has the expected labels
-func PodLabels(labels map[string]string) PodWaitCriterion {
+// WithPodLabels checks if the Pod has the expected labels
+func WithPodLabels(labels map[string]string) PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
 		for k, v := range labels {
 			if pod.Labels[k] == v {
