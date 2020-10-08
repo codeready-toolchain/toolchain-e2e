@@ -410,7 +410,7 @@ func (a *MemberAwaitility) WaitForPods(namespace string, labels map[string]strin
 		for _, p := range foundPods.Items {
 			for _, match := range criteria {
 				if !match(a, p) {
-					a.T.Logf("waiting for %d pods with labels '%v' in namespace '%s' with a criteria. Currently available pods: '%v'", n, labels, namespace, foundPods)
+					a.T.Logf("waiting for %d pods with labels '%v' in namespace '%s' with a criterion. Currently available pods: '%v'", n, labels, namespace, foundPods)
 					return false, nil
 				}
 			}
@@ -421,6 +421,29 @@ func (a *MemberAwaitility) WaitForPods(namespace string, labels map[string]strin
 		return true, nil
 	})
 	return pods, err
+}
+
+// WaitUntilPodsDeleted waits until the pods are deleted from the given namespace
+func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...PodWaitCriterion) error {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		foundPods := &v1.PodList{}
+		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
+			return false, err
+		}
+		if len(foundPods.Items) == 0 {
+			return true, nil
+		}
+		for _, p := range foundPods.Items {
+			for _, match := range criteria {
+				if !match(a, p) {
+					a.T.Logf("waiting for pods in namespace %s with a specific criterion to be deleted. Found pod which matches the criterion: '%v'", namespace, p)
+					return false, nil
+				}
+			}
+		}
+		return true, nil
+	})
+	return err
 }
 
 // WaitUntilPodDeleted waits until the pod with the given name is deleted from the given namespace
@@ -447,6 +470,25 @@ func UntilPodRunning() PodWaitCriterion {
 			return true
 		}
 		a.T.Logf("waiting for Pod '%s' having the expected phase. Actual: '%s'; Expected: '%s'", pod.Name, pod.Status.Phase, v1.PodRunning)
+		return false
+	}
+}
+
+// PodName checks if the Pod has the expected name
+func PodName(name string) PodWaitCriterion {
+	return func(a *MemberAwaitility, pod v1.Pod) bool {
+		return pod.Name == name
+	}
+}
+
+// PodLabels checks if the Pod has the expected labels
+func PodLabels(labels map[string]string) PodWaitCriterion {
+	return func(a *MemberAwaitility, pod v1.Pod) bool {
+		for k, v := range labels {
+			if pod.Labels[k] == v {
+				return true
+			}
+		}
 		return false
 	}
 }
