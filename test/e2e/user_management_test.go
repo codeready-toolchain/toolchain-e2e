@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
@@ -41,9 +42,9 @@ func (s *userManagementTestSuite) TearDownTest() {
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
-	s.setApprovalPolicyConfig("automatic")
-	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", ApprovedByAdmin()...)
-	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", ApprovedByAdmin()...)
+	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", true,  ApprovedByAdmin()...)
+	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", true, ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
 		userSignup.Spec.Deactivated = true
@@ -144,10 +145,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 func (s *userManagementTestSuite) TestUserBanning() {
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		s.setApprovalPolicyConfig("automatic")
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, _ := s.createUserSignupAndAssertAutoApproval(false)
+		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", true, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -163,21 +164,21 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("create usersignup with preexisting banneduser", func(t *testing.T) {
-		s.setApprovalPolicyConfig("automatic")
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		id := uuid.NewV4().String()
 		email := "testuser" + id + "@test.com"
 		s.createAndCheckBannedUser(email)
 
 		// Check that no MUR created
-		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, Banned()...)
+		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, true, Banned()...)
 		mur, err := s.hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
 		require.NoError(s.T(), err)
 		assert.Nil(s.T(), mur)
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
-		s.setApprovalPolicyConfig("automatic")
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		id := uuid.NewV4().String()
 		email := "testuser" + id + "@test.com"
@@ -215,10 +216,10 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		s.setApprovalPolicyConfig("automatic")
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, mur := s.createUserSignupAndAssertAutoApproval(false)
+		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", true, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		bannedUser := s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -254,7 +255,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	s.setApprovalPolicyConfig("manual")
+	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval())
 
 	// Create UserSignup
 	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe")
@@ -305,9 +306,4 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
 	})
-}
-
-func (s *userManagementTestSuite) createUserSignupAndAssertAutoApproval(specApproved bool) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
-	id := uuid.NewV4().String()
-	return s.createAndCheckUserSignup(specApproved, "testuser"+id, "testuser"+id+"@test.com", ApprovedAutomatically()...)
 }

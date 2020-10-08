@@ -14,11 +14,11 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"github.com/stretchr/testify/assert"
-
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -35,7 +35,7 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 			continue
 		}
 		// Create an approved UserSignup resource
-		userSignup := NewUserSignup(t, hostAwait, memberAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
+		userSignup := NewUserSignup(t, hostAwait, memberAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i), true)
 		userSignup.Spec.Approved = true
 		err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
 		hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
@@ -86,13 +86,29 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
 	require.NoError(t, err)
 
+	// delete the userSignup at the end of the test
+	t.Cleanup(func() {
+		if err := hostAwait.Client.Delete(context.TODO(), userSignup); err != nil && !errors.IsNotFound(err) {
+			require.NoError(t, err)
+		}
+	})
+
 	return *userSignup
 }
 
-func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, wait.ReadyToolchainCluster)
-	require.NoError(t, err)
-	require.True(t, ok)
+// NewUserSignup creates a new UserSignup resoruce with the given values:
+// specApproved defines if the UserSignup should be manually approved
+// username defines the required username set in the spec
+// email is set in "user-email" annotation
+// setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
+func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, username string, email string, setTargetCluster bool) *toolchainv1alpha1.UserSignup {
+	targetCluster := ""
+	if setTargetCluster {
+		memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, wait.ReadyToolchainCluster)
+		require.NoError(t, err)
+		require.True(t, ok)
+		targetCluster = memberCluster.Name
+	}
 
 	return &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -107,7 +123,7 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wa
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username:      username,
-			TargetCluster: memberCluster.Name,
+			TargetCluster: targetCluster,
 		},
 	}
 }
