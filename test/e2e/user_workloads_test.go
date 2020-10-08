@@ -105,7 +105,7 @@ func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string) []corev1.Pod
 	rc := s.createReplicationController(namespace)
 	n = n + int(*rc.Spec.Replicas)
 
-	pods, err := s.memberAwait.WaitForPods(namespace, n, wait.PodRunning())
+	pods, err := s.memberAwait.WaitForPods(namespace, n, wait.PodRunning(), wait.WithPodLabel("idler", "idler"))
 	require.NoError(s.T(), err)
 	return pods
 }
