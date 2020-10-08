@@ -49,8 +49,8 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	require.NoError(s.T(), err)
 
 	// Create payloads for both users
-	podsToIdle := s.prepareWorkloads(idler)
-	podsNoise := s.prepareWorkloads(idlerNoise)
+	podsToIdle := s.prepareWorkloads(idler.Name)
+	podsNoise := s.prepareWorkloads(idlerNoise.Name)
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	idler.Spec.TimeoutSeconds = 3
@@ -64,13 +64,13 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	}
 
 	// Noise pods are still there
-	_, err = s.memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.UntilPodRunning(), wait.WithPodLabels(labels("")))
+	_, err = s.memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"))
 	require.NoError(s.T(), err)
 
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
-	pod := s.createStandalonePod(idler) // create just one standalone pod. No need to create all possible pod controllers which may own pods.
+	pod := s.createStandalonePod(idler.Name) // create just one standalone pod. No need to create all possible pod controllers which may own pods.
 	// We can't really make sure that the pod was created first before the idler deletes it.
 	// So, let's just wait for three seconds assuming it will be enough for the API server to create a pod before start waiting for the Pod to be deleted.
 	time.Sleep(3 * time.Second)
@@ -78,43 +78,43 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	require.NoError(s.T(), err)
 
 	// There should not be any pods left in the namespace
-	err = s.memberAwait.WaitUntilPodsDeleted(idler.Name, wait.WithPodLabels(labels("")))
+	err = s.memberAwait.WaitUntilPodsDeleted(idler.Name, wait.WithPodLabel("idler", "idler"))
 	require.NoError(s.T(), err)
 }
 
-func (s *userWorkloadsTestSuite) prepareWorkloads(idler *v1alpha1.Idler) []corev1.Pod {
-	s.createStandalonePod(idler)
-	d := s.createDeployment(idler)
+func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string) []corev1.Pod {
+	s.createStandalonePod(namespace)
+	d := s.createDeployment(namespace)
 	n := 1 + int(*d.Spec.Replicas) // total number of created pods
 
-	rs := s.createReplicaSet(idler)
+	rs := s.createReplicaSet(namespace)
 	n = n + int(*rs.Spec.Replicas)
 
-	s.createDaemonSet(idler)
+	s.createDaemonSet(namespace)
 	nodes := &corev1.NodeList{}
 	err := s.memberAwait.Client.List(context.TODO(), nodes, client.MatchingLabels(map[string]string{"node-role.kubernetes.io/worker": ""}))
 	require.NoError(s.T(), err)
 	n = n + len(nodes.Items) // DaemonSet creates N pods where N is the number of worker nodes in the cluster
 
-	s.createJob(idler)
+	s.createJob(namespace)
 	n++
 
-	dc := s.createDeploymentConfig(idler)
+	dc := s.createDeploymentConfig(namespace)
 	n = n + int(dc.Spec.Replicas)
 
-	rc := s.createReplicationController(idler)
+	rc := s.createReplicationController(namespace)
 	n = n + int(*rc.Spec.Replicas)
 
-	pods, err := s.memberAwait.WaitForPods(idler.Name, n, wait.UntilPodRunning(), wait.WithPodLabels(labels("")))
+	pods, err := s.memberAwait.WaitForPods(namespace, n, wait.PodRunning(), wait.WithPodLabel("idler", "idler"))
 	require.NoError(s.T(), err)
 	return pods
 }
 
-func (s *userWorkloadsTestSuite) createDeployment(idler *v1alpha1.Idler) *appsv1.Deployment {
+func (s *userWorkloadsTestSuite) createDeployment(namespace string) *appsv1.Deployment {
 	// Create a Deployment with two pods
 	replicas := int32(3)
 	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-deployment", Namespace: idler.Name},
+		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-deployment", Namespace: namespace},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels("idler-deployment")},
 			Replicas: &replicas,
@@ -127,11 +127,11 @@ func (s *userWorkloadsTestSuite) createDeployment(idler *v1alpha1.Idler) *appsv1
 	return deployment
 }
 
-func (s *userWorkloadsTestSuite) createReplicaSet(idler *v1alpha1.Idler) *appsv1.ReplicaSet {
+func (s *userWorkloadsTestSuite) createReplicaSet(namespace string) *appsv1.ReplicaSet {
 	// Standalone ReplicaSet
 	replicas := int32(2)
 	rs := &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-replicaset", Namespace: idler.Name},
+		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-replicaset", Namespace: namespace},
 		Spec: appsv1.ReplicaSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels("idler-rs")},
 			Replicas: &replicas,
@@ -144,10 +144,10 @@ func (s *userWorkloadsTestSuite) createReplicaSet(idler *v1alpha1.Idler) *appsv1
 	return rs
 }
 
-func (s *userWorkloadsTestSuite) createDaemonSet(idler *v1alpha1.Idler) *appsv1.DaemonSet {
+func (s *userWorkloadsTestSuite) createDaemonSet(namespace string) *appsv1.DaemonSet {
 	// Standalone ReplicaSet
 	ds := &appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-daemonset", Namespace: idler.Name},
+		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-daemonset", Namespace: namespace},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels("idler-ds")},
 			Template: podTemplateSpec("idler-ds"),
@@ -159,10 +159,10 @@ func (s *userWorkloadsTestSuite) createDaemonSet(idler *v1alpha1.Idler) *appsv1.
 	return ds
 }
 
-func (s *userWorkloadsTestSuite) createJob(idler *v1alpha1.Idler) *batchv1.Job {
+func (s *userWorkloadsTestSuite) createJob(namespace string) *batchv1.Job {
 	// Job
 	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-job", Namespace: idler.Name},
+		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-job", Namespace: namespace},
 		Spec: batchv1.JobSpec{
 			Template: podTemplateSpec(""),
 		},
@@ -174,12 +174,12 @@ func (s *userWorkloadsTestSuite) createJob(idler *v1alpha1.Idler) *batchv1.Job {
 	return job
 }
 
-func (s *userWorkloadsTestSuite) createDeploymentConfig(idler *v1alpha1.Idler) *openshiftappsv1.DeploymentConfig {
+func (s *userWorkloadsTestSuite) createDeploymentConfig(namespace string) *openshiftappsv1.DeploymentConfig {
 	// Create a Deployment with two pods
 	spec := podTemplateSpec("idler-dc")
 	replicas := int32(2)
 	dc := &openshiftappsv1.DeploymentConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-dc", Namespace: idler.Name},
+		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-dc", Namespace: namespace},
 		Spec: openshiftappsv1.DeploymentConfigSpec{
 			Selector: selectorLabels("idler-dc"),
 			Replicas: replicas,
@@ -192,12 +192,12 @@ func (s *userWorkloadsTestSuite) createDeploymentConfig(idler *v1alpha1.Idler) *
 	return dc
 }
 
-func (s *userWorkloadsTestSuite) createReplicationController(idler *v1alpha1.Idler) *corev1.ReplicationController {
+func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *corev1.ReplicationController {
 	// Standalone ReplicationController
 	spec := podTemplateSpec("idler-rc")
 	replicas := int32(2)
 	rc := &corev1.ReplicationController{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-rc", Namespace: idler.Name},
+		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-rc", Namespace: namespace},
 		Spec: corev1.ReplicationControllerSpec{
 			Selector: selectorLabels("idler-rc"),
 			Replicas: &replicas,
@@ -210,13 +210,13 @@ func (s *userWorkloadsTestSuite) createReplicationController(idler *v1alpha1.Idl
 	return rc
 }
 
-func (s *userWorkloadsTestSuite) createStandalonePod(idler *v1alpha1.Idler) *corev1.Pod {
+func (s *userWorkloadsTestSuite) createStandalonePod(namespace string) *corev1.Pod {
 	// Create a Deployment with two pods
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "idler-test-pod",
-			Namespace: idler.Name,
-			Labels:    labels(""),
+			Namespace: namespace,
+			Labels:    map[string]string{"idler": "idler"},
 		},
 		Spec: podSpec(),
 	}
@@ -247,17 +247,12 @@ func podSpec() corev1.PodSpec {
 
 func podTemplateSpec(app string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{Labels: labels(app)},
-		Spec:       podSpec(),
+		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+			"idler": "idler",
+			"app":   app,
+		}},
+		Spec: podSpec(),
 	}
-}
-
-func labels(app string) map[string]string {
-	labels := map[string]string{"idler": "idler"}
-	if app != "" {
-		labels["app"] = app
-	}
-	return labels
 }
 
 func selectorLabels(app string) map[string]string {
