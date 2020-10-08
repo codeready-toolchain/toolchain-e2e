@@ -34,7 +34,7 @@ func (s *userWorkloadsTestSuite) SetupSuite() {
 }
 
 func (s *userWorkloadsTestSuite) TearDownTest() {
-	// s.ctx.Cleanup()
+	s.ctx.Cleanup()
 }
 
 func (s *userWorkloadsTestSuite) TestIdler() {
