@@ -54,7 +54,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	idler.Spec.TimeoutSeconds = 3
-	idler, err = s.memberAwait.UpdateIdler(idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
+	idler, err = s.memberAwait.UpdateIdlerSpec(idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
 	require.NoError(s.T(), err)
 
 	// Wait for the pods to be deleted

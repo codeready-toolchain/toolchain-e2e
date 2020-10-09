@@ -411,17 +411,23 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 	return idler, err
 }
 
-// UpdateIdler tries to update the Idler until success
-func (a *MemberAwaitility) UpdateIdler(idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
+// UpdateIdlerSpec tries to update the Idler.Spec until success
+func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
+	result := &toolchainv1alpha1.Idler{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err := a.Client.Update(context.TODO(), idler); err != nil {
-			a.T.Logf("trying to update Idler %s. Error: %s", idler.Name, err.Error())
-			err = a.Client.Get(context.TODO(), types.NamespacedName{Name: idler.Name}, idler)
+		obj := &toolchainv1alpha1.Idler{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: idler.Name}, obj); err != nil {
 			return false, err
 		}
+		obj.Spec = idler.Spec
+		if err := a.Client.Update(context.TODO(), obj); err != nil {
+			a.T.Logf("trying to update Idler %s. Error: %s. Will try to update again.", idler.Name, err.Error())
+			return false, nil
+		}
+		result = obj
 		return true, nil
 	})
-	return idler, err
+	return result, err
 }
 
 // PodWaitCriterion a function to check that a Pod has the expected condition
@@ -488,7 +494,7 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...Po
 		for _, p := range foundPods.Items {
 			for _, match := range criteria {
 				if !match(a, p) {
-					a.T.Logf("waiting for pods in namespace %s with a specific criterion to be deleted. Found pod which matches the criterion: '%s'", namespace, a.formatPod(p))
+					a.T.Logf("waiting for pods in namespace %s with a specific criterion to be deleted. Found pod which matches the criterion: '%s'. All available pods: '%s'", namespace, a.formatPod(p), a.listPods(*foundPods))
 					return false, nil
 				}
 			}
