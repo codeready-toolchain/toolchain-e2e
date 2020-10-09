@@ -150,7 +150,6 @@ func ApprovedAndVerificationRequired() []toolchainv1alpha1.Condition {
 	}
 }
 
-
 func VerificationRequired() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
@@ -225,5 +224,13 @@ func Deactivated() []toolchainv1alpha1.Condition {
 			Status: corev1.ConditionTrue,
 			Reason: "NotificationCRCreated",
 		},
+	}
+}
+
+func Running() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ConditionReady,
+		Status: corev1.ConditionTrue,
+		Reason: "Running",
 	}
 }
