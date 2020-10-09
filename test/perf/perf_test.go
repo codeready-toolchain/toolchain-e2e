@@ -30,6 +30,9 @@ func TestPerformance(t *testing.T) {
 	// host metrics should become available at this point
 	metricsService, err := hostAwait.WaitForMetricsService("host-operator-metrics")
 	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
+	// host metrics should become available again at this point
+	metricsRoute, err := hostAwait.SetupRouteForService(metricsService, "/metrics")
+	require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 	count := 1000
 	t.Run(fmt.Sprintf("%d users", count), func(t *testing.T) {
@@ -42,15 +45,13 @@ func TestPerformance(t *testing.T) {
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
 		err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
-
-		// then check how much time it takes to restart and process all existing resources
+		require.NoError(t, err)
+		_, err = hostAwait.WaitForRouteToBeAvailable(metricsRoute.Namespace, metricsRoute.Name, "/metrics")
 		require.NoError(t, err)
 
+		// then check how much time it takes to restart and process all existing resources
 		host := hostAwait
 		host.Timeout = 30 * time.Minute
-		// host metrics should become available again at this point
-		metricsRoute, err := hostAwait.SetupRouteForService(metricsService, "/metrics")
-		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 		start := time.Now()
 		// measure time it takes to have an empty queue on the master-user-records

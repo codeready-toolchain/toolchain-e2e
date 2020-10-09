@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -116,6 +117,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		require.NotNil(s.T(), body)
 	})
 }
+
 func (s *registrationServiceTestSuite) TestSignupFails() {
 	identity0 := authsupport.NewIdentity()
 	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
