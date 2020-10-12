@@ -54,21 +54,23 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	postSignup(t, hostAwait.RegistrationServiceURL, *identity)
 
 	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String(), wait.UntilUserSignupHasConditions(PendingApproval()...))
+	userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String(),
+		wait.UntilUserSignupHasConditions(PendingApproval()...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(t, err)
 	require.Equal(t, userSignup.Spec.GivenName, identity.Username+"-First-Name")
 	require.Equal(t, userSignup.Spec.FamilyName, identity.Username+"-Last-Name")
 	require.Equal(t, userSignup.Spec.Company, identity.Username+"-Company-Name")
-	assert.Equal(t, toolchainv1alpha1.UserSignupApprovedLabelValueFalse, userSignup.Labels[toolchainv1alpha1.UserSignupApprovedLabelKey])
 
 	// 2. approve the UserSignup
 	userSignup.Spec.Approved = true
 	err = hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
 	// Check the updated conditions
-	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(t, err)
-	assert.Equal(t, toolchainv1alpha1.UserSignupApprovedLabelValueTrue, userSignup.Labels[toolchainv1alpha1.UserSignupApprovedLabelKey])
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
