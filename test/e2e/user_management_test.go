@@ -43,7 +43,7 @@ func (s *userManagementTestSuite) TearDownTest() {
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
-	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", true,  ApprovedByAdmin()...)
+	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", true, ApprovedByAdmin()...)
 	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", true, ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
@@ -67,7 +67,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(Deactivated()...))
+			wait.UntilUserSignupHasConditions(Deactivated()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
 	})
@@ -88,7 +89,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 		require.NoError(s.T(), err)
 		require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
 	})
@@ -129,7 +131,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.NoError(s.T(), err)
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(Deactivated()...))
+			wait.UntilUserSignupHasConditions(Deactivated()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
 
@@ -137,7 +140,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		_, err = s.hostAwait.WaitForMasterUserRecord(excludedMur.Name)
 		require.NoError(s.T(), err)
 		deactivationExcludedUserSignup, err = s.hostAwait.WaitForUserSignup(deactivationExcludedUserSignup.Name,
-			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 		require.NoError(s.T(), err)
 		require.False(t, deactivationExcludedUserSignup.Spec.Deactivated, "deactivationExcludedUserSignup should not be deactivated")
 	})
@@ -161,6 +165,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		// Confirm that a MasterUserRecord is deleted
 		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
 		require.Error(s.T(), err)
+		// confirm usersignup
+		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ApprovedAutomaticallyAndBanned()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueBanned))
+		require.NoError(s.T(), err)
 	})
 
 	s.T().Run("create usersignup with preexisting banneduser", func(t *testing.T) {
@@ -171,10 +180,12 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.createAndCheckBannedUser(email)
 
 		// Check that no MUR created
-		_ = s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, true, Banned()...)
+		userSignup := s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, true, Banned()...)
+		assert.Equal(t, v1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		mur, err := s.hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
 		require.NoError(s.T(), err)
 		assert.Nil(s.T(), mur)
+		require.NoError(s.T(), err)
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
@@ -232,6 +243,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		// Confirm that a MasterUserRecord is deleted
 		_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(userSignup.Spec.Username)
 		require.Error(s.T(), err)
+		// confirm usersignup
+		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ApprovedAutomaticallyAndBanned()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueBanned))
+		require.NoError(s.T(), err)
 
 		t.Run("unban the banned user", func(t *testing.T) {
 			// Unban the user
@@ -243,8 +259,9 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			require.NoError(s.T(), err)
 
 			// Confirm the user is provisioned
-			_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+			userSignup, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 
 			// Confirm the MUR is created
