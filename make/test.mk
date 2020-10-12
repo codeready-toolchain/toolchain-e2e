@@ -354,6 +354,8 @@ ifeq ($(IS_OS_3),)
 			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
 			sleep 1; \
 		done
+		echo "print all roles: "`oc get Role -n ${NAMESPACE}`
+		echo "print all clusterroles: "`oc get ClusterRole`
 else
 		echo "before curl ${REPO_NAME}"
 		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/deploy/operator.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml
