@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/stretchr/testify/assert"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
@@ -47,6 +48,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup := s.createAndCheckUserSignupNoMUR(false, "automatic2", "automatic2@redhat.com", false, PendingApprovalNoCluster()...)
 
 		// then
+		assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("automatic2")
 		require.NoError(t, err)
 
@@ -55,7 +57,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 			// then
-			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 		})
@@ -69,6 +73,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup := s.createAndCheckUserSignupNoMUR(false, "automatic3", "automatic3@redhat.com", false, PendingApprovalNoCluster()...)
 
 		// then
+		assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("automatic3")
 		require.NoError(t, err)
 
@@ -77,7 +82,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 			// then
-			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 		})
@@ -91,15 +98,17 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
-			s.createAndCheckUserSignup(true, "manual1", "manual1@redhat.com", false, ApprovedByAdmin()...)
+			userSignup, _ := s.createAndCheckUserSignup(true, "manual1", "manual1@redhat.com", false, ApprovedByAdmin()...)
+			assert.Equal(t, v1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		})
 		t.Run("user is not approved manually thus won't be provisioned", func(t *testing.T) {
 			// when
-			s.createAndCheckUserSignupNoMUR(false, "manual2", "manual2@redhat.com", false, PendingApproval()...)
+			userSignup := s.createAndCheckUserSignupNoMUR(false, "manual2", "manual2@redhat.com", false, PendingApproval()...)
 
 			// then
 			err := s.hostAwait.WaitUntilMasterUserRecordDeleted("manual2")
 			require.NoError(t, err)
+			assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		})
 	})
 
@@ -122,13 +131,16 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		// then
 		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("manualwithcapacity2")
 		require.NoError(t, err)
+		assert.Equal(t, v1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
 			s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 
 			// then
-			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 		})
@@ -144,13 +156,16 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		// then
 		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("manualwithcapacity3")
 		require.NoError(t, err)
+		assert.Equal(t, v1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when
 			s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 
 			// then
-			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedByAdmin()...))
+			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 		})
@@ -161,12 +176,13 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled().ResourceCapThreshold(1).MaxUsersNumber(1))
 
 		// when & then
-		s.createAndCheckUserSignup(true, "withtargetcluster", "withtargetcluster@redhat.com", true, ApprovedByAdmin()...)
+		userSignup, _ := s.createAndCheckUserSignup(true, "withtargetcluster", "withtargetcluster@redhat.com", true, ApprovedByAdmin()...)
+		assert.Equal(t, v1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 	})
 }
 
 func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
-	s.T().Run("manual approval with verification required", func(t *testing.T) {
+	s.T().Run("automatic approval with verification required", func(t *testing.T) {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval())
 
 		t.Run("verification required set to true", func(t *testing.T) {
@@ -211,29 +227,6 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
 }
 
-func (s *userSignupIntegrationTest) createUserSignupAndAssertPendingApproval() *v1alpha1.UserSignup {
-	// Create a new UserSignup with approved flag set to false
-	username := "testuser" + uuid.NewV4().String()
-	email := username + "@test.com"
-	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email, true)
-
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	// Check the UserSignup is pending approval now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(PendingApproval()...))
-	require.NoError(s.T(), err)
-
-	// Confirm the CompliantUsername has NOT been set
-	require.Empty(s.T(), userSignup.Status.CompliantUsername)
-
-	// Confirm that a MasterUserRecord wasn't created
-	_, err = s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForMasterUserRecord(username)
-	require.Error(s.T(), err)
-	return userSignup
-}
-
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
 	// Create a new UserSignup
 	username := "testuser" + uuid.NewV4().String()
@@ -251,7 +244,9 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	// Check the UserSignup is pending approval now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(VerificationRequired()...))
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 
 	// Confirm the CompliantUsername has NOT been set
