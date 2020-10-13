@@ -184,7 +184,7 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 		for _, signup := range signups {
 			mur, err := hostAwait.WaitForMasterUserRecord(signup.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
 			require.NoError(t, err)
-			// now, run a pod (with the `sleep 7200` command in each namespace)
+			// now, run a pod (with the `sleep 28800` command in each namespace)
 			userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 				wait.UntilUserAccountHasConditions(Provisioned()))
 			require.NoError(t, err)
