@@ -21,7 +21,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -163,13 +162,6 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 		for i := 0; i < config.GetUserBatchSize(); i++ {
 			n := b*config.GetUserBatchSize() + i
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
-			// check if there is already a MUR with the expected name, in which case, continue with the next one
-			mur := toolchainv1alpha1.MasterUserRecord{}
-			if err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: hostAwait.Namespace, Name: name}, &mur); err == nil {
-				t.Logf("no need to create a UserSignup for '%s', the MasterUserRecord resource already exists", name)
-				// skip this one, it already exists
-				continue
-			}
 			// Create an approved UserSignup resource
 			userSignup := NewUserSignup(t, hostAwait, memberAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n), false)
 			userSignup.Spec.Approved = true

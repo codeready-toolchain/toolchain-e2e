@@ -33,9 +33,7 @@ func getCounter(url string, family string, labelKey string, labelValue string) (
 	parser := expfmt.TextParser{}
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
 	if err != nil {
-		if err != nil {
-			return -1, err
-		}
+		return -1, err
 	}
 	for _, f := range families {
 		if f.GetName() == family {
