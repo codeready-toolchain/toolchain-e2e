@@ -208,7 +208,7 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 							{
 								Name:    "sleep",
 								Image:   "busybox",
-								Command: []string{"sleep", "36000"}, // 10 hours
+								Command: []string{"sleep", "28800"}, // 8 hours - same as for idler
 								Resources: corev1.ResourceRequirements{
 									Requests: corev1.ResourceList{
 										"cpu":    resource.MustParse("1m"),
