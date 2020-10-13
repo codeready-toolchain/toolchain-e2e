@@ -139,7 +139,7 @@ func initLogger() (logr.Logger, *os.File, error) {
 	return logger, out, nil
 }
 
-// createMultipleSignups creates signups by batch (see `config.GetUserBatchSize()`) and monitors the CPU and memory while the
+// createSignupsByBatch creates signups by batch (see `config.GetUserBatchSize()`) and monitors the CPU and memory while the
 // provisioning is in progress. Logs the max CPU and memory during captured during each batch by polling the `/metrics`
 // endpoint in a separate go routine.
 func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, config Configuration, logger logr.Logger) {
