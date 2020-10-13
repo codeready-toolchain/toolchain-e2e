@@ -161,7 +161,7 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 		start := time.Now()
 
 		for i := 0; i < config.GetUserBatchSize(); i++ {
-			n := (b*config.GetUserBatchSize() + i)
+			n := b*config.GetUserBatchSize() + i
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
 			// check if there is already a MUR with the expected name, in which case, continue with the next one
 			mur := toolchainv1alpha1.MasterUserRecord{}
