@@ -30,7 +30,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member setup-toolchainclusters
+deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member e2e-service-account setup-toolchainclusters
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -234,6 +234,10 @@ endif
 	$(MAKE) build-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME}
 	$(MAKE) deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator NAMESPACE=$(MEMBER_NS)
 
+.PHONY: e2e-service-account
+e2e-service-account:
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+
 .PHONY: deploy-host
 deploy-host: build-registration
 ifeq ($(HOST_REPO_PATH),)
@@ -331,7 +335,7 @@ ifeq ($(IS_OS_3),)
 		fi
 		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]]; do \
+		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]] || [[ -z `oc get Roles -n ${NAMESPACE} | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
 			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
 			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
 			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \

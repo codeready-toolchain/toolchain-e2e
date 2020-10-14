@@ -66,7 +66,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	hostAwait.RegistrationServiceURL = registrationServiceURL
 
 	// wait for member operator to be ready
-	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(cluster.Member, memberNs, wait.ReadyToolchainCluster)
+	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", memberNs, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberCluster, 3*time.Second)
 	require.NoError(t, err)
