@@ -469,6 +469,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
 		wait.UntilUserSignupHasConditions(VerificationRequired()...),
 		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
+	require.NoError(s.T(), err)
 
 	// Confirm that a MUR hasn't been created
 	obj := &v1alpha1.MasterUserRecord{}

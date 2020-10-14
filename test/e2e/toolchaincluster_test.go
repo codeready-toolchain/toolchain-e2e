@@ -9,7 +9,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,13 +20,13 @@ func TestToolchainClusterE2E(t *testing.T) {
 	ctx, hostAwait, memberAwait := WaitForDeployments(t, toolchainClusterList)
 	defer ctx.Cleanup()
 
-	verifyToolchainCluster(t, ctx, hostAwait.Awaitility, memberAwait.Awaitility)
-	verifyToolchainCluster(t, ctx, memberAwait.Awaitility, hostAwait.Awaitility)
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, ctx *test.Context, await *wait.Awaitility, otherAwait *wait.Awaitility) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
 	current, ok, err := await.GetToolchainCluster(otherAwait.Type, otherAwait.Namespace, nil)
 	require.NoError(t, err)
