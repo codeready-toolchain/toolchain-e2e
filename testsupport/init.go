@@ -69,6 +69,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(cluster.Member, memberNs, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberCluster, 3*time.Second)
+	require.NoError(t, err)
 
 	kubeClient, err := kubernetes.NewForConfig(memberConfig)
 	require.NoError(t, err)
@@ -87,12 +88,6 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	t.Log("both operators are ready and in running state")
 	return ctx, hostAwait, memberAwait
 }
-
-const (
-	toolchainAPIQPS   = 20.0
-	toolchainAPIBurst = 30
-	toolchainTokenKey = "token"
-)
 
 func newSchemeBuilder() runtime.SchemeBuilder {
 	return append(apis.AddToSchemes,

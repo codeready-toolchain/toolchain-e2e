@@ -162,6 +162,7 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 		require.NoError(t, err)
 	}()
 	r, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
 	require.True(t, resp.StatusCode < 300, "unexpected status code after posting user signup: '%d' ('%s')", resp.StatusCode, string(r))
 }
 
