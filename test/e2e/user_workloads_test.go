@@ -121,7 +121,7 @@ func (s *userWorkloadsTestSuite) createDeployment(namespace string) *appsv1.Depl
 			Template: podTemplateSpec("idler-deployment"),
 		},
 	}
-	err := s.memberAwait.Client.Create(context.TODO(), deployment)
+	err := s.memberAwait.Create(deployment)
 	require.NoError(s.T(), err)
 
 	return deployment
@@ -138,7 +138,7 @@ func (s *userWorkloadsTestSuite) createReplicaSet(namespace string) *appsv1.Repl
 			Template: podTemplateSpec("idler-rs"),
 		},
 	}
-	err := s.memberAwait.Client.Create(context.TODO(), rs)
+	err := s.memberAwait.Create(rs)
 	require.NoError(s.T(), err)
 
 	return rs
@@ -153,7 +153,7 @@ func (s *userWorkloadsTestSuite) createDaemonSet(namespace string) *appsv1.Daemo
 			Template: podTemplateSpec("idler-ds"),
 		},
 	}
-	err := s.memberAwait.Client.Create(context.TODO(), ds)
+	err := s.memberAwait.Create(ds)
 	require.NoError(s.T(), err)
 
 	return ds
@@ -168,7 +168,7 @@ func (s *userWorkloadsTestSuite) createJob(namespace string) *batchv1.Job {
 		},
 	}
 	job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
-	err := s.memberAwait.Client.Create(context.TODO(), job)
+	err := s.memberAwait.Create(job)
 	require.NoError(s.T(), err)
 
 	return job
@@ -186,7 +186,7 @@ func (s *userWorkloadsTestSuite) createDeploymentConfig(namespace string) *opens
 			Template: &spec,
 		},
 	}
-	err := s.memberAwait.Client.Create(context.TODO(), dc)
+	err := s.memberAwait.Create(dc)
 	require.NoError(s.T(), err)
 
 	return dc
@@ -204,7 +204,7 @@ func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *
 			Template: &spec,
 		},
 	}
-	err := s.memberAwait.Client.Create(context.TODO(), rc)
+	err := s.memberAwait.Create(rc)
 	require.NoError(s.T(), err)
 
 	return rc
@@ -220,7 +220,7 @@ func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *co
 		},
 		Spec: podSpec(),
 	}
-	err := s.memberAwait.Client.Create(context.TODO(), pod)
+	err := s.memberAwait.Create(pod)
 	require.NoError(s.T(), err)
 	return pod
 }

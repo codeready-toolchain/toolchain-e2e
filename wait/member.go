@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -428,6 +430,19 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 		return true, nil
 	})
 	return result, err
+}
+
+// Create tries to create the object until success
+// Workaround for https://github.com/kubernetes/kubernetes/issues/67761
+func (a *MemberAwaitility) Create(obj runtime.Object) error {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Create(context.TODO(), obj); err != nil {
+			a.T.Logf("trying to create %+v. Error: %s. Will try to create again.", obj, err.Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
 }
 
 // PodWaitCriterion a function to check that a Pod has the expected condition
