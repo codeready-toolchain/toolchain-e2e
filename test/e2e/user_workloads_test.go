@@ -53,7 +53,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	podsNoise := s.prepareWorkloads(idlerNoise.Name)
 
 	// Set a short timeout for one of the idler to trigger pod idling
-	idler.Spec.TimeoutSeconds = 5
+	idler.Spec.TimeoutSeconds = 3
 	idler, err = s.memberAwait.UpdateIdlerSpec(idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
 	require.NoError(s.T(), err)
 
@@ -73,7 +73,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	pod := s.createStandalonePod(idler.Name, "idler-test-pod-2") // create just one standalone pod. No need to create all possible pod controllers which may own pods.
 	// We can't really make sure that the pod was created first before the idler deletes it.
 	// So, let's just wait for three seconds assuming it will be enough for the API server to create a pod before start waiting for the Pod to be deleted.
-	time.Sleep(6 * time.Second)
+	time.Sleep(3 * time.Second)
 	err = s.memberAwait.WaitUntilPodDeleted(pod.Namespace, pod.Name)
 	require.NoError(s.T(), err)
 
