@@ -16,10 +16,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -197,7 +199,12 @@ func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, c
 // SetupRouteForService if needed, creates a route for the given service (with the same namespace/name)
 // It waits until the route is avaiable (or returns an error) by first checking the resource status
 // and then making a call to the given endpoint
-func (a *Awaitility) SetupRouteForService(service corev1.Service, endpoint string) (routev1.Route, error) {
+func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1.Route, error) {
+	service, err := a.WaitForMetricsService(serviceName)
+	if err != nil {
+		return routev1.Route{}, err
+	}
+
 	// now, create the route for the service (if needed)
 	route := routev1.Route{}
 	if err := a.Client.Get(context.TODO(), types.NamespacedName{
@@ -281,16 +288,34 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 	return route, err
 }
 
-// WaitUntilMetricsCounterHasValue waits until the exposed metric counter with of the given family
-// and with the given label key/value has reached the expected value
-func (a *Awaitility) WaitUntilMetricsCounterHasValue(url string, family string, labelKey string, labelValue string, expectedValue float64) error {
+// WaitUntilMetricHasValueOrMore waits until the exposed metric counter with of the given family
+// and with the given label key/value has reached the expected value (or more)
+func (a *Awaitility) WaitUntilMetricHasValueOrMore(url string, family string, labelKey string, labelValue string, expectedValue float64) error {
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getCounter(url, family, labelKey, labelValue)
 		if err != nil {
 			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' but error occurred: %s", family, labelKey, labelValue, expectedValue, err.Error())
 			return false, nil
 		}
-		if value != expectedValue {
+		if value < expectedValue {
+			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' (currently: %v)", family, labelKey, labelValue, expectedValue, value)
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
+}
+
+// WaitUntilMetricHasValueOrLess waits until the exposed metric counter with of the given family
+// and with the given label key/value has reached the expected value (or less)
+func (a *Awaitility) WaitUntilMetricHasValueOrLess(url string, family string, labelKey string, labelValue string, expectedValue float64) error {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		value, err := getCounter(url, family, labelKey, labelValue)
+		if err != nil {
+			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' but error occurred: %s", family, labelKey, labelValue, expectedValue, err.Error())
+			return false, nil
+		}
+		if value > expectedValue {
 			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' (currently: %v)", family, labelKey, labelValue, expectedValue, value)
 			return false, nil
 		}
@@ -312,4 +337,25 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 		}
 	}
 	return nil
+}
+
+// GetMemoryUsage retrieves the memory usage (in KB) of a given the pod
+func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
+	podMetrics := metrics.PodMetrics{}
+	if err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: ns,
+			Name:      podname,
+		}, &podMetrics); err != nil && !errors.IsNotFound(err) {
+			return false, err
+		}
+		if len(podMetrics.Containers) != 1 {
+			return false, nil // keep waiting
+		}
+		return true, nil
+	}); err != nil {
+		return -1, err
+	}
+	// assume the pod is running a single container
+	return podMetrics.Containers[0].Usage.Memory().ScaledValue(resource.Kilo), nil
 }
