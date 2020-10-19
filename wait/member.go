@@ -16,6 +16,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -807,5 +808,16 @@ func (a *MemberAwaitility) DeleteUserAccount(name string) error {
 		return err
 	}
 	return a.WaitUntilUserAccountDeleted(name)
+}
 
+// GetMemberOperatorPod returns the pod running the member operator controllers
+func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
+	pods := corev1.PodList{}
+	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "member-operator"}); err != nil {
+		return corev1.Pod{}, err
+	}
+	if len(pods.Items) != 1 {
+		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=member-operator' in namespace '%s': %d ", a.Namespace, len(pods.Items))
+	}
+	return pods.Items[0], nil
 }

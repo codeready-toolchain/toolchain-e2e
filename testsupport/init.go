@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,7 +32,7 @@ import (
 func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *wait.HostAwaitility, *wait.MemberAwaitility) {
 	schemeBuilder := newSchemeBuilder()
 	err := framework.AddToFrameworkScheme(schemeBuilder.AddToScheme, obj)
-	require.NoError(t, err, "failed to add custom resource scheme to framework")
+	require.NoError(t, err, "failed to add custom resource to framework scheme")
 
 	ctx := framework.NewContext(t)
 
@@ -97,5 +98,6 @@ func newSchemeBuilder() runtime.SchemeBuilder {
 		quotav1.Install,
 		openshiftappsv1.Install,
 		corev1.AddToScheme,
+		metrics.AddToScheme,
 	)
 }
