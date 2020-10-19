@@ -9,9 +9,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"github.com/stretchr/testify/assert"
-
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -48,9 +47,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup := s.createAndCheckUserSignupNoMUR(false, "automatic2", "automatic2@redhat.com", false, PendingApprovalNoCluster()...)
 
 		// then
-		assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
-		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("automatic2")
-		require.NoError(t, err)
+		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
@@ -65,30 +62,52 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		})
 	})
 
-	s.T().Run("set low max number of users and expect that user won't be approved nor provisioned", func(t *testing.T) {
+	s.T().Run("set low max number of users and expect that user won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(1))
 
 		// when
-		userSignup := s.createAndCheckUserSignupNoMUR(false, "automatic3", "automatic3@redhat.com", false, PendingApprovalNoCluster()...)
+		userSignup1 := s.createAndCheckUserSignupNoMUR(false, "waitinglist1", "waitinglist1@redhat.com", false, PendingApprovalNoCluster()...)
+		// we need to sleep one second to create UserSignup with different creation time
+		time.Sleep(time.Second)
+		userSignup2 := s.createAndCheckUserSignupNoMUR(false, "waitinglist2", "waitinglist2@redhat.com", false, PendingApprovalNoCluster()...)
 
 		// then
-		assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
-		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("automatic3")
-		require.NoError(t, err)
+		s.userIsNotProvisioned(t, userSignup1)
+		s.userIsNotProvisioned(t, userSignup2)
 
-		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
+		t.Run("increment the max number of users and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
-			s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+			s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(2))
 
 			// then
-			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
+			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup1.Name,
 				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
 				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+			s.userIsNotProvisioned(t, userSignup2)
+
+			t.Run("reset the max number and expect the second user will be provisioned as well", func(t *testing.T) {
+				// when
+				s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+
+				// then
+				userSignup, err := s.hostAwait.WaitForUserSignup(userSignup2.Name,
+					wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+					wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
+				require.NoError(s.T(), err)
+				VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+			})
 		})
 	})
+}
+
+func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *v1alpha1.UserSignup) {
+	s.hostAwait.CheckMasterUserRecordIsDeleted(userSignup.Spec.Username)
+	currentUserSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(t, err)
+	assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, currentUserSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 }
 
 func (s *userSignupIntegrationTest) TestManualApproval() {
@@ -106,9 +125,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 			userSignup := s.createAndCheckUserSignupNoMUR(false, "manual2", "manual2@redhat.com", false, PendingApproval()...)
 
 			// then
-			err := s.hostAwait.WaitUntilMasterUserRecordDeleted("manual2")
-			require.NoError(t, err)
-			assert.Equal(t, v1alpha1.UserSignupStateLabelValuePending, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
+			s.userIsNotProvisioned(t, userSignup)
 		})
 	})
 
@@ -129,9 +146,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		userSignup := s.createAndCheckUserSignupNoMUR(true, "manualwithcapacity2", "manualwithcapacity2@redhat.com", false, ApprovedByAdminNoCluster()...)
 
 		// then
-		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("manualwithcapacity2")
-		require.NoError(t, err)
-		assert.Equal(t, v1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
+		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
@@ -154,9 +169,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		userSignup := s.createAndCheckUserSignupNoMUR(true, "manualwithcapacity3", "manualwithcapacity3@redhat.com", false, ApprovedByAdminNoCluster()...)
 
 		// then
-		err := s.hostAwait.WaitUntilMasterUserRecordDeleted("manualwithcapacity3")
-		require.NoError(t, err)
-		assert.Equal(t, v1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
+		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when

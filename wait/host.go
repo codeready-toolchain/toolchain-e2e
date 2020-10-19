@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -283,6 +284,22 @@ func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 		a.T.Logf("waiting until MasterUserAccount is deleted '%s'", name)
 		return false, nil
 	})
+}
+
+// CheckMasterUserRecordIsDeleted checks that the MUR with the given name is not present and won't be created in the next 2 seconds
+func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
+	err := wait.Poll(a.RetryInterval, 2*time.Second, func() (done bool, err error) {
+		mur := &toolchainv1alpha1.MasterUserRecord{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("MasterUserAccount is checked as not present '%s'", name)
+				return false, nil
+			}
+			return false, err
+		}
+		return false, fmt.Errorf("the MasterUserRecord '%s' should not be present, but it is", name)
+	})
+	require.Equal(a.T, wait.ErrWaitTimeout, err)
 }
 
 func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, cluster string) string {
