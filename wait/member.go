@@ -448,6 +448,33 @@ func (a *MemberAwaitility) Create(obj runtime.Object) error {
 // PodWaitCriterion a function to check that a Pod has the expected condition
 type PodWaitCriterion func(a *MemberAwaitility, pod v1.Pod) bool
 
+// WaitForPod waits until a pod with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWaitCriterion) (v1.Pod, error) {
+	pod := v1.Pod{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err = a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		}, &pod); err != nil {
+			if errors.IsNotFound(err) {
+				// loop again
+				return false, nil
+			}
+			// exit
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, pod) {
+				// skip as soon as one criterion does not match
+				return false, nil
+			}
+		}
+		a.T.Logf("found Pod '%s/%s'", pod.Namespace, pod.Name)
+		return true, nil
+	})
+	return pod, err
+}
+
 // WaitForPods waits until "n" number of pods exist in the given namespace
 func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]v1.Pod, error) {
 	pods := make([]v1.Pod, 0, n)
