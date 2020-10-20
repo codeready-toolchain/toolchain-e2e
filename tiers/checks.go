@@ -112,7 +112,6 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("4000m", "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
-		idlers("code", "dev", "stage"),
 	}
 }
 

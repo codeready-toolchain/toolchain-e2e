@@ -53,7 +53,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	podsNoise := s.prepareWorkloads(idlerNoise.Name)
 
 	// Set a short timeout for one of the idler to trigger pod idling
-	idler.Spec.TimeoutSeconds = 3
+	idler.Spec.TimeoutSeconds = 5
 	idler, err = s.memberAwait.UpdateIdlerSpec(idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
 	require.NoError(s.T(), err)
 
@@ -63,17 +63,17 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 		require.NoError(s.T(), err)
 	}
 
-	// Noise pods are still there
+	// make sure that "noise" pods are still there
 	_, err = s.memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"))
 	require.NoError(s.T(), err)
 
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
-	pod := s.createStandalonePod(idler.Name) // create just one standalone pod. No need to create all possible pod controllers which may own pods.
-	// We can't really make sure that the pod was created first before the idler deletes it.
-	// So, let's just wait for three seconds assuming it will be enough for the API server to create a pod before start waiting for the Pod to be deleted.
-	time.Sleep(3 * time.Second)
+	pod := s.createStandalonePod(idler.Name, "idler-test-pod-2")      // create just one standalone pod. No need to create all possible pod controllers which may own pods.
+	_, err = s.memberAwait.WaitForPod(idler.Name, "idler-test-pod-2") // pod was created
+	require.NoError(s.T(), err)
+	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = s.memberAwait.WaitUntilPodDeleted(pod.Namespace, pod.Name)
 	require.NoError(s.T(), err)
 
@@ -83,7 +83,7 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 }
 
 func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string) []corev1.Pod {
-	s.createStandalonePod(namespace)
+	s.createStandalonePod(namespace, "idler-test-pod-1")
 	d := s.createDeployment(namespace)
 	n := 1 + int(*d.Spec.Replicas) // total number of created pods
 
@@ -210,12 +210,12 @@ func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *
 	return rc
 }
 
-func (s *userWorkloadsTestSuite) createStandalonePod(namespace string) *corev1.Pod {
+func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *corev1.Pod {
 	// Create a Deployment with two pods
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "idler-test-pod",
 			Namespace: namespace,
+			Name:      name,
 			Labels:    map[string]string{"idler": "idler"},
 		},
 		Spec: podSpec(),
