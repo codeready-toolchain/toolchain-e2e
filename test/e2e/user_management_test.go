@@ -47,8 +47,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", true, ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
-		userSignup.Spec.Deactivated = true
-		err := s.hostAwait.Client.Update(context.TODO(), userSignup)
+		userSignup, err := s.hostAwait.UpdateUserSignup(userSignup.Name, func(us *v1alpha1.UserSignup) {
+			us.Spec.Deactivated = true
+		})
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
@@ -80,8 +81,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		}, userSignup)
 		require.NoError(s.T(), err)
 
-		userSignup.Spec.Deactivated = false
-		err = s.hostAwait.Client.Update(context.TODO(), userSignup)
+		userSignup, err := s.hostAwait.UpdateUserSignup(userSignup.Name, func(us *v1alpha1.UserSignup) {
+			us.Spec.Deactivated = false
+		})
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' reactivated", userSignup.Name)
 
@@ -112,8 +114,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
 		require.NoError(s.T(), err)
 		tierDeactivationDuration := time.Duration(tierDeactivationPeriod*24) * time.Hour
-		mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-		err = s.hostAwait.Client.Status().Update(context.TODO(), mur)
+		mur, err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+		})
 		require.NoError(s.T(), err)
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
 
@@ -122,8 +125,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(excludedSyncIndex))
 		require.NoError(s.T(), err)
-		excludedMur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-		err = s.hostAwait.Client.Status().Update(context.TODO(), excludedMur)
+		excludedMur, err = s.hostAwait.UpdateMasterUserRecord(excludedMur.Name, func(mur *v1alpha1.MasterUserRecord) {
+			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+		})
 		require.NoError(s.T(), err)
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMur.Name)
 
@@ -284,7 +288,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.NoError(s.T(), err)
 
 	// Disable MUR
-	err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+	mur, err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 		mur.Spec.Disabled = true
 	})
 	require.NoError(s.T(), err)
@@ -316,7 +320,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	s.Run("re-enabled mur", func() {
 		// Re-enable MUR
-		err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		mur, err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Spec.Disabled = false
 		})
 		require.NoError(s.T(), err)

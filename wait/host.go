@@ -98,9 +98,11 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 }
 
 // UpdateMasterUserRecord tries to update the given MasterUserRecord
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and
-func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) error {
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
+// Returns the updated MasterUserRecord
+func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+	var m *toolchainv1alpha1.MasterUserRecord
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshMur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: murName}, freshMur); err != nil {
 			return true, err
@@ -111,8 +113,32 @@ func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(m
 			a.T.Logf("error updating MasterUserRecord '%s': %s. Will retry again...", murName, err.Error())
 			return false, nil
 		}
+		m = freshMur
 		return true, nil
 	})
+	return m, err
+}
+
+// UpdateUserSignup tries to update the given UserSignup
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated UserSignup
+func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
+	var userSignup *toolchainv1alpha1.UserSignup
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshUserSignup := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userSignupName}, freshUserSignup); err != nil {
+			return true, err
+		}
+
+		modifyUserSignup(freshUserSignup)
+		if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
+			a.T.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
+			return false, nil
+		}
+		userSignup = freshUserSignup
+		return true, nil
+	})
+	return userSignup, err
 }
 
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
