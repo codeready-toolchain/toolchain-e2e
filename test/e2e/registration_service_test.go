@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
@@ -431,10 +430,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
 
 	// Verify console URL
-	memberCluster, ok, err := s.hostAwait.GetToolchainCluster(cluster.Member, s.memberAwait.Namespace, nil)
-	require.NoError(s.T(), err)
-	require.True(s.T(), ok)
-	assert.Equal(s.T(), ExpectedConsoleURL(s.T(), s.memberAwait, memberCluster), mp["consoleURL"])
+	assert.Equal(s.T(), s.memberAwait.GetConsoleURL(), mp["consoleURL"])
 }
 
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
