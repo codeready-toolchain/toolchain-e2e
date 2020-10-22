@@ -97,22 +97,68 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 	return nil, nil
 }
 
-// UpdateMasterUserRecord tries to update the given MasterUserRecord
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and
-func (a *HostAwaitility) UpdateMasterUserRecord(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) error {
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+// UpdateMasterUserRecordSpec tries to update the Spec of the given MasterUserRecord
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
+// Returns the updated MasterUserRecord
+func (a *HostAwaitility) UpdateMasterUserRecordSpec(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+	return a.UpdateMasterUserRecord(false, murName, modifyMur)
+}
+
+// UpdateMasterUserRecordStatus tries to update the Status of the given MasterUserRecord
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
+// Returns the updated MasterUserRecord
+func (a *HostAwaitility) UpdateMasterUserRecordStatus(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+	return a.UpdateMasterUserRecord(true, murName, modifyMur)
+}
+
+// UpdateMasterUserRecord tries to update the Spec or the Status of the given MasterUserRecord
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
+// Returns the updated MasterUserRecord
+func (a *HostAwaitility) UpdateMasterUserRecord(status bool, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+	var m *toolchainv1alpha1.MasterUserRecord
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshMur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: murName}, freshMur); err != nil {
 			return true, err
 		}
 
 		modifyMur(freshMur)
-		if err := a.Client.Update(context.TODO(), freshMur); err != nil {
-			a.T.Logf("error updating MasterUserRecord '%s': %s. Will retry again...", murName, err.Error())
+		if status {
+			// Update status
+			if err := a.Client.Status().Update(context.TODO(), freshMur); err != nil {
+				a.T.Logf("error updating MasterUserRecord.Status '%s': %s. Will retry again...", murName, err.Error())
+				return false, nil
+			}
+		} else if err := a.Client.Update(context.TODO(), freshMur); err != nil {
+			a.T.Logf("error updating MasterUserRecord.Spec '%s': %s. Will retry again...", murName, err.Error())
 			return false, nil
 		}
+		m = freshMur
 		return true, nil
 	})
+	return m, err
+}
+
+// UpdateUserSignup tries to update the Spec of the given UserSignup
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated UserSignup
+func (a *HostAwaitility) UpdateUserSignupSpec(userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
+	var userSignup *toolchainv1alpha1.UserSignup
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshUserSignup := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userSignupName}, freshUserSignup); err != nil {
+			return true, err
+		}
+
+		modifyUserSignup(freshUserSignup)
+		if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
+			a.T.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
+			return false, nil
+		}
+		userSignup = freshUserSignup
+		return true, nil
+	})
+	return userSignup, err
 }
 
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
