@@ -47,7 +47,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", true, ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
-		userSignup, err := s.hostAwait.UpdateUserSignup(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
 			us.Spec.Deactivated = true
 		})
 		require.NoError(s.T(), err)
@@ -81,7 +81,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		}, userSignup)
 		require.NoError(s.T(), err)
 
-		userSignup, err := s.hostAwait.UpdateUserSignup(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
 			us.Spec.Deactivated = false
 		})
 		require.NoError(s.T(), err)
@@ -98,9 +98,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
-		tierDeactivationPeriod := 30
+		tierDeactivationPeriodInDays := 30
 		// Let's create a tier with deactivation enabled
-		deactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "deactivation-tier", DeactivationTimeoutDays(tierDeactivationPeriod))
+		deactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "deactivation-tier", DeactivationTimeoutDays(tierDeactivationPeriodInDays))
 
 		// Move 2 users to the new tier with deactivation enabled - 1 with a domain that matches the deactivation exclusion list and 1 that does not
 		excludedSyncIndex := MoveUserToTier(t, s.hostAwait, deactivationExcludedUserSignup.Spec.Username, *deactivationTier).Spec.UserAccounts[0].SyncIndex
@@ -113,8 +113,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
 		require.NoError(s.T(), err)
-		tierDeactivationDuration := time.Duration(tierDeactivationPeriod*24) * time.Hour
-		mur, err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		tierDeactivationDuration := time.Duration(tierDeactivationPeriodInDays) * time.Hour * 24
+		mur, err = s.hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
 		require.NoError(s.T(), err)
@@ -125,7 +125,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(excludedSyncIndex))
 		require.NoError(s.T(), err)
-		excludedMur, err = s.hostAwait.UpdateMasterUserRecord(excludedMur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		excludedMur, err = s.hostAwait.UpdateMasterUserRecordStatus(excludedMur.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
 		require.NoError(s.T(), err)
@@ -288,7 +288,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.NoError(s.T(), err)
 
 	// Disable MUR
-	mur, err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+	mur, err = s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 		mur.Spec.Disabled = true
 	})
 	require.NoError(s.T(), err)
@@ -320,7 +320,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	s.Run("re-enabled mur", func() {
 		// Re-enable MUR
-		mur, err = s.hostAwait.UpdateMasterUserRecord(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		mur, err = s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Spec.Disabled = false
 		})
 		require.NoError(s.T(), err)
