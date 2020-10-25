@@ -43,6 +43,7 @@ type Awaitility struct {
 	Type          cluster.Type
 	RetryInterval time.Duration
 	Timeout       time.Duration
+	MetricsURL    string
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
@@ -200,6 +201,7 @@ func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, c
 // It waits until the route is avaiable (or returns an error) by first checking the resource status
 // and then making a call to the given endpoint
 func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1.Route, error) {
+	a.T.Logf("Setting up route for service '%s' with endpoint '%s'", serviceName, endpoint)
 	service, err := a.WaitForMetricsService(serviceName)
 	if err != nil {
 		return routev1.Route{}, err
@@ -288,17 +290,44 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 	return route, err
 }
 
-// WaitUntilMetricHasValueOrMore waits until the exposed metric counter with of the given family
-// and with the given label key/value has reached the expected value (or more)
-func (a *Awaitility) WaitUntilMetricHasValueOrMore(url string, family string, labelKey string, labelValue string, expectedValue float64) error {
+// GetMetricValue gets the value of the metric with the given family and label key-value pair
+func (a *Awaitility) GetMetricValue(family string, labels ...string) float64 {
+	value, err := getMetricValue(a.MetricsURL, family, labels)
+	require.NoError(a.T, err)
+	return value
+}
+
+// WaitUntilMetricHasValue waits until the exposed metric with the given family
+// and label key-value pair has reached the expected value
+func (a *Awaitility) WaitUntilMetricHasValue(family string, expectedValue float64, labels ...string) {
+	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getCounter(url, family, labelKey, labelValue)
+		value, err := getMetricValue(a.MetricsURL, family, labels)
 		if err != nil {
-			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' but error occurred: %s", family, labelKey, labelValue, expectedValue, err.Error())
+			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' but error occurred: %s", family, labels, expectedValue, err.Error())
+			return false, nil
+		}
+		if value != expectedValue {
+			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' (currently: %v)", family, labels, expectedValue, value)
+			return false, nil
+		}
+		return true, nil
+	})
+	require.NoError(a.T, err)
+}
+
+// WaitUntilMetricHasValueOrMore waits until the exposed metric with the given family
+// and label key-value pair has reached the expected value (or more)
+func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue float64, labels ...string) error {
+	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		value, err := getMetricValue(a.MetricsURL, family, labels)
+		if err != nil {
+			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more but error occurred: %s", family, labels, expectedValue, err.Error())
 			return false, nil
 		}
 		if value < expectedValue {
-			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' (currently: %v)", family, labelKey, labelValue, expectedValue, value)
+			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more (currently: %v)", family, labels, expectedValue, value)
 			return false, nil
 		}
 		return true, nil
@@ -306,17 +335,18 @@ func (a *Awaitility) WaitUntilMetricHasValueOrMore(url string, family string, la
 	return err
 }
 
-// WaitUntilMetricHasValueOrLess waits until the exposed metric counter with of the given family
-// and with the given label key/value has reached the expected value (or less)
-func (a *Awaitility) WaitUntilMetricHasValueOrLess(url string, family string, labelKey string, labelValue string, expectedValue float64) error {
+// WaitUntilMetricHasValueOrLess waits until the exposed metric with the given family
+// and label key-value pair has reached the expected value (or less)
+func (a *Awaitility) WaitUntilMetricHasValueOrLess(family string, expectedValue float64, labels ...string) error {
+	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getCounter(url, family, labelKey, labelValue)
+		value, err := getMetricValue(a.MetricsURL, family, labels)
 		if err != nil {
-			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' but error occurred: %s", family, labelKey, labelValue, expectedValue, err.Error())
+			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less but error occurred: %s", family, labels, expectedValue, err.Error())
 			return false, nil
 		}
 		if value > expectedValue {
-			a.T.Logf("Waiting for counter '%s{%s:%s}' to reach '%v' (currently: %v)", family, labelKey, labelValue, expectedValue, value)
+			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less (currently: %v)", family, labels, expectedValue, value)
 			return false, nil
 		}
 		return true, nil
