@@ -36,13 +36,6 @@ func TestPerformance(t *testing.T) {
 	ctx, hostAwait, memberAwait := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
-
-	// host metrics should become available at this point
-	hostMetricsService, err := hostAwait.WaitForMetricsService("host-operator-metrics")
-	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
-	// host metrics should become available again at this point
-	hostMetricsRoute, err := hostAwait.SetupRouteForService(hostMetricsService.Name, "/metrics")
-	require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 	defer ctx.Cleanup()
 
 	t.Run(fmt.Sprintf("provision %d users", config.GetUserCount()), func(t *testing.T) {
@@ -58,14 +51,14 @@ func TestPerformance(t *testing.T) {
 			require.NoError(t, err)
 
 			// host metrics should become available again at this point
-			_, err = hostAwait.WaitForRouteToBeAvailable(hostMetricsRoute.Namespace, hostMetricsRoute.Name, "/metrics")
+			_, err = hostAwait.WaitForRouteToBeAvailable(hostAwait.Namespace, "host-operator-metrics", "/metrics")
 			require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 			start := time.Now()
 			// measure time it takes to have an empty queue on the master-user-records
-			err = hostAwait.WaitUntilMetricHasValueOrMore(hostMetricsRoute.Status.Ingress[0].Host, "controller_runtime_reconcile_total", "controller", "usersignup-controller", float64(config.GetUserCount()))
+			err = hostAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(config.GetUserCount()), "controller", "usersignup-controller", "result", "success")
 			assert.NoError(t, err, "failed to reach the expected number of reconcile loops")
-			err = hostAwait.WaitUntilMetricHasValueOrLess(hostMetricsRoute.Status.Ingress[0].Host, "workqueue_depth", "name", "usersignup-controller", 0)
+			err = hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "usersignup-controller")
 			assert.NoError(t, err, "failed to reach the expected queue depth")
 			end := time.Now()
 			hostOperatorPod, err := hostAwait.GetHostOperatorPod()
@@ -85,15 +78,11 @@ func TestPerformance(t *testing.T) {
 			// then check how much time it takes to restart and process all existing resources
 			require.NoError(t, err)
 
-			// member metrics should become available again at this point
-			memberMetricsRoute, err := memberAwait.SetupRouteForService("member-operator-metrics", "/metrics")
-			require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
-
 			start := time.Now()
 			// measure time it takes to have an empty queue on the master-user-records
-			err = memberAwait.WaitUntilMetricHasValueOrMore(memberMetricsRoute.Status.Ingress[0].Host, "controller_runtime_reconcile_total", "controller", "useraccount-controller", float64(2*config.GetUserCount()))
+			err = memberAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(2*config.GetUserCount()), "controller", "useraccount-controller", "result", "success")
 			assert.NoError(t, err, "failed to reach the expected number of reconcile loops")
-			err = memberAwait.WaitUntilMetricHasValueOrLess(memberMetricsRoute.Status.Ingress[0].Host, "workqueue_depth", "name", "useraccount-controller", 0)
+			err = memberAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "useraccount-controller")
 			assert.NoError(t, err, "failed to reach the expected queue depth")
 			end := time.Now()
 			memberOperatorPod, err := memberAwait.GetMemberOperatorPod()
@@ -144,8 +133,6 @@ func initLogger() (logr.Logger, *os.File, error) {
 func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, config Configuration, logger logr.Logger) {
 
 	require.Equal(t, 0, config.GetUserCount()%config.GetUserBatchSize(), "number of accounts must be a multiple of %d", config.GetUserBatchSize())
-	hostMetricsRoute, err := hostAwait.SetupRouteForService("host-operator-metrics", "/metrics")
-	require.NoError(t, err)
 
 	t.Logf("provisionning %d accounts by batch of '%d", config.GetUserCount(), config.GetUserBatchSize())
 
@@ -170,7 +157,9 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 			require.NoError(t, err)
 			signups[i] = *userSignup
 		}
-		err := hostAwait.WaitUntilMetricHasValueOrLess(hostMetricsRoute.Status.Ingress[0].Host, "workqueue_depth", "name", "masteruserrecord-controller", 0)
+
+		t.Logf("Waiting for all users to be processed")
+		err := hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "masteruserrecord-controller")
 		require.NoError(t, err)
 
 		for _, signup := range signups {

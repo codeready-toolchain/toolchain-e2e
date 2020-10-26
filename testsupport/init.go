@@ -66,6 +66,11 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	}
 	hostAwait.RegistrationServiceURL = registrationServiceURL
 
+	// setup host metrics route for metrics verification in tests
+	hostMetricsRoute, err := hostAwait.SetupRouteForService("host-operator-metrics", "/metrics")
+	require.NoError(t, err)
+	hostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
+
 	// wait for member operator to be ready
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", memberNs, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
@@ -82,6 +87,11 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	})
 	require.NoError(t, err)
 	memberAwait := wait.NewMemberAwaitility(t, memberClient, memberNs)
+
+	// setup member metrics route for metrics verification in tests
+	memberMetricsRoute, err := memberAwait.SetupRouteForService("member-operator-metrics", "/metrics")
+	require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
+	memberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
 	_, err = memberAwait.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)

@@ -51,6 +51,11 @@ func TestE2EFlow(t *testing.T) {
 	originalMurCount := originalToolchainStatus.Status.HostOperator.MasterUserRecordCount
 	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
 
+	// Get baseline metrics before creating any users
+	baseUserSignups := hostAwait.GetMetricValue("sandbox_user_signups_total")
+	baseUserSignupsProvisioned := hostAwait.GetMetricValue("sandbox_user_signups_provisioned_total")
+	baseCurrentMURs := hostAwait.GetMetricValue("sandbox_master_user_record_current")
+
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
 	signups := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5)
@@ -66,6 +71,12 @@ func TestE2EFlow(t *testing.T) {
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)
+
+	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
+		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+7)
+		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned+7)
+		hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+7)
+	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -222,5 +233,12 @@ func TestE2EFlow(t *testing.T) {
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()), wait.UntilHasMurCount(originalMurCount+6))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
+
+	})
+
+	t.Run("verify metrics are correct at the end", func(t *testing.T) {
+		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+7)
+		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned+7)
+		hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+6)
 	})
 }
