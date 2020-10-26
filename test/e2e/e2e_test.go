@@ -22,10 +22,11 @@ func TestE2EFlow(t *testing.T) {
 	ctx, hostAwait, memberAwait := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 
+	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
 		t.Run("verify member cluster status", func(t *testing.T) {
-			VerifyMemberStatus(t, memberAwait)
+			VerifyMemberStatus(t, memberAwait, consoleURL)
 		})
 
 		t.Run("verify overall toolchain status", func(t *testing.T) {

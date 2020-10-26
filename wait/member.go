@@ -701,17 +701,13 @@ func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
 	})
 }
 
-// GetConsoleRoute retrieves and returns a Web Console Route
-func (a *MemberAwaitility) GetConsoleRoute() (*routev1.Route, error) {
+// GetConsoleURL retrieves Web Console Route and returns its URL
+func (a *MemberAwaitility) GetConsoleURL() string {
 	route := &routev1.Route{}
 	namespacedName := types.NamespacedName{Namespace: "openshift-console", Name: "console"}
 	err := a.Client.Get(context.TODO(), namespacedName, route)
-	if err != nil {
-		a.T.Log("didn't find Web Console Route")
-	} else {
-		a.T.Logf("found %s Web Console Route", route)
-	}
-	return route, err
+	require.NoError(a.T, err)
+	return fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
 }
 
 // WaitUntilClusterResourceQuotasDeleted waits until all ClusterResourceQuotas with the given owner label are deleted (ie, none is found)
@@ -764,6 +760,31 @@ func hasMemberStatusUsageSet(t *testing.T, name string, status toolchainv1alpha1
 	}
 	t.Logf("the MemberStatus '%s' doesn't have resource usage set for both worker and master nodes, actual: %v", name, usage)
 	return false
+}
+
+// UntilMemberStatusHasConsoleUrlSet returns a `MemberStatusWaitCriterion` which checks that the given
+// MemberStatus has a non-empty console url set
+func UntilMemberStatusHasConsoleUrlSet(expectedURL string, condition toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
+	return func(awaitility *MemberAwaitility, status *toolchainv1alpha1.MemberStatus) bool {
+		return hasMemberStatusConsoleUrlSet(awaitility, expectedURL, condition, status.Name, status.Status)
+	}
+}
+
+func hasMemberStatusConsoleUrlSet(a *MemberAwaitility, expectedURL string, condition toolchainv1alpha1.Condition, name string, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
+	if memberStatus.Routes == nil {
+		a.T.Logf("waiting for routes to be set in MemberStatus '%s'. Actual: '%+v'", name, memberStatus.Routes)
+		return false
+	}
+	if memberStatus.Routes.ConsoleURL != expectedURL {
+		a.T.Logf("waiting for console route to be set in MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", name, *memberStatus.Routes, expectedURL)
+		return false
+	}
+	if !test.ConditionsMatch(memberStatus.Routes.Conditions, condition) {
+		a.T.Logf("waiting for routes condition of MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", name, memberStatus.Routes.Conditions, condition)
+		return false
+	}
+	a.T.Logf("console route and condition is properly set in MemberStatus '%s'", name)
+	return true
 }
 
 // WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any

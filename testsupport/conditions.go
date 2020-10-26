@@ -190,6 +190,14 @@ func ToolchainStatusReady() toolchainv1alpha1.Condition {
 	}
 }
 
+func RoutesAvailable() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ConditionReady,
+		Status: corev1.ConditionTrue,
+		Reason: "RoutesAvailable",
+	}
+}
+
 func Deactivated() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{

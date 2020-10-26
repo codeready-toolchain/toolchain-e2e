@@ -1,12 +1,7 @@
 package testsupport
 
 import (
-	"crypto/tls"
-	"fmt"
-	"io/ioutil"
-	"net/http"
 	"testing"
-	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -62,7 +57,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwait
 		Cluster: toolchainv1alpha1.Cluster{
 			Name:        mur.Spec.UserAccounts[0].TargetCluster,
 			APIEndpoint: memberCluster.Spec.APIEndpoint,
-			ConsoleURL:  ExpectedConsoleURL(t, memberAwait, memberCluster),
+			ConsoleURL:  memberAwait.GetConsoleURL(),
 		},
 		UserAccountStatus: userAccount.Status,
 	}
@@ -98,40 +93,4 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 			},
 		},
 	}
-}
-
-func ExpectedConsoleURL(t *testing.T, memberAwait *wait.MemberAwaitility, cluster toolchainv1alpha1.ToolchainCluster) string {
-	// If OpenShift 3.x console available then we expect its URL in the status
-	consoleURL := openShift3XConsoleURL(cluster.Spec.APIEndpoint)
-	if consoleURL == "" {
-		// Expect OpenShift 4.x console URL
-		route, err := memberAwait.GetConsoleRoute()
-		require.NoError(t, err)
-		consoleURL = fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
-	}
-	return consoleURL
-}
-
-// openShift3XConsoleURL checks if <apiEndpoint>/console URL is reachable.
-// This URL is used by web console in OpenShift 3.x
-func openShift3XConsoleURL(apiEndpoint string) string {
-	client := http.Client{
-		Timeout: time.Duration(1 * time.Second),
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
-	url := fmt.Sprintf("%s/console", apiEndpoint)
-	resp, err := client.Get(url)
-	if err != nil {
-		return ""
-	}
-	defer func() {
-		_, _ = ioutil.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-	}()
-	if resp.StatusCode != http.StatusOK {
-		return ""
-	}
-	return url
 }

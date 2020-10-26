@@ -1,14 +1,10 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20201009115725-7795b1315bab
+	github.com/codeready-toolchain/api v0.0.0-20201020192959-6783bbcae79d
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200930070243-e124e69e7a0d
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
-	github.com/google/go-cmp v0.5.2 // indirect
-	github.com/kr/text v0.2.0 // indirect
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.19.2
 	github.com/prometheus/client_model v0.2.0
@@ -18,9 +14,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/tools v0.0.0-20200812195022-5ae4c3c160a0 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
