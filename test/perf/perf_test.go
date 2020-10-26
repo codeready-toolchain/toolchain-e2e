@@ -36,13 +36,6 @@ func TestPerformance(t *testing.T) {
 	ctx, hostAwait, memberAwait := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
-
-	// host metrics should become available at this point
-	hostMetricsService, err := hostAwait.WaitForMetricsService("host-operator-metrics")
-	require.NoError(t, err, "failed while waiting for the 'host-operator-metrics' service")
-	// host metrics should become available again at this point
-	hostMetricsRoute, err := hostAwait.SetupRouteForService(hostMetricsService.Name, "/metrics")
-	require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 	defer ctx.Cleanup()
 
 	t.Run(fmt.Sprintf("provision %d users", config.GetUserCount()), func(t *testing.T) {
@@ -58,7 +51,7 @@ func TestPerformance(t *testing.T) {
 			require.NoError(t, err)
 
 			// host metrics should become available again at this point
-			_, err = hostAwait.WaitForRouteToBeAvailable(hostMetricsRoute.Namespace, hostMetricsRoute.Name, "/metrics")
+			_, err = hostAwait.WaitForRouteToBeAvailable(hostAwait.Namespace, "host-operator-metrics", "/metrics")
 			require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 			start := time.Now()

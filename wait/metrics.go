@@ -14,7 +14,7 @@ import (
 
 func getMetricValue(url string, family string, expectedLabels []string) (float64, error) {
 	if len(expectedLabels)%2 != 0 {
-		return -1, fmt.Errorf("Received odd number of label arguments, labels must be key-value pairs")
+		return -1, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")
 	}
 
 	client := http.Client{
@@ -70,7 +70,7 @@ func getMetricValue(url string, family string, expectedLabels []string) (float64
 			}
 		}
 	}
-	return -1, fmt.Errorf("Metric '%s{%v}' not found", family, expectedLabels)
+	return -1, fmt.Errorf("metric '%s{%v}' not found", family, expectedLabels)
 }
 
 func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {
