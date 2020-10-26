@@ -11,8 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility) {
-	err := memberAwait.WaitForMemberStatus(wait.UntilMemberStatusHasConditions(ToolchainStatusReady()), wait.UntilMemberStatusHasUsageSet())
+func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expectedURL string) {
+	err := memberAwait.WaitForMemberStatus(
+		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
+		wait.UntilMemberStatusHasUsageSet(),
+		wait.UntilMemberStatusHasConsoleUrlSet(expectedURL, RoutesAvailable()))
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
