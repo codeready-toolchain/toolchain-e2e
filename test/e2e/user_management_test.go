@@ -225,10 +225,12 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(s.T(), err)
 
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+1)
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned+1)
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs)
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_banned_total", baseUserSignupsBanned+1)
+		t.Run("verify metrics are correct after user banned", func(t *testing.T) {
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_banned_total", baseUserSignupsBanned+1)
+		})
 	})
 
 	s.T().Run("create usersignup with preexisting banneduser", func(t *testing.T) {
@@ -251,10 +253,12 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		assert.Nil(s.T(), mur)
 		require.NoError(s.T(), err)
 
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+1)
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned) // not provisioned because banned before signup
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs)
-		s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_banned_total", baseUserSignupsBanned+1)
+		t.Run("verify metrics are correct after user signup", func(t *testing.T) {
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned) // not provisioned because banned before signup
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_banned_total", baseUserSignupsBanned+1)
+		})
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
