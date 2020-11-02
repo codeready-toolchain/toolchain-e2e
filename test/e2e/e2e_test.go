@@ -53,7 +53,7 @@ func TestE2EFlow(t *testing.T) {
 
 	// Get baseline metrics before creating any users
 	baseUserSignups := hostAwait.GetMetricValue("sandbox_user_signups_total")
-	baseUserSignupsProvisioned := hostAwait.GetMetricValue("sandbox_user_signups_provisioned_total")
+	baseUserSignupsApproved := hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
 	baseCurrentMURs := hostAwait.GetMetricValue("sandbox_master_user_record_current")
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
@@ -74,7 +74,7 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
 		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+7)
-		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned+7)
+		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+7)
 		hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+7)
 	})
 
@@ -238,7 +238,7 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("verify metrics are correct at the end", func(t *testing.T) {
 		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+7)
-		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_provisioned_total", baseUserSignupsProvisioned+7)
+		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+7)
 		hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+6)
 	})
 }
