@@ -38,9 +38,9 @@ sandbox_user_signups_banned_total 0
 # HELP sandbox_user_signups_deactivated_total Total number of Deactivated User Signups
 # TYPE sandbox_user_signups_deactivated_total counter
 sandbox_user_signups_deactivated_total 0
-# HELP sandbox_user_signups_provisioned_total Total number of Provisioned User Signups
-# TYPE sandbox_user_signups_provisioned_total counter
-sandbox_user_signups_provisioned_total 7
+# HELP sandbox_user_signups_approved_total Total number of Approved User Signups
+# TYPE sandbox_user_signups_approved_total counter
+sandbox_user_signups_approved_total 7
 # HELP sandbox_user_signups_total Total number of unique User Signups
 # TYPE sandbox_user_signups_total counter
 sandbox_user_signups_total 7
@@ -99,7 +99,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := getMetricValue(url, "non_existent_counter", []string{})
 			// then
 			require.Error(t, err)
-			require.EqualError(t, err, "Metric 'non_existent_counter{[]}' not found")
+			require.EqualError(t, err, "metric 'non_existent_counter{[]}' not found")
 			assert.Equal(t, float64(-1), result)
 		})
 
@@ -108,7 +108,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := getMetricValue(url, "workqueue_depth", []string{"name", "non-existent-controller"})
 			// then
 			require.Error(t, err)
-			require.EqualError(t, err, "Metric 'workqueue_depth{[name non-existent-controller]}' not found")
+			require.EqualError(t, err, "metric 'workqueue_depth{[name non-existent-controller]}' not found")
 			assert.Equal(t, float64(-1), result)
 		})
 
@@ -117,7 +117,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := getMetricValue(url, "workqueue_depth", []string{"name"})
 			// then
 			require.Error(t, err)
-			require.EqualError(t, err, "Received odd number of label arguments, labels must be key-value pairs")
+			require.EqualError(t, err, "received odd number of label arguments, labels must be key-value pairs")
 			assert.Equal(t, float64(-1), result)
 		})
 	})
