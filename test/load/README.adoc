@@ -1,0 +1,36 @@
+= Loading Users and Generating Activity
+
+This package provides a CLI utility to load, deactivate and ban test users on regular intervals, in order to generate activity on the clusters.
+
+Loads the Kube config from the following location, in order of preferences:
+
+1. the location defined by the `KUBECONFIG` env var 
+2. the location defined by the `kubeconfig` command line flag
+3. `~/.kube/config`
+
+[WARNING]
+Make sure you connect to the expected cluster!
+
+== Running
+
+[source,shell]
+----
+go run test/load/main.go /
+  --host-ns=$HOST_NS / <1>
+  --start-at=1 /<2>
+  --user-signup-after=15s / <3>
+  --user-signup-every=10s / <4>
+  --user-deactivate-after=30s / <5>
+  --user-deactivate-every=15s / <6>
+  --user-ban-after=30s / <7>
+  --user-ban-every=1m <8>
+----
+<1> namespace of the host operator
+<2> start-at first value of the sequence uses to generate the usernames (default 1). Usernames are in the following form: `testuser-%06d`, eg: `testuser-000001`, `testuser-000002`, etc. The `start-at` is useful when test users already exists from a previous run and were not deleted.
+<3> delay before the first user signup
+<4> interval between each user signup (default 5s)
+<5> delay before the first user deactivation (default 30s)
+<6> interval between each user deactivation (default 10s)
+<7> delay before the first user ban (default 1m0s)
+<8> interval between each user ban (default 1m0s)
+
