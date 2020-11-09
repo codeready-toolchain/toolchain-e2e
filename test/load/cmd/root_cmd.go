@@ -110,10 +110,10 @@ func run(cmd *cobra.Command, args []string) error {
 
 func confirmCluster(config *restclient.Config) (bool, error) {
 	prompt := promptui.Select{
-		Label: fmt.Sprintf("☁️ connecting to %s ?", config.Host),
+		Label: "☁️ connecting to https://" + config.Host,
 		Items: []string{
-			"No, not that one!",
-			"Yes, go ahead",
+			"No, not this one!",
+			"Yes, use https://" + config.Host,
 		},
 	}
 	i, _, err := prompt.Run()
@@ -287,6 +287,7 @@ func displayProgress(cmd *cobra.Command, signupChan, deactivationChan, banChan c
 	errors := 0
 	status := "Signups:       %d\nDeactivations: %d\nBans:          %d\nErrors:        %d\n"
 	for {
+		fmt.Fprintf(writer, status, signups, deactivations, bans, errors)
 		select {
 		case <-signupChan:
 			signups++
@@ -297,6 +298,5 @@ func displayProgress(cmd *cobra.Command, signupChan, deactivationChan, banChan c
 		case <-errorChan:
 			bans++
 		}
-		fmt.Fprintf(writer, status, signups, deactivations, bans, errors)
 	}
 }
