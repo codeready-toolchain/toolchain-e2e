@@ -13,6 +13,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 
+	"github.com/gosuri/uilive"
 	"github.com/manifoldco/promptui"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -68,6 +69,7 @@ var (
 
 // run creates independent go routines which take care of
 func run(cmd *cobra.Command, args []string) error {
+	counter = startAt
 	client, config, err := newClient()
 	if err != nil {
 		return errors.Wrap(err, "unable to initialize the client")
@@ -79,13 +81,18 @@ func run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	counter = startAt
 	// user signup routine
-	go createUsers(cmd, client)
+	signupChan := make(chan int)
+	errorChan := make(chan error)
+	go enrollUsers(cmd, client, signupChan, errorChan)
 	// user deactivation routine
-	go deactivateUsers(cmd, client)
+	deactivationChan := make(chan int)
+	go deactivateUsers(cmd, client, deactivationChan, errorChan)
 	// user banning routine
-	go banUsers(cmd, client)
+	banChan := make(chan int)
+	go banUsers(cmd, client, banChan, errorChan)
+
+	go displayProgress(cmd, signupChan, deactivationChan, banChan, errorChan)
 
 	// wait until user kills with `<Ctrl+C>` this program
 	// See https://gobyexample.com/signals
@@ -118,18 +125,19 @@ func confirmCluster(config *restclient.Config) (bool, error) {
 
 var counter = 0
 
-func createUsers(cmd *cobra.Command, client *rest.RESTClient) {
+func enrollUsers(cmd *cobra.Command, client *rest.RESTClient, signupChan chan int, errorChan chan error) {
 	time.Sleep(signupUserAfter)
 	for {
-		if username, err := createUser(client); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "failed to create user '%s': %v\n", username, err.Error())
+		if username, err := enrollUser(client); err != nil {
+			errorChan <- errors.Wrapf(err, "failed to create user '%s'", username)
 		}
+		signupChan <- 1
 		counter++
 		time.Sleep(signupUserInterval)
 	}
 }
 
-func createUser(client *restclient.RESTClient) (string, error) {
+func enrollUser(client *restclient.RESTClient) (string, error) {
 	username := fmt.Sprintf("test-user-%06d", counter)
 	userEmail := username + "@example.com"
 	md5hash := md5.New()
@@ -169,13 +177,13 @@ func createUser(client *restclient.RESTClient) (string, error) {
 	return username, nil
 }
 
-func deactivateUsers(cmd *cobra.Command, client *rest.RESTClient) {
+func deactivateUsers(cmd *cobra.Command, client *rest.RESTClient, deactivationChan chan int, errorChan chan error) {
 	time.Sleep(deactivateUserAfter)
 	for {
 		if username, err := deactivateUser(client); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "failed to deactivate user '%s': %v\n", username, err.Error())
-		} else if username == "" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "no user to deactivate? 😳\n")
+			errorChan <- errors.Wrapf(err, "failed to deactivate user '%s'", username)
+		} else if username != "" {
+			deactivationChan <- 1
 		}
 		time.Sleep(deactivateUserInterval)
 	}
@@ -212,13 +220,13 @@ func deactivateUser(client *restclient.RESTClient) (string, error) {
 	return username, nil
 }
 
-func banUsers(cmd *cobra.Command, client *rest.RESTClient) {
+func banUsers(cmd *cobra.Command, client *rest.RESTClient, banChan chan int, errorChan chan error) {
 	time.Sleep(banUserAfter)
 	for {
 		if username, err := banUser(client); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "failed to ban user '%s': %v\n", username, err.Error())
-		} else if username == "" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "no user to ban? 😳\n")
+			errorChan <- errors.Wrapf(err, "failed to ban user '%s'", username)
+		} else if username != "" {
+			banChan <- 1
 		}
 		time.Sleep(banUserInterval)
 	}
@@ -265,4 +273,30 @@ func banUser(client *restclient.RESTClient) (string, error) {
 	// use a lock to avoid concurrent access to the `usernames`
 	usernames = usernames[1:]
 	return username, nil
+}
+
+func displayProgress(cmd *cobra.Command, signupChan, deactivationChan, banChan chan int, errorChan chan error) {
+	writer := uilive.New()
+	writer.Out = cmd.OutOrStdout()
+	// start listening for updates and render
+	writer.Start()
+	defer writer.Stop()
+	signups := 0
+	deactivations := 0
+	bans := 0
+	errors := 0
+	status := "Signups:       %d\nDeactivations: %d\nBans:          %d\nErrors:        %d\n"
+	for {
+		select {
+		case <-signupChan:
+			signups++
+		case <-deactivationChan:
+			deactivations++
+		case <-banChan:
+			bans++
+		case <-errorChan:
+			bans++
+		}
+		fmt.Fprintf(writer, status, signups, deactivations, bans, errors)
+	}
 }

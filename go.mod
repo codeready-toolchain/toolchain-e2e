@@ -5,6 +5,7 @@ require (
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200930070243-e124e69e7a0d
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
+	github.com/gosuri/uilive v0.0.4
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
