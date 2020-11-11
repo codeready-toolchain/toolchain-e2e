@@ -58,17 +58,12 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	defaultCommonChecks := append(commonChecks, a.limitRangeByType(nsType))
-	if nsType == "code" {
-		return append(defaultCommonChecks,
-			rbacEditRoleBinding(),
-			rbacEditRole(),
-			numberOfToolchainRoles(1),
-			numberOfToolchainRoleBindings(2))
-	}
-	return append(defaultCommonChecks,
-		numberOfToolchainRoles(0),
-		numberOfToolchainRoleBindings(1))
+	return append(commonChecks,
+		a.limitRangeByType(nsType),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2))
 }
 
 func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -349,7 +344,7 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("7Gi")
+		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
