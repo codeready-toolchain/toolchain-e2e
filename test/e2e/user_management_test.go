@@ -46,8 +46,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	// Wait for any pending deletions to complete
 	err := s.hostAwait.WaitForUserSignupsBeingDeleted(5 * time.Second)
-	// Get baseline metrics before creating any users
 	require.NoError(s.T(), err)
+	// Get baseline metrics before creating any users
 	baseUserSignups := s.hostAwait.GetMetricValue("sandbox_user_signups_total")
 	baseUserSignupsApproved := s.hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
 	baseCurrentMURs := s.hostAwait.GetMetricValue("sandbox_master_user_record_current")
