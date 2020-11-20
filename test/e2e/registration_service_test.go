@@ -555,7 +555,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	require.Equal(t, requiredStatus, resp.StatusCode)
+	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)
 
 	return body
 }
