@@ -44,9 +44,9 @@ func (s *userManagementTestSuite) TearDownTest() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
-	// Get baseline metrics before creating any users
-	// metricsAssert := MetricsAssertion(s.hostAwait.Awaitility)
+	// Wait for any pending deletions to complete
 	err := s.hostAwait.WaitForUserSignupsBeingDeleted(5 * time.Second)
+	// Get baseline metrics before creating any users
 	require.NoError(s.T(), err)
 	baseUserSignups := s.hostAwait.GetMetricValue("sandbox_user_signups_total")
 	baseUserSignupsApproved := s.hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
