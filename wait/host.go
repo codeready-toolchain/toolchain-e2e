@@ -265,7 +265,7 @@ func (a *HostAwaitility) WaitForUserSignupsBeingDeleted(initialDelay time.Durati
 		for _, us := range usList.Items {
 			if us.DeletionTimestamp != nil {
 				a.T.Logf("a UserSignup is being deleted: %s", us.Name)
-				return false, err
+				return false, nil
 			}
 			a.T.Logf("found UserSignup is not being deleted: %+v", us)
 		}
