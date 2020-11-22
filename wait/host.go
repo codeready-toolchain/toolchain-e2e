@@ -254,6 +254,26 @@ func UntilUserSignupHasStateLabel(expLabelValue string) UserSignupWaitCriterion 
 	}
 }
 
+// WaitForUserSignupsBeingDeleted waits for all UserSignup deletions to be completed
+func (a *HostAwaitility) WaitForUserSignupsBeingDeleted(initialDelay time.Duration) error {
+	time.Sleep(initialDelay)
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		usList := &toolchainv1alpha1.UserSignupList{}
+		if err := a.Client.List(context.TODO(), usList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, us := range usList.Items {
+			if us.DeletionTimestamp != nil {
+				a.T.Logf("a UserSignup is being deleted: %s", us.Name)
+				return false, nil
+			}
+			a.T.Logf("found UserSignup is not being deleted: %+v", us)
+		}
+		return true, nil
+	})
+	return err
+}
+
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
 func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
