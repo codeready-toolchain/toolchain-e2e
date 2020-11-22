@@ -297,9 +297,9 @@ func (a *Awaitility) GetMetricValue(family string, labels ...string) float64 {
 	return value
 }
 
-// WaitUntilMetricHasValue waits until the exposed metric with the given family
-// and label key-value pair has reached the expected value
-func (a *Awaitility) WaitUntilMetricHasValue(family string, expectedValue float64, labels ...string) {
+// AssertMetricReachesValue asserts that the exposed metric with the given family
+// and label key-value pair reaches the expected value
+func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float64, labels ...string) {
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.MetricsURL, family, labels)
