@@ -4,7 +4,8 @@ import (
 	"time"
 )
 
-type metricsSupport struct {
+// MetricsAssertionHelper stores baseline metric values when initialized and has convenient functions for metrics assertions
+type MetricsAssertionHelper struct {
 	await          metricsProvider
 	baselineValues map[string]float64
 }
@@ -17,6 +18,7 @@ type metricsProvider interface {
 	AssertMetricReachesValue(family string, expectedValue float64, labels ...string)
 }
 
+// metric constants
 const (
 	UserSignupsMetric                = "sandbox_user_signups_total"
 	UserSignupsApprovedMetric        = "sandbox_user_signups_approved_total"
@@ -26,19 +28,21 @@ const (
 	UserSignupsBannedMetric          = "sandbox_user_signups_banned_total"
 )
 
-func InitMetricsAssertion(a metricsProvider) *metricsSupport {
+// InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
+func InitMetricsAssertion(a metricsProvider) *MetricsAssertionHelper {
 	// Wait for pending usersignup deletions before capturing baseline values so that test assertions are stable
 	a.WaitForUserSignupsBeingDeleted(5 * time.Second)
 
 	// Capture baseline values
-	m := &metricsSupport{
-		await: a,
+	m := &MetricsAssertionHelper{
+		await:          a,
+		baselineValues: make(map[string]float64),
 	}
 	m.captureBaselineValues()
 	return m
 }
 
-func (m *metricsSupport) captureBaselineValues() {
+func (m *MetricsAssertionHelper) captureBaselineValues() {
 	m.baselineValues[UserSignupsMetric] = m.await.GetMetricValue(UserSignupsMetric)
 	m.baselineValues[UserSignupsApprovedMetric] = m.await.GetMetricValue(UserSignupsApprovedMetric)
 	m.baselineValues[CurrentMURsMetric] = m.await.GetMetricValue(CurrentMURsMetric)
@@ -46,27 +50,11 @@ func (m *metricsSupport) captureBaselineValues() {
 	m.baselineValues[UserSignupsAutoDeactivatedMetric] = m.await.GetMetricValue(UserSignupsAutoDeactivatedMetric)
 }
 
-func (m *metricsSupport) WaitForMetricDelta(family metricKey, delta float64) {
+// WaitForMetricDelta waits for the metric value to reach the adjusted value. The adjusted value is the delta value combined with the baseline value.
+func (m *MetricsAssertionHelper) WaitForMetricDelta(family metricKey, delta float64) {
 	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
 	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
 	key := string(family)
 	adjustedValue := m.baselineValues[key] + delta
 	m.await.AssertMetricReachesValue(key, adjustedValue)
 }
-
-// func (a *HostAwaitility) GetUserSignup(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
-// 	murList := &toolchainv1alpha1.UserSignupList{}
-// 	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
-// 		return nil, err
-// 	}
-// 	for _, mur := range murList.Items {
-// 		for _, match := range criteria {
-// 			if match(a, &mur) {
-// 				a.T.Logf("found MasterUserRecord: %+v", mur)
-// 				return &mur, nil
-// 			}
-// 			a.T.Logf("found MasterUserRecord doesn't match the given criteria: %+v", mur)
-// 		}
-// 	}
-// 	return nil, nil
-// }
