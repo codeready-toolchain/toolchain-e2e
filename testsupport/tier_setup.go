@@ -25,15 +25,9 @@ var toBeComplete = toolchainv1alpha1.Condition{
 
 func CreateNSTemplateTier(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, tierName string, modifiers ...TierModifier) *toolchainv1alpha1.NSTemplateTier {
 	// We'll use the `basic` tier as a source of inspiration.
-	_, err := hostAwait.WaitForNSTemplateTier("basic",
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-code-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-dev-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-stage-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
-	)
-	require.NoError(t, err)
+	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 	basicTier := &toolchainv1alpha1.NSTemplateTier{}
-	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+	err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: hostAwait.Namespace,
 		Name:      "basic",
 	}, basicTier)
@@ -96,4 +90,14 @@ func DeactivationTimeoutDays(timeoutDurationDays int) TierModifier {
 		tier.Spec.DeactivationTimeoutDays = timeoutDurationDays
 		return nil
 	}
+}
+
+func WaitUntilBasicNSTemplateTierIsUpdated(t *testing.T, hostAwait *HostAwaitility) {
+	_, err := hostAwait.WaitForNSTemplateTier("basic",
+		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-code-000000a"))),
+		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-dev-000000a"))),
+		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-stage-000000a"))),
+		UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
+	)
+	require.NoError(t, err)
 }

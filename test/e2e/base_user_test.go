@@ -52,6 +52,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, setTargetCluster bool,
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
+	WaitUntilBasicNSTemplateTierIsUpdated(s.T(), s.hostAwait)
 	// Create a new UserSignup with the given approved flag
 	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email, setTargetCluster)
 	userSignup.Spec.Approved = specApproved
