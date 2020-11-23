@@ -292,9 +292,7 @@ ifeq ($(SET_IMAGE_NAME),)
             else
             	# if is using OS4 then use quay registry
 				$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
-				$(MAKE) -C ${E2E_REPO_PATH} build
-				docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
-				docker push ${IMAGE_NAME}
+				$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
 				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
             endif
         else

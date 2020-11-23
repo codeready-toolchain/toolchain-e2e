@@ -60,13 +60,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for basic tier)
-		_, err := hostAwait.WaitForNSTemplateTier(tierToCheck,
-			UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-code-000000a"))),
-			UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-dev-000000a"))),
-			UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-stage-000000a"))),
-			UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
-		)
-		require.NoError(t, err)
+		WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
 			// given

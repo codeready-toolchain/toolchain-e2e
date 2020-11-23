@@ -46,6 +46,7 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 }
 
 func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) toolchainv1alpha1.UserSignup {
+	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
 		ID:       uuid.NewV4(),
