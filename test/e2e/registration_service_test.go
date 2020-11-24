@@ -271,9 +271,6 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		s.assertGetSignupStatusProvisioned(identity.Username, token)
 
-		// Verify console URL
-		assert.Equal(s.T(), s.memberAwait.GetConsoleURL(), mp["consoleURL"])
-
 		return userSignup
 	}
 
@@ -414,6 +411,7 @@ func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.True(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
+	assert.Equal(s.T(), s.memberAwait.GetConsoleURL(), mp["consoleURL"])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusPendingApproval(username, bearerToken string) {
