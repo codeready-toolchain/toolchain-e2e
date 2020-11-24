@@ -245,7 +245,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Attempt to create same usersignup by calling post signup with same token should return an error
 		mp := invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusInternalServerError)
-		assert.Equal(s.T(), "usersignups.toolchain.dev.openshift.com \""+identity.ID.String()+"\" already exists", mp["message"])
+		assert.Equal(s.T(), fmt.Sprintf("unable to create UserSignup [id: %s; username: %s] because there is already an active UserSignup with such ID", identity.ID.String(), identity.Username), mp["message"])
 		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Wait for the UserSignup to be created
@@ -257,7 +257,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		assert.Equal(s.T(), emailValue, emailAnnotation)
 
 		// Call get signup endpoint with a valid token and make sure it's pending approval
-		s.assertGetSignupStatusEquals(identity.Username, token, false, "PendingApproval")
+		s.assertGetSignupStatusPendingApproval(identity.Username, token)
 
 		// Approve usersignup.
 		userSignup.Spec.Approved = true
@@ -269,7 +269,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
-		s.assertGetSignupStatusEquals(identity.Username, token, true, "Provisioned")
+		s.assertGetSignupStatusProvisioned(identity.Username, token)
 
 		// Verify console URL
 		assert.Equal(s.T(), s.memberAwait.GetConsoleURL(), mp["consoleURL"])
@@ -407,13 +407,22 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
 }
 
-func (s *registrationServiceTestSuite) assertGetSignupStatusEquals(username, bearerToken string, expectedStatus bool, expectedReason string) {
+func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
+	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", bearerToken, "", http.StatusOK))
+	assert.Equal(s.T(), username, mp["compliantUsername"])
+	assert.Equal(s.T(), username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.True(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
+}
+
+func (s *registrationServiceTestSuite) assertGetSignupStatusPendingApproval(username, bearerToken string) {
 	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", bearerToken, "", http.StatusOK))
 	assert.Equal(s.T(), "", mp["compliantUsername"])
 	assert.Equal(s.T(), username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
-	assert.Equal(s.T(), expectedStatus, mpStatus["ready"].(bool))
-	assert.Equal(s.T(), expectedReason, mpStatus["reason"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupReturnsNotFound(bearerToken string) {
