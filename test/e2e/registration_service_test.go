@@ -440,8 +440,10 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)
 
 	mp := make(map[string]interface{})
-	err = json.Unmarshal([]byte(body), &mp)
-	require.NoError(t, err)
+	if len(body) > 0 {
+		err = json.Unmarshal(body, &mp)
+		require.NoError(t, err)
+	}
 	return mp
 }
 
