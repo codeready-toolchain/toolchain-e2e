@@ -1,0 +1,16 @@
+FROM registry.access.redhat.com/ubi7/ubi-minimal:latest
+
+LABEL maintainer "Devtools <devtools@redhat.com>"
+LABEL author "Devtools <devtools@redhat.com>"
+
+ENV WEBHOOK=/usr/local/bin/member-operator-webhook \
+    USER_UID=1001 \
+    USER_NAME=member-operator-webhook \
+    LANG=en_US.utf8
+
+ # install webhook binary
+COPY member-operator-webhook ${WEBHOOK}
+
+USER ${USER_UID}
+
+ENTRYPOINT [ "/usr/local/bin/member-operator-webhook" ]

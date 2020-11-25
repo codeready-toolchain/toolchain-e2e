@@ -205,7 +205,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	fi;
 	$(MAKE) -C ${E2E_REPO_PATH} build
 	# operators are built, now copy the operators' binaries to make them available for CI
-	cp ${E2E_REPO_PATH}/build/_output/bin/${REPO_NAME} build/_output/bin/${REPO_NAME}
+	cp ${E2E_REPO_PATH}/build/_output/bin/* build/_output/bin/
 endif
 
 ###########################################################
