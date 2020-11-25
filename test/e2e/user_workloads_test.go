@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func (s *userWorkloadsTestSuite) TearDownTest() {
 	s.ctx.Cleanup()
 }
 
-func (s *userWorkloadsTestSuite) TestIdler() {
+func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Provision a user to idle with a short idling timeout
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", true, ApprovedByAdmin()...)
@@ -49,8 +50,12 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	require.NoError(s.T(), err)
 
 	// Create payloads for both users
-	podsToIdle := s.prepareWorkloads(idler.Name)
-	podsNoise := s.prepareWorkloads(idlerNoise.Name)
+	podsToIdle := s.prepareWorkloads(idler.Name, wait.WithSandboxPriorityClass())
+	podsNoise := s.prepareWorkloads(idlerNoise.Name, wait.WithSandboxPriorityClass())
+
+	// Create another noise pods in non-user namespace
+	s.newNamespace("workloads-noise")
+	externalNsPodsNoise := s.prepareWorkloads("workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	idler.Spec.TimeoutSeconds = 5
@@ -64,7 +69,9 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	}
 
 	// make sure that "noise" pods are still there
-	_, err = s.memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"))
+	_, err = s.memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
+	require.NoError(s.T(), err)
+	_, err = s.memberAwait.WaitForPods("workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
 	require.NoError(s.T(), err)
 
 	// Create another pod and make sure it's deleted.
@@ -82,7 +89,22 @@ func (s *userWorkloadsTestSuite) TestIdler() {
 	require.NoError(s.T(), err)
 }
 
-func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string) []corev1.Pod {
+func (s *userWorkloadsTestSuite) newNamespace(name string) {
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	err := s.memberAwait.Client.Create(context.TODO(), ns)
+	require.NoError(s.T(), err)
+	s.T().Cleanup(func() {
+		if err := s.memberAwait.Client.Delete(context.TODO(), ns); err != nil && !errors.IsNotFound(err) {
+			require.NoError(s.T(), err)
+		}
+	})
+}
+
+func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
 	s.createStandalonePod(namespace, "idler-test-pod-1")
 	d := s.createDeployment(namespace)
 	n := 1 + int(*d.Spec.Replicas) // total number of created pods
@@ -105,7 +127,8 @@ func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string) []corev1.Pod
 	rc := s.createReplicationController(namespace)
 	n = n + int(*rc.Spec.Replicas)
 
-	pods, err := s.memberAwait.WaitForPods(namespace, n, wait.PodRunning(), wait.WithPodLabel("idler", "idler"))
+	pods, err := s.memberAwait.WaitForPods(namespace, n, append(additionalPodCriteria, wait.PodRunning(),
+		wait.WithPodLabel("idler", "idler"))...)
 	require.NoError(s.T(), err)
 	return pods
 }
@@ -220,6 +243,7 @@ func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *co
 		},
 		Spec: podSpec(),
 	}
+	pod.Spec.PriorityClassName = "system-cluster-critical"
 	err := s.memberAwait.Create(pod)
 	require.NoError(s.T(), err)
 	return pod
