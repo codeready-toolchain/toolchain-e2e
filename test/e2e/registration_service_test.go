@@ -243,11 +243,6 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
 
-		// Attempt to create same usersignup by calling post signup with same token should return an error
-		mp := invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusInternalServerError)
-		assert.Equal(s.T(), fmt.Sprintf("unable to create UserSignup [id: %s; username: %s] because there is already an active UserSignup with such ID", identity.ID.String(), identity.Username), mp["message"])
-		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
-
 		// Wait for the UserSignup to be created
 		userSignup, err := s.hostAwait.WaitForUserSignup(identity.ID.String(),
 			wait.UntilUserSignupHasConditions(PendingApproval()...),
@@ -258,6 +253,11 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Call get signup endpoint with a valid token and make sure it's pending approval
 		s.assertGetSignupStatusPendingApproval(identity.Username, token)
+
+		// Attempt to create same usersignup by calling post signup with same token should return an error
+		mp := invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusInternalServerError)
+		assert.Equal(s.T(), fmt.Sprintf("unable to create UserSignup [id: %s; username: %s] because there is already an active UserSignup with such ID", identity.ID.String(), identity.Username), mp["message"])
+		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Approve usersignup.
 		userSignup.Spec.Approved = true
