@@ -265,8 +265,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Wait the Master User Record to be provisioned
-		_, err = s.hostAwait.WaitForMasterUserRecord(identity.Username, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
-		require.NoError(s.T(), err)
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		s.assertGetSignupStatusProvisioned(identity.Username, token)
@@ -416,7 +415,6 @@ func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusPendingApproval(username, bearerToken string) {
 	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", bearerToken, "", http.StatusOK))
-	assert.Equal(s.T(), "", mp["compliantUsername"])
 	assert.Equal(s.T(), username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
