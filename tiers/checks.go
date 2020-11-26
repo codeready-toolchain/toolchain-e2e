@@ -24,11 +24,7 @@ var (
 	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
 	commonChecks           = []namespaceObjectsCheck{
 		userEditRoleBinding(),
-		networkPolicySameNamespace(),
-		networkPolicyAllowFromMonitoring(),
-		networkPolicyAllowFromIngress(),
 		numberOfLimitRanges(1),
-		numberOfNetworkPolicies(3),
 	}
 )
 
@@ -58,12 +54,13 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return append(commonChecks,
+	common := append(commonChecks,
 		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2))
+	return append(common, networkPolicyByType(nsType)...)
 }
 
 func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -91,16 +88,31 @@ func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck 
 	}
 }
 
+func networkPolicyByType(nsType string) []namespaceObjectsCheck {
+	common := []namespaceObjectsCheck{
+		networkPolicySameNamespace(),
+		networkPolicyAllowFromMonitoring(),
+		networkPolicyAllowFromIngress(),
+	}
+	switch nsType {
+	case "code":
+		return append(common, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(4))
+	default:
+		return append(common, numberOfNetworkPolicies(3))
+	}
+}
+
 type advancedTierChecks struct {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return append(commonChecks,
+	common := append(commonChecks,
 		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2))
+	return append(common, networkPolicyByType(nsType)...)
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -131,13 +143,14 @@ type teamTierChecks struct {
 }
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return append(commonChecks,
+	common := append(commonChecks,
 		limitRange("150m", "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
 	)
+	return append(common, networkPolicyByType(nsType)...)
 }
 
 func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -281,6 +294,10 @@ func networkPolicyAllowFromIngress() namespaceObjectsCheck {
 
 func networkPolicyAllowFromMonitoring() namespaceObjectsCheck {
 	return networkPolicyIngress("allow-from-openshift-monitoring", "monitoring")
+}
+
+func networkPolicyAllowFromCRW() namespaceObjectsCheck {
+	return networkPolicyIngress("allow-from-codeready-workspaces-operator", "codeready-workspaces")
 }
 
 func networkPolicyIngress(name, group string) namespaceObjectsCheck {
