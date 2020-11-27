@@ -213,7 +213,7 @@ func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1
 		Namespace: service.Namespace,
 		Name:      service.Name,
 	}, &route); err != nil {
-		require.True(a.T, errors.IsNotFound(err), "failed to get route to access the '%s' service", service.Name)
+		require.True(a.T, errors.IsNotFound(err), "failed to get route to access the '%s' service: %s", service.Name, err.Error())
 		route = routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: service.Namespace,
