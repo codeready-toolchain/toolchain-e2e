@@ -18,7 +18,7 @@ func getMetricValue(url string, family string, expectedLabels []string) (float64
 	}
 
 	client := http.Client{
-		Timeout: time.Duration(1 * time.Second),
+		Timeout: time.Duration(10 * time.Second),
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
