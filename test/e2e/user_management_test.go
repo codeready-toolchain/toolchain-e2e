@@ -45,7 +45,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 	// Get metrics assertion helper for testing metrics
-	metricsAssertion := InitMetricsAssertion(s.hostAwait)
+	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
 	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", true, ApprovedByAdmin()...)
 	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", true, ApprovedByAdmin()...)
@@ -194,7 +194,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 func (s *userManagementTestSuite) TestUserBanning() {
 	// Get metrics assertion helper for testing metrics
-	metricsAssertion := InitMetricsAssertion(s.hostAwait)
+	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 

@@ -1,7 +1,10 @@
 package testsupport
 
 import (
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // MetricsAssertionHelper stores baseline metric values when initialized and has convenient functions for metrics assertions
@@ -9,8 +12,6 @@ type MetricsAssertionHelper struct {
 	await          metricsProvider
 	baselineValues map[string]float64
 }
-
-type metricKey string
 
 type metricsProvider interface {
 	GetMetricValue(family string, labels ...string) float64
@@ -29,9 +30,10 @@ const (
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
-func InitMetricsAssertion(a metricsProvider) *MetricsAssertionHelper {
+func InitMetricsAssertion(t *testing.T, a metricsProvider) *MetricsAssertionHelper {
 	// Wait for pending usersignup deletions before capturing baseline values so that test assertions are stable
-	a.WaitForUserSignupsBeingDeleted(5 * time.Second)
+	err := a.WaitForUserSignupsBeingDeleted(5 * time.Second)
+	require.NoError(t, err)
 
 	// Capture baseline values
 	m := &MetricsAssertionHelper{
@@ -51,7 +53,7 @@ func (m *MetricsAssertionHelper) captureBaselineValues() {
 }
 
 // WaitForMetricDelta waits for the metric value to reach the adjusted value. The adjusted value is the delta value combined with the baseline value.
-func (m *MetricsAssertionHelper) WaitForMetricDelta(family metricKey, delta float64) {
+func (m *MetricsAssertionHelper) WaitForMetricDelta(family string, delta float64) {
 	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
 	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
 	key := string(family)
