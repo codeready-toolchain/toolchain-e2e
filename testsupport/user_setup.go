@@ -105,6 +105,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 // email is set in "user-email" annotation
 // setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
 func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, username string, email string, setTargetCluster bool) *toolchainv1alpha1.UserSignup {
+	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 	targetCluster := ""
 	if setTargetCluster {
 		memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, wait.ReadyToolchainCluster)
