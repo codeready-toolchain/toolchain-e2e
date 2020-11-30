@@ -94,10 +94,6 @@ func DeactivationTimeoutDays(timeoutDurationDays int) TierModifier {
 
 func WaitUntilBasicNSTemplateTierIsUpdated(t *testing.T, hostAwait *HostAwaitility) {
 	_, err := hostAwait.WaitForNSTemplateTier("basic",
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-code-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-dev-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasNSTemplateRefs("basic-stage-000000a"))),
-		UntilNSTemplateTierSpec(Not(HasClusterResourcesTemplateRef("basic-clusterresources-000000a"))),
-	)
+		UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
 	require.NoError(t, err)
 }
