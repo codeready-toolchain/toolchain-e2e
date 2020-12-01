@@ -121,7 +121,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 
 		// Verify JSON response.
 		woopraDomain := mp["woopra-domain"]
-		require.Equal(s.T(), "testing woopra domain", woopraDomain)
+		require.Equal(s.T(), "test woopra domain", woopraDomain)
 	})
 }
 
@@ -147,7 +147,7 @@ func (s *registrationServiceTestSuite) TestSegment() {
 
 		// Verify JSON response.
 		woopraDomain := mp["segment-write-key"]
-		require.Equal(s.T(), "testing segment write key", woopraDomain)
+		require.Equal(s.T(), "test segment write key", woopraDomain)
 	})
 }
 

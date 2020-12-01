@@ -1,0 +1,9 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: host-operator-config
+type: Opaque
+data:
+  woopra.domain: "test woopra domain"
+  segment.write.key: "test segment write key"
