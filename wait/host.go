@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -483,22 +484,15 @@ func UntilNSTemplateTierStatusUpdates(count int) NSTemplateTierWaitCriterion {
 	}
 }
 
-// Not negates the given matcher
-func Not(match NSTemplateTierSpecMatcher) NSTemplateTierSpecMatcher {
-	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
-		return !match(s)
-	}
-}
-
-// Has.NSTemplateRefs checks that ALL namespaces' `TemplateRef` match the given value
-func HasNSTemplateRefs(r string) NSTemplateTierSpecMatcher {
+// HasNoTemplateRefWithSuffix checks that ALL namespaces' `TemplateRef` doesn't have the suffix
+func HasNoTemplateRefWithSuffix(suffix string) NSTemplateTierSpecMatcher {
 	return func(s toolchainv1alpha1.NSTemplateTierSpec) bool {
 		for _, ns := range s.Namespaces {
-			if ns.TemplateRef != r {
+			if strings.HasSuffix(ns.TemplateRef, suffix) {
 				return false
 			}
 		}
-		return true
+		return !strings.HasSuffix(s.ClusterResources.TemplateRef, suffix)
 	}
 }
 
