@@ -33,6 +33,10 @@ func NewChecks(tier string) (TierChecks, error) {
 	case "basic":
 		return &basicTierChecks{}, nil
 
+	case "basic-no-deactivation":
+		// we want the basic-no-deactivation tier to have the same resources as the basic tier with the only difference being auto deactivation disabled
+		return &basicTierChecks{}, nil
+
 	case "advanced":
 		return &advancedTierChecks{}, nil
 
