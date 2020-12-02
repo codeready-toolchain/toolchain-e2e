@@ -241,6 +241,10 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create another UserSignup with the same original username but different user ID
 	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", true, ApprovedByAdmin()...)
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
+
+	// Create another UserSignup with a forbidden prefix
+	userSignup, _ = s.createAndCheckUserSignup(true, "openshift-paul", "paul@hotel.com", true, ApprovedByAdmin()...)
+	require.Equal(s.T(), "crt-openshift-paul", userSignup.Status.CompliantUsername)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
