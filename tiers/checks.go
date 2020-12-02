@@ -22,10 +22,10 @@ import (
 
 // tier names
 const (
-	basic               = "basic"
-	basicNoDeactivation = "basic-no-deactivation"
-	advanced            = "advanced"
-	team                = "team"
+	basic                     = "basic"
+	basicdeactivationdisabled = "basicdeactivationdisabled"
+	advanced                  = "advanced"
+	team                      = "team"
 )
 
 var (
@@ -41,9 +41,9 @@ func NewChecks(tier string) (TierChecks, error) {
 	case basic:
 		return &basicTierChecks{tierName: basic}, nil
 
-	case basicNoDeactivation:
-		// we want the basic-no-deactivation tier to have the same resources as the basic tier with the only difference being auto deactivation disabled
-		return &basicNoDeactivationTierChecks{basicTierChecks{tierName: basicNoDeactivation}}, nil
+	case basicdeactivationdisabled:
+		// we want the basicdeactivationdisabled tier to have the same resources as the basic tier with the only difference being auto deactivation disabled
+		return &basicdeactivationdisabledTierChecks{basicTierChecks{tierName: basicdeactivationdisabled}}, nil
 
 	case advanced:
 		return &advancedTierChecks{tierName: advanced}, nil
@@ -63,11 +63,11 @@ type TierChecks interface {
 	GetTierObjectChecks() []tierObjectCheck
 }
 
-type basicNoDeactivationTierChecks struct {
+type basicdeactivationdisabledTierChecks struct {
 	basicTierChecks
 }
 
-func (a *basicNoDeactivationTierChecks) GetTierObjectChecks() []tierObjectCheck {
+func (a *basicdeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
 }
 
