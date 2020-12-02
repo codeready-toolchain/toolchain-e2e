@@ -5,4 +5,4 @@ metadata:
 type: Opaque
 data:
   woopra.domain: "test woopra domain"
-  segment.write.key: "test segment write key"
+  segment.write_key: "test segment write key"
