@@ -128,6 +128,55 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		})
 	})
 
+	s.T().Run("tests for basic tier with deactivation disabled", func(t *testing.T) {
+		// Let's create a tier with deactivation disabled
+		noDeactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "deactivation-tier")
+
+		// Move the user to the new tier without deactivation enabled
+		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *noDeactivationTier).Spec.UserAccounts[0].SyncIndex
+
+		t.Run("verify metrics are correct after moving users to new tiers", func(t *testing.T) {
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated)
+		})
+
+		// We cannot wait days so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
+		// in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
+		// time should test the behaviour of the deactivation controller reconciliation.
+		mur, err := s.hostAwait.WaitForMasterUserRecord(mur.Name,
+			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
+			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
+		require.NoError(s.T(), err)
+		manyManyDaysAgo := 999999999999999
+		durationDelta := time.Duration(manyManyDaysAgo) * time.Hour * 24
+		updatedProvisionedTime := &metav1.Time{Time: time.Now().Add(-durationDelta)}
+		mur, err = s.hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+			mur.Status.ProvisionedTime = updatedProvisionedTime
+		})
+		require.NoError(s.T(), err)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
+
+		// Ensure the MUR has the updated ProvisionedTime
+		_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name, wait.UntilMasterUserRecordHasProvisionedTime(updatedProvisionedTime))
+		require.NoError(s.T(), err)
+
+		// The user should not be deactivated so the MUR should not be deleted, expect an error
+		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+		require.Error(s.T(), err)
+
+		t.Run("verify metrics are correct after auto deactivation", func(t *testing.T) {
+			// Only the user with domain not on the exclusion list should be auto-deactivated
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+2)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated+1)
+		})
+	})
+
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
 		tierDeactivationPeriodInDays := 30
 		// Let's create a tier with deactivation enabled
