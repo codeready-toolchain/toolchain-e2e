@@ -44,26 +44,19 @@ func (s *userManagementTestSuite) TearDownTest() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
-	// Wait for any pending deletions to complete
-	err := s.hostAwait.WaitForUserSignupsBeingDeleted(5 * time.Second)
-	require.NoError(s.T(), err)
-	// Get baseline metrics before creating any users
-	baseUserSignups := s.hostAwait.GetMetricValue("sandbox_user_signups_total")
-	baseUserSignupsApproved := s.hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
-	baseCurrentMURs := s.hostAwait.GetMetricValue("sandbox_master_user_record_current")
-	baseUserSignupsDeactivated := s.hostAwait.GetMetricValue("sandbox_user_signups_deactivated_total")
-	baseUserSignupsAutoDeactivated := s.hostAwait.GetMetricValue("sandbox_user_signups_auto_deactivated_total")
+	// Get metrics assertion helper for testing metrics
+	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
 	userSignup, mur := s.createAndCheckUserSignup(true, "iris", "iris@redhat.com", true, ApprovedByAdmin()...)
 	deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "pupil", "pupil@excluded.com", true, ApprovedByAdmin()...)
 
 	s.T().Run("deactivate a user", func(t *testing.T) {
 
-		t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated)
+		t.Run("verify metrics are correct after creating usersignups", func(t *testing.T) {
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)
 		})
 
 		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
@@ -93,8 +86,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+1)                // one less because of deactivated user
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1) // one more because of deactivated user
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 1)            // one less because of deactivated user
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // one more because of deactivated user
 		})
 	})
 
@@ -121,10 +114,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
 
 		t.Run("verify metrics are correct after reactivating the user", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)                        // no change
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)       // one more because of reactivated user
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)                // one more because of reactivated user
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1) // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)            // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)    // one more because of reactivated user
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)            // one more because of reactivated user
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // no change
 		})
 	})
 
@@ -138,11 +131,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *deactivationTier).Spec.UserAccounts[0].SyncIndex
 
 		t.Run("verify metrics are correct after moving users to new tiers", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated)
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0)
 		})
 
 		// We cannot wait days for deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
@@ -190,21 +183,20 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		t.Run("verify metrics are correct after auto deactivation", func(t *testing.T) {
 			// Only the user with domain not on the exclusion list should be auto-deactivated
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated+1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 1)
 		})
 	})
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
+	// Get metrics assertion helper for testing metrics
+	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
+
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		baseUserSignups := s.hostAwait.GetMetricValue("sandbox_user_signups_total")
-		baseUserSignupsApproved := s.hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
-		baseCurrentMURs := s.hostAwait.GetMetricValue("sandbox_master_user_record_current")
-		baseUserSignupsBanned := s.hostAwait.GetMetricValue("sandbox_user_signups_banned_total")
 
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
@@ -229,10 +221,10 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(s.T(), err)
 
 		t.Run("verify metrics are correct after user banned", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_banned_total", baseUserSignupsBanned+1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 0)
+			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
 		})
 	})
 
@@ -243,11 +235,6 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		email := "testuser" + id + "@test.com"
 		s.createAndCheckBannedUser(email)
 
-		baseUserSignups := s.hostAwait.GetMetricValue("sandbox_user_signups_total")
-		baseUserSignupsApproved := s.hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
-		baseCurrentMURs := s.hostAwait.GetMetricValue("sandbox_master_user_record_current")
-		baseUserSignupsBanned := s.hostAwait.GetMetricValue("sandbox_user_signups_banned_total")
-
 		// Check that no MUR created
 		userSignup := s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, true, Banned()...)
 		assert.Equal(t, v1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
@@ -257,10 +244,10 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(s.T(), err)
 
 		t.Run("verify metrics are correct after user signup", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved) // not provisioned because banned before signup
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_banned_total", baseUserSignupsBanned+1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // not provisioned because banned before signup
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 0)
+			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 2)
 		})
 	})
 
