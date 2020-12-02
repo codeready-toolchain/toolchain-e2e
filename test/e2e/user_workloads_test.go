@@ -9,8 +9,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -54,7 +52,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	podsNoise := s.prepareWorkloads(idlerNoise.Name, wait.WithSandboxPriorityClass())
 
 	// Create another noise pods in non-user namespace
-	s.newNamespace("workloads-noise")
+	s.memberAwait.CreateNamespace("workloads-noise")
 	externalNsPodsNoise := s.prepareWorkloads("workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
@@ -87,21 +85,6 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// There should not be any pods left in the namespace
 	err = s.memberAwait.WaitUntilPodsDeleted(idler.Name, wait.WithPodLabel("idler", "idler"))
 	require.NoError(s.T(), err)
-}
-
-func (s *userWorkloadsTestSuite) newNamespace(name string) {
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	err := s.memberAwait.Client.Create(context.TODO(), ns)
-	require.NoError(s.T(), err)
-	s.T().Cleanup(func() {
-		if err := s.memberAwait.Client.Delete(context.TODO(), ns); err != nil && !errors.IsNotFound(err) {
-			require.NoError(s.T(), err)
-		}
-	})
 }
 
 func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
