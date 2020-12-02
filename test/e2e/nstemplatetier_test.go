@@ -62,6 +62,15 @@ func TestNSTemplateTiers(t *testing.T) {
 		// are different from `000000a` which is the value specified in the initial manifest (used for basic tier)
 		WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 
+		// verify each tier's tier object values, this corresponds to the NSTemplateTier resource that each tier has
+		t.Run(fmt.Sprintf("tier object check for %s", tierToCheck), func(t *testing.T) {
+			tierChecks, err := tiers.NewChecks(tierToCheck)
+			require.NoError(t, err)
+			for _, check := range tierChecks.GetTierObjectChecks() {
+				check(t, hostAwait)
+			}
+		})
+
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
 			// given
 			changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, testingTiersName, tierToCheck)

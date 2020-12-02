@@ -128,9 +128,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		})
 	})
 
-	s.T().Run("tests for basic tier with deactivation disabled", func(t *testing.T) {
+	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
 		// Let's create a tier with deactivation disabled
-		noDeactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "deactivation-tier")
+		noDeactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "no-deactivation-tier")
 
 		// Move the user to the new tier without deactivation enabled
 		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *noDeactivationTier).Spec.UserAccounts[0].SyncIndex
