@@ -101,54 +101,37 @@ func (s *registrationServiceTestSuite) TestHealth() {
 }
 
 func (s *registrationServiceTestSuite) TestWoopra() {
+	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseKey, expectedResponseValue string) {
+		// Call woopra domain endpoint.
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", s.route, endPointPath), nil)
+		require.NoError(s.T(), err)
+
+		resp, err := httpClient.Do(req)
+		require.NoError(s.T(), err)
+		defer close(s.T(), resp)
+
+		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(s.T(), err)
+		require.NotNil(s.T(), body)
+
+		mp := make(map[string]interface{})
+		err = json.Unmarshal([]byte(body), &mp)
+		require.NoError(s.T(), err)
+
+		// Verify JSON response.
+		require.Equal(s.T(), expectedResponseValue, mp[expectedResponseKey])
+	}
+	
 	s.Run("get woopra domain 200 OK", func() {
 		// Call woopra domain endpoint.
-		req, err := http.NewRequest("GET", s.route+"/api/v1/woopra-domain", nil)
-		require.NoError(s.T(), err)
-
-		resp, err := httpClient.Do(req)
-		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
-
-		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
-		// Verify JSON response.
-		woopraDomain := mp["woopra-domain"]
-		require.Equal(s.T(), "test woopra domain", woopraDomain)
+		assertNotSecuredGetResponseEquals("woopra-domain", "segment-write-key", "test woopra domain")
 	})
-}
 
-func (s *registrationServiceTestSuite) TestSegment() {
 	s.Run("get segment write key 200 OK", func() {
 		// Call segment write key endpoint.
-		req, err := http.NewRequest("GET", s.route+"/api/v1/segment-write-key", nil)
-		require.NoError(s.T(), err)
-
-		resp, err := httpClient.Do(req)
-		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
-
-		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(s.T(), err)
-
-		// Verify JSON response.
-		woopraDomain := mp["segment-write-key"]
-		require.Equal(s.T(), "test segment write key", woopraDomain)
+		assertNotSecuredGetResponseEquals("segment-write-key", "woopra-domain", "test segment write key")
 	})
 }
 
