@@ -129,11 +129,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
-		// Let's create a tier with deactivation disabled
-		noDeactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "no-deactivation-tier")
+		// Get the basic tier that has deactivation disabled
+		basicDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basicdeactivationdisabled")
+		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *noDeactivationTier).Spec.UserAccounts[0].SyncIndex
+		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *basicDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
 
 		t.Run("verify metrics are correct after moving users to new tiers", func(t *testing.T) {
 			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
@@ -178,13 +179,13 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
-		tierDeactivationPeriodInDays := 30
-		// Let's create a tier with deactivation enabled
-		deactivationTier := CreateNSTemplateTier(t, s.ctx, s.hostAwait, "deactivation-tier", DeactivationTimeoutDays(tierDeactivationPeriodInDays))
+		// Get the basic tier that has deactivation enabled
+		basicTier, err := s.hostAwait.WaitForNSTemplateTier("basic")
+		require.NoError(t, err)
 
 		// Move 2 users to the new tier with deactivation enabled - 1 with a domain that matches the deactivation exclusion list and 1 that does not
-		excludedSyncIndex := MoveUserToTier(t, s.hostAwait, deactivationExcludedUserSignup.Spec.Username, *deactivationTier).Spec.UserAccounts[0].SyncIndex
-		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *deactivationTier).Spec.UserAccounts[0].SyncIndex
+		excludedSyncIndex := MoveUserToTier(t, s.hostAwait, deactivationExcludedUserSignup.Spec.Username, *basicTier).Spec.UserAccounts[0].SyncIndex
+		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *basicTier).Spec.UserAccounts[0].SyncIndex
 
 		t.Run("verify metrics are correct after moving users to new tiers", func(t *testing.T) {
 			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
@@ -201,7 +202,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
 		require.NoError(s.T(), err)
-		tierDeactivationDuration := time.Duration(tierDeactivationPeriodInDays) * time.Hour * 24
+		tierDeactivationDuration := time.Duration(basicTier.Spec.DeactivationTimeoutDays) * time.Hour * 24
 		mur, err = s.hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
