@@ -172,9 +172,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			// Only the user with domain not on the exclusion list should be auto-deactivated
 			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
 			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1)
+			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated)
 		})
 	})
 
