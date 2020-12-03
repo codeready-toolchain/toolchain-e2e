@@ -15,6 +15,8 @@ clean-e2e-resources:
 	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
 	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
 	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-service-account | xargs oc delete
+	$(Q)-oc delete PriorityClass -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
+	$(Q)-oc delete MutatingWebhookConfiguration -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
 
 .PHONY: clean-e2e-files
 ## Removes files and directories used during e2e test setup
