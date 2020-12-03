@@ -129,12 +129,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Move the user to the new tier without deactivation enabled
 		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *basicDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
 
-		t.Run("verify metrics are correct after moving users to new tiers", func(t *testing.T) {
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated)
+		t.Run("verify metrics are correct after moving user to new tier", func(t *testing.T) {
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)            // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)    // no change
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)            // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // no change
 		})
 
 		// We cannot wait days so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
@@ -161,13 +160,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.Error(s.T(), err)
 
-		t.Run("verify metrics are correct after auto deactivation", func(t *testing.T) {
-			// Only the user with domain not on the exclusion list should be auto-deactivated
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+3)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+2)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_deactivated_total", baseUserSignupsDeactivated+1)
-			s.hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_auto_deactivated_total", baseUserSignupsAutoDeactivated)
+		t.Run("verify metrics are correct after provisioned time changed", func(t *testing.T) {
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)        // no change
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)                // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)     // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0) // no change
 		})
 	})
 
@@ -180,12 +178,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		excludedSyncIndex := MoveUserToTier(t, s.hostAwait, deactivationExcludedUserSignup.Spec.Username, *basicTier).Spec.UserAccounts[0].SyncIndex
 		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *basicTier).Spec.UserAccounts[0].SyncIndex
 
-		t.Run("verify metrics are correct after moving users to new tiers", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)
-			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)
-			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0)
+		t.Run("verify metrics are correct after moving user to new tier", func(t *testing.T) {
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)        // no change
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)                // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)     // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0) // no change
 		})
 
 		// We cannot wait days for deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
