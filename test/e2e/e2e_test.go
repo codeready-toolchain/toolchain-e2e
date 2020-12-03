@@ -47,6 +47,8 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
+	memberAwait.WaitForUsersPodsWebhook()
+
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMurCount := originalToolchainStatus.Status.HostOperator.MasterUserRecordCount

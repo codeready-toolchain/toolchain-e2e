@@ -296,6 +296,9 @@ ifeq ($(SET_IMAGE_NAME),)
 				$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
 				$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
 				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
+				if [[ ${REPO_NAME} == "member-operator" ]]; then \
+                    curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME}-webhook 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook_digest; \
+                fi
             endif
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
@@ -312,22 +315,31 @@ endif
 	if [[ -f ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest ]]; then \
 	    DIGEST=`cat ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest`; \
 	    echo quay.io/${QUAY_NAMESPACE}/${REPO_NAME}@$${DIGEST} > ${IMAGE_NAMES_DIR}/${REPO_NAME}; \
+	    if [[ ${REPO_NAME} == "member-operator" ]]; then \
+	        DIGEST=`cat ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook_digest`; \
+	    	echo quay.io/${QUAY_NAMESPACE}/${REPO_NAME}-webhook@$${DIGEST} > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook; \
+	    fi \
 	else \
 		echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}; \
+        if [[ ${REPO_NAME} == "member-operator" ]]; then \
+	    	echo "${IMAGE_NAME}" | sed 's/${REPO_NAME}/${REPO_NAME}-webhook/g' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook; \
+	    fi \
     fi
 
 
 .PHONY: deploy-operator
 deploy-operator:
 	$(eval IMAGE_NAME := $(shell cat ${IMAGE_NAMES_DIR}/${REPO_NAME}))
-	$(eval REGISTRATION_SERVICE_IMAGE_NAME := $(shell cat ${IMAGE_NAMES_DIR}/registration-service))
 	@echo Using image ${IMAGE_NAME} and namespace ${NAMESPACE} for the repository ${REPO_NAME}
-	$(eval REG_SERVICE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
+	$(eval REGISTRATION_SERVICE_IMAGE_NAME := $(shell cat ${IMAGE_NAMES_DIR}/registration-service))
+	$(eval COMPONENT_IMAGE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
+	$(eval MEMBER_OPERATOR_WEBHOOK_IMAGE := $(shell cat ${IMAGE_NAMES_DIR}/member-operator-webhook))
+	$(eval COMPONENT_IMAGE_REPLACEMENT := ${COMPONENT_IMAGE_REPLACEMENT};s|REPLACE_MEMBER_OPERATOR_WEBHOOK_IMAGE|${MEMBER_OPERATOR_WEBHOOK_IMAGE}|g)
 ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
 		$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
 		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
 		# if the namespace already contains the CSV then update it
 		if [[ -n `oc get csv 2>/dev/null || true | grep 'toolchain-${REPO_NAME}'` ]]; then \
@@ -355,7 +367,7 @@ ifeq ($(IS_OS_3),)
 else
 		echo "before curl ${REPO_NAME}"
 		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/deploy/operator.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g${REG_SERVICE_REPLACEMENT}' /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml | oc apply -f -
+		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml | oc apply -f -
 endif
 
 .PHONY: display-eval
