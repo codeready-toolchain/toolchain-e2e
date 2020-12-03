@@ -178,38 +178,15 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		excludedSyncIndex := MoveUserToTier(t, s.hostAwait, deactivationExcludedUserSignup.Spec.Username, *basicTier).Spec.UserAccounts[0].SyncIndex
 		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *basicTier).Spec.UserAccounts[0].SyncIndex
 
-		t.Run("verify metrics are correct after moving user to new tier", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 3)        // no change
-			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)                // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)     // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0) // no change
-		})
-
-		// We cannot wait days for deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time to a time far enough
-		// in the past to trigger auto deactivation. Subtracting the tier deactivation period from the current time and setting this as the provisioned
-		// time should cause the deactivation controller to reconcile and see the mur is ready for deactivation.
 		mur, err := s.hostAwait.WaitForMasterUserRecord(mur.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
 		require.NoError(s.T(), err)
-		tierDeactivationDuration := time.Duration(basicTier.Spec.DeactivationTimeoutDays) * time.Hour * 24
-		mur, err = s.hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
-			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-		})
-		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
 
-		// Use the same method above to change the provisioned time for the excluded user
 		excludedMur, err := s.hostAwait.WaitForMasterUserRecord(excludedMur.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(excludedSyncIndex))
 		require.NoError(s.T(), err)
-		excludedMur, err = s.hostAwait.UpdateMasterUserRecordStatus(excludedMur.Name, func(mur *v1alpha1.MasterUserRecord) {
-			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-		})
-		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMur.Name)
 
 		// The non-excluded user should be deactivated
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
