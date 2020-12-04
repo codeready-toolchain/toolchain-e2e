@@ -248,7 +248,7 @@ endif
 	-oc label ns $(HOST_NS) app=host-operator
 	-oc project $(HOST_NS)
 	-oc apply -f deploy/host-operator/secrets.yaml -n $(HOST_NS)
-	-oc apply -f deploy/host-operator/configmap.yaml -n $(HOST_NS)
+	-oc apply -f deploy/host-operator/host-operator-config-map.yaml -n $(HOST_NS)
 ifneq ($(IS_OS_3),)
 	# is using OS 3, so we need to deploy the manifests manually
 	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
