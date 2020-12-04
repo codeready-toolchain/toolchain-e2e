@@ -323,7 +323,7 @@ endif
 	else \
 		echo "${IMAGE_NAME}" > ${IMAGE_NAMES_DIR}/${REPO_NAME}; \
         if [[ ${REPO_NAME} == "member-operator" ]]; then \
-	    	echo "${IMAGE_NAME}" | sed 's/${REPO_NAME}/${REPO_NAME}-webhook/g' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook; \
+	    	echo `echo "${IMAGE_NAME}" | cut -d ":" -f1`":${REPO_NAME}-webhook" > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook; \
 	    fi \
     fi
 
