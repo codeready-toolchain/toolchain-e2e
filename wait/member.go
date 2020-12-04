@@ -6,7 +6,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/status"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -20,10 +23,27 @@ import (
 	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	admv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+)
+
+var (
+	appMemberOperatorWebhookLabel = map[string]string{
+		"app": "member-operator-webhook",
+	}
+	codereadyToolchainProviderLabel = map[string]string{
+		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+	}
+	bothWebhookLabels = map[string]string{
+		"app":                                  "member-operator-webhook",
+		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+	}
 )
 
 type MemberAwaitility struct {
@@ -221,8 +241,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 		// no match found, so we display the current list of namespaces
 		if len(namespaceList.Items) == 0 {
 			allNSs := &v1.NamespaceList{}
-			ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
-			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(ls)); err != nil {
+			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 				return false, err
 			}
 			allNSNames := make(map[string]map[string]string, len(allNSs.Items))
@@ -257,8 +276,7 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				allRBs := &rbacv1.RoleBindingList{}
-				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
-				if err := a.Client.List(context.TODO(), allRBs, client.MatchingLabels(ls)); err != nil {
+				if err := a.Client.List(context.TODO(), allRBs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
 				a.T.Logf("waiting for availability of RoleBinding '%s' in namespace '%s'. Currently available codeready-toolchain RoleBindings: '%+v'", name, namespace.Name, allRBs)
@@ -281,8 +299,7 @@ func (a *MemberAwaitility) WaitForLimitRange(namespace *v1.Namespace, name strin
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				allLRs := &v1.LimitRangeList{}
-				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
-				if err := a.Client.List(context.TODO(), allLRs, client.MatchingLabels(ls)); err != nil {
+				if err := a.Client.List(context.TODO(), allLRs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
 				a.T.Logf("waiting for availability of LimitRange '%s' in namespace '%s'. Currently available codeready-toolchain LimitRanges: '%+v'", name, namespace.Name, allLRs)
@@ -305,8 +322,7 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *v1.Namespace, name st
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				allNPs := &netv1.NetworkPolicyList{}
-				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
-				if err := a.Client.List(context.TODO(), allNPs, client.MatchingLabels(ls)); err != nil {
+				if err := a.Client.List(context.TODO(), allNPs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
 				a.T.Logf("waiting for availability of NetworkPolicy '%s' in namespace '%s'. Currently available codeready-toolchain NetworkPolicies: '%+v'", name, namespace.Name, allNPs)
@@ -329,8 +345,7 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				allRoles := &rbacv1.RoleList{}
-				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
-				if err := a.Client.List(context.TODO(), allRoles, client.MatchingLabels(ls)); err != nil {
+				if err := a.Client.List(context.TODO(), allRoles, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
 				a.T.Logf("waiting for availability of Role '%s' in namespace '%s'. Currently available codeready-toolchain Roles: '%+v'", name, namespace.Name, allRoles)
@@ -353,7 +368,7 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.Cl
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				quotaList := &quotav1.ClusterResourceQuotaList{}
-				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
+				ls := codereadyToolchainProviderLabel
 				if err := a.Client.List(context.TODO(), quotaList, client.MatchingLabels(ls)); err != nil {
 					return false, err
 				}
@@ -393,8 +408,7 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				idlerList := &toolchainv1alpha1.IdlerList{}
-				ls := map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"}
-				if err := a.Client.List(context.TODO(), idlerList, client.MatchingLabels(ls)); err != nil {
+				if err := a.Client.List(context.TODO(), idlerList, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
 				a.T.Logf("waiting for availability of Idler '%s'. Currently available codeready-toolchain Idlers: '%+v'", name, idlerList)
@@ -587,6 +601,29 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
 		return pod.Labels[key] == value
 	}
+}
+
+func WithSandboxPriorityClass() PodWaitCriterion {
+	return func(a *MemberAwaitility, pod v1.Pod) bool {
+		return checkPriorityClass(a, pod, "sandbox-users-pods", -10)
+	}
+}
+
+func WithOriginalPriorityClass() PodWaitCriterion {
+	return func(a *MemberAwaitility, pod v1.Pod) bool {
+		if pod.Name != "idler-test-pod-1" {
+			return checkPriorityClass(a, pod, "", 0)
+		}
+		return checkPriorityClass(a, pod, "system-cluster-critical", 2000000000)
+	}
+}
+
+func checkPriorityClass(a *MemberAwaitility, pod v1.Pod, name string, priority int) bool {
+	if pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority) {
+		return true
+	}
+	a.T.Logf("Priority doesn't match for pod '%s' - Expected prorityClassName: '%s', actual : '%s'; Expected prority: '%d', actual : '%d'", pod.Name, name, pod.Spec.PriorityClassName, priority, *pod.Spec.Priority)
+	return false
 }
 
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
@@ -841,4 +878,140 @@ func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=member-operator' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
+}
+
+func (a *MemberAwaitility) WaitForUsersPodsWebhook() {
+	a.waitForPriorityClass()
+	a.waitForService()
+	a.waitForDeployment()
+	ca := a.waitForSecret()
+	a.waitForWebhookConfig(ca)
+}
+
+func (a *MemberAwaitility) waitForPriorityClass() {
+	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "sandbox-users-pods")
+	actualPrioClass := &schedulingv1.PriorityClass{}
+	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
+
+	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
+	assert.Equal(a.T, int32(-10), actualPrioClass.Value)
+	assert.False(a.T, actualPrioClass.GlobalDefault)
+	assert.Equal(a.T, "Priority class for pods in users' namespaces", actualPrioClass.Description)
+}
+
+func (a *MemberAwaitility) waitForResource(namespace, name string, object runtime.Object) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("resource '%s' in namesapace '%s' not found", name, namespace)
+				return false, nil
+			}
+			a.T.Logf("unexpected error when looking for resource '%s' in namesapace '%s'", name, namespace)
+			return false, err
+		}
+		a.T.Logf("resource '%s' in namesapace '%s' found", name, namespace)
+		return true, nil
+	})
+	require.NoError(a.T, err)
+}
+
+func (a *MemberAwaitility) waitForService() {
+	a.T.Logf("checking prensence of Service resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
+	actualService := &v1.Service{}
+	a.waitForResource(a.Namespace, "member-operator-webhook", actualService)
+
+	assert.Equal(a.T, map[string]string{
+		"app":                                  "member-operator-webhook",
+		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+	}, actualService.Labels)
+	require.Len(a.T, actualService.Spec.Ports, 1)
+	assert.Equal(a.T, int32(443), actualService.Spec.Ports[0].Port)
+	assert.Equal(a.T, intstr.IntOrString{
+		IntVal: 8443,
+	}, actualService.Spec.Ports[0].TargetPort)
+	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualService.Spec.Selector)
+}
+
+func (a *MemberAwaitility) waitForDeployment() {
+	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
+	actualDeployment := &appsv1.Deployment{}
+	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
+
+	assert.Equal(a.T, bothWebhookLabels, actualDeployment.Labels)
+	assert.Equal(a.T, int32(1), *actualDeployment.Spec.Replicas)
+	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualDeployment.Spec.Selector.MatchLabels)
+
+	template := actualDeployment.Spec.Template
+	assert.Equal(a.T, "member-operator-webhook", template.ObjectMeta.Name)
+	assert.Equal(a.T, appMemberOperatorWebhookLabel, template.ObjectMeta.Labels)
+	require.Len(a.T, template.Spec.Volumes, 1)
+	assert.Equal(a.T, "webhook-certs", template.Spec.Volumes[0].Name)
+	assert.Equal(a.T, "webhook-certs", template.Spec.Volumes[0].Secret.SecretName)
+	require.Len(a.T, template.Spec.Containers, 1)
+
+	container := template.Spec.Containers[0]
+	assert.Equal(a.T, "mutator", container.Name)
+	assert.NotEmpty(a.T, container.Image)
+	assert.Equal(a.T, []string{"member-operator-webhook"}, container.Command)
+	assert.Equal(a.T, v1.PullIfNotPresent, container.ImagePullPolicy)
+	assert.NotEmpty(a.T, container.Resources)
+
+	assert.Len(a.T, container.VolumeMounts, 1)
+	assert.Equal(a.T, "webhook-certs", container.VolumeMounts[0].Name)
+	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
+	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
+
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, "member-operator-webhook", a.Namespace)
+		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
+			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", "member-operator-webhook", a.Namespace, deploymentConditions)
+			return false, nil
+		}
+		a.T.Logf("deployment '%s' in namesapace '%s' is ready", "member-operator-webhook", a.Namespace)
+		return true, nil
+	})
+	require.NoError(a.T, err)
+
+}
+
+func (a *MemberAwaitility) waitForSecret() []byte {
+	a.T.Logf("checking prensence of Secret resource '%s' in namesapace '%s'", "webhook-certs", a.Namespace)
+	secret := &v1.Secret{}
+	a.waitForResource(a.Namespace, "webhook-certs", secret)
+	assert.NotEmpty(a.T, secret.Data["server-key.pem"])
+	assert.NotEmpty(a.T, secret.Data["server-cert.pem"])
+	ca := secret.Data["ca-cert.pem"]
+	assert.NotEmpty(a.T, ca)
+	return ca
+}
+
+func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
+	a.T.Logf("checking prensence of MutatingWebhookConfiguration resource '%s'", "sandbox-users-pods")
+	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
+	a.waitForResource("", "member-operator-webhook", actualMutWbhConf)
+	assert.Equal(a.T, bothWebhookLabels, actualMutWbhConf.Labels)
+	require.Len(a.T, actualMutWbhConf.Webhooks, 1)
+
+	webhook := actualMutWbhConf.Webhooks[0]
+	assert.Equal(a.T, "users.pods.webhook.sandbox", webhook.Name)
+	assert.Equal(a.T, []string{"v1"}, webhook.AdmissionReviewVersions)
+	assert.Equal(a.T, admv1.SideEffectClassNone, *webhook.SideEffects)
+	assert.Equal(a.T, int32(5), *webhook.TimeoutSeconds)
+	assert.Equal(a.T, admv1.NeverReinvocationPolicy, *webhook.ReinvocationPolicy)
+	assert.Equal(a.T, admv1.Ignore, *webhook.FailurePolicy)
+	assert.Equal(a.T, admv1.Equivalent, *webhook.MatchPolicy)
+	assert.Equal(a.T, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
+	assert.Equal(a.T, ca, webhook.ClientConfig.CABundle)
+	assert.Equal(a.T, "member-operator-webhook", webhook.ClientConfig.Service.Name)
+	assert.Equal(a.T, a.Namespace, webhook.ClientConfig.Service.Namespace)
+	assert.Equal(a.T, "/mutate-users-pods", *webhook.ClientConfig.Service.Path)
+	assert.Equal(a.T, int32(443), *webhook.ClientConfig.Service.Port)
+	require.Len(a.T, webhook.Rules, 1)
+
+	rule := webhook.Rules[0]
+	assert.Equal(a.T, []admv1.OperationType{admv1.Create, admv1.Update}, rule.Operations)
+	assert.Equal(a.T, []string{""}, rule.APIGroups)
+	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
+	assert.Equal(a.T, []string{"pods"}, rule.Resources)
+	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
 }

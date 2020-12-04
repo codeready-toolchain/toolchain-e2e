@@ -297,9 +297,9 @@ func (a *Awaitility) GetMetricValue(family string, labels ...string) float64 {
 	return value
 }
 
-// WaitUntilMetricHasValue waits until the exposed metric with the given family
-// and label key-value pair has reached the expected value
-func (a *Awaitility) WaitUntilMetricHasValue(family string, expectedValue float64, labels ...string) {
+// AssertMetricReachesValue asserts that the exposed metric with the given family
+// and label key-value pair reaches the expected value
+func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float64, labels ...string) {
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.MetricsURL, family, labels)
@@ -388,4 +388,31 @@ func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
 	}
 	// assume the pod is running a single container
 	return podMetrics.Containers[0].Usage.Memory().ScaledValue(resource.Kilo), nil
+}
+
+// CreateNamespace creates a namespace with the given name and waits until it gets active
+// it also adds a deletion of the namespace at the end of the test
+func (a *Awaitility) CreateNamespace(name string) {
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	err := a.Client.Create(context.TODO(), ns)
+	require.NoError(a.T, err)
+	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		ns := &corev1.Namespace{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, ns); err != nil && !errors.IsNotFound(err) {
+			return false, err
+		} else if err != nil {
+			return false, nil
+		}
+		return ns.Status.Phase == corev1.NamespaceActive, nil
+	})
+	require.NoError(a.T, err)
+	a.T.Cleanup(func() {
+		if err := a.Client.Delete(context.TODO(), ns); err != nil && !errors.IsNotFound(err) {
+			require.NoError(a.T, err)
+		}
+	})
 }

@@ -47,15 +47,15 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
+	memberAwait.WaitForUsersPodsWebhook()
+
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMurCount := originalToolchainStatus.Status.HostOperator.MasterUserRecordCount
 	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
 
-	// Get baseline metrics before creating any users
-	baseUserSignups := hostAwait.GetMetricValue("sandbox_user_signups_total")
-	baseUserSignupsApproved := hostAwait.GetMetricValue("sandbox_user_signups_approved_total")
-	baseCurrentMURs := hostAwait.GetMetricValue("sandbox_master_user_record_current")
+	// Get metrics assertion helper for testing metrics before creating any users
+	metricsAssertion := InitMetricsAssertion(t, hostAwait)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
@@ -74,9 +74,9 @@ func TestE2EFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
-		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+7)
-		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+7)
-		hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+7)
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 7)
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 7)
+		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 7)
 	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -238,8 +238,8 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("verify metrics are correct at the end", func(t *testing.T) {
-		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_total", baseUserSignups+7)
-		hostAwait.WaitUntilMetricHasValue("sandbox_user_signups_approved_total", baseUserSignupsApproved+7)
-		hostAwait.WaitUntilMetricHasValue("sandbox_master_user_record_current", baseCurrentMURs+6)
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 7)
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 7)
+		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 6)
 	})
 }

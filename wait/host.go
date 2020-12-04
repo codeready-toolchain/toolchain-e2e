@@ -165,6 +165,19 @@ func (a *HostAwaitility) UpdateUserSignupSpec(userSignupName string, modifyUserS
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
 
+// UntilMasterUserRecordHasProvisionedTime checks if MasterUserRecord status has the given provisioned time
+func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		if expectedTime.Time == mur.Status.ProvisionedTime.Time {
+			a.T.Logf("MasterUserRecord '%s' status has the expected provisioned time", mur.Name)
+			return true
+		}
+		a.T.Logf("waiting for status of MasterUserRecord '%s' to have the expected provisioned time. Actual: '%s'; Expected: '%s'",
+			mur.Name, mur.Status.ProvisionedTime.String(), expectedTime.String())
+		return false
+	}
+}
+
 // UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
 func UntilMasterUserRecordHasCondition(condition toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
