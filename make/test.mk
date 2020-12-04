@@ -70,11 +70,13 @@ print-logs:
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs REPO_NAME=host-operator NAMESPACE=${HOST_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS}
+	$(MAKE) print-operator-logs REPO_NAME=member-operator-webhook NAMESPACE=${MEMBER_NS}
 	$(MAKE) print-operator-logs REPO_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
 else
 	@echo "you can print logs using the commands:"
 	@echo "oc logs deployment.apps/host-operator --namespace ${HOST_NS}"
 	@echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS}"
+	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
 	@echo "oc logs deployment.apps/registration-service --namespace ${REGISTRATION_SERVICE_NS}"
 endif
 

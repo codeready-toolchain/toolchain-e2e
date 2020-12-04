@@ -20,6 +20,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// tier names
+const (
+	basic                     = "basic"
+	basicdeactivationdisabled = "basicdeactivationdisabled"
+	advanced                  = "advanced"
+	team                      = "team"
+)
+
 var (
 	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
 	commonChecks           = []namespaceObjectsCheck{
@@ -30,14 +38,18 @@ var (
 
 func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
-	case "basic":
-		return &basicTierChecks{}, nil
+	case basic:
+		return &basicTierChecks{tierName: basic}, nil
 
-	case "advanced":
-		return &advancedTierChecks{}, nil
+	case basicdeactivationdisabled:
+		// we want the basicdeactivationdisabled tier to have the same resources as the basic tier with the only difference being auto deactivation disabled
+		return &basicdeactivationdisabledTierChecks{basicTierChecks{tierName: basicdeactivationdisabled}}, nil
 
-	case "team":
-		return &teamTierChecks{}, nil
+	case advanced:
+		return &advancedTierChecks{tierName: advanced}, nil
+
+	case team:
+		return &teamTierChecks{tierName: team}, nil
 
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier)
@@ -48,9 +60,23 @@ type TierChecks interface {
 	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetClusterObjectChecks() []clusterObjectsCheck
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
+	GetTierObjectChecks() []tierObjectCheck
+}
+
+type basicdeactivationdisabledTierChecks struct {
+	basicTierChecks
+}
+
+func (a *basicdeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
 }
 
 type basicTierChecks struct {
+	tierName string
+}
+
+func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 1)}
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
@@ -64,8 +90,8 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 }
 
 func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, "basic")
-	verifyNsTypes(hostAwait.T, "basic", templateRefs, "code", "dev", "stage")
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "code", "dev", "stage")
 	return templateRefs
 }
 
@@ -103,6 +129,11 @@ func networkPolicyByType(nsType string) []namespaceObjectsCheck {
 }
 
 type advancedTierChecks struct {
+	tierName string
+}
+
+func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
@@ -123,8 +154,8 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, "advanced")
-	verifyNsTypes(hostAwait.T, "advanced", templateRefs, "code", "dev", "stage")
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "code", "dev", "stage")
 	return templateRefs
 }
 
@@ -140,6 +171,11 @@ func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsChe
 }
 
 type teamTierChecks struct {
+	tierName string
+}
+
+func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
 }
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
@@ -154,8 +190,8 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 }
 
 func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, "team")
-	verifyNsTypes(hostAwait.T, "team", templateRefs, "dev", "stage")
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
 
@@ -184,6 +220,16 @@ func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expecte
 type namespaceObjectsCheck func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string)
 
 type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string)
+
+type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
+
+func nsTemplateTier(tierName string, days int) tierObjectCheck {
+	return func(t *testing.T, hostAwait *wait.HostAwaitility) {
+		tier, err := hostAwait.WaitForNSTemplateTier(tierName)
+		require.NoError(t, err)
+		require.Equal(t, days, tier.Spec.DeactivationTimeoutDays)
+	}
+}
 
 func userEditRoleBinding() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
