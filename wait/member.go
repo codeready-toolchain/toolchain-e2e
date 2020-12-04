@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -888,6 +889,7 @@ func (a *MemberAwaitility) WaitForUsersPodsWebhook() {
 }
 
 func (a *MemberAwaitility) waitForPriorityClass() {
+	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
 
@@ -901,16 +903,20 @@ func (a *MemberAwaitility) waitForResource(namespace, name string, object runtim
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {
+				a.T.Logf("resource '%s' in namesapace '%s' not found", name, namespace)
 				return false, nil
 			}
+			a.T.Logf("unexpected error when looking for resource '%s' in namesapace '%s'", name, namespace)
 			return false, err
 		}
+		a.T.Logf("resource '%s' in namesapace '%s' found", name, namespace)
 		return true, nil
 	})
 	require.NoError(a.T, err)
 }
 
 func (a *MemberAwaitility) waitForService() {
+	a.T.Logf("checking prensence of Service resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
 	actualService := &v1.Service{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualService)
 
@@ -927,6 +933,7 @@ func (a *MemberAwaitility) waitForService() {
 }
 
 func (a *MemberAwaitility) waitForDeployment() {
+	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
 
@@ -953,9 +960,22 @@ func (a *MemberAwaitility) waitForDeployment() {
 	assert.Equal(a.T, "webhook-certs", container.VolumeMounts[0].Name)
 	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
 	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
+
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, "member-operator-webhook", a.Namespace)
+		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
+			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", "member-operator-webhook", a.Namespace, deploymentConditions)
+			return false, nil
+		}
+		a.T.Logf("deployment '%s' in namesapace '%s' is ready", "member-operator-webhook", a.Namespace)
+		return true, nil
+	})
+	require.NoError(a.T, err)
+
 }
 
 func (a *MemberAwaitility) waitForSecret() []byte {
+	a.T.Logf("checking prensence of Secret resource '%s' in namesapace '%s'", "webhook-certs", a.Namespace)
 	secret := &v1.Secret{}
 	a.waitForResource(a.Namespace, "webhook-certs", secret)
 	assert.NotEmpty(a.T, secret.Data["server-key.pem"])
@@ -966,6 +986,7 @@ func (a *MemberAwaitility) waitForSecret() []byte {
 }
 
 func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
+	a.T.Logf("checking prensence of MutatingWebhookConfiguration resource '%s'", "sandbox-users-pods")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
 	a.waitForResource("", "member-operator-webhook", actualMutWbhConf)
 	assert.Equal(a.T, bothWebhookLabels, actualMutWbhConf.Labels)
