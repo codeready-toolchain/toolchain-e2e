@@ -123,7 +123,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 		// Verify JSON response.
 		require.Equal(s.T(), expectedResponseValue, mp[expectedResponseKey])
 	}
-	
+
 	s.Run("get woopra domain 200 OK", func() {
 		// Call woopra domain endpoint.
 		assertNotSecuredGetResponseEquals("woopra-domain", "woopra-domain", "test woopra domain")
