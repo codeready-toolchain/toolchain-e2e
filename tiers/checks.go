@@ -20,12 +20,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// tier names
 const (
+	// tier names
 	basic                     = "basic"
 	basicdeactivationdisabled = "basicdeactivationdisabled"
 	advanced                  = "advanced"
 	team                      = "team"
+
+	// common CPU limits
+	defaultCpuLimit = "500m"
+	cpuLimit        = "10000m"
 )
 
 var (
@@ -97,7 +101,7 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("4000m", "1750m", "7Gi"),
+		clusterResourceQuota(cpuLimit, "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 		idlers("code", "dev", "stage"),
 	}
@@ -108,9 +112,9 @@ func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck 
 	case "code":
 		return limitRange("1", "512Mi", "60m", "307Mi")
 	case "dev":
-		return limitRange("150m", "750Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange("150m", "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
 	}
 }
 
@@ -148,7 +152,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("4000m", "1750m", "7Gi"),
+		clusterResourceQuota(cpuLimit, "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -164,9 +168,9 @@ func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsChe
 	case "code":
 		return limitRange("1", "512Mi", "60m", "307Mi")
 	case "dev":
-		return limitRange("150m", "750Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange("150m", "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
 	}
 }
 
@@ -180,7 +184,7 @@ func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	common := append(commonChecks,
-		limitRange("150m", "1Gi", "10m", "64Mi"),
+		limitRange(defaultCpuLimit, "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -197,7 +201,7 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("4000m", "2000m", "15Gi"),
+		clusterResourceQuota(cpuLimit, "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
 		idlers("dev", "stage"),
 	}
