@@ -80,7 +80,7 @@ type basicTierChecks struct {
 }
 
 func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 1)}
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
