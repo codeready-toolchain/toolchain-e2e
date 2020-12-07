@@ -190,6 +190,14 @@ func ToolchainStatusReady() toolchainv1alpha1.Condition {
 	}
 }
 
+func ToolchainStatusUnreadyNotificationNotCreated() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ToolchainStatusUnreadyNotificationCreated,
+		Status: corev1.ConditionFalse,
+		Reason: "",
+	}
+}
+
 func RoutesAvailable() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
