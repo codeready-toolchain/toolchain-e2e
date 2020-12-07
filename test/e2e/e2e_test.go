@@ -50,7 +50,7 @@ func TestE2EFlow(t *testing.T) {
 	memberAwait.WaitForUsersPodsWebhook()
 
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-		ToolchainStatusReady(), ToolchainStatusUnreadyNotificationNotCreated()))
+		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMurCount := originalToolchainStatus.Status.HostOperator.MasterUserRecordCount
 	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
@@ -185,7 +185,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReady(), ToolchainStatusUnreadyNotificationNotCreated()), wait.UntilHasMurCount(originalMurCount+7))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+7))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
 	})
@@ -234,7 +234,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReady(), ToolchainStatusUnreadyNotificationNotCreated()), wait.UntilHasMurCount(originalMurCount+6))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+6))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
 
