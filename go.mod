@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20201020192959-6783bbcae79d
+	github.com/codeready-toolchain/api v0.0.0-20201201131631-d6aa860718bd
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20200930070243-e124e69e7a0d
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
@@ -18,8 +18,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634 // indirect
-	golang.org/x/tools v0.0.0-20201013201025-64a9e34f3752 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.6 // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3

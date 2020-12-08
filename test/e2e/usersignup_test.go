@@ -64,7 +64,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 	s.T().Run("set low max number of users and expect that user won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
-		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
+		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
 		require.NoError(t, err)
 		initialMurCount := toolchainStatus.Status.HostOperator.MasterUserRecordCount
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(initialMurCount))
