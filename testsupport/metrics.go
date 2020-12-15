@@ -15,7 +15,7 @@ type MetricsAssertionHelper struct {
 
 type metricsProvider interface {
 	GetMetricValue(family string, labels ...string) float64
-	WaitForUserSignupsBeingDeleted(initialDelay time.Duration) error
+	WaitForTestResourcesCleanup(initialDelay time.Duration) error
 	AssertMetricReachesValue(family string, expectedValue float64, labels ...string)
 }
 
@@ -32,7 +32,7 @@ const (
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
 func InitMetricsAssertion(t *testing.T, a metricsProvider) *MetricsAssertionHelper {
 	// Wait for pending usersignup deletions before capturing baseline values so that test assertions are stable
-	err := a.WaitForUserSignupsBeingDeleted(5 * time.Second)
+	err := a.WaitForTestResourcesCleanup(5 * time.Second)
 	require.NoError(t, err)
 
 	// Capture baseline values
