@@ -268,8 +268,8 @@ func UntilUserSignupHasStateLabel(expLabelValue string) UserSignupWaitCriterion 
 	}
 }
 
-// WaitForUserSignupsBeingDeleted waits for all UserSignup deletions to be completed
-func (a *HostAwaitility) WaitForUserSignupsBeingDeleted(initialDelay time.Duration) error {
+// WaitForTestResourcesCleanup waits for all UserSignup and MasterUserRecord deletions to complete
+func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	time.Sleep(initialDelay)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		usList := &toolchainv1alpha1.UserSignupList{}
@@ -278,10 +278,22 @@ func (a *HostAwaitility) WaitForUserSignupsBeingDeleted(initialDelay time.Durati
 		}
 		for _, us := range usList.Items {
 			if us.DeletionTimestamp != nil {
-				a.T.Logf("a UserSignup is being deleted: %s", us.Name)
+				a.T.Logf("UserSignup is being deleted: %s", us.Name)
 				return false, nil
 			}
-			a.T.Logf("found UserSignup is not being deleted: %+v", us)
+			a.T.Logf("UserSignup is not being deleted: %+v", us)
+		}
+
+		murList := &toolchainv1alpha1.MasterUserRecordList{}
+		if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, mur := range murList.Items {
+			if mur.DeletionTimestamp != nil {
+				a.T.Logf("MasterUserRecord is being deleted: %s", mur.Name)
+				return false, nil
+			}
+			a.T.Logf("MasterUserRecord is not being deleted: %+v", mur)
 		}
 		return true, nil
 	})
