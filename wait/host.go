@@ -587,42 +587,55 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 
 // WaitForNotification waits until there is a Notification available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
+func (a *HostAwaitility) WaitForNotification(name, nType string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
 	var notification *toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+		obj := &toolchainv1alpha1.NotificationList{}
+		if err := a.Client.List(context.TODO(), obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of notification '%s'", name)
 				return false, nil
 			}
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
+
+		if len(obj.Items) >= 1 {
+			notification := obj.Items[0]
+			if strings.Contains(notification.Name, name) && strings.Contains(notification.Name, nType) {
+				for _, match := range criteria {
+					if !match(a, &notification) {
+						return false, nil
+					}
+				}
+				a.T.Logf("found notification '%s'", name)
+				return true, nil
 			}
 		}
-		a.T.Logf("found notification '%s'", name)
-		notification = obj
-		return true, nil
+		return false, nil
 	})
 	return notification, err
 }
 
 // WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
+func (a *HostAwaitility) WaitUntilNotificationDeleted(name, nType string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		notification := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, notification); err != nil {
+		obj := &toolchainv1alpha1.NotificationList{}
+		if err := a.Client.List(context.TODO(), obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Notification has been deleted '%s'", name)
+				a.T.Logf("Notification has been deleted '%s'", name + nType)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until Notification is deleted '%s'", name)
-		return false, nil
+		for _, notification := range obj.Items {
+			if strings.Contains(notification.Name, name) && strings.Contains(notification.Name, nType) {
+				a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
+				return false, nil
+			}
+		}
+
+		a.T.Logf("Notification has been deleted'%s'", name +  nType)
+		return true, nil
 	})
 }
 
