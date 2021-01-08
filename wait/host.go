@@ -587,8 +587,8 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 
 // WaitForNotification waits until there is a Notification available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
-	var notification *toolchainv1alpha1.Notification
+func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
+	var notification []*toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NotificationList{}
 		if err := a.Client.List(context.TODO(), obj); err != nil {
@@ -599,19 +599,21 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 			return false, err
 		}
 
-		if len(obj.Items) >= 1 {
-			notification = &obj.Items[0]
-			if strings.Contains(notification.Name, name) {
+		for _, n := range obj.Items {
+			if strings.Contains(n.Name, name) {
 				for _, match := range criteria {
-					if !match(a, notification) {
-						return false, nil
+					if match(a, &n) {
+						a.T.Logf("found notification '%s'", name)
+						notification = append(notification, &n)
 					}
 				}
-				a.T.Logf("found notification '%s'", name)
-				return true, nil
 			}
 		}
-		return false, nil
+
+		if len(notification) <= 0 {
+			return false, nil
+		}
+		return true, nil
 	})
 	return notification, err
 }
