@@ -600,10 +600,10 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 		}
 
 		if len(obj.Items) >= 1 {
-			notification := obj.Items[0]
+			notification = &obj.Items[0]
 			if strings.Contains(notification.Name, name) {
 				for _, match := range criteria {
-					if !match(a, &notification) {
+					if !match(a, notification) {
 						return false, nil
 					}
 				}
