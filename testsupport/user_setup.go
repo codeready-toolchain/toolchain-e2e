@@ -78,15 +78,15 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.NoError(t, err)
 
 	// Wait for the the notification CR to be created & sent
-	notification, err := hostAwait.WaitForNotification(mur.Name, "-provisioned", wait.UntilNotificationHasConditions(Sent()))
+	notification, err := hostAwait.WaitForNotification(mur.Name + "-provisioned", wait.UntilNotificationHasConditions(Sent()))
 	require.NoError(t, err)
 	require.NotNil(t, notification)
-	assert.Equal(t, mur.Name+"-provisioned", notification.Name)
+	assert.Contains(t, mur.Name+"-provisioned", notification.Name)
 	assert.Equal(t, mur.Namespace, notification.Namespace)
 	assert.Equal(t, "userprovisioned", notification.Spec.Template)
 	assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 
-	err = hostAwait.WaitUntilNotificationDeleted(mur.Name, "-provisioned")
+	err = hostAwait.WaitUntilNotificationDeleted(mur.Name + "-provisioned")
 	require.NoError(t, err)
 
 	// delete the userSignup at the end of the test

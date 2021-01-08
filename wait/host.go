@@ -587,7 +587,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 
 // WaitForNotification waits until there is a Notification available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForNotification(name, nType string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
+func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
 	var notification *toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NotificationList{}
@@ -601,7 +601,7 @@ func (a *HostAwaitility) WaitForNotification(name, nType string, criteria ...Not
 
 		if len(obj.Items) >= 1 {
 			notification := obj.Items[0]
-			if strings.Contains(notification.Name, name) && strings.Contains(notification.Name, nType) {
+			if strings.Contains(notification.Name, name) {
 				for _, match := range criteria {
 					if !match(a, &notification) {
 						return false, nil
@@ -617,24 +617,24 @@ func (a *HostAwaitility) WaitForNotification(name, nType string, criteria ...Not
 }
 
 // WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationDeleted(name, nType string) error {
+func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NotificationList{}
 		if err := a.Client.List(context.TODO(), obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Notification has been deleted '%s'", name + nType)
+				a.T.Logf("Notification has been deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
 		for _, notification := range obj.Items {
-			if strings.Contains(notification.Name, name) && strings.Contains(notification.Name, nType) {
+			if strings.Contains(notification.Name, name) {
 				a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
 				return false, nil
 			}
 		}
 
-		a.T.Logf("Notification has been deleted'%s'", name +  nType)
+		a.T.Logf("Notification has been deleted'%s'", name)
 		return true, nil
 	})
 }
