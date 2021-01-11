@@ -308,7 +308,7 @@ ifeq ($(SET_IMAGE_NAME),)
         endif
     else
 		# an image name of the other operator was provided, then we don't have anything built for this one => use image built from master
-		$(eval IMAGE_NAME := registry.svc.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
+		$(eval IMAGE_NAME := registry.ci.openshift.org/codeready-toolchain/${REPO_NAME}-v0.1:${REPO_NAME})
     endif
 else
 	# use the provided image name
