@@ -353,7 +353,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	assert.Equal(s.T(), identity0.Username, mp["username"])
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
-	assert.Equal(s.T(), "VerificationRequired", mpStatus["reason"])
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
 	require.True(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Confirm the status of the UserSignup is correct
