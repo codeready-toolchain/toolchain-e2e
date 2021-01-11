@@ -586,12 +586,14 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 // NotificationWaitCriterion checks if a Notification meets the given condition
 type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
 
-// WaitForNotification waits until there is a Notification available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
-	var notification []*toolchainv1alpha1.Notification
+// WaitForNotifications waits until there is a Notification available with the given name and the optional conditions
+func (a *HostAwaitility) WaitForNotifications(name, nType string, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
+	var notifications []*toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.NotificationList{}
-		if err := a.Client.List(context.TODO(), obj); err != nil {
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: name}
+		opts := client.MatchingLabels(labels)
+		notificationList := &toolchainv1alpha1.NotificationList{}
+		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of notification '%s'", name)
 				return false, nil
@@ -599,38 +601,41 @@ func (a *HostAwaitility) WaitForNotification(name string, criteria ...Notificati
 			return false, err
 		}
 
-		for _, n := range obj.Items {
-			if strings.Contains(n.Name, name) {
-				for _, match := range criteria {
+		for _, n := range notificationList.Items {
+			for _, match := range criteria {
+				if strings.Contains(n.Name, nType) {
 					if match(a, &n) {
 						a.T.Logf("found notification '%s'", name)
-						notification = append(notification, &n)
+						notifications = append(notifications, &n)
 					}
 				}
 			}
 		}
 
-		if len(notification) <= 0 {
+		if len(notifications) <= 0 {
 			return false, nil
 		}
 		return true, nil
 	})
-	return notification, err
+	return notifications, err
 }
 
 // WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
+func (a *HostAwaitility) WaitUntilNotificationDeleted(name, nType string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.NotificationList{}
-		if err := a.Client.List(context.TODO(), obj); err != nil {
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: name}
+		opts := client.MatchingLabels(labels)
+		notificationList := &toolchainv1alpha1.NotificationList{}
+		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("Notification has been deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		for _, notification := range obj.Items {
-			if strings.Contains(notification.Name, name) {
+
+		for _, notification := range notificationList.Items {
+			if strings.Contains(notification.Name, nType) {
 				a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
 				return false, nil
 			}
