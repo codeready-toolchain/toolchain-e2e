@@ -77,7 +77,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		assert.Equal(t, "userdeactivated", notification.Spec.Template)
 		assert.Equal(t, userSignup.Name, notification.Spec.UserID)
 
-		err = s.hostAwait.WaitUntilNotificationDeleted(userSignup.Status.CompliantUsername, "-deactivated")
+		err = s.hostAwait.WaitUntilNotificationDeleted(userSignup.Status.CompliantUsername, "deactivated")
 		require.NoError(t, err)
 
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
