@@ -84,13 +84,24 @@ func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	common := append(commonChecks,
+	checks := append(commonChecks,
 		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2))
-	return append(common, networkPolicyByType(nsType)...)
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "code":
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev"), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code"), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code"), networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
+	}
+	return checks
 }
 
 func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -118,17 +129,11 @@ func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck 
 	}
 }
 
-func networkPolicyByType(nsType string) []namespaceObjectsCheck {
-	common := []namespaceObjectsCheck{
+func commonNetworkPolicyChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
 		networkPolicySameNamespace(),
 		networkPolicyAllowFromMonitoring(),
 		networkPolicyAllowFromIngress(),
-	}
-	switch nsType {
-	case "code":
-		return append(common, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(4))
-	default:
-		return append(common, numberOfNetworkPolicies(3))
 	}
 }
 
@@ -141,13 +146,24 @@ func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	common := append(commonChecks,
+	checks := append(commonChecks,
 		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2))
-	return append(common, networkPolicyByType(nsType)...)
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "code":
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev"), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code"), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code"), networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
+	}
+	return checks
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -183,14 +199,23 @@ func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	common := append(commonChecks,
+	checks := append(commonChecks,
 		limitRange(defaultCpuLimit, "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
 	)
-	return append(common, networkPolicyByType(nsType)...)
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(4))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+	}
+	return checks
 }
 
 func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -326,6 +351,34 @@ func networkPolicySameNamespace() namespaceObjectsCheck {
 						From: []netv1.NetworkPolicyPeer{
 							{
 								PodSelector: &metav1.LabelSelector{},
+							},
+						},
+					},
+				},
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func networkPolicyAllowFromOtherNamespace(otherNamespaceKind string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		np, err := memberAwait.WaitForNetworkPolicy(ns, fmt.Sprintf("allow-from-%s-namespace", otherNamespaceKind))
+		require.NoError(t, err)
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{},
+				Ingress: []netv1.NetworkPolicyIngressRule{
+					{
+						From: []netv1.NetworkPolicyPeer{
+							{
+								NamespaceSelector: &metav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"name": fmt.Sprintf("%s-%s", userName, otherNamespaceKind),
+									},
+								},
 							},
 						},
 					},
