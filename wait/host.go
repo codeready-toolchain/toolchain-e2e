@@ -590,7 +590,7 @@ type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.No
 func (a *HostAwaitility) WaitForNotifications(name, reason string, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
 	var notifications []*toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: name, toolchainv1alpha1.NotificationReasonLabelKey: reason}
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: name, toolchainv1alpha1.NotificationTypeLabelKey: reason}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
 		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
@@ -621,7 +621,7 @@ func (a *HostAwaitility) WaitForNotifications(name, reason string, criteria ...N
 // WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilNotificationDeleted(name, reason string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: name, toolchainv1alpha1.NotificationReasonLabelKey: reason}
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: name, toolchainv1alpha1.NotificationTypeLabelKey: reason}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
 		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
