@@ -255,7 +255,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 
 		// prefix as a name
 		userSignup, _ = s.createAndCheckUserSignup(true, prefix, "paul@hotel.com", true, ApprovedByAdmin()...)
-		require.Equal(s.T(), fmt.Sprintf("crt-%", prefix), userSignup.Status.CompliantUsername)
+		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
 	}
 }
 
