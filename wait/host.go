@@ -584,7 +584,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 }
 
 // NotificationWaitCriterion checks if a Notification meets the given condition
-type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
+type NotificationWaitCriterion func(a *HostAwaitility, mur toolchainv1alpha1.Notification) bool
 
 // WaitForNotifications waits until there is a Notification available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForNotifications(name, reason string, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
@@ -603,7 +603,7 @@ func (a *HostAwaitility) WaitForNotifications(name, reason string, criteria ...N
 
 		for _, n := range notificationList.Items {
 			for _, match := range criteria {
-				if match(a, &n) {
+				if match(a, n) {
 					a.T.Logf("found notification '%s'", name)
 					notifications = append(notifications, &n)
 				}
@@ -634,9 +634,10 @@ func (a *HostAwaitility) WaitUntilNotificationDeleted(name, reason string) error
 
 		for _, notification := range notificationList.Items {
 			a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
+		}
+		if len(notificationList.Items) > 0 {
 			return false, nil
 		}
-
 
 		a.T.Logf("Notification has been deleted'%s'", name)
 		return true, nil
@@ -645,7 +646,7 @@ func (a *HostAwaitility) WaitUntilNotificationDeleted(name, reason string) error
 
 // UntilNotificationHasConditions checks if Notification status has the given set of conditions
 func UntilNotificationHasConditions(conditions ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
-	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
+	return func(a *HostAwaitility, notification toolchainv1alpha1.Notification) bool {
 		if test.ConditionsMatch(notification.Status.Conditions, conditions...) {
 			a.T.Logf("status conditions match in Notification '%s`", notification.Name)
 			return true
