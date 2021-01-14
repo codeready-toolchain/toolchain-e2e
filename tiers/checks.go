@@ -95,11 +95,11 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 
 	switch nsType {
 	case "code":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(6))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
 	}
 	return checks
 }
@@ -157,11 +157,11 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 	switch nsType {
 	case "code":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(6))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
 	}
 	return checks
 }
@@ -211,9 +211,9 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(3))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(3))
 	}
 	return checks
 }
