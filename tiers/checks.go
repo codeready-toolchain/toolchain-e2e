@@ -471,17 +471,41 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("5")
+
+		hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
-		hard[corev1.ResourcePods], err = resource.ParseQuantity("100")
+
+		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
-		hard[corev1.ResourceReplicationControllers], err = resource.ParseQuantity("100")
+		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
-		hard[corev1.ResourceServices], err = resource.ParseQuantity("100")
+		hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
-		hard[corev1.ResourceSecrets], err = resource.ParseQuantity("100")
+		hard[count("deployments.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
-		hard[corev1.ResourceConfigMaps], err = resource.ParseQuantity("100")
+		hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("jobs.batch")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+
+		hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+		hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+		hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+		hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+
+		hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+		hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
 		require.NoError(t, err)
 
 		expetedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
@@ -496,6 +520,10 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 		}
 		assert.Equal(t, expetedQuotaSpec, quota.Spec)
 	}
+}
+
+func count(resource v1.ResourceName) v1.ResourceName {
+	return v1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
 
 func numberOfToolchainRoles(number int) namespaceObjectsCheck {
