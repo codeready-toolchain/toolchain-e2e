@@ -211,9 +211,9 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(3))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(4))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(3))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
 	}
 	return checks
 }
