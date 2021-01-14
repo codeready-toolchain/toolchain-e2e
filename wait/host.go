@@ -632,8 +632,8 @@ func (a *HostAwaitility) WaitUntilNotificationDeleted(name, reason string) error
 			return false, err
 		}
 
-		if len(notificationList.Items) > 0 {
-			a.T.Logf("waiting until Notification is deleted '%s'", notificationList.Items[0].Name)
+		for _, notification := range notificationList.Items {
+			a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
 			return false, nil
 		}
 
