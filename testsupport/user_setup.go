@@ -79,7 +79,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 
 	// Wait for the the notification CR to be created & sent
 	// "-provisioned"
-	notifications, err := hostAwait.WaitForNotifications(mur.Name,"-provisioned", wait.UntilNotificationHasConditions(Sent()))
+	notifications, err := hostAwait.WaitForNotifications(mur.Name,"provisioned", wait.UntilNotificationHasConditions(Sent()))
 	require.NoError(t, err)
 	require.NotEmpty(t, notifications)
 	for _, notification := range notifications {
