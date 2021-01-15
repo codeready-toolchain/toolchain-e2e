@@ -67,12 +67,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		// "deactivated"
-		notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, wait.UntilNotificationHasConditions(Sent()))
+		notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
 		require.NoError(t, err)
 		require.NotEmpty(t, notifications)
 		require.Equal(t, 1, len(notifications))
 		notification := notifications[0]
-		assert.Contains(t, notification.Name, userSignup.Status.CompliantUsername+"-deactivated")
+		assert.Contains(t, notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
 		assert.Equal(t, userSignup.Namespace, notification.Namespace)
 		assert.Equal(t, "userdeactivated", notification.Spec.Template)
 		assert.Equal(t, userSignup.Name, notification.Spec.UserID)

@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"fmt"
+	errs "github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -587,48 +588,56 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 type NotificationWaitCriterion func(a *HostAwaitility, mur toolchainv1alpha1.Notification) bool
 
 // WaitForNotifications waits until there is a Notification available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForNotifications(notificationName, notificationType string, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
+func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
 	var notifications []*toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: notificationName, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
 		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of notification '%s'", notificationName)
-				return false, nil
-			}
 			return false, err
+		}
+
+		actualNotificationCount := len(notificationList.Items)
+		if numberOfNotifications < actualNotificationCount{
+			// There are more notifications than the expected amount
+			a.T.Logf("expected '%d' notifications, but found '%d' notifications", numberOfNotifications, actualNotificationCount)
+			return false, errs.New(fmt.Sprintf("expected %d notifications, but found %d notifications", numberOfNotifications, actualNotificationCount))
+		}
+
+		// If the numberOfNotifications is greater than the current notification count
+		// wait for availability of notification(s).
+		if numberOfNotifications != actualNotificationCount {
+			a.T.Logf("waiting for availability of notification '%s'", username)
+			return false, nil
 		}
 
 		for _, n := range notificationList.Items {
 			for _, match := range criteria {
 				if match(a, n) {
-					a.T.Logf("found notification '%s'", notificationName)
+					a.T.Logf("found notification '%s'", username)
 					notifications = append(notifications, &n)
 				}
 			}
 		}
 
+		// The criteria hasn't matched yet
 		if len(notifications) <= 0 {
 			return false, nil
 		}
+
 		return true, nil
 	})
 	return notifications, err
 }
 
-// WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationDeleted(notificationName, notificationType string) error {
+// WaitUntilNotificationDeleted waits until the Notification for the given user is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilNotificationDeleted(username, notificationType string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: notificationName, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
 		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("Notification has been deleted '%s'", notificationName)
-				return true, nil
-			}
 			return false, err
 		}
 
@@ -639,7 +648,7 @@ func (a *HostAwaitility) WaitUntilNotificationDeleted(notificationName, notifica
 			return false, nil
 		}
 
-		a.T.Logf("Notification has been deleted'%s'", notificationName)
+		a.T.Logf("Notification has been deleted'%s'", username)
 		return true, nil
 	})
 }
