@@ -3,7 +3,6 @@ package wait
 import (
 	"context"
 	"fmt"
-	errs "github.com/pkg/errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -588,8 +587,8 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 type NotificationWaitCriterion func(a *HostAwaitility, mur toolchainv1alpha1.Notification) bool
 
 // WaitForNotifications waits until there is an expected number of Notifications available for the provided user and with the notification type and which match the conditions (if provided).
-func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
-	var notifications []*toolchainv1alpha1.Notification
+func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
+	var notifications []toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
@@ -599,33 +598,19 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		}
 
 		actualNotificationCount := len(notificationList.Items)
-		if numberOfNotifications < actualNotificationCount{
-			// There are more notifications than the expected amount
-			a.T.Logf("expected '%d' notifications, but found '%d' notifications", numberOfNotifications, actualNotificationCount)
-			return false, errs.New(fmt.Sprintf("expected %d notifications, but found %d notifications", numberOfNotifications, actualNotificationCount))
-		}
-
-		// If the numberOfNotifications is greater than the current notification count
-		// wait for availability of notification(s).
 		if numberOfNotifications != actualNotificationCount {
-			a.T.Logf("waiting for availability of notification '%s'", username)
+			a.T.Logf("expected '%d' notifications, but found '%d' notifications", numberOfNotifications, actualNotificationCount)
 			return false, nil
 		}
 
 		for _, n := range notificationList.Items {
 			for _, match := range criteria {
-				if match(a, n) {
-					a.T.Logf("found notification '%s'", username)
-					notifications = append(notifications, &n)
+				if !match(a, n) {
+					return false, nil
 				}
 			}
 		}
-
-		// The criteria hasn't matched yet
-		if len(notifications) <= 0 {
-			return false, nil
-		}
-
+		notifications = notificationList.Items
 		return true, nil
 	})
 	return notifications, err
