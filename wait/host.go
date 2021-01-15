@@ -616,8 +616,8 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 	return notifications, err
 }
 
-// WaitUntilNotificationDeleted waits until the Notification for the given user is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationDeleted(username, notificationType string) error {
+// WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationType string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)

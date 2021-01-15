@@ -89,7 +89,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	}
 
 
-	err = hostAwait.WaitUntilNotificationDeleted(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned)
+	err = hostAwait.WaitUntilNotificationsDeleted(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned)
 	require.NoError(t, err)
 
 	// delete the userSignup at the end of the test
