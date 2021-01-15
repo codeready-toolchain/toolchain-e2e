@@ -587,7 +587,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 // NotificationWaitCriterion checks if a Notification meets the given condition
 type NotificationWaitCriterion func(a *HostAwaitility, mur toolchainv1alpha1.Notification) bool
 
-// WaitForNotifications waits until there is a Notification available with the given name and the optional conditions
+// WaitForNotifications waits until there is an expected number of Notifications available for the provided user and with the notification type and which match the conditions (if provided).
 func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]*toolchainv1alpha1.Notification, error) {
 	var notifications []*toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
