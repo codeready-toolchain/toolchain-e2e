@@ -101,7 +101,7 @@ func (s *registrationServiceTestSuite) TestHealth() {
 }
 
 func (s *registrationServiceTestSuite) TestWoopra() {
-	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseKey, expectedResponseValue string) {
+	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseValue string) {
 		// Call woopra domain endpoint.
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", s.route, endPointPath), nil)
 		require.NoError(s.T(), err)
@@ -116,22 +116,21 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
 
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
+		value := string(body)
 		require.NoError(s.T(), err)
 
 		// Verify JSON response.
-		require.Equal(s.T(), expectedResponseValue, mp[expectedResponseKey])
+		require.Equal(s.T(), expectedResponseValue, value)
 	}
 
 	s.Run("get woopra domain 200 OK", func() {
 		// Call woopra domain endpoint.
-		assertNotSecuredGetResponseEquals("woopra-domain", "woopra-domain", "test woopra domain")
+		assertNotSecuredGetResponseEquals("woopra-domain",  "test woopra domain")
 	})
 
 	s.Run("get segment write key 200 OK", func() {
 		// Call segment write key endpoint.
-		assertNotSecuredGetResponseEquals("segment-write-key", "segment-write-key", "test segment write key")
+		assertNotSecuredGetResponseEquals("segment-write-key", "test segment write key")
 	})
 }
 
