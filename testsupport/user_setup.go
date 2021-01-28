@@ -88,7 +88,6 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 	}
 
-
 	err = hostAwait.WaitUntilNotificationsDeleted(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned)
 	require.NoError(t, err)
 

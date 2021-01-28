@@ -125,7 +125,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 
 	s.Run("get woopra domain 200 OK", func() {
 		// Call woopra domain endpoint.
-		assertNotSecuredGetResponseEquals("woopra-domain",  "test woopra domain")
+		assertNotSecuredGetResponseEquals("woopra-domain", "test woopra domain")
 	})
 
 	s.Run("get segment write key 200 OK", func() {
