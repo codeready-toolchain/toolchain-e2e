@@ -9,6 +9,7 @@ DATE_SUFFIX := $(shell date +'%d%H%M%S')
 RESOURCES_SUFFIX := ${DATE_SUFFIX}
 HOST_NS ?= ${QUAY_NAMESPACE}-host-${DATE_SUFFIX}
 MEMBER_NS ?= ${QUAY_NAMESPACE}-member-${DATE_SUFFIX}
+MEMBER_NS_2 ?= ${QUAY_NAMESPACE}-member2-${DATE_SUFFIX}
 REGISTRATION_SERVICE_NS := $(HOST_NS)
 TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
@@ -30,7 +31,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-member e2e-service-account setup-toolchainclusters
+deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-members e2e-service-account setup-toolchainclusters
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -62,8 +63,8 @@ e2e-run:
 	oc get toolchaincluster -n $(HOST_NS)
 	oc get toolchaincluster -n $(MEMBER_NS)
 	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
-	MEMBER_NS=${MEMBER_NS} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace $(TEST_NS) --verbose --go-test-flags "-test.timeout=60m -test.failfast" || \
-	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace $(TEST_NS) --verbose --go-test-flags "-test.timeout=60m -test.failfast" || \
+	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
 print-logs:
@@ -71,22 +72,24 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs REPO_NAME=host-operator NAMESPACE=${HOST_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator-webhook NAMESPACE=${MEMBER_NS}
+	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS_2}
 	$(MAKE) print-operator-logs REPO_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
 else
 	@echo "you can print logs using the commands:"
 	@echo "oc logs deployment.apps/host-operator --namespace ${HOST_NS}"
 	@echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS}"
+	@echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS_2}"
 	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
 	@echo "oc logs deployment.apps/registration-service --namespace ${REGISTRATION_SERVICE_NS}"
 endif
 
 .PHONY: print-operator-logs
 print-operator-logs:
-	@echo "====================================================================================="
-	@echo "========================== ${REPO_NAME} deployment logs ============================="
-	@echo "====================================================================================="
+	@echo "==============================================================================================================="
+	@echo "========================== ${REPO_NAME} deployment logs - Namespace: ${NAMESPACE} ============================="
+	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${REPO_NAME} --namespace ${NAMESPACE}
-	@echo "====================================================================================="
+	@echo "==============================================================================================================="
 
 .PHONY: login-as-admin
 login-as-admin:
@@ -107,8 +110,10 @@ endif
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
+	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
+	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
+	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
 
 ###########################################################
 #
@@ -216,15 +221,11 @@ endif
 #
 ###########################################################
 
-.PHONY: deploy-member
-deploy-member:
+.PHONY: deploy-members
+deploy-members:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 endif
-	@echo "Deploying member operator to $(MEMBER_NS)..."
-	-oc new-project $(MEMBER_NS) 1>/dev/null
-	-oc label ns $(MEMBER_NS) app=member-operator
-	-oc project $(MEMBER_NS)
 ifneq ($(IS_OS_3),)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
@@ -234,11 +235,25 @@ ifneq ($(IS_OS_3),)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
 endif
 	$(MAKE) build-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME}
-	$(MAKE) deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator NAMESPACE=$(MEMBER_NS)
+	
+	$(MAKE) deploy-member MEMBER_NS_TO_DEPLOY=$(MEMBER_NS)
+	
+	$(eval TMP_ENV_YAML := /tmp/${ENVIRONMENT}_${DATE_SUFFIX}.yaml)
+	sed 's|member-operator:|member-operator:\n  deploy-webhook: 'false'|' ${MEMBER_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > ${TMP_ENV_YAML}
+	$(MAKE) deploy-member MEMBER_NS_TO_DEPLOY=$(MEMBER_NS_2) ENV_YAML=${TMP_ENV_YAML}
+
+.PHONY: deploy-member
+deploy-member:
+	@echo "Deploying member operator to $(MEMBER_NS_TO_DEPLOY)..."
+	-oc new-project $(MEMBER_NS_TO_DEPLOY) 1>/dev/null
+	-oc label ns $(MEMBER_NS_TO_DEPLOY) app=member-operator
+	-oc project $(MEMBER_NS_TO_DEPLOY)
+	$(MAKE) deploy-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator NAMESPACE=$(MEMBER_NS_TO_DEPLOY)
 
 .PHONY: e2e-service-account
 e2e-service-account:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
 
 .PHONY: deploy-host
 deploy-host: build-registration
@@ -340,7 +355,11 @@ deploy-operator:
 ifeq ($(IS_OS_3),)
 		# it is not using OS 3 so we will install operator via CSV
 		$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
-		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
+    ifeq ($(ENV_YAML),)
+		# ENV_YAML is not set
+		$(eval ENV_YAML := ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml)
+    endif
+		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${ENV_YAML} > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
 		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
 		# if the namespace already contains the CSV then update it

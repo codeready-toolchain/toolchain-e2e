@@ -34,7 +34,7 @@ type userManagementTestSuite struct {
 
 func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
@@ -378,7 +378,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval())
 
 	// Create UserSignup
-	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe")
+	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
 
 	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
 

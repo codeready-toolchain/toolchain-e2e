@@ -43,7 +43,7 @@ type registrationServiceTestSuite struct {
 
 func (s *registrationServiceTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
 	s.namespace = s.hostAwait.RegistrationServiceNs
 	s.route = s.hostAwait.RegistrationServiceURL
 }
@@ -125,7 +125,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 
 	s.Run("get woopra domain 200 OK", func() {
 		// Call woopra domain endpoint.
-		assertNotSecuredGetResponseEquals("woopra-domain",  "test woopra domain")
+		assertNotSecuredGetResponseEquals("woopra-domain", "test woopra domain")
 	})
 
 	s.Run("get segment write key 200 OK", func() {

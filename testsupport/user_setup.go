@@ -45,7 +45,7 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 	return signups
 }
 
-func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) toolchainv1alpha1.UserSignup {
+func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string) toolchainv1alpha1.UserSignup {
 	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
@@ -64,6 +64,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.Equal(t, userSignup.Spec.Company, identity.Username+"-Company-Name")
 
 	// 2. approve the UserSignup
+	userSignup.Spec.TargetCluster = "member-rajivdev-01-25-9xj2f"
 	userSignup.Spec.Approved = true
 	err = hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
@@ -87,7 +88,6 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 		assert.Equal(t, "userprovisioned", notification.Spec.Template)
 		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
 	}
-
 
 	err = hostAwait.WaitUntilNotificationsDeleted(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned)
 	require.NoError(t, err)

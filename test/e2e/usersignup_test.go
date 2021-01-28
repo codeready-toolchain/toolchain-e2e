@@ -26,7 +26,7 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {

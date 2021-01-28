@@ -33,7 +33,7 @@ func TestPerformance(t *testing.T) {
 	logger, out, err := initLogger()
 	require.NoError(t, err)
 	defer out.Close()
-	ctx, hostAwait, memberAwait := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
 	defer ctx.Cleanup()

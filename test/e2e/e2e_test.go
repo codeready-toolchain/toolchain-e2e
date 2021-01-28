@@ -20,7 +20,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, hostAwait, memberAwait := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 	hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
@@ -64,9 +64,9 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup := CreateAndApproveSignup(t, hostAwait, johnsmithName)
+	johnSignup := CreateAndApproveSignup(t, hostAwait, johnsmithName, memberAwait.ClusterName)
 	extrajohnName := "extrajohn"
-	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName)
+	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName, memberAwait.ClusterName)
 
 	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
 	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
