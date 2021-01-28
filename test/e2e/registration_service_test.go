@@ -307,24 +307,49 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		return userSignup
 	}
 
-	// Signup a new user
-	userSignup := signupUser()
+	s.Run("test activation-deactivation workflow", func() {
+		// Signup a new user
+		userSignup := signupUser()
 
-	// Deactivate the usersignup
-	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-		us.Spec.Deactivated = true
+		// Deactivate the usersignup
+		userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+			us.Spec.Deactivated = true
+		})
+		require.NoError(s.T(), err)
+		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(Deactivated()...),
+			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
+		require.NoError(s.T(), err)
+
+		// Now check that the reg-service treats the deactivated usersignup as nonexistent and returns 404
+		s.assertGetSignupReturnsNotFound(token)
+
+		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
+		userSignup = signupUser()
 	})
-	require.NoError(s.T(), err)
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(Deactivated()...),
-		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
-	require.NoError(s.T(), err)
 
-	// Now check that the reg-service treats the deactivated usersignup as nonexistent and returns 404
-	s.assertGetSignupReturnsNotFound(token)
+	s.Run("test User ID encodings", func() {
+		userIDs := []string {
+			"abcde-12345",
+			"abcde\\*-12345",
+			"-1234567",
+			"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-01234567890123456789",
+			"abc:xyz",
+		}
 
-	// Re-activate the usersignup by calling the signup endpoint with the same token/user again
-	userSignup = signupUser()
+		for _, userID := range userIDs {
+			identity := authsupport.NewIdentity()
+			emailValue = uuid.NewV4().String() + "@acme.com"
+			emailClaim = authsupport.WithEmailClaim(emailValue)
+			token, err = authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
+			require.NoError(s.T(), err)
+
+			// Signup a new user
+			userSignup := signupUser()
+
+			require.Equal(s.T(), userID, userSignup.Spec.UserID)
+		}
+	})
 }
 
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
