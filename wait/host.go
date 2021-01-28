@@ -593,7 +593,7 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
-		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
+		if err := a.Client.List(context.TODO(), notificationList, opts); err != nil {
 			return false, err
 		}
 
@@ -622,7 +622,7 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationTyp
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
-		if err :=  a.Client.List(context.TODO(), notificationList, opts);  err != nil {
+		if err := a.Client.List(context.TODO(), notificationList, opts); err != nil {
 			return false, err
 		}
 
