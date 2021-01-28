@@ -267,12 +267,12 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 func (s *registrationServiceTestSuite) TestSignupOK() {
 
 
-	signupUser := func(token, email string, identity *authsupport.Identity) *v1alpha1.UserSignup {
+	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *v1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
 
 		// Wait for the UserSignup to be created
-		userSignup, err := s.hostAwait.WaitForUserSignup(identity.ID.String(),
+		userSignup, err := s.hostAwait.WaitForUserSignup(userSignupName,
 			wait.UntilUserSignupHasConditions(PendingApproval()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(s.T(), err)
@@ -311,7 +311,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Signup a new user
-		userSignup := signupUser(t, emailValue, identity)
+		userSignup := signupUser(t, emailValue, identity.ID.String(), identity)
 
 		// Deactivate the usersignup
 		userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
@@ -327,7 +327,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		s.assertGetSignupReturnsNotFound(t)
 
 		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
-		userSignup = signupUser(t, emailValue, identity)
+		userSignup = signupUser(t, emailValue, identity.ID.String(), identity)
 	})
 
 	s.Run("test User ID encodings", func() {
@@ -339,7 +339,15 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 			"abc:xyz",
 		}
 
-		for _, userID := range userIDs {
+		encodedUserIDs := []string {
+			"abcde-12345",
+			"c0177ca4-abcde-12345",
+			"ca3e1e0f-1234567",
+			"e3632025-0123456789abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
+			"a05a4053-abcxyz",
+		}
+
+		for i, userID := range userIDs {
 			identity := authsupport.NewIdentity()
 			emailValue := uuid.NewV4().String() + "@acme.com"
 			emailClaim := authsupport.WithEmailClaim(emailValue)
@@ -347,7 +355,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 			require.NoError(s.T(), err)
 
 			// Signup a new user
-			userSignup := signupUser(t, emailValue, identity)
+			userSignup := signupUser(t, emailValue, encodedUserIDs[i], identity)
 
 			require.Equal(s.T(), userID, userSignup.Spec.UserID)
 		}
