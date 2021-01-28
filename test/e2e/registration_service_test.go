@@ -265,15 +265,9 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 }
 
 func (s *registrationServiceTestSuite) TestSignupOK() {
-	// Get valid generated token for e2e tests. IAT claim is overridden
-	// to avoid token used before issued error.
-	identity := authsupport.NewIdentity()
-	emailValue := uuid.NewV4().String() + "@acme.com"
-	emailClaim := authsupport.WithEmailClaim(emailValue)
-	token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim)
-	require.NoError(s.T(), err)
 
-	signupUser := func() *v1alpha1.UserSignup {
+
+	signupUser := func(token, email string, identity *authsupport.Identity) *v1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
 
@@ -283,7 +277,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(s.T(), err)
 		emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
-		assert.Equal(s.T(), emailValue, emailAnnotation)
+		assert.Equal(s.T(), email, emailAnnotation)
 
 		// Call get signup endpoint with a valid token and make sure it's pending approval
 		s.assertGetSignupStatusPendingApproval(identity.Username, token)
@@ -308,8 +302,16 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	}
 
 	s.Run("test activation-deactivation workflow", func() {
+		// Get valid generated token for e2e tests. IAT claim is overridden
+		// to avoid token used before issued error.
+		identity := authsupport.NewIdentity()
+		emailValue := uuid.NewV4().String() + "@acme.com"
+		emailClaim := authsupport.WithEmailClaim(emailValue)
+		t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim)
+		require.NoError(s.T(), err)
+
 		// Signup a new user
-		userSignup := signupUser()
+		userSignup := signupUser(t, emailValue, identity)
 
 		// Deactivate the usersignup
 		userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
@@ -322,10 +324,10 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Now check that the reg-service treats the deactivated usersignup as nonexistent and returns 404
-		s.assertGetSignupReturnsNotFound(token)
+		s.assertGetSignupReturnsNotFound(t)
 
 		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
-		userSignup = signupUser()
+		userSignup = signupUser(t, emailValue, identity)
 	})
 
 	s.Run("test User ID encodings", func() {
@@ -339,13 +341,13 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		for _, userID := range userIDs {
 			identity := authsupport.NewIdentity()
-			emailValue = uuid.NewV4().String() + "@acme.com"
-			emailClaim = authsupport.WithEmailClaim(emailValue)
-			token, err = authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
+			emailValue := uuid.NewV4().String() + "@acme.com"
+			emailClaim := authsupport.WithEmailClaim(emailValue)
+			t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
 			require.NoError(s.T(), err)
 
 			// Signup a new user
-			userSignup := signupUser()
+			userSignup := signupUser(t, emailValue, identity)
 
 			require.Equal(s.T(), userID, userSignup.Spec.UserID)
 		}
