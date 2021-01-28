@@ -64,7 +64,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.Equal(t, userSignup.Spec.Company, identity.Username+"-Company-Name")
 
 	// 2. approve the UserSignup
-	userSignup.Spec.TargetCluster = "member-rajivdev-01-25-9xj2f"
+	userSignup.Spec.TargetCluster = targetCluster
 	userSignup.Spec.Approved = true
 	err = hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
