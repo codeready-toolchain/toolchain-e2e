@@ -228,7 +228,6 @@ func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
 		clusterResourceQuota("team", cpuLimit, "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
-		idlers("dev", "stage"),
 	}
 }
 
