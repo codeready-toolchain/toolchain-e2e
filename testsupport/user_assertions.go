@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, signups []toolchainv1alpha1.UserSignup) {
+func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, signups []toolchainv1alpha1.UserSignup, members ...*wait.MemberAwaitility) {
 	for _, signup := range signups {
-		VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, signup, "basic")
+		VerifyResourcesProvisionedForSignup(t, hostAwait, signup, "basic", members...)
 	}
 }
 
-func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, signup toolchainv1alpha1.UserSignup, tier string) {
+func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, signup toolchainv1alpha1.UserSignup, tier string, members ...*wait.MemberAwaitility) {
 	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
 	// Get the latest signup version
 	userSignup, err := hostAwait.WaitForUserSignup(signup.Name, wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
@@ -28,6 +28,8 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwait
 	// First, wait for the MasterUserRecord to exist, no matter what status
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
+
+	memberAwait := getMemberForVerification(t, mur, members)
 
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
@@ -93,4 +95,17 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 			},
 		},
 	}
+}
+
+func getMemberForVerification(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, members []*wait.MemberAwaitility) *wait.MemberAwaitility {
+	for _, member := range members {
+		for _, ua := range mur.Spec.UserAccounts {
+			if ua.TargetCluster == member.ClusterName {
+				return member
+			}
+		}
+	}
+
+	t.Errorf("Unable to find a matching cluster for the MasterUserRecord: +%v", mur)
+	return nil
 }

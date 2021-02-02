@@ -2,6 +2,7 @@ package testsupport
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	require.NoError(t, err)
 	hostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
-	// wait for member operator to be ready
+	// wait for member operators to be ready
 	memberAwait := getMemberAwaitility(t, f, hostAwait, memberNs)
 
 	memberAwait2 := getMemberAwaitility(t, f, hostAwait, memberNs2)
@@ -85,7 +86,10 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	_, err = memberAwait.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
-	t.Log("both operators are ready and in running state")
+	_, err = memberAwait2.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+
+	t.Log("all operators are ready and in running state")
 	return ctx, hostAwait, memberAwait, memberAwait2
 }
 
@@ -105,7 +109,8 @@ func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.H
 	})
 
 	require.NoError(t, err)
-	return wait.NewMemberAwaitility(t, memberClient, namespace, memberCluster.ClusterName)
+	clusterName := strings.Replace(memberCluster.Name, "e2e-", "member-", 1)
+	return wait.NewMemberAwaitility(t, memberClient, namespace, clusterName)
 }
 
 func newSchemeBuilder() runtime.SchemeBuilder {

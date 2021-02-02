@@ -55,7 +55,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	var changeTierRequestNames []string
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, testingtiers, "basic")
+	VerifyResourcesProvisionedForSignup(t, hostAwait, testingtiers, "basic", memberAwait)
 	for _, tierToCheck := range tiersToCheck {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -82,7 +82,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			require.NoError(t, err)
 			_, err := hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, testingtiers, tierToCheck)
+			VerifyResourcesProvisionedForSignup(t, hostAwait, testingtiers, tierToCheck, memberAwait)
 			changeTierRequestNames = append(changeTierRequestNames, changeTierRequest.Name)
 		})
 	}
@@ -288,5 +288,5 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 	legacySignup := CreateAndApproveSignup(t, hostAwait, "legacy", memberAwait.ClusterName)
 
 	// then
-	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, legacySignup, "basic")
+	VerifyResourcesProvisionedForSignup(t, hostAwait, legacySignup, "basic", memberAwait)
 }

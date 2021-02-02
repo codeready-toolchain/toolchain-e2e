@@ -20,7 +20,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 	hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
@@ -67,17 +67,23 @@ func TestE2EFlow(t *testing.T) {
 	johnSignup := CreateAndApproveSignup(t, hostAwait, johnsmithName, memberAwait.ClusterName)
 	extrajohnName := "extrajohn"
 	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName, memberAwait.ClusterName)
+	targetedJohnName := "targetedjohn"
+	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, memberAwait2.ClusterName)
 
-	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
-	VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+	VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "basic", memberAwait2)
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)
 
+	targetedJohnMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(targetedJohnName))
+	require.NoError(t, err)
+
 	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 7)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 7)
-		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 7)
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
+		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 8)
 	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -93,8 +99,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
 		})
 
 		t.Run("delete identity and wait until recreated", func(t *testing.T) {
@@ -108,8 +114,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
 		})
 
 		t.Run("delete user mapping and wait until recreated", func(t *testing.T) {
@@ -124,8 +130,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
 		})
 
 		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
@@ -140,8 +146,8 @@ func TestE2EFlow(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
 		})
 
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
@@ -165,8 +171,8 @@ func TestE2EFlow(t *testing.T) {
 				_, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref)
 				require.NoError(t, err)
 			}
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
 		})
 
 		t.Run("delete useraccount and expect recreation", func(t *testing.T) {
@@ -175,19 +181,20 @@ func TestE2EFlow(t *testing.T) {
 
 			// then the user account should be recreated
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnSignup, "basic")
+			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
 		})
 	})
 
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
-		VerifyMultipleSignups(t, hostAwait, memberAwait, signups)
+		VerifyMultipleSignups(t, hostAwait, signups, memberAwait)
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+7))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+8))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
@@ -230,19 +237,20 @@ func TestE2EFlow(t *testing.T) {
 		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
-		VerifyResourcesProvisionedForSignup(t, hostAwait, memberAwait, johnExtraSignup, "basic")
+		VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+6))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+7))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 
 	})
 
 	t.Run("verify metrics are correct at the end", func(t *testing.T) {
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 7)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 7)
-		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 6)
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
+		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 7)
 	})
 }

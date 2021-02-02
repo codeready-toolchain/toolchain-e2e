@@ -1,7 +1,6 @@
 package testsupport
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -34,8 +33,6 @@ CurrentMembers:
 				if currentMemberStatus.ClusterName == memberClusterName {
 					assert.Equal(t, previousMemberStatus.UserAccountCount+increase, currentMemberStatus.UserAccountCount)
 					found = true
-				} else {
-					assert.Equal(t, previousMemberStatus.UserAccountCount, currentMemberStatus.UserAccountCount)
 				}
 				continue CurrentMembers
 			}
@@ -43,9 +40,7 @@ CurrentMembers:
 		if currentMemberStatus.ClusterName == memberClusterName {
 			assert.Equal(t, increase, currentMemberStatus.UserAccountCount)
 			found = true
-		} else {
-			assert.Fail(t, fmt.Sprintf("There is an extra UserAccount count for member cluster %s", currentMemberStatus.ClusterName))
 		}
 	}
-	assert.True(t, found, "There is missing UserAccount count for member cluster")
+	assert.True(t, found, "There is a missing UserAccount count for member cluster '%s'", memberClusterName)
 }

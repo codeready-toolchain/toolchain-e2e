@@ -16,9 +16,10 @@ import (
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	ctx         *framework.Context
-	hostAwait   *wait.HostAwaitility
-	memberAwait *wait.MemberAwaitility
+	ctx          *framework.Context
+	hostAwait    *wait.HostAwaitility
+	memberAwait  *wait.MemberAwaitility
+	memberAwait2 *wait.MemberAwaitility
 }
 
 // createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
@@ -34,8 +35,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, setTargetCluster, conditions...)
 
 	// Confirm the MUR was created and ready
-
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait)
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 

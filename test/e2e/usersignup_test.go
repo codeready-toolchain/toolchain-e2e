@@ -26,7 +26,7 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, s.memberAwait2 = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
@@ -59,7 +59,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
 				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 		})
 	})
 
@@ -89,7 +89,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
 				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+
+			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 			s.userIsNotProvisioned(t, userSignup2)
 
 			t.Run("reset the max number and expect the second user will be provisioned as well", func(t *testing.T) {
@@ -101,7 +102,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
 					wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(s.T(), err)
-				VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+
+				VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 			})
 		})
 	})
@@ -161,7 +163,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
 				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 		})
 	})
 
@@ -184,7 +186,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
 				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 		})
 	})
 
@@ -223,7 +225,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
