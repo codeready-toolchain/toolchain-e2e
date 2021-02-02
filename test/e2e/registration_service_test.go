@@ -284,7 +284,8 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Attempt to create same usersignup by calling post signup with same token should return an error
 		mp := invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusInternalServerError)
-		assert.Equal(s.T(), fmt.Sprintf("unable to create UserSignup [id: %s; username: %s] because there is already an active UserSignup with such ID", identity.ID.String(), identity.Username), mp["message"])
+		assert.Equal(s.T(), fmt.Sprintf("unable to create UserSignup [id: %s; username: %s] because there is already an active UserSignup with such ID",
+			userSignupName, identity.Username), mp["message"])
 		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Approve usersignup.
