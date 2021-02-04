@@ -112,7 +112,7 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota(cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuota("basic", cpuLimit, "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 		idlers("code", "dev", "stage"),
 	}
@@ -168,7 +168,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota(cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuota("advanced", cpuLimit, "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -226,9 +226,8 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota(cpuLimit, "2000m", "15Gi"),
+		clusterResourceQuota("team", cpuLimit, "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
-		idlers("dev", "stage"),
 	}
 }
 
@@ -451,7 +450,7 @@ func idlers(namespaceTypes ...string) clusterObjectsCheck {
 	}
 }
 
-func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuota(tierName, cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
 		require.NoError(t, err)
@@ -472,41 +471,44 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
 
-		hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
-		require.NoError(t, err)
-
 		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
 		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
-		hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
-		hard[count("deployments.apps")], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
-		hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
-		hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
-		hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
-		hard[count("jobs.batch")], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
-		hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
-		require.NoError(t, err)
 
-		hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("10")
-		require.NoError(t, err)
-		hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
-		require.NoError(t, err)
-		hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
-		require.NoError(t, err)
-		hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
-		require.NoError(t, err)
+		if tierName != "basic" {
+			hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
+			require.NoError(t, err)
 
-		hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
-		require.NoError(t, err)
-		hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
-		require.NoError(t, err)
+			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("deployments.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("jobs.batch")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+
+			hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+
+			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
+			require.NoError(t, err)
+		}
 
 		expetedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
 			Selector: quotav1.ClusterResourceQuotaSelector{

@@ -246,7 +246,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignups with a forbidden prefix
-	for _, prefix := range []string{"kube", "openshift", "default", "redhat"} {
+	for _, prefix := range []string{"kube", "openshift", "default", "redhat", "sandbox"} {
 		// prefix with hyphen
 		userSignup, _ = s.createAndCheckUserSignup(true, prefix+"-paul", "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
 		require.Equal(s.T(), fmt.Sprintf("crt-%s-paul", prefix), userSignup.Status.CompliantUsername)
