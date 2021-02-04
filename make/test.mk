@@ -110,10 +110,10 @@ endif
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
-	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
+	https://raw.githubusercontent.com/rajivnathan/toolchain-common/multiMember/scripts/add-cluster.sh -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
+	https://raw.githubusercontent.com/rajivnathan/toolchain-common/multiMember/scripts/add-cluster.sh -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
+	https://raw.githubusercontent.com/rajivnathan/toolchain-common/multiMember/scripts/add-cluster.sh -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
+	https://raw.githubusercontent.com/rajivnathan/toolchain-common/multiMember/scripts/add-cluster.sh -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
 
 ###########################################################
 #
@@ -253,8 +253,8 @@ deploy-member:
 
 .PHONY: e2e-service-account
 e2e-service-account:
-	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	/Users/rajiv/go/src/github.com/codeready-toolchain/toolchain-common/scripts/add-cluster.sh -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
+	https://raw.githubusercontent.com/rajivnathan/toolchain-common/multiMember/scripts/add-cluster.sh -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	https://raw.githubusercontent.com/rajivnathan/toolchain-common/multiMember/scripts/add-cluster.sh -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -ms
 
 .PHONY: deploy-host
 deploy-host: build-registration
