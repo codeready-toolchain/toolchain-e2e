@@ -40,7 +40,7 @@ func TestPerformance(t *testing.T) {
 
 	t.Run(fmt.Sprintf("provision %d users", config.GetUserCount()), func(t *testing.T) {
 		// given
-		createSignupsByBatch(t, ctx, hostAwait, memberAwait, config, logger)
+		createSignupsByBatch(t, ctx, hostAwait, config, logger, memberAwait)
 
 		t.Run("restart host operator pod", func(t *testing.T) {
 
@@ -130,16 +130,11 @@ func initLogger() (logr.Logger, *os.File, error) {
 // createSignupsByBatch creates signups by batch (see `config.GetUserBatchSize()`) and monitors the CPU and memory while the
 // provisioning is in progress. Logs the max CPU and memory during captured during each batch by polling the `/metrics`
 // endpoint in a separate go routine.
-func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, config Configuration, logger logr.Logger) {
+func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, config Configuration, logger logr.Logger, memberAwait *wait.MemberAwaitility) {
 
 	require.Equal(t, 0, config.GetUserCount()%config.GetUserBatchSize(), "number of accounts must be a multiple of %d", config.GetUserBatchSize())
 
 	t.Logf("provisionning %d accounts by batch of '%d", config.GetUserCount(), config.GetUserBatchSize())
-
-	hostOperatorPod, err := hostAwait.GetHostOperatorPod()
-	require.NoError(t, err)
-	memberOperatorPod, err := memberAwait.GetMemberOperatorPod()
-	require.NoError(t, err)
 
 	for b := 0; b < config.GetUserCount()/config.GetUserBatchSize(); b++ { // provisioning users by batch of `config.GetUserBatchSize()` (eg: 100)
 
@@ -150,8 +145,9 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 			n := b*config.GetUserBatchSize() + i
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
 			// Create an approved UserSignup resource
-			userSignup := NewUserSignup(t, hostAwait, memberAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n), false)
+			userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
 			userSignup.Spec.Approved = true
+			userSignup.Spec.TargetCluster = memberAwait.ClusterName
 			err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
 			hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 			require.NoError(t, err)
@@ -208,16 +204,23 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 		end := time.Now()
 		t.Logf("sleeping for %ds...", int(config.GetUserBatchPause().Seconds()))
 		time.Sleep(config.GetUserBatchPause())
+
+		hostOperatorPod, err := hostAwait.GetHostOperatorPod()
+		require.NoError(t, err)
 		hostOperatorPodMemory, err := hostAwait.GetMemoryUsage(hostOperatorPod.Name, hostAwait.Namespace)
+		require.NoError(t, err)
+
+		memberOperatorPod, err := memberAwait.GetMemberOperatorPod()
 		require.NoError(t, err)
 		memberOperatorPodMemory, err := memberAwait.GetMemoryUsage(memberOperatorPod.Name, memberAwait.Namespace)
 		require.NoError(t, err)
+
 		logger.Info("done provisioning resources",
 			"user_count", config.GetUserBatchSize(),
 			"duration_ms", end.Sub(start).Milliseconds(),
 			"host_operator_pod_memory_usage_kb", hostOperatorPodMemory,
 			"member_operator_pod_memory_usage_kb", memberOperatorPodMemory)
 	}
-	t.Logf("done provisionning the %d requested accounts", config.GetUserCount())
+	t.Logf("done provisioning the %d requested accounts", config.GetUserCount())
 
 }

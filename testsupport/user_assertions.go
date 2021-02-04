@@ -29,7 +29,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwait
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 
-	memberAwait := getMemberForVerification(t, mur, members)
+	memberAwait := getMurTargetMember(t, mur, members)
 
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
@@ -97,7 +97,7 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 	}
 }
 
-func getMemberForVerification(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, members []*wait.MemberAwaitility) *wait.MemberAwaitility {
+func getMurTargetMember(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, members []*wait.MemberAwaitility) *wait.MemberAwaitility {
 	for _, member := range members {
 		for _, ua := range mur.Spec.UserAccounts {
 			if ua.TargetCluster == member.ClusterName {
@@ -106,6 +106,6 @@ func getMemberForVerification(t *testing.T, mur *toolchainv1alpha1.MasterUserRec
 		}
 	}
 
-	t.Errorf("Unable to find a matching cluster for the MasterUserRecord: +%v", mur)
+	t.Errorf("Unable to find a target member cluster for the MasterUserRecord: +%v", mur)
 	return nil
 }

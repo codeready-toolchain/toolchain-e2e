@@ -236,11 +236,12 @@ ifneq ($(IS_OS_3),)
 endif
 	$(MAKE) build-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME}
 	
-	$(MAKE) deploy-member MEMBER_NS_TO_DEPLOY=$(MEMBER_NS)
+	$(MAKE) deploy-member MEMBER_REPO_PATH=${MEMBER_REPO_PATH} MEMBER_NS_TO_DEPLOY=$(MEMBER_NS)
 	
+	@echo "Deploying second member without a deploy webhook since it can cause problems with the tests"
 	$(eval TMP_ENV_YAML := /tmp/${ENVIRONMENT}_${DATE_SUFFIX}.yaml)
 	sed 's|member-operator:|member-operator:\n  deploy-webhook: 'false'|' ${MEMBER_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > ${TMP_ENV_YAML}
-	$(MAKE) deploy-member MEMBER_NS_TO_DEPLOY=$(MEMBER_NS_2) ENV_YAML=${TMP_ENV_YAML}
+	$(MAKE) deploy-member MEMBER_REPO_PATH=${MEMBER_REPO_PATH} MEMBER_NS_TO_DEPLOY=$(MEMBER_NS_2) ENV_YAML=${TMP_ENV_YAML}
 
 .PHONY: deploy-member
 deploy-member:

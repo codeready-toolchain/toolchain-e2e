@@ -48,7 +48,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", true, ApprovedByAdmin()...)
+		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		t.Run("verify metrics are correct after creating usersignup", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
@@ -126,7 +126,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", true, ApprovedByAdmin()...)
+		userSignup, mur := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the basic tier that has deactivation disabled
 		basicDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basicdeactivationdisabled")
@@ -179,8 +179,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", true, ApprovedByAdmin()...)
-		deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", true, ApprovedByAdmin()...)
+		userSignup, mur := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the basic tier that has deactivation enabled
 		basicTier, err := s.hostAwait.WaitForNSTemplateTier("basic")
@@ -241,7 +241,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", true, ApprovedAutomatically()...)
+		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", s.memberAwait, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -276,7 +276,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.createAndCheckBannedUser(email)
 
 		// Check that no MUR created
-		userSignup := s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, true, Banned()...)
+		userSignup := s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, s.memberAwait, Banned()...)
 		assert.Equal(t, v1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		mur, err := s.hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
 		require.NoError(s.T(), err)
@@ -333,7 +333,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", true, ApprovedAutomatically()...)
+		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", s.memberAwait, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		bannedUser := s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])

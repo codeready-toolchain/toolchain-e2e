@@ -29,10 +29,10 @@ type baseUserIntegrationTest struct {
 // setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
 //
 // The method then waits until the UserSignup contains the given set of conditions and the corresponding MUR is created
-func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, setTargetCluster bool,
+func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
 	conditions ...v1alpha1.Condition) (*v1alpha1.UserSignup, *v1alpha1.MasterUserRecord) {
 
-	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, setTargetCluster, conditions...)
+	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, targetCluster, conditions...)
 
 	// Confirm the MUR was created and ready
 	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait)
@@ -49,13 +49,16 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 // setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
 //
 // The method then waits until the UserSignup contains the given set of conditions
-func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, setTargetCluster bool,
+func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
 	WaitUntilBasicNSTemplateTierIsUpdated(s.T(), s.hostAwait)
 	// Create a new UserSignup with the given approved flag
-	userSignup := NewUserSignup(s.T(), s.hostAwait, s.memberAwait, username, email, setTargetCluster)
+	userSignup := NewUserSignup(s.T(), s.hostAwait, username, email)
 	userSignup.Spec.Approved = specApproved
+	if targetCluster != nil {
+		userSignup.Spec.TargetCluster = targetCluster.ClusterName
+	}
 	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
