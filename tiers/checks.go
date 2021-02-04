@@ -471,7 +471,7 @@ func clusterResourceQuota(tierName, cpuLimit, cpuRequest, memoryLimit string) cl
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
 
-		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("30")
+		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("50")
 		require.NoError(t, err)
 		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
