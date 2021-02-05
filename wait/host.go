@@ -369,12 +369,12 @@ func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("MasterUserAccount is checked as deleted '%s'", name)
+				a.T.Logf("MasterUserRecord is checked as deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until MasterUserAccount is deleted '%s'", name)
+		a.T.Logf("waiting until MasterUserRecord is deleted '%s'", name)
 		return false, nil
 	})
 }
@@ -385,7 +385,7 @@ func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("MasterUserAccount is checked as not present '%s'", name)
+				a.T.Logf("MasterUserRecord is checked as not present '%s'", name)
 				return false, nil
 			}
 			return false, err
