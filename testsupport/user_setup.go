@@ -116,9 +116,11 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wa
 		targetCluster = memberCluster.Name
 	}
 
+	name := uuid.NewV4().String()
+
 	return &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      uuid.NewV4().String(),
+			Name:      name,
 			Namespace: hostAwait.Namespace,
 			Annotations: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
@@ -129,6 +131,7 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wa
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username:      username,
+			UserID: 	   name,
 			TargetCluster: targetCluster,
 		},
 	}
