@@ -44,80 +44,40 @@ func (s *userManagementTestSuite) TearDownTest() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
-	s.T().Run("deactivate a user", func(t *testing.T) {
+	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
+		// User on member cluster 1
 		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
+		// User on member cluster 2
+		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+
 		t.Run("verify metrics are correct after creating usersignup", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
-			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)
 		})
 
-		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-			us.Spec.Deactivated = true
-		})
-		require.NoError(s.T(), err)
-		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
-
-		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
-		require.NoError(s.T(), err)
-
-		// "deactivated"
-		notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
-		require.NoError(t, err)
-		require.NotEmpty(t, notifications)
-		require.Equal(t, 1, len(notifications))
-		notification := notifications[0]
-		assert.Contains(t, notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
-		assert.Equal(t, userSignup.Namespace, notification.Namespace)
-		assert.Equal(t, "userdeactivated", notification.Spec.Template)
-		assert.Equal(t, userSignup.Name, notification.Spec.UserID)
-
-		err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated)
-		require.NoError(t, err)
-
-		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(Deactivated()...),
-			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
-		require.NoError(s.T(), err)
-		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
+		s.deactivateAndCheckUser(userSignup, mur)
+		s.deactivateAndCheckUser(userSignupMember2, murMember2)
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 0)            // one less because of deactivated user
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // one more because of deactivated user
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 0)            // two less because of deactivated users
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // two more because of deactivated users
 		})
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-			err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
-				Namespace: userSignup.Namespace,
-				Name:      userSignup.Name,
-			}, userSignup)
-			require.NoError(s.T(), err)
-
-			userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-				us.Spec.Deactivated = false
-			})
-			require.NoError(s.T(), err)
-			s.T().Logf("user signup '%s' reactivated", userSignup.Name)
-
-			_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
-			require.NoError(s.T(), err)
-
-			userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
-				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
+			s.reactivateAndCheckUser(userSignup, mur)
+			s.reactivateAndCheckUser(userSignupMember2, murMember2)
 
 			t.Run("verify metrics are correct after reactivating the user", func(t *testing.T) {
-				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)            // no change
-				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)    // one more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 1)            // one more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // no change
+				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)            // no change
+				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 4)    // two more because of reactivated user
+				metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)            // two more because of reactivated user
+				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // no change
 			})
 		})
 	})

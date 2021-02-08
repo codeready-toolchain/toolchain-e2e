@@ -231,10 +231,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 			UntilUserAccountHasConditions(Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
 			UntilUserAccountMatchesMur(hostAwait))
-		if err != nil {
-			t.Logf("Failing UserSignup: %+v", usersignup)
-		}
-		require.NoError(t, err)
+		require.NoError(t, err, "Failing UserSignup: %+v", usersignup)
 		_, err = hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			UntilMasterUserRecordHasNotSyncIndex(syncIndex),

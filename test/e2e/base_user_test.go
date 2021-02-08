@@ -9,9 +9,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type baseUserIntegrationTest struct {
@@ -26,7 +28,7 @@ type baseUserIntegrationTest struct {
 // specApproved defines if the UserSignup should be manually approved
 // username defines the required username set in the spec
 // email is set in "user-email" annotation
-// setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
+// targetCluster ensures the UserSignup is created with Spec.TargetCluster set to member cluster associated with the provided member awaitility, a 'nil' value will skip setting Spec.TargetCluster
 //
 // The method then waits until the UserSignup contains the given set of conditions and the corresponding MUR is created
 func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
@@ -46,7 +48,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 // specApproved defines if the UserSignup should be manually approved
 // username defines the required username set in the spec
 // email is set in "user-email" annotation
-// setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
+// targetCluster ensures the UserSignup is created with Spec.TargetCluster set to member cluster associated with the provided member awaitility, a 'nil' value will skip setting Spec.TargetCluster
 //
 // The method then waits until the UserSignup contains the given set of conditions
 func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
@@ -93,4 +95,58 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 			Email: email,
 		},
 	}
+}
+
+func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.UserSignup, mur *v1alpha1.MasterUserRecord) {
+	userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		us.Spec.Deactivated = true
+	})
+	require.NoError(s.T(), err)
+	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
+
+	err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+	require.NoError(s.T(), err)
+
+	// "deactivated"
+	notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), notifications)
+	require.Equal(s.T(), 1, len(notifications))
+	notification := notifications[0]
+	assert.Contains(s.T(), notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
+	assert.Equal(s.T(), userSignup.Namespace, notification.Namespace)
+	assert.Equal(s.T(), "userdeactivated", notification.Spec.Template)
+	assert.Equal(s.T(), userSignup.Name, notification.Spec.UserID)
+
+	err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated)
+	require.NoError(s.T(), err)
+
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(Deactivated()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
+	require.NoError(s.T(), err)
+	require.True(s.T(), userSignup.Spec.Deactivated, "usersignup should be deactivated")
+}
+
+func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.UserSignup, mur *v1alpha1.MasterUserRecord) {
+	err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: userSignup.Namespace,
+		Name:      userSignup.Name,
+	}, userSignup)
+	require.NoError(s.T(), err)
+
+	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		us.Spec.Deactivated = false
+	})
+	require.NoError(s.T(), err)
+	s.T().Logf("user signup '%s' reactivated", userSignup.Name)
+
+	_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+	require.NoError(s.T(), err)
+
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
+	require.NoError(s.T(), err)
+	require.False(s.T(), userSignup.Spec.Deactivated, "usersignup should not be deactivated")
 }
