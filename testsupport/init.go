@@ -2,7 +2,6 @@ package testsupport
 
 import (
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -94,9 +93,9 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 }
 
 func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
-	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", namespace, wait.ReadyToolchainCluster)
+	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
-	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberCluster, 3*time.Second)
+	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberClusterE2e, 3*time.Second)
 	require.NoError(t, err)
 
 	kubeClient, err := kubernetes.NewForConfig(memberConfig)
@@ -109,7 +108,10 @@ func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.H
 	})
 
 	require.NoError(t, err)
-	clusterName := strings.Replace(memberCluster.Name, "e2e-", "member-", 1)
+
+	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("member", namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+	clusterName := memberCluster.Name
 	return wait.NewMemberAwaitility(t, memberClient, namespace, clusterName)
 }
 
