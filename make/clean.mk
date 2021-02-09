@@ -12,8 +12,8 @@ clean:
 clean-e2e-resources:
 	$(Q)-oc delete usersignups --all --all-namespaces
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/provider=codeready-toolchain
-	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
-	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
+	$(Q)-oc get projects --output=name | grep -E "(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|toolchain\-e2e\-[0-9]+" | xargs oc delete
+	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*" | xargs oc delete -n openshift-marketplace
 	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-service-account | xargs oc delete
 	$(Q)-oc delete PriorityClass -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
 	$(Q)-oc delete MutatingWebhookConfiguration -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
