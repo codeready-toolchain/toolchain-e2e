@@ -52,7 +52,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// User on member cluster 2
-		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@redhat.com", s.memberAwait2, ApprovedByAdmin()...)
 
 		t.Run("verify metrics are correct after creating usersignup", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
