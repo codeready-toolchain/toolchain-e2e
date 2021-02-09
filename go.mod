@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20201020192959-6783bbcae79d
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20200930070243-e124e69e7a0d
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20210209125948-7a9e8c9e4ee6
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/onsi/ginkgo v1.14.1 // indirect
