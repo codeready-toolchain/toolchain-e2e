@@ -111,7 +111,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.Us
 	notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), notifications)
-	require.Equal(s.T(), 1, len(notifications))
+	require.Len(s.T(), notifications, 1)
 	notification := notifications[0]
 	assert.Contains(s.T(), notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
 	assert.Equal(s.T(), userSignup.Namespace, notification.Namespace)
