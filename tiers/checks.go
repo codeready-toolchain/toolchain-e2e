@@ -26,6 +26,7 @@ const (
 	basicdeactivationdisabled = "basicdeactivationdisabled"
 	advanced                  = "advanced"
 	team                      = "team"
+	test                      = "test"
 
 	// common CPU limits
 	defaultCpuLimit = "500m"
@@ -54,6 +55,9 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case team:
 		return &teamTierChecks{tierName: team}, nil
+
+	case test:
+		return &testTierChecks{tierName: test}, nil
 
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier)
@@ -125,7 +129,7 @@ func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck 
 	case "dev":
 		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	}
 }
 
@@ -186,8 +190,32 @@ func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsChe
 	case "dev":
 		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	}
+}
+
+// testTierChecks checks only that the "test" tier exists and has correct template references.
+// It does not check the test tier resources
+type testTierChecks struct {
+	tierName string
+}
+
+func (a *testTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{}
+}
+
+func (a *testTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{}
+}
+
+func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "code", "stage")
+	return templateRefs
+}
+
+func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return []clusterObjectsCheck{}
 }
 
 type teamTierChecks struct {
