@@ -256,9 +256,9 @@ func TestTierTemplates(t *testing.T) {
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
-	// verify that we have 15 tier templates (basic: 4, advanced: 4, basicdeactivationdisabled 4, team 3)
+	// verify that we have 19 tier templates (basic: 4, advanced: 4, basicdeactivationdisabled 4, team 3, test 4)
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, 15)
+	assert.Len(t, allTiers.Items, 19)
 }
 
 func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
