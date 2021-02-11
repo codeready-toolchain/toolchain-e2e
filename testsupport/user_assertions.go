@@ -106,6 +106,6 @@ func getMurTargetMember(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, m
 		}
 	}
 
-	t.Errorf("Unable to find a target member cluster for the MasterUserRecord: +%v", mur)
+	require.FailNowf(t, "Unable to find a target member cluster", "MasterUserRecord: %+v", mur)
 	return nil
 }
