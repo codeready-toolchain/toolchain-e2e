@@ -129,7 +129,7 @@ func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck 
 	case "dev":
 		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	}
 }
 
@@ -190,7 +190,7 @@ func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsChe
 	case "dev":
 		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	}
 }
 
