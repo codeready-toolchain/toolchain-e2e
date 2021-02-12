@@ -29,7 +29,7 @@ import (
 // that represents the current operator that is the target of the e2e test it retrieves namespace names.
 // Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *wait.HostAwaitility, *wait.MemberAwaitility) {
+func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *wait.HostAwaitility, *wait.MemberAwaitility, *wait.MemberAwaitility) {
 	schemeBuilder := newSchemeBuilder()
 	err := framework.AddToFrameworkScheme(schemeBuilder.AddToScheme, obj)
 	require.NoError(t, err, "failed to add custom resource to framework scheme")
@@ -41,6 +41,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	t.Log("Initialized cluster resources")
 
 	memberNs := os.Getenv(wait.MemberNsVar)
+	memberNs2 := os.Getenv(wait.MemberNsVar2)
 	hostNs := os.Getenv(wait.HostNsVar)
 	registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
 
@@ -71,22 +72,10 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	require.NoError(t, err)
 	hostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
-	// wait for member operator to be ready
-	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", memberNs, wait.ReadyToolchainCluster)
-	require.NoError(t, err)
-	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberCluster, 3*time.Second)
-	require.NoError(t, err)
+	// wait for member operators to be ready
+	memberAwait := getMemberAwaitility(t, f, hostAwait, memberNs)
 
-	kubeClient, err := kubernetes.NewForConfig(memberConfig)
-	require.NoError(t, err)
-	err = sdkutil.WaitForDeployment(t, kubeClient, memberNs, "member-operator", 1, wait.DefaultOperatorRetryInterval, wait.DefaultOperatorTimeout)
-	require.NoError(t, err, "failed while waiting for member operator deployment")
-
-	memberClient, err := client.New(memberConfig, client.Options{
-		Scheme: f.Scheme,
-	})
-	require.NoError(t, err)
-	memberAwait := wait.NewMemberAwaitility(t, memberClient, memberNs)
+	memberAwait2 := getMemberAwaitility(t, f, hostAwait, memberNs2)
 
 	// setup member metrics route for metrics verification in tests
 	memberMetricsRoute, err := memberAwait.SetupRouteForService("member-operator-metrics", "/metrics")
@@ -96,8 +85,34 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	_, err = memberAwait.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
-	t.Log("both operators are ready and in running state")
-	return ctx, hostAwait, memberAwait
+	_, err = memberAwait2.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+
+	t.Log("all operators are ready and in running state")
+	return ctx, hostAwait, memberAwait, memberAwait2
+}
+
+func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
+	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberClusterE2e, 3*time.Second)
+	require.NoError(t, err)
+
+	kubeClient, err := kubernetes.NewForConfig(memberConfig)
+	require.NoError(t, err)
+	err = sdkutil.WaitForDeployment(t, kubeClient, namespace, "member-operator", 1, wait.DefaultOperatorRetryInterval, wait.DefaultOperatorTimeout)
+	require.NoError(t, err, "failed while waiting for member operator deployment")
+
+	memberClient, err := client.New(memberConfig, client.Options{
+		Scheme: f.Scheme,
+	})
+
+	require.NoError(t, err)
+
+	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("member", namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+	clusterName := memberCluster.Name
+	return wait.NewMemberAwaitility(t, memberClient, namespace, clusterName)
 }
 
 func newSchemeBuilder() runtime.SchemeBuilder {

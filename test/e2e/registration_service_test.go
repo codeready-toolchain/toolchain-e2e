@@ -43,7 +43,7 @@ type registrationServiceTestSuite struct {
 
 func (s *registrationServiceTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
 	s.namespace = s.hostAwait.RegistrationServiceNs
 	s.route = s.hostAwait.RegistrationServiceURL
 }
@@ -290,11 +290,12 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Approve usersignup.
 		userSignup.Spec.Approved = true
+		userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 		err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
 
 		// Wait the Master User Record to be provisioned
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, *userSignup, "basic")
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait)
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		s.assertGetSignupStatusProvisioned(identity.Username, token)

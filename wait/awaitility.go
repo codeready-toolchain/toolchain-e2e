@@ -31,6 +31,7 @@ const (
 	DefaultRetryInterval             = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
 	DefaultTimeout                   = time.Second * 60
 	MemberNsVar                      = "MEMBER_NS"
+	MemberNsVar2                     = "MEMBER_NS_2"
 	HostNsVar                        = "HOST_NS"
 	RegistrationServiceVar           = "REGISTRATION_SERVICE_NS"
 	ToolchainClusterConditionTimeout = 180 * time.Second
@@ -39,6 +40,7 @@ const (
 type Awaitility struct {
 	T             *testing.T
 	Client        client.Client
+	ClusterName   string
 	Namespace     string
 	Type          cluster.Type
 	RetryInterval time.Duration
