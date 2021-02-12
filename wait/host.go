@@ -268,8 +268,8 @@ func UntilUserSignupHasStateLabel(expLabelValue string) UserSignupWaitCriterion 
 	}
 }
 
-// WaitForUserSignupsBeingDeleted waits for all UserSignup deletions to be completed
-func (a *HostAwaitility) WaitForUserSignupsBeingDeleted(initialDelay time.Duration) error {
+// WaitForTestResourcesCleanup waits for all UserSignup and MasterUserRecord deletions to complete
+func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	time.Sleep(initialDelay)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		usList := &toolchainv1alpha1.UserSignupList{}
@@ -278,10 +278,22 @@ func (a *HostAwaitility) WaitForUserSignupsBeingDeleted(initialDelay time.Durati
 		}
 		for _, us := range usList.Items {
 			if us.DeletionTimestamp != nil {
-				a.T.Logf("a UserSignup is being deleted: %s", us.Name)
+				a.T.Logf("UserSignup is being deleted: %s", us.Name)
 				return false, nil
 			}
-			a.T.Logf("found UserSignup is not being deleted: %+v", us)
+			a.T.Logf("UserSignup is not being deleted: %+v", us)
+		}
+
+		murList := &toolchainv1alpha1.MasterUserRecordList{}
+		if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, mur := range murList.Items {
+			if mur.DeletionTimestamp != nil {
+				a.T.Logf("MasterUserRecord is being deleted: %s", mur.Name)
+				return false, nil
+			}
+			a.T.Logf("MasterUserRecord is not being deleted: %+v", mur)
 		}
 		return true, nil
 	})
@@ -357,12 +369,12 @@ func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("MasterUserAccount is checked as deleted '%s'", name)
+				a.T.Logf("MasterUserRecord is checked as deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until MasterUserAccount is deleted '%s'", name)
+		a.T.Logf("waiting until MasterUserRecord is deleted '%s'", name)
 		return false, nil
 	})
 }
@@ -373,7 +385,7 @@ func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("MasterUserAccount is checked as not present '%s'", name)
+				a.T.Logf("MasterUserRecord is checked as not present '%s'", name)
 				return false, nil
 			}
 			return false, err
@@ -572,51 +584,63 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 }
 
 // NotificationWaitCriterion checks if a Notification meets the given condition
-type NotificationWaitCriterion func(a *HostAwaitility, mur *toolchainv1alpha1.Notification) bool
+type NotificationWaitCriterion func(a *HostAwaitility, mur toolchainv1alpha1.Notification) bool
 
-// WaitForNotification waits until there is a Notification available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForNotification(name string, criteria ...NotificationWaitCriterion) (*toolchainv1alpha1.Notification, error) {
-	var notification *toolchainv1alpha1.Notification
+// WaitForNotifications waits until there is an expected number of Notifications available for the provided user and with the notification type and which match the conditions (if provided).
+func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
+	var notifications []toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of notification '%s'", name)
-				return false, nil
-			}
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
+		opts := client.MatchingLabels(labels)
+		notificationList := &toolchainv1alpha1.NotificationList{}
+		if err := a.Client.List(context.TODO(), notificationList, opts); err != nil {
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
+
+		actualNotificationCount := len(notificationList.Items)
+		if numberOfNotifications != actualNotificationCount {
+			a.T.Logf("expected '%d' notifications, but found '%d' notifications", numberOfNotifications, actualNotificationCount)
+			return false, nil
+		}
+
+		for _, n := range notificationList.Items {
+			for _, match := range criteria {
+				if !match(a, n) {
+					return false, nil
+				}
 			}
 		}
-		a.T.Logf("found notification '%s'", name)
-		notification = obj
+		notifications = notificationList.Items
 		return true, nil
 	})
-	return notification, err
+	return notifications, err
 }
 
-// WaitUntilNotificationDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationDeleted(name string) error {
+// WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationType string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		notification := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, notification); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("Notification has been deleted '%s'", name)
-				return true, nil
-			}
+		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
+		opts := client.MatchingLabels(labels)
+		notificationList := &toolchainv1alpha1.NotificationList{}
+		if err := a.Client.List(context.TODO(), notificationList, opts); err != nil {
 			return false, err
 		}
-		a.T.Logf("waiting until Notification is deleted '%s'", name)
-		return false, nil
+
+		for _, notification := range notificationList.Items {
+			a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
+		}
+		if len(notificationList.Items) > 0 {
+			return false, nil
+		}
+
+		a.T.Logf("Notification has been deleted'%s'", username)
+		return true, nil
 	})
 }
 
 // UntilNotificationHasConditions checks if Notification status has the given set of conditions
 func UntilNotificationHasConditions(conditions ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
-	return func(a *HostAwaitility, notification *toolchainv1alpha1.Notification) bool {
+	return func(a *HostAwaitility, notification toolchainv1alpha1.Notification) bool {
 		if test.ConditionsMatch(notification.Status.Conditions, conditions...) {
 			a.T.Logf("status conditions match in Notification '%s`", notification.Name)
 			return true

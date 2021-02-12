@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -64,7 +65,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 	s.T().Run("set low max number of users and expect that user won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
-		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReady()))
+		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
 		require.NoError(t, err)
 		initialMurCount := toolchainStatus.Status.HostOperator.MasterUserRecordCount
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(initialMurCount))
@@ -242,9 +243,20 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", true, ApprovedByAdmin()...)
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
 
-	// Create another UserSignup with a forbidden prefix
-	userSignup, _ = s.createAndCheckUserSignup(true, "openshift-paul", "paul@hotel.com", true, ApprovedByAdmin()...)
-	require.Equal(s.T(), "crt-openshift-paul", userSignup.Status.CompliantUsername)
+	// Create another UserSignups with a forbidden prefix
+	for _, prefix := range []string{"kube", "openshift", "default", "redhat", "sandbox"} {
+		// prefix with hyphen
+		userSignup, _ = s.createAndCheckUserSignup(true, prefix+"-paul", "paul@hotel.com", true, ApprovedByAdmin()...)
+		require.Equal(s.T(), fmt.Sprintf("crt-%s-paul", prefix), userSignup.Status.CompliantUsername)
+
+		// prefix without delimiter
+		userSignup, _ = s.createAndCheckUserSignup(true, prefix+"paul", "paul@hotel.com", true, ApprovedByAdmin()...)
+		require.Equal(s.T(), fmt.Sprintf("crt-%spaul", prefix), userSignup.Status.CompliantUsername)
+
+		// prefix as a name
+		userSignup, _ = s.createAndCheckUserSignup(true, prefix, "paul@hotel.com", true, ApprovedByAdmin()...)
+		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
+	}
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {

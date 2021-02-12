@@ -66,15 +66,18 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 		require.NoError(s.T(), err)
 
-		notification, err := s.hostAwait.WaitForNotification(userSignup.Status.CompliantUsername+"-deactivated", wait.UntilNotificationHasConditions(Sent()))
+		// "deactivated"
+		notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
 		require.NoError(t, err)
-		require.NotNil(t, notification)
-		assert.Equal(t, userSignup.Status.CompliantUsername+"-deactivated", notification.Name)
+		require.NotEmpty(t, notifications)
+		require.Equal(t, 1, len(notifications))
+		notification := notifications[0]
+		assert.Contains(t, notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
 		assert.Equal(t, userSignup.Namespace, notification.Namespace)
 		assert.Equal(t, "userdeactivated", notification.Spec.Template)
 		assert.Equal(t, userSignup.Name, notification.Spec.UserID)
 
-		err = s.hostAwait.WaitUntilNotificationDeleted(userSignup.Status.CompliantUsername + "-deactivated")
+		err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated)
 		require.NoError(t, err)
 
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,

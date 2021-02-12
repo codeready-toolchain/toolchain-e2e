@@ -182,10 +182,25 @@ func Sent() toolchainv1alpha1.Condition {
 	}
 }
 
+func ToolchainStatusReadyAndUnreadyNotificationNotCreated() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		ToolchainStatusReady(),
+		ToolchainStatusUnreadyNotificationNotCreated(),
+	}
+}
+
 func ToolchainStatusReady() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,
 		Status: corev1.ConditionTrue,
+		Reason: "AllComponentsReady",
+	}
+}
+
+func ToolchainStatusUnreadyNotificationNotCreated() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ToolchainStatusUnreadyNotificationCreated,
+		Status: corev1.ConditionFalse,
 		Reason: "AllComponentsReady",
 	}
 }

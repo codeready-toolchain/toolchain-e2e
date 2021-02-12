@@ -26,6 +26,7 @@ const (
 	basicdeactivationdisabled = "basicdeactivationdisabled"
 	advanced                  = "advanced"
 	team                      = "team"
+	test                      = "test"
 
 	// common CPU limits
 	defaultCpuLimit = "500m"
@@ -54,6 +55,9 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case team:
 		return &teamTierChecks{tierName: team}, nil
+
+	case test:
+		return &testTierChecks{tierName: test}, nil
 
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier)
@@ -84,13 +88,24 @@ func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	common := append(commonChecks,
+	checks := append(commonChecks,
 		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2))
-	return append(common, networkPolicyByType(nsType)...)
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "code":
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
+	}
+	return checks
 }
 
 func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -101,7 +116,7 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota(cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuota("basic", cpuLimit, "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 		idlers("code", "dev", "stage"),
 	}
@@ -114,21 +129,15 @@ func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck 
 	case "dev":
 		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	}
 }
 
-func networkPolicyByType(nsType string) []namespaceObjectsCheck {
-	common := []namespaceObjectsCheck{
+func commonNetworkPolicyChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
 		networkPolicySameNamespace(),
 		networkPolicyAllowFromMonitoring(),
 		networkPolicyAllowFromIngress(),
-	}
-	switch nsType {
-	case "code":
-		return append(common, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(4))
-	default:
-		return append(common, numberOfNetworkPolicies(3))
 	}
 }
 
@@ -141,18 +150,29 @@ func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	common := append(commonChecks,
+	checks := append(commonChecks,
 		a.limitRangeByType(nsType),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2))
-	return append(common, networkPolicyByType(nsType)...)
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "code":
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
+	}
+	return checks
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota(cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuota("advanced", cpuLimit, "1750m", "7Gi"),
 		numberOfClusterResourceQuotas(1),
 	}
 }
@@ -170,8 +190,32 @@ func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsChe
 	case "dev":
 		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	default:
-		return limitRange(defaultCpuLimit, "512Mi", "10m", "64Mi")
+		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
 	}
+}
+
+// testTierChecks checks only that the "test" tier exists and has correct template references.
+// It does not check the test tier resources
+type testTierChecks struct {
+	tierName string
+}
+
+func (a *testTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{}
+}
+
+func (a *testTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{}
+}
+
+func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "code", "stage")
+	return templateRefs
+}
+
+func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return []clusterObjectsCheck{}
 }
 
 type teamTierChecks struct {
@@ -183,14 +227,23 @@ func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	common := append(commonChecks,
+	checks := append(commonChecks,
 		limitRange(defaultCpuLimit, "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
 		numberOfToolchainRoleBindings(2),
 	)
-	return append(common, networkPolicyByType(nsType)...)
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(4))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+	}
+	return checks
 }
 
 func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -201,9 +254,8 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota(cpuLimit, "2000m", "15Gi"),
+		clusterResourceQuota("team", cpuLimit, "2000m", "15Gi"),
 		numberOfClusterResourceQuotas(1),
-		idlers("dev", "stage"),
 	}
 }
 
@@ -338,6 +390,37 @@ func networkPolicySameNamespace() namespaceObjectsCheck {
 	}
 }
 
+func networkPolicyAllowFromOtherNamespace(otherNamespaceKinds ...string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		var networkPolicyPeers []netv1.NetworkPolicyPeer
+		for _, other := range otherNamespaceKinds {
+			networkPolicyPeers = append(networkPolicyPeers, netv1.NetworkPolicyPeer{
+				NamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"name": fmt.Sprintf("%s-%s", userName, other),
+					},
+				},
+			})
+		}
+
+		np, err := memberAwait.WaitForNetworkPolicy(ns, "allow-from-other-user-namespaces")
+		require.NoError(t, err)
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{},
+				Ingress: []netv1.NetworkPolicyIngressRule{
+					{
+						From: networkPolicyPeers,
+					},
+				},
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
 func networkPolicyAllowFromIngress() namespaceObjectsCheck {
 	return networkPolicyIngress("allow-from-openshift-ingress", "ingress")
 }
@@ -395,7 +478,7 @@ func idlers(namespaceTypes ...string) clusterObjectsCheck {
 	}
 }
 
-func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuota(tierName, cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
 		require.NoError(t, err)
@@ -415,18 +498,45 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		hard[corev1.ResourcePersistentVolumeClaims], err = resource.ParseQuantity("5")
+
+		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("50")
 		require.NoError(t, err)
-		hard[corev1.ResourcePods], err = resource.ParseQuantity("100")
+		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
-		hard[corev1.ResourceReplicationControllers], err = resource.ParseQuantity("100")
-		require.NoError(t, err)
-		hard[corev1.ResourceServices], err = resource.ParseQuantity("100")
-		require.NoError(t, err)
-		hard[corev1.ResourceSecrets], err = resource.ParseQuantity("100")
-		require.NoError(t, err)
-		hard[corev1.ResourceConfigMaps], err = resource.ParseQuantity("100")
-		require.NoError(t, err)
+
+		if tierName != "basic" {
+			hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
+			require.NoError(t, err)
+
+			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("deployments.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("jobs.batch")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+
+			hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
+			require.NoError(t, err)
+
+			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
+			require.NoError(t, err)
+			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
+			require.NoError(t, err)
+		}
 
 		expetedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
 			Selector: quotav1.ClusterResourceQuotaSelector{
@@ -440,6 +550,10 @@ func clusterResourceQuota(cpuLimit, cpuRequest, memoryLimit string) clusterObjec
 		}
 		assert.Equal(t, expetedQuotaSpec, quota.Spec)
 	}
+}
+
+func count(resource v1.ResourceName) v1.ResourceName {
+	return v1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
 
 func numberOfToolchainRoles(number int) namespaceObjectsCheck {
