@@ -265,7 +265,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 	s.Run("get signup for crtadmin fails", func() {
 		// Get valid generated token for e2e tests. IAT claim is overridden
-		// to avoid token used before issued error.
+		// to avoid token used before issued error. Username claim is also
+		// overridden to trigger error and ensure that usersignup is not created.
 		identity := authsupport.NewIdentity()
 		emailValue := uuid.NewV4().String() + "@acme.com"
 		emailClaim := authsupport.WithEmailClaim(emailValue)
