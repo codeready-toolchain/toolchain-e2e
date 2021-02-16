@@ -34,7 +34,7 @@ type userManagementTestSuite struct {
 
 func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
@@ -44,80 +44,40 @@ func (s *userManagementTestSuite) TearDownTest() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
-	s.T().Run("deactivate a user", func(t *testing.T) {
+	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", true, ApprovedByAdmin()...)
+		// User on member cluster 1
+		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+
+		// User on member cluster 2
+		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@redhat.com", s.memberAwait2, ApprovedByAdmin()...)
 
 		t.Run("verify metrics are correct after creating usersignup", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
-			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 1)
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)
 		})
 
-		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-			us.Spec.Deactivated = true
-		})
-		require.NoError(s.T(), err)
-		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
-
-		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
-		require.NoError(s.T(), err)
-
-		// "deactivated"
-		notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
-		require.NoError(t, err)
-		require.NotEmpty(t, notifications)
-		require.Equal(t, 1, len(notifications))
-		notification := notifications[0]
-		assert.Contains(t, notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
-		assert.Equal(t, userSignup.Namespace, notification.Namespace)
-		assert.Equal(t, "userdeactivated", notification.Spec.Template)
-		assert.Equal(t, userSignup.Name, notification.Spec.UserID)
-
-		err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, v1alpha1.NotificationTypeDeactivated)
-		require.NoError(t, err)
-
-		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(Deactivated()...),
-			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
-		require.NoError(s.T(), err)
-		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
+		s.deactivateAndCheckUser(userSignup, mur)
+		s.deactivateAndCheckUser(userSignupMember2, murMember2)
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 0)            // one less because of deactivated user
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // one more because of deactivated user
+			metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 0)            // two less because of deactivated users
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // two more because of deactivated users
 		})
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-			err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
-				Namespace: userSignup.Namespace,
-				Name:      userSignup.Name,
-			}, userSignup)
-			require.NoError(s.T(), err)
-
-			userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-				us.Spec.Deactivated = false
-			})
-			require.NoError(s.T(), err)
-			s.T().Logf("user signup '%s' reactivated", userSignup.Name)
-
-			_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
-			require.NoError(s.T(), err)
-
-			userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
-				wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			require.False(t, userSignup.Spec.Deactivated, "usersignup should not be deactivated")
+			s.reactivateAndCheckUser(userSignup, mur)
+			s.reactivateAndCheckUser(userSignupMember2, murMember2)
 
 			t.Run("verify metrics are correct after reactivating the user", func(t *testing.T) {
-				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)            // no change
-				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)    // one more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 1)            // one more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1) // no change
+				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)            // no change
+				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 4)    // two more because of reactivated user
+				metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 2)            // two more because of reactivated user
+				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // no change
 			})
 		})
 	})
@@ -126,7 +86,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", true, ApprovedByAdmin()...)
+		userSignup, mur := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the basic tier that has deactivation disabled
 		basicDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basicdeactivationdisabled")
@@ -179,8 +139,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", true, ApprovedByAdmin()...)
-		deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", true, ApprovedByAdmin()...)
+		userSignup, mur := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the basic tier that has deactivation enabled
 		basicTier, err := s.hostAwait.WaitForNSTemplateTier("basic")
@@ -241,7 +201,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", true, ApprovedAutomatically()...)
+		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", s.memberAwait, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -276,7 +236,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.createAndCheckBannedUser(email)
 
 		// Check that no MUR created
-		userSignup := s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, true, Banned()...)
+		userSignup := s.createAndCheckUserSignupNoMUR(false, "testuser"+id, email, s.memberAwait, Banned()...)
 		assert.Equal(t, v1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[v1alpha1.UserSignupStateLabelKey])
 		mur, err := s.hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
 		require.NoError(s.T(), err)
@@ -333,7 +293,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", true, ApprovedAutomatically()...)
+		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", s.memberAwait, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		bannedUser := s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
@@ -378,9 +338,9 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval())
 
 	// Create UserSignup
-	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe")
+	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "basic", s.memberAwait)
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
@@ -424,6 +384,6 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, s.memberAwait, userSignup, "basic")
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "basic", s.memberAwait)
 	})
 }

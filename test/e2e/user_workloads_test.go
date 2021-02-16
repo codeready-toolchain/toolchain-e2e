@@ -29,7 +29,7 @@ type userWorkloadsTestSuite struct {
 }
 
 func (s *userWorkloadsTestSuite) SetupSuite() {
-	s.ctx, s.hostAwait, s.memberAwait = WaitForDeployments(s.T(), &v1alpha1.UserSignupList{})
+	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), &v1alpha1.UserSignupList{})
 }
 
 func (s *userWorkloadsTestSuite) TearDownTest() {
@@ -39,7 +39,7 @@ func (s *userWorkloadsTestSuite) TearDownTest() {
 func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Provision a user to idle with a short idling timeout
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
-	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", true, ApprovedByAdmin()...)
+	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
 

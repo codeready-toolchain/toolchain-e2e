@@ -50,10 +50,11 @@ type MemberAwaitility struct {
 	*Awaitility
 }
 
-func NewMemberAwaitility(t *testing.T, cl client.Client, ns string) *MemberAwaitility {
+func NewMemberAwaitility(t *testing.T, cl client.Client, ns, clusterName string) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
+			ClusterName:   clusterName,
 			T:             t,
 			Namespace:     ns,
 			Type:          cluster.Member,
@@ -132,7 +133,7 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 		obj := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of useraccount '%s'", name)
+				a.T.Logf("waiting for availability of useraccount '%s' in namespace '%s'", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -975,7 +976,7 @@ func (a *MemberAwaitility) waitForDeployment() {
 }
 
 func (a *MemberAwaitility) waitForSecret() []byte {
-	a.T.Logf("checking prensence of Secret resource '%s' in namesapace '%s'", "webhook-certs", a.Namespace)
+	a.T.Logf("checking presence of Secret resource '%s' in namesapace '%s'", "webhook-certs", a.Namespace)
 	secret := &v1.Secret{}
 	a.waitForResource(a.Namespace, "webhook-certs", secret)
 	assert.NotEmpty(a.T, secret.Data["server-key.pem"])
@@ -986,7 +987,7 @@ func (a *MemberAwaitility) waitForSecret() []byte {
 }
 
 func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
-	a.T.Logf("checking prensence of MutatingWebhookConfiguration resource '%s'", "sandbox-users-pods")
+	a.T.Logf("checking presence of MutatingWebhookConfiguration resource '%s'", "sandbox-users-pods")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
 	a.waitForResource("", "member-operator-webhook", actualMutWbhConf)
 	assert.Equal(a.T, bothWebhookLabels, actualMutWbhConf.Labels)

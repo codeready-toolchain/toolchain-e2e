@@ -10,7 +10,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
@@ -23,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, capacity int) []toolchainv1alpha1.UserSignup {
+func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []toolchainv1alpha1.UserSignup {
 	signups := make([]toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		name := fmt.Sprintf("multiple-signup-testuser-%d", i)
@@ -35,8 +34,11 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 			continue
 		}
 		// Create an approved UserSignup resource
-		userSignup := NewUserSignup(t, hostAwait, memberAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i), true)
+		userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
 		userSignup.Spec.Approved = true
+		if targetCluster != nil {
+			userSignup.Spec.TargetCluster = targetCluster.ClusterName
+		}
 		err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
 		hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 		require.NoError(t, err)
@@ -45,7 +47,7 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 	return signups
 }
 
-func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string) toolchainv1alpha1.UserSignup {
+func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string) toolchainv1alpha1.UserSignup {
 	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
@@ -64,6 +66,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.Equal(t, userSignup.Spec.Company, identity.Username+"-Company-Name")
 
 	// 2. approve the UserSignup
+	userSignup.Spec.TargetCluster = targetCluster
 	userSignup.Spec.Approved = true
 	err = hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
@@ -106,15 +109,8 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 // username defines the required username set in the spec
 // email is set in "user-email" annotation
 // setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
-func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, username string, email string, setTargetCluster bool) *toolchainv1alpha1.UserSignup {
+func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
 	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
-	targetCluster := ""
-	if setTargetCluster {
-		memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, wait.ReadyToolchainCluster)
-		require.NoError(t, err)
-		require.True(t, ok)
-		targetCluster = memberCluster.Name
-	}
 
 	name := uuid.NewV4().String()
 
@@ -130,9 +126,8 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wa
 			},
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
-			Username:      username,
-			UserID: 	   name,
-			TargetCluster: targetCluster,
+			Username: username,
+			UserID:   name,
 		},
 	}
 }
