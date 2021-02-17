@@ -279,6 +279,11 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.Equal(s.T(), "failed to create usersignup for test-crtadmin:cannot create usersignup for crtadmin", response["message"])
 		require.Equal(s.T(), "error creating UserSignup resource", response["details"])
 		require.Equal(s.T(), float64(500), response["code"])
+
+		userSignup, err := s.hostAwait.WaitForUserSignup(identity.ID.String())
+		require.Nil(s.T(), userSignup)
+		require.Error(s.T(), err)
+		require.EqualError(s.T(), err, "timed out waiting for the condition")
 	})
 }
 
