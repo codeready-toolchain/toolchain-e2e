@@ -5,8 +5,14 @@
 ###########################################################
 
 .PHONY: test-perf
-## Run the performance tests
+## Run the performance tests using code from the public repos
 test-perf: deploy-e2e perf-run
+	@echo "The tests successfully finished"
+	@echo "To clean the cluster run 'make clean-e2e-resources'"
+
+.PHONY: test-perf-local
+## Run the performance tests using code from local repos
+test-perf: deploy-e2e-local perf-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
