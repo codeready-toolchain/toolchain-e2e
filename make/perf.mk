@@ -5,7 +5,7 @@
 ###########################################################
 
 .PHONY: test-perf
-## Run the performance tests using code from the public repos
+## Run the performance tests using code from the remote repos
 test-perf: deploy-e2e perf-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
