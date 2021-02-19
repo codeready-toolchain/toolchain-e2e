@@ -614,7 +614,7 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheck {
 		require.NoError(t, err)
 
 		hard := make(map[v1.ResourceName]resource.Quantity)
-		hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("10")
+		hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
 
 		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
