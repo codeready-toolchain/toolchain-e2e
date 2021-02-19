@@ -262,6 +262,29 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Call signup endpoint with a valid token.
 		s.assertGetSignupReturnsNotFound(token1)
 	})
+
+	s.Run("get signup for crtadmin fails", func() {
+		// Get valid generated token for e2e tests. IAT claim is overridden
+		// to avoid token used before issued error. Username claim is also
+		// overridden to trigger error and ensure that usersignup is not created.
+		identity := authsupport.NewIdentity()
+		emailValue := uuid.NewV4().String() + "@acme.com"
+		emailClaim := authsupport.WithEmailClaim(emailValue)
+		usernameClaim := authsupport.WithPreferredUsernameClaim("test-crtadmin")
+		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, usernameClaim)
+		require.NoError(s.T(), err)
+
+		// Call signup endpoint with a valid token to initiate a signup process
+		response := invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusInternalServerError)
+		require.Equal(s.T(), "failed to create usersignup for test-crtadmin:cannot create usersignup for crtadmin", response["message"])
+		require.Equal(s.T(), "error creating UserSignup resource", response["details"])
+		require.Equal(s.T(), float64(500), response["code"])
+
+		userSignup, err := s.hostAwait.WaitForUserSignup(identity.ID.String())
+		require.Nil(s.T(), userSignup)
+		require.Error(s.T(), err)
+		require.EqualError(s.T(), err, "timed out waiting for the condition")
+	})
 }
 
 func (s *registrationServiceTestSuite) TestSignupOK() {
