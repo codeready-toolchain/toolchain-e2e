@@ -126,7 +126,7 @@ image::crc_oc_login.png[align=center]
 +
 `make test-e2e-local >testoutput.txt`:
 +
-12. If all goes well, the tests should pass and you will
+
 
 
 
