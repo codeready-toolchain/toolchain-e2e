@@ -280,7 +280,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
-		assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
+		assert.Equal(s.T(), http.StatusBadRequest, resp.StatusCode)
 
 		// Check the error.
 		statusErr := make(map[string]interface{})
