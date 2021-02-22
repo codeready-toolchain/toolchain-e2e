@@ -116,8 +116,16 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("basic", cpuLimit, "1750m", "7Gi"),
-		numberOfClusterResourceQuotas(1),
+		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
 		idlers("code", "dev", "stage"),
 	}
 }
@@ -172,8 +180,16 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("advanced", cpuLimit, "1750m", "7Gi"),
-		numberOfClusterResourceQuotas(1),
+		clusterResourceQuotaCompute("advanced", cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
 	}
 }
 
@@ -254,8 +270,16 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuota("team", cpuLimit, "2000m", "15Gi"),
-		numberOfClusterResourceQuotas(1),
+		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
 	}
 }
 
@@ -478,9 +502,9 @@ func idlers(namespaceTypes ...string) clusterObjectsCheck {
 	}
 }
 
-func clusterResourceQuota(tierName, cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s", userName))
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-compute", userName))
 		require.NoError(t, err)
 
 		hard := make(map[v1.ResourceName]resource.Quantity)
@@ -498,58 +522,144 @@ func clusterResourceQuota(tierName, cpuLimit, cpuRequest, memoryLimit string) cl
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
+		hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
+		require.NoError(t, err)
 
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaDeployments() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-deployments", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count("deployments.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
 		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("50")
 		require.NoError(t, err)
-		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaReplicas() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-replicas", userName))
 		require.NoError(t, err)
 
-		if tierName != "basic" {
-			hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
-			require.NoError(t, err)
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
 
-			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-			hard[count("deployments.apps")], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-			hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-			hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-			hard[count("jobs.batch")], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-			hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
-			require.NoError(t, err)
-
-			hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("10")
-			require.NoError(t, err)
-			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
-			require.NoError(t, err)
-			hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
-			require.NoError(t, err)
-			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
-			require.NoError(t, err)
-
-			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
-			require.NoError(t, err)
-			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
-			require.NoError(t, err)
-		}
-
-		expetedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
-			Selector: quotav1.ClusterResourceQuotaSelector{
-				AnnotationSelector: map[string]string{
-					"openshift.io/requester": userName,
-				},
-			},
-			Quota: v1.ResourceQuotaSpec{
-				Hard: hard,
-			},
-		}
-		assert.Equal(t, expetedQuotaSpec, quota.Spec)
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
 	}
+}
+
+func clusterResourceQuotaRoutes() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-routes", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+		hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaJobs() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-jobs", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("jobs.batch")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+		hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaServices() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-services", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
+		require.NoError(t, err)
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaBuildConfig() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-bc", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("30")
+		require.NoError(t, err)
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaSecrets() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-secrets", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func clusterResourceQuotaConfigMap() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-cm", userName))
+		require.NoError(t, err)
+
+		hard := make(map[v1.ResourceName]resource.Quantity)
+
+		hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
+		require.NoError(t, err)
+
+		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+	}
+}
+
+func checkClusterResourceQuota(t *testing.T, memberAwait *wait.MemberAwaitility, userName string, hard map[v1.ResourceName]resource.Quantity, actual *quotav1.ClusterResourceQuota) {
+	expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
+		Selector: quotav1.ClusterResourceQuotaSelector{
+			AnnotationSelector: map[string]string{
+				"openshift.io/requester": userName,
+			},
+		},
+		Quota: v1.ResourceQuotaSpec{
+			Hard: hard,
+		},
+	}
+	assert.Equal(t, expectedQuotaSpec, actual.Spec)
 }
 
 func count(resource v1.ResourceName) v1.ResourceName {
