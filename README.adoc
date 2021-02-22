@@ -3,8 +3,6 @@
 image:https://goreportcard.com/badge/github.com/codeready-toolchain/toolchain-e2e[Go Report Card, link="https://goreportcard.com/report/github.com/codeready-toolchain/toolchain-e2e"]
 image:https://godoc.org/github.com/codeready-toolchain/toolchain-e2e?status.png[GoDoc,link="https://godoc.org/github.com/codeready-toolchain/toolchain-e2e"]
 
-:imagesdir: doc/images
-
 This repo contains e2e tests for https://github.com/codeready-toolchain/host-operator[host] and https://github.com/codeready-toolchain/member-operator[member] operators of CodeReady Toolchain.
 
 == Build
@@ -12,6 +10,10 @@ This repo contains e2e tests for https://github.com/codeready-toolchain/host-ope
 Requires Go version 1.14 - download for your development environment https://golang.org/dl/[here].
 
 This repository uses https://github.com/golang/go/wiki/Modules[Go modules]. You may need to `export GO111MODULE=on` to turn modules support "on".
+
+== Step by step guide - running in CodeReady Containers
+
+Refer to link:CRC.adoc[this guide] for detailed instructions on running the e2e tests in a local CodeReady Containers cluster.
 
 == End-to-End Tests
 
@@ -45,93 +47,6 @@ If you still don't know what to do with e2e tests in some use-cases, go to <<Wha
 * jq
 * yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
 * docker (if building from source)
-
-==== Minishift
-If you are running these tests locally in Minishift or CRC, make sure that you have exposed necessary environments, so deployment can use the locally built image. You can expose it by running the following commands.
-
-* for Minishift `eval $(minishift docker-env)` `eval $(minishift oc-env)`
-
-NOTE: This is not required for openshift-ci environment
-
-==== Step by Step Guide - CRC (CodeReady Containers)
-
-IMPORTANT: CodeReady Containers includes an embedded system bundle that contains certificates which expire 30 days after the release.  Because of this it is very important to always run the latest release of CRC.
-
-CodeReady Containers is a distribution of OpenShift designed to be run on a development PC, and while some features have been disabled by default it is still quite demanding in terms of system resources, and for this reason it is recommended that it be installed on a machine that has at least 32GB of memory.
-
-This guide will walk through the steps of downloading and install CRC, and running the e2e tests against local Codeready Toolchain host-operator and member-operator repositories.
-
-1. Download CodeReady Containers from https://developers.redhat.com/products/codeready-containers/overview[developers.redhat.com].
-You will need to login using your Red Hat SSO account, after which you may click on the `Install OpenShift on your laptop` button which will take you to the download page for CRC.  From here, select your OS before clicking `Download CodeReady Containers`.  You will also need to download your pull secret, and keep that in a safe place.
-+
-image::download.png[align="center"]
-
-2. Extract the downloaded file into a directory of your choice.
-+
-image::extract_crc.png[align="center"]
-+
-You may also wish to add this directory to your path so that you can run the `crc` command from anywhere.
-
-3. Enable Cluster Monitoring, which is required for tests to pass by running the following command:
-+
-`crc config set enable-cluster-monitoring true`
-
-4. Since cluster monitoring requires at least 14GB of virtual machine memory, you also need to increase the default by running the following command - the value here is sufficient but you may make it higher if desired:
-+
-`crc config set memory 14500`
-
-5. Set the `QUAY_NAMESPACE` environment variable to your quay username:
-+
-`export QUAY_NAMESPACE=<quay-username>`
-
-6. Ensure that the following Quay repositories are set to public:
-+
-* host-operator
-* member-operator
-* member-operator-webhook
-* registration-service
-
-You can find these on the https://quay.io/repository/[Repository] page at quay.io:
-
-image::quay_repo.png[align=center]
-
-Click on the repository name, then click on the settings icon:
-
-image::quay_repo_detail.png[align=center]
-
-Scroll down to the *Repository Visibility* section, and ensure the repository is set to public:
-
-image::quay_repo_visibility.png[align=center]
-
-7. Start the CRC container by executing `crc start`. This will take a few minutes to complete, and the output should look something like this:
-
-image::crc_start_output.png[align=center]
-
-Take note of the `oc login...` command shown in the output.
-
-8. Execute the following command to set up the necessary environment variables:
-
-`eval $(crc oc-env)`
-
-9. Log into the cluster by executing the `oc login` command as shown in the resulting output from running `crc start` in the previous step.  The output should look something like this:
-+
-image::crc_oc_login.png[align=center]
-
-10. Check out the CodeReady Toolchain `host-operator` and `member-operator` repositories and ensure that they are located at the same directory level as the `toolchain-e2e` repository.
-+
-* https://github.com/codeready-toolchain/host-operator
-* https://github.com/codeready-toolchain/member-operator
-+
-11. Change into the `toolchain-e2e` directory, and execute the tests.  It is recommended that you direct console output to a text file, as the test output is of significant length and is likely to be longer than your console buffer:
-+
-`make test-e2e-local >testoutput.txt`:
-+
-
-
-
-
-
-
 
 ==== OpenShift 4.2+
 
