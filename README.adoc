@@ -11,6 +11,10 @@ Requires Go version 1.14 - download for your development environment https://gol
 
 This repository uses https://github.com/golang/go/wiki/Modules[Go modules]. You may need to `export GO111MODULE=on` to turn modules support "on".
 
+== Step by step guide - running in CodeReady Containers
+
+Refer to link:CRC.adoc[this guide] for detailed instructions on running the e2e tests in a local CodeReady Containers cluster.
+
 == End-to-End Tests
 
 The e2e tests are executed against host and member operators running in OpenShift. The operators are built from the https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator] repositories.
@@ -43,15 +47,6 @@ If you still don't know what to do with e2e tests in some use-cases, go to <<Wha
 * jq
 * yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
 * docker (if building from source)
-
-==== Minishift or CRC (CodeReady Containers)
-If you are running these tests locally in Minishift or CRC, make sure that you have exposed necessary environments, so deployment can use the locally built image. You can expose it by running the following commands.
-
-* for Minishift `eval $(minishift docker-env)` `eval $(minishift oc-env)`
-* for CodeReady Containers `eval $(crc oc-env)`
-
-
-NOTE: This is not required for openshift-ci environment
 
 ==== OpenShift 4.2+
 
