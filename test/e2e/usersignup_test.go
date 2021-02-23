@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type userSignupIntegrationTest struct {
@@ -105,6 +106,49 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 				VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.memberAwait2)
 			})
+		})
+	})
+}
+
+func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
+	s.T().Run("set per member max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
+		// given
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(2, test.PerMemberCluster(s.memberAwait.ClusterName, 1), test.PerMemberCluster(s.memberAwait2.ClusterName, 1)))
+
+		// when
+		userSignup1, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
+		// we need to sleep one second to create UserSignup with different creation time
+		time.Sleep(time.Second)
+		userSignup2, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
+
+		murList := &v1alpha1.MasterUserRecordList{}
+		err := s.hostAwait.Client.List(context.TODO(), murList, client.InNamespace(s.hostAwait.Namespace))
+		require.NotNil(s.T(), err)
+		fmt.Printf("===Listing MastuerUserRecords===\n")
+		for _, mur := range murList.Items {
+			fmt.Printf("found MasterUserRecord: %+v\n\n", mur)
+		}
+
+		// then
+		cluster1 := s.memberAwait
+		cluster2 := s.memberAwait2
+		if mur1.Spec.UserAccounts[0].TargetCluster == s.memberAwait2.ClusterName {
+			cluster1 = s.memberAwait2
+			cluster2 = s.memberAwait
+		}
+		t.Logf("TargetCluster1: %s", mur1.Spec.UserAccounts[0].TargetCluster)
+		t.Logf("TargetCluster2: %s", mur2.Spec.UserAccounts[0].TargetCluster)
+
+		// verify each usersignup is provisioned only on the cluster it was assigned
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup1, "basic", cluster1)
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup2, "basic", cluster2)
+
+		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
+			// when
+			userSignupPending := s.createAndCheckUserSignupNoMUR(false, "multimember-3", "multi3@redhat.com", nil, PendingApprovalNoCluster()...)
+
+			// then
+			s.userIsNotProvisioned(t, userSignupPending)
 		})
 	})
 }
