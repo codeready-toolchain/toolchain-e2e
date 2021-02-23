@@ -701,20 +701,7 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 		assert.Len(t, nps.Items, number)
 	}
 }
-/*
-func numberOfClusterResourceQuotas(number int) clusterObjectsCheck {
-	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quotas := &quotav1.ClusterResourceQuotaList{}
-		matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
-			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
-			"toolchain.dev.openshift.com/owner":    userName,
-		})
-		err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
-		require.NoError(t, err)
-		assert.Len(t, quotas.Items, number)
-	}
-}
-*/
+
 func numberOfClusterResourceQuotas(number int) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quotas := &quotav1.ClusterResourceQuotaList{}

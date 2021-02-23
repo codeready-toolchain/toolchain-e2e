@@ -95,7 +95,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
 	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
-	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberClusterE2e, 5*time.Second)
+	memberConfig, err := cluster.NewClusterConfig(f.Client.Client, &memberClusterE2e, 3*time.Second)
 	require.NoError(t, err)
 
 	kubeClient, err := kubernetes.NewForConfig(memberConfig)
