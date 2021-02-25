@@ -495,6 +495,35 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
+
+	// Create another token and identity to sign up with
+	otherIdentity := authsupport.NewIdentity()
+	otherEmailValue := uuid.NewV4().String() + "@other.domain"
+	otherEmailClaim := authsupport.WithEmailClaim(otherEmailValue)
+	otherToken, err := authsupport.GenerateSignedE2ETestToken(*identity0, otherEmailClaim)
+	require.NoError(s.T(), err)
+
+	// Call the signup endpoint
+	invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", otherToken, "", http.StatusAccepted)
+
+	// Wait for the UserSignup to be created
+	otherUserSignup, err := s.hostAwait.WaitForUserSignup(otherIdentity.ID.String(),
+		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
+	require.NoError(s.T(), err)
+	otherEmailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	assert.Equal(s.T(), otherEmailValue, otherEmailAnnotation)
+
+	// Initiate the verification process using the same phone number as previously
+	invokeEndpoint(s.T(), "PUT", s.route+"/api/v1/signup/verification", otherToken,
+		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden)
+
+	// Retrieve the updated UserSignup
+	otherUserSignup, err = s.hostAwait.WaitForUserSignup(otherIdentity.ID.String())
+	require.NoError(s.T(), err)
+
+	// Confirm there is no verification code annotation value
+	require.Nil(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
