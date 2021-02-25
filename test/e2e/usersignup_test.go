@@ -113,21 +113,30 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	s.T().Run("set per member max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(2, test.PerMemberCluster(s.memberAwait.ClusterName, 1), test.PerMemberCluster(s.memberAwait2.ClusterName, 1)))
+
+		murList := &v1alpha1.MasterUserRecordList{}
+		err := s.hostAwait.Client.List(context.TODO(), murList, client.InNamespace(s.hostAwait.Namespace))
+		require.NoError(s.T(), err)
+		// start counting member user accounts starting with 1 that we would like to add to each member
+		maxMember1 := 1
+		maxMember2 := 1
+		fmt.Printf("===Listing MasterUserRecords===\n")
+		for _, mur := range murList.Items {
+			fmt.Printf("found MasterUserRecord: %+v\n\n", mur)
+			if mur.Spec.UserAccounts[0].TargetCluster == s.memberAwait.ClusterName {
+				maxMember1++
+			} else {
+				maxMember2++
+			}
+		}
+
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(0, test.PerMemberCluster(s.memberAwait.ClusterName, maxMember1), test.PerMemberCluster(s.memberAwait2.ClusterName, maxMember2)))
 
 		// when
 		userSignup1, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
 		userSignup2, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
-
-		murList := &v1alpha1.MasterUserRecordList{}
-		err := s.hostAwait.Client.List(context.TODO(), murList, client.InNamespace(s.hostAwait.Namespace))
-		require.NotNil(s.T(), err)
-		fmt.Printf("===Listing MastuerUserRecords===\n")
-		for _, mur := range murList.Items {
-			fmt.Printf("found MasterUserRecord: %+v\n\n", mur)
-		}
 
 		// then
 		cluster1 := s.memberAwait
