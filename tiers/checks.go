@@ -29,7 +29,7 @@ const (
 	test                      = "test"
 
 	// common CPU limits
-	defaultCpuLimit = "1000m"
+	defaultCpuLimit = "1"
 	cpuLimit        = "10000m" // All but team tier
 )
 
