@@ -500,7 +500,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	otherIdentity := authsupport.NewIdentity()
 	otherEmailValue := uuid.NewV4().String() + "@other.domain"
 	otherEmailClaim := authsupport.WithEmailClaim(otherEmailValue)
-	otherToken, err := authsupport.GenerateSignedE2ETestToken(*identity0, otherEmailClaim)
+	otherToken, err := authsupport.GenerateSignedE2ETestToken(*otherIdentity, otherEmailClaim)
 	require.NoError(s.T(), err)
 
 	// Call the signup endpoint
