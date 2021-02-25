@@ -289,13 +289,13 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		body, err := ioutil.ReadAll(resp.Body)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), body)
-		assert.Equal(s.T(), http.StatusInternalServerError, resp.StatusCode)
+		assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 
 		// Check the error.
 		statusErr := make(map[string]interface{})
 		err = json.Unmarshal([]byte(body), &statusErr)
 		require.NoError(s.T(), err)
-		require.Equal(s.T(), "user has been banned", statusErr["message"])
+		require.Equal(s.T(), "forbidden: user has been banned", statusErr["message"])
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
