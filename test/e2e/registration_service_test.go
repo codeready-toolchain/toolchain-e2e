@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -512,7 +511,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 		wait.UntilUserSignupHasConditions(VerificationRequired()...),
 		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
-	otherEmailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	otherEmailAnnotation := otherUserSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), otherEmailValue, otherEmailAnnotation)
 
 	// Initiate the verification process using the same phone number as previously
@@ -522,9 +521,8 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NotEmpty(s.T(), responseMap)
 	var ok bool
 	if val, ok := responseMap["code"]; ok {
-		responseCode, err := strconv.Atoi(val.(string))
-		require.NoError(s.T(), err)
-		require.Equal(s.T(), http.StatusForbidden, responseCode)
+		require.NotEmpty(s.T(), val)
+		require.Equal(s.T(), http.StatusForbidden, int(val.(float64)))
 	}
 	require.True(s.T(), ok)
 
