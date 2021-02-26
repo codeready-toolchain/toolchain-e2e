@@ -519,10 +519,15 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	responseMap := invokeEndpoint(s.T(), "PUT", s.route+"/api/v1/signup/verification", otherToken,
 		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden)
 
-	responseCode, err := strconv.Atoi(responseMap["code"].(string))
-	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), responseMap)
+	var ok bool
+	if val, ok := responseMap["code"]; ok {
+		responseCode, err := strconv.Atoi(val.(string))
+		require.NoError(s.T(), err)
+		require.Equal(s.T(), http.StatusForbidden, responseCode)
+	}
+	require.True(s.T(), ok)
 
-	require.Equal(s.T(), http.StatusForbidden, responseCode)
 	require.Equal(s.T(), "Forbidden", responseMap["status"])
 	require.Equal(s.T(), "phone number already in use", responseMap["message"])
 	require.Equal(s.T(), "cannot register using phone number: +61408999999", responseMap["details"])
