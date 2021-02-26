@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-
 	"github.com/codeready-toolchain/toolchain-e2e/wait"
+
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,8 +29,8 @@ const (
 	test                      = "test"
 
 	// common CPU limits
-	defaultCpuLimit = "500m"
-	cpuLimit        = "10000m"
+	defaultCpuLimit = "1"
+	cpuLimit        = "10000m" // All but team tier
 )
 
 var (
@@ -89,7 +89,7 @@ func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
-		a.limitRangeByType(nsType),
+		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -130,17 +130,6 @@ func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	}
 }
 
-func (a *basicTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
-	switch nsType {
-	case "code":
-		return limitRange("1", "512Mi", "60m", "307Mi")
-	case "dev":
-		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
-	default:
-		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
-	}
-}
-
 func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{
 		networkPolicySameNamespace(),
@@ -159,7 +148,7 @@ func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
-		a.limitRangeByType(nsType),
+		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -197,17 +186,6 @@ func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitil
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "code", "dev", "stage")
 	return templateRefs
-}
-
-func (a *advancedTierChecks) limitRangeByType(nsType string) namespaceObjectsCheck {
-	switch nsType {
-	case "code":
-		return limitRange("1", "512Mi", "60m", "307Mi")
-	case "dev":
-		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
-	default:
-		return limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi")
-	}
 }
 
 // testTierChecks checks only that the "test" tier exists and has correct template references.
@@ -270,7 +248,7 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi"),
+		clusterResourceQuotaCompute("team", "15000m", "2000m", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
