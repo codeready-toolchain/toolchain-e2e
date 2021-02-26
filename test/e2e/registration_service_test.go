@@ -519,16 +519,11 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden)
 
 	require.NotEmpty(s.T(), responseMap)
-	var ok bool
-	if val, ok := responseMap["code"]; ok {
-		require.NotEmpty(s.T(), val)
-		require.Equal(s.T(), http.StatusForbidden, int(val.(float64)))
-	}
-	require.True(s.T(), ok)
+	require.Equal(s.T(), float64(http.StatusForbidden), responseMap["code"], "code not found in response body map %s", responseMap)
 
 	require.Equal(s.T(), "Forbidden", responseMap["status"])
-	require.Equal(s.T(), "phone number already in use", responseMap["message"])
-	require.Equal(s.T(), "cannot register using phone number: +61408999999", responseMap["details"])
+	require.Equal(s.T(), "phone number already in use:cannot register using phone number: +61408999999", responseMap["message"])
+	require.Equal(s.T(), "phone number already in use", responseMap["details"])
 
 	// Retrieve the updated UserSignup
 	otherUserSignup, err = s.hostAwait.WaitForUserSignup(otherIdentity.ID.String())
