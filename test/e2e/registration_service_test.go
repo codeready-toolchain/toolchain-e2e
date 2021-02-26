@@ -530,7 +530,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Confirm there is no verification code annotation value
-	require.Nil(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.Empty(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
