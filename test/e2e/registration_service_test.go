@@ -531,6 +531,29 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm there is no verification code annotation value
 	require.Empty(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+
+	// Retrieve the current UserSignup
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignup)
+	require.NoError(s.T(), err)
+
+	// Now mark the original UserSignup as deactivated
+	userSignup.Spec.Deactivated = true
+	userSignup.Labels[v1alpha1.UserSignupStateLabelKey] = v1alpha1.UserSignupStateLabelValueDeactivated
+	
+	// Update the UserSignup
+	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
+	require.NoError(s.T(), err)
+
+	// Now attempt the verification again
+	invokeEndpoint(s.T(), "PUT", s.route+"/api/v1/signup/verification", otherToken,
+		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden)
+
+	// Retrieve the updated UserSignup again
+	otherUserSignup, err = s.hostAwait.WaitForUserSignup(otherIdentity.ID.String())
+	require.NoError(s.T(), err)
+
+	// Confirm there is now a verification code annotation value
+	require.NotEmpty(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
