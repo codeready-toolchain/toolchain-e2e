@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type userSignupIntegrationTest struct {
@@ -114,23 +113,53 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	s.T().Run("set per member max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
 
-		murList := &v1alpha1.MasterUserRecordList{}
-		err := s.hostAwait.Client.List(context.TODO(), murList, client.InNamespace(s.hostAwait.Namespace))
-		require.NoError(s.T(), err)
+		// murList := &v1alpha1.MasterUserRecordList{}
+		// err := s.hostAwait.Client.List(context.TODO(), murList, client.InNamespace(s.hostAwait.Namespace))
+		// require.NoError(s.T(), err)
 		// start counting member user accounts starting with 1 that we would like to add to each member
-		maxMember1 := 1
-		maxMember2 := 1
-		fmt.Printf("===Listing MasterUserRecords===\n")
-		for _, mur := range murList.Items {
-			fmt.Printf("found MasterUserRecord: %+v\n\n", mur)
-			if mur.Spec.UserAccounts[0].TargetCluster == s.memberAwait.ClusterName {
-				maxMember1++
-			} else {
-				maxMember2++
+
+		// fmt.Printf("xListing MasterUserRecordsx\n")
+		// for _, mur := range murList.Items {
+		// 	fmt.Printf("found MasterUserRecord: %+v\n\n", mur)
+		// 	if mur.Spec.UserAccounts[0].TargetCluster == s.memberAwait.ClusterName {
+		// 		maxMember1++
+		// 	} else {
+		// 		maxMember2++
+		// 	}
+		// }
+
+		var memberLimits []test.PerMemberClusterOption
+		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		require.NoError(t, err)
+		for _, m := range toolchainStatus.Status.Members {
+			if s.memberAwait.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait.ClusterName, m.UserAccountCount+1))
+				fmt.Printf("xmember1 max = %d\n", m.UserAccountCount+1)
+			} else if s.memberAwait2.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait2.ClusterName, m.UserAccountCount+1))
+				fmt.Printf("xmember2 max = %d\n", m.UserAccountCount+1)
 			}
 		}
+		require.Len(s.T(), memberLimits, 2)
 
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(0, test.PerMemberCluster(s.memberAwait.ClusterName, maxMember1), test.PerMemberCluster(s.memberAwait2.ClusterName, maxMember2)))
+		userAccounts := &v1alpha1.UserAccountList{}
+		err = s.memberAwait.Client.List(context.TODO(), userAccounts)
+		require.NoError(s.T(), err)
+		fmt.Printf("xuseraccounts1 = %d\n", len(userAccounts.Items))
+
+		userAccounts = &v1alpha1.UserAccountList{}
+		err = s.memberAwait2.Client.List(context.TODO(), userAccounts)
+		require.NoError(s.T(), err)
+		fmt.Printf("xuseraccounts2 = %d\n", len(userAccounts.Items))
+		// maxMember2 := len(userAccounts.Items) + 1
+
+		// if err := s.memberAwait.Client.Client.List(context.TODO(), userAccounts); err != nil {
+		// 	return false, err
+		// }
+
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(0, memberLimits...))
+		// time.Sleep(30 * time.Second)
+		fmt.Printf("xhostOperatorConfig = %+v\n", s.hostAwait.GetHostOperatorConfig())
 
 		// when
 		userSignup1, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
@@ -139,18 +168,20 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		userSignup2, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
 
 		// then
-		cluster1 := s.memberAwait
-		cluster2 := s.memberAwait2
+		expectedCluster1 := s.memberAwait
+		expectedCluster2 := s.memberAwait2
 		if mur1.Spec.UserAccounts[0].TargetCluster == s.memberAwait2.ClusterName {
-			cluster1 = s.memberAwait2
-			cluster2 = s.memberAwait
+			expectedCluster1 = s.memberAwait2
+			expectedCluster2 = s.memberAwait
 		}
 		t.Logf("TargetCluster1: %s", mur1.Spec.UserAccounts[0].TargetCluster)
 		t.Logf("TargetCluster2: %s", mur2.Spec.UserAccounts[0].TargetCluster)
+		require.Equal(s.T(), mur1.Spec.UserAccounts[0].TargetCluster, expectedCluster1.ClusterName)
+		require.Equal(s.T(), mur2.Spec.UserAccounts[0].TargetCluster, expectedCluster2.ClusterName)
 
 		// verify each usersignup is provisioned only on the cluster it was assigned
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup1, "basic", cluster1)
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup2, "basic", cluster2)
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup1, "basic", expectedCluster1)
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup2, "basic", expectedCluster2)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
