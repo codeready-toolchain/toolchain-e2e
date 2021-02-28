@@ -538,7 +538,6 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Now mark the original UserSignup as deactivated
 	userSignup.Spec.Deactivated = true
-	userSignup.Labels[v1alpha1.UserSignupStateLabelKey] = v1alpha1.UserSignupStateLabelValueDeactivated
 
 	// Update the UserSignup
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
