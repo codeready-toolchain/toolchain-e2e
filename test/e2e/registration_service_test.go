@@ -539,14 +539,14 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Now mark the original UserSignup as deactivated
 	userSignup.Spec.Deactivated = true
 	userSignup.Labels[v1alpha1.UserSignupStateLabelKey] = v1alpha1.UserSignupStateLabelValueDeactivated
-	
+
 	// Update the UserSignup
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again
 	invokeEndpoint(s.T(), "PUT", s.route+"/api/v1/signup/verification", otherToken,
-		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden)
+		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
 	// Retrieve the updated UserSignup again
 	otherUserSignup, err = s.hostAwait.WaitForUserSignup(otherIdentity.ID.String())
