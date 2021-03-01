@@ -110,34 +110,16 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 }
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
-	s.T().Run("set per member max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
+	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
-
-		// murList := &v1alpha1.MasterUserRecordList{}
-		// err := s.hostAwait.Client.List(context.TODO(), murList, client.InNamespace(s.hostAwait.Namespace))
-		// require.NoError(s.T(), err)
-		// start counting member user accounts starting with 1 that we would like to add to each member
-
-		// fmt.Printf("xListing MasterUserRecordsx\n")
-		// for _, mur := range murList.Items {
-		// 	fmt.Printf("found MasterUserRecord: %+v\n\n", mur)
-		// 	if mur.Spec.UserAccounts[0].TargetCluster == s.memberAwait.ClusterName {
-		// 		maxMember1++
-		// 	} else {
-		// 		maxMember2++
-		// 	}
-		// }
-
 		var memberLimits []test.PerMemberClusterOption
 		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {
 			if s.memberAwait.ClusterName == m.ClusterName {
 				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait.ClusterName, m.UserAccountCount+1))
-				fmt.Printf("xmember1 max = %d\n", m.UserAccountCount+1)
 			} else if s.memberAwait2.ClusterName == m.ClusterName {
 				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait2.ClusterName, m.UserAccountCount+1))
-				fmt.Printf("xmember2 max = %d\n", m.UserAccountCount+1)
 			}
 		}
 		require.Len(s.T(), memberLimits, 2)
@@ -145,21 +127,12 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		userAccounts := &v1alpha1.UserAccountList{}
 		err = s.memberAwait.Client.List(context.TODO(), userAccounts)
 		require.NoError(s.T(), err)
-		fmt.Printf("xuseraccounts1 = %d\n", len(userAccounts.Items))
 
 		userAccounts = &v1alpha1.UserAccountList{}
 		err = s.memberAwait2.Client.List(context.TODO(), userAccounts)
 		require.NoError(s.T(), err)
-		fmt.Printf("xuseraccounts2 = %d\n", len(userAccounts.Items))
-		// maxMember2 := len(userAccounts.Items) + 1
-
-		// if err := s.memberAwait.Client.Client.List(context.TODO(), userAccounts); err != nil {
-		// 	return false, err
-		// }
 
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(0, memberLimits...))
-		// time.Sleep(30 * time.Second)
-		fmt.Printf("xhostOperatorConfig = %+v\n", s.hostAwait.GetHostOperatorConfig())
 
 		// when
 		userSignup1, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
