@@ -34,7 +34,7 @@ type userManagementTestSuite struct {
 
 func (s *userManagementTestSuite) SetupSuite() {
 	userSignupList := &v1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, s.memberAwait2 = WaitForDeployments(s.T(), userSignupList)
+	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), userSignupList)
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
@@ -52,7 +52,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// User on member cluster 2
-		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@redhat.com", s.memberAwait2, ApprovedByAdmin()...)
+		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@redhat.com", s.member2Await, ApprovedByAdmin()...)
 
 		t.Run("verify metrics are correct after creating usersignup", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)

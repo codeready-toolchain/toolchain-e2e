@@ -20,7 +20,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 	hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
@@ -56,7 +56,7 @@ func TestE2EFlow(t *testing.T) {
 	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
 
 	// Get metrics assertion helper for testing metrics before creating any users
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, memberAwait.ClusterName, memberAwait2.ClusterName)
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, memberAwait.ClusterName, member2Await.ClusterName)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
@@ -68,11 +68,11 @@ func TestE2EFlow(t *testing.T) {
 	extrajohnName := "extrajohn"
 	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName, memberAwait.ClusterName)
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, memberAwait2.ClusterName)
+	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, member2Await.ClusterName)
 
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
-	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "basic", memberAwait2)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "basic", member2Await)
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)
