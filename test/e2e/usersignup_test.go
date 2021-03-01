@@ -141,16 +141,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		userSignup2, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
 
 		// then
-		expectedCluster1 := s.memberAwait
-		expectedCluster2 := s.memberAwait2
-		if mur1.Spec.UserAccounts[0].TargetCluster == s.memberAwait2.ClusterName {
-			expectedCluster1 = s.memberAwait2
-			expectedCluster2 = s.memberAwait
-		}
-		t.Logf("TargetCluster1: %s", mur1.Spec.UserAccounts[0].TargetCluster)
-		t.Logf("TargetCluster2: %s", mur2.Spec.UserAccounts[0].TargetCluster)
-		require.Equal(s.T(), mur1.Spec.UserAccounts[0].TargetCluster, expectedCluster1.ClusterName)
-		require.Equal(s.T(), mur2.Spec.UserAccounts[0].TargetCluster, expectedCluster2.ClusterName)
+		require.NotEqual(s.T(), mur1.Spec.UserAccounts[0].TargetCluster,mur2.Spec.UserAccounts[0].TargetCluster)
 
 		// verify each usersignup is provisioned only on the cluster it was assigned
 		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup1, "basic", expectedCluster1)
