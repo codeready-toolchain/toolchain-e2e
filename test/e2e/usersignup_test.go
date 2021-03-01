@@ -124,28 +124,16 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		}
 		require.Len(s.T(), memberLimits, 2)
 
-		userAccounts := &v1alpha1.UserAccountList{}
-		err = s.memberAwait.Client.List(context.TODO(), userAccounts)
-		require.NoError(s.T(), err)
-
-		userAccounts = &v1alpha1.UserAccountList{}
-		err = s.memberAwait2.Client.List(context.TODO(), userAccounts)
-		require.NoError(s.T(), err)
-
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(0, memberLimits...))
 
 		// when
-		userSignup1, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
+		_, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		userSignup2, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
+		_, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
 
 		// then
-		require.NotEqual(s.T(), mur1.Spec.UserAccounts[0].TargetCluster,mur2.Spec.UserAccounts[0].TargetCluster)
-
-		// verify each usersignup is provisioned only on the cluster it was assigned
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup1, "basic", expectedCluster1)
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup2, "basic", expectedCluster2)
+		require.NotEqual(s.T(), mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
