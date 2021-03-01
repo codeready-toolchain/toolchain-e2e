@@ -30,8 +30,8 @@ const (
 	UserSignupsBannedMetric          = "sandbox_user_signups_banned_total"
 
 	// DEPRECATED: use `MasterUserRecordsMetric` instead
-	MasterUserRecordMetric  = "sandbox_master_user_record_current"
-	MasterUserRecordsMetric = "sandbox_master_user_records_current"
+	MasterUserRecordMetric = "sandbox_master_user_record_current"
+	UserAccountsMetric     = "sandbox_user_accounts_current"
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
@@ -57,9 +57,9 @@ func (m *MetricsAssertionHelper) captureBaselineValues(memberClusterNames []stri
 	m.baselineValues[UserSignupsAutoDeactivatedMetric] = m.await.GetMetricValue(UserSignupsAutoDeactivatedMetric)
 	m.baselineValues[UserSignupsBannedMetric] = m.await.GetMetricValue(UserSignupsBannedMetric)
 	m.baselineValues[MasterUserRecordMetric] = m.await.GetMetricValue(MasterUserRecordMetric)
-	m.baselineValues[MasterUserRecordsMetric] = float64(0)
+	m.baselineValues[UserAccountsMetric] = float64(0)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
-		m.baselineValues[MasterUserRecordsMetric] += m.await.GetMetricValue(MasterUserRecordsMetric, "cluster_name", name)
+		m.baselineValues[UserAccountsMetric] += m.await.GetMetricValue(UserAccountsMetric, "cluster_name", name)
 	}
 }
 
@@ -70,12 +70,4 @@ func (m *MetricsAssertionHelper) WaitForMetricDelta(family string, delta float64
 	key := string(family)
 	adjustedValue := m.baselineValues[key] + delta
 	m.await.AssertMetricReachesValue(key, adjustedValue, labels...)
-}
-
-func (m *MetricsAssertionHelper) WaitForMetricDeltaSum(family string, delta float64, labels [][]string) {
-	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
-	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
-	key := string(family)
-	adjustedValue := m.baselineValues[key] + delta
-	m.await.AssertLabeledMetricsReachSum(key, adjustedValue, labels)
 }

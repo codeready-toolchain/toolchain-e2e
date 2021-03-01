@@ -21,7 +21,7 @@ func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
-	defer ctx.Cleanup()
+	// defer ctx.Cleanup()
 	hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
@@ -84,8 +84,8 @@ func TestE2EFlow(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 8)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 8, "cluster_name", memberAwait.ClusterName)  // all MUR on member1
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no MUR on member2
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 7, "cluster_name", memberAwait.ClusterName)  // 7 users on member1
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
 	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -253,9 +253,8 @@ func TestE2EFlow(t *testing.T) {
 	t.Run("verify metrics are correct at the end", func(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 7)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 8, "cluster_name", memberAwait.ClusterName)  // all MUR on member1
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no MUR on member2
-
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 8)
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 7, "cluster_name", memberAwait.ClusterName)  // 7 users on member1
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
 	})
 }

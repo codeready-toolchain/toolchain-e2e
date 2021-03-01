@@ -49,7 +49,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
 		// User on member cluster 1
-		userSignup, mur := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// User on member cluster 2
 		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@redhat.com", s.member2Await, ApprovedByAdmin()...)
@@ -58,30 +58,33 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 2)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 1, "cluster_name", mur.Spec.UserAccounts[0].TargetCluster)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 1, "cluster_name", murMember2.Spec.UserAccounts[0].TargetCluster)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 2)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // 1 user on member2 (userSignupMember2)
 		})
 
-		s.deactivateAndCheckUser(userSignup, mur)
+		s.deactivateAndCheckUser(userSignupMember1, murMember1)
 		s.deactivateAndCheckUser(userSignupMember2, murMember2)
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0)      // two less because of deactivated users
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // two more because of deactivated users
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", mur.Spec.UserAccounts[0].TargetCluster)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", murMember2.Spec.UserAccounts[0].TargetCluster)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)       // two less because of deactivated users
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName)
+
 		})
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-			s.reactivateAndCheckUser(userSignup, mur)
+			s.reactivateAndCheckUser(userSignupMember1, murMember1)
 			s.reactivateAndCheckUser(userSignupMember2, murMember2)
 
 			t.Run("verify metrics are correct after reactivating the user", func(t *testing.T) {
-				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)            // no change
-				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 4)    // two more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 2)      // two more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // no change
+				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                                              // no change
+				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 4)                                      // two more because of reactivated user
+				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                   // no change
+				metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 2)                                         // two more because of reactivated user
+				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // 1 user on member2 (userSignupMember2)
 			})
 		})
 	})
@@ -90,24 +93,26 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the basic tier that has deactivation disabled
 		basicDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basicdeactivationdisabled")
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignup.Spec.Username, *basicDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
-		mur, err = s.hostAwait.WaitForMasterUserRecord(mur.Name,
+		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignupMember1.Spec.Username, *basicDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
+		murMember1, err = s.hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
 		require.NoError(s.T(), err)
 
 		t.Run("verify metrics are correct after moving user to new tier", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)            // 1 new signup
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)    // 1 more approved signup
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 1)      // 1 mur for the approved signup
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0) // signup not deactivated
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                              // 1 new signup
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // 1 more approved signup
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // signup not deactivated
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // 1 mur for the approved signup
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
@@ -116,26 +121,28 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		manyManyDaysAgo := 999999999999999
 		durationDelta := time.Duration(manyManyDaysAgo) * time.Hour * 24
 		updatedProvisionedTime := &metav1.Time{Time: time.Now().Add(-durationDelta)}
-		mur, err = s.hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = updatedProvisionedTime
 		})
 		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
 
 		// Ensure the MUR has the updated ProvisionedTime
-		_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name, wait.UntilMasterUserRecordHasProvisionedTime(updatedProvisionedTime))
+		_, err = s.hostAwait.WaitForMasterUserRecord(murMember1.Name, wait.UntilMasterUserRecordHasProvisionedTime(updatedProvisionedTime))
 		require.NoError(s.T(), err)
 
 		// The user should not be deactivated so the MUR should not be deleted, expect an error
-		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
 		require.Error(s.T(), err)
 
 		t.Run("verify metrics are correct after provisioned time changed", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)        // no change
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 1)          // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)     // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0) // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                              // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0)                               // no change
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // no change
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 	})
 
@@ -143,8 +150,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Initialize metrics assertion counts
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
 
-		userSignup, mur := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
-		deactivationExcludedUserSignup, excludedMur := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		deactivationExcludedUserSignupMember1, excludedMurMember1 := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the basic tier that has deactivation enabled
 		basicTier, err := s.hostAwait.WaitForNSTemplateTier("basic")
@@ -154,44 +161,46 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
 		tierDeactivationDuration := time.Duration(basicTier.Spec.DeactivationTimeoutDays) * time.Hour * 24
-		mur, err = s.hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
 		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", mur.Name)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
 
 		// Use the same method above to change the provisioned time for the excluded user
-		excludedMur, err = s.hostAwait.UpdateMasterUserRecordStatus(excludedMur.Name, func(mur *v1alpha1.MasterUserRecord) {
+		excludedMurMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(excludedMurMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
 		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMur.Name)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMurMember1.Name)
 
 		// The non-excluded user should be deactivated
-		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
 		require.NoError(s.T(), err)
-		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		userSignupMember1, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name,
 			wait.UntilUserSignupHasConditions(Deactivated()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
-		require.True(t, userSignup.Spec.Deactivated, "usersignup should be deactivated")
+		require.True(t, userSignupMember1.Spec.Deactivated, "usersignup should be deactivated")
 
 		// The excluded user should still be active
-		_, err = s.hostAwait.WaitForMasterUserRecord(excludedMur.Name)
+		_, err = s.hostAwait.WaitForMasterUserRecord(excludedMurMember1.Name)
 		require.NoError(s.T(), err)
-		deactivationExcludedUserSignup, err = s.hostAwait.WaitForUserSignup(deactivationExcludedUserSignup.Name,
+		deactivationExcludedUserSignupMember1, err = s.hostAwait.WaitForUserSignup(deactivationExcludedUserSignupMember1.Name,
 			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 		require.NoError(s.T(), err)
-		require.False(t, deactivationExcludedUserSignup.Spec.Deactivated, "deactivationExcludedUserSignup should not be deactivated")
+		require.False(t, deactivationExcludedUserSignupMember1.Spec.Deactivated, "deactivationExcludedUserSignup should not be deactivated")
 
 		t.Run("verify metrics are correct after auto deactivation", func(t *testing.T) {
 			// Only the user with domain not on the exclusion list should be auto-deactivated
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 1)
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 1)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 	})
 }
@@ -229,8 +238,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // all MUR on member1
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", s.memberAwait2.ClusterName) // no MUR on member2
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // no user on member1
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 	})
 
@@ -254,9 +263,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // not provisioned because banned before signup
 			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 2)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // all MUR on member1
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsMetric, 0, "cluster_name", s.memberAwait2.ClusterName) // no MUR on member2
-
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // no user on member1
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 	})
 
