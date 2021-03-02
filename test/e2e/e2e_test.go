@@ -20,7 +20,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
 	hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
@@ -56,7 +56,7 @@ func TestE2EFlow(t *testing.T) {
 	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
 
 	// Get metrics assertion helper for testing metrics before creating any users
-	metricsAssertion := InitMetricsAssertion(t, hostAwait)
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
@@ -68,11 +68,11 @@ func TestE2EFlow(t *testing.T) {
 	extrajohnName := "extrajohn"
 	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName, memberAwait.ClusterName)
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, memberAwait2.ClusterName)
+	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, member2Await.ClusterName)
 
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "basic", memberAwait)
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "basic", memberAwait)
-	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "basic", memberAwait2)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "basic", member2Await)
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)
@@ -83,7 +83,9 @@ func TestE2EFlow(t *testing.T) {
 	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 8)
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 8)
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 7, "cluster_name", memberAwait.ClusterName)  // 7 users on member1
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
 	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -246,11 +248,13 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 
+		t.Run("verify metrics are correct at the end", func(t *testing.T) {
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 7)                                       // 'johnsignup' was deleted
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)  // 6 users left on member1 ('johnsignup' was deleted)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
+		})
 	})
 
-	t.Run("verify metrics are correct at the end", func(t *testing.T) {
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-		metricsAssertion.WaitForMetricDelta(CurrentMURsMetric, 7)
-	})
 }

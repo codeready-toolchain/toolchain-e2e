@@ -29,7 +29,7 @@ type userWorkloadsTestSuite struct {
 }
 
 func (s *userWorkloadsTestSuite) SetupSuite() {
-	s.ctx, s.hostAwait, s.memberAwait, s.memberAwait2 = WaitForDeployments(s.T(), &v1alpha1.UserSignupList{})
+	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), &v1alpha1.UserSignupList{})
 }
 
 func (s *userWorkloadsTestSuite) TearDownTest() {
