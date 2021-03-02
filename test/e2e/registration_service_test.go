@@ -522,7 +522,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Equal(s.T(), float64(http.StatusForbidden), responseMap["code"], "code not found in response body map %s", responseMap)
 
 	require.Equal(s.T(), "Forbidden", responseMap["status"])
-	require.Equal(s.T(), "phone number already in use:cannot register using phone number: +61408999999", responseMap["message"])
+	require.Equal(s.T(), "forbidden: phone number already in use: cannot register using phone number: +61408999999", responseMap["message"])
 	require.Equal(s.T(), "phone number already in use", responseMap["details"])
 
 	// Retrieve the updated UserSignup
