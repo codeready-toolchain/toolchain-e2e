@@ -75,7 +75,7 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	// wait for member operators to be ready
 	memberAwait := getMemberAwaitility(t, f, hostAwait, memberNs)
 
-	memberAwait2 := getMemberAwaitility(t, f, hostAwait, memberNs2)
+	member2Await := getMemberAwaitility(t, f, hostAwait, memberNs2)
 
 	// setup member metrics route for metrics verification in tests
 	memberMetricsRoute, err := memberAwait.SetupRouteForService("member-operator-metrics", "/metrics")
@@ -85,11 +85,11 @@ func WaitForDeployments(t *testing.T, obj runtime.Object) (*framework.Context, *
 	_, err = memberAwait.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
-	_, err = memberAwait2.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
+	_, err = member2Await.WaitForToolchainClusterWithCondition(hostAwait.Type, hostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
-	return ctx, hostAwait, memberAwait, memberAwait2
+	return ctx, hostAwait, memberAwait, member2Await
 }
 
 func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
