@@ -56,7 +56,7 @@ func TestE2EFlow(t *testing.T) {
 	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
 
 	// Get metrics assertion helper for testing metrics before creating any users
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, memberAwait.ClusterName, member2Await.ClusterName)
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test

@@ -46,7 +46,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
-		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
+		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 		// User on member cluster 1
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
@@ -91,7 +91,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
 		// Initialize metrics assertion counts
-		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
+		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
@@ -148,7 +148,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
 		// Initialize metrics assertion counts
-		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
+		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 		deactivationExcludedUserSignupMember1, excludedMurMember1 := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
@@ -207,7 +207,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 func (s *userManagementTestSuite) TestUserBanning() {
 	// Get metrics assertion helper for testing metrics
-	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait)
+	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 

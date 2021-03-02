@@ -318,29 +318,6 @@ func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float
 	require.NoError(a.T, err)
 }
 
-// AssertLabeledMetricsReachSum asserts that the sum of the exposed metrics with the given family
-// and label key-value pair reaches the expected value
-func (a *Awaitility) AssertLabeledMetricsReachSum(family string, expectedValue float64, allLabels [][]string) {
-	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, allLabels, expectedValue)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		sum := float64(0)
-		for _, labels := range allLabels {
-			value, err := getMetricValue(a.MetricsURL, family, labels)
-			if err != nil {
-				a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' but error occurred: %s", family, labels, expectedValue, err.Error())
-				return false, nil
-			}
-			sum += value
-		}
-		if sum != expectedValue {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' (currently: %v)", family, allLabels, expectedValue, sum)
-			return false, nil
-		}
-		return true, nil
-	})
-	require.NoError(a.T, err)
-}
-
 // WaitUntilMetricHasValueOrMore waits until the exposed metric with the given family
 // and label key-value pair has reached the expected value (or more)
 func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue float64, labels ...string) error {
