@@ -118,8 +118,8 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		for _, m := range toolchainStatus.Status.Members {
 			if s.memberAwait.ClusterName == m.ClusterName {
 				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait.ClusterName, m.UserAccountCount+1))
-			} else if s.memberAwait2.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait2.ClusterName, m.UserAccountCount+1))
+			} else if s.member2Await.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, test.PerMemberCluster(s.member2Await.ClusterName, m.UserAccountCount+1))
 			}
 		}
 		require.Len(s.T(), memberLimits, 2)
