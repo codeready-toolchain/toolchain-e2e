@@ -523,7 +523,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	require.Equal(s.T(), "Forbidden", responseMap["status"])
 	require.Equal(s.T(), "forbidden: phone number already in use: cannot register using phone number: +61408999999", responseMap["message"])
-	require.Equal(s.T(), fmt.Sprintf("Verification for %s could not be sent", otherIdentity.ID.String()), responseMap["details"])
+	require.Equal(s.T(), "error while initiating verification", responseMap["details"])
 
 	// Retrieve the updated UserSignup
 	otherUserSignup, err = s.hostAwait.WaitForUserSignup(otherIdentity.ID.String())
