@@ -128,8 +128,6 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 
 		// when
 		_, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
-		// we need to sleep one second to create UserSignup with different creation time
-		time.Sleep(time.Second)
 		_, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
 
 		// then
