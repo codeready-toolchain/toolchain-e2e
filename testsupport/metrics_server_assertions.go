@@ -3,7 +3,7 @@ package testsupport
 import (
 	"testing"
 
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 )
 

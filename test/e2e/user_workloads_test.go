@@ -8,7 +8,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
