@@ -7,7 +7,7 @@ import (
 
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	quotav1 "github.com/openshift/api/quota/v1"

@@ -16,7 +16,3 @@ $(OUT_DIR)/operator:
 		-ldflags "-X ${GO_PACKAGE_PATH}/cmd/manager.Commit=${GIT_COMMIT_ID} -X ${GO_PACKAGE_PATH}/cmd/manager.BuildTime=${BUILD_TIME}" \
 		-o $(OUT_DIR)/bin/toolchain-e2e \
 		cmd/manager/main.go
-
-.PHONY: vendor
-vendor:
-	$(Q)go mod vendor

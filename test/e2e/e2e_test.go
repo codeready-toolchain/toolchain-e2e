@@ -7,8 +7,8 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/tiers"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
