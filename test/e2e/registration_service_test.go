@@ -18,7 +18,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
@@ -289,7 +289,6 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 func (s *registrationServiceTestSuite) TestSignupOK() {
 
-
 	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *v1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
@@ -356,7 +355,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	})
 
 	s.Run("test User ID encodings", func() {
-		userIDs := []string {
+		userIDs := []string{
 			"abcde-12345",
 			"abcde\\*-12345",
 			"-1234567",
@@ -364,7 +363,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 			//"abc:xyz",
 		}
 
-		encodedUserIDs := []string {
+		encodedUserIDs := []string{
 			"abcde-12345",
 			"c0177ca4-abcde-12345",
 			"ca3e1e0f-1234567",

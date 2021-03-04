@@ -6,7 +6,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"

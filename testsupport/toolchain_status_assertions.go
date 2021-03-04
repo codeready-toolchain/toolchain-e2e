@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"

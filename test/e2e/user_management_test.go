@@ -12,7 +12,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
 	uuid "github.com/satori/go.uuid"
