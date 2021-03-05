@@ -109,6 +109,40 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	})
 }
 
+func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
+	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
+		// given
+		var memberLimits []test.PerMemberClusterOption
+		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		require.NoError(t, err)
+		for _, m := range toolchainStatus.Status.Members {
+			if s.memberAwait.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, test.PerMemberCluster(s.memberAwait.ClusterName, m.UserAccountCount+1))
+			} else if s.member2Await.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, test.PerMemberCluster(s.member2Await.ClusterName, m.UserAccountCount+1))
+			}
+		}
+		require.Len(s.T(), memberLimits, 2)
+
+		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled().MaxUsersNumber(0, memberLimits...))
+
+		// when
+		_, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
+		_, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
+
+		// then
+		require.NotEqual(s.T(), mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
+
+		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
+			// when
+			userSignupPending := s.createAndCheckUserSignupNoMUR(false, "multimember-3", "multi3@redhat.com", nil, PendingApprovalNoCluster()...)
+
+			// then
+			s.userIsNotProvisioned(t, userSignupPending)
+		})
+	})
+}
+
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *v1alpha1.UserSignup) {
 	s.hostAwait.CheckMasterUserRecordIsDeleted(userSignup.Spec.Username)
 	currentUserSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name)
