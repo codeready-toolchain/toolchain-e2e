@@ -3,8 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"strconv"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/user"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -27,26 +29,38 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const usernamePrefix = "zippy"
+
 var kubeconfig string
 var verbose bool
 var hostOperatorNamespace string
 var memberOperatorNamespace string
+var templatePath string
+var numberOfUsers int
+var userBatches int
+var delay int
+var resourceRate int
 
 // Execute the setup command to fill a cluster with as many users as requested.
 // The command uses the default `$KUBECONFIG` or `<home>/.kube/config` unless a path is specified.
 func Execute() {
 	cmd := &cobra.Command{
-		Use:           "setup <user_account_number>",
-		Short:         "setup a clutser with the given number of user accounts",
+		Use:           "setup <template_file>",
+		Short:         "setup a cluster with the given number of user accounts",
 		SilenceErrors: true,
 		SilenceUsage:  false,
 		Args:          cobra.ExactArgs(1),
 		Run:           setup,
 	}
-	cmd.Flags().StringVarP(&kubeconfig, "kubeconfig", "", "", "(optional) absolute path to the kubeconfig file")
-	cmd.Flags().BoolVar(&verbose, "verbose", false, "if 'debug' traces should be displayed in the console (false by default)")
-	cmd.Flags().StringVar(&hostOperatorNamespace, "host-operator-namespace", "toolchain-host-operator", "the namespace of Host operator ('toolchain-host-operator' by default)")
-	cmd.Flags().StringVar(&memberOperatorNamespace, "member-operator-namespace", "toolchain-member-operator", "the namespace of the Member operator ('toolchain-member-operator' by default)")
+
+	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "(optional) absolute path to the kubeconfig file")
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
+	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
+	cmd.Flags().IntVarP(&userBatches, "batch", "b", 100, "create users in batches of N ('100' by default)")
+	cmd.Flags().IntVarP(&delay, "delay", "d", 5, "the duration of the delay in between batches ('5' by default)")
+	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
+	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", "toolchain-host-operator", "the namespace of Host operator ('toolchain-host-operator' by default)")
+	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", "toolchain-member-operator", "the namespace of the Member operator ('toolchain-member-operator' by default)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -57,61 +71,87 @@ func Execute() {
 func setup(cmd *cobra.Command, args []string) {
 	cmd.SilenceUsage = true
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
+
+	term.Debugf("Number of Users:           '%d'", numberOfUsers)
+	term.Debugf("User Batch Size:           '%d'", userBatches)
+	term.Debugf("Load Rate:                 '%d'", resourceRate)
+	term.Debugf("Host Operator Namespace:   '%s'", hostOperatorNamespace)
+	term.Debugf("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
+
 	cl, config, _, err := configuration.NewClient(term, kubeconfig)
 	if err != nil {
 		term.Fatalf(err, "cannot create client")
 	}
 
+	// validate template file
+	templateFilePath, err := filepath.Abs(args[0])
+	if err != nil {
+		term.Fatalf(err, "invalid filepath for template file: '%s'", args[0])
+	}
+	templateData, err := ioutil.ReadFile(templateFilePath)
+	if err != nil {
+		term.Fatalf(err, "failed to read template file: '%s'", args[0])
+	}
+
+	// validate number of users
+	if numberOfUsers < 1 {
+		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid users value '%d'", numberOfUsers)
+	}
+	if numberOfUsers%userBatches != 0 {
+		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
+	}
+
+	term.Infof("🕖 Initializing...")
 	memberClusterName, err := getMemberClusterName(cl)
 	if err != nil {
 		term.Fatalf(err, "unable to lookup member cluster name")
 	}
-	count, err := strconv.Atoi(args[0])
-	if err != nil {
-		term.Fatalf(err, "invalid number of user accounts to provision: '%s'", args[0])
-	}
-	if !term.PromptBoolf("👤 provision %d users on %s", count, config.Host) {
+	if !term.PromptBoolf("👤 provision %d users in batches of %d on %s", numberOfUsers, userBatches, config.Host) {
 		return
 	}
 
 	// provision the users
 	term.Infof("🍿 provisioning users...")
 
-	uiprogress.Start()
+	uip := uiprogress.New()
+	uip.Start()
 
 	// start the progress bars in go routines
 	var wg sync.WaitGroup
-	usersignupBar := uiprogress.AddBar(count).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
+	usersignupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
 		return strutil.PadLeft("user signups", 15, ' ')
 	})
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for usersignupBar.Incr() {
-			username := fmt.Sprintf("johnsmith-%04d", usersignupBar.Current())
+			username := fmt.Sprintf("%s-%04d", usernamePrefix, usersignupBar.Current())
 			userSignup := newUserSignup(username, memberClusterName)
 			if err := cl.Create(context.TODO(), userSignup); err != nil {
 				term.Fatalf(err, "failed to provision user '%s'", username)
 			}
 			time.Sleep(time.Millisecond * 20)
-		}
-	}()
-	idlerBar := uiprogress.AddBar(count).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft("idler updates", 15, ' ')
-	})
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for idlerBar.Incr() {
-			username := fmt.Sprintf("johnsmith-%04d", idlerBar.Current())
+
+			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
 			if err := updateUserIdlersTimeout(term, cl, username, 15*time.Second); err != nil {
 				term.Fatalf(err, "failed to update idlers for user '%s'", username)
 			}
-			time.Sleep(time.Millisecond * 20)
+
+			// create resources for every nth user
+			if usersignupBar.Current()%resourceRate == 0 {
+				userNS := fmt.Sprintf("%s-stage", username)
+				if err := user.CreateResourcesFromTemplate(config, templateData, userNS); err != nil {
+					term.Fatalf(err, "failed to create resources for user '%s'", username)
+				}
+			}
+
+			if usersignupBar.Current()%userBatches == 0 {
+				time.Sleep(time.Second * time.Duration(delay))
+			}
 		}
 	}()
 	wg.Wait()
-	uiprogress.Stop()
+	uip.Stop()
 	term.Infof("🏁 done provisioning users")
 	term.Infof("👋 have fun!")
 }
