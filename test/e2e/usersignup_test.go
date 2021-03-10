@@ -302,14 +302,23 @@ func (s *userSignupIntegrationTest) TestUserSignupModifiedCreationDate() {
 	past := time.Now().AddDate(-1, 0, 0)
 	userSignup.ObjectMeta.CreationTimestamp = v1.Time{Time: past}
 
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
-	require.NoError(s.T(), err)
+	require.NoError(s.T(), s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx)))
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	instance, err := s.hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(s.T(), err)
 
-	require.Equal(s.T(), past, instance.ObjectMeta.CreationTimestamp)
+	//require.Equal(s.T(), past, instance.ObjectMeta.CreationTimestamp)
+
+	// Let's try modifying an existing resource's creation timestamp
+	instance.ObjectMeta.CreationTimestamp = v1.Time{Time: past}
+
+	require.NoError(s.T(), s.hostAwait.FrameworkClient.Update(context.TODO(), userSignup))
+
+	reloaded, err := s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
+
+	require.Equal(s.T(), past, reloaded.ObjectMeta.CreationTimestamp)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
