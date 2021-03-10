@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,60 +23,137 @@ import (
 var interval = time.Second * 1
 var timeout = time.Second * 60
 
+type templateProcessor struct {
+	config    *rest.Config
+	namespace string
+}
+
 // CreateResourcesFromTemplate uses the provided template to create resources in the provided namespace
-func CreateResourcesFromTemplate(config *rest.Config, templateData []byte, namespace string) error {
-	c, err := kubernetes.NewForConfig(config)
+func CreateResourcesFromTemplate(config *rest.Config, namespace string, templateData []byte) error {
+
+	tp := templateProcessor{config: config, namespace: namespace}
+	clSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
 
-	err = waitForNamespace(c, namespace)
+	err = waitForNamespace(clSet, namespace)
 	if err != nil {
 		return err
 	}
 
-	dd, err := dynamic.NewForConfig(config)
-	if err != nil {
-		return err
-	}
-
+	// decode template
 	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(templateData), 100)
+	var objsToProcess []runtime.RawExtension
 	for {
 		var rawObj runtime.RawExtension
 		if err = decoder.Decode(&rawObj); err != nil {
 			break
 		}
-
-		obj, gvk, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
-		unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-		if err != nil {
-			return err
-		}
-
-		unstructuredObj := &unstructured.Unstructured{Object: unstructuredMap}
-
-		gr, err := restmapper.GetAPIGroupResources(c.Discovery())
-		if err != nil {
-			return err
-		}
-
-		mapper := restmapper.NewDiscoveryRESTMapper(gr)
-		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			return err
-		}
-
-		unstructuredObj.SetNamespace(namespace)
-		dri := dd.Resource(mapping.Resource).Namespace(unstructuredObj.GetNamespace())
-
-		if _, err := dri.Create(context.TODO(), unstructuredObj, metav1.CreateOptions{}); err != nil {
-			return err
-		}
+		objsToProcess = append(objsToProcess, rawObj)
 	}
 	if err != io.EOF {
 		return err
 	}
-	return nil
+
+	// feed objects to be processed
+	in := distribute(objsToProcess)
+	c1 := tp.multiObjectProcessor(in)
+	c2 := tp.multiObjectProcessor(in)
+
+	// combine the results
+	var overallErr error
+	for err := range combineResults(c1, c2) {
+		if err != nil {
+			overallErr = err
+		}
+	}
+
+	return overallErr
+}
+
+func distribute(objs []runtime.RawExtension) <-chan runtime.RawExtension {
+	out := make(chan runtime.RawExtension)
+	go func() {
+		for _, obj := range objs {
+			out <- obj
+		}
+		close(out)
+	}()
+	return out
+}
+
+func (p templateProcessor) multiObjectProcessor(objSource <-chan runtime.RawExtension) <-chan error {
+	out := make(chan error)
+	go func() {
+		for rawObj := range objSource {
+			out <- p.processRawObject(rawObj)
+		}
+		close(out)
+	}()
+	return out
+}
+
+func combineResults(results ...<-chan error) <-chan error {
+	var wg sync.WaitGroup
+	out := make(chan error)
+
+	// Start an output goroutine for each input channel in results.
+	// output copies values from results to out until results is closed, then calls wg.Done.
+	output := func(c <-chan error) {
+		for r := range c {
+			out <- r
+		}
+		wg.Done()
+	}
+	wg.Add(len(results))
+	for _, result := range results {
+		go output(result)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
+}
+
+func (p templateProcessor) processRawObject(rawObj runtime.RawExtension) error {
+
+	clSet, err := kubernetes.NewForConfig(p.config)
+	if err != nil {
+		return err
+	}
+
+	dynamicCl, err := dynamic.NewForConfig(p.config)
+	if err != nil {
+		return err
+	}
+
+	obj, gvk, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+
+	unstructuredObj := &unstructured.Unstructured{Object: unstructuredMap}
+
+	gr, err := restmapper.GetAPIGroupResources(clSet.Discovery())
+	if err != nil {
+		return err
+	}
+
+	mapper := restmapper.NewDiscoveryRESTMapper(gr)
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return err
+	}
+
+	unstructuredObj.SetNamespace(p.namespace)
+	dri := dynamicCl.Resource(mapping.Resource).Namespace(unstructuredObj.GetNamespace())
+
+	_, err = dri.Create(context.TODO(), unstructuredObj, metav1.CreateOptions{})
+	return err
 }
 
 func waitForNamespace(c *kubernetes.Clientset, namespace string) error {

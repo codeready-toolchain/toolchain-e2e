@@ -57,7 +57,7 @@ func Execute() {
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 100, "create users in batches of N ('100' by default)")
-	cmd.Flags().IntVarP(&delay, "delay", "d", 5, "the duration of the delay in between batches ('5' by default)")
+	cmd.Flags().IntVarP(&delay, "delay", "d", 5, "the duration (in Seconds) of the delay in between batches ('5' by default)")
 	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", "toolchain-host-operator", "the namespace of Host operator ('toolchain-host-operator' by default)")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", "toolchain-member-operator", "the namespace of the Member operator ('toolchain-member-operator' by default)")
@@ -101,7 +101,7 @@ func setup(cmd *cobra.Command, args []string) {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
 	}
 
-	term.Infof("🕖 Initializing...")
+	term.Infof("🕖 initializing...")
 	memberClusterName, err := getMemberClusterName(cl)
 	if err != nil {
 		term.Fatalf(err, "unable to lookup member cluster name")
@@ -132,24 +132,36 @@ func setup(cmd *cobra.Command, args []string) {
 			}
 			time.Sleep(time.Millisecond * 20)
 
+			if usersignupBar.Current()%userBatches == 0 {
+				time.Sleep(time.Second * time.Duration(delay))
+			}
+		}
+	}()
+
+	setupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
+		return strutil.PadLeft("user setup", 15, ' ')
+	})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for setupBar.Incr() {
+			username := fmt.Sprintf("%s-%04d", usernamePrefix, setupBar.Current())
+
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
 			if err := updateUserIdlersTimeout(term, cl, username, 15*time.Second); err != nil {
 				term.Fatalf(err, "failed to update idlers for user '%s'", username)
 			}
 
 			// create resources for every nth user
-			if usersignupBar.Current()%resourceRate == 0 {
+			if setupBar.Current()%resourceRate == 0 {
 				userNS := fmt.Sprintf("%s-stage", username)
-				if err := user.CreateResourcesFromTemplate(config, templateData, userNS); err != nil {
+				if err := user.CreateResourcesFromTemplate(config, userNS, templateData); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}
-
-			if usersignupBar.Current()%userBatches == 0 {
-				time.Sleep(time.Second * time.Duration(delay))
-			}
 		}
 	}()
+
 	wg.Wait()
 	uip.Stop()
 	term.Infof("🏁 done provisioning users")
@@ -193,7 +205,7 @@ func updateUserIdlersTimeout(term terminal.Terminal, cl client.Client, username 
 }
 
 const (
-	defaultRetryInterval = time.Millisecond * 100
+	defaultRetryInterval = time.Millisecond * 500
 	defaultTimeout       = time.Second * 60
 )
 
