@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
 
@@ -293,6 +294,22 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		userSignup, _ = s.createAndCheckUserSignup(true, prefix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
 		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
 	}
+}
+
+func (s *userSignupIntegrationTest) TestUserSignupModifiedCreationDate() {
+	userSignup := NewUserSignup(s.T(), s.hostAwait, "tango", "tango@xray.com")
+	userSignup.Spec.Approved = true
+	past := time.Now().AddDate(-1, 0, 0)
+	userSignup.ObjectMeta.CreationTimestamp = v1.Time{Time: past}
+
+	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	require.NoError(s.T(), err)
+	s.T().Logf("user signup '%s' created", userSignup.Name)
+
+	instance, err := s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
+
+	require.Equal(s.T(), past, instance.ObjectMeta.CreationTimestamp)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
