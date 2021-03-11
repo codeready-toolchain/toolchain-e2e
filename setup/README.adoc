@@ -65,7 +65,7 @@ publish: External
 1. Clone this repository
 `git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
 2. Run the following to install the Dev Sandbox operators
-`make deploy-e2e HOST_NS=toolchain-host-operator MEMBER_NS=toolchain-member-operator MEMBER_NS_2=toolchain-member2-operator`
+`make dev-deploy-e2e`
 3. // TODO instructions for provisioning a large amount of users to simulate load on the cluster
 
 === Evaluate the Cluster and Operator(s)
@@ -77,7 +77,7 @@ With the cluster now under load, it's time to evaluate the environment.
 
 === Clean up
 
-==== Remove Only Users
+==== Remove Only Users and Their Namespaces
 
 Run `oc get usersignup -n toolchain-host-operator -o jsonpath='{.items..metadata.name}' | xargs oc delete usersignup`
 
