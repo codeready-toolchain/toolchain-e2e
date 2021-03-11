@@ -160,6 +160,7 @@ func setup(cmd *cobra.Command, args []string) {
 		for setupBar.Incr() {
 			username := fmt.Sprintf("%s-%04d", usernamePrefix, setupBar.Current())
 			userNS := fmt.Sprintf("%s-stage", username)
+			// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
 			waitForNamespace(cl, userNS)
 
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
