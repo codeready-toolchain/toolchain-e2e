@@ -313,7 +313,7 @@ func (s *userSignupIntegrationTest) TestUserSignupModifiedCreationDate() {
 	// Let's try modifying an existing resource's creation timestamp
 	instance.ObjectMeta.CreationTimestamp = v1.Time{Time: past}
 
-	require.NoError(s.T(), s.hostAwait.FrameworkClient.Update(context.TODO(), userSignup))
+	require.NoError(s.T(), s.hostAwait.FrameworkClient.Update(context.TODO(), instance))
 
 	reloaded, err := s.hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(s.T(), err)
