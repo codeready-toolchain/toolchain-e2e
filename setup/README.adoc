@@ -6,7 +6,7 @@ This document describes how to setup a Dev Sandbox environment that is similar t
 
 1. Provision an OCP cluster with sufficient resources.
 
-For example, if using AWS:
+For example, if using the openshift-install tool to install OCP on AWS you can use an install-config.yaml file that has the following configuration:
 
 ----
 apiVersion: v1
