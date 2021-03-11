@@ -59,7 +59,7 @@ func Execute() {
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "(optional) absolute path to the kubeconfig file")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
-	cmd.Flags().IntVarP(&userBatches, "batch", "b", 10, "create users in batches of N ('100' by default)")
+	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create users in batches of N ('25' by default)")
 	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", "toolchain-host-operator", "the namespace of Host operator ('toolchain-host-operator' by default)")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", "toolchain-member-operator", "the namespace of the Member operator ('toolchain-member-operator' by default)")
@@ -127,7 +127,7 @@ func setup(cmd *cobra.Command, args []string) {
 	// start the progress bars in go routines
 	var wg sync.WaitGroup
 	usersignupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft("user signups", 15, ' ')
+		return strutil.PadLeft(fmt.Sprintf("user signups (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
 	})
 	wg.Add(1)
 	go func() {
@@ -140,22 +140,27 @@ func setup(cmd *cobra.Command, args []string) {
 			}
 			time.Sleep(time.Millisecond * 20)
 
-			// when the batch is done, wait for the user's namespaces to exist before proceeding
+			// when the batch is done, wait for 80% of the user's namespaces to exist before proceeding
 			if usersignupBar.Current()%userBatches == 0 {
-				userNS := fmt.Sprintf("%s-stage", username)
-				waitForNamespace(cl, userNS)
+				for i := usersignupBar.Current() - userBatches; i < usersignupBar.Current()-(userBatches/5); i++ {
+					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
+					userNS := fmt.Sprintf("%s-stage", userToCheck)
+					waitForNamespace(cl, userNS)
+				}
 			}
 		}
 	}()
 
 	setupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft("user setup", 15, ' ')
+		return strutil.PadLeft(fmt.Sprintf("user setup (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
 	})
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for setupBar.Incr() {
 			username := fmt.Sprintf("%s-%04d", usernamePrefix, setupBar.Current())
+			userNS := fmt.Sprintf("%s-stage", username)
+			waitForNamespace(cl, userNS)
 
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
 			if err := updateUserIdlersTimeout(term, cl, username, 15*time.Second); err != nil {
@@ -164,7 +169,6 @@ func setup(cmd *cobra.Command, args []string) {
 
 			// create resources for every nth user
 			if setupBar.Current()%resourceRate == 0 {
-				userNS := fmt.Sprintf("%s-stage", username)
 				if err := user.CreateResourcesFromTemplate(config, userNS, templateData, resourceProcessorsCount); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
@@ -215,8 +219,8 @@ func updateUserIdlersTimeout(term terminal.Terminal, cl client.Client, username 
 }
 
 const (
-	defaultRetryInterval = time.Millisecond * 500
-	defaultTimeout       = time.Second * 60
+	defaultRetryInterval = time.Millisecond * 200
+	defaultTimeout       = time.Second * 120
 )
 
 func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {

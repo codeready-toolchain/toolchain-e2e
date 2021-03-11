@@ -21,8 +21,8 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
-const interval = time.Second * 1
-const timeout = time.Second * 60
+const interval = time.Millisecond * 200
+const timeout = time.Second * 120
 
 type templateProcessor struct {
 	config    *rest.Config
