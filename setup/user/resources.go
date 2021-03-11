@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -20,8 +21,8 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
-var interval = time.Second * 1
-var timeout = time.Second * 60
+const interval = time.Second * 1
+const timeout = time.Second * 60
 
 type templateProcessor struct {
 	config    *rest.Config
@@ -29,7 +30,7 @@ type templateProcessor struct {
 }
 
 // CreateResourcesFromTemplate uses the provided template to create resources in the provided namespace
-func CreateResourcesFromTemplate(config *rest.Config, namespace string, templateData []byte) error {
+func CreateResourcesFromTemplate(config *rest.Config, namespace string, templateData []byte, resourceProcessorsCount int) error {
 
 	tp := templateProcessor{config: config, namespace: namespace}
 	clSet, err := kubernetes.NewForConfig(config)
@@ -58,14 +59,16 @@ func CreateResourcesFromTemplate(config *rest.Config, namespace string, template
 
 	// feed objects to be processed
 	in := distribute(objsToProcess)
-	c1 := tp.multiObjectProcessor(in)
-	c2 := tp.multiObjectProcessor(in)
+	var objProcessors []<-chan error
+	for i := 0; i < resourceProcessorsCount; i++ {
+		objProcessors = append(objProcessors, tp.multiObjectProcessor(in))
+	}
 
 	// combine the results
 	var overallErr error
-	for err := range combineResults(c1, c2) {
+	for err := range combineResults(objProcessors...) {
 		if err != nil {
-			overallErr = err
+			overallErr = multierror.Append(overallErr, err)
 		}
 	}
 

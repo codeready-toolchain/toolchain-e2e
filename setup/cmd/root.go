@@ -22,6 +22,9 @@ import (
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
+
+	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,8 +41,8 @@ var memberOperatorNamespace string
 var templatePath string
 var numberOfUsers int
 var userBatches int
-var delay int
 var resourceRate int
+var resourceProcessorsCount int
 
 // Execute the setup command to fill a cluster with as many users as requested.
 // The command uses the default `$KUBECONFIG` or `<home>/.kube/config` unless a path is specified.
@@ -56,11 +59,11 @@ func Execute() {
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "(optional) absolute path to the kubeconfig file")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
-	cmd.Flags().IntVarP(&userBatches, "batch", "b", 100, "create users in batches of N ('100' by default)")
-	cmd.Flags().IntVarP(&delay, "delay", "d", 5, "the duration (in Seconds) of the delay in between batches ('5' by default)")
+	cmd.Flags().IntVarP(&userBatches, "batch", "b", 10, "create users in batches of N ('100' by default)")
 	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", "toolchain-host-operator", "the namespace of Host operator ('toolchain-host-operator' by default)")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", "toolchain-member-operator", "the namespace of the Member operator ('toolchain-member-operator' by default)")
+	cmd.Flags().IntVar(&resourceProcessorsCount, "resource-processors", 10, "the number of resource processes used for creating user resources, a higher value uses more concurrency ('10' by default)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -101,10 +104,15 @@ func setup(cmd *cobra.Command, args []string) {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
 	}
 
+	// validate concurrent creates
+	if resourceProcessorsCount < 1 {
+		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid resource processors value '%d'", resourceProcessorsCount)
+	}
+
 	term.Infof("🕖 initializing...")
 	memberClusterName, err := getMemberClusterName(cl)
 	if err != nil {
-		term.Fatalf(err, "unable to lookup member cluster name")
+		term.Fatalf(err, "unable to lookup member cluster name, ensure the sandbox setup steps are followed")
 	}
 	if !term.PromptBoolf("👤 provision %d users in batches of %d on %s", numberOfUsers, userBatches, config.Host) {
 		return
@@ -132,8 +140,10 @@ func setup(cmd *cobra.Command, args []string) {
 			}
 			time.Sleep(time.Millisecond * 20)
 
+			// when the batch is done, wait for the user's namespaces to exist before proceeding
 			if usersignupBar.Current()%userBatches == 0 {
-				time.Sleep(time.Second * time.Duration(delay))
+				userNS := fmt.Sprintf("%s-stage", username)
+				waitForNamespace(cl, userNS)
 			}
 		}
 	}()
@@ -155,7 +165,7 @@ func setup(cmd *cobra.Command, args []string) {
 			// create resources for every nth user
 			if setupBar.Current()%resourceRate == 0 {
 				userNS := fmt.Sprintf("%s-stage", username)
-				if err := user.CreateResourcesFromTemplate(config, userNS, templateData); err != nil {
+				if err := user.CreateResourcesFromTemplate(config, userNS, templateData, resourceProcessorsCount); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}
@@ -258,4 +268,20 @@ func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, c
 		}
 	}
 	return false
+}
+
+func waitForNamespace(cl client.Client, namespace string) error {
+	ns := &corev1.Namespace{}
+	err := k8swait.Poll(defaultRetryInterval, defaultTimeout, func() (bool, error) {
+		err := cl.Get(context.TODO(), types.NamespacedName{
+			Name: namespace,
+		}, ns)
+		if errors.IsNotFound(err) {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+		return true, nil
+	})
+	return err
 }
