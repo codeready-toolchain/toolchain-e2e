@@ -5,7 +5,8 @@ import (
 	"context"
 	"io"
 	"sync"
-	"time"
+
+	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,9 +21,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 )
-
-const interval = time.Millisecond * 200
-const timeout = time.Second * 120
 
 type templateProcessor struct {
 	config    *rest.Config
@@ -160,7 +158,7 @@ func (p templateProcessor) processRawObject(rawObj runtime.RawExtension) error {
 }
 
 func waitForNamespace(c *kubernetes.Clientset, namespace string) error {
-	err := wait.Poll(interval, timeout, func() (done bool, err error) {
+	err := wait.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (done bool, err error) {
 		_, err = c.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {

@@ -12,7 +12,7 @@ import (
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
+	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/user"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -69,8 +69,8 @@ func Execute() {
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create users in batches of N ('25' by default)")
 	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
-	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator ('toolchain-host-operator' by default)")
-	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator ('toolchain-member-operator' by default)")
+	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator ('${QUAY_NAMESPACE}-host-operator' by default)")
+	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator ('${QUAY_NAMESPACE}-member-operator' by default)")
 	cmd.Flags().IntVar(&resourceProcessorsCount, "resource-processors", 10, "the number of resource processes used for creating user resources, a higher value uses more concurrency ('10' by default)")
 
 	if err := cmd.Execute(); err != nil {
@@ -89,7 +89,7 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Debugf("Host Operator Namespace:   '%s'", hostOperatorNamespace)
 	term.Debugf("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
 
-	cl, config, _, err := configuration.NewClient(term, kubeconfig)
+	cl, config, _, err := cfg.NewClient(term, kubeconfig)
 	if err != nil {
 		term.Fatalf(err, "cannot create client")
 	}
@@ -227,14 +227,9 @@ func updateUserIdlersTimeout(term terminal.Terminal, cl client.Client, username 
 	return nil
 }
 
-const (
-	defaultRetryInterval = time.Millisecond * 200
-	defaultTimeout       = time.Second * 120
-)
-
 func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {
 	idler := &toolchainv1alpha1.Idler{}
-	err := k8swait.Poll(defaultRetryInterval, defaultTimeout, func() (bool, error) {
+	err := k8swait.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (bool, error) {
 		err := cl.Get(context.TODO(), types.NamespacedName{
 			Name: name,
 		}, idler)
@@ -252,7 +247,7 @@ func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {
 
 func getMemberClusterName(cl client.Client) (string, error) {
 	var memberCluster v1alpha1.ToolchainCluster
-	err := k8swait.Poll(defaultRetryInterval, defaultTimeout, func() (bool, error) {
+	err := k8swait.Poll(time.Millisecond*100, time.Minute*1, func() (bool, error) {
 		clusters := &v1alpha1.ToolchainClusterList{}
 		if err := cl.List(context.TODO(), clusters, client.InNamespace(hostOperatorNamespace), client.MatchingLabels{
 			"namespace": memberOperatorNamespace,
@@ -285,7 +280,7 @@ func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, c
 
 func waitForNamespace(cl client.Client, namespace string) error {
 	ns := &corev1.Namespace{}
-	err := k8swait.Poll(defaultRetryInterval, defaultTimeout, func() (bool, error) {
+	err := k8swait.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (bool, error) {
 		err := cl.Get(context.TODO(), types.NamespacedName{
 			Name: namespace,
 		}, ns)

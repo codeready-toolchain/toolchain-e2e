@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
@@ -15,6 +16,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	DefaultRetryInterval = time.Millisecond * 200
+	DefaultTimeout       = time.Minute * 5
 )
 
 // NewClient returns a new client to the cluster defined by the current context in
