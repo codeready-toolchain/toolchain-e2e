@@ -4,7 +4,7 @@ This document describes how to setup a Dev Sandbox environment that is similar t
 
 === Prereqs
 
-1. Provision an OCP cluster with sufficient resources.
+1. Provision an OCP cluster on AWS with sufficient resources: 4xlarge master nodes and at least 3 2xlarge worker nodes.
 
 For example, if using the openshift-install tool to install OCP on AWS you can use an install-config.yaml file that has the following configuration:
 
