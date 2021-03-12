@@ -56,13 +56,21 @@ func Execute() {
 		Run:           setup,
 	}
 
+	quayNS, found := os.LookupEnv("QUAY_NAMESPACE")
+	if !found || len(quayNS) == 0 {
+		fmt.Println("QUAY_NAMESPACE env var is not set, ensure the prerequisite setup steps are followed")
+		os.Exit(1)
+	}
+	defaultHostNS := fmt.Sprintf("%s-host-operator", quayNS)
+	defaultMemberNS := fmt.Sprintf("%s-member-operator", quayNS)
+
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "(optional) absolute path to the kubeconfig file")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create users in batches of N ('25' by default)")
 	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
-	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", "toolchain-host-operator", "the namespace of Host operator ('toolchain-host-operator' by default)")
-	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", "toolchain-member-operator", "the namespace of the Member operator ('toolchain-member-operator' by default)")
+	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator ('toolchain-host-operator' by default)")
+	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator ('toolchain-member-operator' by default)")
 	cmd.Flags().IntVar(&resourceProcessorsCount, "resource-processors", 10, "the number of resource processes used for creating user resources, a higher value uses more concurrency ('10' by default)")
 
 	if err := cmd.Execute(); err != nil {
@@ -142,7 +150,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			// when the batch is done, wait for 80% of the user's namespaces to exist before proceeding
 			if usersignupBar.Current()%userBatches == 0 {
-				for i := usersignupBar.Current() - userBatches; i < usersignupBar.Current()-(userBatches/5); i++ {
+				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current()-(userBatches/5); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
 					userNS := fmt.Sprintf("%s-stage", userToCheck)
 					waitForNamespace(cl, userNS)

@@ -75,4 +75,74 @@ data:
     color.bad=yellow
     allow.textmode=true
     how.nice.to.look=fairlyNice
-    
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  annotations:
+    app.openshift.io/vcs-ref: master
+    app.openshift.io/vcs-uri: https://github.com/sclorg/nodejs-ex.git
+    openshift.io/generated-by: OpenShiftWebConsole
+  labels:
+    app: nodejs-sample
+    app.kubernetes.io/component: nodejs-sample
+    app.kubernetes.io/instance: nodejs-sample
+    app.kubernetes.io/name: nodejs
+    app.kubernetes.io/part-of: sample-app
+    app.openshift.io/runtime: nodejs
+    app.openshift.io/runtime-version: 12-ubi7
+  name: nodejs-sample
+spec:
+  lookupPolicy:
+    local: false
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  annotations:
+    app.openshift.io/vcs-ref: master
+    app.openshift.io/vcs-uri: https://github.com/rajivnathan/does-not-exist.git
+    openshift.io/generated-by: OpenShiftWebConsole
+  labels:
+    app: nodejs-sample
+    app.kubernetes.io/component: nodejs-sample
+    app.kubernetes.io/instance: nodejs-sample
+    app.kubernetes.io/name: nodejs
+    app.kubernetes.io/part-of: sample-app
+    app.openshift.io/runtime: nodejs
+    app.openshift.io/runtime-version: 12-ubi7
+  name: nodejs-sample
+spec:
+  failedBuildsHistoryLimit: 5
+  output:
+    to:
+      kind: ImageStreamTag
+      name: nodejs-sample:latest
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    git:
+      uri: https://github.com/rajivnathan/does-not-exist.git
+    type: Git
+  strategy:
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        name: nodejs:12-ubi7
+        namespace: openshift
+    type: Source
+  successfulBuildsHistoryLimit: 5
+  triggers:
+  - generic:
+      secretReference:
+        name: nodejs-sample-generic-webhook-secret
+    type: Generic
+  - github:
+      secretReference:
+        name: nodejs-sample-github-webhook-secret
+    type: GitHub
+  - imageChange:
+      lastTriggeredImageID: image-registry.openshift-image-registry.svc:5000/openshift/nodejs@sha256:1ab9834c333f4f57443e219a2fb2dcd8338bd200888b2c3cf626a047723f6616
+    type: ImageChange
+  - type: ConfigChange
