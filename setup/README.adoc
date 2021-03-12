@@ -68,6 +68,7 @@ With the cluster now under load, it's time to evaluate the environment.
 
 1. Use your operators as a user would and evaluate the performance.
 2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
+3. Monitor the memory usage of operators. There are many more resources created on this cluster than most operators have been tested with so it's important to look for any possible areas for concern.
 
 === Clean up
 
