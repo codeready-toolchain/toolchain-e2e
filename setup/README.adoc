@@ -79,7 +79,7 @@ With the cluster now under load, it's time to evaluate the environment.
 
 ==== Remove Only Users and Their Namespaces
 
-Run `oc get usersignup -n toolchain-host-operator -o jsonpath='{.items..metadata.name}' | xargs oc delete usersignup`
+Run `make clean-users`
 
 ==== Remove All Sandbox-related Resources
 Run `make clean-e2e-resources`
