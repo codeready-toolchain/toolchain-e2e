@@ -69,7 +69,7 @@ data:
     enemies.cheat.level=noGoodRotten
     secret.code.passphrase=UUDDLRLRBABAS
     secret.code.allowed=true
-    secret.code.lives=30    
+    secret.code.lives=30
   ui.properties: |
     color.good=purple
     color.bad=yellow
