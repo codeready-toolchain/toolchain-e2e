@@ -22,8 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const usernamePrefix = "zippy"
-
+var usernamePrefix = "zippy"
 var kubeconfig string
 var verbose bool
 var hostOperatorNamespace string
@@ -54,6 +53,7 @@ func Execute() {
 	defaultHostNS := fmt.Sprintf("%s-host-operator", quayNS)
 	defaultMemberNS := fmt.Sprintf("%s-member-operator", quayNS)
 
+	cmd.Flags().StringVar(&usernamePrefix, "username", usernamePrefix, "the prefix used for usersignup names")
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "(optional) absolute path to the kubeconfig file")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
