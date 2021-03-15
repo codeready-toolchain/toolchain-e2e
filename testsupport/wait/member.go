@@ -962,7 +962,7 @@ func (a *MemberAwaitility) waitForDeployment() {
 	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
 	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
 
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, "member-operator-webhook", a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", "member-operator-webhook", a.Namespace, deploymentConditions)
