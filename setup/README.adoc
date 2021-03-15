@@ -44,7 +44,7 @@ publish: External
 
 2. Install your operator(s)
 
-3. Create a user-workloads.yaml file. This file should contain resources that the setup tool will automatically create in user namespaces. Use the sample user-workloads.yaml 🚧 coming soon 🚧  as a base and add custom resources that your operator uses.
+3. Create a user-workloads.yaml file. This file should contain resources that the setup tool will automatically create in user namespaces. Use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/sample/user-workloads.yaml[user-workloads.yaml] as a base and add custom resources that your operator uses.
 
 4. Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
@@ -54,13 +54,14 @@ publish: External
 
 === Dev Sandbox Setup
 
-🚧 This section is still a work in progress 🚧
-
 1. Clone this repository
 `git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
 2. Run the following to install the Dev Sandbox operators
 `make dev-deploy-e2e`
-3. // TODO instructions for provisioning a large amount of users to simulate load on the cluster
+3. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above.
+`go run setup/main.go <path to the user-workloads.yaml file>`
+4. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs
+Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
 
 === Evaluate the Cluster and Operator(s)
 
