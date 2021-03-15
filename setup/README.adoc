@@ -1,0 +1,81 @@
+= Dev Sandbox Setup
+
+This document describes how to setup a Dev Sandbox environment that is similar to production and can be used as part of an onboarding process for new operators.
+
+=== Prereqs
+
+1. Provision an OCP cluster on AWS with sufficient resources: 4xlarge master nodes and at least 3 2xlarge worker nodes.
+
+For example, if using the openshift-install tool to install OCP on AWS you can use an install-config.yaml file that has the following configuration:
+
+----
+apiVersion: v1
+baseDomain: devcluster.openshift.com
+controlPlane:
+  hyperthreading: Enabled
+  name: master
+  platform:
+    aws:
+      type: "m5.4xlarge"
+  replicas: 3
+compute:
+- hyperthreading: Enabled
+  name: worker
+  platform:
+    aws:
+      type: "m5.2xlarge"
+  replicas: 3
+metadata:
+  name: sandbox-test
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: us-east-1
+publish: External
+----
+
+2. Install your operator(s)
+
+3. Create a user-workloads.yaml file. This file should contain resources that the setup tool will automatically create in user namespaces. Use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/sample/user-workloads.yaml[user-workloads.yaml] as a base and add custom resources that your operator uses.
+
+4. Complete the following steps:
+* Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
+* Log in to the quay.io using `docker login quay.io`
+* Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
+* Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
+
+=== Dev Sandbox Setup
+
+1. Clone this repository
+`git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
+2. Run the following to install the Dev Sandbox operators
+`make dev-deploy-e2e`
+3. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above.
+`go run setup/main.go <path to the user-workloads.yaml file>`
+4. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs
+Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
+
+=== Evaluate the Cluster and Operator(s)
+
+With the cluster now under load, it's time to evaluate the environment.
+
+1. Use your operators as a user would and evaluate the performance.
+2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
+3. Monitor the memory usage of operators. There are many more resources created on this cluster than most operators have been tested with so it's important to look for any possible areas for concern.
+
+=== Clean up
+
+==== Remove Only Users and Their Namespaces
+
+Run `make clean-users`
+
+==== Remove All Sandbox-related Resources
+Run `make clean-e2e-resources`
