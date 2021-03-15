@@ -9,6 +9,7 @@ import (
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 
 	"github.com/hashicorp/go-multierror"
+	errs "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,6 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/util/wait"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -121,39 +124,38 @@ func combineResults(results ...<-chan error) <-chan error {
 
 func (p templateProcessor) processRawObject(rawObj runtime.RawExtension) error {
 
-	clSet, err := kubernetes.NewForConfig(p.config)
+	obj, gvk, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
 	if err != nil {
 		return err
 	}
+
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return err
+	}
+	unstructuredObj := &unstructured.Unstructured{Object: unstructuredMap}
 
 	dynamicCl, err := dynamic.NewForConfig(p.config)
 	if err != nil {
 		return err
 	}
-
-	obj, gvk, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
-	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	dc, err := discovery.NewDiscoveryClientForConfig(p.config)
 	if err != nil {
 		return err
 	}
-
-	unstructuredObj := &unstructured.Unstructured{Object: unstructuredMap}
-
-	gr, err := restmapper.GetAPIGroupResources(clSet.Discovery())
-	if err != nil {
-		return err
-	}
-
-	mapper := restmapper.NewDiscoveryRESTMapper(gr)
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return err
 	}
 
 	unstructuredObj.SetNamespace(p.namespace)
-	dri := dynamicCl.Resource(mapping.Resource).Namespace(unstructuredObj.GetNamespace())
+	dri := dynamicCl.Resource(mapping.Resource).Namespace(p.namespace)
 
 	_, err = dri.Create(context.TODO(), unstructuredObj, metav1.CreateOptions{})
+	if err != nil {
+		err = errs.Wrapf(err, "problem creating %+v", unstructuredObj)
+	}
 	return err
 }
 

@@ -9,27 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/user"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
 
-	corev1 "k8s.io/api/core/v1"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	k8swait "k8s.io/apimachinery/pkg/util/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const usernamePrefix = "zippy"
@@ -67,11 +57,11 @@ func Execute() {
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "(optional) absolute path to the kubeconfig file")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console (false by default)")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "provision N users ('3000' by default)")
-	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create users in batches of N ('25' by default)")
+	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create users in batches of N, increasing batch size may cause performance problems ('25' by default)")
 	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster ('10' by default)")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator ('${QUAY_NAMESPACE}-host-operator' by default)")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator ('${QUAY_NAMESPACE}-member-operator' by default)")
-	cmd.Flags().IntVar(&resourceProcessorsCount, "resource-processors", 10, "the number of resource processes used for creating user resources, a higher value uses more concurrency ('10' by default)")
+	cmd.Flags().IntVar(&resourceProcessorsCount, "resource-processors", 20, "the number of resource processors used for creating user resources, increase value to process templates with more resources faster ('20' by default)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -92,6 +82,11 @@ func setup(cmd *cobra.Command, args []string) {
 	cl, config, _, err := cfg.NewClient(term, kubeconfig)
 	if err != nil {
 		term.Fatalf(err, "cannot create client")
+	}
+
+	s := user.Setup{
+		Config: config,
+		Client: cl,
 	}
 
 	// validate template file
@@ -118,7 +113,7 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 
 	term.Infof("🕖 initializing...")
-	memberClusterName, err := getMemberClusterName(cl)
+	memberClusterName, err := s.GetMemberClusterName(hostOperatorNamespace, memberOperatorNamespace)
 	if err != nil {
 		term.Fatalf(err, "unable to lookup member cluster name, ensure the sandbox setup steps are followed")
 	}
@@ -143,17 +138,19 @@ func setup(cmd *cobra.Command, args []string) {
 		for usersignupBar.Incr() {
 			username := fmt.Sprintf("%s-%04d", usernamePrefix, usersignupBar.Current())
 			userSignup := newUserSignup(username, memberClusterName)
-			if err := cl.Create(context.TODO(), userSignup); err != nil {
+			if err := s.Client.Create(context.TODO(), userSignup); err != nil {
 				term.Fatalf(err, "failed to provision user '%s'", username)
 			}
 			time.Sleep(time.Millisecond * 20)
 
-			// when the batch is done, wait for 80% of the user's namespaces to exist before proceeding
+			// when the batch is done, wait for the user's namespaces to exist before proceeding
 			if usersignupBar.Current()%userBatches == 0 {
-				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current()-(userBatches/5); i++ {
+				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current(); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
 					userNS := fmt.Sprintf("%s-stage", userToCheck)
-					waitForNamespace(cl, userNS)
+					if err := s.WaitForNamespace(userNS); err != nil {
+						term.Fatalf(err, "failed to find namespace '%s'", userNS)
+					}
 				}
 			}
 		}
@@ -169,16 +166,18 @@ func setup(cmd *cobra.Command, args []string) {
 			username := fmt.Sprintf("%s-%04d", usernamePrefix, setupBar.Current())
 			userNS := fmt.Sprintf("%s-stage", username)
 			// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
-			waitForNamespace(cl, userNS)
+			if err := s.WaitForNamespace(userNS); err != nil {
+				term.Fatalf(err, "failed to find namespace '%s'", userNS)
+			}
 
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
-			if err := updateUserIdlersTimeout(term, cl, username, 15*time.Second); err != nil {
+			if err := s.UpdateUserIdlersTimeout(username, 15*time.Second); err != nil {
 				term.Fatalf(err, "failed to update idlers for user '%s'", username)
 			}
 
 			// create resources for every nth user
 			if setupBar.Current()%resourceRate == 0 {
-				if err := user.CreateResourcesFromTemplate(config, userNS, templateData, resourceProcessorsCount); err != nil {
+				if err := user.CreateResourcesFromTemplate(s.Config, userNS, templateData, resourceProcessorsCount); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}
@@ -210,86 +209,4 @@ func newUserSignup(username, memberClusterName string) *toolchainv1alpha1.UserSi
 			TargetCluster: memberClusterName,
 		},
 	}
-}
-
-func updateUserIdlersTimeout(term terminal.Terminal, cl client.Client, username string, timeout time.Duration) error {
-	for _, suffix := range []string{"code", "dev", "stage"} { // TODO: hard coded suffixes, we could probably get them from the tier instead
-		idlerName := fmt.Sprintf("%s-%s", username, suffix)
-		idler, err := getIdler(cl, idlerName)
-		if err != nil {
-			return err
-		}
-		idler.Spec.TimeoutSeconds = int32(timeout.Seconds())
-		if err = cl.Update(context.TODO(), idler); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {
-	idler := &toolchainv1alpha1.Idler{}
-	err := k8swait.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (bool, error) {
-		err := cl.Get(context.TODO(), types.NamespacedName{
-			Name: name,
-		}, idler)
-		if errors.IsNotFound(err) {
-			return false, nil
-		} else if err != nil {
-			return false, err
-		}
-		// check the status conditions, wait until the idler is "Ready/True"
-		return test.ContainsCondition(idler.Status.Conditions, testsupport.Running()), nil
-
-	})
-	return idler, err
-}
-
-func getMemberClusterName(cl client.Client) (string, error) {
-	var memberCluster v1alpha1.ToolchainCluster
-	err := k8swait.Poll(time.Millisecond*100, time.Minute*1, func() (bool, error) {
-		clusters := &v1alpha1.ToolchainClusterList{}
-		if err := cl.List(context.TODO(), clusters, client.InNamespace(hostOperatorNamespace), client.MatchingLabels{
-			"namespace": memberOperatorNamespace,
-			"type":      "member",
-		}); err != nil {
-			return false, err
-		}
-		for _, cluster := range clusters.Items {
-			if containsClusterCondition(cluster.Status.Conditions, wait.ReadyToolchainCluster) {
-				memberCluster = cluster
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-	return memberCluster.Name, err
-}
-
-func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, contains *v1alpha1.ToolchainClusterCondition) bool {
-	if contains == nil {
-		return true
-	}
-	for _, c := range conditions {
-		if c.Type == contains.Type {
-			return contains.Status == c.Status
-		}
-	}
-	return false
-}
-
-func waitForNamespace(cl client.Client, namespace string) error {
-	ns := &corev1.Namespace{}
-	err := k8swait.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (bool, error) {
-		err := cl.Get(context.TODO(), types.NamespacedName{
-			Name: namespace,
-		}, ns)
-		if errors.IsNotFound(err) {
-			return false, nil
-		} else if err != nil {
-			return false, err
-		}
-		return true, nil
-	})
-	return err
 }
