@@ -9,6 +9,7 @@ import (
 
 	"github.com/codeready-toolchain/api/pkg/apis"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
+	"github.com/pkg/errors"
 
 	quotav1 "github.com/openshift/api/quota/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,21 +30,21 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 	// look-up the kubeconfig to use
 	kubeconfigFile, err := getKubeconfigFile(kubeconfigPath)
 	if err != nil {
-		term.Fatalf(err, "error while locating KUBECONFIG")
+		return nil, nil, nil, errors.Wrap(err, "error while locating KUBECONFIG")
 	}
 	term.Debugf("📔 using kubeconfig at %s", kubeconfigFile.Name())
 	kubeconfig, err := newKubeConfig(kubeconfigFile)
 	if err != nil {
-		term.Fatalf(err, "error while loading KUBECONFIG")
+		return nil, nil, nil, errors.Wrap(err, "error while loading KUBECONFIG")
 	}
 	s := scheme.Scheme
 	b := newSchemeBuilder()
 	if err := b.AddToScheme(scheme.Scheme); err != nil {
-		term.Fatalf(err, "cannot configure scheme")
+		return nil, nil, nil, errors.Wrap(err, "cannot configure scheme")
 	}
 	clientConfig, err := kubeconfig.ClientConfig()
 	if err != nil {
-		term.Fatalf(err, "cannot create client config")
+		return nil, nil, nil, errors.Wrap(err, "cannot create client config")
 	}
 
 	cl, err := client.New(clientConfig, client.Options{Scheme: s})

@@ -10,12 +10,13 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var tmpl *templatev1.Template
 
-func CreateFromTemplate(cl client.Client, s *runtime.Scheme, templatePath, username string) error {
+func CreateFromTemplate(cl client.Client, clientConfig *rest.Config, s *runtime.Scheme, templatePath, username string) error {
 	// get the template from the file
 	if tmpl == nil {
 		var err error
@@ -23,9 +24,14 @@ func CreateFromTemplate(cl client.Client, s *runtime.Scheme, templatePath, usern
 			return fmt.Errorf("invalid template file: '%s'", templatePath)
 		}
 	}
-
 	userNS := fmt.Sprintf("%s-stage", username)
-	// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
+	// waiting for rolebinding to exists before creating resources on behalf of the user, so we don't get
+	// errors such as:
+	// `User "<username>" cannot get resource "deployments" in API group "apps" in the namespace "<username>-stage"`
+	if err := WaitForRoleBinding(cl, userNS, "user-edit"); err != nil {
+		return err
+	}
+
 	if err := WaitForNamespace(cl, userNS); err != nil {
 		return err
 	}
@@ -36,7 +42,14 @@ func CreateFromTemplate(cl client.Client, s *runtime.Scheme, templatePath, usern
 	if err != nil {
 		return err
 	}
-	applycl := applycl.NewApplyClient(cl, s)
+	clientConfig.Impersonate = rest.ImpersonationConfig{
+		UserName: username,
+	}
+	userCl, err := client.New(clientConfig, client.Options{Scheme: s})
+	if err != nil {
+		return err
+	}
+	applycl := applycl.NewApplyClient(userCl, s)
 	for _, obj := range objs {
 		if _, err := applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
 			return err
