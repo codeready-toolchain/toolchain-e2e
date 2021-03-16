@@ -226,6 +226,11 @@ func Deactivated() []toolchainv1alpha1.Condition {
 			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
 			Status: corev1.ConditionTrue,
 			Reason: "NotificationCRCreated",
