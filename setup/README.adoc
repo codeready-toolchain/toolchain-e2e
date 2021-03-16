@@ -44,7 +44,7 @@ publish: External
 [start=2]
 . Install your operator(s)
 
-. Create a user-workloads.yaml file. This file should contain resources that the setup tool will automatically create in user namespaces. Use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/sample/user-workloads.yaml[user-workloads.yaml] as a base and add custom resources that your operator uses.
+. Create a user-workloads.yaml file. This OpenShift template file should contain resources that the setup tool will automatically create in user namespaces. Use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/sample/user-workloads.yaml[user-workloads.yaml] as a base and add custom resources that your operator uses.
 
 . Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
@@ -59,7 +59,9 @@ publish: External
 2. Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
 3. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
-`go run setup/main.go <path to the user-workloads.yaml file>`
+`go run setup/main.go --template=<path_to_yaml_template_file>`
++
+(use `go run setup/main.go --help` to see the other options)
 4. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
 
