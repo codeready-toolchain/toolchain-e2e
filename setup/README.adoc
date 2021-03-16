@@ -49,7 +49,11 @@ publish: External
 . Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
 * Log in to the quay.io using `docker login quay.io`
-* Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
+* Make sure that the visibility of all repositories `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` in quay is set to `public`:
+ ** https://quay.io/repository/<your-username>/host-operator?tab=settings
+ ** https://quay.io/repository/<your-username>/member-operator?tab=settings
+ ** https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
+ ** https://quay.io/repository/<your-username>/registration-service?tab=settings
 * Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
 
 == Dev Sandbox Setup
