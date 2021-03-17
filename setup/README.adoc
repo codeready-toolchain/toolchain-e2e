@@ -63,7 +63,8 @@ publish: External
 2. Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
 3. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
-`go run setup/main.go <path to the user-workloads.yaml file>`
+`go run setup/main.go <path to the user-workloads.yaml file>` +
+Note: By default 3000 users are created, of which 600 of them will have these resources created. The number of users to create can be configured using the `--users` flag and the number of users with resources created can be configured via the `--resource-rate` flag. eg. `go run setup/main.go <path to the user-workloads.yaml file> --users 4000 --resource-rate 2` will create 4000 users and 2000 users will have resources created.
 4. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
 
