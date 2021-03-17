@@ -44,17 +44,17 @@ publish: External
 [start=2]
 . Install your operator(s)
 
-. Create a user-workloads.yaml file. This OpenShift template file should contain resources that the setup tool will automatically create in user namespaces. Use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/sample/user-workloads.yaml[user-workloads.yaml] as a base and add custom resources that your operator uses.
+. Create an OpenShift template file which with all the resources that this setup tool will automatically create on behalf of the users in their `-stage` namespaces. You can use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] as a base and add other resources that the users may want to create when using your operator.
 
 . Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
 * Log in to the quay.io using `docker login quay.io`
-* Make sure that the visibility of all repositories `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` in quay is set to `public`:
+* Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io is set to `public`:
  ** https://quay.io/repository/<your-username>/host-operator?tab=settings
  ** https://quay.io/repository/<your-username>/member-operator?tab=settings
  ** https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
  ** https://quay.io/repository/<your-username>/registration-service?tab=settings
-* Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
+* Log in to the target OpenShift 4.6+ cluster with cluster admin privileges using `oc login`
 
 == Dev Sandbox Setup
 

@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
+var (
 	DefaultRetryInterval = time.Millisecond * 200
 	DefaultTimeout       = time.Minute * 5
 )
@@ -36,9 +36,8 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 	if err != nil {
 		term.Fatalf(err, "error while loading KUBECONFIG")
 	}
-	s := scheme.Scheme
-	b := newSchemeBuilder()
-	if err := b.AddToScheme(scheme.Scheme); err != nil {
+	s, err := NewScheme()
+	if err != nil {
 		term.Fatalf(err, "cannot configure scheme")
 	}
 	clientConfig, err := kubeconfig.ClientConfig()
@@ -50,9 +49,12 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 	return cl, clientConfig, s, err
 }
 
-// AddToScheme adds all Resources to the Scheme
-func newSchemeBuilder() runtime.SchemeBuilder {
-	return append(apis.AddToSchemes, quotav1.Install)
+// NewScheme returns the scheme configured with all the needed types
+func NewScheme() (*runtime.Scheme, error) {
+	s := scheme.Scheme
+	builder := append(apis.AddToSchemes, quotav1.Install)
+	err := builder.AddToScheme(s)
+	return s, err
 }
 
 // GetKubeconfigFile returns a file reader on (by order of match):

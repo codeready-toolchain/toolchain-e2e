@@ -149,7 +149,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			// create resources for every nth user
 			if setupBar.Current()%resourceRate == 0 {
-				if err := resources.CreateFromTemplate(cl, scheme, templatePath, username); err != nil {
+				if err := resources.CreateFromTemplateFile(cl, scheme, templatePath, username); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}

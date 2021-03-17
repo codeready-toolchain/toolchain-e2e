@@ -3,9 +3,9 @@ package users
 import (
 	"context"
 	"fmt"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -17,11 +17,9 @@ import (
 var memberClusterName string
 
 func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNamespace string) error {
-	if memberClusterName == "" {
-		var err error
-		if memberClusterName, err = getMemberClusterName(cl, hostOperatorNamespace, memberOperatorNamespace); err != nil {
-			return fmt.Errorf("unable to lookup member cluster name, ensure the sandbox setup steps are followed")
-		}
+	memberClusterName, err := getMemberClusterName(cl, hostOperatorNamespace, memberOperatorNamespace)
+	if err != nil {
+		return fmt.Errorf("unable to lookup member cluster name, ensure the sandbox setup steps are followed")
 	}
 	usersignup := &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -46,8 +44,11 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 }
 
 func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperatorNamespace string) (string, error) {
+	if memberClusterName != "" {
+		return memberClusterName, nil
+	}
 	var memberCluster toolchainv1alpha1.ToolchainCluster
-	err := k8swait.Poll(time.Millisecond*100, time.Minute*1, func() (bool, error) {
+	err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
 		clusters := &toolchainv1alpha1.ToolchainClusterList{}
 		if err := cl.List(context.TODO(), clusters, client.InNamespace(hostOperatorNamespace), client.MatchingLabels{
 			"namespace": memberOperatorNamespace,

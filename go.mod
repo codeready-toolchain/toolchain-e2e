@@ -1,6 +1,9 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
+	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
+	github.com/alecthomas/colour v0.1.0 // indirect
+	github.com/alecthomas/repr v0.0.0-20210301060118-828286944d6a // indirect
 	github.com/codeready-toolchain/api v0.0.0-20210203025716-45f19e752101
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210219141158-8bf475892a90
 	github.com/fatih/color v1.10.0
@@ -16,6 +19,7 @@ require (
 	github.com/onsi/gomega v1.10.4 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/operator-framework/operator-sdk v0.19.2
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.11.1
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
