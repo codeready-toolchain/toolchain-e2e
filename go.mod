@@ -3,7 +3,6 @@ module github.com/codeready-toolchain/toolchain-e2e
 require (
 	github.com/codeready-toolchain/api v0.0.0-20210203025716-45f19e752101
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210219141158-8bf475892a90
-	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
@@ -11,7 +10,6 @@ require (
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
-	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/manifoldco/promptui v0.8.0
 	github.com/onsi/ginkgo v1.14.2 // indirect

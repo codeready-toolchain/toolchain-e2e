@@ -44,17 +44,19 @@ publish: External
 [start=2]
 . Install your operator(s)
 
-. Create a user-workloads.yaml file. This file should contain resources that the setup tool will automatically create in user namespaces. Use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/sample/user-workloads.yaml[user-workloads.yaml] as a base and add custom resources that your operator uses.
+. Create an OpenShift template file which has all the resources that this setup tool will automatically create on behalf of the users in their `-stage` namespaces. You can use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] as a base and add other resources that the users may want to create when using your operator. 
++
+Note that the template does not take any parameter, and all resources will be created in the user's `-stage` namespace.
 
 . Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
 * Log in to the quay.io using `docker login quay.io`
-* Make sure that the visibility of all repositories `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` in quay is set to `public`:
+* Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io is set to `public`:
  ** https://quay.io/repository/<your-username>/host-operator?tab=settings
  ** https://quay.io/repository/<your-username>/member-operator?tab=settings
  ** https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
  ** https://quay.io/repository/<your-username>/registration-service?tab=settings
-* Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
+* Log in to the target OpenShift 4.6+ cluster with cluster admin privileges using `oc login`
 
 == Dev Sandbox Setup
 
@@ -63,7 +65,10 @@ publish: External
 2. Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
 3. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
-`go run setup/main.go <path to the user-workloads.yaml file>` +
+`go run setup/main.go --template=<path_to_yaml_template_file>`
++
+(use `go run setup/main.go --help` to see the other options)
++
 Note: By default 3000 users are created, of which 600 of them will have these resources created. The number of users to create can be configured using the `--users` flag and the number of users with resources created can be configured via the `--resource-rate` flag. eg. `go run setup/main.go <path to the user-workloads.yaml file> --users 4000 --resource-rate 2` will create 4000 users and 2000 users will have resources created.
 4. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
