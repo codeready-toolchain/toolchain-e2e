@@ -6,7 +6,6 @@ objects:
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
-      namespace: ${NAMESPACE}
       name: nginx-deployment
       labels:
         app: nginx
@@ -35,7 +34,6 @@ objects:
   - apiVersion: v1
     kind: Service
     metadata:
-      namespace: ${NAMESPACE}
       name: nginx-service
     spec:
       selector:
@@ -47,7 +45,6 @@ objects:
   - apiVersion: route.openshift.io/v1
     kind: Route
     metadata:
-      namespace: ${NAMESPACE}
       name: nginx-route
     spec:
       to:
@@ -59,13 +56,11 @@ objects:
       password: MWYyZDFlMmU2N2Rm
     kind: Secret
     metadata:
-      namespace: ${NAMESPACE}
       name: mysecret
     type: Opaque
   - apiVersion: v1
     kind: ConfigMap
     metadata:
-      namespace: ${NAMESPACE}
       name: game-config
     data:
       game.properties: |
@@ -96,7 +91,6 @@ objects:
         app.kubernetes.io/part-of: sample-app
         app.openshift.io/runtime: nodejs
         app.openshift.io/runtime-version: 12-ubi7
-      namespace: ${NAMESPACE}
       name: nodejs-sample
     spec:
       lookupPolicy:
@@ -116,7 +110,6 @@ objects:
         app.kubernetes.io/part-of: sample-app
         app.openshift.io/runtime: nodejs
         app.openshift.io/runtime-version: 12-ubi7
-      namespace: ${NAMESPACE}
       name: nodejs-sample
     spec:
       failedBuildsHistoryLimit: 5
@@ -152,6 +145,3 @@ objects:
           lastTriggeredImageID: image-registry.openshift-image-registry.svc:5000/openshift/nodejs@sha256:1ab9834c333f4f57443e219a2fb2dcd8338bd200888b2c3cf626a047723f6616
         type: ImageChange
       - type: ConfigChange
-parameters:
-  - name: NAMESPACE
-    required: true

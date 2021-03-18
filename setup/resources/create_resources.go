@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	templatev1 "github.com/openshift/api/template/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,14 +32,18 @@ func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, templatePath, u
 		return err
 	}
 	processor := template.NewProcessor(s)
-	objs, err := processor.Process(tmpl.DeepCopy(), map[string]string{
-		"NAMESPACE": userNS,
-	})
+	objs, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
 	if err != nil {
 		return err
 	}
 	applycl := applycl.NewApplyClient(cl, s)
 	for _, obj := range objs {
+		// enforce the creation of the objects in the `userNS` namespace
+		m, err := meta.Accessor(obj.GetRuntimeObject())
+		if err != nil {
+			return err
+		}
+		m.SetNamespace(userNS)
 		if _, err := applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
 			return err
 		}
@@ -53,10 +58,13 @@ func getTemplateFromFile(s *runtime.Scheme, filename string) (*templatev1.Templa
 	}
 	decoder := serializer.NewCodecFactory(s).UniversalDeserializer()
 	tmpl := &templatev1.Template{}
-	_, kind, err := decoder.Decode([]byte(content), nil, tmpl)
-	if kind.Kind == "Template" { // expect an OpenShift template
-		return tmpl, err
+	_, gvk, err := decoder.Decode([]byte(content), nil, tmpl)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("wrong kind of object in the template file: '%s'", kind)
+	if gvk.Kind == "Template" { // expect an OpenShift template
+		return tmpl, nil
+	}
+	return nil, fmt.Errorf("wrong kind of object in the template file: '%s'", gvk)
 
 }

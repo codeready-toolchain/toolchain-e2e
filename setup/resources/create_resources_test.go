@@ -1,4 +1,4 @@
-package resources_test
+package resources
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	commontest "github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
-	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +25,9 @@ func TestCreateFromTemplateFile(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// given
+		t.Cleanup(func() {
+			tmpl = nil // forget about the template after this test, so others can fail as expected
+		})
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "user0001-stage",
@@ -36,7 +38,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 		templatePath := "user-workloads.yaml"
 
 		// when
-		err := resources.CreateFromTemplateFile(cl, s, templatePath, username)
+		err := CreateFromTemplateFile(cl, s, templatePath, username)
 
 		// then
 		require.NoError(t, err)
@@ -71,7 +73,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				templatePath := "not-found.yaml"
 
 				// when
-				err := resources.CreateFromTemplateFile(cl, s, templatePath, username)
+				err := CreateFromTemplateFile(cl, s, templatePath, username)
 
 				// then
 				require.Error(t, err)
@@ -92,7 +94,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				tmpFile.WriteString(deployment)
 
 				// when
-				err = resources.CreateFromTemplateFile(cl, s, tmpFile.Name(), username)
+				err = CreateFromTemplateFile(cl, s, tmpFile.Name(), username)
 
 				// then
 				require.Error(t, err)
