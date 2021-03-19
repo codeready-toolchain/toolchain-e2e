@@ -145,3 +145,117 @@ objects:
           lastTriggeredImageID: image-registry.openshift-image-registry.svc:5000/openshift/nodejs@sha256:1ab9834c333f4f57443e219a2fb2dcd8338bd200888b2c3cf626a047723f6616
         type: ImageChange
       - type: ConfigChange
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      annotations:
+        app.openshift.io/vcs-ref: master
+        app.openshift.io/vcs-uri: https://github.com/codeready-toolchain/does-not-exist.git
+        openshift.io/generated-by: OpenShiftWebConsole
+      labels:
+        app: nodejs-sample2
+        app.kubernetes.io/component: nodejs-sample2
+        app.kubernetes.io/instance: nodejs-sample2
+        app.kubernetes.io/name: nodejs2
+        app.kubernetes.io/part-of: sample-app2
+        app.openshift.io/runtime: nodejs
+        app.openshift.io/runtime-version: 12-ubi7
+      name: nodejs-sample2
+    spec:
+      failedBuildsHistoryLimit: 5
+      output:
+        to:
+          kind: ImageStreamTag
+          name: nodejs-sample:latest
+      postCommit: {}
+      resources: {}
+      runPolicy: Serial
+      source:
+        git:
+          uri: https://github.com/codeready-toolchain/does-not-exist.git
+        type: Git
+      strategy:
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            name: nodejs:12-ubi7
+            namespace: openshift
+        type: Source
+      successfulBuildsHistoryLimit: 5
+      triggers:
+      - generic:
+          secretReference:
+            name: nodejs-sample-generic-webhook-secret
+        type: Generic
+      - github:
+          secretReference:
+            name: nodejs-sample-github-webhook-secret
+        type: GitHub
+      - imageChange:
+          lastTriggeredImageID: image-registry.openshift-image-registry.svc:5000/openshift/nodejs@sha256:1ab9834c333f4f57443e219a2fb2dcd8338bd200888b2c3cf626a047723f6616
+        type: ImageChange
+      - type: ConfigChange
+  - apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: proxy
+      labels:
+        app: guestbook
+        tier: proxy
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          tier: proxy
+      template:
+        metadata:
+          labels:
+            tier: proxy
+        spec:
+          containers:
+          - name: nginx
+            image: quay.io/bitnami/nginx
+  - apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: proxy2
+      labels:
+        app: guestbook2
+        tier: proxy2
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          tier: proxy2
+      template:
+        metadata:
+          labels:
+            tier: proxy2
+        spec:
+          containers:
+          - name: nginx
+            image: quay.io/bitnami/nginx
+  - apiVersion: v1
+    data:
+      username: YWRtaW4=
+      password: MWYyZDFlMmU2N2Rm
+    kind: Secret
+    metadata:
+      name: mysecret2
+    type: Opaque
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: build-robot
+      namespace: default
+    secrets:
+    - name: mysecret
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      namespace: default
+      name: pod-reader
+    rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "watch", "list"]

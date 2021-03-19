@@ -25,8 +25,7 @@ var memberOperatorNamespace string
 var templatePath string
 var numberOfUsers int
 var userBatches int
-var resourceRate int
-var resourceProcessorsCount int
+var activeUsers int
 
 // Execute the setup command to fill a cluster with as many users as requested.
 // The command uses the default `$KUBECONFIG` or `<home>/.kube/config` unless a path is specified.
@@ -53,11 +52,10 @@ func Execute() {
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "the number of user accounts to provision")
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create user accounts in batches of N, increasing batch size may cause performance problems")
-	cmd.Flags().IntVarP(&resourceRate, "resource-rate", "r", 5, "every N users will have resources created to drive load on the cluster")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
-	cmd.Flags().IntVar(&resourceProcessorsCount, "resource-processors", 20, "the number of resource processors used for creating user resources, increase value to process templates with more resources faster")
 	cmd.Flags().StringVar(&templatePath, "template", "", "the path to the OpenShift template to apply")
+	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.MarkFlagRequired("template")
 
 	if err := cmd.Execute(); err != nil {
@@ -71,8 +69,8 @@ func setup(cmd *cobra.Command, args []string) {
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
 
 	term.Debugf("Number of Users:           '%d'", numberOfUsers)
+	term.Debugf("Active Users:              '%d'", activeUsers)
 	term.Debugf("User Batch Size:           '%d'", userBatches)
-	term.Debugf("Load Rate:                 '%d'", resourceRate)
 	term.Debugf("Host Operator Namespace:   '%s'", hostOperatorNamespace)
 	term.Debugf("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
 
@@ -80,13 +78,11 @@ func setup(cmd *cobra.Command, args []string) {
 	if numberOfUsers < 1 {
 		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid users value '%d'", numberOfUsers)
 	}
+	if activeUsers < 0 || activeUsers > numberOfUsers {
+		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid active users value '%d'", activeUsers)
+	}
 	if numberOfUsers%userBatches != 0 {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
-	}
-
-	// validate concurrent creates
-	if resourceProcessorsCount < 1 {
-		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid resource processors value '%d'", resourceProcessorsCount)
 	}
 
 	term.Infof("🕖 initializing...")
@@ -148,7 +144,7 @@ func setup(cmd *cobra.Command, args []string) {
 			}
 
 			// create resources for every nth user
-			if setupBar.Current()%resourceRate == 0 {
+			if setupBar.Current() <= activeUsers {
 				if err := resources.CreateFromTemplateFile(cl, scheme, templatePath, username); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
