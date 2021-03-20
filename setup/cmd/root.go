@@ -8,6 +8,7 @@ import (
 
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/idlers"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/operators"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
@@ -93,6 +94,11 @@ func setup(cmd *cobra.Command, args []string) {
 
 	if !term.PromptBoolf("👤 provision %d users in batches of %d on %s", numberOfUsers, userBatches, config.Host) {
 		return
+	}
+
+	term.Infof("⏳ preparing cluster for setup...")
+	if err := operators.EnsureAllNamespacesOperator(cl, hostOperatorNamespace); err != nil {
+		term.Fatalf(err, "failed to ensure the all-namespaces operator is installed")
 	}
 
 	// provision the users
