@@ -18,15 +18,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var usernamePrefix = "zippy"
-var kubeconfig string
-var verbose bool
-var hostOperatorNamespace string
-var memberOperatorNamespace string
-var templatePath string
-var numberOfUsers int
-var userBatches int
-var activeUsers int
+var (
+	usernamePrefix          = "zippy"
+	kubeconfig              string
+	verbose                 bool
+	hostOperatorNamespace   string
+	memberOperatorNamespace string
+	templatePath            string
+	numberOfUsers           int
+	userBatches             int
+	activeUsers             int
+	skipCSVGen              bool
+)
 
 // Execute the setup command to fill a cluster with as many users as requested.
 // The command uses the default `$KUBECONFIG` or `<home>/.kube/config` unless a path is specified.
@@ -57,6 +60,7 @@ func Execute() {
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
 	cmd.Flags().StringVar(&templatePath, "template", "", "the path to the OpenShift template to apply")
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
+	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.MarkFlagRequired("template")
 
 	if err := cmd.Execute(); err != nil {
@@ -96,9 +100,12 @@ func setup(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	term.Infof("⏳ preparing cluster for setup...")
-	if err := operators.EnsureAllNamespacesOperator(cl, hostOperatorNamespace); err != nil {
-		term.Fatalf(err, "failed to ensure the all-namespaces operator is installed")
+	if !skipCSVGen {
+		term.Infof("⏳ preparing cluster for setup...")
+		// install an all-namespaces operator that will generate a CSV resource in each namespace
+		if err := operators.EnsureAllNamespacesOperator(cl, hostOperatorNamespace); err != nil {
+			term.Fatalf(err, "failed to ensure the all-namespaces operator is installed")
+		}
 	}
 
 	// provision the users
