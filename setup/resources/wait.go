@@ -50,7 +50,7 @@ func WaitForCSVWithPrefix(cl client.Client, prefix, namespace string) error {
 	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
 		return HasCSVWithPrefix(cl, prefix, namespace)
 	}); err != nil {
-		return errors.Wrapf(err, "could not find the expected CSV '%s' in namespace '%s'", prefix, namespace)
+		return errors.Wrapf(err, "could not find the expected CSV with prefix '%s' in namespace '%s'", prefix, namespace)
 	}
 	return nil
 }
