@@ -69,6 +69,7 @@ func TestEnsureAllNamespacesOperator(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
 			cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+				// the list fails
 				return fmt.Errorf("Test client error")
 			}
 
@@ -96,8 +97,8 @@ func TestEnsureAllNamespacesOperator(t *testing.T) {
 		t.Run("error when waiting for CSV to be created", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
+			// first time there's no CSV which will trigger operator install, second time the list to confirm operator installed returns error
 			var checked bool
-			// first time no CSV, second time return error
 			cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 				if checked {
 					return fmt.Errorf("Test client error")

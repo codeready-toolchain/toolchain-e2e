@@ -11,8 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const AllNamespacesOperatorName = "kiali-ossm"
-const AllNamespacesOperatorPrefix = "kiali-operator"
+const (
+	AllNamespacesOperatorName   = "kiali-ossm"
+	AllNamespacesOperatorPrefix = "kiali-operator"
+)
 
 func EnsureAllNamespacesOperator(cl client.Client, csvNamespace string) error {
 	hasCSV, err := resources.HasCSVWithPrefix(cl, AllNamespacesOperatorPrefix, csvNamespace)
