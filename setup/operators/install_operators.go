@@ -5,6 +5,7 @@ import (
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,7 +40,7 @@ func EnsureAllNamespacesOperator(cl client.Client, csvNamespace string) error {
 	}
 
 	if err := cl.Create(context.TODO(), subscription); err != nil {
-		return err
+		return errors.Wrapf(err, "failed to install all-namespaces operator")
 	}
 
 	// Wait for CSV to be created
