@@ -30,7 +30,7 @@ const (
 
 	// common CPU limits
 	defaultCpuLimit = "1"
-	cpuLimit        = "10000m" // All but team tier
+	cpuLimit        = "20000m" // All tiers
 )
 
 var (
@@ -248,7 +248,7 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("team", "15000m", "2000m", "15Gi"),
+		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
