@@ -236,14 +236,6 @@ objects:
           - name: nginx
             image: quay.io/bitnami/nginx
   - apiVersion: v1
-    data:
-      username: YWRtaW4=
-      password: MWYyZDFlMmU2N2Rm
-    kind: Secret
-    metadata:
-      name: mysecret2
-    type: Opaque
-  - apiVersion: v1
     kind: ServiceAccount
     metadata:
       name: build-robot
@@ -253,9 +245,140 @@ objects:
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
-      namespace: default
       name: pod-reader
     rules:
     - apiGroups: [""]
       resources: ["pods"]
       verbs: ["get", "watch", "list"]
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: read-pods
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      kind: Role
+      name: pod-reader
+      apiGroup: rbac.authorization.k8s.io
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-2
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-3
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-4
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-5
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-6
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-7
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-8
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-9
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-10
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: build-robot-edit-11
+    subjects:
+    - kind: ServiceAccount
+      name: build-robot
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: user-rbac-edit

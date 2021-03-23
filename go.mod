@@ -15,6 +15,7 @@ require (
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.4 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
+	github.com/operator-framework/api v0.3.8
 	github.com/operator-framework/operator-sdk v0.19.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.2.0

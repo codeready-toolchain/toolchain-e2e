@@ -11,6 +11,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 
 	quotav1 "github.com/openshift/api/quota/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -52,7 +53,7 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 // NewScheme returns the scheme configured with all the needed types
 func NewScheme() (*runtime.Scheme, error) {
 	s := scheme.Scheme
-	builder := append(apis.AddToSchemes, quotav1.Install)
+	builder := append(apis.AddToSchemes, quotav1.Install, operatorsv1alpha1.AddToScheme)
 	err := builder.AddToScheme(s)
 	return s, err
 }
