@@ -679,6 +679,18 @@ func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
 	}
 }
 
+func UntilAllMembersHaveApiEndpoint() ToolchainStatusWaitCriterion {
+	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
+		for _, member := range toolchainStatus.Status.Members {
+			// check Member field ApiEndpoint is assigned
+			if member.ApiEndpoint == "" {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 // UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has the given count of MasterUserRecords
 func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
