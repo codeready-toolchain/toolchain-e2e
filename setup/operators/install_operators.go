@@ -16,6 +16,7 @@ const (
 	AllNamespacesOperatorPrefix = "kiali-operator"
 )
 
+// EnsureAllNamespacesOperator installs an all-namespaces operator that will generate a CSV resource in each namespace
 func EnsureAllNamespacesOperator(cl client.Client, csvNamespace string) error {
 	hasCSV, err := resources.HasCSVWithPrefix(cl, AllNamespacesOperatorPrefix, csvNamespace)
 	if err != nil && !k8serrors.IsNotFound(err) {
