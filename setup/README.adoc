@@ -65,7 +65,7 @@ Note that the template does not take any parameter, and all resources will be cr
 `git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
 . Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
-. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the overall status is `Ready`
+. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
 +
 ```
 NAME               MURS   READY   LAST UPDATED
