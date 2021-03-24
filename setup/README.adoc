@@ -68,13 +68,8 @@ Note that the template does not take any parameter, and all resources will be cr
 . Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the overall status is `Ready`
 +
 ```
-status:
-    conditions:
-    - lastTransitionTime: "2021-03-24T17:52:59Z"
-      lastUpdatedTime: "2021-03-24T20:12:34Z"
-      reason: AllComponentsReady
-      status: "True"
-      type: Ready
+NAME               MURS   READY   LAST UPDATED
+toolchain-status   0      True    2021-03-24T22:39:36Z
 ```
 . Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
 `go run setup/main.go --template=<path_to_yaml_template_file>`
