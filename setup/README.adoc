@@ -4,9 +4,10 @@ This document describes how to setup a Dev Sandbox environment that is similar t
 
 == Prereqs
 
-1. Provision an OCP cluster on AWS with sufficient resources: 4xlarge master nodes and at least 3 2xlarge worker nodes. +
-
-For example, if using the openshift-install tool to install OCP on AWS you can use an install-config.yaml file that has the following configuration: +
+. Provision an OCP cluster on AWS with sufficient resources: 4xlarge master nodes and at least 3 2xlarge worker nodes.
++
+For example, if using the openshift-install tool to install OCP on AWS you can use an install-config.yaml file that has the following configuration:
++
 ----
 apiVersion: v1
 baseDomain: devcluster.openshift.com
@@ -41,7 +42,7 @@ platform:
 publish: External
 ----
 
-[start=2]
+
 . Install your operator(s)
 
 . Create an OpenShift template file which has all the resources that this setup tool will automatically create on behalf of the users in their `-stage` namespaces. You can use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] as a base and add other resources that the users may want to create when using your operator. 
@@ -60,18 +61,24 @@ Note that the template does not take any parameter, and all resources will be cr
 
 == Dev Sandbox Setup
 
-1. Clone this repository +
+. Clone this repository +
 `git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
-2. Run the following to install the Dev Sandbox operators +
+. Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
-3. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
+. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
++
+```
+NAME               MURS   READY   LAST UPDATED
+toolchain-status   0      True    2021-03-24T22:39:36Z
+```
+. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
 `go run setup/main.go --template=<path_to_yaml_template_file>`
 +
 (use `go run setup/main.go --help` to see the other options)
 +
 Note 1: By default 3000 users are created, of which all 3000 of them will have these resources created in their `stage` namespace. The number of users to create can be configured using the `--users` flag and the number of users with resources created can be configured via the `--active` flag. eg. `go run setup/main.go <path to the user-workloads.yaml file> --users 4000 --active 2000` will create 4000 users and 2000 users will have resources created. +
 Note 2: Separate to the resources from the template, CSV resources are automatically created. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason. +
-4. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
+. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
 
 === Evaluate the Cluster and Operator(s)
