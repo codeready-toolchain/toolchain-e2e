@@ -79,9 +79,34 @@ type baseTierChecks struct {
 	basicTierChecks
 }
 
+func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	checks := append(commonChecks,
+		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2))
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+	}
+	return checks
+}
+
+func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
+	return templateRefs
+}
+
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi", "25Gi"),
+		clusterResourceQuotaCompute("base", cpuLimit, "1750m", "7Gi", "25Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -91,7 +116,7 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(9),
-		idlers("code", "dev", "stage"),
+		idlers("dev", "stage"),
 	}
 }
 
