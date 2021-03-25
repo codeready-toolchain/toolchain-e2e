@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -18,10 +19,13 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expect
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
-func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility) {
-	_, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
+	memberCluster, found, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
+	require.NoError(t, err)
+	require.True(t, found)
+	_, err = hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilAllMembersHaveUsageSet(),
-		wait.UntilAllMembersHaveApiEndpoint())
+		wait.UntilAllMembersHaveApiEndpoint(memberCluster.Spec.APIEndpoint))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
 
