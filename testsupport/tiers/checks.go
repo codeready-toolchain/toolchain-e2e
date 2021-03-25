@@ -23,6 +23,7 @@ import (
 const (
 	// tier names
 	base                      = "base"
+	basedeactivationdisabled  = "basedeactivationdisabled"
 	basic                     = "basic"
 	basicdeactivationdisabled = "basicdeactivationdisabled"
 	advanced                  = "advanced"
@@ -46,6 +47,9 @@ func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case base:
 		return &baseTierChecks{basicTierChecks{tierName: base}}, nil
+
+	case basedeactivationdisabled:
+		return &baseTierChecks{basicTierChecks{tierName: basedeactivationdisabled}}, nil
 
 	case basic:
 		return &basicTierChecks{tierName: basic}, nil
