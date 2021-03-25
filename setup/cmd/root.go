@@ -24,7 +24,7 @@ var (
 	verbose                 bool
 	hostOperatorNamespace   string
 	memberOperatorNamespace string
-	templatePath            string
+	templatePaths           []string
 	numberOfUsers           int
 	userBatches             int
 	activeUsers             int
@@ -58,7 +58,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create user accounts in batches of N, increasing batch size may cause performance problems")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
-	cmd.Flags().StringVar(&templatePath, "template", "", "the path to the OpenShift template to apply")
+	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply")
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.MarkFlagRequired("template")
@@ -158,7 +158,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			// create resources for every nth user
 			if setupBar.Current() <= activeUsers {
-				if err := resources.CreateFromTemplateFile(cl, scheme, templatePath, username); err != nil {
+				if err := resources.CreateFromTemplateFiles(cl, scheme, username, templatePaths); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}
