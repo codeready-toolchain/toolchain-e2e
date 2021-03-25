@@ -22,6 +22,7 @@ import (
 
 const (
 	// tier names
+	base                      = "base"
 	basic                     = "basic"
 	basicdeactivationdisabled = "basicdeactivationdisabled"
 	advanced                  = "advanced"
@@ -43,6 +44,9 @@ var (
 
 func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
+	case base:
+		return &baseTierChecks{basicTierChecks{tierName: base}}, nil
+
 	case basic:
 		return &basicTierChecks{tierName: basic}, nil
 
@@ -69,6 +73,26 @@ type TierChecks interface {
 	GetClusterObjectChecks() []clusterObjectsCheck
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
 	GetTierObjectChecks() []tierObjectCheck
+}
+
+type baseTierChecks struct {
+	basicTierChecks
+}
+
+func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return []clusterObjectsCheck{
+		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi", "25Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
+		idlers("code", "dev", "stage"),
+	}
 }
 
 type basicdeactivationdisabledTierChecks struct {
@@ -116,7 +140,7 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -169,7 +193,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("advanced", cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuotaCompute("advanced", cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -248,7 +272,7 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi"),
+		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -480,7 +504,7 @@ func idlers(namespaceTypes ...string) clusterObjectsCheck {
 	}
 }
 
-func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-compute", userName))
 		require.NoError(t, err)
@@ -496,7 +520,7 @@ func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit str
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
+		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity(storageLimit)
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
