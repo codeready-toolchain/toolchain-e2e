@@ -46,10 +46,10 @@ var (
 func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case base:
-		return &baseTierChecks{basicTierChecks{tierName: base}}, nil
+		return &baseTierChecks{tierName: base}, nil
 
 	case basedeactivationdisabled:
-		return &baseTierChecks{basicTierChecks{tierName: basedeactivationdisabled}}, nil
+		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
 
 	case basic:
 		return &basicTierChecks{tierName: basic}, nil
@@ -80,7 +80,11 @@ type TierChecks interface {
 }
 
 type baseTierChecks struct {
-	basicTierChecks
+	tierName string
+}
+
+func (a *baseTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
 }
 
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
