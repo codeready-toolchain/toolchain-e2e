@@ -120,6 +120,14 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	}
 }
 
+type basedeactivationdisabledTierChecks struct {
+	baseTierChecks
+}
+
+func (a *basedeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
+}
+
 type basicdeactivationdisabledTierChecks struct {
 	basicTierChecks
 }
