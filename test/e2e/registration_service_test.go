@@ -563,10 +563,10 @@ func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username
 	assert.True(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "Provisioned", mpStatus["reason"])
 	assert.Equal(s.T(), s.memberAwait.GetConsoleURL(), mp["consoleURL"])
-	memberCluster, _, err := s.hostAwait.GetToolchainCluster(cluster.Member, s.memberAwait.Namespace, nil)
-	if err != nil {
-		assert.Equal(s.T(), memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])
-	}
+	memberCluster, found, err := s.hostAwait.GetToolchainCluster(cluster.Member, s.memberAwait.Namespace, nil)
+	require.NoError(s.T(), err)
+	require.True(s.T(), found)
+	assert.Equal(s.T(), memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusPendingApproval(username, bearerToken string) {
