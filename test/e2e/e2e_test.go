@@ -31,7 +31,7 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("verify overall toolchain status", func(t *testing.T) {
-			VerifyToolchainStatus(t, hostAwait)
+			VerifyToolchainStatus(t, hostAwait, memberAwait)
 		})
 	})
 
