@@ -22,6 +22,8 @@ IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 
 ENVIRONMENT := e2e-tests
 IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
+SECOND_MEMBER_MODE ?= true
+
 WAS_ALREADY_PAIRED_FILE := /tmp/${GO_PACKAGE_ORG_NAME}_${GO_PACKAGE_REPO_NAME}_already_paired
 
 .PHONY: test-e2e
@@ -72,13 +74,13 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs REPO_NAME=host-operator NAMESPACE=${HOST_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS}
 	$(MAKE) print-operator-logs REPO_NAME=member-operator-webhook NAMESPACE=${MEMBER_NS}
-	$(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS_2}
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) print-operator-logs REPO_NAME=member-operator NAMESPACE=${MEMBER_NS_2}; fi
 	$(MAKE) print-operator-logs REPO_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
 else
 	@echo "you can print logs using the commands:"
 	@echo "oc logs deployment.apps/host-operator --namespace ${HOST_NS}"
 	@echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS}"
-	@echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS_2}"
+	@if [[ ${SECOND_MEMBER_MODE} == true ]]; then echo "oc logs deployment.apps/member-operator --namespace ${MEMBER_NS_2}"; fi
 	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
 	@echo "oc logs deployment.apps/registration-service --namespace ${REGISTRATION_SERVICE_NS}"
 endif
@@ -111,9 +113,9 @@ endif
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 
 ###########################################################
 #
@@ -235,13 +237,13 @@ ifneq ($(IS_OS_3),)
 	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
 endif
 	$(MAKE) build-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME}
-	
+
 	$(MAKE) deploy-member MEMBER_REPO_PATH=${MEMBER_REPO_PATH} MEMBER_NS_TO_DEPLOY=$(MEMBER_NS)
-	
+
 	@echo "Deploying second member without a deploy webhook since it can cause problems with the tests"
 	$(eval TMP_ENV_YAML := /tmp/${ENVIRONMENT}_${DATE_SUFFIX}.yaml)
 	sed 's|member-operator:|member-operator:\n  deploy-webhook: 'false'|' ${MEMBER_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > ${TMP_ENV_YAML}
-	$(MAKE) deploy-member MEMBER_REPO_PATH=${MEMBER_REPO_PATH} MEMBER_NS_TO_DEPLOY=$(MEMBER_NS_2) ENV_YAML=${TMP_ENV_YAML}
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) deploy-member MEMBER_REPO_PATH=${MEMBER_REPO_PATH} MEMBER_NS_TO_DEPLOY=$(MEMBER_NS_2) ENV_YAML=${TMP_ENV_YAML}; fi
 
 .PHONY: deploy-member
 deploy-member:
@@ -254,7 +256,7 @@ deploy-member:
 .PHONY: e2e-service-account
 e2e-service-account:
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 
 .PHONY: deploy-host
 deploy-host: build-registration
