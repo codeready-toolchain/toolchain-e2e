@@ -167,7 +167,7 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 	case "code":
 		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
 	case "stage":
 		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
 	}
@@ -226,7 +226,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 	case "code":
 		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
 	case "stage":
 		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
 	}
@@ -299,7 +299,7 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
 	case "stage":
 		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
 	}
