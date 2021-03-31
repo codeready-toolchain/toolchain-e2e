@@ -115,8 +115,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	updateTemplateTier(t, hostAwait, "cookie", "team", "team")
 
 	// then
-	verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "basic")
-	verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "team", "team")
+	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "basic")
+	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "team", "team")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "", "advanced")
@@ -207,7 +207,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 	}
 }
 
-func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
+func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
 	//
 	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(aliasTierClusterResources)
 	require.NoError(t, err)
@@ -224,6 +224,12 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 	clusterResourcesChecks, err := tiers.NewChecks(aliasTierClusterResources)
 	require.NoError(t, err)
 
+	// verify that all TemplateUpdateRequests were deleted
+	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
+	require.NoError(t, err)
+
+	// verify individual user updates
+	updatedSyncIndexes := make(map[string]string, len(syncIndexes))
 	for userID, syncIndex := range syncIndexes {
 		usersignup, err := hostAwait.WaitForUserSignup(userID)
 		require.NoError(t, err)
@@ -232,10 +238,12 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
 			UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err, "Failing UserSignup: %+v", usersignup)
-		_, err = hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
+		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
 		)
+		updatedSyncIndexes[userID] = mur.Spec.UserAccounts[0].SyncIndex
+
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
@@ -243,9 +251,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
 	}
 
-	// and verify that all TemplateUpdateRequests were deleted
-	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
-	require.NoError(t, err)
+	return updatedSyncIndexes
 }
 
 func TestTierTemplates(t *testing.T) {
