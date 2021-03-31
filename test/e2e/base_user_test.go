@@ -37,7 +37,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, targetCluster, conditions...)
 
 	// Confirm the MUR was created and ready
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.member2Await)
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "basic", s.memberAwait, s.member2Await)
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 

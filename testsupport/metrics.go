@@ -28,9 +28,11 @@ const (
 	UserSignupsAutoDeactivatedMetric = "sandbox_user_signups_auto_deactivated_total"
 	UserSignupsBannedMetric          = "sandbox_user_signups_banned_total"
 
-	// DEPRECATED: use `MasterUserRecordsMetric` instead
+	// DEPRECATED: use `UserAccountsMetric` instead
 	MasterUserRecordMetric = "sandbox_master_user_record_current"
 	UserAccountsMetric     = "sandbox_user_accounts_current"
+
+	ActivationsPerUserMetric = "sandbox_activations_per_user"
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values

@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -38,7 +39,7 @@ func (s *userManagementTestSuite) SetupSuite() {
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
-	s.ctx.Cleanup()
+	// s.ctx.Cleanup()
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
@@ -203,6 +204,36 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 	})
+}
+
+func (s *userManagementTestSuite) TestUserReactivationsMetric() {
+
+	// activate and deactivate a few users, and check the metrics.
+	// user-0001 will be activated 1 time
+	// user-0002 will be activated 2 times
+	// user-0003 will be activated 3 times
+	// user-0004 will be activated 4 times
+
+	// Initialize metrics assertion counts
+	// metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
+
+	for i := 1; i <= 4; i++ {
+		username := fmt.Sprintf("user-%04d", i)
+		userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName)
+
+		for j := 1; j < i; j++ { // deactivate and reactivate the user based on its "number"
+			// deactivate the user
+			var err error
+			userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+				us.Spec.Deactivated = true
+			})
+			require.NoError(s.T(), err)
+			err = s.hostAwait.WaitUntilMasterUserRecordDeleted(userSignup.Spec.Username)
+			require.NoError(s.T(), err)
+			// reactivate the user
+			userSignup = CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName, WithIdentityID(userSignup.Spec.UserID))
+		}
+	}
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {

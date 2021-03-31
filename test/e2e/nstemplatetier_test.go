@@ -100,9 +100,9 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
-	count := 2*MaxPoolSize + 1
+	count := 2*1 + 1
 	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
-	defer ctx.Cleanup()
+	// defer ctx.Cleanup()
 
 	// first group of users: the "cheesecake lovers"
 	cheesecakeSyncIndexes := setupAccounts(t, ctx, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait.ClusterName, count)
@@ -147,7 +147,7 @@ func setupAccounts(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, t
 	tier := CreateNSTemplateTier(t, ctx, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
-	users := make([]toolchainv1alpha1.UserSignup, count)
+	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
 		users[i] = CreateAndApproveSignup(t, hostAwait, fmt.Sprintf(nameFmt, i), targetCluster)
 	}

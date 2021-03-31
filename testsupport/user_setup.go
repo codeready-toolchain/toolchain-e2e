@@ -17,13 +17,12 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []toolchainv1alpha1.UserSignup {
-	signups := make([]toolchainv1alpha1.UserSignup, capacity)
+func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+	signups := make([]*toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		name := fmt.Sprintf("multiple-signup-testuser-%d", i)
 		// check if there is already a MUR with the expected name, in which case, continue with the next one
@@ -42,17 +41,34 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 		err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
 		hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 		require.NoError(t, err)
-		signups[i] = *userSignup
+		signups[i] = userSignup
 	}
 	return signups
 }
 
-func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string) toolchainv1alpha1.UserSignup {
+type IdentityOption func(*authsupport.Identity) error
+
+func WithIdentityID(idStr string) IdentityOption {
+	return func(identity *authsupport.Identity) error {
+		id, err := uuid.FromString(idStr)
+		if err != nil {
+			return err
+		}
+		identity.ID = id
+		return nil
+	}
+}
+
+func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string, options ...IdentityOption) *toolchainv1alpha1.UserSignup {
 	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
 		ID:       uuid.NewV4(),
 		Username: username,
+	}
+	for _, apply := range options {
+		err := apply(identity)
+		require.NoError(t, err)
 	}
 	postSignup(t, hostAwait.RegistrationServiceURL, *identity)
 
@@ -95,13 +111,13 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.NoError(t, err)
 
 	// delete the userSignup at the end of the test
-	t.Cleanup(func() {
-		if err := hostAwait.Client.Delete(context.TODO(), userSignup); err != nil && !errors.IsNotFound(err) {
-			require.NoError(t, err)
-		}
-	})
+	// t.Cleanup(func() {
+	// 	if err := hostAwait.Client.Delete(context.TODO(), userSignup); err != nil && !errors.IsNotFound(err) {
+	// 		require.NoError(t, err)
+	// 	}
+	// })
 
-	return *userSignup
+	return userSignup
 }
 
 // NewUserSignup creates a new UserSignup resoruce with the given values:
@@ -119,7 +135,8 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string
 			Name:      name,
 			Namespace: hostAwait.Namespace,
 			Annotations: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
+				toolchainv1alpha1.UserSignupUserEmailAnnotationKey:         email,
+				toolchainv1alpha1.UserSignupActivationCounterAnnotationKey: "1", // normally set by registration service during first signup of a user (ie, when creating the UserSignup resource)
 			},
 			Labels: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: md5.CalcMd5(email),
@@ -144,7 +161,7 @@ var HttpClient = &http.Client{
 func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	require.NotEmpty(t, route)
 	// Call signup endpoint with a valid token.
-	emailClaim := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
+	emailClaim := authsupport.WithEmailClaim(identity.Username + "@acme.com")
 	givenNameClaim := authsupport.WithGivenNameClaim(identity.Username + "-First-Name")
 	familyNameClaim := authsupport.WithFamilyNameClaim(identity.Username + "-Last-Name")
 	companyClaim := authsupport.WithCompanyClaim(identity.Username + "-Company-Name")
