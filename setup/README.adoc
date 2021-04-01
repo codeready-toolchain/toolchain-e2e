@@ -1,6 +1,6 @@
 = Dev Sandbox Setup
 
-This document describes how to setup a Dev Sandbox environment that is similar to production and can be used as part of an onboarding process for new operators.
+This document describes how to setup a Dev Sandbox environment that is similar to production and is used as part of an onboarding process for new operators.
 
 == Prereqs
 
@@ -42,12 +42,16 @@ platform:
 publish: External
 ----
 
+. Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-installed-tools[required tools] installed
 
 . Install your operator(s)
 
-. Create an OpenShift template file which has all the resources that this setup tool will automatically create on behalf of the users in their `-stage` namespaces. You can use the sample https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] as a base and add other resources that the users may want to create when using your operator. 
+. Create an OpenShift template file that defines resources for testing the performance of your onboarding operator and any other resources that users typically create when using your operator. A Dev Sandbox template is provided with a default set of resources to help mimic a production environment https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] and should be used alongside the onboarding operator's template file you create in this step.
 +
-Note that the template does not take any parameter, and all resources will be created in the user's `-stage` namespace.
++ This setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
++
+Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
+Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
 
 . Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
@@ -71,12 +75,12 @@ Note that the template does not take any parameter, and all resources will be cr
 NAME               MURS   READY   LAST UPDATED
 toolchain-status   0      True    2021-03-24T22:39:36Z
 ```
-. Populate the cluster with users (by default the tool will provision 3000 users) and create resources based on the user-workloads.yaml file you created in the prereqs step above. +
-`go run setup/main.go --template=<path_to_yaml_template_file>`
+. Populate the cluster with users (by default the tool will provision 3000 users) and create resources by providing template files using the `--template` parameter.+
+`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step>`
 +
-(use `go run setup/main.go --help` to see the other options)
+The provided default template (setup/resources/user-workloads.yaml) is automatically added when you run the setup. It is recommended to use the default options when running the setup tool, however default values can be adjusted if necessary. use `go run setup/main.go --help` to see the full set of options.
 +
-Note 1: By default 3000 users are created, of which all 3000 of them will have these resources created in their `stage` namespace. The number of users to create can be configured using the `--users` flag and the number of users with resources created can be configured via the `--active` flag. eg. `go run setup/main.go <path to the user-workloads.yaml file> --users 4000 --active 2000` will create 4000 users and 2000 users will have resources created. +
+Note 1: By default 3000 users are created, of which all 3000 of them will have these resources created in their `stage` namespace. The number of users to create can be configured using the `--users` flag and the number of users with resources created can be configured via the `--active` flag. eg. `go run setup/main.go --template=<path_to_template_file> --users 4000 --active 2000` will create 4000 users and 2000 users will have resources created. +
 Note 2: Separate to the resources from the template, CSV resources are automatically created. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason. +
 . Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
