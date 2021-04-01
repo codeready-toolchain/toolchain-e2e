@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -29,6 +31,7 @@ var (
 	userBatches             int
 	activeUsers             int
 	skipCSVGen              bool
+	skipDefaultTemplate     bool
 )
 
 // Execute the setup command to fill a cluster with as many users as requested.
@@ -61,7 +64,7 @@ func Execute() {
 	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply")
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
-	cmd.MarkFlagRequired("template")
+	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -90,13 +93,32 @@ func setup(cmd *cobra.Command, args []string) {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
 	}
 
-	term.Infof("🕖 initializing...")
+	// add the default user-workloads.yaml file automatically
+	if !skipDefaultTemplate {
+		templatePaths = append(templatePaths, "setup/resources/user-workloads.yaml")
+	}
+
+	term.Infof("🕖 initializing...\n")
 	cl, config, scheme, err := cfg.NewClient(term, kubeconfig)
 	if err != nil {
 		term.Fatalf(err, "cannot create client")
 	}
 
-	if !term.PromptBoolf("👤 provision %d users in batches of %d on %s", numberOfUsers, userBatches, config.Host) {
+	var templateListStr string
+	for _, p := range templatePaths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			term.Fatalf(err, "invalid template file: '%s'", absPath)
+		}
+		_, err = ioutil.ReadFile(absPath)
+		if err != nil {
+			term.Fatalf(err, "invalid template file: '%s'", absPath)
+		}
+		templateListStr += "\n - " + absPath
+	}
+
+	term.Infof("📋 template list: %s\n", templateListStr)
+	if !term.PromptBoolf("👤 provision %d users in batches of %d on %s using the templates listed above", numberOfUsers, userBatches, config.Host) {
 		return
 	}
 
