@@ -9,6 +9,7 @@ import (
 
 	commontest "github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
+	templatev1 "github.com/openshift/api/template/v1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		t.Cleanup(func() {
-			tmpl = nil // forget about the template after this test, so others can fail as expected
+			tmpls = make(map[string]*templatev1.Template) // forget about the template after this test, so others can fail as expected
 		})
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -38,7 +39,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 		templatePath := "user-workloads.yaml"
 
 		// when
-		err := CreateFromTemplateFile(cl, s, templatePath, username)
+		err := CreateFromTemplateFile(cl, s, username, templatePath)
 
 		// then
 		require.NoError(t, err)
@@ -73,7 +74,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				templatePath := "not-found.yaml"
 
 				// when
-				err := CreateFromTemplateFile(cl, s, templatePath, username)
+				err := CreateFromTemplateFile(cl, s, username, templatePath)
 
 				// then
 				require.Error(t, err)
@@ -94,7 +95,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				tmpFile.WriteString(deployment)
 
 				// when
-				err = CreateFromTemplateFile(cl, s, tmpFile.Name(), username)
+				err = CreateFromTemplateFile(cl, s, username, tmpFile.Name())
 
 				// then
 				require.Error(t, err)
