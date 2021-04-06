@@ -17,6 +17,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -111,12 +112,11 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.NoError(t, err)
 
 	// delete the userSignup at the end of the test
-	// t.Cleanup(func() {
-	// 	if err := hostAwait.Client.Delete(context.TODO(), userSignup); err != nil && !errors.IsNotFound(err) {
-	// 		require.NoError(t, err)
-	// 	}
-	// })
-
+	t.Cleanup(func() {
+		if err := hostAwait.Client.Delete(context.TODO(), userSignup); err != nil && !errors.IsNotFound(err) {
+			require.NoError(t, err)
+		}
+	})
 	return userSignup
 }
 

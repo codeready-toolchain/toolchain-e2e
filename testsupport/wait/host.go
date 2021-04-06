@@ -633,7 +633,7 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationTyp
 			return false, nil
 		}
 
-		a.T.Logf("Notification has been deleted'%s'", username)
+		a.T.Logf("Notification has been deleted for user '%s'", username)
 		return true, nil
 	})
 }

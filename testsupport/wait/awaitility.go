@@ -293,10 +293,20 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 }
 
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
-func (a *Awaitility) GetMetricValue(family string, labels ...string) float64 {
-	value, err := getMetricValue(a.MetricsURL, family, labels)
+// fails if the metric with the given labelAndValues does not exist
+func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) float64 {
+	value, err := getMetricValue(a.MetricsURL, family, labelAndValues)
 	require.NoError(a.T, err)
 	return value
+}
+
+// GetMetricValue gets the value of the metric with the given family and label key-value pair
+// return 0 if the metric with the given labelAndValues does not exist
+func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...string) float64 {
+	if value, err := getMetricValue(a.MetricsURL, family, labelAndValues); err == nil {
+		return value
+	}
+	return 0
 }
 
 // AssertMetricReachesValue asserts that the exposed metric with the given family

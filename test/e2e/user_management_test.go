@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	userv1 "github.com/openshift/api/user/v1"
 	uuid "github.com/satori/go.uuid"
@@ -215,25 +217,77 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 	// user-0004 will be activated 4 times
 
 	// Initialize metrics assertion counts
-	// metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
-
+	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
+	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 	for i := 1; i <= 4; i++ {
 		username := fmt.Sprintf("user-%04d", i)
-		userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName)
+		usersignups[username] = CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName)
 
-		for j := 1; j < i; j++ { // deactivate and reactivate the user based on its "number"
+		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
-			var err error
-			userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-				us.Spec.Deactivated = true
+			_, err := s.hostAwait.UpdateUserSignupSpec(usersignups[username].Name, func(usersignup *v1alpha1.UserSignup) {
+				usersignup.Spec.Deactivated = true
 			})
 			require.NoError(s.T(), err)
-			err = s.hostAwait.WaitUntilMasterUserRecordDeleted(userSignup.Spec.Username)
+			err = s.hostAwait.WaitUntilMasterUserRecordDeleted(username)
 			require.NoError(s.T(), err)
 			// reactivate the user
-			userSignup = CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName, WithIdentityID(userSignup.Spec.UserID))
+			CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName, WithIdentityID(usersignups[username].Spec.UserID))
 		}
 	}
+	// then verify the value of the `sandbox_users_per_activations` metric
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "1") // user-0001 was 1 time
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "2") // user-0002 was 2 times
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "3") // user-0003 was 3 times
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "4") // user-0004 was 4 times
+
+	s.T().Run("restart host-operator pod and verify that metrics are still available", func(t *testing.T) {
+		// given
+		metricsAssertion := InitMetricsAssertion(t, s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
+
+		// when deleting the host-operator pod to emulate an operator restart during redeployment.
+		err := s.hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
+
+		// then check how much time it takes to restart and process all existing resources
+		require.NoError(t, err)
+
+		// host metrics should become available again at this point
+		_, err = s.hostAwait.WaitForRouteToBeAvailable(s.hostAwait.Namespace, "host-operator-metrics", "/metrics")
+		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
+
+		// then verify that the metric values "survived" the restart
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "1") // user-0001 was 1 time (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2") // user-0002 was 2 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3") // user-0003 was 3 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4") // user-0004 was 4 times (unchanged after pod restarted)
+	})
+
+	s.T().Run("delete usersignups", func(t *testing.T) {
+		// given
+		metricsAssertion := InitMetricsAssertion(t, s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
+
+		// when deleting user "user-0001"
+		err := s.hostAwait.Client.Delete(context.TODO(), usersignups["user-0001"])
+
+		// then
+		require.NoError(t, err)
+		// and verify that the values of the `sandbox_users_per_activations` metric were updated accordingly (ie, decremented)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, -1, "activations", "1") // user-0001 is gone, metric was decremented
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2")  // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3")  // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4")  // (unchanged after other usersignup was deleted)
+
+		// when deleting user "user-0002"
+		err = s.hostAwait.Client.Delete(context.TODO(), usersignups["user-0002"])
+
+		// then
+		require.NoError(t, err)
+		// and verify that the values of the `sandbox_users_per_activations` metric were updated accordingly (ie, decremented)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, -1, "activations", "1") // (same offset as above)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, -1, "activations", "2") // user-0002 is gone, metric was decremented
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3")  // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4")  // (unchanged after other usersignup was deleted)
+	})
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
