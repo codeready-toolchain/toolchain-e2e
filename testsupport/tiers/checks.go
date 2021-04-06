@@ -3,6 +3,7 @@ package tiers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -22,6 +23,8 @@ import (
 
 const (
 	// tier names
+	base                      = "base"
+	basedeactivationdisabled  = "basedeactivationdisabled"
 	basic                     = "basic"
 	basicdeactivationdisabled = "basicdeactivationdisabled"
 	advanced                  = "advanced"
@@ -43,6 +46,12 @@ var (
 
 func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
+	case base:
+		return &baseTierChecks{tierName: base}, nil
+
+	case basedeactivationdisabled:
+		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
+
 	case basic:
 		return &basicTierChecks{tierName: basic}, nil
 
@@ -69,6 +78,63 @@ type TierChecks interface {
 	GetClusterObjectChecks() []clusterObjectsCheck
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
 	GetTierObjectChecks() []tierObjectCheck
+}
+
+type baseTierChecks struct {
+	tierName string
+}
+
+func (a *baseTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
+}
+
+func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	checks := append(commonChecks,
+		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2))
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+	case "stage":
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+	}
+	return checks
+}
+
+func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
+	return templateRefs
+}
+
+func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return []clusterObjectsCheck{
+		clusterResourceQuotaCompute("base", cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
+		idlers("dev", "stage"),
+	}
+}
+
+type basedeactivationdisabledTierChecks struct {
+	baseTierChecks
+}
+
+func (a *basedeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
 }
 
 type basicdeactivationdisabledTierChecks struct {
@@ -101,7 +167,7 @@ func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObj
 	case "code":
 		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
 	case "stage":
 		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
 	}
@@ -116,7 +182,7 @@ func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility
 
 func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuotaCompute("basic", cpuLimit, "1750m", "7Gi", "25Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -160,7 +226,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 	case "code":
 		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
 	case "stage":
 		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
 	}
@@ -169,7 +235,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("advanced", cpuLimit, "1750m", "7Gi"),
+		clusterResourceQuotaCompute("advanced", cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -233,7 +299,7 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
 	case "stage":
 		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
 	}
@@ -248,7 +314,7 @@ func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{
-		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi"),
+		clusterResourceQuotaCompute("team", cpuLimit, "2000m", "15Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -480,11 +546,9 @@ func idlers(namespaceTypes ...string) clusterObjectsCheck {
 	}
 }
 
-func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit string) clusterObjectsCheck {
+func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-compute", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
 		require.NoError(t, err)
@@ -496,22 +560,23 @@ func clusterResourceQuotaCompute(tierName, cpuLimit, cpuRequest, memoryLimit str
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
+		hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity(storageLimit)
 		require.NoError(t, err)
 		hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
 		hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-compute", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaDeployments() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-deployments", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count("deployments.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
@@ -520,45 +585,48 @@ func clusterResourceQuotaDeployments() clusterObjectsCheck {
 		hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("50")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-deployments", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaReplicas() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-replicas", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
 		hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-replicas", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaRoutes() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-routes", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
 		require.NoError(t, err)
 		hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-routes", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaJobs() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-jobs", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
@@ -569,64 +637,70 @@ func clusterResourceQuotaJobs() clusterObjectsCheck {
 		hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-jobs", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaServices() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-services", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-services", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaBuildConfig() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-bc", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("30")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-bc", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaSecrets() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-secrets", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
 		hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-secrets", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
 func clusterResourceQuotaConfigMap() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-		quota, err := memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-cm", userName))
-		require.NoError(t, err)
-
+		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
-
 		hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
 		require.NoError(t, err)
 
-		checkClusterResourceQuota(t, memberAwait, userName, hard, quota)
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-cm", userName), criteria)
+		require.NoError(t, err)
 	}
 }
 
-func checkClusterResourceQuota(t *testing.T, memberAwait *wait.MemberAwaitility, userName string, hard map[v1.ResourceName]resource.Quantity, actual *quotav1.ClusterResourceQuota) {
+func clusterResourceQuotaMatches(t *testing.T, userName string, hard map[v1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
 	expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
 		Selector: quotav1.ClusterResourceQuotaSelector{
 			AnnotationSelector: map[string]string{
@@ -637,7 +711,14 @@ func checkClusterResourceQuota(t *testing.T, memberAwait *wait.MemberAwaitility,
 			Hard: hard,
 		},
 	}
-	assert.Equal(t, expectedQuotaSpec, actual.Spec)
+	return func(a *wait.MemberAwaitility, actual quotav1.ClusterResourceQuota) bool {
+		if reflect.DeepEqual(expectedQuotaSpec, actual.Spec) {
+			a.T.Logf("expected ClusterResourceQuota matches actual ClusterResourceQuota")
+			return true
+		}
+		a.T.Logf("waiting for ClusterResourceQuota '%s'. Actual: '%+v'; Expected: '%+v'", userName, expectedQuotaSpec, actual)
+		return false
+	}
 }
 
 func count(resource v1.ResourceName) v1.ResourceName {

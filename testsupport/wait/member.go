@@ -361,8 +361,11 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 	return role, err
 }
 
+// ClusterResourceQuotaWaitCriterion a function to check that an ClusterResourceQuota has the expected criteria
+type ClusterResourceQuotaWaitCriterion func(a *MemberAwaitility, quota quotav1.ClusterResourceQuota) bool
+
 // WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
-func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.ClusterResourceQuota, error) {
+func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...ClusterResourceQuotaWaitCriterion) (*quotav1.ClusterResourceQuota, error) {
 	quota := &quotav1.ClusterResourceQuota{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &quotav1.ClusterResourceQuota{}
@@ -380,6 +383,13 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string) (*quotav1.Cl
 		}
 		a.T.Logf("found ClusterResourceQuota '%s'", name)
 		quota = obj
+
+		for _, match := range criteria {
+			if !match(a, *obj) {
+				return false, nil
+			}
+		}
+
 		return true, nil
 	})
 	return quota, err

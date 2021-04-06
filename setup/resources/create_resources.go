@@ -15,16 +15,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var tmpl *templatev1.Template
+var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
-func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, templatePath, username string) error {
-	// get the template from the file
-	if tmpl == nil {
+func CreateFromTemplateFiles(cl client.Client, s *runtime.Scheme, username string, templatePaths []string) error {
+	for _, path := range templatePaths {
+		if err := CreateFromTemplateFile(cl, s, username, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, username, templatePath string) error {
+	// get the template from the file if it hasn't been processed already
+	if _, ok := tmpls[templatePath]; !ok {
 		var err error
-		if tmpl, err = getTemplateFromFile(s, templatePath); err != nil {
+		if tmpls[templatePath], err = getTemplateFromFile(s, templatePath); err != nil {
 			return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
 		}
 	}
+	tmpl := tmpls[templatePath]
 
 	userNS := fmt.Sprintf("%s-stage", username)
 	// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
