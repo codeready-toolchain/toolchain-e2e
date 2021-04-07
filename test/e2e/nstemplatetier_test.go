@@ -41,7 +41,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	testingtiers := CreateAndApproveSignup(t, hostAwait, testingTiersName, memberAwait.ClusterName)
 
 	// all tiers to check - keep the basic as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "team", "basicdeactivationdisabled", "test", "basic"}
+	tiersToCheck := []string{"advanced", "team", "basicdeactivationdisabled", "test", "base", "basedeactivationdisabled", "basic"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -115,8 +115,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	updateTemplateTier(t, hostAwait, "cookie", "team", "team")
 
 	// then
-	verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "basic")
-	verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "team", "team")
+	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "basic")
+	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "team", "team")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "", "advanced")
@@ -207,7 +207,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 	}
 }
 
-func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
+func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
 	//
 	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(aliasTierClusterResources)
 	require.NoError(t, err)
@@ -224,6 +224,12 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 	clusterResourcesChecks, err := tiers.NewChecks(aliasTierClusterResources)
 	require.NoError(t, err)
 
+	// verify that all TemplateUpdateRequests were deleted
+	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
+	require.NoError(t, err)
+
+	// verify individual user updates
+	updatedSyncIndexes := make(map[string]string, len(syncIndexes))
 	for userID, syncIndex := range syncIndexes {
 		usersignup, err := hostAwait.WaitForUserSignup(userID)
 		require.NoError(t, err)
@@ -232,10 +238,12 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
 			UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err, "Failing UserSignup: %+v", usersignup)
-		_, err = hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
+		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
 		)
+		updatedSyncIndexes[userID] = mur.Spec.UserAccounts[0].SyncIndex
+
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
@@ -243,9 +251,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
 	}
 
-	// and verify that all TemplateUpdateRequests were deleted
-	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
-	require.NoError(t, err)
+	return updatedSyncIndexes
 }
 
 func TestTierTemplates(t *testing.T) {
@@ -256,9 +262,9 @@ func TestTierTemplates(t *testing.T) {
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
-	// verify that we have 19 tier templates (basic: 4, advanced: 4, basicdeactivationdisabled 4, team 3, test 4)
+	// verify that we have 25 tier templates (base: 3, basicdeactivationdisabled 3, basic: 4, advanced: 4, basicdeactivationdisabled 4, team 3, test 4)
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, 19)
+	assert.Len(t, allTiers.Items, 25)
 }
 
 func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {

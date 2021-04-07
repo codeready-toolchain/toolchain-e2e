@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20210203025716-45f19e752101
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20210219141158-8bf475892a90
+	github.com/codeready-toolchain/api v0.0.0-20210322033730-9b79ca615ae9
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20210323222322-40cc7fc9a3ea
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.1.0
@@ -15,6 +15,7 @@ require (
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.4 // indirect
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
+	github.com/operator-framework/api v0.3.8
 	github.com/operator-framework/operator-sdk v0.19.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.2.0
@@ -48,6 +49,6 @@ replace (
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6 // avoids case-insensitive import collision: "github.com/googleapis/gnostic/openapiv2" and "github.com/googleapis/gnostic/OpenAPIv2"
 )
 
-replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20210406161444-7f47b238ed37
+replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20210407074048-9f6680ec2b05
 
 go 1.14
