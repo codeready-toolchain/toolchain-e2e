@@ -11,6 +11,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 
 	quotav1 "github.com/openshift/api/quota/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -18,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
+var (
 	DefaultRetryInterval = time.Millisecond * 200
 	DefaultTimeout       = time.Minute * 5
 )
@@ -36,9 +37,8 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 	if err != nil {
 		term.Fatalf(err, "error while loading KUBECONFIG")
 	}
-	s := scheme.Scheme
-	b := newSchemeBuilder()
-	if err := b.AddToScheme(scheme.Scheme); err != nil {
+	s, err := NewScheme()
+	if err != nil {
 		term.Fatalf(err, "cannot configure scheme")
 	}
 	clientConfig, err := kubeconfig.ClientConfig()
@@ -50,9 +50,12 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 	return cl, clientConfig, s, err
 }
 
-// AddToScheme adds all Resources to the Scheme
-func newSchemeBuilder() runtime.SchemeBuilder {
-	return append(apis.AddToSchemes, quotav1.Install)
+// NewScheme returns the scheme configured with all the needed types
+func NewScheme() (*runtime.Scheme, error) {
+	s := scheme.Scheme
+	builder := append(apis.AddToSchemes, quotav1.Install, operatorsv1alpha1.AddToScheme)
+	err := builder.AddToScheme(s)
+	return s, err
 }
 
 // GetKubeconfigFile returns a file reader on (by order of match):
