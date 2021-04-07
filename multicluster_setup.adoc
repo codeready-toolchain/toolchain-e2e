@@ -68,7 +68,7 @@ The same logic as above is applied to deploy the Member operator on the Member c
 $ export MEMBER_NS=toolchain-member-operator
 
 # on the member cluster, in the `toolchain-member-operator` namespace
-$ oc config use-context member-admin && MEMBER_NS=${MEMBER_NS} make get-member-operator-repo deploy-member
+$ oc config use-context member-admin && MEMBER_NS_TO_DEPLOY=${MEMBER_NS} make get-member-operator-repo deploy-member
 ...
 
 $ oc get pods -n ${MEMBER_NS}
