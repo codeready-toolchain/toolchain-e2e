@@ -37,7 +37,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, targetCluster, conditions...)
 
 	// Confirm the MUR was created and ready
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "basic", s.memberAwait, s.member2Await)
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, *userSignup, "base", s.memberAwait, s.member2Await)
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 
@@ -54,7 +54,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, us
 func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
 	conditions ...v1alpha1.Condition) *v1alpha1.UserSignup {
 
-	WaitUntilBasicNSTemplateTierIsUpdated(s.T(), s.hostAwait)
+	WaitUntilBaseNSTemplateTierIsUpdated(s.T(), s.hostAwait)
 	// Create a new UserSignup with the given approved flag
 	userSignup := NewUserSignup(s.T(), s.hostAwait, username, email)
 	userSignup.Spec.Approved = specApproved

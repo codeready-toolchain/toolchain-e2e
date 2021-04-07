@@ -40,8 +40,8 @@ func TestNSTemplateTiers(t *testing.T) {
 	testingTiersName := "testingtiers"
 	testingtiers := CreateAndApproveSignup(t, hostAwait, testingTiersName, memberAwait.ClusterName)
 
-	// all tiers to check - keep the basic as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "team", "basicdeactivationdisabled", "test", "base", "basedeactivationdisabled", "basic"}
+	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
+	tiersToCheck := []string{"advanced", "team", "basicdeactivationdisabled", "test", "basic", "basedeactivationdisabled", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -55,12 +55,12 @@ func TestNSTemplateTiers(t *testing.T) {
 	var changeTierRequestNames []string
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, hostAwait, testingtiers, "basic", memberAwait)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, testingtiers, "base", memberAwait)
 	for _, tierToCheck := range tiersToCheck {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
-		// are different from `000000a` which is the value specified in the initial manifest (used for basic tier)
-		WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
+		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
+		WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
 		// verify each tier's tier object values, this corresponds to the NSTemplateTier resource that each tier has
 		t.Run(fmt.Sprintf("tier object check for %s", tierToCheck), func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestNSTemplateTiers(t *testing.T) {
 }
 
 func TestUpdateNSTemplateTier(t *testing.T) {
-	// in this test, we have 2 groups of users, configured with their own tier (both using the "basic" tier templates)
+	// in this test, we have 2 groups of users, configured with their own tier (both using the "base" tier templates)
 	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "team" templates
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
@@ -109,18 +109,21 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// second group of users: the "cookie lovers"
 	cookieSyncIndexes := setupAccounts(t, ctx, hostAwait, "cookie", "cookielover%02d", memberAwait.ClusterName, count)
 
+	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
+	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
+
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces) but keep the ClusterResources refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "advanced", "")
-	// and when updating the "cookie" tier with the "team" template refs (ie, different number of namespaces)
+	// and when updating the "cookie" tier with the "team" template refs (ie, same number of namespaces)
 	updateTemplateTier(t, hostAwait, "cookie", "team", "team")
 
 	// then
-	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "basic")
+	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "base")
 	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "team", "team")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "", "advanced")
-	// and when updating the "cookie" tier back to the "basic" template refs (ie, different number of namespaces)
+	// and when updating the "cookie" tier to the "basic" template refs (ie, different number of namespaces)
 	updateTemplateTier(t, hostAwait, "cookie", "basic", "basic")
 
 	// then
@@ -138,7 +141,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 }
 
 // setupAccounts takes care of:
-// 1. creating a new tier with the TemplateRefs of the "basic" tier.
+// 1. creating a new tier with the TemplateRefs of the "base" tier.
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
@@ -262,7 +265,7 @@ func TestTierTemplates(t *testing.T) {
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
-	// verify that we have 25 tier templates (base: 3, basicdeactivationdisabled 3, basic: 4, advanced: 4, basicdeactivationdisabled 4, team 3, test 4)
+	// verify that we have 25 tier templates (base: 3, basedeactivationdisabled 3, basic: 4, advanced: 4, basicdeactivationdisabled 4, team 3, test 4)
 	require.NoError(t, err)
 	assert.Len(t, allTiers.Items, 25)
 }
@@ -279,7 +282,7 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 				Labels: map[string]string{
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 					"toolchain.dev.openshift.com/owner":    "legacy",
-					"toolchain.dev.openshift.com/tier":     "basic",
+					"toolchain.dev.openshift.com/tier":     "base",
 					"toolchain.dev.openshift.com/type":     nsType,
 				},
 			},
@@ -291,5 +294,5 @@ func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
 	legacySignup := CreateAndApproveSignup(t, hostAwait, "legacy", memberAwait.ClusterName)
 
 	// then
-	VerifyResourcesProvisionedForSignup(t, hostAwait, legacySignup, "basic", memberAwait)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, legacySignup, "base", memberAwait)
 }

@@ -15,7 +15,7 @@ import (
 
 func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, signups []toolchainv1alpha1.UserSignup, members ...*wait.MemberAwaitility) {
 	for _, signup := range signups {
-		VerifyResourcesProvisionedForSignup(t, hostAwait, signup, "basic", members...)
+		VerifyResourcesProvisionedForSignup(t, hostAwait, signup, "base", members...)
 	}
 }
 
