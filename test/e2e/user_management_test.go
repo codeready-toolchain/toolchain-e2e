@@ -272,10 +272,10 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		// then
 		require.NoError(t, err)
 		// and verify that the values of the `sandbox_users_per_activations` metric were updated accordingly (ie, decremented)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, -1, "activations", "1") // user-0001 is gone, metric was decremented
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2")  // (unchanged after other usersignup was deleted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3")  // (unchanged after other usersignup was deleted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4")  // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "1") // user-0001 has been deleted but metric remains unchanged
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2") // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3") // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4") // (unchanged after other usersignup was deleted)
 
 		// when deleting user "user-0002"
 		err = s.hostAwait.Client.Delete(context.TODO(), usersignups["user-0002"])
@@ -283,10 +283,10 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		// then
 		require.NoError(t, err)
 		// and verify that the values of the `sandbox_users_per_activations` metric were updated accordingly (ie, decremented)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, -1, "activations", "1") // (same offset as above)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, -1, "activations", "2") // user-0002 is gone, metric was decremented
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3")  // (unchanged after other usersignup was deleted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4")  // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "1") // (same offset as above)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2") // user-0002 has been deleted but metric remains unchanged
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3") // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4") // (unchanged after other usersignup was deleted)
 	})
 }
 
