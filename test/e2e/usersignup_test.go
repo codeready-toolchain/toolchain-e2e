@@ -293,6 +293,21 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		userSignup, _ = s.createAndCheckUserSignup(true, prefix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
 		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
 	}
+
+	// Create another UserSignups with a forbidden suffix
+	for _, suffix := range []string{"admin"} {
+		// suffix with hyphen
+		userSignup, _ = s.createAndCheckUserSignup(true, "paul-"+suffix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		require.Equal(s.T(), fmt.Sprintf("paul-%s-crt", suffix), userSignup.Status.CompliantUsername)
+
+		// suffix without delimiter
+		userSignup, _ = s.createAndCheckUserSignup(true, "paul"+suffix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		require.Equal(s.T(), fmt.Sprintf("paul%s-crt", suffix), userSignup.Status.CompliantUsername)
+
+		// suffix as a name
+		userSignup, _ = s.createAndCheckUserSignup(true, suffix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		require.Equal(s.T(), fmt.Sprintf("%s-crt", suffix), userSignup.Status.CompliantUsername)
+	}
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *v1alpha1.UserSignup {
