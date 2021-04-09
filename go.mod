@@ -10,6 +10,7 @@ require (
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/manifoldco/promptui v0.8.0
 	github.com/onsi/ginkgo v1.14.2 // indirect

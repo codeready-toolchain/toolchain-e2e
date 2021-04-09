@@ -3,9 +3,11 @@ package resources
 import (
 	"fmt"
 	"io/ioutil"
+	"sync"
 
-	applycl "github.com/codeready-toolchain/toolchain-common/pkg/client"
+	applyclientlib "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	"github.com/codeready-toolchain/toolchain-common/pkg/template"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	templatev1 "github.com/openshift/api/template/v1"
@@ -14,6 +16,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const resourceProcessorsCount = 20
+
+type objectCreator struct {
+	applycl *applyclientlib.ApplyClient
+	userNS  string
+}
 
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
@@ -42,21 +51,85 @@ func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, username, templ
 		return err
 	}
 	processor := template.NewProcessor(s)
-	objs, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
+	objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
 	if err != nil {
 		return err
 	}
-	applycl := applycl.NewApplyClient(cl, s)
-	for _, obj := range objs {
-		// enforce the creation of the objects in the `userNS` namespace
-		m, err := meta.Accessor(obj.GetRuntimeObject())
+
+	objChannel := distribute(objsToProcess)
+	var objProcessors []<-chan error
+	for i := 0; i < resourceProcessorsCount; i++ {
+		applycl := applyclientlib.NewApplyClient(cl, s)
+		oc := &objectCreator{applycl: applycl, userNS: userNS}
+		objProcessors = append(objProcessors, oc.objectProcessor(cl, s, userNS, objChannel))
+	}
+
+	// combine the results
+	var overallErr error
+	for err := range combineResults(objProcessors...) {
 		if err != nil {
-			return err
+			overallErr = multierror.Append(overallErr, err)
 		}
-		m.SetNamespace(userNS)
-		if _, err := applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
-			return err
+	}
+
+	return overallErr
+}
+
+func distribute(objs []applyclientlib.ToolchainObject) <-chan applyclientlib.ToolchainObject {
+	out := make(chan applyclientlib.ToolchainObject)
+	go func() {
+		for _, obj := range objs {
+			out <- obj
 		}
+		close(out)
+	}()
+	return out
+}
+
+func combineResults(results ...<-chan error) <-chan error {
+	var wg sync.WaitGroup
+	out := make(chan error)
+
+	// Start an output goroutine for each input channel in results.
+	// output copies values from results to out until results is closed, then calls wg.Done.
+	output := func(c <-chan error) {
+		for r := range c {
+			out <- r
+		}
+		wg.Done()
+	}
+	wg.Add(len(results))
+	for _, result := range results {
+		go output(result)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
+}
+
+func (o objectCreator) objectProcessor(cl client.Client, s *runtime.Scheme, userNS string, objSource <-chan applyclientlib.ToolchainObject) <-chan error {
+	out := make(chan error)
+	go func() {
+		for obj := range objSource {
+			out <- o.applyObject(obj)
+		}
+		close(out)
+	}()
+	return out
+}
+
+func (o objectCreator) applyObject(obj applyclientlib.ToolchainObject) error {
+	// enforce the creation of the objects in the `userNS` namespace
+	m, err := meta.Accessor(obj.GetRuntimeObject())
+	if err != nil {
+		return err
+	}
+	m.SetNamespace(o.userNS)
+	if _, err := o.applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
+		return err
 	}
 	return nil
 }
@@ -76,5 +149,4 @@ func getTemplateFromFile(s *runtime.Scheme, filename string) (*templatev1.Templa
 		return tmpl, nil
 	}
 	return nil, fmt.Errorf("wrong kind of object in the template file: '%s'", gvk)
-
 }
