@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"sync"
+	"time"
 
 	applyclientlib "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	"github.com/codeready-toolchain/toolchain-common/pkg/template"
@@ -18,11 +19,6 @@ import (
 )
 
 const resourceProcessorsCount = 20
-
-type objectCreator struct {
-	applycl *applyclientlib.ApplyClient
-	userNS  string
-}
 
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
@@ -59,9 +55,7 @@ func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, username, templ
 	objChannel := distribute(objsToProcess)
 	var objProcessors []<-chan error
 	for i := 0; i < resourceProcessorsCount; i++ {
-		applycl := applyclientlib.NewApplyClient(cl, s)
-		oc := &objectCreator{applycl: applycl, userNS: userNS}
-		objProcessors = append(objProcessors, oc.objectProcessor(cl, s, userNS, objChannel))
+		objProcessors = append(objProcessors, startObjectProcessor(cl, s, userNS, objChannel))
 	}
 
 	// combine the results
@@ -110,25 +104,27 @@ func combineResults(results ...<-chan error) <-chan error {
 	return out
 }
 
-func (o objectCreator) objectProcessor(cl client.Client, s *runtime.Scheme, userNS string, objSource <-chan applyclientlib.ToolchainObject) <-chan error {
+func startObjectProcessor(cl client.Client, s *runtime.Scheme, userNS string, objSource <-chan applyclientlib.ToolchainObject) <-chan error {
 	out := make(chan error)
 	go func() {
+		applycl := applyclientlib.NewApplyClient(cl, s)
 		for obj := range objSource {
-			out <- o.applyObject(obj)
+			out <- applyObject(applycl, userNS, obj)
+			time.Sleep(500 * time.Millisecond)
 		}
 		close(out)
 	}()
 	return out
 }
 
-func (o objectCreator) applyObject(obj applyclientlib.ToolchainObject) error {
+func applyObject(applycl *applyclientlib.ApplyClient, userNS string, obj applyclientlib.ToolchainObject) error {
 	// enforce the creation of the objects in the `userNS` namespace
 	m, err := meta.Accessor(obj.GetRuntimeObject())
 	if err != nil {
 		return err
 	}
-	m.SetNamespace(o.userNS)
-	if _, err := o.applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
+	m.SetNamespace(userNS)
+	if _, err := applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
 		return err
 	}
 	return nil
