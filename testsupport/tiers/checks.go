@@ -223,12 +223,10 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 	checks = append(checks, commonNetworkPolicyChecks()...)
 
 	switch nsType {
-	case "code":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
 	}
 	return checks
 }
@@ -250,7 +248,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 
 func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "code", "dev", "stage")
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
 
@@ -270,7 +268,7 @@ func (a *testTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "code", "stage")
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
 
