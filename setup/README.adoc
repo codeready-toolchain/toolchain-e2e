@@ -48,7 +48,7 @@ publish: External
 
 . Create an OpenShift template file that defines resources for testing the performance of your onboarding operator and any other resources that users typically create when using your operator. A Dev Sandbox template is provided with a default set of resources to help mimic a production environment https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] and should be used alongside the onboarding operator's template file you create in this step.
 +
-+ This setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
+This setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
 +
 Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
 Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
