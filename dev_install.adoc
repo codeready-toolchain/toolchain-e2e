@@ -22,7 +22,7 @@ Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-ins
  * https://quay.io/repository/<your-username>/registration-service?tab=settings
 
 === Authentication
-. Configure authentication for the cluster: +
+Configure authentication for the cluster using one of the following options: +
 +
 Option #1: Contact a member of the Dev Sandbox Team for instructions on how to configure the cluster to use our internal Dev SSO. +
 +
