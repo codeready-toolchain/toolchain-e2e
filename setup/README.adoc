@@ -66,7 +66,7 @@ Note #2: Only resources that a user has permissions to create will be successful
 == Dev Sandbox Setup
 
 . Clone this repository +
-`git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
+`+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
 . Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
 . Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`

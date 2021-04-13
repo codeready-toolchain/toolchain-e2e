@@ -34,6 +34,7 @@ Option #2: Configure your own Keycloak server and set up authentication on the O
 `+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
 . Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
+. Make note of the Registration Service URL that is printed at the end
 . Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
 +
 ```
@@ -41,9 +42,7 @@ NAME               MURS   READY   LAST UPDATED
 toolchain-status   0      True    2021-03-24T22:39:36Z
 ```
 
-=== Register/Login via the Registration Service
-
-. The `make dev-deploy-e2e` prints the Registration Service URL. Open the link in a browser and sign up for an account.
+. Open the Registration Service URL in a browser and sign up for an account.
 
 . Wait for the message "Your OpenShift Developer Sandbox account is waiting for approval"
 
@@ -54,7 +53,9 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 Manual approval means each usersignup must be approved by editing the usersignup resource for a particular user.
 
 . Approve the usersignup
-`oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>`
+```
+oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>
+```
 
 ==== Automatic Approval
 
@@ -77,8 +78,8 @@ EOF
 === Using the Sandbox
 
 After approval the registration service will display a link to start using the Sandbox. The link will go to the user's Dev Console, but first, a login page will appear with two options. +
-1. _kube:admin_ +
-2. _The authentication method configured in the prereq step_ +
+1. Option #1: _kube:admin_ +
+2. Option #2: The authentication method configured in the <<Authentication>> step +
 Select option 2 and log in using the same account used from the <<Register/Login via the Registration Service>> step.
 
 After logging in a user will have access to only the namespaces created for them.
