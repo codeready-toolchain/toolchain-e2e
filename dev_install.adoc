@@ -31,7 +31,7 @@ Option #2: Configure your own Keycloak server and set up authentication on the O
 == Install
 
 . Clone this repository +
-`git clone `+git@github.com+`:codeready-toolchain/toolchain-e2e.git`
+`+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
 . Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
 . Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
