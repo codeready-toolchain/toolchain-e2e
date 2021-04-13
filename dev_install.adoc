@@ -77,9 +77,11 @@ EOF
 
 === Using the Sandbox
 
-After approval the registration service will display a link to start using the Sandbox. The link will go to the user's Dev Console, but first, a login page will appear with two options. +
-1. Option #1: _kube:admin_ +
-2. Option #2: The authentication method configured in the <<Authentication>> step +
+After approval the registration service will display a link to start using the Sandbox. The link will go to the user's Dev Console, but first, a login page will appear with two options.: +
+ +
+Option #1: _kube:admin_ +
+Option #2: The authentication method configured in the <<Authentication>> step + 
+ +
 Select option 2 and log in using the same account used from the <<Register/Login via the Registration Service>> step.
 
 After logging in a user will have access to only the namespaces created for them.
