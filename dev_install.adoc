@@ -1,0 +1,81 @@
+= Dev Sandbox Development Install
+
+This document describes how to install Dev Sandbox for Development.
+
+== Prereqs
+
+. Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-installed-tools[required tools] installed
+
+. Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
+. Log in to the quay.io using `docker login quay.io`
+. Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io is set to `public`:
+ * https://quay.io/repository/<your-username>/host-operator?tab=settings
+ * https://quay.io/repository/<your-username>/member-operator?tab=settings
+ * https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
+ * https://quay.io/repository/<your-username>/registration-service?tab=settings
+
+. Log in to the target OpenShift 4.6+ cluster with cluster admin privileges using `oc login`
+
+. Configure authentication for the cluster:
+
+Option #1: Contact a member of the Dev Sandbox Team for instructions on how to configure the cluster to use our internal Dev SSO.
+
+Option #2: Configure your own Keycloak server and set up authentication on the OpenShift cluster: https://docs.openshift.com/container-platform/4.6/authentication/configuring-internal-oauth.html
+
+
+== Install the Dev Sandbox
+
+. Clone this repository +
+`git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
+. Run the following to install the Dev Sandbox operators +
+`make dev-deploy-e2e`
+. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
++
+```
+NAME               MURS   READY   LAST UPDATED
+toolchain-status   0      True    2021-03-24T22:39:36Z
+```
+
+=== New User Sign Up
+
+With the cluster now under load, it's time to evaluate the environment.
+
+1. Use your operators as a user would and evaluate the performance.
+2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
+3. Monitor the memory usage of operators. There are many more resources created on this cluster than most operators have been tested with so it's important to look for any possible areas for concern.
+
+== Approve The User
+
+=== Manual Approval
+
+Manual approval means each usersignup must be approved by editing the usersignup resource for a particular user.
+
+. Approve the usersignup
+`oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>`
+
+=== Automatic Approval
+
+Automatic approval means enabling automatic approval in the Dev Sandbox configuration. Users will be automatically approved and provisioned without admin intervention.
+
+. Enable automatic approval
+```
+cat <<EOF | oc apply -f -
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: HostOperatorConfig
+metadata:
+  name: config
+  namespace: <host operator namespace>
+spec:
+  automaticApproval:
+    enabled: true
+EOF
+```
+
+=== Cleanup
+== Remove Only Users and Their Namespaces
+
+Run `make clean-users`
+
+== Remove All Sandbox-related Resources
+
+Run `make clean-e2e-resources`
