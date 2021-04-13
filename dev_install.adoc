@@ -8,7 +8,7 @@ This document describes how to install Dev Sandbox in a development environment.
 Ensure you have access to an OpenShift 4.6+ cluster with cluster admin privileges and log in using `oc login`
 
 === Required Tools
-Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-installed-tools[required tools] installed
+Install the link:required_tools.adoc[required tools].
 
 === Quay
 . Register for a quay.io account if you don't have one

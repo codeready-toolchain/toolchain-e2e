@@ -42,7 +42,7 @@ platform:
 publish: External
 ----
 
-. Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-installed-tools[required tools] installed
+. Install the link:required_tools.adoc[required tools].
 
 . Install your operator(s)
 
