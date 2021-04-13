@@ -23,9 +23,9 @@ Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-ins
 
 === Authentication
 Configure authentication for the cluster using one of the following options: +
-+
+ +
 Option #1: Contact a member of the Dev Sandbox Team for instructions on how to configure the cluster to use our internal Dev SSO. +
-+
+ +
 Option #2: Configure your own Keycloak server and set up authentication on the OpenShift cluster: https://docs.openshift.com/container-platform/4.6/authentication/configuring-internal-oauth.html
 
 == Install
