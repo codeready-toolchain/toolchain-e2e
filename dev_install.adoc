@@ -44,7 +44,8 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 
 . Open the Registration Service URL in a browser and sign up for an account.
 
-. Wait for the message "Your OpenShift Developer Sandbox account is waiting for approval"
+. Wait for the message "Your OpenShift Developer Sandbox account is waiting for approval" +
+image::https://user-images.githubusercontent.com/20015929/114627893-01845d00-9c84-11eb-848e-0f85a1b3c01f.png[]
 
 === Approve The User
 
