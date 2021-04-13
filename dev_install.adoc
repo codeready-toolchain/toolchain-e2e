@@ -83,6 +83,7 @@ After approval the registration service will display a link to start using the S
 Option #1: _kube:admin_ +
 Option #2: The authentication method configured in the <<Authentication>> step + 
  +
+image::https://user-images.githubusercontent.com/20015929/114628295-a141eb00-9c84-11eb-8be3-45f013e19378.png[] +
 Select option 2 and log in using the same account used from the <<Register/Login via the Registration Service>> step.
 
 After logging in a user will have access to only the namespaces created for them.
