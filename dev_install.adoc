@@ -12,9 +12,10 @@ Install the link:required_tools.adoc[required tools].
 
 === Quay
 . Register for a quay.io account if you don't have one
-. Make sure you have set the `QUAY_NAMESPACE` variable: +
+. Make sure you have set the _QUAY_NAMESPACE_ variable: +
 `export QUAY_NAMESPACE=<quay-username>`
-. Log in to quay.io using `docker login quay.io`
+. Log in to quay.io using +
+`docker login quay.io`
 . Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io are all set to `public`:
  * https://quay.io/repository/<your-username>/host-operator?tab=settings
  * https://quay.io/repository/<your-username>/member-operator?tab=settings
@@ -53,7 +54,12 @@ image::https://user-images.githubusercontent.com/20015929/114627893-01845d00-9c8
 
 Manual approval means each usersignup must be approved by editing the usersignup resource for a particular user.
 
-. Approve the usersignup
+. Run the following command to get the name of the usersignup resource:+
+`oc get usersignup` +
++
+The name should be a UUID eg. 66e54c45-9868-4a25-81ca-d56b600c8491
+
+. Approve the usersignup +
 ```
 oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>
 ```
