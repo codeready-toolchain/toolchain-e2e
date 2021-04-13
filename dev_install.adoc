@@ -4,10 +4,13 @@ This document describes how to install Dev Sandbox in a development environment.
 
 == Prereqs
 
-. Ensure you have access to an OpenShift 4.6+ cluster with cluster admin privileges and log in using `oc login`
+=== OpenShift Cluster
+Ensure you have access to an OpenShift 4.6+ cluster with cluster admin privileges and log in using `oc login`
 
-. Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-installed-tools[required tools] installed
+=== Required Tools
+Ensure you have the https://github.com/codeready-toolchain/toolchain-e2e#pre-installed-tools[required tools] installed
 
+=== Quay
 . Register for a quay.io account if you don't have one
 . Make sure you have set the `QUAY_NAMESPACE` variable: +
 `export QUAY_NAMESPACE=<quay-username>`
@@ -18,16 +21,17 @@ This document describes how to install Dev Sandbox in a development environment.
  * https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
  * https://quay.io/repository/<your-username>/registration-service?tab=settings
 
-. Configure authentication for the cluster:
-
-Option #1: Contact a member of the Dev Sandbox Team for instructions on how to configure the cluster to use our internal Dev SSO.
-
+=== Authentication
+. Configure authentication for the cluster: +
++
+Option #1: Contact a member of the Dev Sandbox Team for instructions on how to configure the cluster to use our internal Dev SSO. +
++
 Option #2: Configure your own Keycloak server and set up authentication on the OpenShift cluster: https://docs.openshift.com/container-platform/4.6/authentication/configuring-internal-oauth.html
 
 == Install
 
 . Clone this repository +
-`git clone git@github.com:codeready-toolchain/toolchain-e2e.git`
+`git clone `+git@github.com+`:codeready-toolchain/toolchain-e2e.git`
 . Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
 . Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
