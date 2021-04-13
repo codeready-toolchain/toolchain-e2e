@@ -59,7 +59,8 @@ Manual approval means each usersignup must be approved by editing the usersignup
 +
 The name should be a UUID eg. 66e54c45-9868-4a25-81ca-d56b600c8491
 
-. Approve the usersignup +
+. Approve the usersignup
++
 ```
 oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>
 ```
@@ -68,7 +69,8 @@ oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup nam
 
 Automatic approval means enabling automatic approval in the Dev Sandbox configuration. Users will be automatically approved and provisioned without admin intervention.
 
-. Enable automatic approval +
+. Enable automatic approval
++
 ```
 cat <<EOF | oc apply -f -
 apiVersion: toolchain.dev.openshift.com/v1alpha1
