@@ -38,15 +38,7 @@ If you still don't know what to do with e2e tests in some use-cases, go to <<Wha
 
 === Prerequisites if Running Locally
 
-==== Pre-installed Tools
-* go
-* git
-* operator-sdk 0.19.2
-* sed
-* yamllint
-* jq
-* yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
-* docker (if building from source)
+Install the link:required_tools.adoc[required tools].
 
 ==== OpenShift 4.2+
 
@@ -55,9 +47,13 @@ If you still don't know what to do with e2e tests in some use-cases, go to <<Wha
 * Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
 * Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
 
+==== Running in a Development Environment
+
+See the procedure to install the Dev Sandbox in a development environment link:dev_install.adoc[here].
+
 ==== Multi-cluster Environment
 
-See the procedure to configure a Host cluster and a Member cluster at link:multicluster_setup.adoc[here].
+See the procedure to configure a Host cluster and a Member cluster link:multicluster_setup.adoc[here].
 
 === Running End-to-End Tests
 

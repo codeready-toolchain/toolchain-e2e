@@ -1,0 +1,106 @@
+= Dev Sandbox Development Install
+
+This document describes how to install Dev Sandbox in a development environment.
+
+== Prereqs
+
+=== OpenShift Cluster
+Ensure you have access to an OpenShift 4.6+ cluster with cluster admin privileges and log in using `oc login`
+
+=== Required Tools
+Install the link:required_tools.adoc[required tools].
+
+=== Quay
+. Register for a quay.io account if you don't have one
+. Make sure you have set the _QUAY_NAMESPACE_ variable: +
+`export QUAY_NAMESPACE=<quay-username>`
+. Log in to quay.io using +
+`docker login quay.io`
+. Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io are all set to `public`:
+ * https://quay.io/repository/<your-username>/host-operator?tab=settings
+ * https://quay.io/repository/<your-username>/member-operator?tab=settings
+ * https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
+ * https://quay.io/repository/<your-username>/registration-service?tab=settings
+
+=== Authentication
+Configure authentication for the cluster using one of the following options:
+
+Option #1: Contact a member of the Dev Sandbox Team for instructions on how to configure the cluster to use our internal Dev SSO. +
+Option #2: Configure your own Keycloak server and set up authentication on the OpenShift cluster: https://docs.openshift.com/container-platform/4.6/authentication/configuring-internal-oauth.html
+
+== Install
+
+. Clone this repository +
+`+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
+. Run the following to install the Dev Sandbox operators +
+`make dev-deploy-e2e`
+. Make note of the Registration Service URL that is printed at the end
+. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
++
+```
+NAME               MURS   READY   LAST UPDATED
+toolchain-status   0      True    2021-03-24T22:39:36Z
+```
+
+. Open the Registration Service URL in a browser and sign up for an account.
+
+. Wait for the message "Your OpenShift Developer Sandbox account is waiting for approval"
+
+image::https://user-images.githubusercontent.com/20015929/114627893-01845d00-9c84-11eb-848e-0f85a1b3c01f.png[]
+
+=== Approve The User
+
+==== Manual Approval
+
+Manual approval means each usersignup must be approved by editing the usersignup resource for a particular user.
+
+. Run the following command to get the name of the usersignup resource: +
+`oc get usersignup` +
++
+The name should be a UUID eg. 66e54c45-9868-4a25-81ca-d56b600c8491
+
+. Approve the usersignup
++
+```
+oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>
+```
+
+==== Automatic Approval
+
+Automatic approval means enabling automatic approval in the Dev Sandbox configuration. Users will be automatically approved and provisioned without admin intervention.
+
+. Enable automatic approval
++
+```
+cat <<EOF | oc apply -f -
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: HostOperatorConfig
+metadata:
+  name: config
+  namespace: <host operator namespace>
+spec:
+  automaticApproval:
+    enabled: true
+EOF
+```
+
+=== Using the Sandbox
+
+After approval the registration service will display a link to start using the Sandbox. The link will go to the user's Dev Console, but first, a login page will appear with two options.:
+
+Option #1: _kube:admin_ +
+Option #2: The authentication method configured in the <<Authentication>> step
+
+image::https://user-images.githubusercontent.com/20015929/114628295-a141eb00-9c84-11eb-8be3-45f013e19378.png[]
+Select option 2 and log in using the same account used from the <<Register/Login via the Registration Service>> step.
+
+After logging in a user will have access to only the namespaces created for them.
+
+== Cleanup
+=== Remove Only Users and Their Namespaces
+
+Run `make clean-users`
+
+=== Remove All Sandbox-related Resources
+
+Run `make clean-e2e-resources`
