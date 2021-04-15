@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -100,6 +101,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.UserSignup, mur *v1alpha1.MasterUserRecord) {
 	userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
 		us.Spec.Deactivated = true
+		states.SetDeactivating(us, true)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
@@ -136,6 +138,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.Us
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		states.SetDeactivating(us, false)
 		us.Spec.Deactivated = false
 	})
 	require.NoError(s.T(), err)

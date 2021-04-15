@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -341,6 +343,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Deactivate the usersignup
 		userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+			states.SetDeactivating(us, true)
 			us.Spec.Deactivated = true
 		})
 		require.NoError(s.T(), err)

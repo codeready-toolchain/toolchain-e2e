@@ -42,7 +42,9 @@ func (s *userManagementTestSuite) TearDownTest() {
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
-	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+	s.hostAwait.UpdateHostOperatorConfig(
+		test.AutomaticApproval().Enabled(),
+		test.Deactivation().DeactivatingNotificationDays(0))
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
@@ -174,6 +176,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMurMember1.Name)
 
+		// The non-excluded user should be set to deactivating
+		_, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(Deactivating()...))
+		require.NoError(s.T(), err)
+
 		// The non-excluded user should be deactivated
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
 		require.NoError(s.T(), err)
@@ -214,7 +220,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
-		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned", "banprovisioned@test.com", s.memberAwait, ApprovedAutomatically()...)
+		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned",
+			"banprovisioned@test.com", s.memberAwait, ApprovedAutomatically()...)
 
 		// Create the BannedUser
 		s.createAndCheckBannedUser(userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey])
