@@ -100,7 +100,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
-	count := 2*1 + 1
+	count := 2*MaxPoolSize + 1
 	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
 	defer ctx.Cleanup()
 
