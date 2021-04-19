@@ -242,7 +242,7 @@ func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alp
 type UserSignupWaitCriterion func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool
 
 // UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has exactly all the given status conditions
+// UserAccount has exactly all the given status conditions
 func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
 		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
@@ -250,6 +250,19 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 			return true
 		}
 		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
+		return false
+	}
+}
+
+// ContainsCondition returns a `UserAccountWaitCriterion` which checks that the given
+// UserAccount contains the given status condition
+func ContainsCondition(condition toolchainv1alpha1.Condition) UserSignupWaitCriterion {
+	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
+		if test.ContainsCondition(ua.Status.Conditions, condition) {
+			a.T.Logf("UserSignup '%s' status conditions contains expected condition", ua.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of UserSignup '%s' to contain the expected. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
 		return false
 	}
 }

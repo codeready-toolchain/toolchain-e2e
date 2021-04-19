@@ -61,7 +61,7 @@ func WithIdentityID(idStr string) IdentityOption {
 }
 
 func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string, options ...IdentityOption) *toolchainv1alpha1.UserSignup {
-	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
+	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
 		ID:       uuid.NewV4(),
@@ -126,7 +126,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 // email is set in "user-email" annotation
 // setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
 func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
-	WaitUntilBasicNSTemplateTierIsUpdated(t, hostAwait)
+	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
 	name := uuid.NewV4().String()
 

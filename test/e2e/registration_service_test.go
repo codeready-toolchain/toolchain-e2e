@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -318,7 +319,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Wait the Master User Record to be provisioned
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "basic", s.memberAwait)
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait)
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		s.assertGetSignupStatusProvisioned(identity.Username, token)

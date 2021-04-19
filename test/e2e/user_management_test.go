@@ -98,12 +98,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
-		// Get the basic tier that has deactivation disabled
-		basicDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basicdeactivationdisabled")
+		// Get the base tier that has deactivation disabled
+		baseDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basedeactivationdisabled")
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignupMember1.Spec.Username, *basicDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
+		murSyncIndex := MoveUserToTier(t, s.hostAwait, userSignupMember1.Spec.Username, *baseDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
 		murMember1, err = s.hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
@@ -156,14 +156,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 		deactivationExcludedUserSignupMember1, excludedMurMember1 := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
 
-		// Get the basic tier that has deactivation enabled
-		basicTier, err := s.hostAwait.WaitForNSTemplateTier("basic")
+		// Get the base tier that has deactivation enabled
+		baseTier, err := s.hostAwait.WaitForNSTemplateTier("base")
 		require.NoError(t, err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
-		tierDeactivationDuration := time.Duration(basicTier.Spec.DeactivationTimeoutDays) * time.Hour * 24
+		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays) * time.Hour * 24
 		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
@@ -442,7 +442,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	// Create UserSignup
 	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "basic", s.memberAwait)
+	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait)
 
 	// Get MasterUserRecord
 	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
@@ -486,6 +486,6 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "basic", s.memberAwait)
+		VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait)
 	})
 }

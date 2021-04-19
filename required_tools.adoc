@@ -1,0 +1,9 @@
+== Required Pre-installed Tools
+* go
+* git
+* operator-sdk 0.19.2
+* sed
+* yamllint
+* jq
+* yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
+* docker (if building from source)
