@@ -30,6 +30,17 @@ Option #2: Configure your own Keycloak server and set up authentication on the O
 
 == Install
 
+=== Remove Self Provisioner Role
+
+It is strongly recommended to remove the self-provisioner role to disallow users from creating their own namespaces. This is because the Dev Sandbox is designed to create/manage namespaces for users automatically. It creates these namespaces based on predefined templates that also define resource limits so only these namespaces should be accessible to Dev Sandbox users.
+
+Run the following commands:
+```
+oc patch clusterrolebinding.rbac self-provisioners -p '{"subjects": null, "metadata": {"annotations":{"rbac.authorization.kubernetes.io/autoupdate": "false"}}}'
+oc adm policy remove-cluster-role-from-group self-provisioner system:authenticated:oauth
+```
+
+=== Install Dev Sandbox
 . Clone this repository +
 `+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
 . Run the following to install the Dev Sandbox operators +
