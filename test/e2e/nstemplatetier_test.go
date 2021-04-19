@@ -102,7 +102,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	count := 2*1 + 1
 	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
-	// defer ctx.Cleanup()
+	defer ctx.Cleanup()
 
 	// first group of users: the "cheesecake lovers"
 	cheesecakeSyncIndexes := setupAccounts(t, ctx, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait.ClusterName, count)
