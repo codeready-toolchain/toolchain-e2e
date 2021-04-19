@@ -56,6 +56,7 @@ func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, username, templ
 	var objProcessors []<-chan error
 	for i := 0; i < resourceProcessorsCount; i++ {
 		objProcessors = append(objProcessors, startObjectProcessor(cl, s, userNS, objChannel))
+		time.Sleep(100 * time.Millisecond) // wait for a short time before starting each object processor to avoid hitting rate limits
 	}
 
 	// combine the results
