@@ -34,6 +34,11 @@ var (
 	skipDefaultTemplate     bool
 )
 
+var (
+	AverageIdlerUpdateTime time.Duration
+	AverageTimePerUser     time.Duration
+)
+
 // Execute the setup command to fill a cluster with as many users as requested.
 // The command uses the default `$KUBECONFIG` or `<home>/.kube/config` unless a path is specified.
 func Execute() {
@@ -164,6 +169,26 @@ func setup(cmd *cobra.Command, args []string) {
 		}
 	}()
 
+	idlerBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
+		return strutil.PadLeft(fmt.Sprintf("idler setup (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
+	})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for idlerBar.Incr() {
+			username := fmt.Sprintf("%s-%04d", usernamePrefix, idlerBar.Current())
+
+			startTime := time.Now()
+			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
+			if err := idlers.UpdateTimeout(cl, username, 15*time.Second); err != nil {
+				term.Fatalf(err, "failed to update idlers for user '%s'", username)
+			}
+
+			idlerTime := time.Since(startTime)
+			AverageIdlerUpdateTime += idlerTime
+		}
+	}()
+
 	setupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
 		return strutil.PadLeft(fmt.Sprintf("user setup (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
 	})
@@ -173,10 +198,7 @@ func setup(cmd *cobra.Command, args []string) {
 		for setupBar.Incr() {
 			username := fmt.Sprintf("%s-%04d", usernamePrefix, setupBar.Current())
 
-			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
-			if err := idlers.UpdateTimeout(cl, username, 15*time.Second); err != nil {
-				term.Fatalf(err, "failed to update idlers for user '%s'", username)
-			}
+			startTime := time.Now()
 
 			// create resources for every nth user
 			if setupBar.Current() <= activeUsers {
@@ -184,11 +206,15 @@ func setup(cmd *cobra.Command, args []string) {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}
+			userTime := time.Since(startTime)
+			AverageTimePerUser += userTime
 		}
 	}()
 
 	wg.Wait()
 	uip.Stop()
+	term.Infof("Average Idler Update Time (Seconds): %v", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
+	term.Infof("Average Time Per User (Seconds): %v", AverageTimePerUser.Seconds()/float64(numberOfUsers))
 	term.Infof("🏁 done provisioning users")
 	term.Infof("👋 have fun!")
 }
