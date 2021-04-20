@@ -5,13 +5,15 @@ GO_PACKAGE_PATH ?= github.com/${GO_PACKAGE_ORG_NAME}/${GO_PACKAGE_REPO_NAME}
 
 GO111MODULE?=on
 export GO111MODULE
+goarch=$(shell go env GOARCH)
+export 
 
 .PHONY: build
 ## Build the operator
 build: $(OUT_DIR)/operator
 
 $(OUT_DIR)/operator:
-	$(Q)CGO_ENABLED=0 GOARCH=amd64 GOOS=linux \
+	$(Q)CGO_ENABLED=0 GOARCH=${goarch} GOOS=linux \
 		go build ${V_FLAG} \
 		-ldflags "-X ${GO_PACKAGE_PATH}/cmd/manager.Commit=${GIT_COMMIT_ID} -X ${GO_PACKAGE_PATH}/cmd/manager.BuildTime=${BUILD_TIME}" \
 		-o $(OUT_DIR)/bin/toolchain-e2e \
