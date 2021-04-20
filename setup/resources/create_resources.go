@@ -111,7 +111,7 @@ func startObjectProcessor(cl client.Client, s *runtime.Scheme, userNS string, ob
 		applycl := applyclientlib.NewApplyClient(cl, s)
 		for obj := range objSource {
 			out <- applyObject(applycl, userNS, obj)
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 		close(out)
 	}()
