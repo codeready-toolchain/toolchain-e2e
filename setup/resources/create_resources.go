@@ -18,43 +18,47 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const resourceProcessorsCount = 20
-
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
 func CreateFromTemplateFiles(cl client.Client, s *runtime.Scheme, username string, templatePaths []string) error {
-	for _, path := range templatePaths {
-		if err := CreateFromTemplateFile(cl, s, username, path); err != nil {
+	userNS := fmt.Sprintf("%s-stage", username)
+	combinedObjsToProcess := []applyclientlib.ToolchainObject{}
+	for _, templatePath := range templatePaths {
+		// get the template from the file if it hasn't been processed already
+		if _, ok := tmpls[templatePath]; !ok {
+			var err error
+			if tmpls[templatePath], err = getTemplateFromFile(s, templatePath); err != nil {
+				return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
+			}
+		}
+		tmpl := tmpls[templatePath]
+
+		// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
+		if err := WaitForNamespace(cl, userNS); err != nil {
 			return err
 		}
+		processor := template.NewProcessor(s)
+		objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
+		if err != nil {
+			return err
+		}
+		combinedObjsToProcess = append(combinedObjsToProcess, objsToProcess...)
+	}
+
+	if len(combinedObjsToProcess) == 0 {
+		return fmt.Errorf("No objects found in templates %v", templatePaths)
+	}
+
+	if err := ApplyObjects(cl, s, username, userNS, combinedObjsToProcess); err != nil {
+		return err
 	}
 	return nil
 }
 
-func CreateFromTemplateFile(cl client.Client, s *runtime.Scheme, username, templatePath string) error {
-	// get the template from the file if it hasn't been processed already
-	if _, ok := tmpls[templatePath]; !ok {
-		var err error
-		if tmpls[templatePath], err = getTemplateFromFile(s, templatePath); err != nil {
-			return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
-		}
-	}
-	tmpl := tmpls[templatePath]
-
-	userNS := fmt.Sprintf("%s-stage", username)
-	// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
-	if err := WaitForNamespace(cl, userNS); err != nil {
-		return err
-	}
-	processor := template.NewProcessor(s)
-	objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
-	if err != nil {
-		return err
-	}
-
-	objChannel := distribute(objsToProcess)
+func ApplyObjects(cl client.Client, s *runtime.Scheme, username, userNS string, combinedObjsToProcess []applyclientlib.ToolchainObject) error {
 	var objProcessors []<-chan error
-	for i := 0; i < resourceProcessorsCount; i++ {
+	objChannel := distribute(combinedObjsToProcess)
+	for i := 0; i < len(combinedObjsToProcess); i++ {
 		objProcessors = append(objProcessors, startObjectProcessor(cl, s, userNS, objChannel))
 		time.Sleep(100 * time.Millisecond) // wait for a short time before starting each object processor to avoid hitting rate limits
 	}
