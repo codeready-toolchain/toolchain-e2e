@@ -8,6 +8,7 @@ import (
 
 	applyclientlib "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	"github.com/codeready-toolchain/toolchain-common/pkg/template"
+	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
@@ -15,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	k8swait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -129,8 +131,16 @@ func applyObject(applycl *applyclientlib.ApplyClient, userNS string, obj applycl
 		return err
 	}
 	m.SetNamespace(userNS)
-	if _, err := applycl.ApplyObject(obj.GetRuntimeObject()); err != nil {
-		return err
+
+	// retry the apply in case it fails due to errors like the following:
+	// unable to create resource of kind: Deployment, version: v1: Operation cannot be fulfilled on clusterresourcequotas.quota.openshift.io "for-zippy-1882-deployments": the object has been modified; please apply your changes to the latest version and try again
+	if err := k8swait.Poll(cfg.DefaultRetryInterval, 30*time.Second, func() (bool, error) {
+		if _, applyErr := applycl.ApplyObject(obj.GetRuntimeObject()); applyErr != nil {
+			return false, applyErr
+		}
+		return true, nil
+	}); err != nil {
+		return errors.Wrapf(err, "could not apply resource '%s' in namespace '%s'", obj.GetName(), userNS)
 	}
 	return nil
 }
