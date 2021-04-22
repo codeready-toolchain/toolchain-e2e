@@ -159,7 +159,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		deactivationExcludedUserSignupMember1, excludedMurMember1 := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// Get the provisioned account's tier
-		baseTier, err := s.hostAwait.WaitForNSTemplateTier(murMember1.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName)
+		//baseTier, err := s.hostAwait.WaitForNSTemplateTier(murMember1.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName)
+		baseTier, err := s.hostAwait.WaitForNSTemplateTier("base")
 		require.NoError(t, err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
