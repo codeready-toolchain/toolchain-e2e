@@ -44,7 +44,10 @@ func (s *userManagementTestSuite) TearDownTest() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateHostOperatorConfig(
 		test.AutomaticApproval().Enabled(),
-		test.Deactivation().DeactivatingNotificationDays(0))
+		test.Deactivation().DeactivatingNotificationDays(-1))
+
+	config := s.hostAwait.GetHostOperatorConfig()
+	require.Equal(s.T(), -1, config.Spec.Deactivation.DeactivatingNotificationDays)
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
@@ -155,29 +158,29 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertoautodeactivate", "usertoautodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 		deactivationExcludedUserSignupMember1, excludedMurMember1 := s.createAndCheckUserSignup(true, "userdeactivationexcluded", "userdeactivationexcluded@excluded.com", s.memberAwait, ApprovedByAdmin()...)
 
-		// Get the base tier that has deactivation enabled
-		baseTier, err := s.hostAwait.WaitForNSTemplateTier("base")
+		// Get the provisioned account's tier
+		baseTier, err := s.hostAwait.WaitForNSTemplateTier(murMember1.Spec.UserAccounts[0].Spec.NSTemplateSet.TierName)
 		require.NoError(t, err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
-		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays) * time.Hour * 24
+		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays + 1) * time.Hour * 24
 		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
 		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", murMember1.Name, murMember1.Status.ProvisionedTime.String())
 
 		// Use the same method above to change the provisioned time for the excluded user
 		excludedMurMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(excludedMurMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
 		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", excludedMurMember1.Name)
+		s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
-		// The non-excluded user should be set to deactivating
-		_, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(Deactivating()...))
+		// The non-excluded user should be set to deactivated
+		_, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(Deactivated()...))
 		require.NoError(s.T(), err)
 
 		// The non-excluded user should be deactivated
