@@ -3,6 +3,7 @@
 Prerequisites:
 
 You need to boostrap 2 clusters and make sure you have a `kubeconfig` file for each cluster in a dedicated/separate location.
+Also, make sure that you already ran the `oc --kubeconfig=<path_to_config> login` on each cluster.
 
 == Setting up the KUBECONFIG
 
