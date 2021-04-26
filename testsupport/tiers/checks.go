@@ -703,9 +703,9 @@ func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheck {
 	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 		var err error
 		hard := make(map[v1.ResourceName]resource.Quantity)
-		hard[count("count/cloudservicesrequests.rhoas.redhat.com")], err = resource.ParseQuantity("2")
-		hard[count("count/cloudserviceaccountrequest.rhoas.redhat.com")], err = resource.ParseQuantity("2")
-		hard[count("count/kafkaconnections.rhoas.redhat.com")], err = resource.ParseQuantity("5")
+		hard[count("cloudservicesrequests.rhoas.redhat.com")], err = resource.ParseQuantity("2")
+		hard[count("cloudserviceaccountrequest.rhoas.redhat.com")], err = resource.ParseQuantity("2")
+		hard[count("kafkaconnections.rhoas.redhat.com")], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
 
 		criteria := clusterResourceQuotaMatches(t, userName, hard)
