@@ -169,6 +169,9 @@ github.com/cockroachdb/cockroach-go v0.0.0-20181001143604-e0a95dfd547c/go.mod h1
 github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa h1:OaNxuTZr7kxeODyLWsRMC+OD03aFUH+mW6r2d+MWa5Y=
 github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:zn76sxSg3SzpJ0PPJaLDCu+Bu0Lg3sKTORVIj19EIF8=
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
+github.com/codeready-toolchain/api v0.0.0-20210322033730-9b79ca615ae9/go.mod h1:tVouC34ewr4KABqqsVgsUmrg+eDeKsPIBD7VLOeZPEQ=
+github.com/codeready-toolchain/api v0.0.0-20210426074636-2f2696f1a944 h1:D8wRcU0yJYD+asg10cHlJg5M+/1viZR26bLc1WNnDBc=
+github.com/codeready-toolchain/api v0.0.0-20210426074636-2f2696f1a944/go.mod h1:tVouC34ewr4KABqqsVgsUmrg+eDeKsPIBD7VLOeZPEQ=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20210323222322-40cc7fc9a3ea h1:0QqoBRm/w4ObdEaGKADQITrazh0BDBhlDUjCwJelpys=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20210323222322-40cc7fc9a3ea/go.mod h1:u7e3gVfkbIrF2qICStQfUnWoYxR4hoeVIshSeCQahX8=
 github.com/containerd/cgroups v0.0.0-20190919134610-bf292b21730f h1:tSNMc+rJDfmYntojat8lljbt1mgKNpTxUZJsSzJ9Y1s=
@@ -1004,10 +1007,6 @@ github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijb
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
 github.com/xanzy/go-gitlab v0.15.0/go.mod h1:8zdQa/ri1dfn8eS3Ir1SyfvOKlw7WBJ8DVThkpGiXrs=
-github.com/xcoulon/api v0.0.0-20210420062555-4a6f14476a22 h1:whDhmFsy3lCXB8uHbmViSxw5HToYWYlECcGYLSVSCCA=
-github.com/xcoulon/api v0.0.0-20210420062555-4a6f14476a22/go.mod h1:tVouC34ewr4KABqqsVgsUmrg+eDeKsPIBD7VLOeZPEQ=
-github.com/xcoulon/api v0.0.0-20210421143336-3599b87665d0 h1:4kcNucoRgMtYUfmZIrUYAjnzb158z62g76opd1/GQSg=
-github.com/xcoulon/api v0.0.0-20210421143336-3599b87665d0/go.mod h1:tVouC34ewr4KABqqsVgsUmrg+eDeKsPIBD7VLOeZPEQ=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c/go.mod h1:lB8K/P019DLNhemzwFU4jHLhdvlE6uDZjXFejJXr49I=
 github.com/xdg/stringprep v1.0.0/go.mod h1:Jhud4/sHMO4oL310DaZAKk9ZaJ08SJfe+sJh0HrGL1Y=
 github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f/go.mod h1:N2zxlSyiKSe5eX1tZViRH5QA0qijqEDrYZiPEAiq3wU=
