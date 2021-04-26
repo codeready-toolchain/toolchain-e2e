@@ -124,7 +124,8 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		numberOfClusterResourceQuotas(10),
 		idlers("dev", "stage"),
 	}
 }
@@ -694,6 +695,22 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheck {
 		criteria := clusterResourceQuotaMatches(t, userName, hard)
 
 		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-cm", userName), criteria)
+		require.NoError(t, err)
+	}
+}
+
+func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheck {
+	return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+		var err error
+		hard := make(map[v1.ResourceName]resource.Quantity)
+		hard[count("count/cloudservicesrequests.rhoas.redhat.com")], err = resource.ParseQuantity("2")
+		hard[count("count/cloudserviceaccountrequest.rhoas.redhat.com")], err = resource.ParseQuantity("2")
+		hard[count("count/kafkaconnections.rhoas.redhat.com")], err = resource.ParseQuantity("6")
+		require.NoError(t, err)
+
+		criteria := clusterResourceQuotaMatches(t, userName, hard)
+
+		_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-rhoas", userName), criteria)
 		require.NoError(t, err)
 	}
 }
