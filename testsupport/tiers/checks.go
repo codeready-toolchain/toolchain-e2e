@@ -125,7 +125,8 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
 		clusterResourceQuotaRHOASOperatorCRs(),
-		numberOfClusterResourceQuotas(10),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(11),
 		idlers("dev", "stage"))
 }
 
@@ -738,6 +739,22 @@ func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-rhoas", userName), criteria)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
+	return func(tierName string) clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
+			var err error
+			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("100")
+			require.NoError(t, err)
+
+			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-sbo", userName), criteria)
 			require.NoError(t, err)
 		}
 	}
