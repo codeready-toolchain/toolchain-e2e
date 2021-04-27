@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, signups []toolchainv1alpha1.UserSignup, members ...*wait.MemberAwaitility) {
+func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, signups []*toolchainv1alpha1.UserSignup, members ...*wait.MemberAwaitility) {
 	for _, signup := range signups {
 		VerifyResourcesProvisionedForSignup(t, hostAwait, signup, "base", members...)
 	}
 }
 
-func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, signup toolchainv1alpha1.UserSignup, tier string, members ...*wait.MemberAwaitility) {
+func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, signup *toolchainv1alpha1.UserSignup, tier string, members ...*wait.MemberAwaitility) {
 	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to ensure the compliantusername is available
 	userSignup, err := hostAwait.WaitForUserSignup(signup.Name, wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved), wait.ContainsCondition(Complete()))
