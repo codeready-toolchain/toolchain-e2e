@@ -82,7 +82,7 @@ The provided default template (https://raw.githubusercontent.com/codeready-toolc
 +
 Note 1: By default 3000 users are created, of which all 3000 of them will have these resources created in their `stage` namespace. The number of users to create can be configured using the `--users` flag and the number of users with resources created can be configured via the `--active` flag. eg. `go run setup/main.go --template=<path_to_template_file> --users 4000 --active 2000` will create 4000 users and 2000 users will have resources created. +
 Note 2: Separate to the resources from the template, CSV resources are automatically created. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason. +
-. Grab some coffee ☕️, populating the cluster with 3000 users will take approx. 2 hrs +
+. Grab some coffee ☕️, populating the cluster with 3000 users can take over 4 hrs depending on network latency +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users 500`
 
 === Evaluate the Cluster and Operator(s)
