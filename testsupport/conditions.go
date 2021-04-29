@@ -34,7 +34,7 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 	}
 }
@@ -54,7 +54,7 @@ func PendingApprovalNoCluster() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -83,7 +83,7 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 	}
 }
@@ -104,7 +104,7 @@ func ApprovedByAdminNoCluster() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -128,7 +128,7 @@ func ApprovedAutomatically() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -153,7 +153,7 @@ func ApprovedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -178,7 +178,7 @@ func VerificationRequired() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
-			Reason: "UserIsActive",
+			Reason: "UserNotInPreDeactivation",
 		},
 	}
 }
