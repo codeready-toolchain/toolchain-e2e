@@ -150,7 +150,7 @@ func setupAccounts(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, t
 	tier := CreateNSTemplateTier(t, ctx, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
-	users := make([]toolchainv1alpha1.UserSignup, count)
+	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
 		users[i] = CreateAndApproveSignup(t, hostAwait, fmt.Sprintf(nameFmt, i), targetCluster)
 	}

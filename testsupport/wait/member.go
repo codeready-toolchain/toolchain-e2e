@@ -411,6 +411,18 @@ func IdlerConditions(conditions ...toolchainv1alpha1.Condition) IdlerWaitCriteri
 	}
 }
 
+// IdlerHasTier checks if the Idler has the given tier name set as a label
+func IdlerHasTier(tierName string) IdlerWaitCriterion {
+	return func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool {
+		if idler.Labels != nil && tierName == idler.Labels["toolchain.dev.openshift.com/tier"] {
+			a.T.Logf("tier label '%s' matches in Idler '%s'", tierName, idler.Name)
+			return true
+		}
+		a.T.Logf("waiting for Idler '%s' to match the tier label. Actual labels: '%v'; Expected: '%s'", idler.Name, idler.Labels, tierName)
+		return false
+	}
+}
+
 // WaitForIdler waits until an Idler with the given name exists
 func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
 	idler := &toolchainv1alpha1.Idler{}

@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ type MetricsAssertionHelper struct {
 
 type metricsProvider interface {
 	GetMetricValue(family string, labels ...string) float64
+	GetMetricValueOrZero(family string, labels ...string) float64
 	WaitForTestResourcesCleanup(initialDelay time.Duration) error
 	AssertMetricReachesValue(family string, expectedValue float64, labels ...string)
 }
@@ -28,9 +30,11 @@ const (
 	UserSignupsAutoDeactivatedMetric = "sandbox_user_signups_auto_deactivated_total"
 	UserSignupsBannedMetric          = "sandbox_user_signups_banned_total"
 
-	// DEPRECATED: use `MasterUserRecordsMetric` instead
+	// DEPRECATED: use `UserAccountsMetric` instead
 	MasterUserRecordMetric = "sandbox_master_user_record_current"
 	UserAccountsMetric     = "sandbox_user_accounts_current"
+
+	UsersPerActivationMetric = "sandbox_users_per_activations"
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
@@ -58,7 +62,14 @@ func (m *MetricsAssertionHelper) captureBaselineValues(memberClusterNames []stri
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
 		key := baselineKey(UserAccountsMetric, "cluster_name", name)
 		m.baselineValues[key] += m.await.GetMetricValue(UserAccountsMetric, "cluster_name", name)
+
 	}
+	// capture `sandbox_users_per_activations` with "activations" from "1" to "10"
+	for i := 1; i <= 10; i++ {
+		key := baselineKey(UsersPerActivationMetric, "activations", strconv.Itoa(i))
+		m.baselineValues[key] = m.await.GetMetricValueOrZero(UsersPerActivationMetric, "activations", strconv.Itoa(i))
+	}
+
 }
 
 // WaitForMetricDelta waits for the metric value to reach the adjusted value. The adjusted value is the delta value combined with the baseline value.
