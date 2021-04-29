@@ -251,7 +251,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Verify resources have been provisioned
 		VerifyResourcesProvisionedForSignup(t, s.hostAwait, userSignupMember1, "base", s.memberAwait)
 
-		_, err = s.hostAwait.WaitForNotifications(userSignupMember1.Spec.Username, toolchainv1alpha1.NotificationTypeDeactivating, 1)
+		_, err = s.hostAwait.WaitForNotifications(userSignupMember1.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivating, 1)
 		require.NoError(t, err)
 	})
 }
