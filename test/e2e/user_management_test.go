@@ -247,6 +247,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// The user should be set to deactivating, but not deactivated
 		_, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(Deactivating()...))
 		require.NoError(s.T(), err)
+
+		// Verify resources have been provisioned
+		VerifyResourcesProvisionedForSignup(t, s.hostAwait, userSignupMember1, "base", s.memberAwait)
+
+		_, err = s.hostAwait.WaitForNotifications(userSignupMember1.Spec.Username, toolchainv1alpha1.NotificationTypeDeactivating, 1)
+		require.NoError(t, err)
 	})
 }
 
