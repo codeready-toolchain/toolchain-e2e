@@ -41,8 +41,7 @@ func (s *userManagementTestSuite) SetupSuite() {
 }
 
 func (s *userManagementTestSuite) TearDownTest() {
-	// TODO uncomment
-	//s.ctx.Cleanup()
+	s.ctx.Cleanup()
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
