@@ -101,7 +101,6 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.UserSignup, mur *v1alpha1.MasterUserRecord) {
 	userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
 		us.Spec.Deactivated = true
-		states.SetDeactivating(us, true)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
