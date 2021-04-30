@@ -15,7 +15,6 @@ TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 
-IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>&1 | grep crc)
 IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
 
 ENVIRONMENT := e2e-tests
@@ -32,7 +31,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-members e2e-service-account setup-toolchainclusters
+deploy-e2e: build-and-pre-clean get-host-and-reg-service deploy-host get-member-operator-repo deploy-members e2e-service-account setup-toolchainclusters
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -91,17 +90,6 @@ print-operator-logs:
 	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${REPO_NAME} --namespace ${NAMESPACE}
 	@echo "==============================================================================================================="
-
-.PHONY: login-as-admin
-login-as-admin:
-ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-    ifneq ($(IS_CRC),)
-        # Running on CRC
-        ifeq ($(IS_KUBE_ADMIN),)
-			$(error "You must be logged in as kube:admin")
-        endif
-    endif
-endif
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
@@ -323,7 +311,7 @@ deploy-operator:
 	$(eval COMPONENT_IMAGE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
 	$(eval MEMBER_OPERATOR_WEBHOOK_IMAGE := $(shell cat ${IMAGE_NAMES_DIR}/member-operator-webhook))
 	$(eval COMPONENT_IMAGE_REPLACEMENT := ${COMPONENT_IMAGE_REPLACEMENT};s|REPLACE_MEMBER_OPERATOR_WEBHOOK_IMAGE|${MEMBER_OPERATOR_WEBHOOK_IMAGE}|g)
-	# it is not using OS 3 so we will install operator via CSV
+	# install operator via CSV
 	$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
     ifeq ($(ENV_YAML),)
 		# ENV_YAML is not set
