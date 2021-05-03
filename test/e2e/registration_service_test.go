@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -345,7 +346,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		})
 		require.NoError(s.T(), err)
 		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(Deactivated()...),
+			wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 
