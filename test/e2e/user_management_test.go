@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -189,7 +190,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilUserSignupHasConditions(Deactivated()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
-		require.True(t, userSignupMember1.Spec.Deactivated, "usersignup should be deactivated")
+		require.True(t, states.Deactivated(userSignupMember1), "usersignup should be deactivated")
 
 		// The excluded user should still be active
 		_, err = s.hostAwait.WaitForMasterUserRecord(excludedMurMember1.Name)
@@ -198,7 +199,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 		require.NoError(s.T(), err)
-		require.False(t, deactivationExcludedUserSignupMember1.Spec.Deactivated, "deactivationExcludedUserSignup should not be deactivated")
+		require.False(t, states.Deactivated(deactivationExcludedUserSignupMember1), "deactivationExcludedUserSignup should not be deactivated")
 
 		t.Run("verify metrics are correct after auto deactivation", func(t *testing.T) {
 			// Only the user with domain not on the exclusion list should be auto-deactivated
@@ -267,7 +268,7 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
 			_, err := s.hostAwait.UpdateUserSignupSpec(usersignups[username].Name, func(usersignup *v1alpha1.UserSignup) {
-				usersignup.Spec.Deactivated = true
+				states.SetDeactivated(usersignup, true)
 			})
 			require.NoError(s.T(), err)
 			err = s.hostAwait.WaitUntilMasterUserRecordDeleted(username)
