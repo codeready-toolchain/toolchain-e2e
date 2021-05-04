@@ -267,13 +267,13 @@ ifeq ($(SET_IMAGE_NAME),)
     ifeq ($(IS_OTHER_IMAGE_SET),)
     	# check if it is running locally
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-            	#if is running locally, then build the image and push to quay repository
-				$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
-				$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
-				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
-				if [[ ${REPO_NAME} == "member-operator" ]]; then \
-                    curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME}-webhook 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook_digest; \
-                fi
+			#if is running locally, then build the image and push to quay repository
+			$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
+			$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
+			curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
+			if [[ ${REPO_NAME} == "member-operator" ]]; then \
+				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME}-webhook 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook_digest; \
+			fi
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 			$(eval IMAGE_NAME := ${IMAGE_FORMAT}${REPO_NAME})
