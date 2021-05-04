@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -122,7 +123,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.Us
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(Deactivated()...),
+		wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
 		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(s.T(), err)
 	require.True(s.T(), userSignup.Spec.Deactivated, "usersignup should be deactivated")
@@ -136,6 +137,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.Us
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		states.SetDeactivating(us, false)
 		us.Spec.Deactivated = false
 	})
 	require.NoError(s.T(), err)

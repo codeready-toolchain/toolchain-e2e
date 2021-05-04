@@ -31,6 +31,11 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 			Status: corev1.ConditionFalse,
 			Reason: "UserIsActive",
 		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
+		},
 	}
 }
 
@@ -45,6 +50,11 @@ func PendingApprovalNoCluster() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionFalse,
 			Reason: "NoClusterAvailable",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -70,6 +80,11 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 			Status: corev1.ConditionFalse,
 			Reason: "UserIsActive",
 		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
+		},
 	}
 }
 
@@ -85,6 +100,11 @@ func ApprovedByAdminNoCluster() []toolchainv1alpha1.Condition {
 			Status:  corev1.ConditionFalse,
 			Reason:  "NoClusterAvailable",
 			Message: "no suitable member cluster found - capacity was reached",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -104,6 +124,11 @@ func ApprovedAutomatically() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
@@ -126,6 +151,11 @@ func ApprovedAutomaticallyAndBanned() []toolchainv1alpha1.Condition {
 			Reason: "Banned",
 		},
 		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
+		},
+		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
 			Status: corev1.ConditionFalse,
 			Reason: "UserIsActive",
@@ -144,6 +174,11 @@ func VerificationRequired() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
 			Status: corev1.ConditionFalse,
 			Reason: "UserIsActive",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
 		},
 	}
 }
@@ -213,6 +248,55 @@ func RoutesAvailable() toolchainv1alpha1.Condition {
 	}
 }
 
+func Deactivating() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
+	}
+}
+
+func DeactivatedWithoutPreDeactivation() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+	}
+}
+
 func Deactivated() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
@@ -224,6 +308,11 @@ func Deactivated() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupComplete,
 			Status: corev1.ConditionTrue,
 			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
