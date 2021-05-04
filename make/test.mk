@@ -15,8 +15,6 @@ TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 
-IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
-
 ENVIRONMENT := e2e-tests
 IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
@@ -269,7 +267,7 @@ ifeq ($(SET_IMAGE_NAME),)
     ifeq ($(IS_OTHER_IMAGE_SET),)
     	# check if it is running locally
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-            	# if is using OS4 then use quay registry
+            	#if is running locally, then build the image and push to quay repository
 				$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
 				$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
 				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
