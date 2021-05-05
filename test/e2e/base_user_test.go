@@ -100,7 +100,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *v1alpha1.BannedUser
 
 func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.UserSignup, mur *v1alpha1.MasterUserRecord) {
 	userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
-		us.Spec.Deactivated = true
+		states.SetDeactivated(us, true)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
@@ -126,7 +126,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *v1alpha1.Us
 		wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
 		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(s.T(), err)
-	require.True(s.T(), userSignup.Spec.Deactivated, "usersignup should be deactivated")
+	require.True(s.T(), states.Deactivated(userSignup), "usersignup should be deactivated")
 }
 
 func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.UserSignup, mur *v1alpha1.MasterUserRecord) {
@@ -138,7 +138,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.Us
 
 	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
 		states.SetDeactivating(us, false)
-		us.Spec.Deactivated = false
+		states.SetDeactivated(us, false)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' reactivated", userSignup.Name)
@@ -150,5 +150,5 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.Us
 		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
 		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)
-	require.False(s.T(), userSignup.Spec.Deactivated, "usersignup should not be deactivated")
+	require.False(s.T(), states.Deactivated(userSignup), "usersignup should not be deactivated")
 }
