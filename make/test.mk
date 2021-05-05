@@ -15,10 +15,6 @@ TEST_NS := ${QUAY_NAMESPACE}-toolchain-e2e-${DATE_SUFFIX}
 AUTHOR_LINK := $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 PULL_SHA := $(shell jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')
 
-IS_CRC := $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>&1 | grep crc)
-IS_KUBE_ADMIN := $(shell oc whoami | grep "kube:admin")
-IS_OS_3 := $(shell curl -k -XGET -H "Authorization: Bearer $(shell oc whoami -t 2>/dev/null)" $(shell oc config view --minify -o jsonpath='{.clusters[0].cluster.server}')/version/openshift 2>/dev/null | grep paths)
-
 ENVIRONMENT := e2e-tests
 IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
@@ -33,7 +29,7 @@ test-e2e: deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: deploy-e2e
-deploy-e2e: build-and-pre-clean get-host-and-reg-service login-as-admin deploy-host get-member-operator-repo deploy-members e2e-service-account setup-toolchainclusters
+deploy-e2e: build-and-pre-clean get-host-and-reg-service deploy-host get-member-operator-repo deploy-members e2e-service-account setup-toolchainclusters
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
@@ -92,23 +88,6 @@ print-operator-logs:
 	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${REPO_NAME} --namespace ${NAMESPACE}
 	@echo "==============================================================================================================="
-
-.PHONY: login-as-admin
-login-as-admin:
-ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-    ifeq ($(IS_CRC),)
-        ifneq ($(IS_OS_3),)
-        	# is running locally and against OS 3, so we assume that it's minishift
-			$(info logging as system:admin")
-			oc login -u system:admin 1>/dev/null
-        endif
-    else
-        # Running on CRC
-        ifeq ($(IS_KUBE_ADMIN),)
-			$(error You must be logged in as kube:admin")
-        endif
-    endif
-endif
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
@@ -228,14 +207,6 @@ deploy-members:
 ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 endif
-ifneq ($(IS_OS_3),)
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/service_account.yaml
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/role_binding.yaml
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/cluster_role.yaml
-	cat ${MEMBER_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(MEMBER_NS)/ | oc apply -f -
-	oc apply -f ${MEMBER_REPO_PATH}/deploy/crds
-endif
 	$(MAKE) build-operator E2E_REPO_PATH=${MEMBER_REPO_PATH} REPO_NAME=member-operator SET_IMAGE_NAME=${MEMBER_IMAGE_NAME} IS_OTHER_IMAGE_SET=${HOST_IMAGE_NAME}${REG_IMAGE_NAME}
 
 	$(MAKE) deploy-member MEMBER_REPO_PATH=${MEMBER_REPO_PATH} MEMBER_NS_TO_DEPLOY=$(MEMBER_NS)
@@ -269,15 +240,6 @@ endif
 	-oc project $(HOST_NS)
 	-oc apply -f deploy/host-operator/secrets.yaml -n $(HOST_NS)
 	-oc apply -f deploy/host-operator/host-operator-config-map.yaml -n $(HOST_NS)
-ifneq ($(IS_OS_3),)
-	# is using OS 3, so we need to deploy the manifests manually
-	oc apply -f ${HOST_REPO_PATH}/deploy/service_account.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/role.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/role_binding.yaml
-	oc apply -f ${HOST_REPO_PATH}/deploy/cluster_role.yaml
-	cat ${HOST_REPO_PATH}/deploy/cluster_role_binding.yaml | sed s/\REPLACE_NAMESPACE/$(HOST_NS)/ | oc apply -f -
-	oc apply -f ${HOST_REPO_PATH}/deploy/crds
-endif
 	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
 	# as the controller starts (which is a use-case for CRT-231)
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds/toolchain_v1alpha1_nstemplatetier_crd.yaml
@@ -305,21 +267,13 @@ ifeq ($(SET_IMAGE_NAME),)
     ifeq ($(IS_OTHER_IMAGE_SET),)
     	# check if it is running locally
         ifeq ($(OPENSHIFT_BUILD_NAMESPACE),)
-                # if it is running locally, then build the image via docker
-            ifneq ($(IS_OS_3),)
-            	# is running locally and against OS 3, so we assume that it's minishift - it will use local docker registry
-				$(eval IMAGE_NAME := docker.io/${GO_PACKAGE_ORG_NAME}/${REPO_NAME}:${DATE_SUFFIX})
-				$(MAKE) -C ${E2E_REPO_PATH} build
-				docker build -f ${E2E_REPO_PATH}/build/Dockerfile -t ${IMAGE_NAME} ${E2E_REPO_PATH}
-            else
-            	# if is using OS4 then use quay registry
-				$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
-				$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
-				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
-				if [[ ${REPO_NAME} == "member-operator" ]]; then \
-                    curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME}-webhook 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook_digest; \
-                fi
-            endif
+			#if is running locally, then build the image and push to quay repository
+			$(eval IMAGE_NAME := quay.io/${QUAY_NAMESPACE}/${REPO_NAME}:${DATE_SUFFIX})
+			$(MAKE) -C ${E2E_REPO_PATH} docker-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${DATE_SUFFIX}
+			curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME} 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}_digest
+			if [[ ${REPO_NAME} == "member-operator" ]]; then \
+				curl https://quay.io/api/v1/repository/${QUAY_NAMESPACE}/${REPO_NAME}-webhook 2>/dev/null | jq -r '.tags."${DATE_SUFFIX}".manifest_digest' > ${IMAGE_NAMES_DIR}/${REPO_NAME}-webhook_digest; \
+			fi
         else
 			# if is running in CI than we expect that it's PR for toolchain-e2e repo (none of the images was provided), so use name that was used by openshift-ci
 			$(eval IMAGE_NAME := ${IMAGE_FORMAT}${REPO_NAME})
@@ -355,44 +309,38 @@ deploy-operator:
 	$(eval COMPONENT_IMAGE_REPLACEMENT := ;s|REPLACE_REGISTRATION_SERVICE_IMAGE|${REGISTRATION_SERVICE_IMAGE_NAME}|g)
 	$(eval MEMBER_OPERATOR_WEBHOOK_IMAGE := $(shell cat ${IMAGE_NAMES_DIR}/member-operator-webhook))
 	$(eval COMPONENT_IMAGE_REPLACEMENT := ${COMPONENT_IMAGE_REPLACEMENT};s|REPLACE_MEMBER_OPERATOR_WEBHOOK_IMAGE|${MEMBER_OPERATOR_WEBHOOK_IMAGE}|g)
-ifeq ($(IS_OS_3),)
-		# it is not using OS 3 so we will install operator via CSV
-		$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
-    ifeq ($(ENV_YAML),)
-		# ENV_YAML is not set
-		$(eval ENV_YAML := ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml)
-    endif
-		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${ENV_YAML} > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
-		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
-		# if the namespace already contains the CSV then update it
-		if [[ -n `oc get csv 2>/dev/null || true | grep 'toolchain-${REPO_NAME}'` ]]; then \
-			oc get cm `grep "^  name: cm" /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | awk '{print $$2}'` -n openshift-marketplace --template '{{.data.clusterServiceVersions}}' | sed 's/^. //g;s/namespace: placeholder/namespace: ${NAMESPACE}/'  | oc apply -f -; \
-		fi
-		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
-		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]] || [[ -z `oc get Roles -n ${NAMESPACE} | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
-			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
-			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
-			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} - see following info for debugging:"; \
-			   echo "================================ CatalogSource =================================="; \
-			   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
-			   echo "================================ CatalogSource Pod Logs =================================="; \
-			   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
-			   echo "================================ Subscription =================================="; \
-			   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
-			   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
-			   exit 1; \
-			fi; \
-			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
-			sleep 1; \
-		done
-else
-		echo "before curl ${REPO_NAME}"
-		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/deploy/operator.yaml ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml > /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deployment_${DATE_SUFFIX}_source.yaml | oc apply -f -
+	# install operator via CSV
+	$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
+ifeq ($(ENV_YAML),)
+	# ENV_YAML is not set
+	$(eval ENV_YAML := ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml)
 endif
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${ENV_YAML} > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+	cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
+	# if the namespace already contains the CSV then update it
+	if [[ -n `oc get csv 2>/dev/null || true | grep 'toolchain-${REPO_NAME}'` ]]; then \
+		oc get cm `grep "^  name: cm" /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | awk '{print $$2}'` -n openshift-marketplace --template '{{.data.clusterServiceVersions}}' | sed 's/^. //g;s/namespace: placeholder/namespace: ${NAMESPACE}/'  | oc apply -f -; \
+	fi
+	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
+	cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
+	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]] || [[ -z `oc get Roles -n ${NAMESPACE} | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
+		if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
+		   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
+		   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
+		   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} - see following info for debugging:"; \
+		   echo "================================ CatalogSource =================================="; \
+		   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
+		   echo "================================ CatalogSource Pod Logs =================================="; \
+		   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
+		   echo "================================ Subscription =================================="; \
+		   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+		   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
+		   exit 1; \
+		fi; \
+		echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
+		sleep 1; \
+	done
 
 .PHONY: display-eval
 display-eval:
