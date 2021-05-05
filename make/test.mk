@@ -311,10 +311,10 @@ deploy-operator:
 	$(eval COMPONENT_IMAGE_REPLACEMENT := ${COMPONENT_IMAGE_REPLACEMENT};s|REPLACE_MEMBER_OPERATOR_WEBHOOK_IMAGE|${MEMBER_OPERATOR_WEBHOOK_IMAGE}|g)
 	# install operator via CSV
 	$(eval NAME_SUFFIX := ${QUAY_NAMESPACE}-${RESOURCES_SUFFIX})
-    ifeq ($(ENV_YAML),)
-		# ENV_YAML is not set
-		$(eval ENV_YAML := ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml)
-    endif
+ifeq ($(ENV_YAML),)
+	# ENV_YAML is not set
+	$(eval ENV_YAML := ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml)
+endif
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${ENV_YAML} > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
 	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
 	cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
