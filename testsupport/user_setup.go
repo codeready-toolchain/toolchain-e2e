@@ -96,6 +96,9 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	// First, wait for the MasterUserRecord to exist, no matter what status
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
+	// check that there's an annotation with the user's email address
+	assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+	assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey], mur.Annotations[toolchainv1alpha1.MasterUserRecordEmailAnnotationKey])
 
 	// Wait for the the notification CR to be created & sent
 	notifications, err := hostAwait.WaitForNotifications(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned, 1, wait.UntilNotificationHasConditions(Sent()))
