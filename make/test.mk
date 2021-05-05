@@ -315,32 +315,32 @@ deploy-operator:
 		# ENV_YAML is not set
 		$(eval ENV_YAML := ${E2E_REPO_PATH}/deploy/env/${ENVIRONMENT}.yaml)
     endif
-		curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${ENV_YAML} > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
-		sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
-		cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
-		# if the namespace already contains the CSV then update it
-		if [[ -n `oc get csv 2>/dev/null || true | grep 'toolchain-${REPO_NAME}'` ]]; then \
-			oc get cm `grep "^  name: cm" /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | awk '{print $$2}'` -n openshift-marketplace --template '{{.data.clusterServiceVersions}}' | sed 's/^. //g;s/namespace: placeholder/namespace: ${NAMESPACE}/'  | oc apply -f -; \
-		fi
-		sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
-		cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
-		while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]] || [[ -z `oc get Roles -n ${NAMESPACE} | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
-			if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
-			   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
-			   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
-			   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} - see following info for debugging:"; \
-			   echo "================================ CatalogSource =================================="; \
-			   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
-			   echo "================================ CatalogSource Pod Logs =================================="; \
-			   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
-			   echo "================================ Subscription =================================="; \
-			   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
-			   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
-			   exit 1; \
-			fi; \
-			echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
-			sleep 1; \
-		done
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/api/master/scripts/enrich-by-envs-from-yaml.sh | bash -s -- ${E2E_REPO_PATH}/hack/deploy_csv.yaml ${ENV_YAML} > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml
+	sed -e 's|REPLACE_IMAGE|${IMAGE_NAME}|g;s|^  name: .*|&-${NAME_SUFFIX}|;s|^  configMap: .*|&-${NAME_SUFFIX}|${COMPONENT_IMAGE_REPLACEMENT}' /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}_source.yaml > /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml
+	cat /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | oc apply -f -
+	# if the namespace already contains the CSV then update it
+	if [[ -n `oc get csv 2>/dev/null || true | grep 'toolchain-${REPO_NAME}'` ]]; then \
+		oc get cm `grep "^  name: cm" /tmp/${REPO_NAME}_deploy_csv_${DATE_SUFFIX}.yaml | awk '{print $$2}'` -n openshift-marketplace --template '{{.data.clusterServiceVersions}}' | sed 's/^. //g;s/namespace: placeholder/namespace: ${NAMESPACE}/'  | oc apply -f -; \
+	fi
+	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
+	cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
+	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]] || [[ -z `oc get Roles -n ${NAMESPACE} | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
+		if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
+		   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
+		   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
+		   echo "reached timeout of waiting for ServiceAccount ${REPO_NAME} to be available in namespace ${NAMESPACE} - see following info for debugging:"; \
+		   echo "================================ CatalogSource =================================="; \
+		   oc get $${CATALOGSOURCE_NAME} -n openshift-marketplace -o yaml; \
+		   echo "================================ CatalogSource Pod Logs =================================="; \
+		   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
+		   echo "================================ Subscription =================================="; \
+		   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+		   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
+		   exit 1; \
+		fi; \
+		echo "$$(( NEXT_WAIT_TIME++ )). attempt of waiting for ServiceAccount ${REPO_NAME} in namespace ${NAMESPACE}"; \
+		sleep 1; \
+	done
 
 .PHONY: display-eval
 display-eval:
