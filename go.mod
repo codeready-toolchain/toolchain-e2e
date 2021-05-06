@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20210429025708-2d7ac2edb6d8
+	github.com/codeready-toolchain/api v0.0.0-20210506042123-7c7856245266
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210504213526-a9f78c786c6f
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
