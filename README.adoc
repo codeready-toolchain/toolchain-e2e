@@ -131,7 +131,7 @@ By default these targets deploy resources to `toolchain-host-operator` and `tool
 
 NOTE: You can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
 
-NOTE: If running in Minishift `eval $(minishift docker-env)` and `eval $(minishift oc-env)` are required. If running in CodeReady Containers `eval $(crc oc-env)` is required.
+NOTE: If running in CodeReady Containers `eval $(crc oc-env)` is required.
 
 == How to Test Mailgun Notification in Dev Environment
 * Get a cluster and setup the following env vars
