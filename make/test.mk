@@ -155,7 +155,7 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		echo "`${GET_BRANCH_NAME}`"; \
 		echo "It's not possible to detect the correct branch this PR is made for."; \
 		echo "Please delete the unrelated branch from your fork and rerun the e2e tests."; \
-		echo "Note: If you have already deleted the unreleated branch from your fork, it can take a few hours before the"; \
+		echo "Note: If you have already deleted the unrelated branch from your fork, it can take a few hours before the"; \
 		echo "      github api is updated so the e2e tests may still fail with the same error until then."; \
 		echo "##########################################################################################################"; \
 		exit 1; \
