@@ -78,9 +78,10 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 		wait.UntilUserSignupHasConditions(PendingApproval()...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(t, err)
-	require.Equal(t, userSignup.Spec.GivenName, identity.Username+"-First-Name")
-	require.Equal(t, userSignup.Spec.FamilyName, identity.Username+"-Last-Name")
-	require.Equal(t, userSignup.Spec.Company, identity.Username+"-Company-Name")
+	require.Equal(t, identity.Username+"-First-Name", userSignup.Spec.GivenName)
+	require.Equal(t, identity.Username+"-Last-Name", userSignup.Spec.FamilyName)
+	require.Equal(t, identity.Username+"-Company-Name", userSignup.Spec.Company)
+	require.Equal(t, identity.Username+"@acme.com", userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 
 	// 2. approve the UserSignup
 	userSignup.Spec.TargetCluster = targetCluster
@@ -97,8 +98,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 	// check that there's an annotation with the user's email address
-	assert.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
-	assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey], mur.Annotations[toolchainv1alpha1.MasterUserRecordEmailAnnotationKey])
+	assert.Equal(t, identity.Username+"@acme.com", mur.Annotations[toolchainv1alpha1.MasterUserRecordEmailAnnotationKey]) // same as on userSignup
 
 	// Wait for the the notification CR to be created & sent
 	notifications, err := hostAwait.WaitForNotifications(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned, 1, wait.UntilNotificationHasConditions(Sent()))
