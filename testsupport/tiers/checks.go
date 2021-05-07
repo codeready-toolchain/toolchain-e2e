@@ -32,7 +32,7 @@ const (
 	test                      = "test"
 
 	// common CPU limits
-	defaultCpuLimit = "1"
+	defaultCPULimit = "1"
 	cpuLimit        = "20000m" // All tiers
 )
 
@@ -90,7 +90,7 @@ func (a *baseTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
-		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
+		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -156,7 +156,7 @@ func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
-		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
+		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -214,7 +214,7 @@ func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
-		limitRange(defaultCpuLimit, "750Mi", "10m", "64Mi"),
+		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -285,7 +285,7 @@ func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
-		limitRange(defaultCpuLimit, "1Gi", "10m", "64Mi"),
+		limitRange(defaultCPULimit, "1Gi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
 		numberOfToolchainRoles(1),
@@ -399,7 +399,7 @@ func rbacEditRole() namespaceObjectsCheck {
 	}
 }
 
-func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
+func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
 		require.NoError(t, err)
@@ -554,7 +554,7 @@ func idlers(namespaceTypes ...string) clusterObjectsCheckCreator {
 	}
 }
 
-func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheckCreator {
+func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheckCreator { // nolint: unparam
 	return func(tierName string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 			var err error
@@ -732,7 +732,9 @@ func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
 			hard[count("cloudservicesrequests.rhoas.redhat.com")], err = resource.ParseQuantity("2")
+			require.NoError(t, err)
 			hard[count("cloudserviceaccountrequest.rhoas.redhat.com")], err = resource.ParseQuantity("2")
+			require.NoError(t, err)
 			hard[count("kafkaconnections.rhoas.redhat.com")], err = resource.ParseQuantity("5")
 			require.NoError(t, err)
 
@@ -789,7 +791,7 @@ func count(resource v1.ResourceName) v1.ResourceName {
 	return v1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
 
-func numberOfToolchainRoles(number int) namespaceObjectsCheck {
+func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		roles := &rbacv1.RoleList{}
 		err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
@@ -798,7 +800,7 @@ func numberOfToolchainRoles(number int) namespaceObjectsCheck {
 	}
 }
 
-func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck {
+func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		roleBindings := &rbacv1.RoleBindingList{}
 		err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))

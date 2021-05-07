@@ -200,7 +200,7 @@ func containsClusterCondition(conditions []v1alpha1.ToolchainClusterCondition, c
 }
 
 // SetupRouteForService if needed, creates a route for the given service (with the same namespace/name)
-// It waits until the route is avaiable (or returns an error) by first checking the resource status
+// It waits until the route is available (or returns an error) by first checking the resource status
 // and then making a call to the given endpoint
 func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1.Route, error) {
 	a.T.Logf("Setting up route for service '%s' with endpoint '%s'", serviceName, endpoint)

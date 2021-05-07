@@ -15,7 +15,7 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expect
 	err := memberAwait.WaitForMemberStatus(
 		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
-		wait.UntilMemberStatusHasConsoleUrlSet(expectedURL, RoutesAvailable()))
+		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
@@ -25,7 +25,7 @@ func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberA
 	require.True(t, found)
 	_, err = hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilAllMembersHaveUsageSet(),
-		wait.UntilAllMembersHaveApiEndpoint(memberCluster.Spec.APIEndpoint))
+		wait.UntilAllMembersHaveAPIEndpoint(memberCluster.Spec.APIEndpoint))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
 

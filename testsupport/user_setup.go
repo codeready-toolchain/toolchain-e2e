@@ -149,7 +149,7 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string
 	}
 }
 
-var HttpClient = &http.Client{
+var HTTPClient = &http.Client{
 	Timeout: time.Second * 10,
 	Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{
@@ -173,7 +173,7 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("content-type", "application/json")
-	client := HttpClient
+	client := HTTPClient
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	defer func() {
