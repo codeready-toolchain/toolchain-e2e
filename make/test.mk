@@ -154,7 +154,9 @@ ifneq ($(CLONEREFS_OPTIONS),)
 		echo "There were found more branches with the same latest commit '${PULL_SHA}' in the repo ${REPO_URL} - see:"; \
 		echo "`${GET_BRANCH_NAME}`"; \
 		echo "It's not possible to detect the correct branch this PR is made for."; \
-		echo "Please delete the unreleated brach from your fork and rerun the e2e tests"; \
+		echo "Please delete the unrelated branch from your fork and rerun the e2e tests."; \
+		echo "Note: If you have already deleted the unrelated branch from your fork, it can take a few hours before the"; \
+		echo "      github api is updated so the e2e tests may still fail with the same error until then."; \
 		echo "##########################################################################################################"; \
 		exit 1; \
 	fi; \
@@ -173,6 +175,8 @@ ifneq ($(CLONEREFS_OPTIONS),)
 				cat ${WAS_ALREADY_PAIRED_FILE}; \
 				echo "It's not possible to pair a PR with multiple branches from other repositories."; \
 				echo "Please delete one of the braches from your fork and rerun the e2e tests"; \
+				echo "Note: If you have already deleted one of the branches from your fork, it can take a few hours before the"; \
+				echo "      github api is updated so the e2e tests may still fail with the same error until then."; \
 				echo "##########################################################################################################"; \
 				exit 1; \
             fi; \
