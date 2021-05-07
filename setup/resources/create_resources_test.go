@@ -92,7 +92,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				username := "user0001"
 				tmpFile, err := ioutil.TempFile(os.TempDir(), "setup-template-")
 				require.NoError(t, err)
-				tmpFile.WriteString(deployment)
+				tmpFile.WriteString(deployment) // nolint: errcheck
 
 				// when
 				err = CreateFromTemplateFiles(cl, s, username, []string{tmpFile.Name()})

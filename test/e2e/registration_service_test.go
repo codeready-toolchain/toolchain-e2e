@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"io"
@@ -30,7 +31,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var httpClient = HttpClient
+var httpClient = HTTPClient
 
 func TestRegistrationService(t *testing.T) {
 	suite.Run(t, &registrationServiceTestSuite{})
@@ -346,7 +347,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 			states.SetDeactivated(us, true)
 		})
 		require.NoError(s.T(), err)
-		userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
 			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
@@ -355,7 +356,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		s.assertGetSignupReturnsNotFound(t)
 
 		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
-		userSignup = signupUser(t, emailValue, identity.ID.String(), identity)
+		signupUser(t, emailValue, identity.ID.String(), identity)
 	})
 
 	s.Run("test User ID encodings", func() {

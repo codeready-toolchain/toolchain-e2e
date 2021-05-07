@@ -822,15 +822,15 @@ func hasMemberStatusUsageSet(t *testing.T, name string, status toolchainv1alpha1
 	return false
 }
 
-// UntilMemberStatusHasConsoleUrlSet returns a `MemberStatusWaitCriterion` which checks that the given
+// UntilMemberStatusHasConsoleURLSet returns a `MemberStatusWaitCriterion` which checks that the given
 // MemberStatus has a non-empty console url set
-func UntilMemberStatusHasConsoleUrlSet(expectedURL string, condition toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
+func UntilMemberStatusHasConsoleURLSet(expectedURL string, condition toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
 	return func(awaitility *MemberAwaitility, status *toolchainv1alpha1.MemberStatus) bool {
-		return hasMemberStatusConsoleUrlSet(awaitility, expectedURL, condition, status.Name, status.Status)
+		return hasMemberStatusConsoleURLSet(awaitility, expectedURL, condition, status.Name, status.Status)
 	}
 }
 
-func hasMemberStatusConsoleUrlSet(a *MemberAwaitility, expectedURL string, condition toolchainv1alpha1.Condition, name string, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
+func hasMemberStatusConsoleURLSet(a *MemberAwaitility, expectedURL string, condition toolchainv1alpha1.Condition, name string, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
 	if memberStatus.Routes == nil {
 		a.T.Logf("waiting for routes to be set in MemberStatus '%s'. Actual: '%+v'", name, memberStatus.Routes)
 		return false

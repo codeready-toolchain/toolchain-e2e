@@ -51,13 +51,13 @@ func CreateFromTemplateFiles(cl client.Client, s *runtime.Scheme, username strin
 		return fmt.Errorf("No objects found in templates %v", templatePaths)
 	}
 
-	if err := ApplyObjects(cl, s, username, userNS, combinedObjsToProcess); err != nil {
+	if err := ApplyObjects(cl, s, userNS, combinedObjsToProcess); err != nil {
 		return err
 	}
 	return nil
 }
 
-func ApplyObjects(cl client.Client, s *runtime.Scheme, username, userNS string, combinedObjsToProcess []applyclientlib.ToolchainObject) error {
+func ApplyObjects(cl client.Client, s *runtime.Scheme, userNS string, combinedObjsToProcess []applyclientlib.ToolchainObject) error {
 	var objProcessors []<-chan error
 	objChannel := distribute(combinedObjsToProcess)
 	for i := 0; i < len(combinedObjsToProcess); i++ {

@@ -73,7 +73,7 @@ func (t DefaultTerminal) Infof(msg string, args ...interface{}) {
 
 // Errorf prints a message with the red color
 func (t DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
-	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", fmt.Sprintf(msg, args...), err.Error()))
+	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", fmt.Sprintf(msg, args...), err.Error())) // nolint: errcheck
 }
 
 // Fatalf prints a message with the red color and exits the program with a `1` return code

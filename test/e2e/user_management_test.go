@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -169,7 +170,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
-		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays + 1) * time.Hour * 24
+		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays+1) * time.Hour * 24
 		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
@@ -233,7 +234,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// provisioned time to a time far enough in the past to trigger the deactivation process. Subtracting the given
 		// period from the current time and setting this as the provisioned time should test the behaviour of the
 		// deactivation controller reconciliation.
-		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays + 1) * time.Hour * 24
+		tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays+1) * time.Hour * 24
 		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *v1alpha1.MasterUserRecord) {
 			mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 		})
@@ -403,7 +404,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		email := "testuser" + id + "@test.com"
 		s.createAndCheckBannedUser(email)
 
-		// Get valid generated token for e2e tests. IAT claim is overriden
+		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
 		identity0 := authsupport.NewIdentity()
 		emailClaim0 := authsupport.WithEmailClaim(email)
