@@ -324,6 +324,9 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	// Set verification required
 	states.SetVerificationRequired(userSignup, true)
 
+	// TODO remove after migration
+	userSignup.Spec.VerificationRequired = true
+
 	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
