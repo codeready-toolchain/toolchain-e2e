@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"testing"
 	"time"
 
@@ -321,7 +322,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	userSignup.Spec.Approved = true
 
 	// Set verification required
-	userSignup.Spec.VerificationRequired = true
+	states.SetVerificationRequired(userSignup, true)
 
 	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
 	require.NoError(s.T(), err)
