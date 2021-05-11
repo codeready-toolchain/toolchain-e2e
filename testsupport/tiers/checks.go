@@ -24,6 +24,7 @@ import (
 const (
 	// tier names
 	base                      = "base"
+	baseextended              = "baseextended"
 	basedeactivationdisabled  = "basedeactivationdisabled"
 	basic                     = "basic"
 	basicdeactivationdisabled = "basicdeactivationdisabled"
@@ -48,6 +49,9 @@ func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
+
+	case baseextended:
+		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
 
 	case basedeactivationdisabled:
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
@@ -128,6 +132,14 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(11),
 		idlers("dev", "stage"))
+}
+
+type baseextendedTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baseextendedTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 180)}
 }
 
 type basedeactivationdisabledTierChecks struct {
@@ -343,11 +355,11 @@ type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, 
 
 type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
 
-func nsTemplateTier(tierName string, days int) tierObjectCheck {
+func nsTemplateTier(tierName string, deactivationDays int) tierObjectCheck {
 	return func(t *testing.T, hostAwait *wait.HostAwaitility) {
 		tier, err := hostAwait.WaitForNSTemplateTier(tierName)
 		require.NoError(t, err)
-		require.Equal(t, days, tier.Spec.DeactivationTimeoutDays)
+		require.Equal(t, deactivationDays, tier.Spec.DeactivationTimeoutDays)
 	}
 }
 
