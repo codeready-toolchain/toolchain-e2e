@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
@@ -35,7 +37,7 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 		}
 		// Create an approved UserSignup resource
 		userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
-		userSignup.Spec.Approved = true
+		states.SetApproved(userSignup, true)
 		if targetCluster != nil {
 			userSignup.Spec.TargetCluster = targetCluster.ClusterName
 		}
@@ -85,7 +87,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 
 	// 2. approve the UserSignup
 	userSignup.Spec.TargetCluster = targetCluster
-	userSignup.Spec.Approved = true
+	states.SetApproved(userSignup, true)
 	err = hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(t, err)
 	// Check the updated conditions
