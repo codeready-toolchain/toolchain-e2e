@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -58,7 +59,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 	WaitUntilBaseNSTemplateTierIsUpdated(s.T(), s.hostAwait)
 	// Create a new UserSignup with the given approved flag
 	userSignup := NewUserSignup(s.T(), s.hostAwait, username, email)
-	userSignup.Spec.Approved = specApproved
+	states.SetApproved(userSignup, specApproved)
 	if targetCluster != nil {
 		userSignup.Spec.TargetCluster = targetCluster.ClusterName
 	}

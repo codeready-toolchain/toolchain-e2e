@@ -316,7 +316,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Approve usersignup.
-		userSignup.Spec.Approved = true
+		states.SetApproved(userSignup, true)
 		userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 		err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
@@ -486,7 +486,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Now approve the usersignup.
-	userSignup.Spec.Approved = true
+	states.SetApproved(userSignup, true)
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
