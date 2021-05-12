@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
@@ -35,10 +37,10 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username:      username,
 			UserID:        username,
-			Approved:      true,
 			TargetCluster: memberClusterName,
 		},
 	}
+	states.SetApproved(usersignup, true)
 
 	return cl.Create(context.TODO(), usersignup)
 }
