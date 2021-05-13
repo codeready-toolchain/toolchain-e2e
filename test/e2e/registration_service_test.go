@@ -486,7 +486,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Now approve the usersignup.
-	states.SetApproved(userSignup, true)
+	userSignup.Spec.Approved = true
+	//states.SetApproved(userSignup, true)
+
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
