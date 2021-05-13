@@ -140,6 +140,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.Us
 	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
 		states.SetDeactivating(us, false)
 		states.SetDeactivated(us, false)
+		states.SetApproved(us, true)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' reactivated", userSignup.Name)
