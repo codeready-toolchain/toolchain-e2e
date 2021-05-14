@@ -805,51 +805,70 @@ func count(resource v1.ResourceName) v1.ResourceName {
 
 func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		roles := &rbacv1.RoleList{}
-		err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
+		err := memberAwait.WaitForExpectedNumberOfResources("Role", number, func() (int, error) {
+			roles := &rbacv1.RoleList{}
+			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
+			require.NoError(t, err)
+			assert.Len(t, roles.Items, number)
+			return len(roles.Items), err
+		})
 		require.NoError(t, err)
-		assert.Len(t, roles.Items, number)
 	}
 }
 
 func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		roleBindings := &rbacv1.RoleBindingList{}
-		err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
+		err := memberAwait.WaitForExpectedNumberOfResources("RoleBinding", number, func() (int, error) {
+			roleBindings := &rbacv1.RoleBindingList{}
+			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
+			require.NoError(t, err)
+			assert.Len(t, roleBindings.Items, number)
+			return len(roleBindings.Items), err
+		})
 		require.NoError(t, err)
-		assert.Len(t, roleBindings.Items, number)
 	}
 }
 
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		limitRanges := &v1.LimitRangeList{}
-		err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
+		err := memberAwait.WaitForExpectedNumberOfResources("LimitRange", number, func() (int, error) {
+			limitRanges := &v1.LimitRangeList{}
+			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
+			require.NoError(t, err)
+			assert.Len(t, limitRanges.Items, number)
+			return len(limitRanges.Items), err
+		})
 		require.NoError(t, err)
-		assert.Len(t, limitRanges.Items, number)
 	}
 }
 
 func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		nps := &netv1.NetworkPolicyList{}
-		err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
+		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicy", number, func() (int, error) {
+			nps := &netv1.NetworkPolicyList{}
+			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
+			require.NoError(t, err)
+			assert.Len(t, nps.Items, number)
+			return len(nps.Items), err
+		})
 		require.NoError(t, err)
-		assert.Len(t, nps.Items, number)
 	}
 }
 
 func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 	return func(_ string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-			quotas := &quotav1.ClusterResourceQuotaList{}
-			matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
-				"toolchain.dev.openshift.com/provider": "codeready-toolchain",
-				"toolchain.dev.openshift.com/owner":    userName,
+			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuota", number, func() (int, error) {
+				quotas := &quotav1.ClusterResourceQuotaList{}
+				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
+					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+					"toolchain.dev.openshift.com/owner":    userName,
+				})
+				err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
+				require.NoError(t, err)
+				return len(quotas.Items), err
 			})
-			err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
 			require.NoError(t, err)
-			assert.Len(t, quotas.Items, number)
 		}
 	}
 }
