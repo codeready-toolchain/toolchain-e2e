@@ -504,7 +504,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// TODO remove this after migration
 	// Confirm that the migration occurred
-	var userSignupReloaded *v1alpha1.UserSignup
+	userSignupReloaded := &v1alpha1.UserSignup{}
 	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignupReloaded)
 	require.NoError(s.T(), err)
 	require.True(s.T(), states.Approved(userSignupReloaded))
