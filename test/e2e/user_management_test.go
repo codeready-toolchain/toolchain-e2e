@@ -62,25 +62,29 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertodeactivate", "usertodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
 
 		// User on member cluster 2
-		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@redhat.com", s.member2Await, ApprovedByAdmin()...)
+		userSignupMember2, murMember2 := s.createAndCheckUserSignup(true, "usertodeactivate2", "usertodeactivate2@example.com", s.member2Await, ApprovedByAdmin()...)
 
 		t.Run("verify metrics are correct after creating usersignup", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 2)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // 1 user on member2 (userSignupMember2)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Red Hat")          // userSignupMember1
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 is on member1
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Other")            // userSignupMember2
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // userSignupMember2 is on member2
 		})
 
 		s.deactivateAndCheckUser(userSignupMember1, murMember1)
 		s.deactivateAndCheckUser(userSignupMember2, murMember2)
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2) // two more because of deactivated users
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)       // two less because of deactivated users
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName)
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                   // two more because of deactivated users
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)                                         // two less because of deactivated users
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "Red Hat")          // userSignupMember1 deactivated
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 deactivated
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "Other")            // userSignupMember2 deactivated
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // userSignupMember1 deactivated
 
 		})
 
@@ -93,8 +97,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 4)                                      // two more because of reactivated user
 				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                   // no change
 				metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 2)                                         // two more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
-				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // 1 user on member2 (userSignupMember2)
+				metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Red Hat")          // userSignupMember1
+				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 is on member1
+				metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Other")            // userSignupMember2
+				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // userSignupMember2 is on member2
 			})
 		})
 	})
@@ -104,6 +110,15 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usernodeactivate", "usernodeactivate@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                              // 1 new signup
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // 1 more approved signup
+		metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // signup not deactivated
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // 1 mur for the approved signup
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Red Hat")          // 1 mur with email address `@redhat.com`
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "1")                   // 1 activation
 
 		// Get the base tier that has deactivation disabled
 		baseDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basedeactivationdisabled")
@@ -121,6 +136,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // 1 more approved signup
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // signup not deactivated
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // 1 mur for the approved signup
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Red Hat")          // 1 mur with email address `@redhat.com`
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
@@ -151,6 +167,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // no change
 			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0)                               // no change
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // no change
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Red Hat")          // 1 mur with email address `@redhat.com
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
@@ -209,7 +226,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "Red Hat")          // userSignupMember1 was deactivated
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "Other")            // deactivationExcludedUserSignupMember1 is still there
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user left on member1 (deactivationExcludedUserSignupMember1)
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
 	})
@@ -367,6 +386,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "Other")
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // no user on member1
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
@@ -392,6 +412,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // not provisioned because banned before signup
 			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 2)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "Other")
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // no user on member1
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
 		})
