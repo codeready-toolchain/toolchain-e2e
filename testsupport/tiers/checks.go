@@ -809,7 +809,6 @@ func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unpar
 			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			assert.Len(t, roles.Items, number)
 			return len(roles.Items), err
 		})
 		require.NoError(t, err)
@@ -822,7 +821,6 @@ func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint
 			roleBindings := &rbacv1.RoleBindingList{}
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			assert.Len(t, roleBindings.Items, number)
 			return len(roleBindings.Items), err
 		})
 		require.NoError(t, err)
@@ -835,7 +833,6 @@ func numberOfLimitRanges(number int) namespaceObjectsCheck {
 			limitRanges := &v1.LimitRangeList{}
 			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			assert.Len(t, limitRanges.Items, number)
 			return len(limitRanges.Items), err
 		})
 		require.NoError(t, err)
@@ -848,7 +845,6 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 			nps := &netv1.NetworkPolicyList{}
 			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			assert.Len(t, nps.Items, number)
 			return len(nps.Items), err
 		})
 		require.NoError(t, err)
