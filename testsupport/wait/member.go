@@ -1038,3 +1038,20 @@ func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
 	assert.Equal(a.T, []string{"pods"}, rule.Resources)
 	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
 }
+
+// WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expected int, list func() (int, error)) error {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		actual, err := list()
+		if err != nil {
+			return false, err
+		}
+		if actual == expected {
+			a.T.Logf("The number of %s resources matches", kind)
+			return true, nil
+		}
+		a.T.Logf("Waiting for the expected number of %s resources. Actual: %d, Expected: %d", kind, actual, expected)
+		return false, nil
+	})
+	return err
+}
