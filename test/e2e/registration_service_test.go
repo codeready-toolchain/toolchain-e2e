@@ -556,6 +556,12 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
+	// Ensure the UserSignup is deactivated
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(
+			Deactivated()...))
+	require.NoError(s.T(), err)
+
 	// Now attempt the verification again
 	invokeEndpoint(s.T(), "PUT", s.route+"/api/v1/signup/verification", otherToken,
 		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
