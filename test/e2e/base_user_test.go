@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
@@ -25,7 +26,7 @@ type baseUserIntegrationTest struct {
 	member2Await *wait.MemberAwaitility
 }
 
-// createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
+// createAndCheckUserSignup creates a new UserSignup resource with the given values:
 // specApproved defines if the UserSignup should be manually approved
 // username defines the required username set in the spec
 // email is set in "user-email" annotation
