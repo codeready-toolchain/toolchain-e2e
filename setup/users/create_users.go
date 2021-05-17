@@ -34,7 +34,7 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username:      username,
-			UserID:        username,
+			Userid:        username,
 			Approved:      true,
 			TargetCluster: memberClusterName,
 		},

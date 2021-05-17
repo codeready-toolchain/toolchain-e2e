@@ -147,7 +147,7 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username: username,
-			UserID:   name,
+			Userid:   name,
 		},
 	}
 }
