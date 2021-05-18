@@ -74,7 +74,7 @@ func (m *MetricsAssertionHelper) captureBaselineValues(memberClusterNames []stri
 		key := m.baselineKey(UsersPerActivationMetric, "activations", strconv.Itoa(i))
 		m.baselineValues[key] = m.await.GetMetricValueOrZero(UsersPerActivationMetric, "activations", strconv.Itoa(i))
 	}
-	for _, domain := range []string{"Red Hat", "IBM", "Other"} {
+	for _, domain := range []string{"internal", "internal", "external"} {
 		key := m.baselineKey(MasterUserRecordsPerDomainMetric, "domain", domain)
 		m.baselineValues[key] = m.await.GetMetricValueOrZero(MasterUserRecordsPerDomainMetric, "domain", domain)
 	}
