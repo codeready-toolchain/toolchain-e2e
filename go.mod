@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20210510074727-989dd2144dd7
+	github.com/codeready-toolchain/api v0.0.0-20210518063911-913eaf4719b7
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210507092551-8dd100435226
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
@@ -42,8 +42,6 @@ require (
 	k8s.io/metrics v0.18.2
 	sigs.k8s.io/controller-runtime v0.6.0
 )
-
-replace github.com/codeready-toolchain/api => github.com/matousjobanek/api v0.0.0-20210517144308-eab51446b9dc
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
