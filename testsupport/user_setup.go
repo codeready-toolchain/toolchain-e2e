@@ -140,8 +140,7 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string
 			Name:      name,
 			Namespace: hostAwait.Namespace,
 			Annotations: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailAnnotationKey:         email,
-				toolchainv1alpha1.UserSignupActivationCounterAnnotationKey: "1", // normally set by registration service during first signup of a user (ie, when creating the UserSignup resource)
+				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
 			Labels: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: md5.CalcMd5(email),
@@ -149,7 +148,7 @@ func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username: username,
-			UserID:   name,
+			Userid:   name,
 		},
 	}
 }
