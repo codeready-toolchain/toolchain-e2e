@@ -85,7 +85,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 deactivated
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")         // userSignupMember2 deactivated
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // userSignupMember1 deactivated
-
 		})
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
