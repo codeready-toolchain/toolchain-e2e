@@ -386,7 +386,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 			// Signup a new user
 			userSignup := signupUser(t, emailValue, encodedUserIDs[i], identity)
 
-			require.Equal(s.T(), userID, userSignup.Spec.UserID)
+			require.Equal(s.T(), userID, userSignup.Spec.Userid)
 		}
 	})
 }

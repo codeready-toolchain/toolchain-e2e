@@ -294,7 +294,7 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 			err = s.hostAwait.WaitUntilMasterUserRecordDeleted(username)
 			require.NoError(s.T(), err)
 			// reactivate the user
-			CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName, WithIdentityID(usersignups[username].Spec.UserID))
+			CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName, WithIdentityID(usersignups[username].Spec.Userid))
 		}
 	}
 	// then verify the value of the `sandbox_users_per_activations` metric
