@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1054,7 +1056,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 		"app":                                  "autoscaling-buffer",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualDeployment.Labels)
-	assert.Equal(a.T, int32(1), *actualDeployment.Spec.Replicas)
+	assert.Equal(a.T, int32(2), *actualDeployment.Spec.Replicas)
 	assert.Equal(a.T, map[string]string{"app": "autoscaling-buffer"}, actualDeployment.Spec.Selector.MatchLabels)
 
 	template := actualDeployment.Spec.Template
@@ -1069,8 +1071,10 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 	assert.Equal(a.T, "gcr.io/google_containers/pause-amd64:3.0", container.Image)
 	assert.Equal(a.T, v1.PullIfNotPresent, container.ImagePullPolicy)
 
-	assert.NotEmpty(a.T, container.Resources.Requests.Memory())
-	assert.NotEmpty(a.T, container.Resources.Limits.Memory())
+	expectedMemory, err := resource.ParseQuantity("1Mi")
+	require.NoError(a.T, err)
+	assert.True(a.T, container.Resources.Requests.Memory().Equal(expectedMemory))
+	assert.True(a.T, container.Resources.Limits.Memory().Equal(expectedMemory))
 
 	a.waitForDeploymentToGetReady("autoscaling-buffer")
 }
