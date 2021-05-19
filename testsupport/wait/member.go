@@ -1068,10 +1068,10 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 	require.Len(a.T, template.Spec.Containers, 1)
 	container := template.Spec.Containers[0]
 	assert.Equal(a.T, "autoscaling-buffer", container.Name)
-	assert.Equal(a.T, "gcr.io/google_containers/pause-amd64:3.0", container.Image)
+	assert.Equal(a.T, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
 	assert.Equal(a.T, v1.PullIfNotPresent, container.ImagePullPolicy)
 
-	expectedMemory, err := resource.ParseQuantity("1Mi")
+	expectedMemory, err := resource.ParseQuantity("50Mi")
 	require.NoError(a.T, err)
 	assert.True(a.T, container.Resources.Requests.Memory().Equal(expectedMemory))
 	assert.True(a.T, container.Resources.Limits.Memory().Equal(expectedMemory))
