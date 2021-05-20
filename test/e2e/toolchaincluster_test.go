@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/codeready-toolchain/api/api/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -16,7 +16,7 @@ import (
 )
 
 func TestToolchainClusterE2E(t *testing.T) {
-	toolchainClusterList := &v1alpha1.ToolchainClusterList{}
+	toolchainClusterList := &toolchainv1alpha1.ToolchainClusterList{}
 	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, toolchainClusterList)
 	defer ctx.Cleanup()
 
@@ -86,8 +86,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		err := await.Client.Create(context.TODO(), toolchainCluster)
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &v1alpha1.ToolchainClusterCondition{
-			Type:   v1alpha1.ToolchainClusterOffline,
+		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
+			Type:   toolchainv1alpha1.ToolchainClusterOffline,
 			Status: corev1.ConditionTrue,
 		})
 		require.NoError(t, err)
@@ -99,10 +99,10 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	})
 }
 
-func newToolchainCluster(namespace, name string, options ...clusterOption) *v1alpha1.ToolchainCluster {
-	toolchainCluster := &v1alpha1.ToolchainCluster{
-		Spec: v1alpha1.ToolchainClusterSpec{
-			SecretRef: v1alpha1.LocalSecretReference{
+func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
+	toolchainCluster := &toolchainv1alpha1.ToolchainCluster{
+		Spec: toolchainv1alpha1.ToolchainClusterSpec{
+			SecretRef: toolchainv1alpha1.LocalSecretReference{
 				Name: "", // default
 			},
 			APIEndpoint: "", // default
@@ -124,38 +124,38 @@ func newToolchainCluster(namespace, name string, options ...clusterOption) *v1al
 }
 
 // clusterOption an option to configure the cluster to use in the tests
-type clusterOption func(*v1alpha1.ToolchainCluster)
+type clusterOption func(*toolchainv1alpha1.ToolchainCluster)
 
 // capacityExhausted an option to state that the cluster capacity has exhausted
-var capacityExhausted clusterOption = func(c *v1alpha1.ToolchainCluster) {
+var capacityExhausted clusterOption = func(c *toolchainv1alpha1.ToolchainCluster) {
 	c.Labels["toolchain.dev.openshift.com/capacity-exhausted"] = strconv.FormatBool(true)
 }
 
 // Type sets the label which defines the type of cluster
 func clusterType(t cluster.Type) clusterOption {
-	return func(c *v1alpha1.ToolchainCluster) {
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Labels["type"] = string(t)
 	}
 }
 
 // Owner sets the 'ownerClusterName' label
 func owner(name string) clusterOption {
-	return func(c *v1alpha1.ToolchainCluster) {
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Labels["ownerClusterName"] = name
 	}
 }
 
 // Namespace sets the 'namespace' label
 func namespace(name string) clusterOption {
-	return func(c *v1alpha1.ToolchainCluster) {
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Labels["namespace"] = name
 	}
 }
 
 // SecretRef sets the SecretRef in the cluster's Spec
 func secretRef(ref string) clusterOption {
-	return func(c *v1alpha1.ToolchainCluster) {
-		c.Spec.SecretRef = v1alpha1.LocalSecretReference{
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
+		c.Spec.SecretRef = toolchainv1alpha1.LocalSecretReference{
 			Name: ref,
 		}
 	}
@@ -163,14 +163,14 @@ func secretRef(ref string) clusterOption {
 
 // APIEndpoint sets the APIEndpoint in the cluster's Spec
 func apiEndpoint(url string) clusterOption {
-	return func(c *v1alpha1.ToolchainCluster) {
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Spec.APIEndpoint = url
 	}
 }
 
 // CABundle sets the CABundle in the cluster's Spec
 func caBundle(bundle string) clusterOption {
-	return func(c *v1alpha1.ToolchainCluster) {
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Spec.CABundle = bundle
 	}
 }

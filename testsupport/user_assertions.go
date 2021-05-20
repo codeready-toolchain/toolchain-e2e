@@ -3,7 +3,6 @@ package testsupport
 import (
 	"testing"
 
-	"github.com/codeready-toolchain/api/api/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -22,7 +21,7 @@ func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, signups
 func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, signup *toolchainv1alpha1.UserSignup, tier string, members ...*wait.MemberAwaitility) {
 	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to ensure the compliantusername is available
-	userSignup, err := hostAwait.WaitForUserSignup(signup.Name, wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved), wait.ContainsCondition(Complete()))
+	userSignup, err := hostAwait.WaitForUserSignup(signup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved), wait.ContainsCondition(Complete()))
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
@@ -69,7 +68,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwait
 	assert.NoError(t, err)
 }
 
-func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs) v1alpha1.UserAccountSpec {
+func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs) toolchainv1alpha1.UserAccountSpec {
 	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
 	for _, ref := range templateRefs.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
@@ -83,7 +82,7 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 			TemplateRef: tier + "-" + "clusterresources" + "-" + *templateRefs.ClusterResources,
 		}
 	}
-	return v1alpha1.UserAccountSpec{
+	return toolchainv1alpha1.UserAccountSpec{
 		UserID:   userID,
 		Disabled: false,
 		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
