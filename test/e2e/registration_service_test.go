@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/prometheus/common/log"
+
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -546,20 +548,30 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Empty(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Retrieve the current UserSignup
-	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignup)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupMigrated())
 	require.NoError(s.T(), err)
 
 	// Now mark the original UserSignup as deactivated
 	states.SetDeactivated(userSignup, true)
 
 	// Update the UserSignup
+	log.Infof("### Updating UserSignup to set it deactivated: [%s]", userSignup.Name)
+
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
+
+	// TODO diagnostic code, remove this
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
+	b, err := json.Marshal(userSignup)
+	require.NoError(s.T(), err)
+	log.Infof("### Reloaded UserSignup after setting deactivated: [%s]", string(b))
 
 	// Ensure the UserSignup is deactivated
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
 		wait.UntilUserSignupHasConditions(
-			Deactivated()...))
+			ManuallyDeactivated()...))
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again

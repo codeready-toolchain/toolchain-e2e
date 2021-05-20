@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -240,6 +242,17 @@ func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alp
 
 // UserSignupWaitCriterion a function to check that a user account has the expected condition
 type UserSignupWaitCriterion func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool
+
+func UntilUserSignupMigrated() UserSignupWaitCriterion {
+	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
+		if states.Approved(ua) && !ua.Spec.Approved {
+			a.T.Logf("migrated properties match in UserSignup '%s`", ua.Name)
+			return true
+		}
+		a.T.Logf("waiting for migration properties to match for UserSignup '%s'. States: '%v'; Approved: '%t'", ua.Name, ua.Spec.States, ua.Spec.Approved)
+		return false
+	}
+}
 
 // UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
 // UserAccount has exactly all the given status conditions
