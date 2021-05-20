@@ -569,7 +569,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	log.Infof("### Reloaded UserSignup after setting deactivated: [%s]", string(b))
 
 	// Ensure the UserSignup is deactivated
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
 		wait.UntilUserSignupHasConditions(
 			ManuallyDeactivated()...))
 	require.NoError(s.T(), err)
