@@ -303,6 +303,9 @@ func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) flo
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // return 0 if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...string) float64 {
+	if len(labelAndValues)%2 != 0 {
+		a.T.Fatal("`labelAndValues` must be pairs of labels and values")
+	}
 	if value, err := getMetricValue(a.MetricsURL, family, labelAndValues); err == nil {
 		return value
 	}
