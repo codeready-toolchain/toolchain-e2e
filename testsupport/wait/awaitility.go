@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	routev1 "github.com/openshift/api/route/v1"

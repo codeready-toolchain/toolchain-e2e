@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	"github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
