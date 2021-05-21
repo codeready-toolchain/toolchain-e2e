@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -904,14 +906,14 @@ func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 }
 
 func (a *MemberAwaitility) WaitForUsersPodsWebhook() {
-	a.waitForPriorityClass()
+	a.waitForUsersPodPriorityClass()
 	a.waitForService()
-	a.waitForDeployment()
+	a.waitForWebhookDeployment()
 	ca := a.waitForSecret()
 	a.waitForWebhookConfig(ca)
 }
 
-func (a *MemberAwaitility) waitForPriorityClass() {
+func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
 	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
@@ -955,7 +957,7 @@ func (a *MemberAwaitility) waitForService() {
 	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualService.Spec.Selector)
 }
 
-func (a *MemberAwaitility) waitForDeployment() {
+func (a *MemberAwaitility) waitForWebhookDeployment() {
 	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
@@ -984,17 +986,7 @@ func (a *MemberAwaitility) waitForDeployment() {
 	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
 	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
 
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, "member-operator-webhook", a.Namespace)
-		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
-			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", "member-operator-webhook", a.Namespace, deploymentConditions)
-			return false, nil
-		}
-		a.T.Logf("deployment '%s' in namesapace '%s' is ready", "member-operator-webhook", a.Namespace)
-		return true, nil
-	})
-	require.NoError(a.T, err)
-
+	a.waitForDeploymentToGetReady("member-operator-webhook")
 }
 
 func (a *MemberAwaitility) waitForSecret() []byte {
@@ -1037,6 +1029,67 @@ func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
 	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
 	assert.Equal(a.T, []string{"pods"}, rule.Resources)
 	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
+}
+
+func (a *MemberAwaitility) WaitForAutoscalingBufferApp() {
+	a.waitForAutoscalingBufferPriorityClass()
+	a.waitForAutoscalingBufferDeployment()
+}
+
+func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
+	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "member-operator-autoscaling-buffer")
+	actualPrioClass := &schedulingv1.PriorityClass{}
+	a.waitForResource("", "member-operator-autoscaling-buffer", actualPrioClass)
+
+	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
+	assert.Equal(a.T, int32(-100), actualPrioClass.Value)
+	assert.False(a.T, actualPrioClass.GlobalDefault)
+	assert.Equal(a.T, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
+}
+
+func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
+	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "autoscaling-buffer", a.Namespace)
+	actualDeployment := &appsv1.Deployment{}
+	a.waitForResource(a.Namespace, "autoscaling-buffer", actualDeployment)
+
+	assert.Equal(a.T, map[string]string{
+		"app":                                  "autoscaling-buffer",
+		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+	}, actualDeployment.Labels)
+	assert.Equal(a.T, int32(2), *actualDeployment.Spec.Replicas)
+	assert.Equal(a.T, map[string]string{"app": "autoscaling-buffer"}, actualDeployment.Spec.Selector.MatchLabels)
+
+	template := actualDeployment.Spec.Template
+	assert.Equal(a.T, map[string]string{"app": "autoscaling-buffer"}, template.ObjectMeta.Labels)
+
+	assert.Equal(a.T, "member-operator-autoscaling-buffer", template.Spec.PriorityClassName)
+	assert.Equal(a.T, int64(0), *template.Spec.TerminationGracePeriodSeconds)
+
+	require.Len(a.T, template.Spec.Containers, 1)
+	container := template.Spec.Containers[0]
+	assert.Equal(a.T, "autoscaling-buffer", container.Name)
+	assert.Equal(a.T, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
+	assert.Equal(a.T, v1.PullIfNotPresent, container.ImagePullPolicy)
+
+	expectedMemory, err := resource.ParseQuantity("50Mi")
+	require.NoError(a.T, err)
+	assert.True(a.T, container.Resources.Requests.Memory().Equal(expectedMemory))
+	assert.True(a.T, container.Resources.Limits.Memory().Equal(expectedMemory))
+
+	a.waitForDeploymentToGetReady("autoscaling-buffer")
+}
+
+func (a *MemberAwaitility) waitForDeploymentToGetReady(name string) {
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
+		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
+			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
+			return false, nil
+		}
+		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
+		return true, nil
+	})
+	require.NoError(a.T, err)
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count

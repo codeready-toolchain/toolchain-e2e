@@ -1,8 +1,9 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20210518063911-913eaf4719b7
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20210507092551-8dd100435226
+	github.com/codeready-toolchain/api v0.0.0-20210520133910-ab0d90c32c0b
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20210520134909-6a918dd11401
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.4.0
@@ -43,9 +44,9 @@ require (
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 
-replace github.com/codeready-toolchain/api => github.com/matousjobanek/api v0.0.0-20210520100306-bffff6b38043
+replace github.com/codeready-toolchain/api => github.com/matousjobanek/api v0.0.0-20210521080009-872e73020eff
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/matousjobanek/toolchain-common v0.0.0-20210520100350-fca58f9efe91
+replace github.com/codeready-toolchain/toolchain-common => github.com/matousjobanek/toolchain-common v0.0.0-20210521080611-9ec9bdeaa4e4
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
