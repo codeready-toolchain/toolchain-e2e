@@ -1,7 +1,7 @@
 package test
 
 import (
-	"github.com/codeready-toolchain/api/pkg/apis"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commontest "github.com/codeready-toolchain/toolchain-common/pkg/test"
 
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -15,7 +15,7 @@ import (
 
 func NewFakeClient(t commontest.T, initObjs ...runtime.Object) *commontest.FakeClient {
 	s := scheme.Scheme
-	builder := append(apis.AddToSchemes, quotav1.Install, operatorsv1alpha1.AddToScheme)
+	builder := append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme, quotav1.Install, operatorsv1alpha1.AddToScheme)
 	err := builder.AddToScheme(s)
 	require.NoError(t, err)
 	cl := fake.NewFakeClientWithScheme(s, initObjs...)

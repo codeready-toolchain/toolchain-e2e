@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/codeready-toolchain/api/pkg/apis"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -53,7 +53,7 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 // NewScheme returns the scheme configured with all the needed types
 func NewScheme() (*runtime.Scheme, error) {
 	s := scheme.Scheme
-	builder := append(apis.AddToSchemes, quotav1.Install, operatorsv1alpha1.AddToScheme)
+	builder := append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme, quotav1.Install, operatorsv1alpha1.AddToScheme)
 	err := builder.AddToScheme(s)
 	return s, err
 }
