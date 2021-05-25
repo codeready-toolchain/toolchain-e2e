@@ -246,7 +246,7 @@ endif
 	-oc apply -f deploy/host-operator/host-operator-config-map.yaml -n $(HOST_NS)
 	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
 	# as the controller starts (which is a use-case for CRT-231)
-	oc apply -f ${HOST_REPO_PATH}/deploy/crds/toolchain_v1alpha1_nstemplatetier_crd.yaml
+	oc apply -f ${HOST_REPO_PATH}/deploy/crds/toolchain.dev.openshift.com_nstemplatetiers.yaml
 	oc apply -f deploy/host-operator/nstemplatetier-basic.yaml -n $(HOST_NS)
 	$(MAKE) build-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${REG_IMAGE_NAME}
 	$(MAKE) deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator NAMESPACE=$(HOST_NS)
