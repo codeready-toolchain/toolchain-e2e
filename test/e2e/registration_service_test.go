@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/prometheus/common/log"
-
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -555,18 +553,8 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Now mark the original UserSignup as deactivated
 	states.SetDeactivated(userSignup, true)
 
-	// Update the UserSignup
-	log.Infof("### Updating UserSignup to set it deactivated: [%s]", userSignup.Name)
-
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
-
-	// TODO diagnostic code, remove this
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
-	require.NoError(s.T(), err)
-	b, err := json.Marshal(userSignup)
-	require.NoError(s.T(), err)
-	log.Infof("### Reloaded UserSignup after setting deactivated: [%s]", string(b))
 
 	// Ensure the UserSignup is deactivated
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
