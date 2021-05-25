@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -29,7 +29,7 @@ type userWorkloadsTestSuite struct {
 }
 
 func (s *userWorkloadsTestSuite) SetupSuite() {
-	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), &v1alpha1.UserSignupList{})
+	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), &toolchainv1alpha1.UserSignupList{})
 }
 
 func (s *userWorkloadsTestSuite) TearDownTest() {
