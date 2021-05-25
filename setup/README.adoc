@@ -6,7 +6,7 @@ This document describes how to setup a Dev Sandbox environment that is similar t
 
 . Provision an OCP cluster on AWS with sufficient resources: 4xlarge master nodes and at least 3 2xlarge worker nodes.
 +
-For example, if using the openshift-install tool to install OCP on AWS you can use an install-config.yaml file that has the following configuration:
+For example, if using the openshift-install tool to install OCP on AWS you can create an install-config.yaml file that has the following configuration:
 +
 ----
 apiVersion: v1
@@ -42,7 +42,7 @@ platform:
 publish: External
 ----
 
-. Install the link:required_tools.adoc[required tools].
+. Install the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.adoc[required tools].
 
 . Install your operator(s)
 
