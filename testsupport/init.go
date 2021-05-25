@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/api/pkg/apis"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -116,7 +116,7 @@ func getMemberAwaitility(t *testing.T, f *framework.Framework, hostAwait *wait.H
 }
 
 func newSchemeBuilder() runtime.SchemeBuilder {
-	return append(apis.AddToSchemes,
+	return append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme,
 		userv1.Install,
 		templatev1.Install,
 		routev1.Install,

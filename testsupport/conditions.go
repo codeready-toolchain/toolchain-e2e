@@ -1,7 +1,7 @@
 package testsupport
 
 import (
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 )
