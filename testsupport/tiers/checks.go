@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -554,7 +554,7 @@ func idlers(namespaceTypes ...string) clusterObjectsCheckCreator {
 			}
 
 			// Make sure there is no unexpected idlers
-			idlers := &v1alpha1.IdlerList{}
+			idlers := &toolchainv1alpha1.IdlerList{}
 			err := memberAwait.Client.List(context.TODO(), idlers,
 				client.MatchingLabels(map[string]string{
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
