@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+	"github.com/codeready-toolchain/api/api/v1alpha1"
 
 	"io"
 	"io/ioutil"
@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
@@ -316,7 +318,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Approve usersignup.
-		userSignup.Spec.Approved = true
+		states.SetApproved(userSignup, true)
 		userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 		err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
@@ -487,6 +489,8 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Now approve the usersignup.
 	userSignup.Spec.Approved = true
+	//states.SetApproved(userSignup, true)
+
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
@@ -499,6 +503,13 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
+
+	// TODO remove this after migration
+	// Confirm that the migration occurred
+	userSignupReloaded := &v1alpha1.UserSignup{}
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignupReloaded)
+	require.NoError(s.T(), err)
+	require.True(s.T(), states.Approved(userSignupReloaded))
 
 	// Create another token and identity to sign up with
 	otherIdentity := authsupport.NewIdentity()
@@ -537,14 +548,20 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Empty(s.T(), otherUserSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Retrieve the current UserSignup
-	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignup)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupMigrated())
 	require.NoError(s.T(), err)
 
 	// Now mark the original UserSignup as deactivated
 	states.SetDeactivated(userSignup, true)
 
-	// Update the UserSignup
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
+	require.NoError(s.T(), err)
+
+	// Ensure the UserSignup is deactivated
+	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(
+			ManuallyDeactivated()...))
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again
