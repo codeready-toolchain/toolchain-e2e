@@ -1,7 +1,7 @@
 package testsupport
 
 import (
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -273,6 +273,31 @@ func Deactivating() []toolchainv1alpha1.Condition {
 }
 
 func DeactivatedWithoutPreDeactivation() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+	}
+}
+
+func ManuallyDeactivated() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,

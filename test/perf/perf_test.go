@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -146,7 +147,7 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
 			// Create an approved UserSignup resource
 			userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
-			userSignup.Spec.Approved = true
+			states.SetApproved(userSignup, true)
 			userSignup.Spec.TargetCluster = memberAwait.ClusterName
 			err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
 			hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)

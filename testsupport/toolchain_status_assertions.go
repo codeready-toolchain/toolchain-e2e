@@ -4,7 +4,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"testing"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 
@@ -29,7 +29,7 @@ func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberA
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
 
-func VerifyIncreaseOfUserAccountCount(t *testing.T, previous, current *v1alpha1.ToolchainStatus, memberClusterName string, increase int) {
+func VerifyIncreaseOfUserAccountCount(t *testing.T, previous, current *toolchainv1alpha1.ToolchainStatus, memberClusterName string, increase int) {
 	found := false
 CurrentMembers:
 	for _, currentMemberStatus := range current.Status.Members {

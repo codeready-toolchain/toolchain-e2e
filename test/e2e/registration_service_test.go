@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+	"github.com/codeready-toolchain/api/api/v1alpha1"
 
 	"io"
 	"io/ioutil"
@@ -15,12 +15,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/codeready-toolchain/api/pkg/apis/toolchain/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -47,7 +49,7 @@ type registrationServiceTestSuite struct {
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
-	userSignupList := &v1alpha1.UserSignupList{}
+	userSignupList := &toolchainv1alpha1.UserSignupList{}
 	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
 	s.namespace = s.hostAwait.RegistrationServiceNs
 	s.route = s.hostAwait.RegistrationServiceURL
@@ -294,16 +296,16 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 func (s *registrationServiceTestSuite) TestSignupOK() {
 
-	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *v1alpha1.UserSignup {
+	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *toolchainv1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
 
 		// Wait for the UserSignup to be created
 		userSignup, err := s.hostAwait.WaitForUserSignup(userSignupName,
 			wait.UntilUserSignupHasConditions(PendingApproval()...),
-			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValuePending))
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(s.T(), err)
-		emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+		emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
 		assert.Equal(s.T(), email, emailAnnotation)
 
 		// Call get signup endpoint with a valid token and make sure it's pending approval
@@ -316,7 +318,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Approve usersignup.
-		userSignup.Spec.Approved = true
+		states.SetApproved(userSignup, true)
 		userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 		err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
@@ -343,13 +345,13 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		userSignup := signupUser(t, emailValue, identity.ID.String(), identity)
 
 		// Deactivate the usersignup
-		userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *v1alpha1.UserSignup) {
+		userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivated(us, true)
 		})
 		require.NoError(s.T(), err)
 		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
-			wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueDeactivated))
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 
 		// Now check that the reg-service treats the deactivated usersignup as nonexistent and returns 404
@@ -405,9 +407,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Wait for the UserSignup to be created
 	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(),
 		wait.UntilUserSignupHasConditions(VerificationRequired()...),
-		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
-	emailAnnotation := userSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure verificationRequired is true
@@ -422,11 +424,11 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Confirm the status of the UserSignup is correct
 	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
 		wait.UntilUserSignupHasConditions(VerificationRequired()...),
-		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 
 	// Confirm that a MUR hasn't been created
-	obj := &v1alpha1.MasterUserRecord{}
+	obj := &toolchainv1alpha1.MasterUserRecord{}
 	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: identity0.Username}, obj)
 	require.Error(s.T(), err)
 	require.True(s.T(), errors.IsNotFound(err))
@@ -440,11 +442,11 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Confirm there is a verification code annotation value, and store it in a variable
-	verificationCode := userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]
+	verificationCode := userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]
 	require.NotEmpty(s.T(), verificationCode)
 
 	// Confirm the expiry time has been set
-	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
+	require.NotEmpty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserVerificationExpiryAnnotationKey])
 
 	// Attempt to verify with an incorrect verification code
 	invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
@@ -454,27 +456,27 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Check attempts has been incremented
-	require.NotEmpty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
+	require.NotEmpty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 
 	// Confirm the verification code has not changed
-	require.Equal(s.T(), verificationCode, userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.Equal(s.T(), verificationCode, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Verify with the correct code
 	invokeEndpoint(s.T(), "GET", s.route+fmt.Sprintf("/api/v1/signup/verification/%s",
-		userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
+		userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValuePending))
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(s.T(), err)
 
 	// Confirm all unrequired verification-related annotations have been removed
-	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationExpiryAnnotationKey])
-	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserVerificationAttemptsAnnotationKey])
-	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
-	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationTimestampAnnotationKey])
-	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationCounterAnnotationKey])
-	require.Empty(s.T(), userSignup.Annotations[v1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserVerificationExpiryAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationTimestampAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCounterAnnotationKey])
+	require.Empty(s.T(), userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
 
 	// Call get signup endpoint with a valid token and make sure it's pending approval
 	mp, mpStatus = parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK))
@@ -487,6 +489,8 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Now approve the usersignup.
 	userSignup.Spec.Approved = true
+	//states.SetApproved(userSignup, true)
+
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 
@@ -499,6 +503,13 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
+
+	// TODO remove this after migration
+	// Confirm that the migration occurred
+	userSignupReloaded := &v1alpha1.UserSignup{}
+	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignupReloaded)
+	require.NoError(s.T(), err)
+	require.True(s.T(), states.Approved(userSignupReloaded))
 
 	// Create another token and identity to sign up with
 	otherIdentity := authsupport.NewIdentity()
@@ -513,9 +524,9 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Wait for the UserSignup to be created
 	otherUserSignup, err := s.hostAwait.WaitForUserSignup(otherIdentity.ID.String(),
 		wait.UntilUserSignupHasConditions(VerificationRequired()...),
-		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueNotReady))
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
-	otherEmailAnnotation := otherUserSignup.Annotations[v1alpha1.UserSignupUserEmailAnnotationKey]
+	otherEmailAnnotation := otherUserSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), otherEmailValue, otherEmailAnnotation)
 
 	// Initiate the verification process using the same phone number as previously
@@ -534,17 +545,23 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Confirm there is no verification code annotation value
-	require.Empty(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.Empty(s.T(), otherUserSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Retrieve the current UserSignup
-	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignup)
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupMigrated())
 	require.NoError(s.T(), err)
 
 	// Now mark the original UserSignup as deactivated
 	states.SetDeactivated(userSignup, true)
 
-	// Update the UserSignup
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
+	require.NoError(s.T(), err)
+
+	// Ensure the UserSignup is deactivated
+	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(
+			ManuallyDeactivated()...))
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again
@@ -556,7 +573,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.NoError(s.T(), err)
 
 	// Confirm there is now a verification code annotation value
-	require.NotEmpty(s.T(), otherUserSignup.Annotations[v1alpha1.UserSignupVerificationCodeAnnotationKey])
+	require.NotEmpty(s.T(), otherUserSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
