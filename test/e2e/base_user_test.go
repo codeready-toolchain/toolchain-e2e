@@ -148,7 +148,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *v1alpha1.Us
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
 		wait.UntilUserSignupHasStateLabel(v1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)
 	require.False(s.T(), states.Deactivated(userSignup), "usersignup should not be deactivated")
