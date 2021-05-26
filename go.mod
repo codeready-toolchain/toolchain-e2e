@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20210525072732-81a688cbd126 // indirect
+	github.com/codeready-toolchain/api v0.0.0-20210525072732-81a688cbd126
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210525074434-b7d36013dc02
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
@@ -52,7 +52,5 @@ replace (
 	k8s.io/klog/v2 => k8s.io/klog/v2 v2.0.0
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6 // avoids case-insensitive import collision: "github.com/googleapis/gnostic/openapiv2" and "github.com/googleapis/gnostic/OpenAPIv2"
 )
-
-replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20210521071514-6bb40ea2b0cb
 
 go 1.14
