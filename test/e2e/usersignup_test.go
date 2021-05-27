@@ -3,11 +3,11 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"testing"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -319,7 +319,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 
 	// Set approved to true
-	userSignup.Spec.Approved = true
+	states.SetApproved(userSignup, true)
 
 	// Set verification required
 	states.SetVerificationRequired(userSignup, true)

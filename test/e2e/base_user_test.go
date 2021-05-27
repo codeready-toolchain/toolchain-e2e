@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -58,7 +59,7 @@ func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved boo
 	WaitUntilBaseNSTemplateTierIsUpdated(s.T(), s.hostAwait)
 	// Create a new UserSignup with the given approved flag
 	userSignup := NewUserSignup(s.T(), s.hostAwait, username, email)
-	userSignup.Spec.Approved = specApproved
+	states.SetApproved(userSignup, specApproved)
 	if targetCluster != nil {
 		userSignup.Spec.TargetCluster = targetCluster.ClusterName
 	}
@@ -139,6 +140,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1
 	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivating(us, false)
 		states.SetDeactivated(us, false)
+		states.SetApproved(us, true)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' reactivated", userSignup.Name)
