@@ -173,8 +173,12 @@ github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:z
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
 github.com/codeready-toolchain/api v0.0.0-20210525072732-81a688cbd126 h1:ctRxZ3qcUNtaYoZqc3PUAedQChPpl0iZvyJXF5M6ySE=
 github.com/codeready-toolchain/api v0.0.0-20210525072732-81a688cbd126/go.mod h1:Tk3X/k80o6hKIVlhaBoTRWpECEnZYWZcJdYMGV1pZvE=
+github.com/codeready-toolchain/api v0.0.0-20210527120405-8f688a366f2e h1:A5DvzmOUKJKxIezpNumKKzhJi75MtG5rDDKqW6xmyHM=
+github.com/codeready-toolchain/api v0.0.0-20210527120405-8f688a366f2e/go.mod h1:Tk3X/k80o6hKIVlhaBoTRWpECEnZYWZcJdYMGV1pZvE=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20210525074434-b7d36013dc02 h1:ptdMQgbc3kCQQ0Zndb4gUwOOJv4+xGPsnlzBQ7ETXgY=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20210525074434-b7d36013dc02/go.mod h1:Ah8JSVbGqo58xTlghhCIFBzUZhbBdoFlmAX7P7gqIWA=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20210526023117-4a40b8f6d51e h1:B6C5gT4HDt16GxV3326owuf+FhruKPkyV8VYQy0DsR4=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20210526023117-4a40b8f6d51e/go.mod h1:Ah8JSVbGqo58xTlghhCIFBzUZhbBdoFlmAX7P7gqIWA=
 github.com/containerd/cgroups v0.0.0-20190919134610-bf292b21730f h1:tSNMc+rJDfmYntojat8lljbt1mgKNpTxUZJsSzJ9Y1s=
 github.com/containerd/cgroups v0.0.0-20190919134610-bf292b21730f/go.mod h1:OApqhQ4XNSNC13gXIwDjhOQxjWa/NxkwZXJ1EvqT0ko=
 github.com/containerd/console v0.0.0-20180822173158-c12b1e7919c1/go.mod h1:Tj/on1eG8kiEhd0+fhSDzsPAFESxzBBvdyEgyryXffw=
