@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/codeready-toolchain/api/api/v1alpha1"
-
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -488,8 +486,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Now approve the usersignup.
-	userSignup.Spec.Approved = true
-	//states.SetApproved(userSignup, true)
+	states.SetApproved(userSignup, true)
 
 	err = s.hostAwait.Client.Update(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
@@ -503,13 +500,6 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(s.T(), mpStatus["verificationRequired"].(bool))
-
-	// TODO remove this after migration
-	// Confirm that the migration occurred
-	userSignupReloaded := &v1alpha1.UserSignup{}
-	err = s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.hostAwait.Namespace, Name: userSignup.Name}, userSignupReloaded)
-	require.NoError(s.T(), err)
-	require.True(s.T(), states.Approved(userSignupReloaded))
 
 	// Create another token and identity to sign up with
 	otherIdentity := authsupport.NewIdentity()
