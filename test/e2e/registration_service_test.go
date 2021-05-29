@@ -537,6 +537,10 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Confirm there is no verification code annotation value
 	require.Empty(s.T(), otherUserSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 
+	// Retrieve the current UserSignup
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name)
+	require.NoError(s.T(), err)
+
 	// Now mark the original UserSignup as deactivated
 	states.SetDeactivated(userSignup, true)
 
