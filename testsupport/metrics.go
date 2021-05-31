@@ -32,12 +32,15 @@ const (
 	UserSignupsAutoDeactivatedMetric = "sandbox_user_signups_auto_deactivated_total"
 	UserSignupsBannedMetric          = "sandbox_user_signups_banned_total"
 
-	// DEPRECATED: use `UserAccountsMetric` and `MasterUserRecordsPerDomainMetric` instead
-	MasterUserRecordMetric = "sandbox_master_user_record_current"
-	UserAccountsMetric     = "sandbox_user_accounts_current"
-
-	UsersPerActivationMetric         = "sandbox_users_per_activations"
+	// DEPRECATED: use `MasterUserRecordsPerDomainMetric` instead
+	MasterUserRecordMetric           = "sandbox_master_user_record_current"
 	MasterUserRecordsPerDomainMetric = "sandbox_master_user_records"
+
+	UserAccountsMetric = "sandbox_user_accounts_current"
+
+	// DEPRECATED: use `UsersPerActivationsAndDomainMetric` instead
+	UsersPerActivationsMetric          = "sandbox_users_per_activations"
+	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
@@ -69,12 +72,19 @@ func (m *MetricsAssertionHelper) captureBaselineValues(memberClusterNames []stri
 		m.baselineValues[key] += m.await.GetMetricValue(UserAccountsMetric, "cluster_name", name)
 
 	}
-	// capture `sandbox_users_per_activations` with "activations" from "1" to "10"
+	// capture `sandbox_users_per_activations` with "activations" from `1` to `10`
 	for i := 1; i <= 10; i++ {
-		key := m.baselineKey(UsersPerActivationMetric, "activations", strconv.Itoa(i))
-		m.baselineValues[key] = m.await.GetMetricValueOrZero(UsersPerActivationMetric, "activations", strconv.Itoa(i))
+		key := m.baselineKey(UsersPerActivationsMetric, "activations", strconv.Itoa(i))
+		m.baselineValues[key] = m.await.GetMetricValueOrZero(UsersPerActivationsMetric, "activations", strconv.Itoa(i))
 	}
-	for _, domain := range []string{"internal", "internal", "external"} {
+	// capture `sandbox_users_per_activations_and_domain` with "activations" from `1` to `10` and `internal`/`external` domains
+	for i := 1; i <= 10; i++ {
+		for _, domain := range []string{"internal", "external"} {
+			key := m.baselineKey(UsersPerActivationsAndDomainMetric, "activations", strconv.Itoa(i), "domain", domain)
+			m.baselineValues[key] = m.await.GetMetricValueOrZero(UsersPerActivationsAndDomainMetric, "activations", strconv.Itoa(i), "domain", domain)
+		}
+	}
+	for _, domain := range []string{"internal", "external"} {
 		key := m.baselineKey(MasterUserRecordsPerDomainMetric, "domain", domain)
 		m.baselineValues[key] = m.await.GetMetricValueOrZero(MasterUserRecordsPerDomainMetric, "domain", domain)
 	}
