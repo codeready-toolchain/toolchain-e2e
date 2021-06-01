@@ -26,7 +26,7 @@ type baseUserIntegrationTest struct {
 	member2Await *wait.MemberAwaitility
 }
 
-// createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
+// createAndCheckUserSignup creates a new UserSignup resource with the given values:
 // specApproved defines if the UserSignup should be manually approved
 // username defines the required username set in the spec
 // email is set in "user-email" annotation
