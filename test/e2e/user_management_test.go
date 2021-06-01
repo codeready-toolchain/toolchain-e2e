@@ -46,12 +46,12 @@ func (s *userManagementTestSuite) TearDownTest() {
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
-	s.hostAwait.UpdateHostOperatorConfig(
+	s.hostAwait.UpdateToolchainConfig(
 		test.AutomaticApproval().Enabled(),
 		test.Deactivation().DeactivatingNotificationDays(-1))
 
-	config := s.hostAwait.GetHostOperatorConfig()
-	require.Equal(s.T(), -1, config.Spec.Deactivation.DeactivatingNotificationDays)
+	config := s.hostAwait.GetToolchainConfig()
+	require.Equal(s.T(), -1, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
@@ -238,12 +238,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("test deactivating state set OK", func(t *testing.T) {
 		// Reset configuration back to 3 days
-		s.hostAwait.UpdateHostOperatorConfig(
+		s.hostAwait.UpdateToolchainConfig(
 			test.AutomaticApproval().Enabled(),
 			test.Deactivation().DeactivatingNotificationDays(3))
 
-		config := s.hostAwait.GetHostOperatorConfig()
-		require.Equal(s.T(), 3, config.Spec.Deactivation.DeactivatingNotificationDays)
+		config := s.hostAwait.GetToolchainConfig()
+		require.Equal(s.T(), 3, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 		userSignupMember1, murMember1 := s.createAndCheckUserSignup(true, "usertostartdeactivating",
 			"usertostartdeactivating@redhat.com", s.memberAwait, ApprovedByAdmin()...)
@@ -275,7 +275,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 
-	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
+	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Disabled())
 
 	// activate and deactivate a few users, and check the metrics.
 	// user-0001 will be activated 1 time
@@ -372,7 +372,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
 		userSignup, _ := s.createAndCheckUserSignup(false, "banprovisioned",
@@ -407,7 +407,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("create usersignup with preexisting banneduser", func(t *testing.T) {
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		id := uuid.NewV4().String()
 		email := "testuser" + id + "@test.com"
@@ -433,7 +433,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		id := uuid.NewV4().String()
 		email := "testuser" + id + "@test.com"
@@ -471,7 +471,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
 		userSignup, mur := s.createAndCheckUserSignup(false, "banandunban", "banandunban@test.com", s.memberAwait, ApprovedAutomatically()...)
@@ -516,7 +516,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval())
+	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval())
 
 	// Create UserSignup
 	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
