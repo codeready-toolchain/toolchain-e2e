@@ -758,9 +758,9 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 	return toolchainStatus, err
 }
 
-// GetHostOperatorConfig returns HostOperatorConfig instance, nil if not found
-func (a *HostAwaitility) GetHostOperatorConfig() *toolchainv1alpha1.HostOperatorConfig {
-	config := &toolchainv1alpha1.HostOperatorConfig{}
+// GetToolchainConfig returns ToolchainConfig instance, nil if not found
+func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig {
+	config := &toolchainv1alpha1.ToolchainConfig{}
 	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "config"), config); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -770,16 +770,16 @@ func (a *HostAwaitility) GetHostOperatorConfig() *toolchainv1alpha1.HostOperator
 	return config
 }
 
-// UpdateHostOperatorConfig updates the current resource of the HostOperatorConfig CR with the given options.
+// UpdateToolchainConfig updates the current resource of the ToolchainConfig CR with the given options.
 // If there is no existing resource already, then it creates a new one.
 // At the end of the test it returns the resource back to the original value/state.
-func (a *HostAwaitility) UpdateHostOperatorConfig(options ...test.HostOperatorConfigOption) {
-	var originalConfig *toolchainv1alpha1.HostOperatorConfig
-	// try to get the current HostOperatorConfig
-	config := a.GetHostOperatorConfig()
+func (a *HostAwaitility) UpdateToolchainConfig(options ...test.ToolchainConfigOption) {
+	var originalConfig *toolchainv1alpha1.ToolchainConfig
+	// try to get the current ToolchainConfig
+	config := a.GetToolchainConfig()
 	if config == nil {
 		// if it doesn't exist, then create a new one
-		config = &toolchainv1alpha1.HostOperatorConfig{
+		config = &toolchainv1alpha1.ToolchainConfig{
 			ObjectMeta: v1.ObjectMeta{
 				Namespace: a.Namespace,
 				Name:      "config",
@@ -817,7 +817,7 @@ func (a *HostAwaitility) UpdateHostOperatorConfig(options ...test.HostOperatorCo
 
 	// and as a cleanup function update it back to the original value
 	a.T.Cleanup(func() {
-		config := a.GetHostOperatorConfig()
+		config := a.GetToolchainConfig()
 		// if the current config wasn't found
 		if config == nil {
 			// then create it back with the original values

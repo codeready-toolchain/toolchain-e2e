@@ -22,7 +22,7 @@ func TestE2EFlow(t *testing.T) {
 	// full flow from usersignup with approval down to namespaces creation
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
-	hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
+	hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
