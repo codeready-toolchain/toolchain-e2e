@@ -275,7 +275,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 
-	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Disabled())
+	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Disabled())
 
 	// activate and deactivate a few users, and check the metrics.
 	// user-0001 will be activated 1 time
