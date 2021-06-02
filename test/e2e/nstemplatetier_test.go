@@ -13,7 +13,6 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -268,31 +267,4 @@ func TestTierTemplates(t *testing.T) {
 	// verify that we have 18 tier templates (base: 3, baseextended: 3, basedeactivationdisabled 3, advanced: 3, team 3, test 3)
 	require.NoError(t, err)
 	assert.Len(t, allTiers.Items, 18)
-}
-
-func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
-	// given
-	tierList := &toolchainv1alpha1.NSTemplateTierList{}
-	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, tierList)
-	defer ctx.Cleanup()
-	for _, nsType := range []string{"code", "dev", "stage"} {
-		err := memberAwait.Client.Create(context.TODO(), &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "legacy-" + nsType,
-				Labels: map[string]string{
-					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
-					"toolchain.dev.openshift.com/owner":    "legacy",
-					"toolchain.dev.openshift.com/tier":     "base",
-					"toolchain.dev.openshift.com/type":     nsType,
-				},
-			},
-		})
-		require.NoError(t, err)
-	}
-
-	// when
-	legacySignup := CreateAndApproveSignup(t, hostAwait, "legacy", memberAwait.ClusterName)
-
-	// then
-	VerifyResourcesProvisionedForSignup(t, hostAwait, legacySignup, "base", memberAwait)
 }
