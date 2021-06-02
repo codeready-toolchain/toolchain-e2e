@@ -41,7 +41,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	testingtiers := CreateAndApproveSignup(t, hostAwait, testingTiersName, memberAwait.ClusterName)
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "team", "basicdeactivationdisabled", "test", "basic", "basedeactivationdisabled", "baseextended", "base"}
+	tiersToCheck := []string{"advanced", "team", "test", "basedeactivationdisabled", "baseextended", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -123,12 +123,12 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "", "advanced")
-	// and when updating the "cookie" tier to the "basic" template refs (ie, different number of namespaces)
-	updateTemplateTier(t, hostAwait, "cookie", "basic", "basic")
+	// and when updating the "cookie" tier to the "base" template refs
+	updateTemplateTier(t, hostAwait, "cookie", "base", "base")
 
 	// then
 	verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "advanced")
-	verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "basic", "basic")
+	verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
 
 	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
 	// cheesecake tier
@@ -265,9 +265,9 @@ func TestTierTemplates(t *testing.T) {
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
-	// verify that we have 26 tier templates (base: 3, baseextended: 3, basedeactivationdisabled 3, basic: 4, advanced: 3, basicdeactivationdisabled 4, team 3, test 3)
+	// verify that we have 18 tier templates (base: 3, baseextended: 3, basedeactivationdisabled 3, advanced: 3, team 3, test 3)
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, 26)
+	assert.Len(t, allTiers.Items, 18)
 }
 
 func TestUpdateOfNamespacesWithLegacyLabels(t *testing.T) {
