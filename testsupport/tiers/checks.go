@@ -483,7 +483,7 @@ func idlers(namespaceTypes ...string) clusterObjectsCheckCreator {
 				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierName))
 				require.NoError(t, err)
 				assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-				assert.Equal(t, int32(28800), idler.Spec.TimeoutSeconds)
+				assert.Equal(t, int32(43200), idler.Spec.TimeoutSeconds)
 			}
 
 			// Make sure there is no unexpected idlers
