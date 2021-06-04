@@ -84,6 +84,10 @@ endif
 .PHONY: print-operator-logs
 print-operator-logs:
 	@echo "==============================================================================================================="
+	@echo "========================== ${REPO_NAME} deployment YAML- Namespace: ${NAMESPACE} ============================="
+	@echo "==============================================================================================================="
+	-oc get deployment.apps/${REPO_NAME} --namespace ${NAMESPACE} -o yaml
+	@echo "==============================================================================================================="
 	@echo "========================== ${REPO_NAME} deployment logs - Namespace: ${NAMESPACE} ============================="
 	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${REPO_NAME} --namespace ${NAMESPACE}
@@ -91,10 +95,10 @@ print-operator-logs:
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/fca8951b91a23d9c16068691652486d289ab7f9a/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/fca8951b91a23d9c16068691652486d289ab7f9a/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/fca8951b91a23d9c16068691652486d289ab7f9a/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/fca8951b91a23d9c16068691652486d289ab7f9a/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 
 ###########################################################
 #
@@ -230,8 +234,8 @@ deploy-member:
 
 .PHONY: e2e-service-account
 e2e-service-account:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/fca8951b91a23d9c16068691652486d289ab7f9a/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/fca8951b91a23d9c16068691652486d289ab7f9a/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 
 .PHONY: deploy-host
 deploy-host: build-registration
@@ -339,6 +343,8 @@ endif
 		   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
 		   echo "================================ Subscription =================================="; \
 		   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+		   echo "================================ InstallPlans =================================="; \
+		   oc get installplans -n ${NAMESPACE} -o yaml; \
 		   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
 		   exit 1; \
 		fi; \
