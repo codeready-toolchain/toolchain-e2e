@@ -23,14 +23,12 @@ import (
 
 const (
 	// tier names
-	base                      = "base"
-	baseextended              = "baseextended"
-	basedeactivationdisabled  = "basedeactivationdisabled"
-	basic                     = "basic"
-	basicdeactivationdisabled = "basicdeactivationdisabled"
-	advanced                  = "advanced"
-	team                      = "team"
-	test                      = "test"
+	base                     = "base"
+	baseextended             = "baseextended"
+	basedeactivationdisabled = "basedeactivationdisabled"
+	advanced                 = "advanced"
+	team                     = "team"
+	test                     = "test"
 
 	// common CPU limits
 	defaultCPULimit = "1"
@@ -55,13 +53,6 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case basedeactivationdisabled:
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
-
-	case basic:
-		return &basicTierChecks{tierName: basic}, nil
-
-	case basicdeactivationdisabled:
-		// we want the basicdeactivationdisabled tier to have the same resources as the basic tier with the only difference being auto deactivation disabled
-		return &basicdeactivationdisabledTierChecks{basicTierChecks{tierName: basicdeactivationdisabled}}, nil
 
 	case advanced:
 		return &advancedTierChecks{tierName: advanced}, nil
@@ -148,64 +139,6 @@ type basedeactivationdisabledTierChecks struct {
 
 func (a *basedeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-type basicdeactivationdisabledTierChecks struct {
-	basicTierChecks
-}
-
-func (a *basicdeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-type basicTierChecks struct {
-	tierName string
-}
-
-func (a *basicTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
-}
-
-func (a *basicTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
-		rbacEditRoleBinding(),
-		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2))
-
-	checks = append(checks, commonNetworkPolicyChecks()...)
-
-	switch nsType {
-	case "code":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("dev", "stage"), numberOfNetworkPolicies(5))
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("code", "stage"), numberOfNetworkPolicies(5))
-	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("code", "dev"), numberOfNetworkPolicies(4))
-	}
-	return checks
-}
-
-func (a *basicTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "code", "dev", "stage")
-	return templateRefs
-}
-
-func (a *basicTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(a.tierName,
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "25Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
-		idlers("code", "dev", "stage"))
 }
 
 func commonNetworkPolicyChecks() []namespaceObjectsCheck {
