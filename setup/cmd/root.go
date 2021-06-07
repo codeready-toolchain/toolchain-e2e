@@ -14,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
@@ -129,9 +130,9 @@ func setup(cmd *cobra.Command, args []string) {
 
 	if !skipCSVGen {
 		term.Infof("⏳ preparing cluster for setup...")
-		// install an all-namespaces operator that will generate a CSV resource in each namespace
-		if err := operators.EnsureAllNamespacesOperator(cl, hostOperatorNamespace); err != nil {
-			term.Fatalf(err, "failed to ensure the all-namespaces operator is installed")
+		// install operators for member clusters
+		if err := operators.EnsureOperatorsInstalled(cl, scheme); err != nil {
+			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
 	}
 
@@ -161,7 +162,7 @@ func setup(cmd *cobra.Command, args []string) {
 				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current(); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
 					userNS := fmt.Sprintf("%s-stage", userToCheck)
-					if err := resources.WaitForNamespace(cl, userNS); err != nil {
+					if err := wait.WaitForNamespace(cl, userNS); err != nil {
 						term.Fatalf(err, "failed to find namespace '%s'", userNS)
 					}
 				}
@@ -202,7 +203,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			// create resources for every nth user
 			if setupBar.Current() <= activeUsers {
-				if err := resources.CreateFromTemplateFiles(cl, scheme, username, templatePaths); err != nil {
+				if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, templatePaths); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}

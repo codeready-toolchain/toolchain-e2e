@@ -1,4 +1,4 @@
-package resources_test
+package wait_test
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
-	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/test"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -31,7 +31,7 @@ func TestWaitForNamespace(t *testing.T) {
 		cl := test.NewFakeClient(t, ns) // ns exists
 
 		// when
-		err := resources.WaitForNamespace(cl, "user0001-stage")
+		err := wait.WaitForNamespace(cl, "user0001-stage")
 
 		// then
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestWaitForNamespace(t *testing.T) {
 			cl := test.NewFakeClient(t) // ns doesn't exist
 
 			// when
-			err := resources.WaitForNamespace(cl, "user0001-missing")
+			err := wait.WaitForNamespace(cl, "user0001-missing")
 
 			// then
 			require.Error(t, err)
@@ -67,7 +67,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 		cl := test.NewFakeClient(t, csv) // csv exists
 
 		// when
-		res, err := resources.HasCSVWithPrefix(cl, "test-prefix", "test-ns")
+		res, err := wait.HasCSVWithCondition(cl, "test-prefix", "test-ns")
 
 		// then
 		require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 			cl := test.NewFakeClient(t) // csv does not exist
 
 			// when
-			res, err := resources.HasCSVWithPrefix(cl, "test-prefix", "test-ns")
+			res, err := wait.HasCSVWithCondition(cl, "test-prefix", "test-ns")
 
 			// then
 			require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 			}
 
 			// when
-			res, err := resources.HasCSVWithPrefix(cl, "test-prefix", "test-ns")
+			res, err := wait.HasCSVWithCondition(cl, "test-prefix", "test-ns")
 
 			// then
 			require.EqualError(t, err, "Test client error")
@@ -104,7 +104,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 	})
 }
 
-func TestWaitForCSVWithPrefix(t *testing.T) {
+func TestWaitForCSVWithCondition(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		csv := &v1alpha1.ClusterServiceVersion{
@@ -116,7 +116,7 @@ func TestWaitForCSVWithPrefix(t *testing.T) {
 		cl := test.NewFakeClient(t, csv) // csv exists
 
 		// when
-		err := resources.WaitForCSVWithPrefix(cl, "test-prefix", "test-ns")
+		err := wait.WaitForCSVWithCondition(cl, "test-prefix", "test-ns")
 
 		// then
 		require.NoError(t, err)
@@ -129,7 +129,7 @@ func TestWaitForCSVWithPrefix(t *testing.T) {
 			cl := test.NewFakeClient(t) // csv does not exist
 
 			// when
-			err := resources.WaitForCSVWithPrefix(cl, "test-prefix", "test-ns")
+			err := wait.WaitForCSVWithCondition(cl, "test-prefix", "test-ns")
 
 			// then
 			require.EqualError(t, err, `could not find the expected CSV with prefix 'test-prefix' in namespace 'test-ns': timed out waiting for the condition`)
@@ -143,7 +143,7 @@ func TestWaitForCSVWithPrefix(t *testing.T) {
 			}
 
 			// when
-			err := resources.WaitForCSVWithPrefix(cl, "test-prefix", "test-ns")
+			err := wait.WaitForCSVWithCondition(cl, "test-prefix", "test-ns")
 
 			// then
 			require.EqualError(t, err, `could not find the expected CSV with prefix 'test-prefix' in namespace 'test-ns': Test client error`)

@@ -4,7 +4,7 @@ lint: lint-go-code lint-yaml
 
 YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
 .PHONY: lint-yaml
-## runs yamllint on all yaml files
+## runs yamllint on all install_templates files
 lint-yaml: ${YAML_FILES}
 ifeq (, $(shell which yamllint))
 	$(error "yamllint not found in PATH. Please install it using instructions on https://yamllint.readthedocs.io/en/stable/quickstart.html#installing-yamllint")

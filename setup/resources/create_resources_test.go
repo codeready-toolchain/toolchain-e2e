@@ -39,7 +39,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 		templatePath := "user-workloads.yaml"
 
 		// when
-		err := CreateFromTemplateFiles(cl, s, username, []string{templatePath})
+		err := CreateUserResourcesFromTemplateFiles(cl, s, username, []string{templatePath})
 
 		// then
 		require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				templatePath := "not-found.yaml"
 
 				// when
-				err := CreateFromTemplateFiles(cl, s, username, []string{templatePath})
+				err := CreateUserResourcesFromTemplateFiles(cl, s, username, []string{templatePath})
 
 				// then
 				require.Error(t, err)
@@ -95,7 +95,7 @@ func TestCreateFromTemplateFile(t *testing.T) {
 				tmpFile.WriteString(deployment) // nolint: errcheck
 
 				// when
-				err = CreateFromTemplateFiles(cl, s, username, []string{tmpFile.Name()})
+				err = CreateUserResourcesFromTemplateFiles(cl, s, username, []string{tmpFile.Name()})
 
 				// then
 				require.Error(t, err)

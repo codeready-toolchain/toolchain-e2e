@@ -1,0 +1,46 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-rhoas-operator
+objects:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: rhoas-operator
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: rhoas-operator-catalogsource
+    namespace: ${RHOAS_NAMESPACE}
+  spec:
+    displayName: RHOAS Operators
+    image: quay.io/rhoas/service-operator-registry:autolatest
+    sourceType: grpc
+    updateStrategy:
+      registryPoll:
+        interval: 10m0s
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: rhoas-group
+    namespace: ${RHOAS_NAMESPACE}
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: rhoas-operator
+    namespace: ${RHOAS_NAMESPACE}
+  spec:
+    channel: beta
+    installPlanApproval: Automatic
+    name: rhoas-operator
+    source: rhoas-operator-catalogsource
+    sourceNamespace: ${RHOAS_NAMESPACE}
+    startingCSV: rhoas-operator.0.6.7
+    config:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+parameters:
+- name: RHOAS_NAMESPACE
+  value: rhoas-operator
