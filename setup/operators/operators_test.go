@@ -36,7 +36,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			// }
 
 			// when
-			err := EnsureOperatorsInstalled(cl, scheme)
+			err := EnsureOperatorsInstalled(cl, scheme, len(Templates))
 
 			// then
 			require.NoError(t, err)

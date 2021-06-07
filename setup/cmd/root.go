@@ -33,6 +33,7 @@ var (
 	activeUsers             int
 	skipCSVGen              bool
 	skipDefaultTemplate     bool
+	numberOfOperators       int
 )
 
 var (
@@ -71,6 +72,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
+	cmd.Flags().IntVar(&numberOfOperators, "operators", len(operators.Templates), "configures number of sandbox operators to install. (defaults to all - order is not configurable)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -97,6 +99,9 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 	if numberOfUsers%userBatches != 0 {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
+	}
+	if numberOfOperators > len(operators.Templates) {
+		term.Fatalf(fmt.Errorf("the maximum number of sandbox operators that can be installed is '%d'", len(operators.Templates)), "invalid operators value '%d'", numberOfOperators)
 	}
 
 	// add the default user-workloads.yaml file automatically
@@ -128,10 +133,14 @@ func setup(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if err := operators.VerifySandboxOperatorsInstalled(cl); err != nil {
+		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
+	}
+
 	if !skipCSVGen {
 		term.Infof("⏳ preparing cluster for setup...")
 		// install operators for member clusters
-		if err := operators.EnsureOperatorsInstalled(cl, scheme); err != nil {
+		if err := operators.EnsureOperatorsInstalled(cl, scheme, numberOfOperators); err != nil {
 			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
 	}
