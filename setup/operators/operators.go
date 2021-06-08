@@ -47,10 +47,8 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	return fmt.Errorf("the sandbox host and member operators were not found")
 }
 
-func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, numberOfOperators int) error {
-	for i := 0; i < numberOfOperators; i++ {
-		operatorTemplate := Templates[i]
-		templatePath := "setup/operators/installtemplates/" + operatorTemplate
+func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths []string) error {
+	for _, templatePath := range templatePaths {
 
 		tmpl, err := templates.GetTemplateFromFile(s, templatePath)
 		if err != nil {
@@ -81,12 +79,14 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, numberOfOpera
 		}
 
 		// wait for operator installation to succeed
+		var csverr error
+		var currentCSV string
 		err = wait.WaitForSubscriptionWithCondition(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
-			currentCSV := subscription.Status.CurrentCSV
+			currentCSV = subscription.Status.CurrentCSV
 			if currentCSV == "" {
 				return false
 			}
-			csverr := wait.WaitForCSVWithCondition(cl, currentCSV, subscriptionResource.GetNamespace(), func(csv *v1alpha1.ClusterServiceVersion) bool {
+			csverr = wait.WaitForCSVWithCondition(cl, currentCSV, subscriptionResource.GetNamespace(), func(csv *v1alpha1.ClusterServiceVersion) bool {
 				if csv.Status.Phase == "Succeeded" {
 					return true
 				}
@@ -97,6 +97,9 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, numberOfOpera
 			}
 			return true
 		})
+		if csverr != nil {
+			return errors.Wrapf(csverr, "Failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)
+		}
 		if err != nil {
 			return errors.Wrapf(err, "Failed to verify installation of operator with subscription %s", subscriptionResource.GetName())
 		}
@@ -106,39 +109,3 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, numberOfOpera
 
 	return nil
 }
-
-// // EnsureOperator checks if an operator is installed, if it's not then it installs it
-// func EnsureOperator(cl client.Client, operatorNamespace string) error {
-// 	// processTemplate
-
-// 	hasCSV, err := resources.HasCSVWithPrefix(cl, "kiali-operator", operatorNamespace)
-// 	if err != nil && !k8serrors.IsNotFound(err) {
-// 		return err
-// 	}
-
-// 	if hasCSV {
-// 		// CSV is already present, skip the operator install
-// 		return nil
-// 	}
-
-// 	subscription := &v1alpha1.Subscription{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      "kiali-ossm",
-// 			Namespace: "openshift-operators",
-// 		},
-// 		Spec: &v1alpha1.SubscriptionSpec{
-// 			Channel:                "stable",
-// 			InstallPlanApproval:    v1alpha1.ApprovalAutomatic,
-// 			Package:                "kiali-ossm",
-// 			CatalogSource:          "redhat-operators",
-// 			CatalogSourceNamespace: "openshift-marketplace",
-// 		},
-// 	}
-
-// 	if err := cl.Create(context.TODO(), subscription); err != nil {
-// 		return errors.Wrapf(err, "failed to install all-namespaces operator")
-// 	}
-
-// 	// Wait for CSV to be created
-// 	return resources.WaitForCSVWithPrefix(cl, "kiali-operator", operatorNamespace)
-// }

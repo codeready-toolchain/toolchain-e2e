@@ -68,7 +68,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create user accounts in batches of N, increasing batch size may cause performance problems")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
-	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply")
+	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply for each active user namespace")
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
@@ -140,7 +140,11 @@ func setup(cmd *cobra.Command, args []string) {
 	if !skipCSVGen {
 		term.Infof("⏳ preparing cluster for setup...")
 		// install operators for member clusters
-		if err := operators.EnsureOperatorsInstalled(cl, scheme, numberOfOperators); err != nil {
+		templatePaths := []string{}
+		for i := 0; i < numberOfOperators; i++ {
+			templatePaths = append(templatePaths, "setup/operators/installtemplates/"+operators.Templates[i])
+		}
+		if err := operators.EnsureOperatorsInstalled(cl, scheme, templatePaths); err != nil {
 			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
 	}

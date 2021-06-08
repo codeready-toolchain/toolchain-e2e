@@ -1,0 +1,17 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-service-binding-operator
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: service-binding-operator
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: service-binding-operator-group
+      namespace: ${SBO_NAMESPACE}
+parameters:
+  - name: SBO_NAMESPACE
+    value: service-binding-operator

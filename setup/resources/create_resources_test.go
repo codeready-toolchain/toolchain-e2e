@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestCreateFromTemplateFile(t *testing.T) {
+func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 	// given
 	s, err := configuration.NewScheme()
 	require.NoError(t, err)

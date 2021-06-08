@@ -1,124 +1,188 @@
 package operators
 
 import (
+	"context"
+	"fmt"
 	"testing"
+	"time"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/test"
+	"github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestEnsureOperatorsInstalled(t *testing.T) {
 	scheme, err := configuration.NewScheme()
 	require.NoError(t, err)
+
 	t.Run("success", func(t *testing.T) {
 		t.Run("operator not installed", func(t *testing.T) {
 			// given
-			cl := test.NewFakeClient(t) // csv does not exist
-			// var checked bool
-			// the first list is empty which indicates the operator is not installed, thereby triggering the installation
-			// the second list returns a CSV which indicates the operator is installed
-			// cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
-			// 	if checked {
-			// 		csvList := list.(*v1alpha1.ClusterServiceVersionList)
-			// 		csvList.Items = append(csvList.Items, v1alpha1.ClusterServiceVersion{
-			// 			ObjectMeta: metav1.ObjectMeta{
-			// 				Name:      "kiali-operator",
-			// 				Namespace: "test-ns",
-			// 			},
-			// 		})
-			// 		return nil
-			// 	}
+			cl := test.NewFakeClient(t) // subscription does not exist
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+				if sub, ok := obj.(*v1alpha1.Subscription); ok {
+					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV which indicates the CSV to get
+					return nil
+				}
 
-			// 	checked = true
-			// 	return nil
-			// }
+				if csv, ok := obj.(*v1alpha1.ClusterServiceVersion); ok {
+					kialiCSV := kialiCSV(v1alpha1.CSVPhaseSucceeded)
+					kialiCSV.DeepCopyInto(csv)
+					return nil
+				}
+				return cl.Client.Get(ctx, key, obj)
+			}
 
 			// when
-			err := EnsureOperatorsInstalled(cl, scheme, len(Templates))
+			err = EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
 			require.NoError(t, err)
 		})
-		// t.Run("operator already installed", func(t *testing.T) {
-		// 	// given
-		// 	csv := &v1alpha1.ClusterServiceVersion{
-		// 		ObjectMeta: metav1.ObjectMeta{
-		// 			Name:      "kiali-operator-v1",
-		// 			Namespace: "test-ns",
-		// 		},
-		// 	}
-		// 	cl := test.NewFakeClient(t, csv) // csv exists
-
-		// 	// when
-		// 	err := EnsureOperatorsInstalled(cl, "test-ns")
-
-		// 	// then
-		// 	require.NoError(t, err)
-		// })
 	})
 
-	// t.Run("failures", func(t *testing.T) {
-	// 	t.Run("error when checking if operator is installed", func(t *testing.T) {
-	// 		// given
-	// 		cl := test.NewFakeClient(t)
-	// 		cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
-	// 			// the list fails
-	// 			return fmt.Errorf("Test client error")
-	// 		}
+	t.Run("failures", func(t *testing.T) {
+		configuration.DefaultTimeout = 1 * time.Second
+		configuration.DefaultRetryInterval = 1 * time.Second
 
-	// 		// when
-	// 		err := EnsureOperatorsInstalled(cl, "test-ns")
+		t.Run("error when creating subscription", func(t *testing.T) {
+			// given
+			cl := test.NewFakeClient(t)
+			cl.MockCreate = func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+				if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
+					return fmt.Errorf("Test client error")
+				}
+				return cl.Client.Create(ctx, obj, opts...)
+			}
 
-	// 		// then
-	// 		require.EqualError(t, err, "Test client error")
-	// 	})
+			// when
+			err := EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
 
-	// 	t.Run("error when creating subscription", func(t *testing.T) {
-	// 		// given
-	// 		cl := test.NewFakeClient(t)
-	// 		cl.MockCreate = func(ctx context.Context, list runtime.Object, opts ...client.CreateOption) error {
-	// 			return fmt.Errorf("Test client error")
-	// 		}
+			// then
+			require.EqualError(t, err, "could not apply resource 'kiali-ossm' in namespace 'openshift-operators': unable to create resource of kind: Subscription, version: v1alpha1: Test client error")
+		})
+		t.Run("error when getting subscription", func(t *testing.T) {
+			// given
+			cl := test.NewFakeClient(t)
+			count := 0
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+				if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
+					if count > 1 {
+						return fmt.Errorf("Test client error")
+					}
+					count++
+				}
+				return cl.Client.Get(ctx, key, obj)
+			}
 
-	// 		// when
-	// 		err := EnsureOperatorsInstalled(cl, "test-ns")
+			// when
+			err := EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
 
-	// 		// then
-	// 		require.EqualError(t, err, "failed to install all-namespaces operator: Test client error")
-	// 	})
+			// then
+			require.EqualError(t, err, "Failed to verify installation of operator with subscription kiali-ossm: could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected conditions: timed out waiting for the condition")
+		})
 
-	// 	t.Run("error when waiting for CSV to be created", func(t *testing.T) {
-	// 		// given
-	// 		cl := test.NewFakeClient(t)
-	// 		// first time there's no CSV which will trigger operator install, second time the list to confirm operator installed returns error
-	// 		var checked bool
-	// 		cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
-	// 			if checked {
-	// 				return fmt.Errorf("Test client error")
-	// 			}
-	// 			checked = true
-	// 			return nil
-	// 		}
+		t.Run("error when getting csv", func(t *testing.T) {
+			// given
+			cl := test.NewFakeClient(t)
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+				if sub, ok := obj.(*v1alpha1.Subscription); ok {
+					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV which indicates the CSV to get
+					return nil
+				}
 
-	// 		// when
-	// 		err := EnsureOperatorsInstalled(cl, "test-ns")
+				if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterServiceVersion" {
+					return fmt.Errorf("Test client error")
+				}
+				return cl.Client.Get(ctx, key, obj)
+			}
 
-	// 		// then
-	// 		require.EqualError(t, err, `could not find the expected CSV with prefix 'kiali-operator' in namespace 'test-ns': Test client error`)
-	// 	})
+			// when
+			err := EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
 
-	// 	t.Run("timed out waiting for CSV to be created", func(t *testing.T) {
-	// 		// given
-	// 		configuration.DefaultTimeout = time.Second * 1
-	// 		cl := test.NewFakeClient(t) // csv does not exist
+			// then
+			require.EqualError(t, err, "Failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected conditions: timed out waiting for the condition")
+		})
 
-	// 		// when
-	// 		err := EnsureOperatorsInstalled(cl, "test-ns")
+		t.Run("no subscription in template", func(t *testing.T) {
+			// given
+			cl := test.NewFakeClient(t)
 
-	// 		// then
-	// 		require.EqualError(t, err, `could not find the expected CSV with prefix 'kiali-operator' in namespace 'test-ns': timed out waiting for the condition`)
-	// 	})
-	// })
+			// when
+			err := EnsureOperatorsInstalled(cl, scheme, []string{"../test/installtemplates/badoperator.yaml"})
+
+			// then
+			require.EqualError(t, err, "A subscription was not found in template file '../test/installtemplates/badoperator.yaml'")
+		})
+	})
+}
+
+// 	t.Run("error when waiting for CSV to be created", func(t *testing.T) {
+// 		// given
+// 		cl := test.NewFakeClient(t)
+// 		// first time there's no CSV which will trigger operator install, second time the list to confirm operator installed returns error
+// 		var checked bool
+// 		cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+// 			if checked {
+// 				return fmt.Errorf("Test client error")
+// 			}
+// 			checked = true
+// 			return nil
+// 		}
+
+// 		// when
+// 		err := EnsureOperatorsInstalled(cl, "test-ns")
+
+// 		// then
+// 		require.EqualError(t, err, `could not find the expected CSV with prefix 'kiali-operator' in namespace 'test-ns': Test client error`)
+// 	})
+
+// 	t.Run("timed out waiting for CSV to be created", func(t *testing.T) {
+// 		// given
+// 		configuration.DefaultTimeout = time.Second * 1
+// 		cl := test.NewFakeClient(t) // csv does not exist
+
+// 		// when
+// 		err := EnsureOperatorsInstalled(cl, "test-ns")
+
+// 		// then
+// 		require.EqualError(t, err, `could not find the expected CSV with prefix 'kiali-operator' in namespace 'test-ns': timed out waiting for the condition`)
+// 	})
+// })
+// }
+
+func kialiSubscription() *v1alpha1.Subscription {
+	return &v1alpha1.Subscription{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kiali-ossm",
+			Namespace: "openshift-operators",
+		},
+		Spec: &v1alpha1.SubscriptionSpec{
+			Channel:                "stable",
+			InstallPlanApproval:    v1alpha1.ApprovalAutomatic,
+			Package:                "kiali-ossm",
+			CatalogSource:          "redhat-operators",
+			CatalogSourceNamespace: "openshift-marketplace",
+		},
+	}
+}
+
+func kialiCSV(phase v1alpha1.ClusterServiceVersionPhase) *v1alpha1.ClusterServiceVersion {
+	return &v1alpha1.ClusterServiceVersion{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kiali-operator.v1.24.7",
+			Namespace: "openshift-operators",
+		},
+		Spec: v1alpha1.ClusterServiceVersionSpec{},
+		Status: v1alpha1.ClusterServiceVersionStatus{
+			Phase: phase,
+		},
+	}
 }

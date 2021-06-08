@@ -2,8 +2,6 @@ package wait
 
 import (
 	"context"
-	"time"
-
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -69,7 +67,7 @@ func HasCSVWithCondition(cl client.Client, name, namespace string, conditions ..
 }
 
 func WaitForCSVWithCondition(cl client.Client, name, namespace string, conditions ...csvCheck) error {
-	if err := k8swait.Poll(configuration.DefaultRetryInterval, 20*time.Second, func() (bool, error) {
+	if err := k8swait.Poll(configuration.DefaultRetryInterval,  configuration.DefaultTimeout, func() (bool, error) {
 		return HasCSVWithCondition(cl, name, namespace, conditions...)
 	}); err != nil {
 		return errors.Wrapf(err, "could not find a CSV with name '%s' in namespace '%s' that meets the expected conditions", name, namespace)
