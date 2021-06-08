@@ -111,6 +111,30 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			require.EqualError(t, err, "Failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected conditions: timed out waiting for the condition")
 		})
 
+		t.Run("csv has wrong phase", func(t *testing.T) {
+			// given
+			cl := test.NewFakeClient(t) // subscription does not exist
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+				if sub, ok := obj.(*v1alpha1.Subscription); ok {
+					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV which indicates the CSV to get
+					return nil
+				}
+
+				if csv, ok := obj.(*v1alpha1.ClusterServiceVersion); ok {
+					kialiCSV := kialiCSV(v1alpha1.CSVPhaseFailed)
+					kialiCSV.DeepCopyInto(csv)
+					return nil
+				}
+				return cl.Client.Get(ctx, key, obj)
+			}
+
+			// when
+			err = EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
+
+			// then
+			require.EqualError(t, err, "Failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected conditions: timed out waiting for the condition")
+		})
+
 		t.Run("no subscription in template", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
@@ -123,40 +147,6 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 		})
 	})
 }
-
-// 	t.Run("error when waiting for CSV to be created", func(t *testing.T) {
-// 		// given
-// 		cl := test.NewFakeClient(t)
-// 		// first time there's no CSV which will trigger operator install, second time the list to confirm operator installed returns error
-// 		var checked bool
-// 		cl.MockList = func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
-// 			if checked {
-// 				return fmt.Errorf("Test client error")
-// 			}
-// 			checked = true
-// 			return nil
-// 		}
-
-// 		// when
-// 		err := EnsureOperatorsInstalled(cl, "test-ns")
-
-// 		// then
-// 		require.EqualError(t, err, `could not find the expected CSV with prefix 'kiali-operator' in namespace 'test-ns': Test client error`)
-// 	})
-
-// 	t.Run("timed out waiting for CSV to be created", func(t *testing.T) {
-// 		// given
-// 		configuration.DefaultTimeout = time.Second * 1
-// 		cl := test.NewFakeClient(t) // csv does not exist
-
-// 		// when
-// 		err := EnsureOperatorsInstalled(cl, "test-ns")
-
-// 		// then
-// 		require.EqualError(t, err, `could not find the expected CSV with prefix 'kiali-operator' in namespace 'test-ns': timed out waiting for the condition`)
-// 	})
-// })
-// }
 
 func kialiSubscription() *v1alpha1.Subscription {
 	return &v1alpha1.Subscription{
