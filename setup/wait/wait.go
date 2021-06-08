@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"time"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 
@@ -75,8 +76,8 @@ func HasCSVWithCriteria(cl client.Client, name, namespace string, criteria ...cs
 	return true, nil
 }
 
-func WaitForCSVWithCriteria(cl client.Client, name, namespace string, criteria ...csvCriteria) error {
-	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
+func WaitForCSVWithCriteria(cl client.Client, name, namespace string, timeout time.Duration, criteria ...csvCriteria) error {
+	if err := k8swait.Poll(configuration.DefaultRetryInterval, timeout, func() (bool, error) {
 		return HasCSVWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
 		return errors.Wrapf(err, "could not find a CSV with name '%s' in namespace '%s' that meets the expected criteria", name, namespace)

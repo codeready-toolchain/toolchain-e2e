@@ -297,7 +297,6 @@ func TestHasCSVWithPrefix(t *testing.T) {
 }
 
 func TestWaitForCSVWithCriteria(t *testing.T) {
-	configuration.DefaultTimeout = time.Millisecond * 1
 	t.Run("success", func(t *testing.T) {
 		// given
 		csv := &v1alpha1.ClusterServiceVersion{
@@ -309,7 +308,7 @@ func TestWaitForCSVWithCriteria(t *testing.T) {
 		cl := test.NewFakeClient(t, csv) // csv exists
 
 		// when
-		err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns")
+		err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 		// then
 		require.NoError(t, err)
@@ -321,7 +320,7 @@ func TestWaitForCSVWithCriteria(t *testing.T) {
 			cl := test.NewFakeClient(t) // csv does not exist
 
 			// when
-			err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns")
+			err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 			// then
 			require.EqualError(t, err, `could not find a CSV with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: timed out waiting for the condition`)
@@ -335,7 +334,7 @@ func TestWaitForCSVWithCriteria(t *testing.T) {
 			}
 
 			// when
-			err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns")
+			err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 			// then
 			require.EqualError(t, err, `could not find a CSV with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: Test client error`)

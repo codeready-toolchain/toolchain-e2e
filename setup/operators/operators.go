@@ -3,6 +3,7 @@ package operators
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
@@ -86,7 +87,8 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			if currentCSV == "" {
 				return false
 			}
-			csverr = wait.WaitForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), func(csv *v1alpha1.ClusterServiceVersion) bool {
+			// waiting for csv should fail quickly so that the currentCSV can be reloaded in case it was changed
+			csverr = wait.WaitForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), 20*time.Second, func(csv *v1alpha1.ClusterServiceVersion) bool {
 				if csv.Status.Phase == "Succeeded" {
 					return true
 				}
