@@ -149,22 +149,6 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 	})
 }
 
-func kialiSubscription() *v1alpha1.Subscription {
-	return &v1alpha1.Subscription{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kiali-ossm",
-			Namespace: "openshift-operators",
-		},
-		Spec: &v1alpha1.SubscriptionSpec{
-			Channel:                "stable",
-			InstallPlanApproval:    v1alpha1.ApprovalAutomatic,
-			Package:                "kiali-ossm",
-			CatalogSource:          "redhat-operators",
-			CatalogSourceNamespace: "openshift-marketplace",
-		},
-	}
-}
-
 func kialiCSV(phase v1alpha1.ClusterServiceVersionPhase) *v1alpha1.ClusterServiceVersion {
 	return &v1alpha1.ClusterServiceVersion{
 		ObjectMeta: metav1.ObjectMeta{

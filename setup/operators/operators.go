@@ -84,22 +84,16 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		// wait for operator installation to succeed
 		var csverr error
 		var currentCSV string
-		err = wait.WaitForSubscriptionWithCriteria(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
+		err = wait.ForSubscriptionWithCriteria(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
 			currentCSV = subscription.Status.CurrentCSV
 			if currentCSV == "" {
 				return false
 			}
 			// waiting for csv should fail quickly so that the currentCSV can be reloaded in case it was changed
-			csverr = wait.WaitForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), csvTimeout, func(csv *v1alpha1.ClusterServiceVersion) bool {
-				if csv.Status.Phase == "Succeeded" {
-					return true
-				}
-				return false
+			csverr = wait.ForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), csvTimeout, func(csv *v1alpha1.ClusterServiceVersion) bool {
+				return csv.Status.Phase == "Succeeded"
 			})
-			if csverr != nil {
-				return false
-			}
-			return true
+			return csverr == nil
 		})
 		if csverr != nil {
 			return errors.Wrapf(csverr, "Failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)

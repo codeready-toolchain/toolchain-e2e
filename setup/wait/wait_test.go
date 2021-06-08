@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestWaitForNamespace(t *testing.T) {
+func TestForNamespace(t *testing.T) {
 	configuration.DefaultTimeout = time.Millisecond * 1
 	t.Run("success", func(t *testing.T) {
 		// given
@@ -31,7 +31,7 @@ func TestWaitForNamespace(t *testing.T) {
 		cl := test.NewFakeClient(t, ns) // ns exists
 
 		// when
-		err := wait.WaitForNamespace(cl, "user0001-stage")
+		err := wait.ForNamespace(cl, "user0001-stage")
 
 		// then
 		require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestWaitForNamespace(t *testing.T) {
 			cl := test.NewFakeClient(t) // ns doesn't exist
 
 			// when
-			err := wait.WaitForNamespace(cl, "user0001-missing")
+			err := wait.ForNamespace(cl, "user0001-missing")
 
 			// then
 			require.Error(t, err)
@@ -152,7 +152,7 @@ func TestHasSubscriptionWithCondition(t *testing.T) {
 	})
 }
 
-func TestWaitForSubscriptionWithCriteria(t *testing.T) {
+func TestForSubscriptionWithCriteria(t *testing.T) {
 	configuration.DefaultTimeout = time.Millisecond * 1
 	t.Run("success", func(t *testing.T) {
 		// given
@@ -165,7 +165,7 @@ func TestWaitForSubscriptionWithCriteria(t *testing.T) {
 		cl := test.NewFakeClient(t, sub) // subscription exists
 
 		// when
-		err := wait.WaitForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
+		err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
 
 		// then
 		require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestWaitForSubscriptionWithCriteria(t *testing.T) {
 			cl := test.NewFakeClient(t) // subscription does not exist
 
 			// when
-			err := wait.WaitForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
+			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
 
 			// then
 			require.EqualError(t, err, `could not find a Subscription with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: timed out waiting for the condition`)
@@ -191,7 +191,7 @@ func TestWaitForSubscriptionWithCriteria(t *testing.T) {
 			}
 
 			// when
-			err := wait.WaitForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
+			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
 
 			// then
 			require.EqualError(t, err, `could not find a Subscription with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: Test client error`)
@@ -296,7 +296,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 	})
 }
 
-func TestWaitForCSVWithCriteria(t *testing.T) {
+func TestForCSVWithCriteria(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		csv := &v1alpha1.ClusterServiceVersion{
@@ -308,7 +308,7 @@ func TestWaitForCSVWithCriteria(t *testing.T) {
 		cl := test.NewFakeClient(t, csv) // csv exists
 
 		// when
-		err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
+		err := wait.ForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 		// then
 		require.NoError(t, err)
@@ -320,7 +320,7 @@ func TestWaitForCSVWithCriteria(t *testing.T) {
 			cl := test.NewFakeClient(t) // csv does not exist
 
 			// when
-			err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
+			err := wait.ForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 			// then
 			require.EqualError(t, err, `could not find a CSV with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: timed out waiting for the condition`)
@@ -334,7 +334,7 @@ func TestWaitForCSVWithCriteria(t *testing.T) {
 			}
 
 			// when
-			err := wait.WaitForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
+			err := wait.ForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 			// then
 			require.EqualError(t, err, `could not find a CSV with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: Test client error`)

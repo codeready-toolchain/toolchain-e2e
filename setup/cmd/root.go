@@ -175,7 +175,7 @@ func setup(cmd *cobra.Command, args []string) {
 				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current(); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
 					userNS := fmt.Sprintf("%s-stage", userToCheck)
-					if err := wait.WaitForNamespace(cl, userNS); err != nil {
+					if err := wait.ForNamespace(cl, userNS); err != nil {
 						term.Fatalf(err, "failed to find namespace '%s'", userNS)
 					}
 				}

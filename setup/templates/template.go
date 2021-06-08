@@ -36,7 +36,7 @@ func GetTemplateFromFile(s *runtime.Scheme, filepath string) (*templatev1.Templa
 }
 
 // ApplyObjects applies the given objects in order
-func ApplyObjects(cl client.Client, s *runtime.Scheme, objsToApply []applyclientlib.ToolchainObject, modifiers ...commonObjectModifier) error {
+func ApplyObjects(cl client.Client, s *runtime.Scheme, objsToApply []applyclientlib.ToolchainObject, modifiers ...TooolchainObjectModifier) error {
 	applycl := applyclientlib.NewApplyClient(cl, s)
 	for _, obj := range objsToApply {
 		fmt.Printf("Applying %s object with name '%s' in namespace '%s'\n", obj.GetGvk().Kind, obj.GetName(), obj.GetNamespace())
@@ -48,7 +48,7 @@ func ApplyObjects(cl client.Client, s *runtime.Scheme, objsToApply []applyclient
 }
 
 // ApplyObjectsConcurrently applies multiple objects concurrently
-func ApplyObjectsConcurrently(cl client.Client, s *runtime.Scheme, combinedObjsToProcess []applyclientlib.ToolchainObject, modifiers ...commonObjectModifier) error {
+func ApplyObjectsConcurrently(cl client.Client, s *runtime.Scheme, combinedObjsToProcess []applyclientlib.ToolchainObject, modifiers ...TooolchainObjectModifier) error {
 	var objProcessors []<-chan error
 	objChannel := distribute(combinedObjsToProcess)
 	for i := 0; i < len(combinedObjsToProcess); i++ {
@@ -102,7 +102,7 @@ func combineResults(results ...<-chan error) <-chan error {
 	return out
 }
 
-func startObjectProcessor(cl client.Client, s *runtime.Scheme, objSource <-chan applyclientlib.ToolchainObject, modifiers ...commonObjectModifier) <-chan error {
+func startObjectProcessor(cl client.Client, s *runtime.Scheme, objSource <-chan applyclientlib.ToolchainObject, modifiers ...TooolchainObjectModifier) <-chan error {
 	out := make(chan error)
 	go func() {
 		applycl := applyclientlib.NewApplyClient(cl, s)
@@ -115,9 +115,9 @@ func startObjectProcessor(cl client.Client, s *runtime.Scheme, objSource <-chan 
 	return out
 }
 
-type commonObjectModifier func(obj applyclientlib.ToolchainObject) error
+type TooolchainObjectModifier func(obj applyclientlib.ToolchainObject) error
 
-func NamespaceModifier(userNS string) commonObjectModifier {
+func NamespaceModifier(userNS string) TooolchainObjectModifier {
 	return func(obj applyclientlib.ToolchainObject) error {
 		// enforce the creation of the objects in the `userNS` namespace
 		m, err := meta.Accessor(obj.GetRuntimeObject())
@@ -129,7 +129,7 @@ func NamespaceModifier(userNS string) commonObjectModifier {
 	}
 }
 
-func applyObject(applycl *applyclientlib.ApplyClient, obj applyclientlib.ToolchainObject, modifiers ...commonObjectModifier) error {
+func applyObject(applycl *applyclientlib.ApplyClient, obj applyclientlib.ToolchainObject, modifiers ...TooolchainObjectModifier) error {
 
 	// apply any modifiers before applying the object
 	for _, modifier := range modifiers {

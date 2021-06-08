@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func WaitForNamespace(cl client.Client, namespace string) error {
+func ForNamespace(cl client.Client, namespace string) error {
 	ns := &corev1.Namespace{}
 	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
 		err := cl.Get(context.TODO(), types.NamespacedName{
@@ -50,7 +50,7 @@ func HasSubscriptionWithCriteria(cl client.Client, name, namespace string, crite
 	return true, nil
 }
 
-func WaitForSubscriptionWithCriteria(cl client.Client, name, namespace string, criteria ...subCriteria) error {
+func ForSubscriptionWithCriteria(cl client.Client, name, namespace string, criteria ...subCriteria) error {
 	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
 		return HasSubscriptionWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
@@ -76,7 +76,7 @@ func HasCSVWithCriteria(cl client.Client, name, namespace string, criteria ...cs
 	return true, nil
 }
 
-func WaitForCSVWithCriteria(cl client.Client, name, namespace string, timeout time.Duration, criteria ...csvCriteria) error {
+func ForCSVWithCriteria(cl client.Client, name, namespace string, timeout time.Duration, criteria ...csvCriteria) error {
 	if err := k8swait.Poll(configuration.DefaultRetryInterval, timeout, func() (bool, error) {
 		return HasCSVWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {

@@ -30,7 +30,7 @@ func CreateUserResourcesFromTemplateFiles(cl client.Client, s *runtime.Scheme, u
 		tmpl := tmpls[templatePath]
 
 		// waiting for each namespace here prevents some edge cases where the setup job can progress beyond the usersignup job and fail with a timeout
-		if err := wait.WaitForNamespace(cl, userNS); err != nil {
+		if err := wait.ForNamespace(cl, userNS); err != nil {
 			return err
 		}
 		processor := ctemplate.NewProcessor(s)
