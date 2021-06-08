@@ -104,7 +104,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			return errors.Wrapf(err, "Failed to verify installation of operator with subscription '%s'", subscriptionResource.GetName())
 		}
 
-		fmt.Printf("Verified installation of operator with subscription '%s' has succeeded\n", subscriptionResource.GetName())
+		fmt.Printf("Verified installation of operator with subscription '%s'\n", subscriptionResource.GetName())
 	}
 
 	return nil
