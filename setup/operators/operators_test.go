@@ -25,10 +25,10 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Run("operator not installed", func(t *testing.T) {
 			// given
-			cl := test.NewFakeClient(t) // subscription does not exist
+			cl := test.NewFakeClient(t)
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
-					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV which indicates the CSV to get
+					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
 					return nil
 				}
 
@@ -49,8 +49,8 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 	})
 
 	t.Run("failures", func(t *testing.T) {
-		configuration.DefaultTimeout = 1 * time.Second
-		configuration.DefaultRetryInterval = 1 * time.Second
+		configuration.DefaultTimeout = 1 * time.Millisecond
+		configuration.DefaultRetryInterval = 1 * time.Millisecond
 
 		t.Run("error when creating subscription", func(t *testing.T) {
 			// given
@@ -74,7 +74,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			count := 0
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
 				if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
-					if count > 1 {
+					if count > 1 { // ignore the first call because it's called from the applyclient
 						return fmt.Errorf("Test client error")
 					}
 					count++
@@ -94,7 +94,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			cl := test.NewFakeClient(t)
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
-					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV which indicates the CSV to get
+					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
 					return nil
 				}
 
@@ -113,10 +113,10 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 
 		t.Run("csv has wrong phase", func(t *testing.T) {
 			// given
-			cl := test.NewFakeClient(t) // subscription does not exist
+			cl := test.NewFakeClient(t)
 			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
-					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV which indicates the CSV to get
+					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
 					return nil
 				}
 
