@@ -81,12 +81,12 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		// wait for operator installation to succeed
 		var csverr error
 		var currentCSV string
-		err = wait.WaitForSubscriptionWithCondition(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
+		err = wait.WaitForSubscriptionWithCriteria(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
 			currentCSV = subscription.Status.CurrentCSV
 			if currentCSV == "" {
 				return false
 			}
-			csverr = wait.WaitForCSVWithCondition(cl, currentCSV, subscriptionResource.GetNamespace(), func(csv *v1alpha1.ClusterServiceVersion) bool {
+			csverr = wait.WaitForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), func(csv *v1alpha1.ClusterServiceVersion) bool {
 				if csv.Status.Phase == "Succeeded" {
 					return true
 				}
