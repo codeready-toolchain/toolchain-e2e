@@ -19,6 +19,7 @@ import (
 )
 
 func TestEnsureOperatorsInstalled(t *testing.T) {
+	csvTimeout = time.Millisecond
 	scheme, err := configuration.NewScheme()
 	require.NoError(t, err)
 

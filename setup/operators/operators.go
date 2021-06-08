@@ -22,10 +22,12 @@ const (
 )
 
 var Templates = []string{
-	"kiali.yaml",
 	"sbo.yaml",
 	"rhoas.yaml",
+	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
+
+var csvTimeout = 20 * time.Second
 
 func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	subs := &v1alpha1.SubscriptionList{}
@@ -88,7 +90,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 				return false
 			}
 			// waiting for csv should fail quickly so that the currentCSV can be reloaded in case it was changed
-			csverr = wait.WaitForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), 20*time.Second, func(csv *v1alpha1.ClusterServiceVersion) bool {
+			csverr = wait.WaitForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), csvTimeout, func(csv *v1alpha1.ClusterServiceVersion) bool {
 				if csv.Status.Phase == "Succeeded" {
 					return true
 				}
