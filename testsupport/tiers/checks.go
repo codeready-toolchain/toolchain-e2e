@@ -95,9 +95,9 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
 	}
 	return checks
 }
@@ -146,6 +146,7 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 		networkPolicySameNamespace(),
 		networkPolicyAllowFromMonitoring(),
 		networkPolicyAllowFromIngress(),
+		networkPolicyAllowFromOlmNamespaces(),
 	}
 }
 
@@ -169,9 +170,9 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
 	}
 	return checks
 }
@@ -241,9 +242,9 @@ func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 
 	switch nsType {
 	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
+		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
 	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
+		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
 	}
 	return checks
 }
@@ -431,18 +432,26 @@ func networkPolicyAllowFromOtherNamespace(otherNamespaceKinds ...string) namespa
 }
 
 func networkPolicyAllowFromIngress() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-openshift-ingress", "ingress")
+	return networkPolicyIngressFromPolicyGroup("allow-from-openshift-ingress", "ingress")
 }
 
 func networkPolicyAllowFromMonitoring() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-openshift-monitoring", "monitoring")
+	return networkPolicyIngressFromPolicyGroup("allow-from-openshift-monitoring", "monitoring")
+}
+
+func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
+	return networkPolicyIngress("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-codeready-workspaces-operator", "codeready-workspaces")
+	return networkPolicyIngressFromPolicyGroup("allow-from-codeready-workspaces-operator", "codeready-workspaces")
 }
 
-func networkPolicyIngress(name, group string) namespaceObjectsCheck {
+func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
+	return networkPolicyIngress(name, "network.openshift.io/policy-group", group)
+}
+
+func networkPolicyIngress(name, labelName, labelValue string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, name)
 		require.NoError(t, err)
@@ -453,7 +462,7 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 					{
 						From: []netv1.NetworkPolicyPeer{
 							{
-								NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"network.openshift.io/policy-group": group}},
+								NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelName: labelValue}},
 							},
 						},
 					},
