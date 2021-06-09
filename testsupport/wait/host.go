@@ -707,21 +707,19 @@ func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCrite
 
 // UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has the given count of MasterUserRecords
-func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
+func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
 	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
-		if toolchainStatus.Status.HostOperator != nil {
-			if toolchainStatus.Status.HostOperator.MasterUserRecordCount == murCount {
-				a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
-				return true
-			}
-			murList := &toolchainv1alpha1.MasterUserRecordList{}
-			err := a.Client.List(context.TODO(), murList, client.InNamespace(toolchainStatus.Namespace))
-			require.NoError(a.T, err)
-			a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'. The actual number of MURs is: '%d'",
-				toolchainStatus.Name, toolchainStatus.Status.HostOperator.MasterUserRecordCount, murCount, len(murList.Items))
-		} else {
-			a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
+		murs, ok := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
+		if !ok {
+			a.T.Logf("MasterUserRecordPerDomain metric not found in ToolchainStatus '%s'.", toolchainStatus.Name)
+			return false
 		}
+		if murs[domain] == expectedCount {
+			a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
+			return true
+		}
+		a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'",
+			toolchainStatus.Name, murs[domain], expectedCount)
 		return false
 	}
 }
