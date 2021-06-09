@@ -26,52 +26,8 @@ type baseUserIntegrationTest struct {
 	member2Await *wait.MemberAwaitility
 }
 
-// createAndCheckUserSignup creates a new UserSignup resoruce with the given values:
-// specApproved defines if the UserSignup should be manually approved
-// username defines the required username set in the spec
-// email is set in "user-email" annotation
-// targetCluster ensures the UserSignup is created with Spec.TargetCluster set to member cluster associated with the provided member awaitility, a 'nil' value will skip setting Spec.TargetCluster
-//
-// The method then waits until the UserSignup contains the given set of conditions and the corresponding MUR is created
-func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
-	conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-
-	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, targetCluster, conditions...)
-
-	// Confirm the MUR was created and ready
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
-	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.NoError(s.T(), err)
-
-	return userSignup, mur
-}
-
-// createAndCheckUserSignupNoMUR creates a new UserSignup resoruce with the given values:
-// specApproved defines if the UserSignup should be manually approved
-// username defines the required username set in the spec
-// email is set in "user-email" annotation
-// targetCluster ensures the UserSignup is created with Spec.TargetCluster set to member cluster associated with the provided member awaitility, a 'nil' value will skip setting Spec.TargetCluster
-//
-// The method then waits until the UserSignup contains the given set of conditions
-func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
-	conditions ...toolchainv1alpha1.Condition) *toolchainv1alpha1.UserSignup {
-
-	WaitUntilBaseNSTemplateTierIsUpdated(s.T(), s.hostAwait)
-	// Create a new UserSignup with the given approved flag
-	userSignup := NewUserSignup(s.T(), s.hostAwait, username, email)
-	states.SetApproved(userSignup, specApproved)
-	if targetCluster != nil {
-		userSignup.Spec.TargetCluster = targetCluster.ClusterName
-	}
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	// Check the UserSignup is approved now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(conditions...))
-	require.NoError(s.T(), err)
-
-	return userSignup
+func (s *baseUserIntegrationTest) newUserRequest() UserRequest {
+	return NewUserRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {

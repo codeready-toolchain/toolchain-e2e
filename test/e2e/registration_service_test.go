@@ -591,7 +591,7 @@ func (s *registrationServiceTestSuite) assertGetSignupReturnsNotFound(bearerToke
 	invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", bearerToken, "", http.StatusNotFound)
 }
 
-func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) map[string]interface{} {
+func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus uint) map[string]interface{} {
 	var reqBody io.Reader
 	if requestBody != "" {
 		reqBody = strings.NewReader(requestBody)

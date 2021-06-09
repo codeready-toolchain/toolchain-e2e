@@ -39,7 +39,13 @@ func (s *userWorkloadsTestSuite) TearDownTest() {
 func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Provision a user to idle with a short idling timeout
 	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
-	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+	s.newUserRequest().
+		Username("test-idler").
+		Email("test-idler@redhat.com").
+		ManuallyApprove().
+		Conditions(ApprovedByAdmin()...).
+		Execute()
+
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
 

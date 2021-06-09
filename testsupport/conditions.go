@@ -248,6 +248,30 @@ func RoutesAvailable() toolchainv1alpha1.Condition {
 	}
 }
 
+func ApprovedAutomaticallyDeactivating() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupApprovedAutomaticallyReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
+	}
+}
+
 func Deactivating() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
@@ -313,6 +337,31 @@ func ManuallyDeactivated() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status: corev1.ConditionFalse,
 			Reason: "UserNotInPreDeactivation",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+	}
+}
+
+func AutomaticallyApprovedAndDeactivated() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupApprovedAutomaticallyReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
