@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20210531040930-26d5b5ce93dc
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20210528140854-e36fca9e7edf
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20210609162048-95db50436c4a
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
@@ -47,8 +47,6 @@ require (
 
 replace (
 	github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
-	// TODO remove this before merging
-	github.com/codeready-toolchain/toolchain-common => github.com/sbryzak/toolchain-common v0.0.0-20210609093607-710965da9769
 	github.com/go-logr/logr => github.com/go-logr/logr v0.1.0
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20200821140346-b94c46af3f2b // Using 'github.com/openshift/api@release-4.5'
 	k8s.io/client-go => k8s.io/client-go v0.18.3 // Required by prometheus-operator
