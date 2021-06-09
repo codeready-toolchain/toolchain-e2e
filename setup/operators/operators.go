@@ -47,7 +47,7 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	if foundHost && foundMember {
 		return nil
 	}
-	return fmt.Errorf("the sandbox host and member operators were not found")
+	return fmt.Errorf("the sandbox host and/or member operators were not found")
 }
 
 func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths []string) error {
@@ -74,7 +74,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			}
 		}
 		if !foundSub {
-			return fmt.Errorf("A subscription was not found in template file '%s'", templatePath)
+			return fmt.Errorf("a subscription was not found in template file '%s'", templatePath)
 		}
 
 		if err := templates.ApplyObjects(cl, s, objsToProcess); err != nil {
@@ -96,10 +96,10 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			return csverr == nil
 		})
 		if csverr != nil {
-			return errors.Wrapf(csverr, "Failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)
+			return errors.Wrapf(csverr, "failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)
 		}
 		if err != nil {
-			return errors.Wrapf(err, "Failed to verify installation of operator with subscription '%s'", subscriptionResource.GetName())
+			return errors.Wrapf(err, "failed to verify installation of operator with subscription '%s'", subscriptionResource.GetName())
 		}
 
 		fmt.Printf("Verified installation of operator with subscription '%s'\n", subscriptionResource.GetName())
