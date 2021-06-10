@@ -8,6 +8,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.4.0
 	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
@@ -34,7 +35,7 @@ require (
 	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20200806141610-86f49bd18e98 // indirect
-	google.golang.org/grpc v1.31.0 // indirect
+	google.golang.org/grpc v1.36.0 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.6 // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
