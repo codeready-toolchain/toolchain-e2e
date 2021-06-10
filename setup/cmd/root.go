@@ -33,7 +33,7 @@ var (
 	activeUsers             int
 	skipCSVGen              bool
 	skipDefaultTemplate     bool
-	numberOfOperators       int
+	operatorsLimit          int
 )
 
 var (
@@ -72,7 +72,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
-	cmd.Flags().IntVar(&numberOfOperators, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
+	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -90,7 +90,7 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Debugf("Host Operator Namespace:   '%s'", hostOperatorNamespace)
 	term.Debugf("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
 
-	// validate number of users
+	// validate params
 	if numberOfUsers < 1 {
 		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid users value '%d'", numberOfUsers)
 	}
@@ -100,8 +100,8 @@ func setup(cmd *cobra.Command, args []string) {
 	if numberOfUsers%userBatches != 0 {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
 	}
-	if numberOfOperators > len(operators.Templates) {
-		term.Fatalf(fmt.Errorf("the maximum number of sandbox operators that can be installed is '%d'", len(operators.Templates)), "invalid operators value '%d'", numberOfOperators)
+	if operatorsLimit > len(operators.Templates) {
+		term.Fatalf(fmt.Errorf("the operators limit value must be less than or equal to '%d'", len(operators.Templates)), "invalid operators limit value '%d'", operatorsLimit)
 	}
 
 	// add the default user-workloads.yaml file automatically
@@ -141,7 +141,7 @@ func setup(cmd *cobra.Command, args []string) {
 		term.Infof("⏳ preparing cluster for setup...")
 		// install operators for member clusters
 		templatePaths := []string{}
-		for i := 0; i < numberOfOperators; i++ {
+		for i := 0; i < operatorsLimit; i++ {
 			templatePaths = append(templatePaths, "setup/operators/installtemplates/"+operators.Templates[i])
 		}
 		if err := operators.EnsureOperatorsInstalled(cl, scheme, templatePaths); err != nil {
