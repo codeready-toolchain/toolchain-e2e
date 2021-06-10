@@ -48,12 +48,12 @@ func (s *userManagementTestSuite) TearDownTest() {
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
-	s.hostAwait.UpdateHostOperatorConfig(
+	s.hostAwait.UpdateToolchainConfig(
 		test.AutomaticApproval().Enabled(),
 		test.Deactivation().DeactivatingNotificationDays(-1))
 
-	config := s.hostAwait.GetHostOperatorConfig()
-	require.Equal(s.T(), -1, config.Spec.Deactivation.DeactivatingNotificationDays)
+	config := s.hostAwait.GetToolchainConfig()
+	require.Equal(s.T(), -1, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// Initialize metrics assertion counts
@@ -82,7 +82,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 2)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")         // userSignupMember1
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")         // userSignupMember1
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 is on member1
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")         // userSignupMember2
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // userSignupMember2 is on member2
@@ -94,7 +94,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                   // two more because of deactivated users
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 0)                                         // two less because of deactivated users
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")         // userSignupMember1 deactivated
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")         // userSignupMember1 deactivated
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 deactivated
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")         // userSignupMember2 deactivated
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // userSignupMember1 deactivated
@@ -109,7 +109,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 4)                                      // two more because of reactivated user
 				metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                   // no change
 				metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 2)                                         // two more because of reactivated user
-				metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")         // userSignupMember1
+				metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")         // userSignupMember1
 				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // userSignupMember1 is on member1
 				metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")         // userSignupMember2
 				metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.member2Await.ClusterName) // userSignupMember2 is on member2
@@ -129,14 +129,15 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Conditions(ApprovedByAdmin()...).
 			Execute().Resources()
 
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                              // 1 new signup
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // 1 more approved signup
-		metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // signup not deactivated
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // 1 mur for the approved signup
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")         // 1 mur with email address `@redhat.com`
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "1")                   // 1 activation
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                                            // 1 new signup
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                                    // 1 more approved signup
+		metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                                 // signup not deactivated
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                                       // 1 mur for the approved signup
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")                       // 1 mur with email address `@redhat.com`
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)                // 1 user on member1 (userSignupMember1)
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName)               // no user on member2
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 1, "activations", "1")                                // 1 activation
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "internal") // 1 activation
 
 		// Get the base tier that has deactivation disabled
 		baseDeactivationDisabledTier, err := s.hostAwait.WaitForNSTemplateTier("basedeactivationdisabled")
@@ -150,13 +151,15 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		t.Run("verify metrics are correct after moving user to new tier", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                              // 1 new signup
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // 1 more approved signup
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // signup not deactivated
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // 1 mur for the approved signup
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")         // 1 mur with email address `@redhat.com`
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                                            // 1 new signup
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                                    // 1 more approved signup
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                                 // signup not deactivated
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                                       // 1 mur for the approved signup
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")                       // 1 mur with email address `@redhat.com`
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)                // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName)               // no user on member2
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 1, "activations", "1")                                // 1 activation
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "internal") // 1 activation
 		})
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
@@ -180,14 +183,16 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.Error(s.T(), err)
 
 		t.Run("verify metrics are correct after provisioned time changed", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                              // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                      // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                   // no change
-			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0)                               // no change
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                         // no change
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")         // 1 mur with email address `@redhat.com
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)  // 1 user on member1 (userSignupMember1)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName) // no user on member2
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)                                                            // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)                                                    // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                                 // no change
+			metricsAssertion.WaitForMetricDelta(UserSignupsAutoDeactivatedMetric, 0)                                             // no change
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 1)                                                       // no change
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "internal")                       // 1 mur with email address `@redhat.com
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", s.memberAwait.ClusterName)                // 1 user on member1 (userSignupMember1)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", s.member2Await.ClusterName)               // no user on member2
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 1, "activations", "1")                                // 1 activation
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "internal") // 1 activation
 		})
 	})
 
@@ -266,12 +271,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("test deactivating state set OK", func(t *testing.T) {
 		// Reset configuration back to 3 days
-		s.hostAwait.UpdateHostOperatorConfig(
+		s.hostAwait.UpdateToolchainConfig(
 			test.AutomaticApproval().Enabled(),
 			test.Deactivation().DeactivatingNotificationDays(3))
 
-		config := s.hostAwait.GetHostOperatorConfig()
-		require.Equal(s.T(), 3, config.Spec.Deactivation.DeactivatingNotificationDays)
+		config := s.hostAwait.GetToolchainConfig()
+		require.Equal(s.T(), 3, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 		userSignupMember1, murMember1 := s.newUserRequest().
 			Username("usertostartdeactivating").
@@ -418,6 +423,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 
+	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Disabled())
+
 	// activate and deactivate a few users, and check the metrics.
 	// user-0001 will be activated 1 time
 	// user-0002 will be activated 2 times
@@ -427,7 +434,7 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 	// Initialize metrics assertion counts
 	metricsAssertion := InitMetricsAssertion(s.T(), s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
-	for i := 1; i <= 4; i++ {
+	for i := 1; i <= 3; i++ {
 		username := fmt.Sprintf("user-%04d", i)
 		usersignups[username] = CreateAndApproveSignup(s.T(), s.hostAwait, username, s.memberAwait.ClusterName)
 
@@ -444,10 +451,12 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		}
 	}
 	// then verify the value of the `sandbox_users_per_activations` metric
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "1") // user-0001 was 1 time
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "2") // user-0002 was 2 times
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "3") // user-0003 was 3 times
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 1, "activations", "4") // user-0004 was 4 times
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 1, "activations", "1")                                // user-0001 was 1 time
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 1, "activations", "2")                                // user-0002 was 2 times
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 1, "activations", "3")                                // user-0003 was 3 times
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // 1 activation
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "2", "domain", "external") // 1 activation
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "3", "domain", "external") // 1 activation
 
 	s.T().Run("restart host-operator pod and verify that metrics are still available", func(t *testing.T) {
 		// given
@@ -464,10 +473,12 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 		// then verify that the metric values "survived" the restart
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "1") // user-0001 was 1 time (unchanged after pod restarted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2") // user-0002 was 2 times (unchanged after pod restarted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3") // user-0003 was 3 times (unchanged after pod restarted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4") // user-0004 was 4 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "1")                                // user-0001 was 1 time (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "2")                                // user-0002 was 2 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "3")                                // user-0003 was 3 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // user-0001 was 1 time (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "external") // user-0002 was 2 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "external") // user-0003 was 3 times (unchanged after pod restarted)
 	})
 
 	s.T().Run("delete usersignups", func(t *testing.T) {
@@ -480,10 +491,12 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		// then
 		require.NoError(t, err)
 		// and verify that the values of the `sandbox_users_per_activations` metric
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "1") // user-0001 has been deleted but metric remains unchanged
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2") // (unchanged after other usersignup was deleted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3") // (unchanged after other usersignup was deleted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4") // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "1")                                // user-0001 has been deleted but metric remains unchanged
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "2")                                // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "3")                                // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // user-0001 has been deleted but metric remains unchanged
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "external") // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "external") // (unchanged after other usersignup was deleted)
 
 		// when deleting user "user-0002"
 		err = s.hostAwait.Client.Delete(context.TODO(), usersignups["user-0002"])
@@ -491,10 +504,13 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		// then
 		require.NoError(t, err)
 		// and verify that the values of the `sandbox_users_per_activations` metric
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "1") // (same offset as above)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "2") // user-0002 has been deleted but metric remains unchanged
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "3") // (unchanged after other usersignup was deleted)
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationMetric, 0, "activations", "4") // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "1")                                // (same offset as above)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "2")                                // user-0002 has been deleted but metric remains unchanged
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsMetric, 0, "activations", "3")                                // (unchanged after other usersignup was deleted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // (same offset as above)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "external") // user-0002 has been deleted but metric remains unchanged
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "external") // (unchanged after other usersignup was deleted)
+
 	})
 }
 
@@ -504,7 +520,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup without requiring verification, and confirm it was approved automatically
 		userSignup, _ := s.newUserRequest().
@@ -542,7 +558,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("create usersignup with preexisting banneduser", func(t *testing.T) {
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		id := uuid.NewV4().String()
 		email := "testuser" + id + "@test.com"
@@ -573,7 +589,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		id := uuid.NewV4().String()
 		email := "testuser" + id + "@test.com"
@@ -611,7 +627,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
 
 		// Create a new UserSignup and confirm it was approved automatically
 		userSignup, mur := s.newUserRequest().
@@ -661,7 +677,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	s.hostAwait.UpdateHostOperatorConfig(test.AutomaticApproval())
+	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval())
 
 	// Create UserSignup
 	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)

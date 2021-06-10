@@ -84,6 +84,10 @@ endif
 .PHONY: print-operator-logs
 print-operator-logs:
 	@echo "==============================================================================================================="
+	@echo "========================== ${REPO_NAME} deployment YAML- Namespace: ${NAMESPACE} ============================="
+	@echo "==============================================================================================================="
+	-oc get deployment.apps/${REPO_NAME} --namespace ${NAMESPACE} -o yaml
+	@echo "==============================================================================================================="
 	@echo "========================== ${REPO_NAME} deployment logs - Namespace: ${NAMESPACE} ============================="
 	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${REPO_NAME} --namespace ${NAMESPACE}
@@ -247,7 +251,7 @@ endif
 	# also, add a single `NSTemplateTier` resource before the host-operator controller is deployed. This resource will be updated
 	# as the controller starts (which is a use-case for CRT-231)
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds/toolchain.dev.openshift.com_nstemplatetiers.yaml
-	oc apply -f deploy/host-operator/nstemplatetier-basic.yaml -n $(HOST_NS)
+	oc apply -f deploy/host-operator/nstemplatetier-base.yaml -n $(HOST_NS)
 	$(MAKE) build-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${REG_IMAGE_NAME}
 	$(MAKE) deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator NAMESPACE=$(HOST_NS)
 
@@ -328,7 +332,7 @@ endif
 	fi
 	sed -e 's|REPLACE_NAMESPACE|${NAMESPACE}|g;s|^  source: .*|&-${NAME_SUFFIX}|' ${E2E_REPO_PATH}/hack/install_operator.yaml > /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml
 	cat /tmp/${REPO_NAME}_install_operator_${DATE_SUFFIX}.yaml | oc apply -f -
-	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]] || [[ -z `oc get Roles -n ${NAMESPACE} | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
+	while [[ -z `oc get sa ${REPO_NAME} -n ${NAMESPACE} 2>/dev/null` ]] || [[ -z `oc get ClusterRoles | grep "^toolchain-${REPO_NAME}\.v"` ]]; do \
 		if [[ $${NEXT_WAIT_TIME} -eq 300 ]]; then \
 		   CATALOGSOURCE_NAME=`oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${NAME_SUFFIX}"`; \
 		   SUBSCRIPTION_NAME=`oc get subscription --output=name -n ${NAMESPACE} | grep "subscription-toolchain"`; \
@@ -339,6 +343,8 @@ endif
 		   oc logs `oc get pods -l "olm.catalogSource=$${CATALOGSOURCE_NAME#*/}" -n openshift-marketplace -o name` -n openshift-marketplace; \
 		   echo "================================ Subscription =================================="; \
 		   oc get $${SUBSCRIPTION_NAME} -n ${NAMESPACE} -o yaml; \
+		   echo "================================ InstallPlans =================================="; \
+		   oc get installplans -n ${NAMESPACE} -o yaml; \
 		   $(MAKE) print-operator-logs REPO_NAME=${REPO_NAME} NAMESPACE=${NAMESPACE}; \
 		   exit 1; \
 		fi; \

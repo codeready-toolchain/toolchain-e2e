@@ -28,6 +28,7 @@ type baseUserIntegrationTest struct {
 
 func (s *baseUserIntegrationTest) newUserRequest() UserRequest {
 	return NewUserRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
+
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {
