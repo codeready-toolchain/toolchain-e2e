@@ -20,7 +20,8 @@ import (
 
 var httpClient = HTTPClient
 
-// UserRequest
+// UserRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
+// with a set of sensible default values which can be overridden via its various functions.
 type UserRequest interface {
 	Conditions(conditions ...toolchainv1alpha1.Condition) UserRequest
 	Email(email string) UserRequest
