@@ -312,12 +312,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
 		// Set configuration to 3 days
-		s.hostAwait.UpdateHostOperatorConfig(
+		s.hostAwait.UpdateToolchainConfig(
 			test.AutomaticApproval().Enabled(),
 			test.Deactivation().DeactivatingNotificationDays(3))
 
-		config := s.hostAwait.GetHostOperatorConfig()
-		require.Equal(s.T(), 3, config.Spec.Deactivation.DeactivatingNotificationDays)
+		config := s.hostAwait.GetToolchainConfig()
+		require.Equal(s.T(), 3, config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 		// Create a token and identity to sign up with
 		identity0 := authsupport.NewIdentity()
