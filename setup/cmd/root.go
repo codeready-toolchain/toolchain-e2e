@@ -72,7 +72,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
-	cmd.Flags().IntVar(&numberOfOperators, "operators", len(operators.Templates), "configures number of sandbox operators to install. (defaults to all - order is not configurable)")
+	cmd.Flags().IntVar(&numberOfOperators, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
