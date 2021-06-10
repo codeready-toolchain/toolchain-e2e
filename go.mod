@@ -2,11 +2,12 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20210531040930-26d5b5ce93dc
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20210601162844-dc0f56aeaa9c
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20210610195412-b075761ae25b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
 	github.com/go-logr/logr v0.4.0
+	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
@@ -23,7 +24,6 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.11.1
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
-	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5

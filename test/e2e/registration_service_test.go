@@ -24,8 +24,8 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -159,7 +159,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 
 func (s *registrationServiceTestSuite) TestSignupFails() {
 	identity0 := authsupport.NewIdentity()
-	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
+	emailClaim0 := authsupport.WithEmailClaim(uuid.Must(uuid.NewV4()).String() + "@acme.com")
 
 	s.Run("post signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
@@ -257,7 +257,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
 		identity1 := authsupport.NewIdentity()
-		emailClaim1 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
+		emailClaim1 := authsupport.WithEmailClaim(uuid.Must(uuid.NewV4()).String() + "@acme.com")
 		iatClaim1 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 
 		// Not identical to the token used in POST signup - should return resource not found.
@@ -273,7 +273,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// to avoid token used before issued error. Username claim is also
 		// overridden to trigger error and ensure that usersignup is not created.
 		identity := authsupport.NewIdentity()
-		emailValue := uuid.NewV4().String() + "@acme.com"
+		emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		emailClaim := authsupport.WithEmailClaim(emailValue)
 		usernameClaim := authsupport.WithPreferredUsernameClaim("test-crtadmin")
 		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, usernameClaim)
@@ -334,7 +334,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
 		identity := authsupport.NewIdentity()
-		emailValue := uuid.NewV4().String() + "@acme.com"
+		emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		emailClaim := authsupport.WithEmailClaim(emailValue)
 		t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim)
 		require.NoError(s.T(), err)
@@ -378,7 +378,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		for i, userID := range userIDs {
 			identity := authsupport.NewIdentity()
-			emailValue := uuid.NewV4().String() + "@acme.com"
+			emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 			emailClaim := authsupport.WithEmailClaim(emailValue)
 			t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
 			require.NoError(s.T(), err)
@@ -394,7 +394,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Create a token and identity to sign up with
 	identity0 := authsupport.NewIdentity()
-	emailValue := uuid.NewV4().String() + "@some.domain"
+	emailValue := uuid.Must(uuid.NewV4()).String() + "@some.domain"
 	emailClaim0 := authsupport.WithEmailClaim(emailValue)
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 	require.NoError(s.T(), err)
@@ -503,7 +503,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Create another token and identity to sign up with
 	otherIdentity := authsupport.NewIdentity()
-	otherEmailValue := uuid.NewV4().String() + "@other.domain"
+	otherEmailValue := uuid.Must(uuid.NewV4()).String() + "@other.domain"
 	otherEmailClaim := authsupport.WithEmailClaim(otherEmailValue)
 	otherToken, err := authsupport.GenerateSignedE2ETestToken(*otherIdentity, otherEmailClaim)
 	require.NoError(s.T(), err)
