@@ -130,7 +130,29 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	require.True(s.T(), states.Deactivated(userSignup), "usersignup should be deactivated")
 }
 
-func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
+func (s *baseUserIntegrationTest) reactivateAndRequirePhoneVerification(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
+	err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: userSignup.Namespace,
+		Name:      userSignup.Name,
+	}, userSignup)
+	require.NoError(s.T(), err)
+
+	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		states.SetDeactivating(us, false)
+		states.SetDeactivated(us, false)
+		states.SetVerificationRequired(us, true)
+	})
+	require.NoError(s.T(), err)
+	s.T().Logf("user signup '%s' reactivated, but requiring phone verification", userSignup.Name)
+
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(ReactivatedAndVerificationRequired()...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+	require.NoError(s.T(), err)
+	require.False(s.T(), states.Deactivated(userSignup), "usersignup should not be deactivated")
+}
+
+func (s *baseUserIntegrationTest) approve(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
 	err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: userSignup.Namespace,
 		Name:      userSignup.Name,

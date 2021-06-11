@@ -183,6 +183,31 @@ func VerificationRequired() []toolchainv1alpha1.Condition {
 	}
 }
 
+func ReactivatedAndVerificationRequired() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionFalse,
+			Reason: "VerificationRequired",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserNotInPreDeactivation",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
+		},
+	}
+}
+
 func Banned() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{

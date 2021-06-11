@@ -74,6 +74,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		})
 
 		s.deactivateAndCheckUser(userSignupMember1, murMember1)
+		// set old creation timestamp to verify that an old reactivated UserSignup won't be deleted
+		murMember2, _ = s.setOldCreationTimestamp(murMember2.Name)
 		s.deactivateAndCheckUser(userSignupMember2, murMember2)
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
@@ -85,8 +87,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		})
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-			s.reactivateAndCheckUser(userSignupMember1, murMember1)
-			s.reactivateAndCheckUser(userSignupMember2, murMember2)
+			s.approve(userSignupMember1, murMember1)
+			// reactivate and expect phone verification
+			s.reactivateAndRequirePhoneVerification(userSignupMember2, murMember2)
+			// now just approve it
+			s.approve(userSignupMember2, murMember2)
 
 			t.Run("verify metrics are correct after reactivating the user", func(t *testing.T) {
 				metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                                              // no change
@@ -138,14 +143,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
-		manyManyDaysAgo := 999999999999999
-		durationDelta := time.Duration(manyManyDaysAgo) * time.Hour * 24
-		updatedProvisionedTime := &metav1.Time{Time: time.Now().Add(-durationDelta)}
-		murMember1, err = s.hostAwait.UpdateMasterUserRecordStatus(murMember1.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
-			mur.Status.ProvisionedTime = updatedProvisionedTime
-		})
-		require.NoError(s.T(), err)
-		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
+		murMember1, updatedProvisionedTime := s.setOldCreationTimestamp(murMember1.Name)
 
 		// Ensure the MUR has the updated ProvisionedTime
 		_, err = s.hostAwait.WaitForMasterUserRecord(murMember1.Name, wait.UntilMasterUserRecordHasProvisionedTime(updatedProvisionedTime))
@@ -261,6 +259,18 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Verify resources have been provisioned
 		VerifyResourcesProvisionedForSignup(t, s.hostAwait, userSignupMember1, "base", s.memberAwait)
 	})
+}
+
+func (s *userManagementTestSuite) setOldCreationTimestamp(name string) (*toolchainv1alpha1.MasterUserRecord, *metav1.Time) {
+	manyManyDaysAgo := 999999999999999
+	durationDelta := time.Duration(manyManyDaysAgo) * time.Hour * 24
+	updatedProvisionedTime := &metav1.Time{Time: time.Now().Add(-durationDelta)}
+	mur, err := s.hostAwait.UpdateMasterUserRecordStatus(name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+		mur.Status.ProvisionedTime = updatedProvisionedTime
+	})
+	require.NoError(s.T(), err)
+	s.T().Logf("masteruserrecord '%s' provisioned time adjusted", name)
+	return mur, updatedProvisionedTime
 }
 
 func (s *userManagementTestSuite) TestUserReactivationsMetric() {
