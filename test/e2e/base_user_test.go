@@ -9,8 +9,8 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -44,7 +44,7 @@ func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolch
 func newBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
 	return &toolchainv1alpha1.BannedUser{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      uuid.NewV4().String(),
+			Name:      uuid.Must(uuid.NewV4()).String(),
 			Namespace: host.Namespace,
 			Labels: map[string]string{
 				toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),

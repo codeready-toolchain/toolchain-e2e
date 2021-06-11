@@ -6,7 +6,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
@@ -38,7 +38,7 @@ func (s *userWorkloadsTestSuite) TearDownTest() {
 
 func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Provision a user to idle with a short idling timeout
-	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
+	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
 	s.newUserRequest().
 		Username("test-idler").
 		Email("test-idler@redhat.com").
