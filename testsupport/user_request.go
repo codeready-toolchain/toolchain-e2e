@@ -51,9 +51,9 @@ type UserRequest interface {
 	// the signup to be considered successful
 	RequireConditions(conditions ...toolchainv1alpha1.Condition) UserRequest
 
-	// RequireHttpStatus may be used to override the expected HTTP response code received from the Registration Service.
+	// RequireHTTPStatus may be used to override the expected HTTP response code received from the Registration Service.
 	// If not specified, here, the default expected value is StatusAccepted
-	RequireHttpStatus(httpStatus int) UserRequest
+	RequireHTTPStatus(httpStatus int) UserRequest
 
 	// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
 	// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
@@ -78,7 +78,7 @@ func NewUserRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *w
 		hostAwait:          hostAwait,
 		memberAwait:        memberAwait,
 		member2Await:       member2Await,
-		requiredHttpStatus: http.StatusAccepted,
+		requiredHTTPStatus: http.StatusAccepted,
 	}
 }
 
@@ -92,7 +92,7 @@ type userRequest struct {
 	verificationRequired bool
 	username             *string
 	email                *string
-	requiredHttpStatus   int
+	requiredHTTPStatus   int
 	targetCluster        *wait.MemberAwaitility
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
@@ -138,8 +138,8 @@ func (r *userRequest) TargetCluster(targetCluster *wait.MemberAwaitility) UserRe
 	return r
 }
 
-func (r *userRequest) RequireHttpStatus(httpStatus int) UserRequest {
-	r.requiredHttpStatus = httpStatus
+func (r *userRequest) RequireHTTPStatus(httpStatus int) UserRequest {
+	r.requiredHTTPStatus = httpStatus
 	return r
 }
 
@@ -172,7 +172,7 @@ func (r *userRequest) Execute() UserRequest {
 
 	// Call the signup endpoint
 	invokeEndpoint(r.t, "POST", r.hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		token0, "", r.requiredHttpStatus)
+		token0, "", r.requiredHTTPStatus)
 
 	// Wait for the UserSignup to be created
 	userSignup, err := r.hostAwait.WaitForUserSignup(userIdentity.ID.String())
