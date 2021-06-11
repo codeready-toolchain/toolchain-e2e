@@ -14,8 +14,8 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -65,7 +65,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
-		ID:       uuid.NewV4(),
+		ID:       uuid.Must(uuid.NewV4()),
 		Username: username,
 	}
 	for _, apply := range options {
@@ -132,7 +132,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	name := uuid.NewV4().String()
+	name := uuid.Must(uuid.NewV4()).String()
 
 	return &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
