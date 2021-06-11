@@ -130,7 +130,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	require.True(s.T(), states.Deactivated(userSignup), "usersignup should be deactivated")
 }
 
-func (s *baseUserIntegrationTest) reactivateAndRequirePhoneVerification(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
+func (s *baseUserIntegrationTest) reactivateAndRequirePhoneVerification(userSignup *toolchainv1alpha1.UserSignup) {
 	err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: userSignup.Namespace,
 		Name:      userSignup.Name,

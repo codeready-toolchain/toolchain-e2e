@@ -89,7 +89,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
 			s.approve(userSignupMember1, murMember1)
 			// reactivate and expect phone verification
-			s.reactivateAndRequirePhoneVerification(userSignupMember2, murMember2)
+			s.reactivateAndRequirePhoneVerification(userSignupMember2)
 			// now just approve it
 			s.approve(userSignupMember2, murMember2)
 
