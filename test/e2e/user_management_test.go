@@ -75,7 +75,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		s.deactivateAndCheckUser(userSignupMember1, murMember1)
 		// set old creation timestamp to verify that an old reactivated UserSignup won't be deleted
-		murMember2, _ = s.setOldCreationTimestamp(murMember2.Name)
+		murMember2, _ = s.setCreationTimestampToBeBefore(murMember2.Name, time.Duration(60))
 		s.deactivateAndCheckUser(userSignupMember2, murMember2)
 
 		t.Run("verify metrics are correct after deactivation", func(t *testing.T) {
@@ -143,7 +143,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
-		murMember1, updatedProvisionedTime := s.setOldCreationTimestamp(murMember1.Name)
+		murMember1, updatedProvisionedTime := s.setCreationTimestampToBeBefore(murMember1.Name, time.Duration(9999))
 
 		// Ensure the MUR has the updated ProvisionedTime
 		_, err = s.hostAwait.WaitForMasterUserRecord(murMember1.Name, wait.UntilMasterUserRecordHasProvisionedTime(updatedProvisionedTime))
@@ -261,9 +261,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 }
 
-func (s *userManagementTestSuite) setOldCreationTimestamp(name string) (*toolchainv1alpha1.MasterUserRecord, *metav1.Time) {
-	manyManyDaysAgo := 999999999999999
-	durationDelta := time.Duration(manyManyDaysAgo) * time.Hour * 24
+func (s *userManagementTestSuite) setCreationTimestampToBeBefore(name string, beforeDays time.Duration) (*toolchainv1alpha1.MasterUserRecord, *metav1.Time) {
+	durationDelta := beforeDays * time.Hour * 24
 	updatedProvisionedTime := &metav1.Time{Time: time.Now().Add(-durationDelta)}
 	mur, err := s.hostAwait.UpdateMasterUserRecordStatus(name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 		mur.Status.ProvisionedTime = updatedProvisionedTime
