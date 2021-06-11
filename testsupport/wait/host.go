@@ -771,6 +771,57 @@ func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig
 	return config
 }
 
+// ToolchainConfigWaitCriterion a function to check that an ToolchainConfig has the expected condition
+type ToolchainConfigWaitCriterion func(*HostAwaitility, *toolchainv1alpha1.ToolchainConfig) bool
+
+func UntilToolchainConfigHasSyncedStatus(expectedCondition toolchainv1alpha1.Condition) ToolchainConfigWaitCriterion {
+	return func(a *HostAwaitility, toolchainConfig *toolchainv1alpha1.ToolchainConfig) bool {
+		return hasToolchainConfigSyncedStatus(a.T, expectedCondition, toolchainConfig)
+	}
+}
+
+func hasToolchainConfigSyncedStatus(t *testing.T, expectedCondition toolchainv1alpha1.Condition, toolchainConfig *toolchainv1alpha1.ToolchainConfig) bool {
+	if test.ContainsCondition(toolchainConfig.Status.Conditions, expectedCondition) {
+		t.Logf("status conditions match in ToolchainConfig")
+		return true
+	}
+	t.Logf("waiting for status condition of ToolchainConfig. Actual: '%+v'; Expected: '%+v'", toolchainConfig.Status.Conditions, expectedCondition)
+	return false
+}
+
+// WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
+	// there should only be one toolchain status with the name toolchain-status
+	name := "config"
+	toolchainConfig := &toolchainv1alpha1.ToolchainConfig{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		toolchainConfig = &toolchainv1alpha1.ToolchainConfig{}
+		// retrieve the toolchainstatus from the host namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			},
+			toolchainConfig)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of toolchainconfig in namespace '%s'...\n", a.Namespace)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, toolchainConfig) {
+				a.T.Logf("Waiting for toolchainconfig to match the expected criteria. Current toolchainconfig: <%+v> \n", toolchainConfig)
+				return false, nil
+			}
+		}
+		a.T.Logf("found toolchainconfig '%s': %+v", toolchainConfig.Name, toolchainConfig)
+		return true, nil
+	})
+	return toolchainConfig, err
+}
+
 // UpdateToolchainConfig updates the current resource of the ToolchainConfig CR with the given options.
 // If there is no existing resource already, then it creates a new one.
 // At the end of the test it returns the resource back to the original value/state.

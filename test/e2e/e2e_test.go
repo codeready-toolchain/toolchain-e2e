@@ -22,7 +22,22 @@ func TestE2EFlow(t *testing.T) {
 	// full flow from usersignup with approval down to namespaces creation
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+	defaultMemberConfig := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("5s"))
+	member2Config := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(defaultMemberConfig.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, member2Config.Spec))
+
+	t.Run("verify MemberOperatorConfigs synced from ToolchainConfig to member clusters", func(t *testing.T) {
+		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
+			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete()))
+		})
+		t.Run("verify MemberOperatorConfig was synced to member1", func(t *testing.T) {
+			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(defaultMemberConfig))
+		})
+		t.Run("verify MemberOperatorConfig was synced to member2", func(t *testing.T) {
+			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(member2Config))
+		})
+	})
+
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
