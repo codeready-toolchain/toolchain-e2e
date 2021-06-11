@@ -68,8 +68,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		// given
 		toolchainStatus, err := s.hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
 		require.NoError(t, err)
-		initialMurCount := toolchainStatus.Status.HostOperator.MasterUserRecordCount
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().MaxUsersNumber(initialMurCount))
+		originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().MaxUsersNumber(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
 
 		// when
 		userSignup1 := s.createAndCheckUserSignupNoMUR(false, "waitinglist1", "waitinglist1@redhat.com", nil, PendingApprovalNoCluster()...)
@@ -83,7 +83,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		t.Run("increment the max number of users and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
-			s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().MaxUsersNumber(initialMurCount + 1))
+			s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().MaxUsersNumber(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"] + 1))
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup1.Name,

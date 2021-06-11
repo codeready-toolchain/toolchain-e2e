@@ -68,8 +68,8 @@ func TestE2EFlow(t *testing.T) {
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
 		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
-	originalMurCount := originalToolchainStatus.Status.HostOperator.MasterUserRecordCount
-	t.Logf("the original MasterUserRecord count: %d", originalMurCount)
+	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
+	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
 
 	// Get metrics assertion helper for testing metrics before creating any users
 	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
@@ -99,7 +99,7 @@ func TestE2EFlow(t *testing.T) {
 	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 8)
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 8, "domain", "external")
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 7, "cluster_name", memberAwait.ClusterName)  // 7 users on member1
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
 	})
@@ -209,7 +209,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+8))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
@@ -256,7 +256,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount(originalMurCount+7))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+7))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
@@ -264,9 +264,9 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("verify metrics are correct at the end", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordMetric, 7)                                       // 'johnsignup' was deleted
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)  // 6 users left on member1 ('johnsignup' was deleted)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 8, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)                  // 6 users left on member1 ('johnsignup' was deleted)
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName)                 // 1 user on member2
 		})
 	})
 
