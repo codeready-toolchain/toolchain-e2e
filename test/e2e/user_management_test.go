@@ -65,7 +65,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			TargetCluster(s.memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
 		// User on member cluster 2
@@ -74,6 +75,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("usertodeactivate2@example.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(s.member2Await).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
@@ -123,6 +125,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("usernodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
@@ -196,6 +199,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("usertoautodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
@@ -204,6 +208,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("userdeactivationexcluded@excluded.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
@@ -273,6 +278,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("usertostartdeactivating@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
@@ -506,6 +512,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		userSignup, _ := s.newUserRequest().
 			Username("banprovisioned").
 			Email("banprovisioned@test.com").
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
@@ -513,7 +520,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		s.createAndCheckBannedUser(userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm the user is banned
-		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
+		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically(), Banned())...))
 		require.NoError(s.T(), err)
 
@@ -546,6 +553,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		// For this test, we don't want to create the UserSignup via the registration service (the next test does this)
 		// Instead, we want to confirm the behaviour when a UserSignup with a banned email address is created manually
 		userSignup := NewUserSignup(t, s.hostAwait, "testuser"+id, email)
+		userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 
 		// Create the UserSignup via the Kubernetes API
 		err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
@@ -619,6 +627,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			Username("banandunban").
 			Email("banandunban@test.com").
 			EnsureMUR().
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
