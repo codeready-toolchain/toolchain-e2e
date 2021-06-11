@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/rest"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -50,10 +50,11 @@ type MemberAwaitility struct {
 	*Awaitility
 }
 
-func NewMemberAwaitility(t *testing.T, cl client.Client, ns, clusterName string) *MemberAwaitility {
+func NewMemberAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns, clusterName string) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
+			RestConfig:    cfg,
 			ClusterName:   clusterName,
 			T:             t,
 			Namespace:     ns,
@@ -472,7 +473,7 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 
 // Create tries to create the object until success
 // Workaround for https://github.com/kubernetes/kubernetes/issues/67761
-func (a *MemberAwaitility) Create(obj runtime.Object) error {
+func (a *MemberAwaitility) Create(obj client.Object) error {
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Create(context.TODO(), obj); err != nil {
 			a.T.Logf("trying to create %+v. Error: %s. Will try to create again.", obj, err.Error())
@@ -953,11 +954,11 @@ func (a *MemberAwaitility) DeleteUserAccount(name string) error {
 // GetMemberOperatorPod returns the pod running the member operator controllers
 func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 	pods := corev1.PodList{}
-	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "member-operator"}); err != nil {
+	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "controller-manager"}); err != nil {
 		return corev1.Pod{}, err
 	}
 	if len(pods.Items) != 1 {
-		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=member-operator' in namespace '%s': %d ", a.Namespace, len(pods.Items))
+		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
 }
@@ -981,7 +982,7 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
 	assert.Equal(a.T, "Priority class for pods in users' namespaces", actualPrioClass.Description)
 }
 
-func (a *MemberAwaitility) waitForResource(namespace, name string, object runtime.Object) {
+func (a *MemberAwaitility) waitForResource(namespace, name string, object client.Object) {
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {

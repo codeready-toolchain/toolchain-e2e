@@ -15,15 +15,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetTemplateFromFile(s *runtime.Scheme, filepath string) (*templatev1.Template, error) {
+func GetTemplateFromFile(filepath string) (*templatev1.Template, error) {
 	content, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
-	decoder := serializer.NewCodecFactory(s).UniversalDeserializer()
+	decoder := serializer.NewCodecFactory(scheme.Scheme).UniversalDeserializer()
 	tmpl := &templatev1.Template{}
 	_, gvk, err := decoder.Decode([]byte(content), nil, tmpl)
 	if err != nil {
@@ -120,7 +121,7 @@ type TooolchainObjectModifier func(obj applyclientlib.ToolchainObject) error
 func NamespaceModifier(userNS string) TooolchainObjectModifier {
 	return func(obj applyclientlib.ToolchainObject) error {
 		// enforce the creation of the objects in the `userNS` namespace
-		m, err := meta.Accessor(obj.GetRuntimeObject())
+		m, err := meta.Accessor(obj.GetClientObject())
 		if err != nil {
 			return err
 		}
@@ -141,7 +142,7 @@ func applyObject(applycl *applyclientlib.ApplyClient, obj applyclientlib.Toolcha
 	// retry the apply in case it fails due to errors like the following:
 	// unable to create resource of kind: Deployment, version: v1: Operation cannot be fulfilled on clusterresourcequotas.quota.openshift.io "for-zippy-1882-deployments": the object has been modified; please apply your changes to the latest version and try again
 	if err := k8swait.Poll(cfg.DefaultRetryInterval, 30*time.Second, func() (bool, error) {
-		if _, applyErr := applycl.ApplyObject(obj.GetRuntimeObject()); applyErr != nil {
+		if _, applyErr := applycl.ApplyObject(obj.GetClientObject()); applyErr != nil {
 			return false, applyErr
 		}
 		return true, nil

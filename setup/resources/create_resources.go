@@ -23,7 +23,7 @@ func CreateUserResourcesFromTemplateFiles(cl client.Client, s *runtime.Scheme, u
 		// get the template from the file if it hasn't been processed already
 		if _, ok := tmpls[templatePath]; !ok {
 			var err error
-			if tmpls[templatePath], err = templates.GetTemplateFromFile(s, templatePath); err != nil {
+			if tmpls[templatePath], err = templates.GetTemplateFromFile(templatePath); err != nil {
 				return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
 			}
 		}

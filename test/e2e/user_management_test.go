@@ -454,14 +454,14 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		metricsAssertion := InitMetricsAssertion(t, s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
-		err := s.hostAwait.DeletePods(client.InNamespace(s.hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
+		err := s.hostAwait.DeletePods(client.InNamespace(s.hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 
 		// then check how much time it takes to restart and process all existing resources
 		require.NoError(t, err)
 
 		// host metrics should become available again at this point
-		_, err = s.hostAwait.WaitForRouteToBeAvailable(s.hostAwait.Namespace, "host-operator-metrics", "/metrics")
-		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
+		_, err = s.hostAwait.WaitForRouteToBeAvailable(s.hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
+		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics-service' service to be available")
 
 		// then verify that the metric values "survived" the restart
 		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // user-0001 was 1 time (unchanged after pod restarted)

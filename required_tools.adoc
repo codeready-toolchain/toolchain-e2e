@@ -1,7 +1,7 @@
 == Required Pre-installed Tools
 * go
 * git
-* operator-sdk 0.19.2
+* operator-sdk 1.8.0
 * sed
 * yamllint
 * jq
