@@ -20,8 +20,11 @@ func VerifyMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, signups
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, hostAwait *wait.HostAwaitility, signup *toolchainv1alpha1.UserSignup, tier string, members ...*wait.MemberAwaitility) {
 	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
-	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to ensure the compliantusername is available
-	userSignup, err := hostAwait.WaitForUserSignup(signup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved), wait.ContainsCondition(Complete()))
+	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
+	// ensure the compliantusername is available
+	userSignup, err := hostAwait.WaitForUserSignup(signup.Name,
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
+		wait.ContainsCondition(Complete()))
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status

@@ -21,17 +21,54 @@ import (
 var httpClient = HTTPClient
 
 // UserRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
-// with a set of sensible default values which can be overridden via its various functions.
+// with a set of sensible default values which can be overridden via its various functions.  Function chaining may
+// be used to achieve an efficient "single-statement" UserSignup creation, for example:
+//
+// userSignupMember1, murMember1 := s.newUserRequest().
+//			Username("sample-username").
+//			Email("sample-user@redhat.com").
+//			ManuallyApprove().
+//			EnsureMUR().
+//			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+//			Execute().Resources()
+//
 type UserRequest interface {
-	Conditions(conditions ...toolchainv1alpha1.Condition) UserRequest
+	// Email specifies the email address to use for the new UserSignup
 	Email(email string) UserRequest
+
+	// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
+	// the Resources() function to return a non-nil value for its second return parameter.
 	EnsureMUR() UserRequest
+
+	// Execute executes the request against the Registration service REST endpoint.  This function may only be called
+	// once, and must be called after all other functions EXCEPT for Resources()
 	Execute() UserRequest
+
+	// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
 	ManuallyApprove() UserRequest
-	RequireHttpStatus(httpStatus uint) UserRequest
+
+	// RequireConditions specifies the condition values that the new UserSignup is required to have in order for
+	// the signup to be considered successful
+	RequireConditions(conditions ...toolchainv1alpha1.Condition) UserRequest
+
+	// RequireHttpStatus may be used to override the expected HTTP response code received from the Registration Service.
+	// If not specified, here, the default expected value is StatusAccepted
+	RequireHttpStatus(httpStatus int) UserRequest
+
+	// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
+	// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
+	// here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 	Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord)
+
+	// TargetCluster may be provided in order to specify the user's target cluster
 	TargetCluster(targetCluster *wait.MemberAwaitility) UserRequest
+
+	// Username specifies the username of the user
 	Username(username string) UserRequest
+
+	// VerificationRequired specifies that the "verification-required" state will be set for the new UserSignup, however
+	// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
+	// required state.
 	VerificationRequired() UserRequest
 }
 
@@ -55,7 +92,7 @@ type userRequest struct {
 	verificationRequired bool
 	username             *string
 	email                *string
-	requiredHttpStatus   uint
+	requiredHttpStatus   int
 	targetCluster        *wait.MemberAwaitility
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
@@ -86,7 +123,7 @@ func (r *userRequest) ManuallyApprove() UserRequest {
 	return r
 }
 
-func (r *userRequest) Conditions(conditions ...toolchainv1alpha1.Condition) UserRequest {
+func (r *userRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) UserRequest {
 	r.conditions = conditions
 	return r
 }
@@ -101,7 +138,7 @@ func (r *userRequest) TargetCluster(targetCluster *wait.MemberAwaitility) UserRe
 	return r
 }
 
-func (r *userRequest) RequireHttpStatus(httpStatus uint) UserRequest {
+func (r *userRequest) RequireHttpStatus(httpStatus int) UserRequest {
 	r.requiredHttpStatus = httpStatus
 	return r
 }
@@ -179,7 +216,7 @@ func (r *userRequest) Execute() UserRequest {
 	return r
 }
 
-func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus uint) map[string]interface{} {
+func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) map[string]interface{} {
 	var reqBody io.Reader
 	if requestBody != "" {
 		reqBody = strings.NewReader(requestBody)

@@ -42,7 +42,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	s.newUserRequest().
 		Username("automatic1").
 		Email("automatic1@redhat.com").
-		Conditions(ApprovedAutomatically()...).
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute()
 
 	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
@@ -53,7 +53,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup, _ := s.newUserRequest().
 			Username("automatic2").
 			Email("automatic2@redhat.com").
-			Conditions(PendingApprovalNoCluster()...).
+			RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -65,7 +65,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
@@ -83,7 +83,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup1, _ := s.newUserRequest().
 			Username("waitinglist1").
 			Email("waitinglist1@redhat.com").
-			Conditions(PendingApprovalNoCluster()...).
+			RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
 			Execute().Resources()
 
 		// we need to sleep one second to create UserSignup with different creation time
@@ -91,7 +91,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup2, _ := s.newUserRequest().
 			Username("waitinglist2").
 			Email("waitinglist2@redhat.com").
-			Conditions(PendingApprovalNoCluster()...).
+			RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -104,7 +104,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup1.Name,
-				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 
@@ -117,7 +117,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 				// then
 				userSignup, err := s.hostAwait.WaitForUserSignup(userSignup2.Name,
-					wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+					wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(s.T(), err)
 
@@ -149,14 +149,14 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			Username("multimember-1").
 			Email("multi1@redhat.com").
 			EnsureMUR().
-			Conditions(ApprovedAutomatically()...).
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
 		_, mur2 := s.newUserRequest().
 			Username("multimember-2").
 			Email("multi2@redhat.com").
 			EnsureMUR().
-			Conditions(ApprovedAutomatically()...).
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
 		// then
@@ -167,7 +167,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			userSignupPending, _ := s.newUserRequest().
 				Username("multimember-3").
 				Email("multi3@redhat.com").
-				Conditions(PendingApprovalNoCluster()...).
+				RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
 				Execute().Resources()
 
 			// then
@@ -195,7 +195,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 				Email("manual1@redhat.com").
 				ManuallyApprove().
 				EnsureMUR().
-				Conditions(ApprovedByAdmin()...).
+				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 				Execute().Resources()
 
 			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
@@ -205,7 +205,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 			userSignup, _ := s.newUserRequest().
 				Username("manual2").
 				Email("manual2@redhat.com").
-				Conditions(PendingApproval()...).
+				RequireConditions(ConditionSet(Default(), PendingApproval())...).
 				Execute().Resources()
 
 			// then
@@ -225,7 +225,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		Email("manualwithcapacity1@redhat.com").
 		ManuallyApprove().
 		EnsureMUR().
-		Conditions(ApprovedByAdmin()...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute()
 
 	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
@@ -238,7 +238,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Email("manualwithcapacity2@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdminNoCluster()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), NoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -250,7 +250,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
@@ -266,7 +266,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Username("manualwithcapacity3").
 			Email("manualwithcapacity3@redhat.com").
 			ManuallyApprove().
-			Conditions(ApprovedByAdminNoCluster()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), NoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -278,7 +278,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
@@ -295,7 +295,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Email("withtargetcluster@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
@@ -323,7 +323,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	// Check the UserSignup is approved now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...))
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
@@ -337,7 +337,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		Email("paulnoneedtotransform@hotel.com").
 		ManuallyApprove().
 		EnsureMUR().
-		Conditions(ApprovedByAdmin()...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
 	require.Equal(s.T(), "paul-no-need-to-transform", userSignup.Status.CompliantUsername)
@@ -348,7 +348,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		Email("paul@hotel.com").
 		ManuallyApprove().
 		EnsureMUR().
-		Conditions(ApprovedByAdmin()...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
 	require.Equal(s.T(), "paul", userSignup.Status.CompliantUsername)
@@ -359,7 +359,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		Email("paulathotel@hotel.com").
 		ManuallyApprove().
 		EnsureMUR().
-		Conditions(ApprovedByAdmin()...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
 	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
@@ -370,7 +370,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		Email("paul@hotel.com").
 		ManuallyApprove().
 		EnsureMUR().
-		Conditions(ApprovedByAdmin()...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
@@ -383,7 +383,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 			Email("paul@hotel.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		require.Equal(s.T(), fmt.Sprintf("crt-%s-paul", prefix), userSignup.Status.CompliantUsername)
@@ -394,7 +394,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 			Email("paul@hotel.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		require.Equal(s.T(), fmt.Sprintf("crt-%spaul", prefix), userSignup.Status.CompliantUsername)
@@ -405,7 +405,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 			Email("paul@hotel.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
@@ -419,7 +419,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 			Email("paul@hotel.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		require.Equal(s.T(), fmt.Sprintf("paul-%s-crt", suffix), userSignup.Status.CompliantUsername)
@@ -430,7 +430,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 			Email("paul@hotel.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		require.Equal(s.T(), fmt.Sprintf("paul%s-crt", suffix), userSignup.Status.CompliantUsername)
@@ -441,7 +441,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 			Email("paul@hotel.com").
 			ManuallyApprove().
 			EnsureMUR().
-			Conditions(ApprovedByAdmin()...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		require.Equal(s.T(), fmt.Sprintf("%s-crt", suffix), userSignup.Status.CompliantUsername)
@@ -467,7 +467,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 
 	// Check the UserSignup is pending approval now
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 

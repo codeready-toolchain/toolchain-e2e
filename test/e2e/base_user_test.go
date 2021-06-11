@@ -81,7 +81,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(s.T(), err)
 	require.True(s.T(), states.Deactivated(userSignup), "usersignup should be deactivated")
@@ -106,7 +106,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)
 	require.False(s.T(), states.Deactivated(userSignup), "usersignup should not be deactivated")

@@ -76,7 +76,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 
 	// at this stage, the usersignup should not be approved nor completed
 	userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String(),
-		wait.UntilUserSignupHasConditions(PendingApproval()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(t, err)
 	require.Equal(t, identity.Username+"-First-Name", userSignup.Spec.GivenName)
@@ -91,7 +91,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.NoError(t, err)
 	// Check the updated conditions
 	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(t, err)
 
