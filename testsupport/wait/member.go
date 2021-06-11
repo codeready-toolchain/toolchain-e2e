@@ -1037,7 +1037,7 @@ func (a *MemberAwaitility) WaitForAutoscalingBufferApp() {
 }
 
 func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
-	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "member-operator-autoscaling-buffer")
+	a.T.Logf("checking presence of PrioritiyClass resource '%s'", "member-operator-autoscaling-buffer")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource("", "member-operator-autoscaling-buffer", actualPrioClass)
 
