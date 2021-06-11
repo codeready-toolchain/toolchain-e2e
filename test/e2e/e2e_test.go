@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -22,7 +22,7 @@ func TestE2EFlow(t *testing.T) {
 	// full flow from usersignup with approval down to namespaces creation
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
-	hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Disabled())
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {

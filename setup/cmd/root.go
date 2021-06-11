@@ -14,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
@@ -32,6 +33,7 @@ var (
 	activeUsers             int
 	skipCSVGen              bool
 	skipDefaultTemplate     bool
+	operatorsLimit          int
 )
 
 var (
@@ -66,10 +68,11 @@ func Execute() {
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create user accounts in batches of N, increasing batch size may cause performance problems")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
-	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply")
+	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply for each active user namespace")
 	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
+	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -87,7 +90,7 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Debugf("Host Operator Namespace:   '%s'", hostOperatorNamespace)
 	term.Debugf("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
 
-	// validate number of users
+	// validate params
 	if numberOfUsers < 1 {
 		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid users value '%d'", numberOfUsers)
 	}
@@ -96,6 +99,9 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 	if numberOfUsers%userBatches != 0 {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
+	}
+	if operatorsLimit > len(operators.Templates) {
+		term.Fatalf(fmt.Errorf("the operators limit value must be less than or equal to '%d'", len(operators.Templates)), "invalid operators limit value '%d'", operatorsLimit)
 	}
 
 	// add the default user-workloads.yaml file automatically
@@ -127,11 +133,19 @@ func setup(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if err := operators.VerifySandboxOperatorsInstalled(cl); err != nil {
+		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
+	}
+
 	if !skipCSVGen {
 		term.Infof("⏳ preparing cluster for setup...")
-		// install an all-namespaces operator that will generate a CSV resource in each namespace
-		if err := operators.EnsureAllNamespacesOperator(cl, hostOperatorNamespace); err != nil {
-			term.Fatalf(err, "failed to ensure the all-namespaces operator is installed")
+		// install operators for member clusters
+		templatePaths := []string{}
+		for i := 0; i < operatorsLimit; i++ {
+			templatePaths = append(templatePaths, "setup/operators/installtemplates/"+operators.Templates[i])
+		}
+		if err := operators.EnsureOperatorsInstalled(cl, scheme, templatePaths); err != nil {
+			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
 	}
 
@@ -161,7 +175,7 @@ func setup(cmd *cobra.Command, args []string) {
 				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current(); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
 					userNS := fmt.Sprintf("%s-stage", userToCheck)
-					if err := resources.WaitForNamespace(cl, userNS); err != nil {
+					if err := wait.ForNamespace(cl, userNS); err != nil {
 						term.Fatalf(err, "failed to find namespace '%s'", userNS)
 					}
 				}
@@ -202,7 +216,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			// create resources for every nth user
 			if setupBar.Current() <= activeUsers {
-				if err := resources.CreateFromTemplateFiles(cl, scheme, username, templatePaths); err != nil {
+				if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, templatePaths); err != nil {
 					term.Fatalf(err, "failed to create resources for user '%s'", username)
 				}
 			}

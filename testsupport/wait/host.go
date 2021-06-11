@@ -11,6 +11,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -771,7 +772,7 @@ func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig
 // UpdateToolchainConfig updates the current resource of the ToolchainConfig CR with the given options.
 // If there is no existing resource already, then it creates a new one.
 // At the end of the test it returns the resource back to the original value/state.
-func (a *HostAwaitility) UpdateToolchainConfig(options ...test.ToolchainConfigOption) {
+func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainConfigOption) {
 	var originalConfig *toolchainv1alpha1.ToolchainConfig
 	// try to get the current ToolchainConfig
 	config := a.GetToolchainConfig()
