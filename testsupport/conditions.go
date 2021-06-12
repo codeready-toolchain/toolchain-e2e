@@ -74,6 +74,20 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 	}
 }
 
+func ApprovedAutomatically() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+			Reason: "ApprovedAutomatically",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+		},
+	}
+}
+
 func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
@@ -95,20 +109,6 @@ func NoCluster() []toolchainv1alpha1.Condition {
 			Status:  corev1.ConditionFalse,
 			Reason:  "NoClusterAvailable",
 			Message: "no suitable member cluster found - capacity was reached",
-		},
-	}
-}
-
-func ApprovedAutomatically() []toolchainv1alpha1.Condition {
-	return []toolchainv1alpha1.Condition{
-		{
-			Type:   toolchainv1alpha1.UserSignupApproved,
-			Status: corev1.ConditionTrue,
-			Reason: "ApprovedAutomatically",
-		},
-		{
-			Type:   toolchainv1alpha1.UserSignupComplete,
-			Status: corev1.ConditionTrue,
 		},
 	}
 }
