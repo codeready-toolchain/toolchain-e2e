@@ -74,6 +74,19 @@ func PendingApproval() []toolchainv1alpha1.Condition {
 	}
 }
 
+func Approved() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionTrue,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+		},
+	}
+}
+
 func ApprovedAutomatically() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
