@@ -80,6 +80,8 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 	require.NoError(s.T(), err)
 
+	// We wait for the "Approved()" condition status here because it doesn't specify a reason for the approval,
+	// and the reason should not be necessary for the purpose of this test.
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), Approved(), DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
