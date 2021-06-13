@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -316,6 +317,7 @@ func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...strin
 // and label key-value pair reaches the expected value
 func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float64, labels ...string) {
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
+	var comparisonSummary string
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.MetricsURL, family, labels)
 		if err != nil {
@@ -323,12 +325,13 @@ func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float
 			return false, nil
 		}
 		if value != expectedValue {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' (currently: %v)", family, labels, expectedValue, value)
+			comparisonSummary = fmt.Sprintf("Waited for metric '%s{%v}' to reach '%v' (currently: %v)",
+				family, labels, expectedValue, value)
 			return false, nil
 		}
 		return true, nil
 	})
-	require.NoError(a.T, err)
+	require.NoError(a.T, err, comparisonSummary)
 }
 
 // WaitUntilMetricHasValueOrMore waits until the exposed metric with the given family

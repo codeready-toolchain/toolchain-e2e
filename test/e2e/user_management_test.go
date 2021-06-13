@@ -49,7 +49,7 @@ func (s *userManagementTestSuite) TearDownTest() {
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.hostAwait.UpdateToolchainConfig(
-		testconfig.AutomaticApproval().Enabled(),
+		testconfig.AutomaticApproval().Disabled(),
 		testconfig.Deactivation().DeactivatingNotificationDays(-1))
 
 	config := s.hostAwait.GetToolchainConfig()
@@ -62,11 +62,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// User on member cluster 1
 		userSignupMember1, murMember1 := s.newUserRequest().
 			Username("usertodeactivate").
-			Email("usertodeactivate@redhat.com").
+			Email("usertodeactivate@acme.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(s.memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		// User on member cluster 2
