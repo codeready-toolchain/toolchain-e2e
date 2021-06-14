@@ -179,28 +179,32 @@ func (r *userRequest) Execute() UserRequest {
 	require.NoError(r.t, err)
 
 	if r.manuallyApprove || r.targetCluster != nil || (r.verificationRequired != states.VerificationRequired(userSignup)) {
-		doUpdate := func(userSignup *toolchainv1alpha1.UserSignup) error {
+		doUpdate := func(instance *toolchainv1alpha1.UserSignup) error {
 			// We set the VerificationRequired state first, because if manuallyApprove is also set then it will
 			// reset the VerificationRequired state to false.
-			if r.verificationRequired != states.VerificationRequired(userSignup) {
+			if r.verificationRequired != states.VerificationRequired(instance) {
 				states.SetVerificationRequired(userSignup, r.verificationRequired)
 			}
 
 			if r.manuallyApprove {
-				states.SetApproved(userSignup, r.manuallyApprove)
+				states.SetApproved(instance, r.manuallyApprove)
 			}
 			if r.targetCluster != nil {
-				userSignup.Spec.TargetCluster = r.targetCluster.ClusterName
+				instance.Spec.TargetCluster = r.targetCluster.ClusterName
 			}
-			return r.hostAwait.FrameworkClient.Update(context.TODO(), userSignup)
+			return r.hostAwait.FrameworkClient.Update(context.TODO(), instance)
 		}
 
 		err = doUpdate(userSignup)
 		if err != nil {
 			// Under certain conditions, the controller has already updated the UserSignup so it's stale.  This block
-			// allows a single retry to occur before ultimately failing
+			// allows a single retry to occur for the sake of test resilience before ultimately failing
+
+			// Reload the UserSignup again so we have a fresh instance of it
 			userSignup, err := r.hostAwait.WaitForUserSignup(userIdentity.ID.String())
 			require.NoError(r.t, err)
+
+			// Reapply the changes again, ensuring there are no errors
 			require.NoError(r.t, doUpdate(userSignup))
 		}
 	}
