@@ -201,9 +201,8 @@ func (r *userRequest) Execute() UserRequest {
 			// allows a single retry to occur before ultimately failing
 			userSignup, err := r.hostAwait.WaitForUserSignup(userIdentity.ID.String())
 			require.NoError(r.t, err)
-			err = doUpdate(userSignup)
+			require.NoError(r.t, doUpdate(userSignup))
 		}
-		require.NoError(r.t, err)
 	}
 
 	r.t.Logf("user signup '%s' created", userSignup.Name)
