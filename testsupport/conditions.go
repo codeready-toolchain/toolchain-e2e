@@ -102,7 +102,17 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 	}
 }
 
-func NoCluster() []toolchainv1alpha1.Condition {
+func PendingApprovalNoCluster() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionFalse,
+			Reason: "NoClusterAvailable",
+		},
+	}
+}
+
+func ApprovedByAdminNoCluster() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:    toolchainv1alpha1.UserSignupComplete,

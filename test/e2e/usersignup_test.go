@@ -53,7 +53,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup, _ := s.newUserRequest().
 			Username("automatic2").
 			Email("automatic2@redhat.com").
-			RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -83,7 +83,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup1, _ := s.newUserRequest().
 			Username("waitinglist1").
 			Email("waitinglist1@redhat.com").
-			RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
 			Execute().Resources()
 
 		// we need to sleep one second to create UserSignup with different creation time
@@ -91,7 +91,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		userSignup2, _ := s.newUserRequest().
 			Username("waitinglist2").
 			Email("waitinglist2@redhat.com").
-			RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -167,7 +167,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			userSignupPending, _ := s.newUserRequest().
 				Username("multimember-3").
 				Email("multi3@redhat.com").
-				RequireConditions(ConditionSet(Default(), PendingApproval(), NoCluster())...).
+				RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
 				Execute().Resources()
 
 			// then
@@ -238,7 +238,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Email("manualwithcapacity2@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), NoCluster())...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
 			Execute().Resources()
 
 		// then
@@ -266,7 +266,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Username("manualwithcapacity3").
 			Email("manualwithcapacity3@redhat.com").
 			ManuallyApprove().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), NoCluster())...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
 			Execute().Resources()
 
 		// then
