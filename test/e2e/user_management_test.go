@@ -62,7 +62,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// User on member cluster 1
 		userSignupMember1, murMember1 := s.newUserRequest().
 			Username("usertodeactivate").
-			Email("usertodeactivate@acme.com").
+			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(s.memberAwait).
@@ -237,7 +237,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		err = s.hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
 		require.NoError(s.T(), err)
 		userSignupMember1, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name,
-			wait.UntilUserSignupHasConditions(Deactivated()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), Deactivated())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 		require.True(t, states.Deactivated(userSignupMember1), "usersignup should be deactivated")
@@ -276,10 +276,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignupMember1, murMember1 := s.newUserRequest().
 			Username("usertostartdeactivating").
 			Email("usertostartdeactivating@redhat.com").
-			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(s.memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
 		// Get the provisioned account's tier
@@ -300,7 +299,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// The user should be set to deactivating, but not deactivated
 		_, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(
-			ConditionSet(Default(), ApprovedByAdmin(), Deactivating())...))
+			ConditionSet(Default(), ApprovedAutomatically(), Deactivating())...))
 		require.NoError(s.T(), err)
 
 		// Verify resources have been provisioned
@@ -313,8 +312,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			testconfig.AutomaticApproval().Enabled(),
 			testconfig.Deactivation().DeactivatingNotificationDays(3))
 
-		config := s.hostAwait.GetToolchainConfig()
-		require.Equal(s.T(), 3, config.Spec.Host.Deactivation.DeactivatingNotificationDays)
+		hostConfig := s.hostAwait.GetToolchainConfig().Spec.Host
+		require.Equal(s.T(), 3, *hostConfig.Deactivation.DeactivatingNotificationDays)
 
 		// Create a token and identity to sign up with
 		identity0 := authsupport.NewIdentity()

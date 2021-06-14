@@ -43,7 +43,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		Username("test-idler").
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute()
 
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
