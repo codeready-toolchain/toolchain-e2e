@@ -787,14 +787,14 @@ func hasToolchainConfigSyncedStatus(t *testing.T, expectedCondition toolchainv1a
 	return false
 }
 
-// WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
+// WaitForToolchainConfig waits until the ToolchainConfig is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
-	// there should only be one toolchain status with the name toolchain-status
+	// there should only be one ToolchainConfig with the name "config"
 	name := "config"
 	toolchainConfig := &toolchainv1alpha1.ToolchainConfig{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		toolchainConfig = &toolchainv1alpha1.ToolchainConfig{}
-		// retrieve the toolchainstatus from the host namespace
+		// retrieve the ToolchainConfig from the host namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
