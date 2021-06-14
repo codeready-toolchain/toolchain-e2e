@@ -13,8 +13,8 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +51,7 @@ type Awaitility struct {
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
 var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
 	Type:   toolchainv1alpha1.ToolchainClusterReady,
-	Status: v1.ConditionTrue,
+	Status: corev1.ConditionTrue,
 }
 
 // WithRetryOptions returns a new Awaitility with the given "RetryOption"s applied
@@ -382,6 +382,19 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 		}
 	}
 	return nil
+}
+
+// ScaleDeployment scales the deployment with the given number of replicas
+func (a *Awaitility) ScaleDeployment(namespace, name string, replicas int32) error {
+	deployment := &appsv1.Deployment{}
+	if err := a.Client.Get(context.TODO(), types.NamespacedName{
+		Namespace: namespace,
+		Name:      name,
+	}, deployment); err != nil {
+		return err
+	}
+	deployment.Spec.Replicas = &replicas
+	return a.Client.Update(context.TODO(), deployment)
 }
 
 // GetMemoryUsage retrieves the memory usage (in KB) of a given the pod
