@@ -207,7 +207,7 @@ func TestForceSynchronization(t *testing.T) {
 
 	t.Run("tampering ToolchainStatus", func(t *testing.T) {
 
-		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
+		t.Run("verify metrics are still correct after restarting pod but not forcing recount", func(t *testing.T) {
 			// given
 			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(false))
 			err := hostAwait.ScaleDeployment(hostAwait.Namespace, "host-operator", 0) // make sure it's "shut-down" while tampering the ToolchainStatus resource
@@ -216,10 +216,10 @@ func TestForceSynchronization(t *testing.T) {
 			toolchainStatus, err := hostAwait.WaitForToolchainStatus()
 			require.NoError(t, err)
 			toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey] = toolchainv1alpha1.Metric{
-				"external": 6,
+				"external": toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]["external"] + 1, // offset by 1
 			}
 			toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey] = toolchainv1alpha1.Metric{
-				"1,external": 6,
+				"1,external": toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey]["1,external"] + 1, // offset by 1
 			}
 			err = hostAwait.Client.Status().Update(context.TODO(), toolchainStatus)
 			require.NoError(t, err)
@@ -239,8 +239,8 @@ func TestForceSynchronization(t *testing.T) {
 			err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
 			// then
 			require.NoError(t, err)
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 5, "domain", "external")                       // unchanged compared to before deleting the pod
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
+			metricsAssertion.WaitForMetric(MasterUserRecordsPerDomainMetric, 5, "domain", "external")                       // unchanged compared to before deleting the pod
+			metricsAssertion.WaitForMetric(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
 
 		})
 	})

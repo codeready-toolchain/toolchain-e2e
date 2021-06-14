@@ -89,6 +89,13 @@ func (m *MetricsAssertionHelper) WaitForMetricDelta(family string, delta float64
 	m.await.AssertMetricReachesValue(string(family), adjustedValue, labels...)
 }
 
+// WaitForMetric waits for the metric value to reach the exact value (ie, without prior baseline value)
+func (m *MetricsAssertionHelper) WaitForMetric(family string, value float64, labels ...string) {
+	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
+	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
+	m.await.AssertMetricReachesValue(string(family), value, labels...)
+}
+
 // generates a key to retain the baseline metric value, by joining the metric name and its labels.
 // Note: there are probably more sophisticated ways to combine the name and the labels, but for now
 // this simple concatenation should be enough to make the keys unique
