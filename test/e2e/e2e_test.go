@@ -2,13 +2,15 @@ package e2e
 
 import (
 	"context"
-	"testing"
-
+	"fmt"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	coputil "github.com/redhat-cop/operator-utils/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"testing"
 
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
@@ -198,6 +200,176 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
+	})
+
+	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+		//johnSignup = CreateAndApproveSignup(t, hostAwait, johnsmithName, memberAwait.ClusterName)
+		//fmt.Printf(">>>>>>>johnusersignup created")
+		//fmt.Printf(johnSignup.Name)
+		//fmt.Printf("*****************************************************************************\n\n\n")
+		//
+		//johnMUR := &toolchainv1alpha1.MasterUserRecord{}
+		//err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: johnsmithName},johnMUR)
+		//require.NoError(t, err)
+		//fmt.Printf("found MUR \n")
+		//
+		//johnUserAccount := &toolchainv1alpha1.UserAccount{}
+		//err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: johnsmithName},johnUserAccount)
+		//require.NoError(t, err)
+		//fmt.Printf("found userAccount \n")
+		//
+		//johnNSTemplateSet := &toolchainv1alpha1.NSTemplateSet{}
+		//err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: johnsmithName},johnNSTemplateSet)
+		//require.NoError(t, err)
+		//fmt.Printf("found NSTemplateSet \n")
+		//
+		////Create a pod with finalizer in user's namespace, which will block the deletion of namespace.
+		//memberPod := corev1.Pod{
+		//	TypeMeta: metav1.TypeMeta{
+		//		Kind: "Pod",
+		//		APIVersion: "v1",
+		//	},
+		//	ObjectMeta: metav1.ObjectMeta{
+		//		Name: "test-useraccount-delete-1",
+		//		Namespace: "johnsmith-dev",
+		//		Finalizers: []string{
+		//			"kubernetes",
+		//		},
+		//	},
+		//	Spec: corev1.PodSpec{
+		//		Containers: []corev1.Container{{
+		//			Name:    "test",
+		//			Image:   "busybox",
+		//		}},
+		//	},
+		//}
+		//err =memberAwait.Client.Create(context.TODO(), &memberPod)
+		//require.NoError(t, err)
+		//fmt.Printf("\n Pod created")
+		//
+		//// confirm pod created
+		//pod := &corev1.Pod{}
+		//if err:= memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: "johnsmith-dev", Name: "test-useraccount-delete-1"}, pod); err != nil {
+		//	fmt.Errorf("\n could not find the created pod")
+		//}
+
+		//if coputil.HasFinalizer(mur, "finalizer.toolchain.dev.openshift.com") {
+		//	deletionTS := metav1.Now()
+		//	mur.DeletionTimestamp = &deletionTS
+		//	err = hostAwait.Client.Update(context.TODO(),mur)
+		//	require.NoError(t, err)
+		//	hostAwait.WaitForTestResourcesCleanup(time.Duration(5))
+		//} else {
+		//	fmt.Printf("\n mur doesn't have finalizer")
+		//}
+		//
+		//fmt.Printf(johnUserAccount.Finalizers[0])
+		// when
+
+		//err = hostAwait.Client.Delete(context.TODO(), johnSignup)
+		//require.NoError(t, err)
+		//err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: johnsmithName},johnUserAccount)
+		//fmt.Printf( johnUserAccount.DeletionTimestamp.String())
+		//now try deleting userAccount
+		//err = memberAwait.Client.Delete(context.TODO(),johnUserAccount)
+		//require.NoError(t, err)
+		//
+		//err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
+		//assert.NoError(t, err, "NSTemplateSet id not deleted")
+		//
+		//err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
+		//assert.Error(t, err, "Namespace johnsmith-dev not deleted")
+		// remove Finalizer
+		//pod.Finalizers = nil
+		//if err:=memberAwait.Client.Update(context.TODO(),pod); err!=nil {
+		//	fmt.Errorf("could not remove finalizer")
+		//}
+
+		// now everything should be deleted
+
+		fmt.Printf("\n \n Nothing more in this test")
+
+		// given
+		johnMUR, err := hostAwait.WaitForMasterUserRecord(johnsmithName)
+		require.NoError(t, err)
+
+		fmt.Printf("\n >>>>>>>>>>>>>>>>>>>>>>>>>>>> MUR fetched>>>>>>>>>>>>>>>>")
+		// set deletion timestamp and add finalizer
+		deletionTS := metav1.Now()
+		johnMUR.DeletionTimestamp = &deletionTS
+		coputil.AddFinalizer(johnMUR, "finalizer.toolchain.dev.openshift.com")
+		if err := hostAwait.Client.Update(context.TODO(), johnMUR); err != nil {
+			fmt.Errorf("failed to set deletionTS and finalizer")
+		}
+		fmt.Printf("\n Deletion TS")
+		fmt.Printf(johnMUR.DeletionTimestamp.String())
+		fmt.Printf("\n finalizer")
+		fmt.Printf(johnMUR.Finalizers[0])
+
+		// when
+		//Create a pod with finalizer in user's namespace, which will block the deletion of namespace.
+		memberPod := corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Pod",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-useraccount-delete-1",
+				Namespace: "johnsmith-dev",
+				Finalizers: []string{
+					"kubernetes",
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name:  "test",
+					Image: "busybox",
+				}},
+			},
+		}
+		err = memberAwait.Client.Create(context.TODO(), &memberPod)
+		require.NoError(t, err)
+		fmt.Printf("\n Pod created")
+
+		// confirm pod created
+		pod := &corev1.Pod{}
+		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: "johnsmith-dev", Name: "test-useraccount-delete-1"}, pod); err != nil {
+			fmt.Errorf("\n could not find the created pod")
+		}
+		require.NoError(t, err)
+
+		// now delete MUR but userAccount and nstemplateSet should not be deleted
+		err = hostAwait.Client.Delete(context.TODO(), johnMUR)
+
+		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
+		assert.Error(t, err, "userAccount is not deleted")
+
+		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
+		assert.Error(t, err, "NSTemplateSet is not deleted")
+
+		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
+		assert.Error(t, err, "johnsmith-dev namespace is not deleted")
+
+		// now remove finalizer from pod and check all are deleted
+		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: "johnsmith-dev", Name: "test-useraccount-delete-1"}, pod); err != nil {
+			fmt.Errorf("\n could not find the pod")
+		}
+		require.Equal(t, pod.Finalizers[0], "kubernetes")
+		pod.Finalizers = nil
+		//coputil.RemoveFinalizer(pod,"kubernetes")
+		err = memberAwait.Client.Update(context.TODO(), pod)
+		require.NoError(t, err)
+		require.Equal(t, len(pod.Finalizers), 0)
+
+		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
+		assert.NoError(t, err, "userAccount is not deleted")
+
+		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
+		assert.NoError(t, err, "NSTemplateSet is not deleted")
+
+		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
+		assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
+
 	})
 
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
