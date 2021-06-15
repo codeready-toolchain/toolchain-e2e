@@ -189,24 +189,32 @@ func TestForceSynchronization(t *testing.T) {
 		err := hostAwait.ScaleDeployment(hostAwait.Namespace, "host-operator", 1)
 		require.NoError(t, err)
 	})
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-
-	// when
+	// before creating a batch of users, let's remove all remainings of previous tests, so
+	// we know exactly what numbers we're dealing with
+	userSignups := &toolchainv1alpha1.UserSignupList{}
+	err := hostAwait.Client.List(context.TODO(), userSignups, client.InNamespace(hostAwait.Namespace))
+	require.NoError(t, err)
+	for _, userSignup := range userSignups.Items {
+		err := hostAwait.Client.Delete(context.TODO(), &userSignup)
+		require.NoError(t, err)
+	}
+	// then wait until all UserSignups have been deleted
+	for _, userSignup := range userSignups.Items {
+		hostAwait.WaitUntilUserSignupDeleted(userSignup.Name)
+	}
+	// now we can create our new users ;)
 	CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5) // 5 external users
 
-	t.Run("verify metrics are correct", func(t *testing.T) {
-		// then
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 5, "domain", "external")
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external")
-	})
+	// when
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
 
 	t.Run("verify metrics are still correct after restarting pod", func(t *testing.T) {
 		// when
 		err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
 		// then
 		require.NoError(t, err)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 5, "domain", "external")                       // unchanged compared to before deleting the pod
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // unchanged compared to before deleting the pod
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
 	})
 
 	t.Run("tampering ToolchainStatus", func(t *testing.T) {
@@ -220,10 +228,10 @@ func TestForceSynchronization(t *testing.T) {
 			toolchainStatus, err := hostAwait.WaitForToolchainStatus()
 			require.NoError(t, err)
 			toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey] = toolchainv1alpha1.Metric{
-				"external": toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]["external"] + 1, // offset by 1
+				"external": toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]["external"] + 1, // increase current value by 1
 			}
 			toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey] = toolchainv1alpha1.Metric{
-				"1,external": toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey]["1,external"] + 1, // offset by 1
+				"1,external": toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey]["1,external"] + 1, // increase current value by 1
 			}
 			err = hostAwait.Client.Status().Update(context.TODO(), toolchainStatus)
 			require.NoError(t, err)
@@ -232,8 +240,8 @@ func TestForceSynchronization(t *testing.T) {
 			require.NoError(t, err)
 
 			// then values changed
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 6, "domain", "external")                       // value was changed from `5` to `6`
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 6, "activations", "1", "domain", "external") // value was changed from `5` to `6`
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")                       // value was increased by 1
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // value was increased by 1
 		})
 
 		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
@@ -243,8 +251,9 @@ func TestForceSynchronization(t *testing.T) {
 			err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
 			// then
 			require.NoError(t, err)
-			metricsAssertion.WaitForMetric(MasterUserRecordsPerDomainMetric, 5, "domain", "external")                       // unchanged compared to before deleting the pod
-			metricsAssertion.WaitForMetric(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
+			// here we can check the exact metric values (not the deltas) because we know exactly how many usersignups we have
+			metricsAssertion.WaitForMetric(MasterUserRecordsPerDomainMetric, 5, "domain", "external")                       // unchanged compared to tampering the ToolchainStatus
+			metricsAssertion.WaitForMetric(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external") // unchanged compared to tampering the ToolchainStatus
 
 		})
 	})

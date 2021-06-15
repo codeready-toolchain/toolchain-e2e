@@ -377,7 +377,23 @@ func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	})
 }
 
-// WaitUntilMasterUserRecordDeleted waits until MUR with the given name is deleted (ie, not found)
+// WaitUntilUserSignupDeleted waits until the UserSignup with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		mur := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("UserSignup is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until UserSignup is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// WaitUntilMasterUserRecordDeleted waits until the MUR with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
