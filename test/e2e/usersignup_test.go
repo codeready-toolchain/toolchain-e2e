@@ -237,7 +237,6 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Username("manualwithcapacity2").
 			Email("manualwithcapacity2@redhat.com").
 			ManuallyApprove().
-			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
 			Execute().Resources()
 
