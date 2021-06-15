@@ -185,6 +185,10 @@ func TestForceSynchronization(t *testing.T) {
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(),
 		testconfig.Metrics().ForceSynchronization(false))
+	t.Cleanup(func() {
+		err := hostAwait.ScaleDeployment(hostAwait.Namespace, "host-operator", 1)
+		require.NoError(t, err)
+	})
 	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
 
 	// when
