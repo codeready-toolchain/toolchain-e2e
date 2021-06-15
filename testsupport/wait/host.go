@@ -11,6 +11,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -707,21 +708,19 @@ func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCrite
 
 // UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has the given count of MasterUserRecords
-func UntilHasMurCount(murCount int) ToolchainStatusWaitCriterion {
+func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
 	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
-		if toolchainStatus.Status.HostOperator != nil {
-			if toolchainStatus.Status.HostOperator.MasterUserRecordCount == murCount {
-				a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
-				return true
-			}
-			murList := &toolchainv1alpha1.MasterUserRecordList{}
-			err := a.Client.List(context.TODO(), murList, client.InNamespace(toolchainStatus.Namespace))
-			require.NoError(a.T, err)
-			a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'. The actual number of MURs is: '%d'",
-				toolchainStatus.Name, toolchainStatus.Status.HostOperator.MasterUserRecordCount, murCount, len(murList.Items))
-		} else {
-			a.T.Logf("HostOperator status part in ToolchainStatus is nil '%s'", toolchainStatus.Name)
+		murs, ok := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
+		if !ok {
+			a.T.Logf("MasterUserRecordPerDomain metric not found in ToolchainStatus '%s'.", toolchainStatus.Name)
+			return false
 		}
+		if murs[domain] == expectedCount {
+			a.T.Logf("MasterUserRecord count matches in ToolchainStatus '%s`", toolchainStatus.Name)
+			return true
+		}
+		a.T.Logf("MasterUserRecord count doesn't match in ToolchainStatus '%s'. Actual: '%d'; Expected: '%d'",
+			toolchainStatus.Name, murs[domain], expectedCount)
 		return false
 	}
 }
@@ -773,7 +772,7 @@ func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig
 // UpdateToolchainConfig updates the current resource of the ToolchainConfig CR with the given options.
 // If there is no existing resource already, then it creates a new one.
 // At the end of the test it returns the resource back to the original value/state.
-func (a *HostAwaitility) UpdateToolchainConfig(options ...test.ToolchainConfigOption) {
+func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainConfigOption) {
 	var originalConfig *toolchainv1alpha1.ToolchainConfig
 	// try to get the current ToolchainConfig
 	config := a.GetToolchainConfig()
