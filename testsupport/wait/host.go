@@ -774,17 +774,13 @@ type ToolchainConfigWaitCriterion func(*HostAwaitility, *toolchainv1alpha1.Toolc
 
 func UntilToolchainConfigHasSyncedStatus(expectedCondition toolchainv1alpha1.Condition) ToolchainConfigWaitCriterion {
 	return func(a *HostAwaitility, toolchainConfig *toolchainv1alpha1.ToolchainConfig) bool {
-		return hasToolchainConfigSyncedStatus(a.T, expectedCondition, toolchainConfig)
+		if test.ContainsCondition(toolchainConfig.Status.Conditions, expectedCondition) {
+			a.T.Logf("status conditions match in ToolchainConfig")
+			return true
+		}
+		a.T.Logf("waiting for status condition of ToolchainConfig. Actual: '%+v'; Expected: '%+v'", toolchainConfig.Status.Conditions, expectedCondition)
+		return false
 	}
-}
-
-func hasToolchainConfigSyncedStatus(t *testing.T, expectedCondition toolchainv1alpha1.Condition, toolchainConfig *toolchainv1alpha1.ToolchainConfig) bool {
-	if test.ContainsCondition(toolchainConfig.Status.Conditions, expectedCondition) {
-		t.Logf("status conditions match in ToolchainConfig")
-		return true
-	}
-	t.Logf("waiting for status condition of ToolchainConfig. Actual: '%+v'; Expected: '%+v'", toolchainConfig.Status.Conditions, expectedCondition)
-	return false
 }
 
 // WaitForToolchainConfig waits until the ToolchainConfig is available with the provided criteria, if any
