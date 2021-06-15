@@ -26,8 +26,8 @@ type baseUserIntegrationTest struct {
 	member2Await *wait.MemberAwaitility
 }
 
-func (s *baseUserIntegrationTest) newUserRequest() UserRequest {
-	return NewUserRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
+func (s *baseUserIntegrationTest) newUserRequest() SignupRequest {
+	return NewSignupRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
 
 }
 

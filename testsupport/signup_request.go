@@ -20,7 +20,7 @@ import (
 
 var httpClient = HTTPClient
 
-// UserRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
+// SignupRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
 // with a set of sensible default values which can be overridden via its various functions.  Function chaining may
 // be used to achieve an efficient "single-statement" UserSignup creation, for example:
 //
@@ -32,28 +32,28 @@ var httpClient = HTTPClient
 //			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 //			Execute().Resources()
 //
-type UserRequest interface {
+type SignupRequest interface {
 	// Email specifies the email address to use for the new UserSignup
-	Email(email string) UserRequest
+	Email(email string) SignupRequest
 
 	// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
 	// the Resources() function to return a non-nil value for its second return parameter.
-	EnsureMUR() UserRequest
+	EnsureMUR() SignupRequest
 
 	// Execute executes the request against the Registration service REST endpoint.  This function may only be called
 	// once, and must be called after all other functions EXCEPT for Resources()
-	Execute() UserRequest
+	Execute() SignupRequest
 
 	// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
-	ManuallyApprove() UserRequest
+	ManuallyApprove() SignupRequest
 
 	// RequireConditions specifies the condition values that the new UserSignup is required to have in order for
 	// the signup to be considered successful
-	RequireConditions(conditions ...toolchainv1alpha1.Condition) UserRequest
+	RequireConditions(conditions ...toolchainv1alpha1.Condition) SignupRequest
 
 	// RequireHTTPStatus may be used to override the expected HTTP response code received from the Registration Service.
 	// If not specified, here, the default expected value is StatusAccepted
-	RequireHTTPStatus(httpStatus int) UserRequest
+	RequireHTTPStatus(httpStatus int) SignupRequest
 
 	// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
 	// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
@@ -61,19 +61,19 @@ type UserRequest interface {
 	Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord)
 
 	// TargetCluster may be provided in order to specify the user's target cluster
-	TargetCluster(targetCluster *wait.MemberAwaitility) UserRequest
+	TargetCluster(targetCluster *wait.MemberAwaitility) SignupRequest
 
 	// Username specifies the username of the user
-	Username(username string) UserRequest
+	Username(username string) SignupRequest
 
 	// VerificationRequired specifies that the "verification-required" state will be set for the new UserSignup, however
 	// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
 	// required state.
-	VerificationRequired() UserRequest
+	VerificationRequired() SignupRequest
 }
 
-func NewUserRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, member2Await *wait.MemberAwaitility) UserRequest {
-	return &userRequest{
+func NewSignupRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, member2Await *wait.MemberAwaitility) SignupRequest {
+	return &signupRequest{
 		t:                  t,
 		hostAwait:          hostAwait,
 		memberAwait:        memberAwait,
@@ -82,7 +82,7 @@ func NewUserRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *w
 	}
 }
 
-type userRequest struct {
+type signupRequest struct {
 	t                    *testing.T
 	hostAwait            *wait.HostAwaitility
 	memberAwait          *wait.MemberAwaitility
@@ -99,51 +99,51 @@ type userRequest struct {
 	mur                  *toolchainv1alpha1.MasterUserRecord
 }
 
-func (r *userRequest) Username(username string) UserRequest {
+func (r *signupRequest) Username(username string) SignupRequest {
 	r.username = &username
 	return r
 }
 
-func (r *userRequest) Email(email string) UserRequest {
+func (r *signupRequest) Email(email string) SignupRequest {
 	r.email = &email
 	return r
 }
 
-func (r *userRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+func (r *signupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	return r.userSignup, r.mur
 }
 
-func (r *userRequest) EnsureMUR() UserRequest {
+func (r *signupRequest) EnsureMUR() SignupRequest {
 	r.ensureMUR = true
 	return r
 }
 
-func (r *userRequest) ManuallyApprove() UserRequest {
+func (r *signupRequest) ManuallyApprove() SignupRequest {
 	r.manuallyApprove = true
 	return r
 }
 
-func (r *userRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) UserRequest {
+func (r *signupRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) SignupRequest {
 	r.conditions = conditions
 	return r
 }
 
-func (r *userRequest) VerificationRequired() UserRequest {
+func (r *signupRequest) VerificationRequired() SignupRequest {
 	r.verificationRequired = true
 	return r
 }
 
-func (r *userRequest) TargetCluster(targetCluster *wait.MemberAwaitility) UserRequest {
+func (r *signupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) SignupRequest {
 	r.targetCluster = targetCluster
 	return r
 }
 
-func (r *userRequest) RequireHTTPStatus(httpStatus int) UserRequest {
+func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 	r.requiredHTTPStatus = httpStatus
 	return r
 }
 
-func (r *userRequest) Execute() UserRequest {
+func (r *signupRequest) Execute() SignupRequest {
 	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.hostAwait)
 
 	var username string
@@ -177,6 +177,13 @@ func (r *userRequest) Execute() UserRequest {
 	// Wait for the UserSignup to be created
 	userSignup, err := r.hostAwait.WaitForUserSignup(userIdentity.ID.String())
 	require.NoError(r.t, err)
+
+	if r.targetCluster != nil {
+		if r.hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
+			require.False(r.t, *r.hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
+				"cannot specify a target cluster for new signup requests while automatic approval is enabled")
+		}
+	}
 
 	if r.manuallyApprove || r.targetCluster != nil || (r.verificationRequired != states.VerificationRequired(userSignup)) {
 		doUpdate := func(instance *toolchainv1alpha1.UserSignup) error {

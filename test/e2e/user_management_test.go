@@ -267,7 +267,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("test deactivating state set OK", func(t *testing.T) {
 		// Reset configuration back to 3 days
 		s.hostAwait.UpdateToolchainConfig(
-			testconfig.AutomaticApproval().Enabled(),
+			testconfig.AutomaticApproval().Disabled(),
 			testconfig.Deactivation().DeactivatingNotificationDays(3))
 
 		config := s.hostAwait.GetToolchainConfig()
@@ -276,9 +276,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignupMember1, murMember1 := s.newUserRequest().
 			Username("usertostartdeactivating").
 			Email("usertostartdeactivating@redhat.com").
+			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(s.memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		// Get the provisioned account's tier
@@ -299,7 +300,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// The user should be set to deactivating, but not deactivated
 		_, err = s.hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(
-			ConditionSet(Default(), ApprovedAutomatically(), Deactivating())...))
+			ConditionSet(Default(), ApprovedByAdmin(), Deactivating())...))
 		require.NoError(s.T(), err)
 
 		// Verify resources have been provisioned
