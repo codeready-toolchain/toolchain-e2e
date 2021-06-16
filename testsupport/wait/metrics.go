@@ -24,9 +24,6 @@ func getMetricValue(url string, family string, expectedLabels []string) (float64
 		},
 	}
 
-	
-
-
 	resp, err := client.Get(fmt.Sprintf("https://%s/metrics", url)) // internal call, so no need for TLS
 	if err != nil {
 		return -1, err

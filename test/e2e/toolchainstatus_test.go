@@ -55,6 +55,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 					"annotations": annotations,
 				},
 			})
+			require.NoError(t, err)
 			err = hostAwait.Client.Patch(context.TODO(), userSignup, client.RawPatch(types.MergePatchType, mergePatch))
 			// then
 			require.NoError(t, err)
