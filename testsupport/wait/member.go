@@ -880,6 +880,65 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	return err
 }
 
+// GetMemberOperatorConfig returns MemberOperatorConfig instance, nil if not found
+func (a *MemberAwaitility) GetMemberOperatorConfig() *toolchainv1alpha1.MemberOperatorConfig {
+	config := &toolchainv1alpha1.MemberOperatorConfig{}
+	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "config"), config); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		require.NoError(a.T, err)
+	}
+	return config
+}
+
+// MemberOperatorConfigWaitCriterion a function to check that an MemberOperatorConfig has the expected criteria
+type MemberOperatorConfigWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.MemberOperatorConfig) bool
+
+// UntilMemberConfigMatches returns a `MemberOperatorConfigWaitCriterion` which checks that the given
+// MemberOperatorConfig matches the provided one
+func UntilMemberConfigMatches(expectedMemberOperatorConfig *toolchainv1alpha1.MemberOperatorConfig) MemberOperatorConfigWaitCriterion {
+	return func(a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
+		if reflect.DeepEqual(expectedMemberOperatorConfig, memberConfig) {
+			a.T.Logf("the MemberOperatorConfig matches the expected configuration")
+		}
+		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'", memberConfig, expectedMemberOperatorConfig)
+		return false
+	}
+}
+
+// WaitForMemberOperatorConfig waits until the MemberOperatorConfig is available with the provided criteria, if any
+func (a *MemberAwaitility) WaitForMemberOperatorConfig(criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
+	// there should only be one MemberOperatorConfig with the name config
+	name := "config"
+	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		memberOperatorConfig = &toolchainv1alpha1.MemberOperatorConfig{}
+		// retrieve the MemberOperatorConfig from the member namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			},
+			memberOperatorConfig)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of MemberOperatorConfig '%s' in namespace '%s'...\n", name, a.Namespace)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, memberOperatorConfig) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found memberOperatorConfig '%s': %+v", memberOperatorConfig.Name, memberOperatorConfig)
+		return true, nil
+	})
+	return memberOperatorConfig, err
+}
+
 // DeleteUserAccount deletes the user account resource with the given name and
 // waits until it was actually deleted
 func (a *MemberAwaitility) DeleteUserAccount(name string) error {
