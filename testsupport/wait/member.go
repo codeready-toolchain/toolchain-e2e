@@ -899,8 +899,8 @@ type MemberOperatorConfigWaitCriterion func(*MemberAwaitility, *toolchainv1alpha
 // MemberOperatorConfig matches the provided one
 func UntilMemberConfigMatches(expectedMemberOperatorConfig *toolchainv1alpha1.MemberOperatorConfig) MemberOperatorConfigWaitCriterion {
 	return func(a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
-		if reflect.DeepEqual(expectedMemberOperatorConfig, memberConfig) {
-			a.T.Logf("the MemberOperatorConfig matches the expected configuration")
+		if reflect.DeepEqual(expectedMemberOperatorConfig.Spec, memberConfig.Spec) {
+			return true
 		}
 		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'", memberConfig, expectedMemberOperatorConfig)
 		return false
