@@ -91,8 +91,6 @@ func (m *MetricsAssertionHelper) WaitForMetricDelta(family string, delta float64
 
 // WaitForMetric waits for the metric value to reach the exact value (ie, without prior baseline value)
 func (m *MetricsAssertionHelper) WaitForMetric(family string, value float64, labels ...string) {
-	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
-	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
 	m.await.AssertMetricReachesValue(string(family), value, labels...)
 }
 
