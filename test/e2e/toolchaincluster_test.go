@@ -177,7 +177,7 @@ func caBundle(bundle string) clusterOption {
 	}
 }
 
-func TestForceSynchronization(t *testing.T) {
+func TestForceMetricsSynchronization(t *testing.T) {
 	// given
 	toolchainClusterList := &toolchainv1alpha1.ToolchainClusterList{}
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, toolchainClusterList)
