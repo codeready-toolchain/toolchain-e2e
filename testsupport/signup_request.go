@@ -1,7 +1,6 @@
 package testsupport
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -186,7 +185,7 @@ func (r *signupRequest) Execute() SignupRequest {
 	}
 
 	if r.manuallyApprove || r.targetCluster != nil || (r.verificationRequired != states.VerificationRequired(userSignup)) {
-		doUpdate := func(instance *toolchainv1alpha1.UserSignup) error {
+		doUpdate := func(instance *toolchainv1alpha1.UserSignup) {
 			// We set the VerificationRequired state first, because if manuallyApprove is also set then it will
 			// reset the VerificationRequired state to false.
 			if r.verificationRequired != states.VerificationRequired(instance) {
@@ -199,21 +198,10 @@ func (r *signupRequest) Execute() SignupRequest {
 			if r.targetCluster != nil {
 				instance.Spec.TargetCluster = r.targetCluster.ClusterName
 			}
-			return r.hostAwait.FrameworkClient.Update(context.TODO(), instance)
 		}
 
-		err = doUpdate(userSignup)
-		if err != nil {
-			// Under certain conditions, the controller has already updated the UserSignup so it's stale.  This block
-			// allows a single retry to occur for the sake of test resilience before ultimately failing
-
-			// Reload the UserSignup again so we have a fresh instance of it
-			userSignup, err := r.hostAwait.WaitForUserSignup(userIdentity.ID.String())
-			require.NoError(r.t, err)
-
-			// Reapply the changes again, ensuring there are no errors
-			require.NoError(r.t, doUpdate(userSignup))
-		}
+		userSignup, err = r.hostAwait.UpdateUserSignupSpec(userSignup.Name, doUpdate)
+		require.NoError(r.t, err)
 	}
 
 	r.t.Logf("user signup '%s' created", userSignup.Name)
