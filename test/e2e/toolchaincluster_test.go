@@ -191,17 +191,8 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	})
 	// before creating a batch of users, let's remove all remainings of previous tests, so
 	// we know exactly what numbers we're dealing with
-	userSignups := &toolchainv1alpha1.UserSignupList{}
-	err := hostAwait.Client.List(context.TODO(), userSignups, client.InNamespace(hostAwait.Namespace))
-	require.NoError(t, err)
-	for _, userSignup := range userSignups.Items {
-		err := hostAwait.Client.Delete(context.TODO(), &userSignup)
-		require.NoError(t, err)
-	}
-	// then wait until all UserSignups have been deleted
-	for _, userSignup := range userSignups.Items {
-		hostAwait.WaitUntilUserSignupDeleted(userSignup.Name)
-	}
+	DeleteAllUserSignups(t, hostAwait)
+
 	// now we can create our new users ;)
 	CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5) // 5 external users
 

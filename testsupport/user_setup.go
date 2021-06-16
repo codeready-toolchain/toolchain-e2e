@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
@@ -190,4 +191,19 @@ func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 
 func ToIdentityName(userID string) string {
 	return fmt.Sprintf("%s:%s", "rhd", userID)
+}
+
+func DeleteAllUserSignups(t *testing.T, hostAwait *wait.HostAwaitility) {
+	userSignups := &toolchainv1alpha1.UserSignupList{}
+	err := hostAwait.Client.List(context.TODO(), userSignups, client.InNamespace(hostAwait.Namespace))
+	require.NoError(t, err)
+	for _, userSignup := range userSignups.Items {
+		err := hostAwait.Client.Delete(context.TODO(), &userSignup)
+		require.NoError(t, err)
+	}
+	// then wait until all UserSignups have been deleted
+	for _, userSignup := range userSignups.Items {
+		err := hostAwait.WaitUntilUserSignupDeleted(userSignup.Name)
+		require.NoError(t, err)
+	}
 }
