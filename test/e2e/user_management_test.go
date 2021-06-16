@@ -506,14 +506,15 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
 
 		// Create a new UserSignup without requiring verification, and confirm it was approved automatically
 		userSignup, _ := s.newUserRequest().
 			Username("banprovisioned").
 			Email("banprovisioned@test.com").
+			ManuallyApprove().
 			TargetCluster(s.memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		// Create the BannedUser
@@ -529,7 +530,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.Error(s.T(), err)
 		// confirm usersignup
 		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically(), Banned())...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(s.T(), err)
 
