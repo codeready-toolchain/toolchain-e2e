@@ -361,6 +361,19 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 	return
 }
 
+// DeleteToolchainStatus deletes the ToolchainStatus resource with the given name and in the host operator namespace
+func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
+	toolchainstatus := &toolchainv1alpha1.ToolchainStatus{}
+	if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, toolchainstatus); err != nil {
+		if errors.IsNotFound(err) {
+			a.T.Logf("ToolchainStatus is already deleted '%s'", name)
+			return nil
+		}
+		return err
+	}
+	return a.Client.Delete(context.TODO(), toolchainstatus)
+}
+
 // WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {

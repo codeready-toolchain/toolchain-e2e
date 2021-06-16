@@ -7,14 +7,12 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestToolchainClusterE2E(t *testing.T) {
@@ -175,78 +173,4 @@ func caBundle(bundle string) clusterOption {
 	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Spec.CABundle = bundle
 	}
-}
-
-func TestForceMetricsSynchronization(t *testing.T) {
-	// given
-	toolchainClusterList := &toolchainv1alpha1.ToolchainClusterList{}
-	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, toolchainClusterList)
-	defer ctx.Cleanup()
-	hostAwait.UpdateToolchainConfig(
-		testconfig.AutomaticApproval().Enabled(),
-		testconfig.Metrics().ForceSynchronization(false))
-	t.Cleanup(func() {
-		err := hostAwait.ScaleDeployment(hostAwait.Namespace, "host-operator", 1)
-		require.NoError(t, err)
-	})
-	// before creating a batch of users, let's remove all remainings of previous tests, so
-	// we know exactly what numbers we're dealing with
-	DeleteAllUserSignups(t, hostAwait)
-
-	// now we can create our new users ;)
-	CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5) // 5 external users
-
-	// when
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-
-	t.Run("verify metrics are still correct after restarting pod", func(t *testing.T) {
-		// when
-		err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
-		// then
-		require.NoError(t, err)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // unchanged compared to before deleting the pod
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
-	})
-
-	t.Run("tampering ToolchainStatus", func(t *testing.T) {
-
-		t.Run("verify metrics are still correct after restarting pod but not forcing recount", func(t *testing.T) {
-			// given
-			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(false))
-			err := hostAwait.ScaleDeployment(hostAwait.Namespace, "host-operator", 0) // make sure it's "shut-down" while tampering the ToolchainStatus resource
-			require.NoError(t, err)
-			// tamper the values in ToolchainStatus.status.metrics
-			toolchainStatus, err := hostAwait.WaitForToolchainStatus()
-			require.NoError(t, err)
-			toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey] = toolchainv1alpha1.Metric{
-				"external": toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]["external"] + 1, // increase current value by 1
-			}
-			toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey] = toolchainv1alpha1.Metric{
-				"1,external": toolchainStatus.Status.Metrics[toolchainv1alpha1.UserSignupsPerActivationAndDomainMetricKey]["1,external"] + 1, // increase current value by 1
-			}
-			err = hostAwait.Client.Status().Update(context.TODO(), toolchainStatus)
-			require.NoError(t, err)
-			// when restarting the pod
-			err = hostAwait.ScaleDeployment(hostAwait.Namespace, "host-operator", 1)
-			require.NoError(t, err)
-
-			// then values changed
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")                       // value was increased by 1
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // value was increased by 1
-		})
-
-		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
-			// given
-			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(true))
-			// when (forcing restart)
-			err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
-			// then
-			require.NoError(t, err)
-			// here we can check the exact metric values (not the deltas) because we know exactly how many usersignups we have
-			metricsAssertion.WaitForMetric(MasterUserRecordsPerDomainMetric, 5, "domain", "external")                       // unchanged compared to tampering the ToolchainStatus
-			metricsAssertion.WaitForMetric(UsersPerActivationsAndDomainMetric, 5, "activations", "1", "domain", "external") // unchanged compared to tampering the ToolchainStatus
-
-		})
-	})
-
 }

@@ -13,7 +13,6 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -295,7 +294,14 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) float64 {
-	value, err := getMetricValue(a.MetricsURL, family, labelAndValues)
+	var value float64
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if value, err = getMetricValue(a.MetricsURL, family, labelAndValues); err != nil {
+			a.T.Logf("waiting for metric %s but error occurred: %v", family, err)
+			return false, nil
+		}
+		return true, nil
+	})
 	require.NoError(a.T, err)
 	return value
 }
@@ -382,19 +388,6 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 		}
 	}
 	return nil
-}
-
-// ScaleDeployment scales the deployment with the given number of replicas
-func (a *Awaitility) ScaleDeployment(namespace, name string, replicas int32) error {
-	deployment := &appsv1.Deployment{}
-	if err := a.Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: namespace,
-		Name:      name,
-	}, deployment); err != nil {
-		return err
-	}
-	deployment.Spec.Replicas = &replicas
-	return a.Client.Update(context.TODO(), deployment)
 }
 
 // GetMemoryUsage retrieves the memory usage (in KB) of a given the pod

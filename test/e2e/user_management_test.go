@@ -302,7 +302,7 @@ func (s *userManagementTestSuite) TestUserReactivationsMetric() {
 		metricsAssertion := InitMetricsAssertion(t, s.hostAwait, []string{s.memberAwait.ClusterName, s.member2Await.ClusterName})
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
-		err := s.hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
+		err := s.hostAwait.DeletePods(client.InNamespace(s.hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
 
 		// then check how much time it takes to restart and process all existing resources
 		require.NoError(t, err)
