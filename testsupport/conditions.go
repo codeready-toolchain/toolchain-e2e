@@ -272,3 +272,11 @@ func Complete() toolchainv1alpha1.Condition {
 		Status: corev1.ConditionTrue,
 	}
 }
+
+func ToolchainConfigSyncComplete() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ToolchainConfigSyncComplete,
+		Status: corev1.ConditionTrue,
+		Reason: toolchainv1alpha1.ToolchainConfigSyncedReason,
+	}
+}
