@@ -286,7 +286,10 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("when approved and set target cluster manually, then the limits will be ignored", func(t *testing.T) {
 		// given
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled().ResourceCapThreshold(1).MaxUsersNumber(1))
+		s.hostAwait.UpdateToolchainConfig(
+			testconfig.AutomaticApproval().Disabled().
+				ResourceCapThreshold(1).
+				MaxUsersNumber(1))
 
 		// when & then
 		userSignup, _ := s.newSignupRequest().
@@ -294,6 +297,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Email("withtargetcluster@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 

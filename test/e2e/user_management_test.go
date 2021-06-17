@@ -626,6 +626,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			Username("banandunban").
 			Email("banandunban@test.com").
 			EnsureMUR().
+			ManuallyApprove().
 			TargetCluster(s.memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
