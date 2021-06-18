@@ -22,23 +22,28 @@ func TestE2EFlow(t *testing.T) {
 	// full flow from usersignup with approval down to namespaces creation
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
-	defaultMemberConfig := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("5s"))
-	member2Config := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(defaultMemberConfig.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, member2Config.Spec))
+	memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("5s"))
+	memberConfiguration2 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration1.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration2.Spec))
 
 	t.Run("verify MemberOperatorConfigs synced from ToolchainConfig to member clusters", func(t *testing.T) {
 		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
 			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete()))
 		})
-		// TODO uncomment VerifyMemberOperatorConfig once the serviceaccount issue is resolved:
-		// memberoperatorconfigs.toolchain.dev.openshift.com "config" is forbidden: User "system:serviceaccount:rsenthil-member-operator:e2e-service-account" cannot get resource "memberoperatorconfigs" in API group "toolchain.dev.openshift.com" in the namespace "rsenthil-member-operator"
-		//
-		// t.Run("verify MemberOperatorConfig was synced to member1", func(t *testing.T) {
-		// 	VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(defaultMemberConfig))
-		// })
-		// t.Run("verify MemberOperatorConfig was synced to member2", func(t *testing.T) {
-		// 	VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(member2Config))
-		// })
+		t.Run("verify MemberOperatorConfig was synced to both member clusters", func(t *testing.T) {
+			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration1))
+		})
+		t.Run("verify MemberOperatorConfig was synced to member2", func(t *testing.T) {
+			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration2))
+		})
+		t.Run("verify updated toolchainconfig is synced", func(t *testing.T) {
+			// when switch member1 and member2 configs
+			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration2.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration1.Spec))
+
+			// then
+			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration2))
+			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration1))
+		})
 	})
 
 	consoleURL := memberAwait.GetConsoleURL()
