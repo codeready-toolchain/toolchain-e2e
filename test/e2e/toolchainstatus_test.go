@@ -25,22 +25,16 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	userSignups := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 2)
 
 	// delete the current toolchainstatus/toolchain-status resource and restart the host-operator pod,
-	// so we can start with accurate counters/metrics (and not get flaky because of previous tests)
+	// so we can start with accurate counters/metrics and not get flaky because of previous tests,
+	// in particular w.r.t the `userSignupsPerActivationAndDomain` counter which is not decremented when a user
+	// is deleted
 	err := hostAwait.DeleteToolchainStatus("toolchain-status")
 	require.NoError(t, err)
+	// restarting the pod after the `toolchain-status` resource was deleted will trigger a recount based on resources
 	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
 	require.NoError(t, err)
 
 	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-
-	t.Run("verify metrics are still correct after restarting pod", func(t *testing.T) {
-		// when
-		err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
-		// then
-		require.NoError(t, err)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // unchanged compared to before deleting the pod
-		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // unchanged compared to before deleting the pod
-	})
 
 	t.Run("tampering activation-counter annotations", func(t *testing.T) {
 
