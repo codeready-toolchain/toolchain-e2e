@@ -14,7 +14,6 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,13 +26,12 @@ import (
 // HostAwaitility the Awaitility for the Host cluster
 type HostAwaitility struct {
 	*Awaitility
-	FrameworkClient        framework.FrameworkClient
 	RegistrationServiceNs  string
 	RegistrationServiceURL string
 }
 
 // NewHostAwaitility initializes a HostAwaitility
-func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
+func NewHostAwaitility(t *testing.T, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			T:             t,
@@ -43,7 +41,6 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
-		FrameworkClient:       fcl,
 		RegistrationServiceNs: registrationServiceNs,
 	}
 }
@@ -52,7 +49,6 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
-		FrameworkClient:        a.FrameworkClient,
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
 	}

@@ -8,12 +8,7 @@ export GO111MODULE
 goarch=$(shell go env GOARCH) 
 
 .PHONY: build
-## Build the operator
-build: $(OUT_DIR)/operator
-
-$(OUT_DIR)/operator:
+## Build e2e test files
+build:
 	$(Q)CGO_ENABLED=0 GOARCH=${goarch} GOOS=linux \
-		go build ${V_FLAG} \
-		-ldflags "-X ${GO_PACKAGE_PATH}/cmd/manager.Commit=${GIT_COMMIT_ID} -X ${GO_PACKAGE_PATH}/cmd/manager.BuildTime=${BUILD_TIME}" \
-		-o $(OUT_DIR)/bin/toolchain-e2e \
-		cmd/manager/main.go
+		go build ${V_FLAG} ./...

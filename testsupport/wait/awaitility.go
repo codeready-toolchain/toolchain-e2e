@@ -5,18 +5,23 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-
+	"github.com/codeready-toolchain/toolchain-common/pkg/status"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -25,8 +30,6 @@ import (
 )
 
 const (
-	DefaultOperatorRetryInterval     = time.Millisecond * 500
-	DefaultOperatorTimeout           = time.Second * 180
 	DefaultRetryInterval             = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
 	DefaultTimeout                   = time.Second * 60
 	MemberNsVar                      = "MEMBER_NS"
@@ -45,6 +48,7 @@ type Awaitility struct {
 	RetryInterval time.Duration
 	Timeout       time.Duration
 	MetricsURL    string
+	toClean       []func()
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
@@ -436,4 +440,76 @@ func (a *Awaitility) CreateNamespace(name string) {
 			require.NoError(a.T, err)
 		}
 	})
+}
+
+// WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
+func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
+		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
+			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
+			return false, nil
+		}
+		deployment := &appsv1.Deployment{}
+		require.NoError(a.T, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
+		if int(deployment.Status.AvailableReplicas) != replicas {
+			a.T.Logf("waiting until all %d replicas of the %s deployment are available - current replicas: %d", replicas, name, deployment.Status.AvailableReplicas)
+			return false, nil
+		}
+		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
+		return true, nil
+	})
+	require.NoError(a.T, err)
+}
+
+// CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
+func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	if err := a.Client.Create(ctx, obj, opts...); err != nil {
+		return err
+	}
+	a.Cleanup(obj)
+	return nil
+}
+
+// Cleanup schedules removal of the given objects at the end of the current test
+func (a *Awaitility) Cleanup(objects ...runtime.Object) {
+	for _, obj := range objects {
+		objToClean := obj.DeepCopyObject()
+		cleanup := func() {
+			metaAccess, err := meta.Accessor(objToClean)
+			require.NoError(a.T, err)
+			kind := objToClean.GetObjectKind().GroupVersionKind().Kind
+			if kind == "" {
+				kind = reflect.TypeOf(obj).Elem().Name()
+			}
+			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
+			if err := a.Client.Delete(context.TODO(), objToClean); err != nil {
+				if errors.IsNotFound(err) {
+					a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+					return
+				}
+			}
+
+			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
+					if errors.IsNotFound(err) {
+						return true, nil
+					}
+					return false, err
+				}
+				return false, nil
+			}))
+		}
+		a.toClean = append(a.toClean, cleanup)
+		a.T.Cleanup(cleanup)
+	}
+}
+
+// Clean triggers cleanup of all resources that were marked to be cleaned before that
+func (a *Awaitility) Clean() {
+	for _, clean := range a.toClean {
+		clean()
+	}
+	a.toClean = nil
 }

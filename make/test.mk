@@ -61,7 +61,7 @@ e2e-run:
 	oc get toolchaincluster -n $(HOST_NS)
 	oc get toolchaincluster -n $(MEMBER_NS)
 	-oc new-project $(TEST_NS) --display-name e2e-tests 1>/dev/null
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} operator-sdk test local ./test/e2e --no-setup --operator-namespace $(TEST_NS) --verbose --go-test-flags "-test.timeout=60m -test.failfast" || \
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ./test/e2e -v -timeout=60m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -201,6 +201,8 @@ ifneq ($(CLONEREFS_OPTIONS),)
 	fi;
 	$(MAKE) -C ${E2E_REPO_PATH} build
 	# operators are built, now copy the operators' binaries to make them available for CI
+	mkdir -p ${E2E_REPO_PATH}/build/_output/bin/ || true
+	mkdir -p build/_output/bin/ || true
 	cp ${E2E_REPO_PATH}/build/_output/bin/* build/_output/bin/
 endif
 
