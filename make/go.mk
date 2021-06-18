@@ -10,5 +10,6 @@ goarch=$(shell go env GOARCH)
 .PHONY: build
 ## Build e2e test files
 build:
+	mkdir -p $(OUT_DIR)/bin || true
 	$(Q)CGO_ENABLED=0 GOARCH=${goarch} GOOS=linux \
 		go build ${V_FLAG} ./...
