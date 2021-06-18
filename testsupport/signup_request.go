@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -221,6 +224,13 @@ func (r *signupRequest) Execute() SignupRequest {
 		require.NoError(r.t, err)
 		r.mur = mur
 	}
+
+	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
+	r.t.Cleanup(func() {
+		if err := r.hostAwait.Client.Delete(context.TODO(), r.userSignup); err != nil && !errors.IsNotFound(err) {
+			require.NoError(r.t, err)
+		}
+	})
 
 	return r
 }
