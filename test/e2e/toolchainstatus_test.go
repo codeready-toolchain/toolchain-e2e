@@ -74,6 +74,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(true))
 
 			// when restarting the pod
+			// TODO: unneeded once the ToolchainConfig controller will be in place ?
 			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
 
 			// then
