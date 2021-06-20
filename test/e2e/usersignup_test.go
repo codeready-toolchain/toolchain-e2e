@@ -32,6 +32,9 @@ func (s *userSignupIntegrationTest) SetupSuite() {
 
 func (s *userSignupIntegrationTest) TearDownTest() {
 	s.ctx.Cleanup()
+	s.hostAwait.Clean()
+	s.memberAwait.Clean()
+	s.member2Await.Clean()
 }
 
 func (s *userSignupIntegrationTest) TestAutomaticApproval() {

@@ -6,8 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -47,6 +52,7 @@ type Awaitility struct {
 	RetryInterval time.Duration
 	Timeout       time.Duration
 	MetricsURL    string
+	toClean       []func()
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
@@ -433,4 +439,45 @@ func (a *Awaitility) CreateNamespace(name string) {
 			require.NoError(a.T, err)
 		}
 	})
+}
+
+func (a *Awaitility) Cleanup(objects ...runtime.Object) {
+	for _, obj := range objects {
+		objToClean := obj.DeepCopyObject()
+		cleanup := func() {
+			metaAccess, err := meta.Accessor(objToClean)
+			require.NoError(a.T, err)
+			kind := objToClean.GetObjectKind().GroupVersionKind().Kind
+			if kind == "" {
+				kind = reflect.TypeOf(obj).Elem().Name()
+			}
+			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
+			if err := a.Client.Delete(context.TODO(), objToClean); err != nil {
+				if errors.IsNotFound(err) {
+					a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+					return
+				}
+			}
+
+			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
+					if errors.IsNotFound(err) {
+						return true, nil
+					}
+					return false, err
+				}
+				return false, nil
+			}))
+		}
+		a.toClean = append(a.toClean, cleanup)
+		a.T.Cleanup(cleanup)
+	}
+}
+
+func (a *Awaitility) Clean() {
+	for _, clean := range a.toClean {
+		clean()
+	}
+	a.toClean = nil
 }
