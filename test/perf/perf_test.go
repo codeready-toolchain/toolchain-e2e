@@ -46,7 +46,7 @@ func TestPerformance(t *testing.T) {
 		t.Run("restart host operator pod", func(t *testing.T) {
 
 			// when deleting the host-operator pod to emulate an operator restart during redeployment.
-			err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
+			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
 
 			// then check how much time it takes to restart and process all existing resources
 			require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestPerformance(t *testing.T) {
 		t.Run("restart member operator pod", func(t *testing.T) {
 
 			// when deleting the host-operator pod to emulate an operator restart during redeployment.
-			err := memberAwait.DeletePods(client.MatchingLabels{"name": "member-operator"})
+			err := memberAwait.DeletePods(client.InNamespace(memberAwait.Namespace), client.MatchingLabels{"name": "member-operator"})
 
 			// then check how much time it takes to restart and process all existing resources
 			require.NoError(t, err)
