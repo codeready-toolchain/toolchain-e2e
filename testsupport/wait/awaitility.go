@@ -482,8 +482,12 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 			if kind == "" {
 				kind = reflect.TypeOf(obj).Elem().Name()
 			}
+			propagationPolicy := metav1.DeletePropagationForeground
+			opts := client.DeleteOption(&client.DeleteOptions{
+				PropagationPolicy: &propagationPolicy,
+			})
 			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
-			if err := a.Client.Delete(context.TODO(), objToClean); err != nil {
+			if err := a.Client.Delete(context.TODO(), objToClean, opts); err != nil {
 				if errors.IsNotFound(err) {
 					a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
 					return
