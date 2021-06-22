@@ -45,6 +45,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	s.newSignupRequest().
 		Username("automatic1").
 		Email("automatic1@redhat.com").
+		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute()
 

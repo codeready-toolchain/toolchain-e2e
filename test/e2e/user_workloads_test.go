@@ -43,6 +43,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		Username("test-idler").
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
+		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute()
 

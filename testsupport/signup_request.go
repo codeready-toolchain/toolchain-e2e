@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -75,12 +78,15 @@ type SignupRequest interface {
 }
 
 func NewSignupRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, member2Await *wait.MemberAwaitility) SignupRequest {
+	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &signupRequest{
 		t:                  t,
 		hostAwait:          hostAwait,
 		memberAwait:        memberAwait,
 		member2Await:       member2Await,
 		requiredHTTPStatus: http.StatusAccepted,
+		username:           defaultUsername,
+		email:              fmt.Sprintf("%s@test.com", defaultUsername),
 	}
 }
 
@@ -92,8 +98,8 @@ type signupRequest struct {
 	ensureMUR            bool
 	manuallyApprove      bool
 	verificationRequired bool
-	username             *string
-	email                *string
+	username             string
+	email                string
 	requiredHTTPStatus   int
 	targetCluster        *wait.MemberAwaitility
 	conditions           []toolchainv1alpha1.Condition
@@ -102,12 +108,12 @@ type signupRequest struct {
 }
 
 func (r *signupRequest) Username(username string) SignupRequest {
-	r.username = &username
+	r.username = username
 	return r
 }
 
 func (r *signupRequest) Email(email string) SignupRequest {
-	r.email = &email
+	r.email = email
 	return r
 }
 
@@ -148,27 +154,13 @@ func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 func (r *signupRequest) Execute() SignupRequest {
 	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.hostAwait)
 
-	var username string
-	if r.username != nil {
-		username = *r.username
-	} else {
-		username = fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
-	}
-
 	// Create a token and identity to sign up with
 	userIdentity := &authsupport.Identity{
 		ID:       uuid.Must(uuid.NewV4()),
-		Username: username,
+		Username: r.username,
 	}
 
-	var email string
-	if r.email != nil {
-		email = *r.email
-	} else {
-		email = fmt.Sprintf("%s@test.com", username)
-	}
-
-	emailClaim0 := authsupport.WithEmailClaim(email)
+	emailClaim0 := authsupport.WithEmailClaim(r.email)
 	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, emailClaim0)
 	require.NoError(r.t, err)
 
@@ -227,9 +219,18 @@ func (r *signupRequest) Execute() SignupRequest {
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
 	r.t.Cleanup(func() {
-		if err := r.hostAwait.Client.Delete(context.TODO(), r.userSignup); err != nil && !errors.IsNotFound(err) {
+		propagationPolicy := metav1.DeletePropagationForeground
+		opts := client.DeleteOption(&client.DeleteOptions{
+			PropagationPolicy: &propagationPolicy,
+		})
+
+		// Delete the UserSignup
+		if err := r.hostAwait.Client.Delete(context.TODO(), r.userSignup, opts); err != nil && !errors.IsNotFound(err) {
 			require.NoError(r.t, err)
 		}
+
+		// Ensure the UserSignup has been deleted
+		require.NoError(r.t, r.hostAwait.WaitUntilUserSignupDeleted(r.userSignup.Name))
 	})
 
 	return r

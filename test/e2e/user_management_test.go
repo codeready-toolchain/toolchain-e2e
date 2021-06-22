@@ -506,7 +506,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
 
-		// Create a new UserSignup without requiring verification, and confirm it was approved automatically
+		// Create a new UserSignup and approve it manually
 		userSignup, _ := s.newSignupRequest().
 			Username("banprovisioned").
 			Email("banprovisioned@test.com").
