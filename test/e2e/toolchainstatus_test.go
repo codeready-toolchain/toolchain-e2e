@@ -14,6 +14,8 @@ import (
 )
 
 func TestForceMetricsSynchronization(t *testing.T) {
+	t.Skip("skipping this test due to flakyness")
+
 	// given
 	toolchainClusterList := &toolchainv1alpha1.ToolchainClusterList{}
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, toolchainClusterList)
