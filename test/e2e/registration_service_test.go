@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +24,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -41,14 +39,12 @@ type registrationServiceTestSuite struct {
 	suite.Suite
 	namespace   string
 	route       string
-	ctx         *framework.Context
 	hostAwait   *wait.HostAwaitility
 	memberAwait *wait.MemberAwaitility
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
-	userSignupList := &toolchainv1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
+	s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T())
 	s.namespace = s.hostAwait.RegistrationServiceNs
 	s.route = s.hostAwait.RegistrationServiceURL
 }

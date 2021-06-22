@@ -39,12 +39,7 @@ type userManagementTestSuite struct {
 }
 
 func (s *userManagementTestSuite) SetupSuite() {
-	userSignupList := &toolchainv1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), userSignupList)
-}
-
-func (s *userManagementTestSuite) TearDownTest() {
-	s.ctx.Cleanup()
+	s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T())
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
@@ -555,7 +550,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		userSignup.Spec.TargetCluster = s.memberAwait.ClusterName
 
 		// Create the UserSignup via the Kubernetes API
-		err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+		err := s.hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' created", userSignup.Name)
 

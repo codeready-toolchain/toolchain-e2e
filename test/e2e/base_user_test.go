@@ -10,7 +10,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -20,7 +19,6 @@ import (
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	ctx          *framework.Context
 	hostAwait    *wait.HostAwaitility
 	memberAwait  *wait.MemberAwaitility
 	member2Await *wait.MemberAwaitility
@@ -28,13 +26,12 @@ type baseUserIntegrationTest struct {
 
 func (s *baseUserIntegrationTest) newSignupRequest() SignupRequest {
 	return NewSignupRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
-
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {
 	// Create the BannedUser
 	bannedUser := newBannedUser(s.hostAwait, email)
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), bannedUser, CleanupOptions(s.ctx))
+	err := s.hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)

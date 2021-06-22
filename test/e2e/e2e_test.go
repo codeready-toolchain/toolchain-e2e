@@ -20,8 +20,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
-	defer ctx.Cleanup()
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("5s"))
 	memberConfiguration2 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration1.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration2.Spec))
@@ -84,7 +83,7 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
-	signups := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5)
+	signups := CreateMultipleSignups(t, hostAwait, memberAwait, 5)
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"

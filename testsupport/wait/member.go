@@ -6,10 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -1045,7 +1043,7 @@ func (a *MemberAwaitility) waitForWebhookDeployment() {
 	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
 	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
 
-	a.waitForDeploymentToGetReady("member-operator-webhook")
+	a.WaitForDeploymentToGetReady("member-operator-webhook", 1)
 }
 
 func (a *MemberAwaitility) waitForSecret() []byte {
@@ -1135,20 +1133,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 	assert.True(a.T, container.Resources.Requests.Memory().Equal(expectedMemory))
 	assert.True(a.T, container.Resources.Limits.Memory().Equal(expectedMemory))
 
-	a.waitForDeploymentToGetReady("autoscaling-buffer")
-}
-
-func (a *MemberAwaitility) waitForDeploymentToGetReady(name string) {
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
-		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
-			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
-			return false, nil
-		}
-		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
-		return true, nil
-	})
-	require.NoError(a.T, err)
+	a.WaitForDeploymentToGetReady("autoscaling-buffer", 2)
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count

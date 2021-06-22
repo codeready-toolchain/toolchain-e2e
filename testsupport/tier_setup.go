@@ -7,7 +7,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint: golint
 
-	"github.com/operator-framework/operator-sdk/pkg/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +22,7 @@ var toBeComplete = toolchainv1alpha1.Condition{
 	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
 }
 
-func CreateNSTemplateTier(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, tierName string, modifiers ...TierModifier) *toolchainv1alpha1.NSTemplateTier {
+func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName string, modifiers ...TierModifier) *toolchainv1alpha1.NSTemplateTier {
 	// We'll use the `base` tier as a source of inspiration.
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 	baseTier := &toolchainv1alpha1.NSTemplateTier{}
@@ -45,7 +44,7 @@ func CreateNSTemplateTier(t *testing.T, ctx *test.Context, hostAwait *HostAwaiti
 	err = Modify(tier, modifiers...)
 	require.NoError(t, err)
 
-	err = hostAwait.FrameworkClient.Create(context.TODO(), tier, CleanupOptions(ctx))
+	err = hostAwait.CreateWithCleanup(context.TODO(), tier)
 	require.NoError(t, err)
 
 	return tier
@@ -56,7 +55,7 @@ func MoveUserToTier(t *testing.T, hostAwait *HostAwaitility, username string, ti
 		UntilMasterUserRecordHasCondition(Provisioned())) // ignore other conditions, such as notification sent, etc.
 	require.NoError(t, err)
 	changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, username, tier.Name)
-	err = hostAwait.FrameworkClient.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
+	err = hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
 	require.NoError(t, err)
 	_, err = hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 	require.NoError(t, err)
