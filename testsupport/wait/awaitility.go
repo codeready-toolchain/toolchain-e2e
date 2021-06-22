@@ -471,9 +471,17 @@ func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj runtime.Object, 
 	return nil
 }
 
+var (
+	propagationPolicy     = metav1.DeletePropagationForeground
+	propagationPolicyOpts = client.DeleteOption(&client.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	})
+)
+
 // Cleanup schedules removal of the given objects at the end of the current test
 func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 	for _, obj := range objects {
+		userSignup, isUserSignup := obj.(*toolchainv1alpha1.UserSignup)
 		objToClean := obj.DeepCopyObject()
 		cleanup := func() {
 			metaAccess, err := meta.Accessor(objToClean)
@@ -482,22 +490,31 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 			if kind == "" {
 				kind = reflect.TypeOf(obj).Elem().Name()
 			}
-			propagationPolicy := metav1.DeletePropagationForeground
-			opts := client.DeleteOption(&client.DeleteOptions{
-				PropagationPolicy: &propagationPolicy,
-			})
+
 			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
-			if err := a.Client.Delete(context.TODO(), objToClean, opts); err != nil {
+			if err := a.Client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
 				if errors.IsNotFound(err) {
-					a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
-					return
+					// if the object was UserSignup, then let's check that the MUR was deleted as well
+					deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, true)
+					require.NoError(a.T, err)
+					// either if it was deleted or if it wasn't UserSignup, then return here
+					if deleted {
+						a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+						return
+					}
 				}
 			}
 
+			// wait until deletion is done
 			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
 				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
 					if errors.IsNotFound(err) {
+						// if the object was UserSignup, then let's check that the MUR is deleted as well
+						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
+							return false, err
+						}
+						a.T.Logf("%s: %s is deleted", kind, metaAccess.GetName())
 						return true, nil
 					}
 					return false, err
@@ -508,6 +525,30 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 		a.toClean = append(a.toClean, cleanup)
 		a.T.Cleanup(cleanup)
 	}
+}
+
+func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
+	// only applicable for UserSignups with compliant username set
+	if isUserSignup && userSignup.Status.CompliantUsername != "" {
+		mur := &toolchainv1alpha1.MasterUserRecord{}
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), mur); err != nil {
+			// if MUR is not found then we are good
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		if delete {
+			if err := a.Client.Delete(context.TODO(), mur, propagationPolicyOpts); err != nil {
+				if errors.IsNotFound(err) {
+					return true, nil
+				}
+			}
+		}
+		a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
+		return false, nil
+	}
+	return true, nil
 }
 
 // Clean triggers cleanup of all resources that were marked to be cleaned before that
