@@ -507,7 +507,6 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 
 			// wait until deletion is done
 			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
 				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
 					if errors.IsNotFound(err) {
 						// if the object was UserSignup, then let's check that the MUR is deleted as well
@@ -517,8 +516,10 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 						a.T.Logf("%s: %s is deleted", kind, metaAccess.GetName())
 						return true, nil
 					}
+					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
 					return false, err
 				}
+				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
 				return false, nil
 			}))
 		}
@@ -529,25 +530,36 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 
 func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
 	// only applicable for UserSignups with compliant username set
-	if isUserSignup && userSignup.Status.CompliantUsername != "" {
-		mur := &toolchainv1alpha1.MasterUserRecord{}
-		if err := a.Client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), mur); err != nil {
-			// if MUR is not found then we are good
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, err
-		}
-		if delete {
-			if err := a.Client.Delete(context.TODO(), mur, propagationPolicyOpts); err != nil {
+	if isUserSignup {
+		if userSignup.Status.CompliantUsername != "" {
+			mur := &toolchainv1alpha1.MasterUserRecord{}
+			if err := a.Client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), mur); err != nil {
+				// if MUR is not found then we are good
 				if errors.IsNotFound(err) {
+					a.T.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
 					return true, nil
 				}
+				a.T.Logf("problem with getting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
+				return false, err
 			}
+			if delete {
+				a.T.Logf("deleting also the related MasterUserRecord: %s", userSignup.Status.CompliantUsername)
+				if err := a.Client.Delete(context.TODO(), mur, propagationPolicyOpts); err != nil {
+					if errors.IsNotFound(err) {
+						a.T.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+						return true, nil
+					}
+					a.T.Logf("problem with deleting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
+					return false, err
+				}
+			}
+			a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
+			return false, nil
 		}
-		a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
-		return false, nil
+		a.T.Logf("the UserSignup doesn't have CompliantUsername set: %v", userSignup)
+		return true, nil
 	}
+	a.T.Logf("the object is not UserSignup - nothing to do")
 	return true, nil
 }
 
