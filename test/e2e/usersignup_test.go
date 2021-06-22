@@ -26,12 +26,14 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 }
 
 func (s *userSignupIntegrationTest) SetupSuite() {
-	userSignupList := &toolchainv1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), userSignupList)
+	s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T())
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
-	s.ctx.Cleanup()
+	// we need to force cleanup of the resources at the end of each of the tests, so the clusters won't get full and the capacity management can be properly verified
+	s.hostAwait.Clean()
+	s.memberAwait.Clean()
+	s.member2Await.Clean()
 }
 
 func (s *userSignupIntegrationTest) TestAutomaticApproval() {
@@ -251,7 +253,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	userSignup := NewUserSignup(s.T(), s.hostAwait, "reginald@alpha.com", "reginald@alpha.com")
 
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	err := s.hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
@@ -324,7 +326,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	// Set verification required
 	states.SetVerificationRequired(userSignup, true)
 
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
+	err := s.hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 

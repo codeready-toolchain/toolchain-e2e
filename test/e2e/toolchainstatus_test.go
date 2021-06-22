@@ -17,14 +17,12 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	t.Skip("skipping this test due to flakyness")
 
 	// given
-	toolchainClusterList := &toolchainv1alpha1.ToolchainClusterList{}
-	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, toolchainClusterList)
-	defer ctx.Cleanup()
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(),
 		testconfig.Metrics().ForceSynchronization(false))
 
-	userSignups := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 2)
+	userSignups := CreateMultipleSignups(t, hostAwait, memberAwait, 2)
 
 	// delete the current toolchainstatus/toolchain-status resource and restart the host-operator pod,
 	// so we can start with accurate counters/metrics and not get flaky because of previous tests,
