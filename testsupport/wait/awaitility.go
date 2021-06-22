@@ -14,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -556,10 +557,9 @@ func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1
 			a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
 			return false, nil
 		}
-		a.T.Logf("the UserSignup doesn't have CompliantUsername set: %v", userSignup)
+		a.T.Logf("the UserSignup doesn't have CompliantUsername set: %+v", userSignup)
 		return true, nil
 	}
-	a.T.Logf("the object is not UserSignup - nothing to do")
 	return true, nil
 }
 
@@ -567,6 +567,22 @@ func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1
 func (a *Awaitility) Clean() {
 	for _, clean := range a.toClean {
 		clean()
+	}
+	if a.Type == cluster.Host {
+		require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+			murList := &toolchainv1alpha1.MasterUserRecordList{}
+			if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+				return false, err
+			}
+			for _, mur := range murList.Items {
+				if util.IsBeingDeleted(&mur) {
+					a.T.Logf("there is still at least one MUR that is being deleted, but is not completely gone yet: %s", mur.Name)
+					return false, nil
+				}
+			}
+			a.T.Logf("all MURs are successfully deleted")
+			return true, nil
+		}))
 	}
 	a.toClean = nil
 }
