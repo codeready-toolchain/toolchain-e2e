@@ -396,8 +396,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				// Trigger a reconciliation of the deactivation controller by updating the MUR
 				// - The SyncIndex property of the UserAccount is intended for the express purpose of triggering
 				//   a reconciliation, so we set it to some new unique value here
-				mur.Spec.UserAccounts[0].SyncIndex = uuid.Must(uuid.NewV4()).String()
-				require.NoError(t, s.hostAwait.Client.Update(context.TODO(), mur))
+				syncIndex := uuid.Must(uuid.NewV4()).String()
+				mur, err := s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Spec.UserAccounts[0].SyncIndex = syncIndex
+				})
+				require.NoError(t, err)
 
 				// The user should now be set to deactivated
 				userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
