@@ -30,7 +30,6 @@ func (s *userSignupIntegrationTest) SetupSuite() {
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
-	// we need to force cleanup of the resources at the end of each of the tests, so the clusters won't get full and the capacity management can be properly verified
 	s.hostAwait.Clean()
 	s.memberAwait.Clean()
 	s.member2Await.Clean()
@@ -41,14 +40,23 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
 
 	// when & then
-	s.createAndCheckUserSignup(false, "automatic1", "automatic1@redhat.com", nil, ApprovedAutomatically()...)
+	s.newSignupRequest().
+		Username("automatic1").
+		Email("automatic1@redhat.com").
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute()
 
 	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
 		// given
 		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().ResourceCapThreshold(1))
 
 		// when
-		userSignup := s.createAndCheckUserSignupNoMUR(false, "automatic2", "automatic2@redhat.com", nil, PendingApprovalNoCluster()...)
+		userSignup, _ := s.newSignupRequest().
+			Username("automatic2").
+			Email("automatic2@redhat.com").
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
+			Execute().Resources()
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -59,7 +67,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
@@ -74,10 +82,19 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().MaxUsersNumber(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
 
 		// when
-		userSignup1 := s.createAndCheckUserSignupNoMUR(false, "waitinglist1", "waitinglist1@redhat.com", nil, PendingApprovalNoCluster()...)
+		userSignup1, _ := s.newSignupRequest().
+			Username("waitinglist1").
+			Email("waitinglist1@redhat.com").
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
+			Execute().Resources()
+
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		userSignup2 := s.createAndCheckUserSignupNoMUR(false, "waitinglist2", "waitinglist2@redhat.com", nil, PendingApprovalNoCluster()...)
+		userSignup2, _ := s.newSignupRequest().
+			Username("waitinglist2").
+			Email("waitinglist2@redhat.com").
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
+			Execute().Resources()
 
 		// then
 		s.userIsNotProvisioned(t, userSignup1)
@@ -89,7 +106,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup1.Name,
-				wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 
@@ -102,7 +119,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 				// then
 				userSignup, err := s.hostAwait.WaitForUserSignup(userSignup2.Name,
-					wait.UntilUserSignupHasConditions(ApprovedAutomatically()...),
+					wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(s.T(), err)
 
@@ -130,15 +147,30 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled().MaxUsersNumber(0, memberLimits...))
 
 		// when
-		_, mur1 := s.createAndCheckUserSignup(false, "multimember-1", "multi1@redhat.com", nil, ApprovedAutomatically()...)
-		_, mur2 := s.createAndCheckUserSignup(false, "multimember-2", "multi2@redhat.com", nil, ApprovedAutomatically()...)
+		_, mur1 := s.newSignupRequest().
+			Username("multimember-1").
+			Email("multi1@redhat.com").
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute().Resources()
+
+		_, mur2 := s.newSignupRequest().
+			Username("multimember-2").
+			Email("multi2@redhat.com").
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute().Resources()
 
 		// then
 		require.NotEqual(s.T(), mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
-			userSignupPending := s.createAndCheckUserSignupNoMUR(false, "multimember-3", "multi3@redhat.com", nil, PendingApprovalNoCluster()...)
+			userSignupPending, _ := s.newSignupRequest().
+				Username("multimember-3").
+				Email("multi3@redhat.com").
+				RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
+				Execute().Resources()
 
 			// then
 			s.userIsNotProvisioned(t, userSignupPending)
@@ -160,12 +192,23 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
-			userSignup, _ := s.createAndCheckUserSignup(true, "manual1", "manual1@redhat.com", nil, ApprovedByAdmin()...)
+			userSignup, _ := s.newSignupRequest().
+				Username("manual1").
+				Email("manual1@redhat.com").
+				ManuallyApprove().
+				EnsureMUR().
+				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+				Execute().Resources()
+
 			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 		})
 		t.Run("user is not approved manually thus won't be provisioned", func(t *testing.T) {
 			// when
-			userSignup := s.createAndCheckUserSignupNoMUR(false, "manual2", "manual2@redhat.com", nil, PendingApproval()...)
+			userSignup, _ := s.newSignupRequest().
+				Username("manual2").
+				Email("manual2@redhat.com").
+				RequireConditions(ConditionSet(Default(), PendingApproval())...).
+				Execute().Resources()
 
 			// then
 			s.userIsNotProvisioned(t, userSignup)
@@ -179,14 +222,25 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
 
 	// when & then
-	s.createAndCheckUserSignup(true, "manualwithcapacity1", "manualwithcapacity1@redhat.com", nil, ApprovedByAdmin()...)
+	s.newSignupRequest().
+		Username("manualwithcapacity1").
+		Email("manualwithcapacity1@redhat.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute()
 
 	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
 		// given
 		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled().ResourceCapThreshold(1))
 
 		// when
-		userSignup := s.createAndCheckUserSignupNoMUR(true, "manualwithcapacity2", "manualwithcapacity2@redhat.com", nil, ApprovedByAdminNoCluster()...)
+		userSignup, _ := s.newSignupRequest().
+			Username("manualwithcapacity2").
+			Email("manualwithcapacity2@redhat.com").
+			ManuallyApprove().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
+			Execute().Resources()
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -197,7 +251,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
@@ -209,7 +263,12 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled().MaxUsersNumber(1))
 
 		// when
-		userSignup := s.createAndCheckUserSignupNoMUR(true, "manualwithcapacity3", "manualwithcapacity3@redhat.com", nil, ApprovedByAdminNoCluster()...)
+		userSignup, _ := s.newSignupRequest().
+			Username("manualwithcapacity3").
+			Email("manualwithcapacity3@redhat.com").
+			ManuallyApprove().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
+			Execute().Resources()
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -220,7 +279,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 			// then
 			userSignup, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
@@ -229,10 +288,21 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("when approved and set target cluster manually, then the limits will be ignored", func(t *testing.T) {
 		// given
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled().ResourceCapThreshold(1).MaxUsersNumber(1))
+		s.hostAwait.UpdateToolchainConfig(
+			testconfig.AutomaticApproval().Disabled().
+				ResourceCapThreshold(1).
+				MaxUsersNumber(1))
 
 		// when & then
-		userSignup, _ := s.createAndCheckUserSignup(true, "withtargetcluster", "withtargetcluster@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ := s.newSignupRequest().
+			Username("withtargetcluster").
+			Email("withtargetcluster@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(s.memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 	})
 }
@@ -258,7 +328,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	s.T().Logf("user signup '%s' created", userSignup.Name)
 
 	// Check the UserSignup is approved now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ApprovedAutomatically()...))
+	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...))
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
@@ -267,48 +337,118 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create UserSignup with a username that we don't need to transform
-	userSignup, _ := s.createAndCheckUserSignup(true, "paul-no-need-to-transform", "paulnoneedtotransform@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+	userSignup, _ := s.newSignupRequest().
+		Username("paul-no-need-to-transform").
+		Email("paulnoneedtotransform@hotel.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
 	require.Equal(s.T(), "paul-no-need-to-transform", userSignup.Status.CompliantUsername)
 
 	// Create UserSignup with a username to transform
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+	userSignup, _ = s.newSignupRequest().
+		Username("paul@hotel.com").
+		Email("paul@hotel.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
 	require.Equal(s.T(), "paul", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the original username matching the transformed username of the existing signup
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul", "paulathotel@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+	userSignup, _ = s.newSignupRequest().
+		Username("paul").
+		Email("paulathotel@hotel.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
 	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the same original username but different user ID
-	userSignup, _ = s.createAndCheckUserSignup(true, "paul@hotel.com", "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+	userSignup, _ = s.newSignupRequest().
+		Username("paul@hotel.com").
+		Email("paul@hotel.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
 	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignups with a forbidden prefix
 	for _, prefix := range []string{"kube", "openshift", "default", "redhat", "sandbox"} {
 		// prefix with hyphen
-		userSignup, _ = s.createAndCheckUserSignup(true, prefix+"-paul", "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ = s.newSignupRequest().
+			Username(prefix + "-paul").
+			Email("paul@hotel.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		require.Equal(s.T(), fmt.Sprintf("crt-%s-paul", prefix), userSignup.Status.CompliantUsername)
 
 		// prefix without delimiter
-		userSignup, _ = s.createAndCheckUserSignup(true, prefix+"paul", "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ = s.newSignupRequest().
+			Username(prefix + "paul").
+			Email("paul@hotel.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		require.Equal(s.T(), fmt.Sprintf("crt-%spaul", prefix), userSignup.Status.CompliantUsername)
 
 		// prefix as a name
-		userSignup, _ = s.createAndCheckUserSignup(true, prefix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ = s.newSignupRequest().
+			Username(prefix).
+			Email("paul@hotel.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
 	}
 
 	// Create another UserSignups with a forbidden suffix
 	for _, suffix := range []string{"admin"} {
 		// suffix with hyphen
-		userSignup, _ = s.createAndCheckUserSignup(true, "paul-"+suffix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ = s.newSignupRequest().
+			Username("paul-" + suffix).
+			Email("paul@hotel.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		require.Equal(s.T(), fmt.Sprintf("paul-%s-crt", suffix), userSignup.Status.CompliantUsername)
 
 		// suffix without delimiter
-		userSignup, _ = s.createAndCheckUserSignup(true, "paul"+suffix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ = s.newSignupRequest().
+			Username("paul" + suffix).
+			Email("paul@hotel.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		require.Equal(s.T(), fmt.Sprintf("paul%s-crt", suffix), userSignup.Status.CompliantUsername)
 
 		// suffix as a name
-		userSignup, _ = s.createAndCheckUserSignup(true, suffix, "paul@hotel.com", s.memberAwait, ApprovedByAdmin()...)
+		userSignup, _ = s.newSignupRequest().
+			Username(suffix).
+			Email("paul@hotel.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
 		require.Equal(s.T(), fmt.Sprintf("%s-crt", suffix), userSignup.Status.CompliantUsername)
 	}
 }
@@ -332,7 +472,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 
 	// Check the UserSignup is pending approval now
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 

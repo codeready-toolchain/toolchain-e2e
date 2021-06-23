@@ -296,7 +296,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Wait for the UserSignup to be created
 		userSignup, err := s.hostAwait.WaitForUserSignup(userSignupName,
-			wait.UntilUserSignupHasConditions(PendingApproval()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(s.T(), err)
 		emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -344,7 +344,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		})
 		require.NoError(s.T(), err)
 		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 
@@ -400,7 +400,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Wait for the UserSignup to be created
 	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -417,7 +417,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm the status of the UserSignup is correct
 	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 
@@ -509,7 +509,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Wait for the UserSignup to be created
 	otherUserSignup, err := s.hostAwait.WaitForUserSignup(otherIdentity.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	otherEmailAnnotation := otherUserSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -545,8 +545,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Ensure the UserSignup is deactivated
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(
-			ManuallyDeactivated()...))
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again
