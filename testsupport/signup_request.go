@@ -1,7 +1,6 @@
 package testsupport
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,11 +8,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -218,20 +212,7 @@ func (r *signupRequest) Execute() SignupRequest {
 	}
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
-	r.t.Cleanup(func() {
-		propagationPolicy := metav1.DeletePropagationForeground
-		opts := client.DeleteOption(&client.DeleteOptions{
-			PropagationPolicy: &propagationPolicy,
-		})
-
-		// Delete the UserSignup
-		if err := r.hostAwait.Client.Delete(context.TODO(), r.userSignup, opts); err != nil && !errors.IsNotFound(err) {
-			require.NoError(r.t, err)
-		}
-
-		// Ensure the UserSignup has been deleted
-		require.NoError(r.t, r.hostAwait.WaitUntilUserSignupDeleted(r.userSignup.Name))
-	})
+	r.hostAwait.Cleanup(r.userSignup)
 
 	return r
 }
