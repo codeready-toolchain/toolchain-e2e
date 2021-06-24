@@ -1099,7 +1099,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
 	a.waitForResource("", "member-operator-autoscaling-buffer", actualPrioClass)
 
 	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
-	assert.Equal(a.T, int32(-100), actualPrioClass.Value)
+	assert.Equal(a.T, int32(-5), actualPrioClass.Value)
 	assert.False(a.T, actualPrioClass.GlobalDefault)
 	assert.Equal(a.T, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
 }
