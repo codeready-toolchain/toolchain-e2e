@@ -628,7 +628,7 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 
 func WithSandboxPriorityClass() PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
-		return checkPriorityClass(a, pod, "sandbox-users-pods", -10)
+		return checkPriorityClass(a, pod, "sandbox-users-pods", -3)
 	}
 }
 
@@ -976,7 +976,7 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
 	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
 
 	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
-	assert.Equal(a.T, int32(-10), actualPrioClass.Value)
+	assert.Equal(a.T, int32(-3), actualPrioClass.Value)
 	assert.False(a.T, actualPrioClass.GlobalDefault)
 	assert.Equal(a.T, "Priority class for pods in users' namespaces", actualPrioClass.Description)
 }
