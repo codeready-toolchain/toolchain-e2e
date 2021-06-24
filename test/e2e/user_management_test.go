@@ -350,7 +350,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			require.NoError(s.T(), err)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.hostAwait, userSignup, "base", s.memberAwait)
+			VerifyResourcesProvisionedForSignup(t, s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
 
 			s.T().Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
