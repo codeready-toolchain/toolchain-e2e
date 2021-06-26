@@ -1,8 +1,9 @@
 package testsupport
 
 import (
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"testing"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -11,15 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expectedURL string) {
+func VerifyMemberStatusReady(t *testing.T, memberAwait *wait.MemberAwaitility, expectedURL string) {
 	err := memberAwait.WaitForMemberStatus(
 		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
-		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
+		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesReady()))
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
-func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
+func VerifyToolchainStatusReady(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
 	memberCluster, found, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)

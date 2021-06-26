@@ -22,9 +22,21 @@ func TestE2EFlow(t *testing.T) {
 	// full flow from usersignup with approval down to namespaces creation
 	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
 	defer ctx.Cleanup()
-	memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("5s"))
+	memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.Che().Required(false))
 	memberConfiguration2 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration1.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration2.Spec))
+
+	consoleURL := memberAwait.GetConsoleURL()
+	// host and member cluster statuses should be available at this point
+	t.Run("verify cluster statuses", func(t *testing.T) {
+		t.Run("verify member cluster status is ready", func(t *testing.T) {
+			VerifyMemberStatusReady(t, memberAwait, consoleURL)
+		})
+
+		t.Run("verify overall toolchain status is ready", func(t *testing.T) {
+			VerifyToolchainStatusReady(t, hostAwait, memberAwait)
+		})
+	})
 
 	t.Run("verify MemberOperatorConfigs synced from ToolchainConfig to member clusters", func(t *testing.T) {
 		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
@@ -44,17 +56,28 @@ func TestE2EFlow(t *testing.T) {
 			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration2))
 			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration1))
 		})
-	})
 
-	consoleURL := memberAwait.GetConsoleURL()
-	// host and member cluster statuses should be available at this point
-	t.Run("verify cluster statuses are valid", func(t *testing.T) {
-		t.Run("verify member cluster status", func(t *testing.T) {
-			VerifyMemberStatus(t, memberAwait, consoleURL)
-		})
+		t.Run("verify member and toolchain status respond to change in config - go to unready", func(t *testing.T) {
+			// set the che required flag to true to force an error on the memberstatus (che is not installed in e2e test environments)
+			memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.Che().Required(true))
+			hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfiguration1.Spec))
 
-		t.Run("verify overall toolchain status", func(t *testing.T) {
-			VerifyToolchainStatus(t, hostAwait, memberAwait)
+			err := memberAwait.WaitForMemberStatus(
+				wait.UntilMemberStatusHasConditions(ToolchainStatusComponentsNotReady("[routes]")))
+			require.NoError(t, err, "failed while waiting for MemberStatus to contain error due to che being required")
+
+			_, err = hostAwait.WaitForToolchainStatus(
+				wait.UntilToolchainStatusHasConditions(ToolchainStatusComponentsNotReady("[members]"), ToolchainStatusUnreadyNotificationNotCreated()))
+			require.NoError(t, err, "failed while waiting for ToolchainStatus to contain error due to che being required")
+
+			t.Run("verify member and toolchain status go back to ready", func(t *testing.T) {
+				// change che required flag back to true to resolve the error on the memberstatus
+				memberConfiguration1 = testconfig.NewMemberOperatorConfig(testconfig.Che().Required(false))
+				hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfiguration1.Spec))
+
+				VerifyMemberStatusReady(t, memberAwait, consoleURL)
+				VerifyToolchainStatusReady(t, hostAwait, memberAwait)
+			})
 		})
 	})
 
