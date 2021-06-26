@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +24,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -41,14 +39,12 @@ type registrationServiceTestSuite struct {
 	suite.Suite
 	namespace   string
 	route       string
-	ctx         *framework.Context
 	hostAwait   *wait.HostAwaitility
 	memberAwait *wait.MemberAwaitility
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
-	userSignupList := &toolchainv1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
+	s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T())
 	s.namespace = s.hostAwait.RegistrationServiceNs
 	s.route = s.hostAwait.RegistrationServiceURL
 }
@@ -300,7 +296,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Wait for the UserSignup to be created
 		userSignup, err := s.hostAwait.WaitForUserSignup(userSignupName,
-			wait.UntilUserSignupHasConditions(PendingApproval()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(s.T(), err)
 		emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -348,7 +344,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		})
 		require.NoError(s.T(), err)
 		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 
@@ -404,7 +400,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Wait for the UserSignup to be created
 	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -421,7 +417,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm the status of the UserSignup is correct
 	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 
@@ -513,7 +509,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Wait for the UserSignup to be created
 	otherUserSignup, err := s.hostAwait.WaitForUserSignup(otherIdentity.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	otherEmailAnnotation := otherUserSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -549,8 +545,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Ensure the UserSignup is deactivated
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(
-			ManuallyDeactivated()...))
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again

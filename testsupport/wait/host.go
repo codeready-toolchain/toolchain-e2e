@@ -13,12 +13,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/stretchr/testify/require"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,13 +26,12 @@ import (
 // HostAwaitility the Awaitility for the Host cluster
 type HostAwaitility struct {
 	*Awaitility
-	FrameworkClient        framework.FrameworkClient
 	RegistrationServiceNs  string
 	RegistrationServiceURL string
 }
 
 // NewHostAwaitility initializes a HostAwaitility
-func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
+func NewHostAwaitility(t *testing.T, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			T:             t,
@@ -43,7 +41,6 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
-		FrameworkClient:       fcl,
 		RegistrationServiceNs: registrationServiceNs,
 	}
 }
@@ -52,7 +49,6 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
-		FrameworkClient:        a.FrameworkClient,
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
 	}
@@ -361,6 +357,19 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 	return
 }
 
+// DeleteToolchainStatus deletes the ToolchainStatus resource with the given name and in the host operator namespace
+func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
+	toolchainstatus := &toolchainv1alpha1.ToolchainStatus{}
+	if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, toolchainstatus); err != nil {
+		if errors.IsNotFound(err) {
+			a.T.Logf("ToolchainStatus is already deleted '%s'", name)
+			return nil
+		}
+		return err
+	}
+	return a.Client.Delete(context.TODO(), toolchainstatus)
+}
+
 // WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -377,7 +386,23 @@ func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	})
 }
 
-// WaitUntilMasterUserRecordDeleted waits until MUR with the given name is deleted (ie, not found)
+// WaitUntilUserSignupDeleted waits until the UserSignup with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		userSignup := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, userSignup); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("UserSignup is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until UserSignup is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// WaitUntilMasterUserRecordDeleted waits until the MUR with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}

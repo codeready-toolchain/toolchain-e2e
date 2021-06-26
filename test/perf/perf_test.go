@@ -16,7 +16,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/go-logr/logr"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -34,19 +33,18 @@ func TestPerformance(t *testing.T) {
 	logger, out, err := initLogger()
 	require.NoError(t, err)
 	defer out.Close()
-	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
+	hostAwait, memberAwait, _ := WaitForDeployments(t)
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
-	defer ctx.Cleanup()
 
 	t.Run(fmt.Sprintf("provision %d users", config.GetUserCount()), func(t *testing.T) {
 		// given
-		createSignupsByBatch(t, ctx, hostAwait, config, logger, memberAwait)
+		createSignupsByBatch(t, hostAwait, config, logger, memberAwait)
 
 		t.Run("restart host operator pod", func(t *testing.T) {
 
 			// when deleting the host-operator pod to emulate an operator restart during redeployment.
-			err := hostAwait.DeletePods(client.MatchingLabels{"name": "host-operator"})
+			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
 
 			// then check how much time it takes to restart and process all existing resources
 			require.NoError(t, err)
@@ -74,7 +72,7 @@ func TestPerformance(t *testing.T) {
 		t.Run("restart member operator pod", func(t *testing.T) {
 
 			// when deleting the host-operator pod to emulate an operator restart during redeployment.
-			err := memberAwait.DeletePods(client.MatchingLabels{"name": "member-operator"})
+			err := memberAwait.DeletePods(client.InNamespace(memberAwait.Namespace), client.MatchingLabels{"name": "member-operator"})
 
 			// then check how much time it takes to restart and process all existing resources
 			require.NoError(t, err)
@@ -131,7 +129,7 @@ func initLogger() (logr.Logger, *os.File, error) {
 // createSignupsByBatch creates signups by batch (see `config.GetUserBatchSize()`) and monitors the CPU and memory while the
 // provisioning is in progress. Logs the max CPU and memory during captured during each batch by polling the `/metrics`
 // endpoint in a separate go routine.
-func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, config Configuration, logger logr.Logger, memberAwait *wait.MemberAwaitility) {
+func createSignupsByBatch(t *testing.T, hostAwait *wait.HostAwaitility, config Configuration, logger logr.Logger, memberAwait *wait.MemberAwaitility) {
 
 	require.Equal(t, 0, config.GetUserCount()%config.GetUserBatchSize(), "number of accounts must be a multiple of %d", config.GetUserBatchSize())
 
@@ -149,7 +147,7 @@ func createSignupsByBatch(t *testing.T, ctx *framework.Context, hostAwait *wait.
 			userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
 			states.SetApproved(userSignup, true)
 			userSignup.Spec.TargetCluster = memberAwait.ClusterName
-			err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
+			err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 			hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 			require.NoError(t, err)
 			signups[i] = *userSignup

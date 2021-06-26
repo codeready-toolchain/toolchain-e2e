@@ -3,21 +3,27 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-
+	"github.com/codeready-toolchain/toolchain-common/pkg/status"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -26,8 +32,6 @@ import (
 )
 
 const (
-	DefaultOperatorRetryInterval     = time.Millisecond * 500
-	DefaultOperatorTimeout           = time.Second * 180
 	DefaultRetryInterval             = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
 	DefaultTimeout                   = time.Second * 60
 	MemberNsVar                      = "MEMBER_NS"
@@ -46,12 +50,13 @@ type Awaitility struct {
 	RetryInterval time.Duration
 	Timeout       time.Duration
 	MetricsURL    string
+	toClean       []func()
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
 var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
 	Type:   toolchainv1alpha1.ToolchainClusterReady,
-	Status: v1.ConditionTrue,
+	Status: corev1.ConditionTrue,
 }
 
 // WithRetryOptions returns a new Awaitility with the given "RetryOption"s applied
@@ -295,7 +300,14 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) float64 {
-	value, err := getMetricValue(a.MetricsURL, family, labelAndValues)
+	var value float64
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if value, err = getMetricValue(a.MetricsURL, family, labelAndValues); err != nil {
+			a.T.Logf("waiting for metric %s but error occurred: %v", family, err)
+			return false, nil
+		}
+		return true, nil
+	})
 	require.NoError(a.T, err)
 	return value
 }
@@ -316,6 +328,7 @@ func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...strin
 // and label key-value pair reaches the expected value
 func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float64, labels ...string) {
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
+	var comparisonSummary string
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.MetricsURL, family, labels)
 		if err != nil {
@@ -323,12 +336,13 @@ func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float
 			return false, nil
 		}
 		if value != expectedValue {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' (currently: %v)", family, labels, expectedValue, value)
+			comparisonSummary = fmt.Sprintf("Waited for metric '%s{%v}' to reach '%v' (currently: %v)",
+				family, labels, expectedValue, value)
 			return false, nil
 		}
 		return true, nil
 	})
-	require.NoError(a.T, err)
+	require.NoError(a.T, err, comparisonSummary)
 }
 
 // WaitUntilMetricHasValueOrMore waits until the exposed metric with the given family
@@ -430,4 +444,147 @@ func (a *Awaitility) CreateNamespace(name string) {
 			require.NoError(a.T, err)
 		}
 	})
+}
+
+// WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
+func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
+		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
+			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
+			return false, nil
+		}
+		deployment := &appsv1.Deployment{}
+		require.NoError(a.T, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
+		if int(deployment.Status.AvailableReplicas) != replicas {
+			a.T.Logf("waiting until all %d replicas of the %s deployment are available - current replicas: %d", replicas, name, deployment.Status.AvailableReplicas)
+			return false, nil
+		}
+		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
+		return true, nil
+	})
+	require.NoError(a.T, err)
+}
+
+// CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
+func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	if err := a.Client.Create(ctx, obj, opts...); err != nil {
+		return err
+	}
+	a.Cleanup(obj)
+	return nil
+}
+
+var (
+	propagationPolicy     = metav1.DeletePropagationForeground
+	propagationPolicyOpts = client.DeleteOption(&client.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	})
+)
+
+// Cleanup schedules removal of the given objects at the end of the current test
+func (a *Awaitility) Cleanup(objects ...runtime.Object) {
+	for _, obj := range objects {
+		userSignup, isUserSignup := obj.(*toolchainv1alpha1.UserSignup)
+		objToClean := obj.DeepCopyObject()
+		cleanup := func() {
+			metaAccess, err := meta.Accessor(objToClean)
+			require.NoError(a.T, err)
+			kind := objToClean.GetObjectKind().GroupVersionKind().Kind
+			if kind == "" {
+				kind = reflect.TypeOf(obj).Elem().Name()
+			}
+			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
+			if err := a.Client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
+				if errors.IsNotFound(err) {
+					// if the object was UserSignup, then let's check that the MUR was deleted as well
+					deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, true)
+					require.NoError(a.T, err)
+					// either if it was deleted or if it wasn't UserSignup, then return here
+					if deleted {
+						a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+						return
+					}
+				}
+			}
+
+			// wait until deletion is done
+			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
+					if errors.IsNotFound(err) {
+						// if the object was UserSignup, then let's check that the MUR is deleted as well
+						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
+							return false, err
+						}
+						a.T.Logf("%s: %s is deleted", kind, metaAccess.GetName())
+						return true, nil
+					}
+					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
+					return false, err
+				}
+				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+				return false, nil
+			}))
+		}
+		a.toClean = append(a.toClean, cleanup)
+		a.T.Cleanup(cleanup)
+	}
+}
+
+func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
+	// only applicable for UserSignups with compliant username set
+	if isUserSignup {
+		if userSignup.Status.CompliantUsername != "" {
+			mur := &toolchainv1alpha1.MasterUserRecord{}
+			if err := a.Client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), mur); err != nil {
+				// if MUR is not found then we are good
+				if errors.IsNotFound(err) {
+					a.T.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+					return true, nil
+				}
+				a.T.Logf("problem with getting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
+				return false, err
+			}
+			if delete {
+				a.T.Logf("deleting also the related MasterUserRecord: %s", userSignup.Status.CompliantUsername)
+				if err := a.Client.Delete(context.TODO(), mur, propagationPolicyOpts); err != nil {
+					if errors.IsNotFound(err) {
+						a.T.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+						return true, nil
+					}
+					a.T.Logf("problem with deleting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
+					return false, err
+				}
+			}
+			a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
+			return false, nil
+		}
+		a.T.Logf("the UserSignup doesn't have CompliantUsername set: %+v", userSignup)
+		return true, nil
+	}
+	return true, nil
+}
+
+// Clean triggers cleanup of all resources that were marked to be cleaned before that
+func (a *Awaitility) Clean() {
+	for _, clean := range a.toClean {
+		clean()
+	}
+	if a.Type == cluster.Host {
+		require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+			murList := &toolchainv1alpha1.MasterUserRecordList{}
+			if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+				return false, err
+			}
+			for _, mur := range murList.Items {
+				if util.IsBeingDeleted(&mur) {
+					a.T.Logf("there is still at least one MUR that is being deleted, but is not completely gone yet: %s", mur.Name)
+					return false, nil
+				}
+			}
+			a.T.Logf("all MURs are successfully deleted")
+			return true, nil
+		}))
+	}
+	a.toClean = nil
 }
