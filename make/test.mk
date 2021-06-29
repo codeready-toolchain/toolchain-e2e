@@ -254,6 +254,9 @@ endif
 	# as the controller starts (which is a use-case for CRT-231)
 	oc apply -f ${HOST_REPO_PATH}/deploy/crds/toolchain.dev.openshift.com_nstemplatetiers.yaml
 	oc apply -f deploy/host-operator/nstemplatetier-base.yaml -n $(HOST_NS)
+	# Apply the initial configuration for the toolchain
+	oc apply -f ${HOST_REPO_PATH}/deploy/crds/toolchain.dev.openshift.com_toolchainconfigs.yaml
+	oc apply -f deploy/host-operator/config/${ENVIRONMENT}.yaml -n $(HOST_NS)
 	$(MAKE) build-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator SET_IMAGE_NAME=${HOST_IMAGE_NAME} IS_OTHER_IMAGE_SET=${MEMBER_IMAGE_NAME}${REG_IMAGE_NAME}
 	$(MAKE) deploy-operator E2E_REPO_PATH=${HOST_REPO_PATH} REPO_NAME=host-operator NAMESPACE=$(HOST_NS)
 

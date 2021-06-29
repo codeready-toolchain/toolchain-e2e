@@ -895,12 +895,12 @@ type MemberOperatorConfigWaitCriterion func(*MemberAwaitility, *toolchainv1alpha
 
 // UntilMemberConfigMatches returns a `MemberOperatorConfigWaitCriterion` which checks that the given
 // MemberOperatorConfig matches the provided one
-func UntilMemberConfigMatches(expectedMemberOperatorConfig *toolchainv1alpha1.MemberOperatorConfig) MemberOperatorConfigWaitCriterion {
+func UntilMemberConfigMatches(expectedMemberOperatorConfigSpec toolchainv1alpha1.MemberOperatorConfigSpec) MemberOperatorConfigWaitCriterion {
 	return func(a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
-		if reflect.DeepEqual(expectedMemberOperatorConfig.Spec, memberConfig.Spec) {
+		if reflect.DeepEqual(expectedMemberOperatorConfigSpec, memberConfig.Spec) {
 			return true
 		}
-		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'", memberConfig, expectedMemberOperatorConfig)
+		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'", memberConfig.Spec, expectedMemberOperatorConfigSpec)
 		return false
 	}
 }
@@ -971,7 +971,7 @@ func (a *MemberAwaitility) WaitForUsersPodsWebhook() {
 }
 
 func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
-	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "sandbox-users-pods")
+	a.T.Logf("checking presence of PriorityClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
 
@@ -985,20 +985,20 @@ func (a *MemberAwaitility) waitForResource(namespace, name string, object runtim
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("resource '%s' in namesapace '%s' not found", name, namespace)
+				a.T.Logf("resource '%s' in namespace '%s' not found", name, namespace)
 				return false, nil
 			}
-			a.T.Logf("unexpected error when looking for resource '%s' in namesapace '%s'", name, namespace)
+			a.T.Logf("unexpected error when looking for resource '%s' in namespace '%s'", name, namespace)
 			return false, err
 		}
-		a.T.Logf("resource '%s' in namesapace '%s' found", name, namespace)
+		a.T.Logf("resource '%s' in namespace '%s' found", name, namespace)
 		return true, nil
 	})
 	require.NoError(a.T, err)
 }
 
 func (a *MemberAwaitility) waitForService() {
-	a.T.Logf("checking prensence of Service resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
+	a.T.Logf("checking presence of Service resource '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
 	actualService := &v1.Service{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualService)
 
@@ -1015,7 +1015,7 @@ func (a *MemberAwaitility) waitForService() {
 }
 
 func (a *MemberAwaitility) waitForWebhookDeployment() {
-	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
+	a.T.Logf("checking presence of Deployment resource '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
 
@@ -1047,7 +1047,7 @@ func (a *MemberAwaitility) waitForWebhookDeployment() {
 }
 
 func (a *MemberAwaitility) waitForSecret() []byte {
-	a.T.Logf("checking presence of Secret resource '%s' in namesapace '%s'", "webhook-certs", a.Namespace)
+	a.T.Logf("checking presence of Secret resource '%s' in namespace '%s'", "webhook-certs", a.Namespace)
 	secret := &v1.Secret{}
 	a.waitForResource(a.Namespace, "webhook-certs", secret)
 	assert.NotEmpty(a.T, secret.Data["server-key.pem"])
@@ -1105,7 +1105,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
 }
 
 func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
-	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "autoscaling-buffer", a.Namespace)
+	a.T.Logf("checking presence of Deployment resource '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
 	a.waitForResource(a.Namespace, "autoscaling-buffer", actualDeployment)
 

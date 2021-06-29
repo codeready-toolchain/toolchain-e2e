@@ -20,10 +20,7 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
-	memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.Che().Required(false))
-	memberConfiguration2 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration1.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration2.Spec))
+	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
 
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
@@ -38,28 +35,22 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("verify MemberOperatorConfigs synced from ToolchainConfig to member clusters", func(t *testing.T) {
+		currentConfig := hostAwait.GetToolchainConfig()
+		expectedMemberConfiguration := currentConfig.Spec.Members.Default
+
 		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
 			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete()))
 		})
 		t.Run("verify MemberOperatorConfig was synced to both member clusters", func(t *testing.T) {
-			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration1))
+			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
 		t.Run("verify MemberOperatorConfig was synced to member2", func(t *testing.T) {
-			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration2))
+			VerifyMemberOperatorConfig(t, memberAwait2, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
-		t.Run("verify updated toolchainconfig is synced", func(t *testing.T) {
-			// when switch member1 and member2 configs
-			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration2.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration1.Spec))
-
-			// then
-			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration2))
-			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration1))
-		})
-
-		t.Run("verify member and toolchain status respond to change in config - go to unready", func(t *testing.T) {
+		t.Run("verify updated toolchainconfig is synced - go to unready", func(t *testing.T) {
 			// set the che required flag to true to force an error on the memberstatus (che is not installed in e2e test environments)
-			memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.Che().Required(true))
-			hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfiguration1.Spec))
+			memberConfigurationWithCheRequired := testconfig.ModifyMemberOperatorConfig(memberAwait.GetMemberOperatorConfig(), testconfig.Che().Required(true))
+			hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
 
 			err := memberAwait.WaitForMemberStatus(
 				wait.UntilMemberStatusHasConditions(ToolchainStatusComponentsNotReady("[routes]")))
@@ -71,8 +62,8 @@ func TestE2EFlow(t *testing.T) {
 
 			t.Run("verify member and toolchain status go back to ready", func(t *testing.T) {
 				// change che required flag back to true to resolve the error on the memberstatus
-				memberConfiguration1 = testconfig.NewMemberOperatorConfig(testconfig.Che().Required(false))
-				hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfiguration1.Spec))
+				memberConfigurationWithCheRequired = testconfig.ModifyMemberOperatorConfig(memberAwait.GetMemberOperatorConfig(), testconfig.Che().Required(false))
+				hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
 
 				VerifyMemberStatusReady(t, memberAwait, consoleURL)
 				VerifyToolchainStatusReady(t, hostAwait, memberAwait)
@@ -92,8 +83,12 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
-	memberAwait.WaitForUsersPodsWebhook()
-	memberAwait.WaitForAutoscalingBufferApp()
+	t.Run("verify users pods webhook", func(t *testing.T) {
+		memberAwait.WaitForUsersPodsWebhook()
+	})
+	t.Run("verify autoscaling buffer", func(t *testing.T) {
+		memberAwait.WaitForAutoscalingBufferApp()
+	})
 
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
 		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
@@ -102,7 +97,7 @@ func TestE2EFlow(t *testing.T) {
 	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
 
 	// Get metrics assertion helper for testing metrics before creating any users
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
@@ -114,11 +109,11 @@ func TestE2EFlow(t *testing.T) {
 	extrajohnName := "extrajohn"
 	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName, memberAwait.ClusterName)
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, member2Await.ClusterName)
+	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, memberAwait2.ClusterName)
 
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "base", memberAwait)
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "base", memberAwait)
-	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "base", member2Await)
+	VerifyResourcesProvisionedForSignup(t, hostAwait, targetedJohnSignup, "base", memberAwait2)
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)
@@ -131,7 +126,7 @@ func TestE2EFlow(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 8, "domain", "external")
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 7, "cluster_name", memberAwait.ClusterName)  // 7 users on member1
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName) // 1 user on member2
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait2.ClusterName) // 1 user on member2
 	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -296,7 +291,7 @@ func TestE2EFlow(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
 			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 8, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)                  // 6 users left on member1 ('johnsignup' was deleted)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName)                 // 1 user on member2
+			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait2.ClusterName)                 // 1 user on member2
 		})
 	})
 
