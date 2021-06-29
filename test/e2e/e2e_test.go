@@ -7,16 +7,18 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	coputil "github.com/redhat-cop/operator-utils/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
-
 	userv1 "github.com/openshift/api/user/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"testing"
+	"time"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -202,23 +204,26 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
-	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
-		// given
-		johnMUR, err := hostAwait.WaitForMasterUserRecord(johnsmithName)
+	t.Run("provision new user for manual testing", func(t *testing.T) {
+		fmt.Printf("-------------------------------------------------------------")
+		kanikaSignUp := CreateAndApproveSignup(t, hostAwait, "kanikarana", memberAwait.ClusterName)
+		VerifyResourcesProvisionedForSignup(t, hostAwait, kanikaSignUp, "base", memberAwait)
+		fmt.Printf("\n" + kanikaSignUp.Namespace)
+		kanikaMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName("kanikarana"))
 		require.NoError(t, err)
+		fmt.Printf(string(kanikaMur.UID))
+		fmt.Printf("\n")
+		fmt.Printf(kanikaMur.Namespace)
+		time.Sleep(time.Minute*5)
+		fmt.Printf("-------------------------------------------------------------")
+	})
 
-		fmt.Printf("\n >>>>>>>>>>>>>>>>>>>>>>>>>>>> MUR fetched>>>>>>>>>>>>>>>>")
-		// set deletion timestamp and add finalizer
-		deletionTS := metav1.Now()
-		johnMUR.DeletionTimestamp = &deletionTS
-		coputil.AddFinalizer(johnMUR, "finalizer.toolchain.dev.openshift.com")
-		if err := hostAwait.Client.Update(context.TODO(), johnMUR); err != nil {
-			fmt.Errorf("failed to set deletionTS and finalizer")
-		}
-		fmt.Printf("\n Deletion TS")
-		fmt.Printf(johnMUR.DeletionTimestamp.String())
-		fmt.Printf("\n finalizer")
-		fmt.Printf(johnMUR.Finalizers[0])
+	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+		laraUserName := "laracroft"
+		userNamespace := "laracroft-dev"
+		podName := "test-useraccount-delete-1"
+		laraSignUp := CreateAndApproveSignup(t, hostAwait, laraUserName, memberAwait.ClusterName)
+		VerifyResourcesProvisionedForSignup(t, hostAwait, laraSignUp, "base", memberAwait)
 
 		// when
 		//Create a pod with finalizer in user's namespace, which will block the deletion of namespace.
@@ -228,8 +233,8 @@ func TestE2EFlow(t *testing.T) {
 				APIVersion: "v1",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-useraccount-delete-1",
-				Namespace: "johnsmith-dev",
+				Name:      podName,
+				Namespace: userNamespace,
 				Finalizers: []string{
 					"kubernetes",
 				},
@@ -243,46 +248,72 @@ func TestE2EFlow(t *testing.T) {
 		}
 		err = memberAwait.Client.Create(context.TODO(), &memberPod)
 		require.NoError(t, err)
-		fmt.Printf("\n Pod created")
+		fmt.Printf("\n Pod created >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 		// confirm pod created
 		pod := &corev1.Pod{}
-		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: "johnsmith-dev", Name: "test-useraccount-delete-1"}, pod); err != nil {
+		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod); err != nil {
 			fmt.Errorf("\n could not find the created pod")
 		}
 		require.NoError(t, err)
+		type testDeleteOption struct {}
 
-		// now delete MUR but userAccount and nstemplateSet should not be deleted
-		err = hostAwait.Client.Delete(context.TODO(), johnMUR)
+		deletePolicy := metav1.DeletePropagationForeground
+		deleteOpts := &client.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		}
+		// now delete userSignup but nothing should be deleted yet
+		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
+		require.NoError(t, err)
 
-		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
-		assert.Error(t, err, "userAccount is not deleted")
 
-		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
-		assert.Error(t, err, "NSTemplateSet is not deleted")
+		//laraSignUp, err = hostAwait.UpdateUserSignupSpec(laraSignUp.Name, func(us *toolchainv1alpha1.UserSignup) {
+		//	states.SetDeactivated(us, true)
+		//})
+		//require.NoError(t, err)
+		//fmt.Printf(string(laraSignUp.Spec.States[0]))
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
-		assert.Error(t, err, "johnsmith-dev namespace is not deleted")
+		fmt.Printf(">>>>>>>>>> was delete triggered")
+		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
+		assert.Error(t, err, "laracroft-dev namespace got deleted")
+
+		err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
+		assert.Error(t, err, "NSTemplateSet got deleted")
+
+		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+		assert.Error(t, err, "userAccount got deleted")
+
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
+		require.Error(t, err)
+
+		err = hostAwait.Client.Get(context.TODO(),types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
+		require.NoError(t, err)
 
 		// now remove finalizer from pod and check all are deleted
-		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: "johnsmith-dev", Name: "test-useraccount-delete-1"}, pod); err != nil {
+		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod); err != nil {
 			fmt.Errorf("\n could not find the pod")
 		}
 		require.Equal(t, pod.Finalizers[0], "kubernetes")
 		pod.Finalizers = nil
-		//coputil.RemoveFinalizer(pod,"kubernetes")
 		err = memberAwait.Client.Update(context.TODO(), pod)
 		require.NoError(t, err)
 		require.Equal(t, len(pod.Finalizers), 0)
 
-		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
-		assert.NoError(t, err, "userAccount is not deleted")
+		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
+		assert.NoError(t, err, "laracroft-dev namespace is not deleted")
 
-		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
+		err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
 		assert.NoError(t, err, "NSTemplateSet is not deleted")
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
-		assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
+		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+		assert.NoError(t, err, "userAccount is not deleted")
+
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
+		assert.NoError(t, err, "MUR is not deleted")
+
+		err = hostAwait.Client.Get(context.TODO(),types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
+		require.Error(t, err)
+		require.True(t, errors.IsNotFound(err))
 
 	})
 
