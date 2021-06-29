@@ -15,7 +15,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+func CreateMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
 	signups := make([]*toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		name := fmt.Sprintf("multiple-signup-testuser-%d", i)
@@ -40,7 +39,7 @@ func CreateMultipleSignups(t *testing.T, ctx *framework.Context, hostAwait *wait
 		if targetCluster != nil {
 			userSignup.Spec.TargetCluster = targetCluster.ClusterName
 		}
-		err := hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(ctx))
+		err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 		hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 		require.NoError(t, err)
 		signups[i] = userSignup
@@ -76,7 +75,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 
 	// at this stage, the usersignup should not be approved nor completed
 	userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String(),
-		wait.UntilUserSignupHasConditions(PendingApproval()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(t, err)
 	require.Equal(t, identity.Username+"-First-Name", userSignup.Spec.GivenName)
@@ -91,7 +90,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.NoError(t, err)
 	// Check the updated conditions
 	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(t, err)
 

@@ -24,9 +24,31 @@ import (
 func TestE2EFlow(t *testing.T) {
 	// given
 	// full flow from usersignup with approval down to namespaces creation
-	ctx, hostAwait, memberAwait, member2Await := WaitForDeployments(t, &toolchainv1alpha1.UserSignupList{})
-	defer ctx.Cleanup()
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
+	memberConfiguration1 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("5s"))
+	memberConfiguration2 := testconfig.NewMemberOperatorConfig(testconfig.MemberStatus().RefreshPeriod("10s"))
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration1.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration2.Spec))
+
+	t.Run("verify MemberOperatorConfigs synced from ToolchainConfig to member clusters", func(t *testing.T) {
+		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
+			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete()))
+		})
+		t.Run("verify MemberOperatorConfig was synced to both member clusters", func(t *testing.T) {
+			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration1))
+		})
+		t.Run("verify MemberOperatorConfig was synced to member2", func(t *testing.T) {
+			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration2))
+		})
+		t.Run("verify updated toolchainconfig is synced", func(t *testing.T) {
+			// when switch member1 and member2 configs
+			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled(), testconfig.Members().Default(memberConfiguration2.Spec), testconfig.Members().SpecificPerMemberCluster(member2Await.ClusterName, memberConfiguration1.Spec))
+
+			// then
+			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(memberConfiguration2))
+			VerifyMemberOperatorConfig(t, member2Await, wait.UntilMemberConfigMatches(memberConfiguration1))
+		})
+	})
+
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
@@ -65,7 +87,7 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
-	signups := CreateMultipleSignups(t, ctx, hostAwait, memberAwait, 5)
+	signups := CreateMultipleSignups(t, hostAwait, memberAwait, 5)
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
@@ -214,7 +236,7 @@ func TestE2EFlow(t *testing.T) {
 		fmt.Printf(string(kanikaMur.UID))
 		fmt.Printf("\n")
 		fmt.Printf(kanikaMur.Namespace)
-		time.Sleep(time.Minute*5)
+		time.Sleep(time.Minute * 5)
 		fmt.Printf("-------------------------------------------------------------")
 	})
 
@@ -256,7 +278,7 @@ func TestE2EFlow(t *testing.T) {
 			fmt.Errorf("\n could not find the created pod")
 		}
 		require.NoError(t, err)
-		type testDeleteOption struct {}
+		type testDeleteOption struct{}
 
 		deletePolicy := metav1.DeletePropagationForeground
 		deleteOpts := &client.DeleteOptions{
@@ -265,7 +287,6 @@ func TestE2EFlow(t *testing.T) {
 		// now delete userSignup but nothing should be deleted yet
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
-
 
 		//laraSignUp, err = hostAwait.UpdateUserSignupSpec(laraSignUp.Name, func(us *toolchainv1alpha1.UserSignup) {
 		//	states.SetDeactivated(us, true)
@@ -286,7 +307,7 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
 		require.Error(t, err)
 
-		err = hostAwait.Client.Get(context.TODO(),types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
+		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
 		require.NoError(t, err)
 
 		// now remove finalizer from pod and check all are deleted
@@ -311,7 +332,7 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
 		assert.NoError(t, err, "MUR is not deleted")
 
-		err = hostAwait.Client.Get(context.TODO(),types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
+		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
 		require.Error(t, err)
 		require.True(t, errors.IsNotFound(err))
 

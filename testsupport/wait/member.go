@@ -6,10 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -630,7 +628,7 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 
 func WithSandboxPriorityClass() PodWaitCriterion {
 	return func(a *MemberAwaitility, pod v1.Pod) bool {
-		return checkPriorityClass(a, pod, "sandbox-users-pods", -10)
+		return checkPriorityClass(a, pod, "sandbox-users-pods", -3)
 	}
 }
 
@@ -880,6 +878,65 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	return err
 }
 
+// GetMemberOperatorConfig returns MemberOperatorConfig instance, nil if not found
+func (a *MemberAwaitility) GetMemberOperatorConfig() *toolchainv1alpha1.MemberOperatorConfig {
+	config := &toolchainv1alpha1.MemberOperatorConfig{}
+	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "config"), config); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		require.NoError(a.T, err)
+	}
+	return config
+}
+
+// MemberOperatorConfigWaitCriterion a function to check that an MemberOperatorConfig has the expected criteria
+type MemberOperatorConfigWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.MemberOperatorConfig) bool
+
+// UntilMemberConfigMatches returns a `MemberOperatorConfigWaitCriterion` which checks that the given
+// MemberOperatorConfig matches the provided one
+func UntilMemberConfigMatches(expectedMemberOperatorConfig *toolchainv1alpha1.MemberOperatorConfig) MemberOperatorConfigWaitCriterion {
+	return func(a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
+		if reflect.DeepEqual(expectedMemberOperatorConfig.Spec, memberConfig.Spec) {
+			return true
+		}
+		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'", memberConfig, expectedMemberOperatorConfig)
+		return false
+	}
+}
+
+// WaitForMemberOperatorConfig waits until the MemberOperatorConfig is available with the provided criteria, if any
+func (a *MemberAwaitility) WaitForMemberOperatorConfig(criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
+	// there should only be one MemberOperatorConfig with the name config
+	name := "config"
+	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		memberOperatorConfig = &toolchainv1alpha1.MemberOperatorConfig{}
+		// retrieve the MemberOperatorConfig from the member namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			},
+			memberOperatorConfig)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of MemberOperatorConfig '%s' in namespace '%s'...\n", name, a.Namespace)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, memberOperatorConfig) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found memberOperatorConfig '%s': %+v", memberOperatorConfig.Name, memberOperatorConfig)
+		return true, nil
+	})
+	return memberOperatorConfig, err
+}
+
 // DeleteUserAccount deletes the user account resource with the given name and
 // waits until it was actually deleted
 func (a *MemberAwaitility) DeleteUserAccount(name string) error {
@@ -919,7 +976,7 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
 	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
 
 	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
-	assert.Equal(a.T, int32(-10), actualPrioClass.Value)
+	assert.Equal(a.T, int32(-3), actualPrioClass.Value)
 	assert.False(a.T, actualPrioClass.GlobalDefault)
 	assert.Equal(a.T, "Priority class for pods in users' namespaces", actualPrioClass.Description)
 }
@@ -986,7 +1043,7 @@ func (a *MemberAwaitility) waitForWebhookDeployment() {
 	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
 	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
 
-	a.waitForDeploymentToGetReady("member-operator-webhook")
+	a.WaitForDeploymentToGetReady("member-operator-webhook", 1)
 }
 
 func (a *MemberAwaitility) waitForSecret() []byte {
@@ -1042,7 +1099,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
 	a.waitForResource("", "member-operator-autoscaling-buffer", actualPrioClass)
 
 	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
-	assert.Equal(a.T, int32(-100), actualPrioClass.Value)
+	assert.Equal(a.T, int32(-5), actualPrioClass.Value)
 	assert.False(a.T, actualPrioClass.GlobalDefault)
 	assert.Equal(a.T, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
 }
@@ -1076,20 +1133,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 	assert.True(a.T, container.Resources.Requests.Memory().Equal(expectedMemory))
 	assert.True(a.T, container.Resources.Limits.Memory().Equal(expectedMemory))
 
-	a.waitForDeploymentToGetReady("autoscaling-buffer")
-}
-
-func (a *MemberAwaitility) waitForDeploymentToGetReady(name string) {
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
-		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
-			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
-			return false, nil
-		}
-		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
-		return true, nil
-	})
-	require.NoError(a.T, err)
+	a.WaitForDeploymentToGetReady("autoscaling-buffer", 2)
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count

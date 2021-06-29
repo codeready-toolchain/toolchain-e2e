@@ -13,12 +13,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/stretchr/testify/require"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,13 +26,12 @@ import (
 // HostAwaitility the Awaitility for the Host cluster
 type HostAwaitility struct {
 	*Awaitility
-	FrameworkClient        framework.FrameworkClient
 	RegistrationServiceNs  string
 	RegistrationServiceURL string
 }
 
 // NewHostAwaitility initializes a HostAwaitility
-func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
+func NewHostAwaitility(t *testing.T, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			T:             t,
@@ -43,7 +41,6 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
-		FrameworkClient:       fcl,
 		RegistrationServiceNs: registrationServiceNs,
 	}
 }
@@ -52,7 +49,6 @@ func NewHostAwaitility(t *testing.T, fcl framework.FrameworkClient, cl client.Cl
 func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
-		FrameworkClient:        a.FrameworkClient,
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
 	}
@@ -361,6 +357,19 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv
 	return
 }
 
+// DeleteToolchainStatus deletes the ToolchainStatus resource with the given name and in the host operator namespace
+func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
+	toolchainstatus := &toolchainv1alpha1.ToolchainStatus{}
+	if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, toolchainstatus); err != nil {
+		if errors.IsNotFound(err) {
+			a.T.Logf("ToolchainStatus is already deleted '%s'", name)
+			return nil
+		}
+		return err
+	}
+	return a.Client.Delete(context.TODO(), toolchainstatus)
+}
+
 // WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -377,7 +386,23 @@ func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	})
 }
 
-// WaitUntilMasterUserRecordDeleted waits until MUR with the given name is deleted (ie, not found)
+// WaitUntilUserSignupDeleted waits until the UserSignup with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		userSignup := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, userSignup); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("UserSignup is checked as deleted '%s'", name)
+				return true, nil
+			}
+			return false, err
+		}
+		a.T.Logf("waiting until UserSignup is deleted '%s'", name)
+		return false, nil
+	})
+}
+
+// WaitUntilMasterUserRecordDeleted waits until the MUR with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
@@ -769,6 +794,53 @@ func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig
 	return config
 }
 
+// ToolchainConfigWaitCriterion a function to check that an ToolchainConfig has the expected condition
+type ToolchainConfigWaitCriterion func(*HostAwaitility, *toolchainv1alpha1.ToolchainConfig) bool
+
+func UntilToolchainConfigHasSyncedStatus(expectedCondition toolchainv1alpha1.Condition) ToolchainConfigWaitCriterion {
+	return func(a *HostAwaitility, toolchainConfig *toolchainv1alpha1.ToolchainConfig) bool {
+		if test.ContainsCondition(toolchainConfig.Status.Conditions, expectedCondition) {
+			a.T.Logf("status conditions match in ToolchainConfig")
+			return true
+		}
+		a.T.Logf("waiting for status condition of ToolchainConfig. Actual: '%+v'; Expected: '%+v'", toolchainConfig.Status.Conditions, expectedCondition)
+		return false
+	}
+}
+
+// WaitForToolchainConfig waits until the ToolchainConfig is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
+	// there should only be one ToolchainConfig with the name "config"
+	name := "config"
+	toolchainConfig := &toolchainv1alpha1.ToolchainConfig{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		toolchainConfig = &toolchainv1alpha1.ToolchainConfig{}
+		// retrieve the ToolchainConfig from the host namespace
+		err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			},
+			toolchainConfig)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("Waiting for availability of toolchainconfig in namespace '%s'...\n", a.Namespace)
+				return false, nil
+			}
+			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, toolchainConfig) {
+				a.T.Logf("Waiting for toolchainconfig to match the expected criteria. Current toolchainconfig: <%+v> \n", toolchainConfig)
+				return false, nil
+			}
+		}
+		a.T.Logf("found toolchainconfig '%s': %+v", toolchainConfig.Name, toolchainConfig)
+		return true, nil
+	})
+	return toolchainConfig, err
+}
+
 // UpdateToolchainConfig updates the current resource of the ToolchainConfig CR with the given options.
 // If there is no existing resource already, then it creates a new one.
 // At the end of the test it returns the resource back to the original value/state.
@@ -811,7 +883,7 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 	}
 
 	// if the config did exist before the tests, then update it
-	err := a.Client.Update(context.TODO(), config)
+	err := a.updateToolchainConfigWithRetry(config)
 	require.NoError(a.T, err)
 
 	// and as a cleanup function update it back to the original value
@@ -824,11 +896,26 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 			require.NoError(a.T, err)
 		} else {
 			// otherwise just update it
-			originalConfig.ResourceVersion = config.ResourceVersion
-			err := a.Client.Update(context.TODO(), originalConfig)
+			err := a.updateToolchainConfigWithRetry(originalConfig)
 			require.NoError(a.T, err)
 		}
 	})
+}
+
+// updateToolchainConfigWithRetry attempts to update the toolchainconfig, helpful because the toolchainconfig controller updates the toolchainconfig
+// resource periodically which can cause errors like `Operation cannot be fulfilled on toolchainconfigs.toolchain.dev.openshift.com "config": the object has been modified; please apply your changes to the latest version and try again`
+// in some cases. Retrying mitigates the potential for test flakiness due to this behaviour.
+func (a *HostAwaitility) updateToolchainConfigWithRetry(updatedConfig *toolchainv1alpha1.ToolchainConfig) error {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		config := a.GetToolchainConfig()
+		config.Spec = updatedConfig.Spec
+		if err := a.Client.Update(context.TODO(), config); err != nil {
+			a.T.Logf("Retrying ToolchainConfig update due to error: %s", err.Error())
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
 }
 
 // GetHostOperatorPod returns the pod running the host operator controllers

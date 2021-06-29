@@ -10,7 +10,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,9 +30,7 @@ const (
 
 func TestNSTemplateTiers(t *testing.T) {
 	// given
-	tierList := &toolchainv1alpha1.NSTemplateTierList{}
-	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, tierList)
-	defer ctx.Cleanup()
+	hostAwait, memberAwait, _ := WaitForDeployments(t)
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
@@ -75,7 +72,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, testingTiersName, tierToCheck)
 
 			// when
-			err = hostAwait.FrameworkClient.Create(context.TODO(), changeTierRequest, &test.CleanupOptions{})
+			err = hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
 
 			// then
 			require.NoError(t, err)
@@ -100,13 +97,12 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
 	count := 2*MaxPoolSize + 1
-	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, &toolchainv1alpha1.NSTemplateTier{})
-	defer ctx.Cleanup()
+	hostAwait, memberAwait, _ := WaitForDeployments(t)
 
 	// first group of users: the "cheesecake lovers"
-	cheesecakeSyncIndexes := setupAccounts(t, ctx, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait.ClusterName, count)
+	cheesecakeSyncIndexes := setupAccounts(t, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait.ClusterName, count)
 	// second group of users: the "cookie lovers"
-	cookieSyncIndexes := setupAccounts(t, ctx, hostAwait, "cookie", "cookielover%02d", memberAwait.ClusterName, count)
+	cookieSyncIndexes := setupAccounts(t, hostAwait, "cookie", "cookielover%02d", memberAwait.ClusterName, count)
 
 	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
 	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
@@ -144,9 +140,9 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, ctx *test.Context, hostAwait *HostAwaitility, tierName, nameFmt, targetCluster string, count int) map[string]string {
+func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt, targetCluster string, count int) map[string]string {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
-	tier := CreateNSTemplateTier(t, ctx, hostAwait, tierName)
+	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
 	users := make([]*toolchainv1alpha1.UserSignup, count)
@@ -258,9 +254,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 
 func TestTierTemplates(t *testing.T) {
 	// given
-	tierList := &toolchainv1alpha1.NSTemplateTierList{}
-	ctx, hostAwait, _, _ := WaitForDeployments(t, tierList)
-	defer ctx.Cleanup()
+	hostAwait, _, _ := WaitForDeployments(t)
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
