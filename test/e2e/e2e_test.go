@@ -41,10 +41,10 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
 			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete()))
 		})
-		t.Run("verify MemberOperatorConfig was synced to both member clusters", func(t *testing.T) {
+		t.Run("verify MemberOperatorConfig was synced to member 1", func(t *testing.T) {
 			VerifyMemberOperatorConfig(t, memberAwait, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
-		t.Run("verify MemberOperatorConfig was synced to member2", func(t *testing.T) {
+		t.Run("verify MemberOperatorConfig was synced to member 2", func(t *testing.T) {
 			VerifyMemberOperatorConfig(t, memberAwait2, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
 		t.Run("verify updated toolchainconfig is synced - go to unready", func(t *testing.T) {

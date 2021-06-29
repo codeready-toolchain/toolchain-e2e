@@ -11,4 +11,3 @@ spec:
         refreshPeriod: "1s"
       toolchainCluster:
         healthCheckPeriod: "5s"
-        
