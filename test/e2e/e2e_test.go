@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -18,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"testing"
-	"time"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -226,20 +224,6 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
-	t.Run("provision new user for manual testing", func(t *testing.T) {
-		fmt.Printf("-------------------------------------------------------------")
-		kanikaSignUp := CreateAndApproveSignup(t, hostAwait, "kanikarana", memberAwait.ClusterName)
-		VerifyResourcesProvisionedForSignup(t, hostAwait, kanikaSignUp, "base", memberAwait)
-		fmt.Printf("\n" + kanikaSignUp.Namespace)
-		kanikaMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName("kanikarana"))
-		require.NoError(t, err)
-		fmt.Printf(string(kanikaMur.UID))
-		fmt.Printf("\n")
-		fmt.Printf(kanikaMur.Namespace)
-		time.Sleep(time.Minute * 5)
-		fmt.Printf("-------------------------------------------------------------")
-	})
-
 	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
 		laraUserName := "laracroft"
 		userNamespace := "laracroft-dev"
@@ -270,15 +254,11 @@ func TestE2EFlow(t *testing.T) {
 		}
 		err = memberAwait.Client.Create(context.TODO(), &memberPod)
 		require.NoError(t, err)
-		fmt.Printf("\n Pod created >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 		// confirm pod created
 		pod := &corev1.Pod{}
-		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod); err != nil {
-			fmt.Errorf("\n could not find the created pod")
-		}
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod)
 		require.NoError(t, err)
-		type testDeleteOption struct{}
 
 		deletePolicy := metav1.DeletePropagationForeground
 		deleteOpts := &client.DeleteOptions{
@@ -288,13 +268,6 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
 
-		//laraSignUp, err = hostAwait.UpdateUserSignupSpec(laraSignUp.Name, func(us *toolchainv1alpha1.UserSignup) {
-		//	states.SetDeactivated(us, true)
-		//})
-		//require.NoError(t, err)
-		//fmt.Printf(string(laraSignUp.Spec.States[0]))
-
-		fmt.Printf(">>>>>>>>>> was delete triggered")
 		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
 		assert.Error(t, err, "laracroft-dev namespace got deleted")
 
@@ -311,9 +284,8 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// now remove finalizer from pod and check all are deleted
-		if err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod); err != nil {
-			fmt.Errorf("\n could not find the pod")
-		}
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod)
+		require.NoError(t, err)
 		require.Equal(t, pod.Finalizers[0], "kubernetes")
 		pod.Finalizers = nil
 		err = memberAwait.Client.Update(context.TODO(), pod)
