@@ -509,6 +509,7 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 			}
 
 			// wait until deletion is done
+			a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
 			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
 					if errors.IsNotFound(err) {
@@ -522,7 +523,7 @@ func (a *Awaitility) Cleanup(objects ...runtime.Object) {
 					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
 					return false, err
 				}
-				a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+				fmt.Print(".")
 				return false, nil
 			}))
 		}
@@ -559,7 +560,7 @@ func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1
 			a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
 			return false, nil
 		}
-		a.T.Logf("the UserSignup doesn't have CompliantUsername set: %+v", userSignup)
+		a.T.Logf("the UserSignup doesn't have CompliantUsername set")
 		return true, nil
 	}
 	return true, nil
