@@ -73,7 +73,7 @@ The name should be a UUID eg. 66e54c45-9868-4a25-81ca-d56b600c8491
 . Approve the usersignup
 +
 ```
-oc patch usersignup -p '{"spec":{"approved":true}}' --type=merge <usersignup name> -n <host operator namespace>
+oc patch usersignup -p '{"spec":{"states":["approved"]}}' --type=merge <usersignup name> -n <host operator namespace>
 ```
 
 ==== Automatic Approval
