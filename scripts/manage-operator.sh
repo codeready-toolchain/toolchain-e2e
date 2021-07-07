@@ -27,10 +27,10 @@ set_tags() {
     if [[ -n "${CI}${CLONEREFS_OPTIONS}" ]]; then
         if [[ -n ${GITHUB_ACTIONS} ]]; then
             OPERATOR_REPO_NAME=${GITHUB_REPOSITORY##*/}
-            TAGS=from.${GITHUB_ACTOR}.${REPOSITORY_NAME}.${GIT_COMMIT_ID}
+            TAGS=from.${GITHUB_ACTOR}.${OPERATOR_REPO_NAME}.${GIT_COMMIT_ID}
         else
             AUTHOR=$(jq -r '.refs[0].pulls[0].author' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
-            TAGS=from.${AUTHOR}.${REPOSITORY_NAME}.${GIT_COMMIT_ID}
+            TAGS=from.${AUTHOR}.${REPO_NAME}.${GIT_COMMIT_ID}
         fi
     fi
     if is_provided_or_paired; then
