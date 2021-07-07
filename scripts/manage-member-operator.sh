@@ -11,7 +11,7 @@ PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
 get_repo
 set_tags
 
-# can be used only when the operator CSV doesn't bundle the environment information
+# can be used only when the operator CSV doesn't bundle the environment information, but now we want to build bundle for both operators
 #if [[ ${PUBLISH_OPERATOR} == "true" ]] && [[ -n ${BUNDLE_AND_INDEX_TAG} ]]; then
 if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
     push_image
@@ -23,7 +23,7 @@ if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
 fi
 
 if [[ ${INSTALL_OPERATOR} == "true" ]]; then
-#    can be used only when the operator CSV doesn't bundle the environment information
+#    can be used only when the operator CSV doesn't bundle the environment information, but now we want to build bundle for both operators
 #    if [[ -z ${BUNDLE_AND_INDEX_TAG} ]]; then
 #        BUNDLE_AND_INDEX_TAG=latest
 #        QUAY_NAMESPACE=codeready-toolchain
