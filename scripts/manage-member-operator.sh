@@ -11,7 +11,9 @@ PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
 get_repo
 set_tags
 
-if [[ ${PUBLISH_OPERATOR} == "true" ]] && [[ -n ${BUNDLE_AND_INDEX_TAG} ]]; then
+# can be used only when the operator CSV doesn't bundle the environment information
+#if [[ ${PUBLISH_OPERATOR} == "true" ]] && [[ -n ${BUNDLE_AND_INDEX_TAG} ]]; then
+if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
     push_image
 
     OPERATOR_IMAGE_LOC=${IMAGE_LOC}
@@ -21,10 +23,11 @@ if [[ ${PUBLISH_OPERATOR} == "true" ]] && [[ -n ${BUNDLE_AND_INDEX_TAG} ]]; then
 fi
 
 if [[ ${INSTALL_OPERATOR} == "true" ]]; then
-    if [[ -z ${BUNDLE_AND_INDEX_TAG} ]]; then
-        BUNDLE_AND_INDEX_TAG=latest
-        QUAY_NAMESPACE=codeready-toolchain
-    fi
+#    can be used only when the operator CSV doesn't bundle the environment information
+#    if [[ -z ${BUNDLE_AND_INDEX_TAG} ]]; then
+#        BUNDLE_AND_INDEX_TAG=latest
+#        QUAY_NAMESPACE=codeready-toolchain
+#    fi
 
     make -C ${REPOSITORY_PATH} install-current-operator INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} NAMESPACE=${MEMBER_NS} QUAY_NAMESPACE=${QUAY_NAMESPACE}
     if [[ -n ${MEMBER_NS_2} ]]; then

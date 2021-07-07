@@ -33,9 +33,10 @@ set_tags() {
             TAGS=from.${AUTHOR}.${REPO_NAME}.${GIT_COMMIT_ID}
         fi
     fi
-    if is_provided_or_paired; then
-        BUNDLE_AND_INDEX_TAG=${TAGS}
-    fi
+#    can be used only when the operator CSV doesn't bundle the environment information
+#    if is_provided_or_paired; then
+#        BUNDLE_AND_INDEX_TAG=${TAGS}
+#    fi
 }
 
 push_image() {
