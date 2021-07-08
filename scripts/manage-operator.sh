@@ -114,10 +114,9 @@ pair_repo_if_needed() {
                     echo "##########################################################################################################"
     #                    exit 1
                 fi
-                if [[ -n "${OPENSHIFT_BUILD_NAMESPACE}" ]]; then \
-                    git config --global user.email "devtools@redhat.com"
-                    git config --global user.name "Devtools"
-                fi
+
+                git config --global user.email "devtools@redhat.com"
+                git config --global user.name "Devtools"
 
                 echo -e "repository: ${AUTHOR_LINK}/${REPOSITORY_NAME} \nbranch: ${BRANCH_NAME}" > ${WAS_ALREADY_PAIRED_FILE}
                 # add the user's fork as remote repo
