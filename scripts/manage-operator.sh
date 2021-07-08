@@ -104,7 +104,7 @@ pair_repo_if_needed() {
             if [[ -n "${REMOTE_E2E_BRANCH}" ]]; then \
                 if [[ -f ${WAS_ALREADY_PAIRED_FILE} ]]; then \
                     echo "####################################  ERROR WHILE TRYING TO PAIR PRs  ####################################"
-                    echo "There was an error while trying to pair this e2e PR with ${REPO_URL}@${BRANCH_REF}"
+                    echo "There was an error while trying to pair this e2e PR with ${AUTHOR_LINK}/${REPOSITORY_NAME}@${BRANCH_REF}"
                     echo "The reason is that there was already detected a branch from another repo this PR could be paired with - see:"
                     cat ${WAS_ALREADY_PAIRED_FILE}
                     echo "It's not possible to pair a PR with multiple branches from other repositories."
