@@ -112,7 +112,7 @@ pair_repo_if_needed() {
                     echo "Note: If you have already deleted one of the branches from your fork, it can take a few hours before the"
                     echo "      github api is updated so the e2e tests may still fail with the same error until then."
                     echo "##########################################################################################################"
-    #                    exit 1
+                    exit 1
                 fi
 
                 git config --global user.email "devtools@redhat.com"
