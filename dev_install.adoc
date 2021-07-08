@@ -16,11 +16,15 @@ Install the link:required_tools.adoc[required tools].
 `export QUAY_NAMESPACE=<quay-username>`
 . Log in to quay.io using +
 `docker login quay.io`
-. Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io are all set to `public`:
- * https://quay.io/repository/<your-username>/host-operator?tab=settings
- * https://quay.io/repository/<your-username>/member-operator?tab=settings
- * https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
- * https://quay.io/repository/<your-username>/registration-service?tab=settings
+. Make sure that the visibility of these repositories on quay.io are all set to `public`:
+ * https://quay.io/repository/<quay-username>/host-operator?tab=settings
+ * https://quay.io/repository/<quay-username>/host-operator-bundle?tab=settings
+ * https://quay.io/repository/<quay-username>/host-operator-index?tab=settings
+ * https://quay.io/repository/<quay-username>/member-operator?tab=settings
+ * https://quay.io/repository/<quay-username>/member-operator-webhook?tab=settings
+ * https://quay.io/repository/<quay-username>/member-operator-bundle?tab=settings
+ * https://quay.io/repository/<quay-username>/member-operator-index?tab=settings
+ * https://quay.io/repository/<quay-username>/registration-service?tab=settings
 
 === Authentication
 Configure authentication for the cluster using one of the following options:

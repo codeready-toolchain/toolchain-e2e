@@ -10,12 +10,15 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"k8s.io/client-go/rest"
 )
 
-func getMetricValue(url string, family string, expectedLabels []string) (float64, error) {
+func getMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
 	if len(expectedLabels)%2 != 0 {
 		return -1, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")
 	}
+	uri := fmt.Sprintf("https://%s/metrics", url)
+	var metrics []byte
 
 	client := http.Client{
 		Timeout: time.Duration(10 * time.Second),
@@ -23,18 +26,23 @@ func getMetricValue(url string, family string, expectedLabels []string) (float64
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
-
-	resp, err := client.Get(fmt.Sprintf("https://%s/metrics", url)) // internal call, so no need for TLS
+	request, err := http.NewRequest("Get", uri, nil)
+	if err != nil {
+		return -1, err
+	}
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", restConfig.BearerToken))
+	resp, err := client.Do(request)
 	if err != nil {
 		return -1, err
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	metrics, err := ioutil.ReadAll(resp.Body)
+	metrics, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}
+
 	// parse the metrics
 	parser := expfmt.TextParser{}
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))

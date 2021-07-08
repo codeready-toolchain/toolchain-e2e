@@ -1,6 +1,6 @@
-DEV_MEMBER_NS := ${QUAY_NAMESPACE}-member-operator
-DEV_MEMBER_NS_2 := ${QUAY_NAMESPACE}-member2-operator
-DEV_HOST_NS := ${QUAY_NAMESPACE}-host-operator
+DEV_MEMBER_NS := toolchain-member-operator
+DEV_MEMBER_NS_2 := toolchain-member2-operator
+DEV_HOST_NS := toolchain-host-operator
 DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
@@ -14,11 +14,11 @@ dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-s
 
 .PHONY: deploy-e2e-to-dev-namespaces
 deploy-e2e-to-dev-namespaces:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} RESOURCES_SUFFIX=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
 
 .PHONY: deploy-e2e-to-dev-namespaces-two-members
 deploy-e2e-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} RESOURCES_SUFFIX=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
 
 .PHONY: dev-deploy-e2e-local
 dev-deploy-e2e-local: deploy-e2e-local-to-dev-namespaces print-reg-service-link
@@ -28,11 +28,11 @@ dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members
 
 .PHONY: deploy-e2e-local-to-dev-namespaces
 deploy-e2e-local-to-dev-namespaces:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} RESOURCES_SUFFIX=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
 
 .PHONY: deploy-e2e-local-to-dev-namespaces-two-members
 deploy-e2e-local-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} RESOURCES_SUFFIX=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
 
 .PHONY: print-reg-service-link
 print-reg-service-link:

@@ -23,10 +23,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/rest"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -44,6 +44,7 @@ const (
 type Awaitility struct {
 	T             *testing.T
 	Client        client.Client
+	RestConfig    *rest.Config
 	ClusterName   string
 	Namespace     string
 	Type          cluster.Type
@@ -228,10 +229,10 @@ func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1
 			},
 			Spec: routev1.RouteSpec{
 				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("http-metrics"),
+					TargetPort: intstr.FromString("https"),
 				},
 				TLS: &routev1.TLSConfig{
-					Termination: routev1.TLSTerminationEdge,
+					Termination: routev1.TLSTerminationPassthrough,
 				},
 				To: routev1.RouteTargetReference{
 					Kind: service.Kind,
@@ -269,19 +270,30 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 			return false, nil
 		}
 		// verify that the endpoint gives a `200 OK` response on a GET request
-		var location string
 		client := http.Client{
 			Timeout: time.Duration(1 * time.Second),
 		}
+		var request *http.Request
+
 		if route.Spec.TLS != nil {
-			location = "https://" + route.Status.Ingress[0].Host + endpoint
 			client.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 			}
+			request, err = http.NewRequest("Get", "https://"+route.Status.Ingress[0].Host+endpoint, nil)
+			if err != nil {
+				return false, err
+			}
+			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
+
 		} else {
-			location = "http://" + route.Status.Ingress[0].Host + endpoint
+			request, err = http.NewRequest("Get", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
+			if err != nil {
+				return false, err
+			}
 		}
-		resp, err := client.Get(location)
+		resp, err := client.Do(request)
 		if err, ok := err.(*url.Error); ok && err.Timeout() {
 			// keep waiting if there was a timeout: the endpoint is not available yet (pod is still re-starting)
 			a.T.Logf("Waiting for availability of route '%s' in namespace '%s' (endpoint timeout)...\n", name, ns)
@@ -292,7 +304,13 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 		defer func() {
 			_ = resp.Body.Close()
 		}()
-		return resp.StatusCode == http.StatusOK, nil
+
+		if resp.StatusCode != http.StatusOK {
+			a.T.Logf("Waiting for availability of route '%s' in namespace '%s' - the current status code: %v", name, ns, resp.StatusCode)
+			return false, nil
+		}
+
+		return true, nil
 	})
 	return route, err
 }
@@ -301,13 +319,14 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 // fails if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) float64 {
 	var value float64
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if value, err = getMetricValue(a.MetricsURL, family, labelAndValues); err != nil {
-			a.T.Logf("waiting for metric %s but error occurred: %v", family, err)
-			return false, nil
-		}
-		return true, nil
-	})
+	var err error
+	//err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	if value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err != nil {
+		a.T.Logf("waiting for metric %s but error occurred: %v", family, err)
+		require.NoError(a.T, err)
+	}
+
+	//})
 	require.NoError(a.T, err)
 	return value
 }
@@ -318,7 +337,7 @@ func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...strin
 	if len(labelAndValues)%2 != 0 {
 		a.T.Fatal("`labelAndValues` must be pairs of labels and values")
 	}
-	if value, err := getMetricValue(a.MetricsURL, family, labelAndValues); err == nil {
+	if value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err == nil {
 		return value
 	}
 	return 0
@@ -330,7 +349,7 @@ func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
 	var comparisonSummary string
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.MetricsURL, family, labels)
+		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		if err != nil {
 			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' but error occurred: %s", family, labels, expectedValue, err.Error())
 			return false, nil
@@ -350,7 +369,7 @@ func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float
 func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue float64, labels ...string) error {
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.MetricsURL, family, labels)
+		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		if err != nil {
 			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more but error occurred: %s", family, labels, expectedValue, err.Error())
 			return false, nil
@@ -369,7 +388,7 @@ func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue 
 func (a *Awaitility) WaitUntilMetricHasValueOrLess(family string, expectedValue float64, labels ...string) error {
 	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.MetricsURL, family, labels)
+		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		if err != nil {
 			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less but error occurred: %s", family, labels, expectedValue, err.Error())
 			return false, nil
@@ -448,7 +467,7 @@ func (a *Awaitility) CreateNamespace(name string) {
 
 // WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
 func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, 4*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
@@ -467,7 +486,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 }
 
 // CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
-func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	if err := a.Client.Create(ctx, obj, opts...); err != nil {
 		return err
 	}
@@ -483,10 +502,11 @@ var (
 )
 
 // Cleanup schedules removal of the given objects at the end of the current test
-func (a *Awaitility) Cleanup(objects ...runtime.Object) {
+func (a *Awaitility) Cleanup(objects ...client.Object) {
 	for _, obj := range objects {
 		userSignup, isUserSignup := obj.(*toolchainv1alpha1.UserSignup)
-		objToClean := obj.DeepCopyObject()
+		objToClean, ok := obj.DeepCopyObject().(client.Object)
+		require.True(a.T, ok)
 		cleanup := func() {
 			metaAccess, err := meta.Accessor(objToClean)
 			require.NoError(a.T, err)

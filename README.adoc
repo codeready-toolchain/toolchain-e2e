@@ -7,7 +7,7 @@ This repo contains e2e tests for https://github.com/codeready-toolchain/host-ope
 
 == Build
 
-Requires Go version 1.14 - download for your development environment https://golang.org/dl/[here].
+Requires Go version 1.16 - download for your development environment https://golang.org/dl/[here].
 
 This repository uses https://github.com/golang/go/wiki/Modules[Go modules]. You may need to `export GO111MODULE=on` to turn modules support "on".
 
@@ -101,23 +101,6 @@ If you are still confused by the different e2e/operator location, execution and 
 *** See the previous case and just swap member-operator and host-operator.
 ** *Your PR requires changes in both repos https://github.com/codeready-toolchain/host-operator[host-operator] and https://github.com/codeready-toolchain/member-operator[member-operator]:*
 *** This is prohibited and will result in an error like `ERROR WHILE TRYING TO PAIR PRs` in the CI build. See the reasoning behind this in the <<End-to-End Tests>> section.
-
-=== Verifying the OpenShift CI Configuration
-
- It's possible to verify the OpenShift CI config from the developer's laptop while all the jobs are executed on the remote, online CI platform:
-
-1. checkout and build the https://github.com/openshift/ci-tools[CI Operator] command line tool
-2. login to https://console.svc.ci.openshift.org (via GH OAuth) and copy the login command (you may need to switch to the `application console`)
-3. login with the command aforementioned
-4. run the CI jobs with
-+
-```
-ci-operator --config ../../openshift/release/ci-operator/config/codeready-toolchain/toolchain-e2e/codeready-toolchain-toolchain-e2e-master.yaml --git-ref=codeready-toolchain/toolchain-e2e@master
-```
-
-assuming that you have the https://github.com/openshift/release[OpenShift Release] repo in `$GOPATH`.
-
-NOTE: you can ignore the RBAC issues that are displayed in the console
 
 == Deploying End-to-End Resources Without Running Tests
 

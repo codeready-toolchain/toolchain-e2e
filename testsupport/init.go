@@ -44,10 +44,10 @@ func WaitForDeployments(t *testing.T) (*wait.HostAwaitility, *wait.MemberAwaitil
 	})
 	require.NoError(t, err)
 
-	hostAwait := wait.NewHostAwaitility(t, cl, hostNs, registrationServiceNs)
+	hostAwait := wait.NewHostAwaitility(t, kubeconfig, cl, hostNs, registrationServiceNs)
 
 	// wait for host operator to be ready
-	hostAwait.WaitForDeploymentToGetReady("host-operator", 1)
+	hostAwait.WaitForDeploymentToGetReady("host-operator-controller-manager", 1)
 
 	// wait for registration service to be ready
 	hostAwait.WaitForDeploymentToGetReady("registration-service", 2)
@@ -61,18 +61,24 @@ func WaitForDeployments(t *testing.T) (*wait.HostAwaitility, *wait.MemberAwaitil
 	}
 	hostAwait.RegistrationServiceURL = registrationServiceURL
 
-	// setup host metrics route for metrics verification in tests
-	hostMetricsRoute, err := hostAwait.SetupRouteForService("host-operator-metrics", "/metrics")
-	require.NoError(t, err)
-	hostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
-
 	// wait for member operators to be ready
 	memberAwait := getMemberAwaitility(t, cl, hostAwait, memberNs)
 
 	member2Await := getMemberAwaitility(t, cl, hostAwait, memberNs2)
 
+	hostToolchainCluster, err := memberAwait.WaitForToolchainClusterWithCondition("e2e", hostNs, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+	hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
+	require.NoError(t, err)
+	hostAwait.RestConfig = hostConfig
+
+	// setup host metrics route for metrics verification in tests
+	hostMetricsRoute, err := hostAwait.SetupRouteForService("host-operator-metrics-service", "/metrics")
+	require.NoError(t, err)
+	hostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
+
 	// setup member metrics route for metrics verification in tests
-	memberMetricsRoute, err := memberAwait.SetupRouteForService("member-operator-metrics", "/metrics")
+	memberMetricsRoute, err := memberAwait.SetupRouteForService("member-operator-metrics-service", "/metrics")
 	require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
 	memberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
@@ -100,9 +106,9 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("member", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
-	memberAwait := wait.NewMemberAwaitility(t, memberClient, namespace, clusterName)
+	memberAwait := wait.NewMemberAwaitility(t, memberConfig, memberClient, namespace, clusterName)
 
-	memberAwait.WaitForDeploymentToGetReady("member-operator", 1)
+	memberAwait.WaitForDeploymentToGetReady("member-operator-controller-manager", 1)
 
 	return memberAwait
 }
