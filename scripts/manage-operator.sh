@@ -73,14 +73,16 @@ pair_repo_if_needed() {
             curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output -
             GET_BRANCH_NAME=$(curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_PULL_SHA} || true)
             if [[ $(echo ${GET_BRANCH_NAME} | wc -l) > 1 ]]; then \
-                echo "###################################  ERROR DURING THE E2E TEST SETUP  ###################################"
-                echo "There were found more branches with the same latest commit '${PULL_PULL_SHA}' in the repo ${REPO_URL} - see:"
-                echo "`${GET_BRANCH_NAME}`"
-                echo "It's not possible to detect the correct branch this PR is made for."
-                echo "Please delete the unrelated branch from your fork and rerun the e2e tests."
-                echo "Note: If you have already deleted the unrelated branch from your fork, it can take a few hours before the"
-                echo "      github api is updated so the e2e tests may still fail with the same error until then."
-                echo "##########################################################################################################"
+                echo "###################################  ERROR DURING THE E2E TEST SETUP  ###################################
+There were found more branches with the same latest commit '${PULL_PULL_SHA}' in the repo ${REPO_URL} - see:
+
+${GET_BRANCH_NAME}
+
+It's not possible to detect the correct branch this PR is made for.
+Please delete the unrelated branch from your fork and rerun the e2e tests.
+Note: If you have already deleted the unrelated branch from your fork, it can take a few hours before the
+      github api is updated so the e2e tests may still fail with the same error until then.
+##########################################################################################################"
                 exit 1
             fi
             BRANCH_REF=$(echo ${GET_BRANCH_NAME} | awk '{print $2}')
@@ -103,15 +105,17 @@ pair_repo_if_needed() {
             # check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master \
             if [[ -n "${REMOTE_E2E_BRANCH}" ]]; then \
                 if [[ -f ${WAS_ALREADY_PAIRED_FILE} ]]; then \
-                    echo "####################################  ERROR WHILE TRYING TO PAIR PRs  ####################################"
-                    echo "There was an error while trying to pair this e2e PR with ${AUTHOR_LINK}/${REPOSITORY_NAME}@${BRANCH_REF}"
-                    echo "The reason is that there was already detected a branch from another repo this PR could be paired with - see:"
-                    cat ${WAS_ALREADY_PAIRED_FILE}
-                    echo "It's not possible to pair a PR with multiple branches from other repositories."
-                    echo "Please delete one of the branches from your fork and rerun the e2e tests"
-                    echo "Note: If you have already deleted one of the branches from your fork, it can take a few hours before the"
-                    echo "      github api is updated so the e2e tests may still fail with the same error until then."
-                    echo "##########################################################################################################"
+                    echo "####################################  ERROR WHILE TRYING TO PAIR PRs  ####################################
+There was an error while trying to pair this e2e PR with ${AUTHOR_LINK}/${REPOSITORY_NAME}@${BRANCH_REF}
+The reason is that there was already detected a branch from another repo this PR could be paired with - see:
+
+$(cat ${WAS_ALREADY_PAIRED_FILE})
+
+It's not possible to pair a PR with multiple branches from other repositories.
+Please delete one of the branches from your fork and rerun the e2e tests
+Note: If you have already deleted one of the branches from your fork, it can take a few hours before the
+      github api is updated so the e2e tests may still fail with the same error until then.
+##########################################################################################################"
                     exit 1
                 fi
 
