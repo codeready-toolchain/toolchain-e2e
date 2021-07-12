@@ -189,9 +189,9 @@ create-host-project:
 
 .PHONY: create-host-resources
 create-host-resources:
-	if [[ -z ${HOST_REPO_PATH} ]]; then
-        HOST_REPO_PATH="/tmp/codeready-toolchain/host-operator
-    fi
+	if [[ -z ${HOST_REPO_PATH} ]]; then \
+        HOST_REPO_PATH="/tmp/codeready-toolchain/host-operator; \
+    fi;
 	oc apply -f ${HOST_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_toolchainconfigs.yaml
 	oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
