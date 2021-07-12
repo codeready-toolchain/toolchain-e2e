@@ -6,13 +6,6 @@ SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 . ${SCRIPTS_DIR}/manage-operator.sh $@
 
-create_member_resources() {
-    if [[ -n ${MEMBER_NS_2} ]]; then    
-        oc apply -f ${REPOSITORY_PATH}/config/crd/bases/toolchain.dev.openshift.com_memberoperatorconfigs.yaml
-        oc apply -f deploy/member2-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2}
-    fi
-}
-
 REPOSITORY_NAME=member-operator
 PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
 get_repo
@@ -41,5 +34,3 @@ if [[ ${INSTALL_OPERATOR} == "true" ]]; then
         make -C ${REPOSITORY_PATH} install-current-operator INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} NAMESPACE=${MEMBER_NS_2} QUAY_NAMESPACE=${QUAY_NAMESPACE}
     fi
 fi
-
-create_member_resources
