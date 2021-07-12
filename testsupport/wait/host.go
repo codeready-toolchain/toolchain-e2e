@@ -13,11 +13,12 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,11 +32,12 @@ type HostAwaitility struct {
 }
 
 // NewHostAwaitility initializes a HostAwaitility
-func NewHostAwaitility(t *testing.T, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
+func NewHostAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			T:             t,
 			Client:        cl,
+			RestConfig:    cfg,
 			Namespace:     ns,
 			Type:          cluster.Host,
 			RetryInterval: DefaultRetryInterval,
@@ -921,11 +923,11 @@ func (a *HostAwaitility) updateToolchainConfigWithRetry(updatedConfig *toolchain
 // GetHostOperatorPod returns the pod running the host operator controllers
 func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 	pods := corev1.PodList{}
-	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "host-operator"}); err != nil {
+	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "controller-manager"}); err != nil {
 		return corev1.Pod{}, err
 	}
 	if len(pods.Items) != 1 {
-		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=host-operator' in namespace '%s': %d ", a.Namespace, len(pods.Items))
+		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
 }

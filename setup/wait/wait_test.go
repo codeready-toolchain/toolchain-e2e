@@ -10,12 +10,12 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/test"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -115,7 +115,7 @@ func TestHasSubscriptionWithCondition(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t) // csv does not exist
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -186,7 +186,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -259,7 +259,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t) // csv does not exist
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -329,7 +329,7 @@ func TestForCSVWithCriteria(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj runtime.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
 				return fmt.Errorf("Test client error")
 			}
 

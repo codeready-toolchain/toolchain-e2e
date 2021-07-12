@@ -1,3 +1,5 @@
+WAS_ALREADY_PAIRED_FILE=/tmp/toolchain_e2e_already_paired
+
 .PHONY: clean
 ## Removes vendor directory and runs go clean command
 clean:
@@ -17,8 +19,7 @@ clean-users:
 ##    * operator namespaces created during both the dev and e2e test setup (for both operators host and member)
 ##    * all CatalogSources that were created as part of operator deployment
 clean-e2e-resources: clean-users
-	$(Q)-oc get projects --output=name | grep -E "${QUAY_NAMESPACE}-(toolchain\-)?(member|host)(\-operator)?(\-[0-9]+)?|${QUAY_NAMESPACE}-toolchain\-e2e\-[0-9]+" | xargs oc delete
-	$(Q)-oc get catalogsource --output=name -n openshift-marketplace | grep "source-toolchain-.*${QUAY_NAMESPACE}" | xargs oc delete -n openshift-marketplace
+	$(Q)-oc get projects --output=name | grep -E "toolchain-(member|host)(\-operator)?(\-[0-9]+)?" | xargs oc delete
 	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-service-account | xargs oc delete
 	$(Q)-oc delete PriorityClass -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
 	$(Q)-oc delete MutatingWebhookConfiguration -l='toolchain.dev.openshift.com/provider=codeready-toolchain'

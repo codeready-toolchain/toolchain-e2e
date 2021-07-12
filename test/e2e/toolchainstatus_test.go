@@ -31,7 +31,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	err := hostAwait.DeleteToolchainStatus("toolchain-status")
 	require.NoError(t, err)
 	// restarting the pod after the `toolchain-status` resource was deleted will trigger a recount based on resources
-	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
+	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 	require.NoError(t, err)
 
 	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
@@ -60,7 +60,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(false))
 
 			// when restarting the pod
-			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
+			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 
 			// then
 			require.NoError(t, err)
@@ -75,7 +75,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 
 			// when restarting the pod
 			// TODO: unneeded once the ToolchainConfig controller will be in place ?
-			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "host-operator"})
+			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 
 			// then
 			require.NoError(t, err)

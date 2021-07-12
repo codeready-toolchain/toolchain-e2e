@@ -53,7 +53,7 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths []string) error {
 	for _, templatePath := range templatePaths {
 
-		tmpl, err := templates.GetTemplateFromFile(s, templatePath)
+		tmpl, err := templates.GetTemplateFromFile(templatePath)
 		if err != nil {
 			return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
 		}
@@ -68,7 +68,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		var subscriptionResource applyclientlib.ToolchainObject
 		foundSub := false
 		for _, obj := range objsToProcess {
-			if obj.GetRuntimeObject().GetObjectKind().GroupVersionKind().Kind == "Subscription" {
+			if obj.GetGvk().Kind == "Subscription" {
 				subscriptionResource = obj
 				foundSub = true
 			}
