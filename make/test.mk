@@ -168,9 +168,9 @@ create-member1:
 .PHONY: create-member2
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
-	if [[ -z ${MEMBER_REPO_PATH} ]]; then
-        MEMBER_REPO_PATH="/tmp/codeready-toolchain/member-operator
-    fi
+	if [[ -z ${MEMBER_REPO_PATH} ]]; then \
+        MEMBER_REPO_PATH="/tmp/codeready-toolchain/member-operator; \
+    fi;
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns ${MEMBER_NS_2} app=member-operator
