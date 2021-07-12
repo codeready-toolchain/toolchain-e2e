@@ -168,7 +168,7 @@ create-member1:
 .PHONY: create-member2
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
-	@echo "Deploying member operator to ${MEMBER_NS_2}..."
+	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns ${MEMBER_NS_2} app=member-operator
 	oc apply -f ${MEMBER_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_memberoperatorconfigs.yaml
