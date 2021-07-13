@@ -157,7 +157,7 @@ get-and-publish-host-operator:
 ###########################################################
 
 .PHONY: deploy-members
-deploy-members: create-member1 create-member2 get-and-publish-member-operator
+deploy-members: create-member1 create-member2 get-and-publish-member-operator create-member-resources
 
 .PHONY: create-member1
 create-member1:
@@ -167,13 +167,18 @@ create-member1:
 
 .PHONY: create-member2
 create-member2:
-ifeq ($(MEMBER_REPO_PATH),)
-	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
-endif
 ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns ${MEMBER_NS_2} app=member-operator
+endif
+
+.PHONY: create-member-resources
+create-member-resources:
+ifeq ($(MEMBER_REPO_PATH),)
+	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
+endif
+ifeq ($(SECOND_MEMBER_MODE),true)
 	oc apply -f ${MEMBER_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_memberoperatorconfigs.yaml
 	oc apply -f deploy/member2-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2}
 endif
@@ -185,7 +190,7 @@ deploy-host: create-host-project get-and-publish-host-operator create-host-resou
 create-host-project:
 	@echo "Deploying host operator to ${HOST_NS}..."
 	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
-	-oc label ns ${MEMBER_NS_2} app=host-operator
+	-oc label ns ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
 create-host-resources:
