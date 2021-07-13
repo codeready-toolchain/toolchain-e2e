@@ -189,7 +189,7 @@ create-host-project:
 
 .PHONY: create-host-resources
 create-host-resources:
-	ifeq (${HOST_REPO_PATH},)
+	ifeq ($(HOST_REPO_PATH),)
 		$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 	endif
 	oc apply -f ${HOST_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_toolchainconfigs.yaml
