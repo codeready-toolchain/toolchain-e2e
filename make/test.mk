@@ -169,7 +169,7 @@ create-member1:
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
 	ifeq (${MEMBER_REPO_PATH},)
-        MEMBER_REPO_PATH=/tmp/codeready-toolchain/member-operator
+        $(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
     endif
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
@@ -190,7 +190,7 @@ create-host-project:
 .PHONY: create-host-resources
 create-host-resources:
 	ifeq (${HOST_REPO_PATH},)
-		HOST_REPO_PATH=/tmp/codeready-toolchain/host-operator
+		$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 	endif
 	oc apply -f ${HOST_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_toolchainconfigs.yaml
 	oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
