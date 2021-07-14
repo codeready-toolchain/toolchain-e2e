@@ -40,5 +40,4 @@ if [[ ${INSTALL_OPERATOR} == "true" ]]; then
 #    fi
 
     make -C ${REPOSITORY_PATH} install-current-operator INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} NAMESPACE=${HOST_NS} QUAY_NAMESPACE=${QUAY_NAMESPACE}
-    oc apply -f ${SCRIPTS_DIR}/../deploy/host-operator/ -n ${HOST_NS}
 fi

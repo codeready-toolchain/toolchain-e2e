@@ -110,6 +110,12 @@ setup-toolchainclusters:
 	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 
+.PHONY: e2e-service-account
+e2e-service-account:
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
+
 ###########################################################
 #
 # Fetching and building Member and Host Operators
@@ -151,44 +157,37 @@ get-and-publish-host-operator:
 ###########################################################
 
 .PHONY: deploy-members
-deploy-members: create-member-projects get-and-publish-member-operator
+deploy-members: create-member1 create-member2 get-and-publish-member-operator
 
-.PHONY: create-member-projects
-create-member-projects:
-	$(MAKE) create-member-project MEMBER_NS_TO_DEPLOY=$(MEMBER_NS)
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) create-member-project MEMBER_NS_TO_DEPLOY=$(MEMBER_NS_2)  CM_TO_APPLY=deploy/member2-operator/member-operator-config-map.yaml; fi
+.PHONY: create-member1
+create-member1:
+	@echo "Deploying member operator to $(MEMBER_NS)..."
+	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
 
-.PHONY: create-member-project
-create-member-project:
-	@echo "Deploying member operator to $(MEMBER_NS_TO_DEPLOY)..."
-	-oc new-project $(MEMBER_NS_TO_DEPLOY) 1>/dev/null
-	-oc label ns $(MEMBER_NS_TO_DEPLOY) app=member-operator
-	-oc project $(MEMBER_NS_TO_DEPLOY)
-ifneq (${CM_TO_APPLY},)
-	oc apply -f ${CM_TO_APPLY}
+.PHONY: create-member2
+create-member2:
+ifeq ($(SECOND_MEMBER_MODE),true)
+	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
+	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
+	oc apply -f deploy/member2-operator/member-operator-config-map.yaml -n ${MEMBER_NS_2}
 endif
-
-.PHONY: e2e-service-account
-e2e-service-account:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
 
 .PHONY: deploy-host
 deploy-host: create-host-project get-and-publish-host-operator create-host-resources
 
 .PHONY: create-host-project
 create-host-project:
-	@echo "Deploying host operator to $(HOST_NS)..."
-	-oc new-project $(HOST_NS) 1>/dev/null
-	-oc label ns $(HOST_NS) app=host-operator
-	-oc project $(HOST_NS)
-	-oc apply -f deploy/host-operator/secrets.yaml -n $(HOST_NS)
-	-oc apply -f deploy/host-operator/host-operator-config-map.yaml -n $(HOST_NS)
+	@echo "Deploying host operator to ${HOST_NS}..."
+	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
 
 .PHONY: create-host-resources
 create-host-resources:
-	oc apply -f deploy/host-operator/nstemplatetier-base.yaml -n $(HOST_NS)
+	oc apply -f deploy/host-operator/ -n ${HOST_NS}
+
+.PHONY: create-project
+create-project:
+	-oc new-project ${PROJECT_NAME} 1>/dev/null
+	-oc project ${PROJECT_NAME}
 
 .PHONY: display-eval
 display-eval:
