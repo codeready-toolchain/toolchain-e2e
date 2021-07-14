@@ -276,7 +276,7 @@ func TestE2EFlow(t *testing.T) {
 				requiredRef = ref
 			}
 		}
-		require.True(t, len(requiredRef)>0, "did not find the required templateRef")
+		require.True(t, len(requiredRef) > 0, "did not find the required templateRef")
 		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespace(laraUserName, requiredRef)
 		require.NoError(t, err)
 
