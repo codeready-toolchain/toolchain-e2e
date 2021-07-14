@@ -179,7 +179,6 @@ ifeq ($(MEMBER_REPO_PATH),)
 	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
 endif
 ifeq ($(SECOND_MEMBER_MODE),true)
-	oc apply -f ${MEMBER_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_memberoperatorconfigs.yaml
 	oc apply -f deploy/member2-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2}
 endif
 
@@ -197,7 +196,6 @@ create-host-resources:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
-	oc apply -f ${HOST_REPO_PATH}/config/crd/bases/toolchain.dev.openshift.com_toolchainconfigs.yaml
 	oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
