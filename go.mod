@@ -12,8 +12,6 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/manifoldco/promptui v0.8.0
-	github.com/onsi/ginkgo v1.14.2 // indirect
-	github.com/onsi/gomega v1.10.4 // indirect
 	// using latest commit from 'github.com/openshift/api@release-4.7'
 	github.com/openshift/api v0.0.0-20210428205234-a8389931bee7
 	github.com/operator-framework/api v0.9.2

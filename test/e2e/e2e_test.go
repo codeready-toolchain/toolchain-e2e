@@ -2,21 +2,21 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
-	userv1 "github.com/openshift/api/user/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
+	"time"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -268,17 +268,24 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
 
-		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
-		assert.Error(t, err, "laracroft-dev namespace got deleted")
+		//time.Sleep(time.Second * 20)
+		templateRefs := tiers.GetTemplateRefs(hostAwait, "dev")
+		require.Equal(t, len(templateRefs.Namespaces), 1)
 
-		err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
-		assert.Error(t, err, "NSTemplateSet got deleted")
+		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespace(laraUserName, templateRefs.Namespaces[0])
+		require.NoError(t, err)
 
-		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
-		assert.Error(t, err, "userAccount got deleted")
+		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: laraUserName}, nsTmplSet)
+		require.NoError(t, err)
 
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-		require.Error(t, err)
+		userAcc := &toolchainv1alpha1.UserAccount{}
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: laraUserName}, userAcc)
+		require.NoError(t, err)
+
+		mur := &toolchainv1alpha1.MasterUserRecord{}
+		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: hostAwait.Namespace, Name: laraUserName}, mur)
+		require.NoError(t, err)
 
 		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
 		require.NoError(t, err)
@@ -299,14 +306,14 @@ func TestE2EFlow(t *testing.T) {
 		assert.NoError(t, err, "NSTemplateSet is not deleted")
 
 		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
-		assert.NoError(t, err, "userAccount is not deleted")
+		require.NoError(t, err)
+		fmt.Printf("\n >>>>>> userAccount is deleted at: %v", time.Now())
 
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-		assert.NoError(t, err, "MUR is not deleted")
+		require.NoError(t, err)
 
-		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
-		require.Error(t, err)
-		require.True(t, errors.IsNotFound(err))
+		err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+		require.NoError(t, err)
 
 	})
 
@@ -357,9 +364,9 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 
 		t.Run("verify metrics are correct at the end", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 8, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
+			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 9)
+			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 9)
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 9, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)                  // 6 users left on member1 ('johnsignup' was deleted)
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", member2Await.ClusterName)                 // 1 user on member2
 		})
