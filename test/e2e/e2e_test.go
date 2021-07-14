@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -15,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"testing"
 	"time"
 )
@@ -270,9 +270,14 @@ func TestE2EFlow(t *testing.T) {
 
 		//time.Sleep(time.Second * 20)
 		templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
-		require.Equal(t, len(templateRefs.Namespaces), 1)
-
-		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespace(laraUserName, templateRefs.Namespaces[0])
+		requiredRef := ""
+		for _, ref := range templateRefs.Namespaces {
+			if strings.Contains(ref, "dev") {
+				requiredRef = ref
+			}
+		}
+		require.True(t, len(requiredRef)>0, "did not find the required templateRef")
+		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespace(laraUserName, requiredRef)
 		require.NoError(t, err)
 
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
@@ -307,7 +312,6 @@ func TestE2EFlow(t *testing.T) {
 
 		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
 		require.NoError(t, err)
-		fmt.Printf("\n >>>>>> userAccount is deleted at: %v", time.Now())
 
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
 		require.NoError(t, err)
