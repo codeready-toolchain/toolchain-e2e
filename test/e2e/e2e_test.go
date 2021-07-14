@@ -269,7 +269,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		//time.Sleep(time.Second * 20)
-		templateRefs := tiers.GetTemplateRefs(hostAwait, "dev")
+		templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
 		require.Equal(t, len(templateRefs.Namespaces), 1)
 
 		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespace(laraUserName, templateRefs.Namespaces[0])
