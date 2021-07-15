@@ -892,22 +892,24 @@ func (a *MemberAwaitility) GetMemberOperatorConfig() *toolchainv1alpha1.MemberOp
 }
 
 // MemberOperatorConfigWaitCriterion a function to check that an MemberOperatorConfig has the expected criteria
-type MemberOperatorConfigWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.MemberOperatorConfig) bool
+type MemberOperatorConfigWaitCriterion func(*HostAwaitility, *MemberAwaitility, *toolchainv1alpha1.MemberOperatorConfig) bool
 
 // UntilMemberConfigMatches returns a `MemberOperatorConfigWaitCriterion` which checks that the given
 // MemberOperatorConfig matches the provided one
-func UntilMemberConfigMatches(expectedMemberOperatorConfig *toolchainv1alpha1.MemberOperatorConfig) MemberOperatorConfigWaitCriterion {
-	return func(a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
-		if reflect.DeepEqual(expectedMemberOperatorConfig.Spec, memberConfig.Spec) {
+func UntilMemberConfigMatches(expectedMemberOperatorConfigSpec toolchainv1alpha1.MemberOperatorConfigSpec) MemberOperatorConfigWaitCriterion {
+	return func(h *HostAwaitility, a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
+		if reflect.DeepEqual(expectedMemberOperatorConfigSpec, memberConfig.Spec) {
 			return true
 		}
-		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'", memberConfig, expectedMemberOperatorConfig)
+		toolchainConfigSpec := h.GetToolchainConfig().Spec
+
+		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'; ToolchainConfigSpec: '%+v'", memberConfig.Spec, expectedMemberOperatorConfigSpec, toolchainConfigSpec)
 		return false
 	}
 }
 
 // WaitForMemberOperatorConfig waits until the MemberOperatorConfig is available with the provided criteria, if any
-func (a *MemberAwaitility) WaitForMemberOperatorConfig(criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
+func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility, criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
 	// there should only be one MemberOperatorConfig with the name config
 	name := "config"
 	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
@@ -928,7 +930,7 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(criteria ...MemberOperato
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(a, memberOperatorConfig) {
+			if !match(hostAwait, a, memberOperatorConfig) {
 				return false, nil
 			}
 		}
