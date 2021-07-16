@@ -12,7 +12,7 @@ MEMBER_NS ?= toolchain-member-${DATE_SUFFIX}
 SECOND_MEMBER_MODE = true
 
 ifeq ($(SECOND_MEMBER_MODE),true)
-MEMBER_NS_2 = toolchain-member2-${DATE_SUFFIX}
+MEMBER_NS_2 ?= toolchain-member2-${DATE_SUFFIX}
 endif
 
 REGISTRATION_SERVICE_NS := $(HOST_NS)
@@ -183,7 +183,7 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 endif
 
 .PHONY: deploy-host
-deploy-host: create-host-project get-and-publish-host-operator create-host-resources
+deploy-host: create-host-project create-host-resources get-and-publish-host-operator
 
 .PHONY: create-host-project
 create-host-project:

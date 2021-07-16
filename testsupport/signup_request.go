@@ -229,7 +229,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	resp, err := httpClient.Do(req)
 	require.NoError(t, err)
 
-	defer close(t, resp)
+	defer Close(t, resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -244,7 +244,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	return mp
 }
 
-func close(t *testing.T, resp *http.Response) {
+func Close(t *testing.T, resp *http.Response) {
 	_, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	err = resp.Body.Close()

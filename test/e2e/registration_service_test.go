@@ -56,7 +56,7 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 
 	resp, err := httpClient.Do(req)
 	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
+	defer Close(s.T(), resp)
 
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
@@ -69,7 +69,7 @@ func (s *registrationServiceTestSuite) TestHealth() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
@@ -109,7 +109,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
@@ -143,7 +143,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
@@ -167,7 +167,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -212,7 +212,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -598,7 +598,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	resp, err := httpClient.Do(req)
 	require.NoError(t, err)
 
-	defer close(t, resp)
+	defer Close(t, resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -618,11 +618,4 @@ func parseResponse(t *testing.T, responseBody map[string]interface{}) (map[strin
 	status, ok := responseBody["status"].(map[string]interface{})
 	require.True(t, ok)
 	return responseBody, status
-}
-
-func close(t *testing.T, resp *http.Response) {
-	_, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	err = resp.Body.Close()
-	require.NoError(t, err)
 }
