@@ -183,7 +183,7 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 endif
 
 .PHONY: deploy-host
-deploy-host: create-host-project create-host-resources get-and-publish-host-operator
+deploy-host: create-host-project get-and-publish-host-operator create-host-resources
 
 .PHONY: create-host-project
 create-host-project:
