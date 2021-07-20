@@ -651,7 +651,7 @@ func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition
 func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
 	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
 		for _, member := range toolchainStatus.Status.Members {
-			if !hasMemberStatusUsageSet(a.T, member.ClusterName, member.MemberStatus) {
+			if !hasMemberStatusUsageSet(member.MemberStatus) {
 				return false
 			}
 		}

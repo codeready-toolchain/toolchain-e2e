@@ -569,20 +569,20 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 
 func WithSandboxPriorityClass() PodWaitCriterion {
 	return func(a *MemberAwaitility, pod corev1.Pod) bool {
-		return checkPriorityClass(a, pod, "sandbox-users-pods", -3)
+		return checkPriorityClass(pod, "sandbox-users-pods", -3)
 	}
 }
 
 func WithOriginalPriorityClass() PodWaitCriterion {
 	return func(a *MemberAwaitility, pod corev1.Pod) bool {
 		if pod.Name != "idler-test-pod-1" {
-			return checkPriorityClass(a, pod, "", 0)
+			return checkPriorityClass(pod, "", 0)
 		}
-		return checkPriorityClass(a, pod, "system-cluster-critical", 2000000000)
+		return checkPriorityClass(pod, "system-cluster-critical", 2000000000)
 	}
 }
 
-func checkPriorityClass(a *MemberAwaitility, pod corev1.Pod, name string, priority int) bool {
+func checkPriorityClass(pod corev1.Pod, name string, priority int) bool {
 	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
 }
 
@@ -733,11 +733,11 @@ func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) M
 // MemberStatus has some non-zero resource usage set
 func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
 	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
-		return hasMemberStatusUsageSet(a.T, memberStatus.Name, memberStatus.Status)
+		return hasMemberStatusUsageSet(memberStatus.Status)
 	}
 }
 
-func hasMemberStatusUsageSet(t *testing.T, name string, status toolchainv1alpha1.MemberStatusStatus) bool {
+func hasMemberStatusUsageSet(status toolchainv1alpha1.MemberStatusStatus) bool {
 	usage := status.ResourceUsage.MemoryUsagePerNodeRole
 	return len(usage) == 2 && usage["worker"] > 0 && usage["master"] > 0
 }
@@ -746,11 +746,11 @@ func hasMemberStatusUsageSet(t *testing.T, name string, status toolchainv1alpha1
 // MemberStatus has a non-empty console url set
 func UntilMemberStatusHasConsoleURLSet(expectedURL string, condition toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
 	return func(awaitility *MemberAwaitility, status *toolchainv1alpha1.MemberStatus) bool {
-		return hasMemberStatusConsoleURLSet(awaitility, expectedURL, condition, status.Name, status.Status)
+		return hasMemberStatusConsoleURLSet(expectedURL, condition, status.Status)
 	}
 }
 
-func hasMemberStatusConsoleURLSet(a *MemberAwaitility, expectedURL string, condition toolchainv1alpha1.Condition, name string, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
+func hasMemberStatusConsoleURLSet(expectedURL string, condition toolchainv1alpha1.Condition, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
 	return memberStatus.Routes != nil &&
 		memberStatus.Routes.ConsoleURL == expectedURL &&
 		test.ConditionsMatch(memberStatus.Routes.Conditions, condition)
@@ -1035,7 +1035,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment() {
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expected int, list func() (int, error)) error {
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(expected int, list func() (int, error)) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		actual, err := list()
 		if err != nil {
