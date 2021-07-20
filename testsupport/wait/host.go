@@ -63,7 +63,6 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 		obj := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of MasterUserRecord '%s'", name)
 				return false, nil
 			}
 			return false, err
@@ -73,10 +72,13 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 				return false, nil
 			}
 		}
-		a.T.Logf("found MasterUserRecord '%s': %+v with ClusterResources: %v", name, obj, obj.Spec.UserAccounts[0].Spec.NSTemplateSet.ClusterResources)
 		mur = obj
 		return true, nil
 	})
+	if err != nil {
+		// log an error if timeout occurred
+		a.T.Logf("failed to find MasterUserRecord '%s' with matching criteria: %v", name, err)
+	}
 	return mur, err
 }
 
@@ -88,10 +90,8 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 	for _, mur := range murList.Items {
 		for _, match := range criteria {
 			if match(a, &mur) {
-				a.T.Logf("found MasterUserRecord: %+v", mur)
 				return &mur, nil
 			}
-			a.T.Logf("found MasterUserRecord doesn't match the given criteria: %+v", mur)
 		}
 	}
 	return nil, nil
@@ -180,24 +180,14 @@ func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRe
 // UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
 func UntilMasterUserRecordHasCondition(condition toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
-		if test.ContainsCondition(mur.Status.Conditions, condition) {
-			a.T.Logf("status conditions match in MasterUserRecord '%s`", mur.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, condition)
-		return false
+		return test.ContainsCondition(mur.Status.Conditions, condition)
 	}
 }
 
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
 func UntilMasterUserRecordHasConditions(conditions ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
-		if test.ConditionsMatch(mur.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in MasterUserRecord '%s`", mur.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of MasterUserRecord '%s'. Actual: '%+v'; Expected: '%+v'", mur.Name, mur.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(mur.Status.Conditions, conditions...)
 	}
 }
 
@@ -222,17 +212,14 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alpha1.UserAccountStatusEmbedded) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
 		if len(mur.Status.UserAccounts) != len(expUaStatuses) {
-			a.T.Logf("waiting for correct number of UserAccount statuses in MasterUserRecord '%s`", mur.Name)
 			return false
 		}
 		for _, expUaStatus := range expUaStatuses {
 			expUaStatus.SyncIndex = getUaSpecSyncIndex(mur, expUaStatus.Cluster.Name)
 			if !containsUserAccountStatus(mur.Status.UserAccounts, expUaStatus) {
-				a.T.Logf("waiting for UserAccount status to be present in MasterUserRecord '%s'. All actual statuses: '%v'; Expected status (to be present among all statuses): '%v'", mur.Name, mur.Status.UserAccounts, expUaStatus)
 				return false
 			}
 		}
-		a.T.Logf("all UserAccount statuses are present in MasterUserRecord '%s`", mur.Name)
 		return true
 	}
 }
@@ -244,12 +231,7 @@ type UserSignupWaitCriterion func(a *HostAwaitility, ua *toolchainv1alpha1.UserS
 // UserAccount has exactly all the given status conditions
 func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
-		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in UserSignup '%s`", ua.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(ua.Status.Conditions, conditions...)
 	}
 }
 
@@ -257,12 +239,7 @@ func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) Use
 // UserAccount contains the given status condition
 func ContainsCondition(condition toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
-		if test.ContainsCondition(ua.Status.Conditions, condition) {
-			a.T.Logf("UserSignup '%s' status conditions contains expected condition", ua.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of UserSignup '%s' to contain the expected. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
-		return false
+		return test.ContainsCondition(ua.Status.Conditions, condition)
 	}
 }
 
@@ -270,30 +247,23 @@ func ContainsCondition(condition toolchainv1alpha1.Condition) UserSignupWaitCrit
 // USerAccount has toolchain.dev.openshift.com/state equal to the given value
 func UntilUserSignupHasStateLabel(expLabelValue string) UserSignupWaitCriterion {
 	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
-		if ua.Labels != nil && ua.Labels[toolchainv1alpha1.UserSignupStateLabelKey] == expLabelValue {
-			a.T.Logf("the toolchain.dev.openshift.com/state label value matches '%s`", expLabelValue)
-			return true
-		}
-		a.T.Logf("the toolchain.dev.openshift.com/state label of '%s' UserSignup doesn't match. Actual labels: '%v'; Expected value: '%s'",
-			ua.Name, ua.Labels, expLabelValue)
-		return false
+		return ua.Labels != nil && ua.Labels[toolchainv1alpha1.UserSignupStateLabelKey] == expLabelValue
 	}
 }
 
 // WaitForTestResourcesCleanup waits for all UserSignup and MasterUserRecord deletions to complete
 func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
+	a.T.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		usList := &toolchainv1alpha1.UserSignupList{}
 		if err := a.Client.List(context.TODO(), usList, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
 		for _, us := range usList.Items {
 			if us.DeletionTimestamp != nil {
-				a.T.Logf("UserSignup is being deleted: %s", us.Name)
 				return false, nil
 			}
-			a.T.Logf("UserSignup is not being deleted: %+v", us)
 		}
 
 		murList := &toolchainv1alpha1.MasterUserRecordList{}
@@ -302,24 +272,21 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration)
 		}
 		for _, mur := range murList.Items {
 			if mur.DeletionTimestamp != nil {
-				a.T.Logf("MasterUserRecord is being deleted: %s", mur.Name)
 				return false, nil
 			}
-			a.T.Logf("MasterUserRecord is not being deleted: %+v", mur)
 		}
 		return true, nil
 	})
-	return err
 }
 
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
 func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	a.T.Logf("waiting for UserSignup '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of UserSignup '%s'", name)
 				return false, nil
 			}
 			return false, err
@@ -329,7 +296,6 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 				return false, nil
 			}
 		}
-		a.T.Logf("found UserSignup '%s'", name)
 		userSignup = obj
 		return true, nil
 	})
@@ -338,29 +304,26 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv1alpha1.BannedUser, err error) {
+	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
 	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email)}
-	opts := client.MatchingLabels(labels)
-
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
 
-		if err = a.Client.List(context.TODO(), bannedUserList, opts); err != nil {
+		if err = a.Client.List(context.TODO(), bannedUserList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
 			if len(bannedUserList.Items) == 0 {
-				a.T.Logf("waiting for availability of BannedUser with email '%s'", email)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found BannedUser with email '%s'", email)
 		bannedUser = &bannedUserList.Items[0]
 		return true, nil
 	})
-
 	return
 }
 
 // DeleteToolchainStatus deletes the ToolchainStatus resource with the given name and in the host operator namespace
 func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
+	a.T.Logf("deleting ToolchainStatus '%s' in namespace '%s'", name, a.Namespace)
 	toolchainstatus := &toolchainv1alpha1.ToolchainStatus{}
 	if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, toolchainstatus); err != nil {
 		if errors.IsNotFound(err) {
@@ -374,59 +337,56 @@ func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
 
 // WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
+	a.T.Logf("waiting until BannedUser '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.BannedUser{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("BannedUser is checked as deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until BannedUser is deleted '%s'", name)
 		return false, nil
 	})
 }
 
 // WaitUntilUserSignupDeleted waits until the UserSignup with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
+	a.T.Logf("waiting until UserSignup '%s' in namespace '%s is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		userSignup := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, userSignup); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("UserSignup is checked as deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until UserSignup is deleted '%s'", name)
 		return false, nil
 	})
 }
 
 // WaitUntilMasterUserRecordDeleted waits until the MUR with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
+	a.T.Logf("waiting until MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("MasterUserRecord is checked as deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until MasterUserRecord is deleted '%s'", name)
 		return false, nil
 	})
 }
 
 // CheckMasterUserRecordIsDeleted checks that the MUR with the given name is not present and won't be created in the next 2 seconds
 func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
+	a.T.Logf("checking that MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, 2*time.Second, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("MasterUserRecord is checked as not present '%s'", name)
 				return false, nil
 			}
 			return false, err
@@ -458,18 +418,16 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name exists and matches the given conditions
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
+	a.T.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
 	var tier *toolchainv1alpha1.NSTemplateTier
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		tier = &toolchainv1alpha1.NSTemplateTier{}
-		a.T.Logf("waiting until NSTemplateTier '%s' is created or updated in namespace '%s'...", name, a.Namespace)
 		obj := &toolchainv1alpha1.NSTemplateTier{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
-			a.T.Logf("NSTemplateTier '%s' could not be fetched", name)
 			// return the error
 			return false, err
 		} else if errors.IsNotFound(err) {
-			a.T.Logf("NSTemplateTier '%s' not found in '%s'", name, a.Namespace)
 			// keep waiting
 			return false, nil
 		}
@@ -477,7 +435,6 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 			// if at least one criteria does not match, keep waiting
 			if !match(obj) {
 				// keep waiting
-				a.T.Logf("NSTemplateTier '%s' in namespace '%s' is not matching the expected criteria", name, a.Namespace)
 				return false, nil
 			}
 		}
@@ -519,7 +476,7 @@ func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.Ti
 			// return the error
 			return false, err
 		} else if errors.IsNotFound(err) {
-			a.T.Logf("Waiting for TierTemplate '%s' '%s'", name, a.Namespace)
+			a.T.Logf("waiting for TierTemplate '%s' '%s'", name, a.Namespace)
 			// keep waiting
 			return false, nil
 		}
@@ -576,20 +533,20 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 		obj := &toolchainv1alpha1.ChangeTierRequest{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of ChangeTierRequest '%s'", name)
 				return false, nil
 			}
 			return false, err
 		}
 		if test.ConditionsMatch(obj.Status.Conditions, condition) {
-			a.T.Logf("status conditions match in ChangeTierRequest '%s`", obj.Name)
 			changeTierRequest = obj
 			return true, nil
 		}
-		a.T.Logf("waiting for status condition of ChangeTierRequest '%s'. Actual: '%+v'; Expected: '%+v'",
-			obj.Name, obj.Status.Conditions, condition)
 		return false, nil
 	})
+	if err != nil {
+		// log an error if timeout occurred
+		a.T.Logf("failed to find ChangeTierRequest '%s' with matching condition: %v", name, err)
+	}
 	return changeTierRequest, err
 }
 
@@ -659,6 +616,7 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationType string) error {
+	a.T.Logf("waiting until notifications have been deleted for user '%s'", username)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
@@ -666,28 +624,14 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationTyp
 		if err := a.Client.List(context.TODO(), notificationList, opts); err != nil {
 			return false, err
 		}
-
-		for _, notification := range notificationList.Items {
-			a.T.Logf("waiting until Notification is deleted '%s'", notification.Name)
-		}
-		if len(notificationList.Items) > 0 {
-			return false, nil
-		}
-
-		a.T.Logf("Notification has been deleted for user '%s'", username)
-		return true, nil
+		return len(notificationList.Items) == 0, nil
 	})
 }
 
 // UntilNotificationHasConditions checks if Notification status has the given set of conditions
 func UntilNotificationHasConditions(conditions ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
 	return func(a *HostAwaitility, notification toolchainv1alpha1.Notification) bool {
-		if test.ConditionsMatch(notification.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in Notification '%s`", notification.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of Notification '%s'. Actual: '%+v'; Expected: '%+v'", notification.Name, notification.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(notification.Status.Conditions, conditions...)
 	}
 }
 
@@ -698,12 +642,7 @@ type ToolchainStatusWaitCriterion func(*HostAwaitility, *toolchainv1alpha1.Toolc
 // ToolchainStatus has exactly all the given status conditions
 func UntilToolchainStatusHasConditions(conditions ...toolchainv1alpha1.Condition) ToolchainStatusWaitCriterion {
 	return func(a *HostAwaitility, toolchainStatus *toolchainv1alpha1.ToolchainStatus) bool {
-		if test.ConditionsMatch(toolchainStatus.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in ToolchainStatus '%s`", toolchainStatus.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of ToolchainStatus '%s'. Actual: '%+v'; Expected: '%+v'", toolchainStatus.Name, toolchainStatus.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(toolchainStatus.Status.Conditions, conditions...)
 	}
 }
 
@@ -768,7 +707,6 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 			toolchainStatus)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of toolchainstatus '%s' in namespace '%s'...\n", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -778,9 +716,12 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 				return false, nil
 			}
 		}
-		a.T.Logf("found toolchainstatus '%s': %+v", toolchainStatus.Name, toolchainStatus)
 		return true, nil
 	})
+	if err != nil {
+		// log an error if timeout occurred
+		a.T.Logf("failed to find ToolchainStatus '%s' with matching criteria: %v", name, err)
+	}
 	return toolchainStatus, err
 }
 
@@ -826,20 +767,21 @@ func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitC
 			toolchainConfig)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of toolchainconfig in namespace '%s'...\n", a.Namespace)
 				return false, nil
 			}
 			return false, err
 		}
 		for _, match := range criteria {
 			if !match(a, toolchainConfig) {
-				a.T.Logf("Waiting for toolchainconfig to match the expected criteria. Current toolchainconfig: <%+v> \n", toolchainConfig)
 				return false, nil
 			}
 		}
-		a.T.Logf("found toolchainconfig '%s': %+v", toolchainConfig.Name, toolchainConfig)
 		return true, nil
 	})
+	if err != nil {
+		// log an error if timeout occurred
+		a.T.Logf("failed to find ToolchainConfig '%s' with matching criteria: %v", name, err)
+	}
 	return toolchainConfig, err
 }
 

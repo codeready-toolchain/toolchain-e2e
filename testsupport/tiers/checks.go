@@ -719,16 +719,8 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.Resource
 		},
 	}
 	return func(a *wait.MemberAwaitility, actual quotav1.ClusterResourceQuota) bool {
-		if actual.Labels == nil || tierName != actual.Labels["toolchain.dev.openshift.com/tier"] {
-			a.T.Logf("waiting for ClusterResourceQuota '%s' to have the expected tier name. Actual labels: '%v'; Expected: '%s'", userName, actual.Labels, tierName)
-			return false
-		}
-		if !reflect.DeepEqual(expectedQuotaSpec, actual.Spec) {
-			a.T.Logf("waiting for ClusterResourceQuota '%s'. Actual: '%+v'; Expected: '%+v'", userName, expectedQuotaSpec, actual)
-			return false
-		}
-		a.T.Logf("expected ClusterResourceQuota matches actual ClusterResourceQuota")
-		return true
+		return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
+			reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 	}
 }
 

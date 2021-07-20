@@ -50,25 +50,10 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
 	return func(a *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
 		actualNamespaces := nsTmplSet.Spec.Namespaces
-		if len(actualNamespaces) != len(expectedRevisions.Namespaces) {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'",
-				nsTmplSet.Name, actualNamespaces, expectedRevisions.Namespaces)
-			return false
-		}
-		if expectedRevisions.ClusterResources == nil && nsTmplSet.Spec.ClusterResources != nil {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref - it should be nil but it is not. Actual: '%v'",
-				nsTmplSet.Name, nsTmplSet.Spec.ClusterResources)
-			return false
-		}
-		if expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources == nil {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref - it should not be nil but it is. Expected: '%v'",
-				nsTmplSet.Name, expectedRevisions.Namespaces)
-			return false
-		}
-		if (expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources != nil) &&
+		if len(actualNamespaces) != len(expectedRevisions.Namespaces) ||
+			expectedRevisions.ClusterResources == nil ||
+			nsTmplSet.Spec.ClusterResources == nil ||
 			*expectedRevisions.ClusterResources != nsTmplSet.Spec.ClusterResources.TemplateRef {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref. Actual: '%v'; Expected: '%v'",
-				nsTmplSet.Name, nsTmplSet.Spec.ClusterResources, expectedRevisions.ClusterResources)
 			return false
 		}
 
@@ -79,8 +64,6 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 					continue ExpectedNamespaces
 				}
 			}
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'; Missing: '%s'",
-				nsTmplSet.Name, actualNamespaces, expectedRevisions.Namespaces, expectedNsRef)
 			return false
 		}
 		return true

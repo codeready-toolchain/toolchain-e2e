@@ -20,7 +20,6 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
@@ -78,7 +77,6 @@ type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.Us
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		a.T.Logf("waiting for useraccount specs. Actual: '%+v'; Expected: '%+v'", ua.Spec, expected)
 		userAccount := ua.DeepCopy()
 		userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
 		expectedSpec := expected.DeepCopy()
@@ -93,21 +91,8 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(ua.Name))
 		if err != nil {
-			a.T.Logf("error while getting MUR: %s", err)
 			return false
 		}
-		a.T.Logf("comparing UserAccount '%s' vs MasterUserRecord '%s:"+
-			"\nUserAccountSpecBase specs: '%+v' vs '%+v',"+
-			"\nUserID: '%+v' vs '%+v'"+
-			"\nDisabled: '%+v' vs '%+v'",
-			ua.Name,
-			mur.Name,
-			ua.Spec.UserAccountSpecBase,
-			mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase,
-			ua.Spec.UserID,
-			mur.Spec.UserID,
-			ua.Spec.Disabled,
-			mur.Spec.Disabled)
 		return ua.Spec.UserID == mur.Spec.UserID &&
 			ua.Spec.Disabled == mur.Spec.Disabled &&
 			reflect.DeepEqual(ua.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
@@ -118,23 +103,18 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 // USerAccount has exactly all the given status conditions
 func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(ua.Status.Conditions, conditions...)
 	}
 }
 
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
+	a.T.Logf("waiting for UserAccount '%s' to match criteria", name)
 	var userAccount *toolchainv1alpha1.UserAccount
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of useraccount '%s' in namespace '%s'", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -144,7 +124,6 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 				return false, nil
 			}
 		}
-		a.T.Logf("found UserAccount '%s'", name)
 		userAccount = obj
 		return true, nil
 	})
@@ -158,35 +137,25 @@ type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.
 // NSTemlateSet has exactly all the given status conditions
 func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
-		if test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...)
 	}
 }
 
 // UntilNSTemplateSetHasTier checks if the NSTemplateTier has the expected tierName
 func UntilNSTemplateSetHasTier(tier string) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
-		if nsTmplSet.Spec.TierName == tier {
-			a.T.Logf("tierName in NSTemplateSet '%s` matches the expected tier", nsTmplSet.Name)
-			return true
-		}
-		a.T.Logf("waiting for NSTemplateSet '%s' having the expected tierName. Actual: '%s'; Expected: '%s'", nsTmplSet.Name, nsTmplSet.Spec.TierName, tier)
-		return false
+		return nsTmplSet.Spec.TierName == tier
 	}
 }
 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
 func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
+	a.T.Logf("waiting for NSTemplateTier '%s' to match criteria", name)
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
 				return false, nil
 			}
 			return false, err
@@ -196,7 +165,6 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 				return false, nil
 			}
 		}
-		a.T.Logf("found NSTemplateSet '%s'", name)
 		nsTmplSet = obj
 		return true, nil
 	})
@@ -220,10 +188,11 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 }
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace, error) {
-	namespaceList := &v1.NamespaceList{}
+func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*corev1.Namespace, error) {
+	a.T.Logf("waiting for namespace for user '%s' and ref '%s", username, ref)
+	namespaceList := &corev1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		namespaceList = &v1.NamespaceList{}
+		namespaceList = &corev1.NamespaceList{}
 		tier, kind, _, err := Split(ref)
 		if err != nil {
 			return false, err
@@ -239,10 +208,9 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
-
 		// no match found, so we display the current list of namespaces
 		if len(namespaceList.Items) == 0 {
-			allNSs := &v1.NamespaceList{}
+			allNSs := &corev1.NamespaceList{}
 			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 				return false, err
 			}
@@ -250,17 +218,14 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 			for _, ns := range allNSs.Items {
 				allNSNames[ns.Name] = ns.Labels
 			}
-			a.T.Logf("waiting for availability of namespace with templateRef '%s' and owned by '%s'. Currently available codeready-toolchain NSs: '%+v'", ref, username, allNSNames)
 			return false, nil
 		}
 		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
 		// exclude namespace if it's not `Active` phase
 		ns := namespaceList.Items[0]
-		if ns.Status.Phase != v1.NamespaceActive {
-			a.T.Logf("waiting for namespace with templateRef '%s' and owned by '%s' to be in 'Active' phase. Current phase: '%s'", ref, username, ns.Status.Phase)
+		if ns.Status.Phase != corev1.NamespaceActive {
 			return false, nil
 		}
-		a.T.Logf("found Namespace with templateRef '%s'", ref)
 		return true, nil
 	})
 	if err != nil {
@@ -271,7 +236,8 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 }
 
 // WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name string) (*rbacv1.RoleBinding, error) {
+func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name string) (*rbacv1.RoleBinding, error) {
+	a.T.Logf("waiting for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
 	roleBinding := &rbacv1.RoleBinding{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &rbacv1.RoleBinding{}
@@ -281,12 +247,10 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 				if err := a.Client.List(context.TODO(), allRBs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
-				a.T.Logf("waiting for availability of RoleBinding '%s' in namespace '%s'. Currently available codeready-toolchain RoleBindings: '%+v'", name, namespace.Name, allRBs)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found RoleBinding '%s'", name)
 		roleBinding = obj
 		return true, nil
 	})
@@ -294,22 +258,21 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *v1.Namespace, name stri
 }
 
 // WaitForLimitRange waits until a LimitRange with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForLimitRange(namespace *v1.Namespace, name string) (*v1.LimitRange, error) {
-	lr := &v1.LimitRange{}
+func (a *MemberAwaitility) WaitForLimitRange(namespace *corev1.Namespace, name string) (*corev1.LimitRange, error) {
+	a.T.Logf("waiting for LimitRange '%s' in namespace '%s'", name, namespace.Name)
+	lr := &corev1.LimitRange{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &v1.LimitRange{}
+		obj := &corev1.LimitRange{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				allLRs := &v1.LimitRangeList{}
+				allLRs := &corev1.LimitRangeList{}
 				if err := a.Client.List(context.TODO(), allLRs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
-				a.T.Logf("waiting for availability of LimitRange '%s' in namespace '%s'. Currently available codeready-toolchain LimitRanges: '%+v'", name, namespace.Name, allLRs)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found LimitRange '%s'", name)
 		lr = obj
 		return true, nil
 	})
@@ -317,7 +280,8 @@ func (a *MemberAwaitility) WaitForLimitRange(namespace *v1.Namespace, name strin
 }
 
 // WaitForNetworkPolicy waits until a NetworkPolicy with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *v1.Namespace, name string) (*netv1.NetworkPolicy, error) {
+func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *corev1.Namespace, name string) (*netv1.NetworkPolicy, error) {
+	a.T.Logf("waiting for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
 	np := &netv1.NetworkPolicy{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &netv1.NetworkPolicy{}
@@ -327,12 +291,10 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *v1.Namespace, name st
 				if err := a.Client.List(context.TODO(), allNPs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
-				a.T.Logf("waiting for availability of NetworkPolicy '%s' in namespace '%s'. Currently available codeready-toolchain NetworkPolicies: '%+v'", name, namespace.Name, allNPs)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found NetworkPolicy '%s'", name)
 		np = obj
 		return true, nil
 	})
@@ -340,7 +302,8 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *v1.Namespace, name st
 }
 
 // WaitForRole waits until a Role with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*rbacv1.Role, error) {
+func (a *MemberAwaitility) WaitForRole(namespace *corev1.Namespace, name string) (*rbacv1.Role, error) {
+	a.T.Logf("waiting for Role '%s' in namespace '%s'", name, namespace.Name)
 	role := &rbacv1.Role{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &rbacv1.Role{}
@@ -350,12 +313,10 @@ func (a *MemberAwaitility) WaitForRole(namespace *v1.Namespace, name string) (*r
 				if err := a.Client.List(context.TODO(), allRoles, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
-				a.T.Logf("waiting for availability of Role '%s' in namespace '%s'. Currently available codeready-toolchain Roles: '%+v'", name, namespace.Name, allRoles)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found Role '%s'", name)
 		role = obj
 		return true, nil
 	})
@@ -367,6 +328,7 @@ type ClusterResourceQuotaWaitCriterion func(a *MemberAwaitility, quota quotav1.C
 
 // WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
 func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...ClusterResourceQuotaWaitCriterion) (*quotav1.ClusterResourceQuota, error) {
+	a.T.Logf("waiting for ClusterResourceQuota '%s'", name)
 	quota := &quotav1.ClusterResourceQuota{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &quotav1.ClusterResourceQuota{}
@@ -377,20 +339,16 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 				if err := a.Client.List(context.TODO(), quotaList, client.MatchingLabels(ls)); err != nil {
 					return false, err
 				}
-				a.T.Logf("waiting for availability of ClusterResourceQuota '%s'. Currently available codeready-toolchain ClusterResourceQuotas: '%+v'", name, quotaList)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found ClusterResourceQuota '%s'", name)
-		quota = obj
-
 		for _, match := range criteria {
 			if !match(a, *obj) {
 				return false, nil
 			}
 		}
-
+		quota = obj
 		return true, nil
 	})
 	return quota, err
@@ -403,29 +361,20 @@ type IdlerWaitCriterion func(a *MemberAwaitility, idler toolchainv1alpha1.Idler)
 // Idler has exactly all the given status conditions
 func IdlerConditions(conditions ...toolchainv1alpha1.Condition) IdlerWaitCriterion {
 	return func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool {
-		if test.ConditionsMatch(idler.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in Idler '%s'", idler.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of Idler '%s'. Actual: '%+v'; Expected: '%+v'", idler.Name, idler.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(idler.Status.Conditions, conditions...)
 	}
 }
 
 // IdlerHasTier checks if the Idler has the given tier name set as a label
 func IdlerHasTier(tierName string) IdlerWaitCriterion {
 	return func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool {
-		if idler.Labels != nil && tierName == idler.Labels["toolchain.dev.openshift.com/tier"] {
-			a.T.Logf("tier label '%s' matches in Idler '%s'", tierName, idler.Name)
-			return true
-		}
-		a.T.Logf("waiting for Idler '%s' to match the tier label. Actual labels: '%v'; Expected: '%s'", idler.Name, idler.Labels, tierName)
-		return false
+		return idler.Labels != nil && tierName == idler.Labels["toolchain.dev.openshift.com/tier"]
 	}
 }
 
 // WaitForIdler waits until an Idler with the given name exists
 func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
+	a.T.Logf("waiting for Idler '%s'", name)
 	idler := &toolchainv1alpha1.Idler{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Idler{}
@@ -435,7 +384,6 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 				if err := a.Client.List(context.TODO(), idlerList, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
 					return false, err
 				}
-				a.T.Logf("waiting for availability of Idler '%s'. Currently available codeready-toolchain Idlers: '%+v'", name, idlerList)
 				return false, nil
 			}
 			return false, err
@@ -445,7 +393,6 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 				return false, nil
 			}
 		}
-		a.T.Logf("found Idler '%s'", name)
 		idler = obj
 		return true, nil
 	})
@@ -474,22 +421,22 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 // Create tries to create the object until success
 // Workaround for https://github.com/kubernetes/kubernetes/issues/67761
 func (a *MemberAwaitility) Create(obj client.Object) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Create(context.TODO(), obj); err != nil {
 			a.T.Logf("trying to create %+v. Error: %s. Will try to create again.", obj, err.Error())
 			return false, nil
 		}
 		return true, nil
 	})
-	return err
 }
 
 // PodWaitCriterion a function to check that a Pod has the expected condition
-type PodWaitCriterion func(a *MemberAwaitility, pod v1.Pod) bool
+type PodWaitCriterion func(a *MemberAwaitility, pod corev1.Pod) bool
 
 // WaitForPod waits until a pod with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWaitCriterion) (v1.Pod, error) {
-	pod := v1.Pod{}
+func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWaitCriterion) (corev1.Pod, error) {
+	a.T.Logf("waiting for Pod '%s' in namespace '%s' with matching criteria", name, namespace)
+	pod := corev1.Pod{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: namespace,
@@ -508,18 +455,18 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 				return false, nil
 			}
 		}
-		a.T.Logf("found Pod '%s/%s'", pod.Namespace, pod.Name)
 		return true, nil
 	})
 	return pod, err
 }
 
 // WaitForPods waits until "n" number of pods exist in the given namespace
-func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]v1.Pod, error) {
-	pods := make([]v1.Pod, 0, n)
+func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
+	a.T.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
+	pods := make([]corev1.Pod, 0, n)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		pds := make([]v1.Pod, 0, n)
-		foundPods := &v1.PodList{}
+		pds := make([]corev1.Pod, 0, n)
+		foundPods := &corev1.PodList{}
 		if err := a.Client.List(context.TODO(), foundPods, client.InNamespace(namespace)); err != nil {
 			return false, err
 		}
@@ -535,22 +482,19 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 			pds = append(pds, pod)
 		}
 		if len(pds) != n {
-			a.T.Logf("waiting for %d pods with criterions '%v' in namespace '%s'. Currently available pods: '%s'", n, criteria, namespace, a.listPods(*foundPods))
 			return false, nil
 		}
-		a.T.Logf("found Pods: '%s'", a.listPodsAsArray(pds))
 		pods = pds
 		return true, nil
 	})
-	a.T.Logf("found %d pods", len(pods))
 	return pods, err
 }
 
-func (a *MemberAwaitility) listPods(pods v1.PodList) string {
+func (a *MemberAwaitility) listPods(pods corev1.PodList) string {
 	return a.listPodsAsArray(pods.Items)
 }
 
-func (a *MemberAwaitility) listPodsAsArray(pods []v1.Pod) string {
+func (a *MemberAwaitility) listPodsAsArray(pods []corev1.Pod) string {
 	var s string
 	for _, p := range pods {
 		s = fmt.Sprintf("%s\n%s", s, a.formatPod(p))
@@ -558,14 +502,15 @@ func (a *MemberAwaitility) listPodsAsArray(pods []v1.Pod) string {
 	return s
 }
 
-func (a *MemberAwaitility) formatPod(pod v1.Pod) string {
+func (a *MemberAwaitility) formatPod(pod corev1.Pod) string {
 	return fmt.Sprintf("Name: %s; Namespace: %s; Labels: %v; Phase: %s", pod.Name, pod.Namespace, pod.Labels, pod.Status.Phase)
 }
 
 // WaitUntilPodsDeleted waits until the pods are deleted from the given namespace
 func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...PodWaitCriterion) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		foundPods := &v1.PodList{}
+	a.T.Logf("waiting until Pods with matching criteria in namespace '%s' are deleted", namespace)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		foundPods := &corev1.PodList{}
 		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
 			return false, err
 		}
@@ -582,13 +527,13 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...Po
 		}
 		return true, nil
 	})
-	return err
 }
 
 // WaitUntilPodDeleted waits until the pod with the given name is deleted from the given namespace
 func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
+	a.T.Logf("waiting until Pod '%s' in namespace '%s' is deleted", name, namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &v1.Pod{}
+		obj := &corev1.Pod{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("deleted Pod with name %s", name)
@@ -603,38 +548,33 @@ func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
 
 // PodRunning checks if the Pod in the running phase
 func PodRunning() PodWaitCriterion {
-	return func(a *MemberAwaitility, pod v1.Pod) bool {
-		if pod.Status.Phase == v1.PodRunning {
-			a.T.Logf("pod '%s` in the running phase", pod.Name)
-			return true
-		}
-		a.T.Logf("Pod '%s' actual phase: '%s'; Expected: '%s'", pod.Name, pod.Status.Phase, v1.PodRunning)
-		return false
+	return func(a *MemberAwaitility, pod corev1.Pod) bool {
+		return pod.Status.Phase == corev1.PodRunning
 	}
 }
 
 // WithPodName checks if the Pod has the expected name
 func WithPodName(name string) PodWaitCriterion {
-	return func(a *MemberAwaitility, pod v1.Pod) bool {
+	return func(a *MemberAwaitility, pod corev1.Pod) bool {
 		return pod.Name == name
 	}
 }
 
 // WithPodLabel checks if the Pod has the expected label
 func WithPodLabel(key, value string) PodWaitCriterion {
-	return func(a *MemberAwaitility, pod v1.Pod) bool {
+	return func(a *MemberAwaitility, pod corev1.Pod) bool {
 		return pod.Labels[key] == value
 	}
 }
 
 func WithSandboxPriorityClass() PodWaitCriterion {
-	return func(a *MemberAwaitility, pod v1.Pod) bool {
+	return func(a *MemberAwaitility, pod corev1.Pod) bool {
 		return checkPriorityClass(a, pod, "sandbox-users-pods", -3)
 	}
 }
 
 func WithOriginalPriorityClass() PodWaitCriterion {
-	return func(a *MemberAwaitility, pod v1.Pod) bool {
+	return func(a *MemberAwaitility, pod corev1.Pod) bool {
 		if pod.Name != "idler-test-pod-1" {
 			return checkPriorityClass(a, pod, "", 0)
 		}
@@ -642,50 +582,44 @@ func WithOriginalPriorityClass() PodWaitCriterion {
 	}
 }
 
-func checkPriorityClass(a *MemberAwaitility, pod v1.Pod, name string, priority int) bool {
-	if pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority) {
-		return true
-	}
-	a.T.Logf("Priority doesn't match for pod '%s' - Expected prorityClassName: '%s', actual : '%s'; Expected prority: '%d', actual : '%d'", pod.Name, name, pod.Spec.PriorityClassName, priority, *pod.Spec.Priority)
-	return false
+func checkPriorityClass(a *MemberAwaitility, pod corev1.Pod, name string, priority int) bool {
+	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
 }
 
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
+	a.T.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{
 			"toolchain.dev.openshift.com/owner": username,
 			"toolchain.dev.openshift.com/type":  typeName,
 		}
 		opts := client.MatchingLabels(labels)
-		namespaceList := &v1.NamespaceList{}
+		namespaceList := &corev1.NamespaceList{}
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
 
 		if len(namespaceList.Items) < 1 {
-			a.T.Logf("deleted Namespace with owner '%s' type '%s'", username, typeName)
 			return true, nil
 		}
-		a.T.Logf("waiting for deletion of Namespace with owner '%s' type '%s'", username, typeName)
 		return false, nil
 	})
 }
 
 // WaitForUser waits until there is a User with the given name available
 func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
+	a.T.Logf("waiting for User '%s'", name)
 	user := &userv1.User{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user = &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of user '%s'", name)
 				return false, nil
 			}
 			return false, err
 		}
 		if user.Name != "" && len(user.Identities) > 0 {
-			a.T.Logf("found user '%s'", name)
 			return true, nil
 		}
 		return false, nil
@@ -695,18 +629,17 @@ func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 
 // WaitForIdentity waits until there is an Identity with the given name available
 func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error) {
+	a.T.Logf("waiting for Identity '%s'", name)
 	identity := &userv1.Identity{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		identity = &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of identity '%s'", name)
 				return false, nil
 			}
 			return false, err
 		}
 		if identity.Name != "" && identity.User.Name != "" {
-			a.T.Logf("found identity '%s'", name)
 			return true, nil
 		}
 		return false, nil
@@ -716,48 +649,45 @@ func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error
 
 // WaitUntilUserAccountDeleted waits until the UserAccount with the given name is not found
 func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
+	a.T.Logf("waiting until UserAccount '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, ua); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("UserAccount is checked as deleted '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until UserAccount is deleted '%s'", name)
 		return false, nil
 	})
 }
 
 // WaitUntilUserDeleted waits until the User with the given name is not found
 func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
+	a.T.Logf("waiting until User is deleted '%s'", name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user := &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("deleted user '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until User is deleted '%s'", name)
 		return false, nil
 	})
 }
 
 // WaitUntilIdentityDeleted waits until the Identity with the given name is not found
 func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
+	a.T.Logf("waiting until Identity is deleted '%s'", name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		identity := &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("deleted identity '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting until Identity is deleted '%s'", name)
 		return false, nil
 	})
 }
@@ -773,6 +703,7 @@ func (a *MemberAwaitility) GetConsoleURL() string {
 
 // WaitUntilClusterResourceQuotasDeleted waits until all ClusterResourceQuotas with the given owner label are deleted (ie, none is found)
 func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string) error {
+	a.T.Logf("waiting for deletion of ClusterResourceQuotas for user '%s'", username)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{"toolchain.dev.openshift.com/owner": username}
 		opts := client.MatchingLabels(labels)
@@ -781,10 +712,8 @@ func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string
 			return false, err
 		}
 		if len(quotaList.Items) == 0 {
-			a.T.Logf("deleted all ClusterResourceQuotas with the owner label '%s'", username)
 			return true, nil
 		}
-		a.T.Logf("waiting for deletion of the following ClusterResourceQuotas '%v'", quotaList.Items)
 		return false, nil
 	})
 }
@@ -796,12 +725,7 @@ type MemberStatusWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.Member
 // MemberStatus has exactly all the given status conditions
 func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
 	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
-		if test.ConditionsMatch(memberStatus.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in MemberStatus '%s'", memberStatus.Name)
-			return true
-		}
-		a.T.Logf("waiting for status condition of MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", memberStatus.Name, memberStatus.Status.Conditions, conditions)
-		return false
+		return test.ConditionsMatch(memberStatus.Status.Conditions, conditions...)
 	}
 }
 
@@ -815,12 +739,7 @@ func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
 
 func hasMemberStatusUsageSet(t *testing.T, name string, status toolchainv1alpha1.MemberStatusStatus) bool {
 	usage := status.ResourceUsage.MemoryUsagePerNodeRole
-	if len(usage) == 2 && usage["worker"] > 0 && usage["master"] > 0 {
-		t.Logf("the MemberStatus '%s' has resource usage set for both worker and master nodes: %v", name, usage)
-		return true
-	}
-	t.Logf("the MemberStatus '%s' doesn't have resource usage set for both worker and master nodes, actual: %v", name, usage)
-	return false
+	return len(usage) == 2 && usage["worker"] > 0 && usage["master"] > 0
 }
 
 // UntilMemberStatusHasConsoleURLSet returns a `MemberStatusWaitCriterion` which checks that the given
@@ -832,27 +751,17 @@ func UntilMemberStatusHasConsoleURLSet(expectedURL string, condition toolchainv1
 }
 
 func hasMemberStatusConsoleURLSet(a *MemberAwaitility, expectedURL string, condition toolchainv1alpha1.Condition, name string, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
-	if memberStatus.Routes == nil {
-		a.T.Logf("waiting for routes to be set in MemberStatus '%s'. Actual: '%+v'", name, memberStatus.Routes)
-		return false
-	}
-	if memberStatus.Routes.ConsoleURL != expectedURL {
-		a.T.Logf("waiting for console route to be set in MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", name, *memberStatus.Routes, expectedURL)
-		return false
-	}
-	if !test.ConditionsMatch(memberStatus.Routes.Conditions, condition) {
-		a.T.Logf("waiting for routes condition of MemberStatus '%s'. Actual: '%+v'; Expected: '%+v'", name, memberStatus.Routes.Conditions, condition)
-		return false
-	}
-	a.T.Logf("console route and condition is properly set in MemberStatus '%s'", name)
-	return true
+	return memberStatus.Routes != nil &&
+		memberStatus.Routes.ConsoleURL == expectedURL &&
+		test.ConditionsMatch(memberStatus.Routes.Conditions, condition)
 }
 
 // WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any
 func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCriterion) error {
-	// there should only be one member status with the name toolchain-member-status
 	name := "toolchain-member-status"
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	a.T.Logf("waiting for MemberStatus '%s' to match criteria", name)
+	// there should only be one member status with the name toolchain-member-status
+	return wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		// retrieve the memberstatus from the member namespace
 		memberStatus := toolchainv1alpha1.MemberStatus{}
 		err = a.Client.Get(context.TODO(),
@@ -863,7 +772,6 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 			&memberStatus)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of memberstatus '%s' in namespace '%s'...\n", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -873,10 +781,8 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 				return false, nil
 			}
 		}
-		a.T.Logf("found memberstatus '%s': %+v", memberStatus.Name, memberStatus)
 		return true, nil
 	})
-	return err
 }
 
 // GetMemberOperatorConfig returns MemberOperatorConfig instance, nil if not found
@@ -898,13 +804,7 @@ type MemberOperatorConfigWaitCriterion func(*HostAwaitility, *MemberAwaitility, 
 // MemberOperatorConfig matches the provided one
 func UntilMemberConfigMatches(expectedMemberOperatorConfigSpec toolchainv1alpha1.MemberOperatorConfigSpec) MemberOperatorConfigWaitCriterion {
 	return func(h *HostAwaitility, a *MemberAwaitility, memberConfig *toolchainv1alpha1.MemberOperatorConfig) bool {
-		if reflect.DeepEqual(expectedMemberOperatorConfigSpec, memberConfig.Spec) {
-			return true
-		}
-		toolchainConfigSpec := h.GetToolchainConfig().Spec
-
-		a.T.Logf("waiting for MemberOperatorConfig to be synced. Actual: '%+v'; Expected: '%+v'; ToolchainConfigSpec: '%+v'", memberConfig.Spec, expectedMemberOperatorConfigSpec, toolchainConfigSpec)
-		return false
+		return reflect.DeepEqual(expectedMemberOperatorConfigSpec, memberConfig.Spec)
 	}
 }
 
@@ -912,6 +812,7 @@ func UntilMemberConfigMatches(expectedMemberOperatorConfigSpec toolchainv1alpha1
 func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility, criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
 	// there should only be one MemberOperatorConfig with the name config
 	name := "config"
+	a.T.Logf("waiting for MemberOperatorConfig '%s'", name)
 	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		memberOperatorConfig = &toolchainv1alpha1.MemberOperatorConfig{}
@@ -924,7 +825,6 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility
 			memberOperatorConfig)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of MemberOperatorConfig '%s' in namespace '%s'...\n", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -934,7 +834,6 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility
 				return false, nil
 			}
 		}
-		a.T.Logf("found memberOperatorConfig '%s': %+v", memberOperatorConfig.Name, memberOperatorConfig)
 		return true, nil
 	})
 	return memberOperatorConfig, err
@@ -969,12 +868,12 @@ func (a *MemberAwaitility) WaitForUsersPodsWebhook() {
 	a.waitForUsersPodPriorityClass()
 	a.waitForService()
 	a.waitForWebhookDeployment()
-	ca := a.waitForSecret()
-	a.waitForWebhookConfig(ca)
+	ca := a.verifySecret()
+	a.verifyWebhookConfig(ca)
 }
 
 func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
-	a.T.Logf("checking prensence of PrioritiyClass resource '%s'", "sandbox-users-pods")
+	a.T.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
 
@@ -988,23 +887,19 @@ func (a *MemberAwaitility) waitForResource(namespace, name string, object client
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("resource '%s' in namesapace '%s' not found", name, namespace)
 				return false, nil
 			}
-			a.T.Logf("unexpected error when looking for resource '%s' in namesapace '%s'", name, namespace)
 			return false, err
 		}
-		a.T.Logf("resource '%s' in namesapace '%s' found", name, namespace)
 		return true, nil
 	})
 	require.NoError(a.T, err)
 }
 
 func (a *MemberAwaitility) waitForService() {
-	a.T.Logf("checking prensence of Service resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
-	actualService := &v1.Service{}
+	a.T.Logf("waiting for Service '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
+	actualService := &corev1.Service{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualService)
-
 	assert.Equal(a.T, map[string]string{
 		"app":                                  "member-operator-webhook",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
@@ -1018,7 +913,7 @@ func (a *MemberAwaitility) waitForService() {
 }
 
 func (a *MemberAwaitility) waitForWebhookDeployment() {
-	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "member-operator-webhook", a.Namespace)
+	a.T.Logf("checking Deployment '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
 	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
 
@@ -1038,7 +933,7 @@ func (a *MemberAwaitility) waitForWebhookDeployment() {
 	assert.Equal(a.T, "mutator", container.Name)
 	assert.NotEmpty(a.T, container.Image)
 	assert.Equal(a.T, []string{"member-operator-webhook"}, container.Command)
-	assert.Equal(a.T, v1.PullIfNotPresent, container.ImagePullPolicy)
+	assert.Equal(a.T, corev1.PullIfNotPresent, container.ImagePullPolicy)
 	assert.NotEmpty(a.T, container.Resources)
 
 	assert.Len(a.T, container.VolumeMounts, 1)
@@ -1049,9 +944,9 @@ func (a *MemberAwaitility) waitForWebhookDeployment() {
 	a.WaitForDeploymentToGetReady("member-operator-webhook", 1)
 }
 
-func (a *MemberAwaitility) waitForSecret() []byte {
-	a.T.Logf("checking presence of Secret resource '%s' in namesapace '%s'", "webhook-certs", a.Namespace)
-	secret := &v1.Secret{}
+func (a *MemberAwaitility) verifySecret() []byte {
+	a.T.Logf("checking Secret '%s' in namespace '%s'", "webhook-certs", a.Namespace)
+	secret := &corev1.Secret{}
 	a.waitForResource(a.Namespace, "webhook-certs", secret)
 	assert.NotEmpty(a.T, secret.Data["server-key.pem"])
 	assert.NotEmpty(a.T, secret.Data["server-cert.pem"])
@@ -1060,8 +955,8 @@ func (a *MemberAwaitility) waitForSecret() []byte {
 	return ca
 }
 
-func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
-	a.T.Logf("checking presence of MutatingWebhookConfiguration resource '%s'", "sandbox-users-pods")
+func (a *MemberAwaitility) verifyWebhookConfig(ca []byte) {
+	a.T.Logf("checking MutatingWebhookConfiguration '%s'", "sandbox-users-pods")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
 	a.waitForResource("", "member-operator-webhook", actualMutWbhConf)
 	assert.Equal(a.T, bothWebhookLabels, actualMutWbhConf.Labels)
@@ -1092,12 +987,12 @@ func (a *MemberAwaitility) waitForWebhookConfig(ca []byte) {
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp() {
-	a.waitForAutoscalingBufferPriorityClass()
-	a.waitForAutoscalingBufferDeployment()
+	a.verifyAutoscalingBufferPriorityClass()
+	a.verifyAutoscalingBufferDeployment()
 }
 
-func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
-	a.T.Logf("checking presence of PrioritiyClass resource '%s'", "member-operator-autoscaling-buffer")
+func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass() {
+	a.T.Logf("checking PrioritiyClass '%s'", "member-operator-autoscaling-buffer")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource("", "member-operator-autoscaling-buffer", actualPrioClass)
 
@@ -1107,8 +1002,8 @@ func (a *MemberAwaitility) waitForAutoscalingBufferPriorityClass() {
 	assert.Equal(a.T, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
 }
 
-func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
-	a.T.Logf("checking prensence of Deployment resource '%s' in namesapace '%s'", "autoscaling-buffer", a.Namespace)
+func (a *MemberAwaitility) verifyAutoscalingBufferDeployment() {
+	a.T.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
 	a.waitForResource(a.Namespace, "autoscaling-buffer", actualDeployment)
 
@@ -1129,7 +1024,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 	container := template.Spec.Containers[0]
 	assert.Equal(a.T, "autoscaling-buffer", container.Name)
 	assert.Equal(a.T, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
-	assert.Equal(a.T, v1.PullIfNotPresent, container.ImagePullPolicy)
+	assert.Equal(a.T, corev1.PullIfNotPresent, container.ImagePullPolicy)
 
 	expectedMemory, err := resource.ParseQuantity("50Mi")
 	require.NoError(a.T, err)
@@ -1141,17 +1036,14 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment() {
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
 func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expected int, list func() (int, error)) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		actual, err := list()
 		if err != nil {
 			return false, err
 		}
 		if actual == expected {
-			a.T.Logf("The number of %s resources matches", kind)
 			return true, nil
 		}
-		a.T.Logf("Waiting for the expected number of %s resources. Actual: %d, Expected: %d", kind, actual, expected)
 		return false, nil
 	})
-	return err
 }
