@@ -122,17 +122,6 @@ e2e-service-account:
 #
 ###########################################################
 
-.PHONY: build-with-operators
-build-with-operators:
-	@echo "ignore and just create empty files to make openshift-ci happy"
-	mkdir -p ${E2E_REPO_PATH}/build/_output/bin/
-	mkdir -p build/_output/bin/
-	touch ${E2E_REPO_PATH}/build/_output/bin/host-operator
-	touch ${E2E_REPO_PATH}/build/_output/bin/member-operator
-	touch ${E2E_REPO_PATH}/build/_output/bin/member-operator-webhook
-	touch ${E2E_REPO_PATH}/build/_output/bin/registration-service
-	cp ${E2E_REPO_PATH}/build/_output/bin/* build/_output/bin/
-
 .PHONY: publish-current-bundles-for-e2e
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
 publish-current-bundles-for-e2e: get-and-publish-operators
