@@ -30,7 +30,7 @@ set_tags() {
         else
             AUTHOR=$(jq -r '.refs[0].pulls[0].author' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
             PULL_PULL_SHA=${PULL_PULL_SHA:-$(jq -r '.refs[0].pulls[0].sha' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')}
-            TAGS=from.${AUTHOR}.${REPO_NAME}.${COMMIT_ID_SUFFIX}
+            TAGS=from.${AUTHOR}.${REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
         fi
     fi
 #    can be used only when the operator CSV doesn't bundle the environment information, but now we want to build bundle for both operators
