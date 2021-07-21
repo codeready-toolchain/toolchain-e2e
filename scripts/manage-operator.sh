@@ -26,7 +26,7 @@ set_tags() {
     if [[ -n "${CI}${CLONEREFS_OPTIONS}" ]]; then
         if [[ -n ${GITHUB_ACTIONS} ]]; then
             OPERATOR_REPO_NAME=${GITHUB_REPOSITORY##*/}
-            TAGS=from.${GITHUB_ACTOR}.${OPERATOR_REPO_NAME}.${COMMIT_ID_SUFFIX}
+            TAGS=from.${GITHUB_ACTOR}.${OPERATOR_REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
         else
             AUTHOR=$(jq -r '.refs[0].pulls[0].author' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
             PULL_PULL_SHA=${PULL_PULL_SHA:-$(jq -r '.refs[0].pulls[0].sha' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')}
