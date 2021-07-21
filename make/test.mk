@@ -12,7 +12,7 @@ MEMBER_NS ?= toolchain-member-${DATE_SUFFIX}
 SECOND_MEMBER_MODE = true
 
 ifeq ($(SECOND_MEMBER_MODE),true)
-MEMBER_NS_2 = toolchain-member2-${DATE_SUFFIX}
+MEMBER_NS_2 ?= toolchain-member2-${DATE_SUFFIX}
 endif
 
 REGISTRATION_SERVICE_NS := $(HOST_NS)
