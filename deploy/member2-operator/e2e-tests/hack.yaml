@@ -1,0 +1,7 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: MemberOperatorConfig
+metadata:
+  name: config
+spec:     
+  webhook:
+    deploy: false

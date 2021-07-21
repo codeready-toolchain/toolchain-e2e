@@ -1,6 +1,8 @@
 package testsupport
 
 import (
+	"fmt"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -179,6 +181,15 @@ func ToolchainStatusReady() toolchainv1alpha1.Condition {
 		Type:   toolchainv1alpha1.ConditionReady,
 		Status: corev1.ConditionTrue,
 		Reason: "AllComponentsReady",
+	}
+}
+
+func ToolchainStatusComponentsNotReady(componentNames string) toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.ToolchainStatusComponentsNotReadyReason,
+		Message: fmt.Sprintf("components not ready: %s", componentNames),
 	}
 }
 
