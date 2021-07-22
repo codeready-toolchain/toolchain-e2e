@@ -99,9 +99,7 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	// and verify that the values of the `sandbox_users_per_activations` metric
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // user-0001 has been deleted but metric remains unchanged
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "external") // (unchanged after other usersignup was deleted)
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "external") // (unchanged after other usersignup was deleted)
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "external") // user-0001 and user-0002 have been provisioned
 
 	// when deleting user "user-0002"
 	err = hostAwait.Client.Delete(context.TODO(), usersignups["user-0002"])
@@ -109,22 +107,16 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	// and verify that the values of the `sandbox_users_per_activations` metric
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // (same offset as above)
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "external") // user-0002 has been deleted but metric remains unchanged
-	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "external") // (unchanged after other usersignup was deleted)
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "external") // same offset as above: users has been deleted but metric remains unchanged
 }
 
 func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
-
-	var httpClient = HTTPClient
-
-	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 
 	t.Run("ban provisioned usersignup", func(t *testing.T) {
 		// given
@@ -193,6 +185,9 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		require.NoError(t, err)
 
 		// then
+		// check the UserSignup is created
+		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name)
+		require.NoError(t, err)
 		// confirm that the user is banned
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 		mur, err := hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
@@ -227,12 +222,11 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+token0)
 		req.Header.Set("content-type", "application/json")
-		resp, err := httpClient.Do(req)
+		resp, err := HTTPClient.Do(req)
 
 		// then
 		require.NoError(t, err)
 		defer Close(t, resp)
-		t.Fatal("missing basic assertion on usersignup")
 		// verify the metrics
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 0) // not provisioned because banned before signup
@@ -245,13 +239,13 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 }
 
 func TestMetricsWhenUserDisabled(t *testing.T) {
-
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval())
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
 
 	// Create UserSignup
 	userSignup := CreateAndApproveSignup(t, hostAwait, "janedoe", memberAwait.ClusterName)
@@ -266,16 +260,35 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	t.Fatal("missing metrics assertions")
+	// verify the metrics
+	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
+	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // approved even though (temporarily) disabled
+	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
+	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
+	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user is on member1
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 
 	t.Run("re-enabled mur", func(t *testing.T) {
+		// given
+		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
+
 		// When re-enabling MUR
 		mur, err = hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 			mur.Spec.Disabled = false
 		})
 		require.NoError(t, err)
 
-		t.Fatal("missing metrics assertions")
+		// then
+		// verify the metrics
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)         // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 0) // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external") // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName) // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName)
+
 	})
 }
 
