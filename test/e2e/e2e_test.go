@@ -240,7 +240,7 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
-		laraSignUp, _ := NewSignupRequest(t,hostAwait,memberAwait,memberAwait2).
+		laraSignUp, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
 			Username("laracroft").
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
@@ -264,7 +264,7 @@ func TestE2EFlow(t *testing.T) {
 				Name:      podName,
 				Namespace: userNamespace,
 				Finalizers: []string{
-					"kubernetes",
+					"finalizer.toolchain.e2e.tests",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -276,7 +276,7 @@ func TestE2EFlow(t *testing.T) {
 		}
 		err = memberAwait.Client.Create(context.TODO(), &memberPod)
 		require.NoError(t, err)
-		pod,err := memberAwait.WaitForPod(userNamespace, podName)
+		pod, err := memberAwait.WaitForPod(userNamespace, podName)
 		require.NoError(t, err)
 		require.NotEmpty(t, pod)
 
@@ -289,7 +289,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check that namespace is not deleted and is in Terminating state after 10sec
-		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespaceInTerminating(userNamespace)
+		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForNamespaceInTerminating(userNamespace)
 		require.NoError(t, err)
 
 		// Check all corresponding resources are blocked by the terminating ns and have expected conditions
@@ -299,24 +299,24 @@ func TestE2EFlow(t *testing.T) {
 			Reason:  toolchainv1alpha1.NSTemplateSetTerminatingFailedReason,
 			Message: "user namespace laracroft-dev deletion was triggered but is not complete yet, something could be blocking ns deletion",
 		}
-		nsTmplSet,err := memberAwait.WaitForNSTmplSetIsBeingDeletedWithCondition(laraUserName,wait.UntilNSTemplateSetHasCondition(NSTemplateSetCondition))
+		nsTmplSet, err := memberAwait.WaitForNSTmplSetIsBeingDeletedWithCondition(laraUserName, wait.UntilNSTemplateSetHasCondition(NSTemplateSetCondition))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
-		userAcc,err := memberAwait.WaitForUserAccountBeingDeletedWithCondition(laraUserName, wait.UntilUserAccountHasCondition(TerminatingUserAccount()))
+		userAcc, err := memberAwait.WaitForUserAccountBeingDeletedWithCondition(laraUserName, wait.UntilUserAccountHasCondition(TerminatingUserAccount()))
 		require.NoError(t, err)
 		require.NotEmpty(t, userAcc)
 
-		mur,err := hostAwait.WaitForMasterUserRecordIsBeingDeleted(laraUserName,wait.UntilMasterUserRecordHasCondition(UnableToDeleteUserAccount()))
+		mur, err := hostAwait.WaitForMasterUserRecordIsBeingDeleted(laraUserName, wait.UntilMasterUserRecordHasCondition(UnableToDeleteUserAccount()))
 		require.NoError(t, err)
 		require.NotEmpty(t, mur)
 
-		userSignup,err := hostAwait.WaitForUserSignupIsBeingDeleted(laraSignUp.Name,wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...))
+		userSignup, err := hostAwait.WaitForUserSignupIsBeingDeleted(laraSignUp.Name, wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...))
 		require.NoError(t, err)
 		require.NotEmpty(t, userSignup)
 
 		// now remove finalizer from pod and check all are deleted
-		_,err = memberAwait.UpdatePod(pod.Namespace, podName, func(pod *corev1.Pod) {
+		_, err = memberAwait.UpdatePod(pod.Namespace, podName, func(pod *corev1.Pod) {
 			pod.Finalizers = nil
 		})
 		require.NoError(t, err)

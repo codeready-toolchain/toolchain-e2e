@@ -365,7 +365,7 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 }
 
 // WaitForUserSignupIsBeingDeleted waits until UserSignup with the given name has deletion timestamp and optional conditions
-func (a *HostAwaitility) WaitForUserSignupIsBeingDeleted (name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+func (a *HostAwaitility) WaitForUserSignupIsBeingDeleted(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}

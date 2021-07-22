@@ -358,8 +358,8 @@ func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*v1.Nam
 	ns := &v1.Namespace{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &v1.Namespace{}
-		if err:= a.Client.Get(context.TODO(), types.NamespacedName{Name: nsName}, obj); err!=nil {
-			if errors.IsNotFound(err){
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: nsName}, obj); err != nil {
+			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for ns '%s' to be in Terminating state, but ns not found.", nsName)
 				return false, nil
 			}
@@ -367,17 +367,17 @@ func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*v1.Nam
 		}
 		a.T.Logf("found Namespace '%s'", nsName)
 
-		if obj.DeletionTimestamp==nil || obj.Status.Phase != v1.NamespaceTerminating {
+		if obj.DeletionTimestamp == nil || obj.Status.Phase != v1.NamespaceTerminating {
 			a.T.Logf("waiting for namespace '%s' to have deletion timestamp and be in 'Terminating' phase. Current phase: '%s' and deletionTimestamp: '%v'", nsName, obj.Status.Phase, obj.DeletionTimestamp)
 			return false, nil
 		}
 		ns = obj
-		return true,nil
+		return true, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	return ns,nil
+	return ns, nil
 }
 
 // WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
@@ -1282,5 +1282,5 @@ func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(p
 		m = freshPod
 		return true, nil
 	})
-	return m,err
+	return m, err
 }
