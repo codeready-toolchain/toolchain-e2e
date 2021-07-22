@@ -264,7 +264,7 @@ func TestE2EFlow(t *testing.T) {
 				Name:      podName,
 				Namespace: userNamespace,
 				Finalizers: []string{
-					"finalizer.toolchain.e2e.tests",
+					"test/finalizer.toolchain.e2e.tests",
 				},
 			},
 			Spec: corev1.PodSpec{
