@@ -127,6 +127,19 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 	}
 }
 
+// UntilUserAccountHasCondition returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount contains the given condition
+func UntilUserAccountHasCondition(condition toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		if test.ContainsCondition(ua.Status.Conditions, condition) {
+			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
+		return false
+	}
+}
+
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
 	var userAccount *toolchainv1alpha1.UserAccount
@@ -138,6 +151,35 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 				return false, nil
 			}
 			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, obj) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found UserAccount '%s'", name)
+		userAccount = obj
+		return true, nil
+	})
+	return userAccount, err
+}
+
+// WaitForUserAccountBeingDeletedWithCondition waits until there is a UserAccount available with the given name and the set of status conditions has deletion timestamp
+func (a *MemberAwaitility) WaitForUserAccountBeingDeletedWithCondition(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
+	var userAccount *toolchainv1alpha1.UserAccount
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.UserAccount{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for useraccount '%s' in namespace '%s' to be deleted, but userAccount not found", name, a.Namespace)
+				return false, nil
+			}
+			return false, err
+		}
+
+		if obj.DeletionTimestamp == nil {
+			a.T.Logf("useraccount '%s' in namespace '%s' does not have deletion timestamp", name, a.Namespace)
+			return false, nil
 		}
 		for _, match := range criteria {
 			if !match(a, obj) {
@@ -167,6 +209,19 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 	}
 }
 
+// UntilNSTemplateSetHasCondition returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet contains the given condition
+func UntilNSTemplateSetHasCondition(condition toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
+	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
+		if test.ContainsCondition(nsTmplSet.Status.Conditions, condition) {
+			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
+			return true
+		}
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, condition)
+		return false
+	}
+}
+
 // UntilNSTemplateSetHasTier checks if the NSTemplateTier has the expected tierName
 func UntilNSTemplateSetHasTier(tier string) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
@@ -190,6 +245,34 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 				return false, nil
 			}
 			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, obj) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found NSTemplateSet '%s'", name)
+		nsTmplSet = obj
+		return true, nil
+	})
+	return nsTmplSet, err
+}
+
+// WaitForNSTmplSetIsBeingDeletedWithCondition wait until the NSTemplateSet with the given name has deletion timestamp and matches optional conditions
+func (a *MemberAwaitility) WaitForNSTmplSetIsBeingDeletedWithCondition(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
+	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for namespace '%s' to have deletionTimestamp, but namespace wasn't found", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if obj.DeletionTimestamp == nil {
+			a.T.Logf("no deletion timestamp found on namespace '%s'", name)
+			return false, nil
 		}
 		for _, match := range criteria {
 			if !match(a, obj) {
@@ -268,6 +351,33 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace
 	}
 	ns := namespaceList.Items[0]
 	return &ns, nil
+}
+
+//WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
+func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*v1.Namespace, error) {
+	ns := &v1.Namespace{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &v1.Namespace{}
+		if err:= a.Client.Get(context.TODO(), types.NamespacedName{Name: nsName}, obj); err!=nil {
+			if errors.IsNotFound(err){
+				a.T.Logf("waiting for ns '%s' to be in Terminating state, but ns not found.", nsName)
+				return false, nil
+			}
+			return false, err
+		}
+		a.T.Logf("found Namespace '%s'", nsName)
+
+		if obj.DeletionTimestamp==nil || obj.Status.Phase != v1.NamespaceTerminating {
+			a.T.Logf("waiting for namespace '%s' to have deletion timestamp and be in 'Terminating' phase. Current phase: '%s' and deletionTimestamp: '%v'", nsName, obj.Status.Phase, obj.DeletionTimestamp)
+			return false, nil
+		}
+		ns = obj
+		return true,nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ns,nil
 }
 
 // WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
@@ -1154,4 +1264,23 @@ func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expecte
 		return false, nil
 	})
 	return err
+}
+
+func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
+	var m *corev1.Pod
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshPod := &corev1.Pod{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: podName}, freshPod); err != nil {
+			return true, err
+		}
+
+		modifyPod(freshPod)
+		if err := a.Client.Update(context.TODO(), freshPod); err != nil {
+			a.T.Logf("error updating Pod '%s' Will retry again...", podName)
+			return false, nil
+		}
+		m = freshPod
+		return true, nil
+	})
+	return m,err
 }

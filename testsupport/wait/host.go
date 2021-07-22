@@ -80,6 +80,34 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
+// WaitForMasterUserRecordIsBeingDeleted waits until MasterUserRecord with the given name has deletion timestamp and the optional conditions
+func (a *HostAwaitility) WaitForMasterUserRecordIsBeingDeleted(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
+	var mur *toolchainv1alpha1.MasterUserRecord
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.MasterUserRecord{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for MasterUserRecord '%s' to be deleted, but MUR not found", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if obj.DeletionTimestamp == nil {
+			a.T.Logf("MasterUserRecord '%s' does not deletion timestamp", name)
+			return false, nil
+		}
+		for _, match := range criteria {
+			if !match(a, obj) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found MasterUserRecord '%s': %+v with ClusterResources: %v", name, obj, obj.Spec.UserAccounts[0].Spec.NSTemplateSet.ClusterResources)
+		mur = obj
+		return true, nil
+	})
+	return mur, err
+}
+
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
 	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
@@ -323,6 +351,35 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 				return false, nil
 			}
 			return false, err
+		}
+		for _, match := range criteria {
+			if !match(a, obj) {
+				return false, nil
+			}
+		}
+		a.T.Logf("found UserSignup '%s'", name)
+		userSignup = obj
+		return true, nil
+	})
+	return userSignup, err
+}
+
+// WaitForUserSignupIsBeingDeleted waits until UserSignup with the given name has deletion timestamp and optional conditions
+func (a *HostAwaitility) WaitForUserSignupIsBeingDeleted (name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	var userSignup *toolchainv1alpha1.UserSignup
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for UserSignup '%s' to be deleted, but userSignup not found", name)
+				return false, nil
+			}
+			return false, err
+		}
+
+		if obj.DeletionTimestamp == nil {
+			a.T.Logf("UserSignup '%s' does not have deletion timestamp", name)
+			return false, nil
 		}
 		for _, match := range criteria {
 			if !match(a, obj) {

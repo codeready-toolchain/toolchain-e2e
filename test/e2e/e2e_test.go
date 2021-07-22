@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
+	//"strings"
 	"testing"
 	"time"
 )
@@ -240,13 +240,20 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+		laraSignUp, _ := NewSignupRequest(t,hostAwait,memberAwait,memberAwait2).
+			Username("laracroft").
+			Email("laracroft@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
+		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
+
 		laraUserName := "laracroft"
 		userNamespace := "laracroft-dev"
 		podName := "test-useraccount-delete-1"
-		laraSignUp := CreateAndApproveSignup(t, hostAwait, laraUserName, memberAwait.ClusterName)
-		VerifyResourcesProvisionedForSignup(t, hostAwait, laraSignUp, "base", memberAwait)
 
-		// when
 		//Create a pod with finalizer in user's namespace, which will block the deletion of namespace.
 		memberPod := corev1.Pod{
 			TypeMeta: metav1.TypeMeta{
@@ -269,11 +276,9 @@ func TestE2EFlow(t *testing.T) {
 		}
 		err = memberAwait.Client.Create(context.TODO(), &memberPod)
 		require.NoError(t, err)
-
-		// confirm pod created
-		pod := &corev1.Pod{}
-		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod)
+		pod,err := memberAwait.WaitForPod(userNamespace, podName)
 		require.NoError(t, err)
+		require.NotEmpty(t, pod)
 
 		deletePolicy := metav1.DeletePropagationForeground
 		deleteOpts := &client.DeleteOptions{
@@ -283,41 +288,38 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
 
-		//time.Sleep(time.Second * 20)
-		templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
-		requiredRef := ""
-		for _, ref := range templateRefs.Namespaces {
-			if strings.Contains(ref, "dev") {
-				requiredRef = ref
-			}
+		// Check that namespace is not deleted and is in Terminating state after 10sec
+		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespaceInTerminating(userNamespace)
+		require.NoError(t, err)
+
+		// Check all corresponding resources are blocked by the terminating ns and have expected conditions
+		NSTemplateSetCondition := toolchainv1alpha1.Condition{
+			Type:    toolchainv1alpha1.ConditionReady,
+			Status:  corev1.ConditionFalse,
+			Reason:  toolchainv1alpha1.NSTemplateSetTerminatingFailedReason,
+			Message: "user namespace laracroft-dev deletion was triggered but is not complete yet, something could be blocking ns deletion",
 		}
-		require.True(t, len(requiredRef) > 0, "did not find the required templateRef")
-		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespace(laraUserName, requiredRef)
+		nsTmplSet,err := memberAwait.WaitForNSTmplSetIsBeingDeletedWithCondition(laraUserName,wait.UntilNSTemplateSetHasCondition(NSTemplateSetCondition))
 		require.NoError(t, err)
+		require.NotEmpty(t, nsTmplSet)
 
-		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
-		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: laraUserName}, nsTmplSet)
+		userAcc,err := memberAwait.WaitForUserAccountBeingDeletedWithCondition(laraUserName, wait.UntilUserAccountHasCondition(TerminatingUserAccount()))
 		require.NoError(t, err)
+		require.NotEmpty(t, userAcc)
 
-		userAcc := &toolchainv1alpha1.UserAccount{}
-		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: memberAwait.Namespace, Name: laraUserName}, userAcc)
+		mur,err := hostAwait.WaitForMasterUserRecordIsBeingDeleted(laraUserName,wait.UntilMasterUserRecordHasCondition(UnableToDeleteUserAccount()))
 		require.NoError(t, err)
+		require.NotEmpty(t, mur)
 
-		mur := &toolchainv1alpha1.MasterUserRecord{}
-		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: hostAwait.Namespace, Name: laraUserName}, mur)
+		userSignup,err := hostAwait.WaitForUserSignupIsBeingDeleted(laraSignUp.Name,wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...))
 		require.NoError(t, err)
-
-		err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: laraSignUp.Namespace, Name: laraSignUp.Name}, laraSignUp)
-		require.NoError(t, err)
+		require.NotEmpty(t, userSignup)
 
 		// now remove finalizer from pod and check all are deleted
-		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: userNamespace, Name: podName}, pod)
+		_,err = memberAwait.UpdatePod(pod.Namespace, podName, func(pod *corev1.Pod) {
+			pod.Finalizers = nil
+		})
 		require.NoError(t, err)
-		require.Equal(t, pod.Finalizers[0], "kubernetes")
-		pod.Finalizers = nil
-		err = memberAwait.Client.Update(context.TODO(), pod)
-		require.NoError(t, err)
-		require.Equal(t, len(pod.Finalizers), 0)
 
 		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
 		assert.NoError(t, err, "laracroft-dev namespace is not deleted")
@@ -385,7 +387,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("verify metrics are correct at the end", func(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 9)
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 9)
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 9, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
+			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 8, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)                  // 6 users left on member1 ('johnsignup' was deleted)
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait2.ClusterName)                 // 1 user on member2
 		})

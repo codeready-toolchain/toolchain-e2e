@@ -291,3 +291,21 @@ func ToolchainConfigSyncComplete() toolchainv1alpha1.Condition {
 		Reason: toolchainv1alpha1.ToolchainConfigSyncedReason,
 	}
 }
+
+func UnableToDeleteUserAccount() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.MasterUserRecordUnableToDeleteUserAccountsReason,
+		Message: "UserAccount deletion has not completed in over 1 minute",
+	}
+}
+
+func TerminatingUserAccount() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.UserAccountTerminatingReason,
+		Message: "deleting user/identity",
+	}
+}
