@@ -265,13 +265,13 @@ func (a *MemberAwaitility) WaitForNSTmplSetIsBeingDeletedWithCondition(name stri
 		obj := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for namespace '%s' to have deletionTimestamp, but namespace wasn't found", name)
+				a.T.Logf("waiting for nstemplateset '%s' to have deletionTimestamp, but namespace wasn't found", name)
 				return false, nil
 			}
 			return false, err
 		}
 		if obj.DeletionTimestamp == nil {
-			a.T.Logf("no deletion timestamp found on namespace '%s'", name)
+			a.T.Logf("no deletion timestamp found on nstemplateset '%s'", name)
 			return false, nil
 		}
 		for _, match := range criteria {
@@ -365,12 +365,11 @@ func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*v1.Nam
 			}
 			return false, err
 		}
-		a.T.Logf("found Namespace '%s'", nsName)
-
 		if obj.DeletionTimestamp == nil || obj.Status.Phase != v1.NamespaceTerminating {
 			a.T.Logf("waiting for namespace '%s' to have deletion timestamp and be in 'Terminating' phase. Current phase: '%s' and deletionTimestamp: '%v'", nsName, obj.Status.Phase, obj.DeletionTimestamp)
 			return false, nil
 		}
+		a.T.Logf("found Namespace '%s'", nsName)
 		ns = obj
 		return true, nil
 	})
