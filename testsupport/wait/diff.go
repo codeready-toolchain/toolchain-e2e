@@ -1,6 +1,8 @@
 package wait
 
 import (
+	"bytes"
+	"strings"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -16,11 +18,43 @@ func init() {
 }
 
 func Diff(actual, expected interface{}) string {
-	dmp := diffmatchpatch.New()
 	actual = ResetTimeFields(actual)
 	expected = ResetTimeFields(expected)
-	diffs := dmp.DiffMain(spew.Sdump(actual), spew.Sdump(expected), true)
-	return dmp.DiffPrettyText(diffs)
+	dmp := diffmatchpatch.New()
+	actualdmp, expecteddmp, dmpStrings := dmp.DiffLinesToChars(spew.Sdump(actual), spew.Sdump(expected))
+	diffs := dmp.DiffMain(actualdmp, expecteddmp, false)
+	diffs = dmp.DiffCharsToLines(diffs, dmpStrings)
+	return diffPrettyText(diffs)
+}
+
+// DiffPrettyText converts a []Diff into a colored text report.
+func diffPrettyText(diffs []diffmatchpatch.Diff) string {
+	var buff bytes.Buffer
+
+	_, _ = buff.WriteString("\x1b[31m")
+	_, _ = buff.WriteString("-actual\n")
+	_, _ = buff.WriteString("\x1b[0m")
+	_, _ = buff.WriteString("\x1b[32m")
+	_, _ = buff.WriteString("+expected\n")
+	_, _ = buff.WriteString("\x1b[0m")
+	for _, diff := range diffs {
+		text := diff.Text
+
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			_, _ = buff.WriteString("\x1b[32m")
+			_, _ = buff.WriteString(strings.Replace(text, " ", "+", 1))
+			_, _ = buff.WriteString("\x1b[0m")
+		case diffmatchpatch.DiffDelete:
+			_, _ = buff.WriteString("\x1b[31m")
+			_, _ = buff.WriteString(strings.Replace(text, " ", "-", 1))
+			_, _ = buff.WriteString("\x1b[0m")
+		case diffmatchpatch.DiffEqual:
+			_, _ = buff.WriteString(text)
+		}
+	}
+
+	return buff.String()
 }
 
 func ResetTimeFields(obj interface{}) interface{} {
