@@ -141,7 +141,7 @@ func UntilUserAccountContainsCondition(condition toolchainv1alpha1.Condition) Us
 }
 
 // UntilUserAccountIsBeingDeleted returns a `UserAccountWaitCriterion` which checks that the given
-//// USerAccount contains the given condition has deletion timestamp set
+// USerAccount has the deletion timestamp set
 func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		if ua.DeletionTimestamp == nil {
