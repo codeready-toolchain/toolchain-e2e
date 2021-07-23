@@ -127,16 +127,28 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 	}
 }
 
-// UntilUserAccountHasCondition returns a `UserAccountWaitCriterion` which checks that the given
+// UntilUserAccountContainsCondition returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount contains the given condition
-func UntilUserAccountHasCondition(condition toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+func UntilUserAccountContainsCondition(condition toolchainv1alpha1.Condition) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		if test.ContainsCondition(ua.Status.Conditions, condition) {
-			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
+			a.T.Logf("status conditions found in UserAccount '%s`", ua.Name)
 			return true
 		}
 		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
 		return false
+	}
+}
+
+// UntilUserAccountIsBeingDeleted returns a `UserAccountWaitCriterion` which checks that the given
+//// USerAccount contains the given condition has deletion timestamp set
+func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
+	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
+		if ua.DeletionTimestamp == nil {
+			a.T.Logf("useraccount '%s' in namespace '%s' does not have deletion timestamp", ua.Name, a.Namespace)
+			return false
+		}
+		return true
 	}
 }
 
@@ -209,9 +221,21 @@ func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) 
 	}
 }
 
-// UntilNSTemplateSetHasCondition returns a `NSTemplateSetWaitCriterion` which checks that the given
-// NSTemlateSet contains the given condition
-func UntilNSTemplateSetHasCondition(condition toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
+// UntilNSTemplateSetIsBeingDeleted returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet has Deletion Timestamp set
+func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
+	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
+		if nsTmplSet.DeletionTimestamp == nil {
+			a.T.Logf("NSTemplateSet '%s' in namespace '%s' does not have deletion timestamp", nsTmplSet.Name, a.Namespace)
+			return false
+		}
+		return true
+	}
+}
+
+// UntilNSTemplateSetContainsCondition returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet contains the given condition
+func UntilNSTemplateSetContainsCondition(condition toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
 		if test.ContainsCondition(nsTmplSet.Status.Conditions, condition) {
 			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
@@ -245,34 +269,6 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 				return false, nil
 			}
 			return false, err
-		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
-			}
-		}
-		a.T.Logf("found NSTemplateSet '%s'", name)
-		nsTmplSet = obj
-		return true, nil
-	})
-	return nsTmplSet, err
-}
-
-// WaitForNSTmplSetIsBeingDeletedWithCondition wait until the NSTemplateSet with the given name has deletion timestamp and matches optional conditions
-func (a *MemberAwaitility) WaitForNSTmplSetIsBeingDeletedWithCondition(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
-	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.NSTemplateSet{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for nstemplateset '%s' to have deletionTimestamp, but namespace wasn't found", name)
-				return false, nil
-			}
-			return false, err
-		}
-		if obj.DeletionTimestamp == nil {
-			a.T.Logf("no deletion timestamp found on nstemplateset '%s'", name)
-			return false, nil
 		}
 		for _, match := range criteria {
 			if !match(a, obj) {

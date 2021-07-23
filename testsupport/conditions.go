@@ -309,3 +309,12 @@ func TerminatingUserAccount() toolchainv1alpha1.Condition {
 		Message: "deleting user/identity",
 	}
 }
+
+func UnableToTerminateNSTemplateSet(msg string) toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.NSTemplateSetTerminatingFailedReason,
+		Message: msg,
+	}
+}

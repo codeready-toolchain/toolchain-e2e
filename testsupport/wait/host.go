@@ -80,33 +80,6 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
-// WaitForMasterUserRecordIsBeingDeleted waits until MasterUserRecord with the given name has deletion timestamp and the optional conditions
-func (a *HostAwaitility) WaitForMasterUserRecordIsBeingDeleted(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
-	var mur *toolchainv1alpha1.MasterUserRecord
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.MasterUserRecord{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for MasterUserRecord '%s' to be deleted, but MUR not found", name)
-				return false, nil
-			}
-			return false, err
-		}
-		if obj.DeletionTimestamp == nil {
-			a.T.Logf("MasterUserRecord '%s' does not deletion timestamp", name)
-			return false, nil
-		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
-			}
-		}
-		a.T.Logf("found MasterUserRecord '%s': %+v with ClusterResources: %v", name, obj, obj.Spec.UserAccounts[0].Spec.NSTemplateSet.ClusterResources)
-		mur = obj
-		return true, nil
-	})
-	return mur, err
-}
 
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
@@ -205,6 +178,17 @@ func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRe
 	}
 }
 
+// UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
+func UntilMasterUserRecordIsBeingDeleted() MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		if mur.DeletionTimestamp == nil {
+			a.T.Logf("mur '%s' in namespace '%s' does not have deletion timestamp", mur.Name, a.Namespace)
+			return false
+		}
+		return true
+	}
+}
+
 // UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
 func UntilMasterUserRecordHasCondition(condition toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
@@ -268,8 +252,20 @@ func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alp
 // UserSignupWaitCriterion a function to check that a user account has the expected condition
 type UserSignupWaitCriterion func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool
 
-// UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
-// UserAccount has exactly all the given status conditions
+// UntilUserSignupIsBeingDeleted returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has deletion timestamp set
+func UntilUserSignupIsBeingDeleted() UserSignupWaitCriterion {
+	return func(a *HostAwaitility, us *toolchainv1alpha1.UserSignup) bool {
+		if us.DeletionTimestamp == nil {
+			a.T.Logf("userSignup '%s' in namespace '%s' does not have deletion timestamp", us.Name, a.Namespace)
+			return false
+		}
+		return true
+	}
+}
+
+// UntilUserSignupHasConditions returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has exactly all the given status conditions
 func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
 		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
@@ -364,34 +360,6 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 	return userSignup, err
 }
 
-// WaitForUserSignupIsBeingDeleted waits until UserSignup with the given name has deletion timestamp and optional conditions
-func (a *HostAwaitility) WaitForUserSignupIsBeingDeleted(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
-	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.UserSignup{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for UserSignup '%s' to be deleted, but userSignup not found", name)
-				return false, nil
-			}
-			return false, err
-		}
-
-		if obj.DeletionTimestamp == nil {
-			a.T.Logf("UserSignup '%s' does not have deletion timestamp", name)
-			return false, nil
-		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
-			}
-		}
-		a.T.Logf("found UserSignup '%s'", name)
-		userSignup = obj
-		return true, nil
-	})
-	return userSignup, err
-}
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv1alpha1.BannedUser, err error) {
