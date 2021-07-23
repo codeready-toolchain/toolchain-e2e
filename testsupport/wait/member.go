@@ -176,34 +176,6 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 	return userAccount, err
 }
 
-// WaitForUserAccountBeingDeletedWithCondition waits until there is a UserAccount available with the given name and the set of status conditions has deletion timestamp
-func (a *MemberAwaitility) WaitForUserAccountBeingDeletedWithCondition(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
-	var userAccount *toolchainv1alpha1.UserAccount
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.UserAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for useraccount '%s' in namespace '%s' to be deleted, but userAccount not found", name, a.Namespace)
-				return false, nil
-			}
-			return false, err
-		}
-
-		if obj.DeletionTimestamp == nil {
-			a.T.Logf("useraccount '%s' in namespace '%s' does not have deletion timestamp", name, a.Namespace)
-			return false, nil
-		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
-			}
-		}
-		a.T.Logf("found UserAccount '%s'", name)
-		userAccount = obj
-		return true, nil
-	})
-	return userAccount, err
-}
 
 // NSTemplateSetWaitCriterion a function to check that an NSTemplateSet has the expected condition
 type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.NSTemplateSet) bool
