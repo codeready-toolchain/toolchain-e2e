@@ -176,7 +176,6 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 	return userAccount, err
 }
 
-
 // NSTemplateSetWaitCriterion a function to check that an NSTemplateSet has the expected condition
 type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.NSTemplateSet) bool
 
