@@ -80,7 +80,6 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
-
 func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	murList := &toolchainv1alpha1.MasterUserRecordList{}
 	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
@@ -359,7 +358,6 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 	})
 	return userSignup, err
 }
-
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (bannedUser *toolchainv1alpha1.BannedUser, err error) {

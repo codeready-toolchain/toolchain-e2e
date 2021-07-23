@@ -293,13 +293,13 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// Check all corresponding resources are blocked by the terminating ns and have expected conditions
-		ConditionMsg :=  "user namespace laracroft-dev deletion was triggered but is not complete yet, something could be blocking ns deletion"
+		ConditionMsg := "user namespace laracroft-dev deletion was triggered but is not complete yet, something could be blocking ns deletion"
 
 		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(UnableToTerminateNSTemplateSet(ConditionMsg)))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
-		userAcc, err := memberAwait.WaitForUserAccount(laraUserName, wait.UntilUserAccountIsBeingDeleted(),wait.UntilUserAccountContainsCondition(TerminatingUserAccount()))
+		userAcc, err := memberAwait.WaitForUserAccount(laraUserName, wait.UntilUserAccountIsBeingDeleted(), wait.UntilUserAccountContainsCondition(TerminatingUserAccount()))
 		require.NoError(t, err)
 		require.NotEmpty(t, userAcc)
 
@@ -307,7 +307,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, mur)
 
-		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name,wait.UntilUserSignupIsBeingDeleted())
+		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name, wait.UntilUserSignupIsBeingDeleted())
 		require.NoError(t, err)
 		require.NotEmpty(t, userSignup)
 
