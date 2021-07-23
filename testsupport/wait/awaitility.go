@@ -456,7 +456,7 @@ func (a *Awaitility) CreateNamespace(name string) {
 
 // WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
 func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
-	a.T.Logf("waiting until deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
+	a.T.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, 4*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
