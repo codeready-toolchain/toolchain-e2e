@@ -58,7 +58,7 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err, "failed while waiting for MemberStatus to contain error due to che being required")
 
 			_, err = hostAwait.WaitForToolchainStatus(
-				wait.UntilToolchainStatusHasConditions(ToolchainStatusComponentsNotReady("[cookie]"), ToolchainStatusUnreadyNotificationNotCreated()))
+				wait.UntilToolchainStatusHasConditions(ToolchainStatusComponentsNotReady("[members]"), ToolchainStatusUnreadyNotificationNotCreated()))
 			require.NoError(t, err, "failed while waiting for ToolchainStatus to contain error due to che being required")
 
 			t.Run("verify member and toolchain status go back to ready", func(t *testing.T) {
