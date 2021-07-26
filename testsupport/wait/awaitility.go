@@ -470,7 +470,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 	err := wait.Poll(a.RetryInterval, 4*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
-			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
+			a.T.Logf("deployment '%s' in namespace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
 			return false, nil
 		}
 		deployment := &appsv1.Deployment{}
@@ -479,7 +479,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 			a.T.Logf("waiting until all %d replicas of the %s deployment are available - current replicas: %d", replicas, name, deployment.Status.AvailableReplicas)
 			return false, nil
 		}
-		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
+		a.T.Logf("deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 		return true, nil
 	})
 	require.NoError(a.T, err)

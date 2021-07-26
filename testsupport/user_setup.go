@@ -60,12 +60,20 @@ func WithIdentityID(idStr string) IdentityOption {
 	}
 }
 
+func WithEmail(email string) IdentityOption {
+	return func(identity *authsupport.Identity) error {
+		identity.Email = email
+		return nil
+	}
+}
+
 func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string, options ...IdentityOption) *toolchainv1alpha1.UserSignup {
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 	// 1. Create a UserSignup resource via calling registration service
 	identity := &authsupport.Identity{
 		ID:       uuid.Must(uuid.NewV4()),
 		Username: username,
+		Email:    username + "@acme.com",
 	}
 	for _, apply := range options {
 		err := apply(identity)
@@ -81,7 +89,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	require.Equal(t, identity.Username+"-First-Name", userSignup.Spec.GivenName)
 	require.Equal(t, identity.Username+"-Last-Name", userSignup.Spec.FamilyName)
 	require.Equal(t, identity.Username+"-Company-Name", userSignup.Spec.Company)
-	require.Equal(t, identity.Username+"@acme.com", userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+	require.Equal(t, identity.Email, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 
 	// 2. approve the UserSignup
 	userSignup.Spec.TargetCluster = targetCluster
@@ -98,7 +106,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 	// check that there's an annotation with the user's email address
-	assert.Equal(t, identity.Username+"@acme.com", mur.Annotations[toolchainv1alpha1.MasterUserRecordEmailAnnotationKey]) // same as on userSignup
+	assert.Equal(t, identity.Email, mur.Annotations[toolchainv1alpha1.MasterUserRecordEmailAnnotationKey]) // same as on userSignup
 
 	// Wait for the the notification CR to be created & sent
 	notifications, err := hostAwait.WaitForNotifications(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned, 1, wait.UntilNotificationHasConditions(Sent()))
@@ -163,7 +171,7 @@ var HTTPClient = &http.Client{
 func postSignup(t *testing.T, route string, identity authsupport.Identity) {
 	require.NotEmpty(t, route)
 	// Call signup endpoint with a valid token.
-	emailClaim := authsupport.WithEmailClaim(identity.Username + "@acme.com")
+	emailClaim := authsupport.WithEmailClaim(identity.Email)
 	givenNameClaim := authsupport.WithGivenNameClaim(identity.Username + "-First-Name")
 	familyNameClaim := authsupport.WithFamilyNameClaim(identity.Username + "-Last-Name")
 	companyClaim := authsupport.WithCompanyClaim(identity.Username + "-Company-Name")

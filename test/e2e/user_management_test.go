@@ -43,7 +43,7 @@ func (s *userManagementTestSuite) SetupSuite() {
 func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.hostAwait.UpdateToolchainConfig(
-		testconfig.AutomaticApproval().Disabled(),
+		testconfig.AutomaticApproval().Enabled(false),
 		testconfig.Deactivation().DeactivatingNotificationDays(-1))
 
 	config := s.hostAwait.GetToolchainConfig()
@@ -185,7 +185,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("test deactivating state set OK", func(t *testing.T) {
 		// Reset configuration back to 3 days
 		s.hostAwait.UpdateToolchainConfig(
-			testconfig.AutomaticApproval().Disabled(),
+			testconfig.AutomaticApproval().Enabled(false),
 			testconfig.Deactivation().DeactivatingNotificationDays(3))
 
 		config := s.hostAwait.GetToolchainConfig()
@@ -228,7 +228,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
 		// Set configuration to 3 days
 		s.hostAwait.UpdateToolchainConfig(
-			testconfig.AutomaticApproval().Enabled(),
+			testconfig.AutomaticApproval().Enabled(true),
 			testconfig.Deactivation().DeactivatingNotificationDays(3))
 
 		hostConfig := s.hostAwait.GetToolchainConfig().Spec.Host
@@ -342,7 +342,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup and approve it manually
 		userSignup, _ := s.newSignupRequest().
@@ -372,7 +372,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("manually created usersignup with preexisting banneduser", func(t *testing.T) {
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
@@ -402,7 +402,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
@@ -440,7 +440,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup
 		userSignup, mur := s.newSignupRequest().

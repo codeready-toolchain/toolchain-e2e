@@ -23,14 +23,55 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TestMetricsOnWhenUsersReactivated activates and deactivates a few users, and check the metrics.
+func TestMetricsWhenUsersDeactivated(t *testing.T) {
+	// given
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
+	// host metrics should be available at this point
+	VerifyHostMetricsService(t, hostAwait)
+	VerifyMemberMetricsService(t, memberAwait)
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName})
+	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
+	for i := 1; i <= 2; i++ {
+		username := fmt.Sprintf("user-%04d", i)
+		usersignups[username] = CreateAndApproveSignup(t, hostAwait, username, member2Await.ClusterName, WithEmail(username+"@redhat.com")) // testing on internal accounts
+	}
+	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
+	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                                                            // all signups
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all activated
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
+	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)                                                    // all activated
+	metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // none activated on member-1
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 2, "cluster_name", member2Await.ClusterName)                 // all activated on member-2
+
+	// when deactivating the users
+	for username, usersignup := range usersignups {
+		_, err := hostAwait.UpdateUserSignupSpec(usersignup.Name, func(usersignup *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivated(usersignup, true)
+		})
+		require.NoError(t, err)
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(username)
+		require.NoError(t, err)
+	}
+
+	// then verify the value of the `sandbox_users_per_activations` metric
+	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                                                            // all signups (even if deactivated)
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all deactivated (but this metric is never decremented)
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
+	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
+	metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0)                                                           // all deactivated
+}
+
+// TestMetricsWhenUsersReactivated activates and deactivates a few users, and check the metrics.
 // user-0001 will be activated 1 time
 // user-0002 will be activated 2 times
 // user-0003 will be activated 3 times
-func TestMetricsOnWhenUsersDeactivatedAndReactivated(t *testing.T) {
+func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	// given
 	hostAwait, memberAwait, _ := WaitForDeployments(t)
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
@@ -56,8 +97,11 @@ func TestMetricsOnWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 	// then verify the value of the `sandbox_users_per_activations` metric
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // 1 activation
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal") // no activation
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "2", "domain", "external") // 1 activation
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "internal") // no activation
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 1, "activations", "3", "domain", "external") // 1 activation
+	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "internal") // no activation
 
 	t.Run("restart host-operator pod and verify that metrics are still available", func(t *testing.T) {
 		// given
@@ -73,15 +117,18 @@ func TestMetricsOnWhenUsersDeactivatedAndReactivated(t *testing.T) {
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics-service' service to be available")
 		// also verify that the metric values "survived" the restart
 		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // user-0001 was 1 time (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal") // no activation
 		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "external") // user-0002 was 2 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "2", "domain", "internal") // no activation
 		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "external") // user-0003 was 3 times (unchanged after pod restarted)
+		metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "3", "domain", "internal") // no activation
 	})
 }
 
 func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// given
 	hostAwait, memberAwait, _ := WaitForDeployments(t)
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
@@ -121,7 +168,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	t.Run("ban provisioned usersignup", func(t *testing.T) {
 		// given
 		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Disabled())
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 		// Create a new UserSignup and approve it manually
 		userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, member2Await).
 			Username("metricsbanprovisioned").
@@ -145,6 +192,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
 		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 
@@ -165,6 +213,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // user approved
 			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)   // unchanged: banneduser already existed
 			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
+			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user provisioned on member1
 			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 		})
@@ -173,7 +222,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	t.Run("manually created usersignup with preexisting banneduser", func(t *testing.T) {
 		// given
 		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
 		banUser(t, hostAwait, email)
@@ -198,6 +247,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 0) // not provisioned because banned before signup
 		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 	})
@@ -205,7 +255,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	t.Run("register new user with preexisting ban", func(t *testing.T) {
 		// given
 		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled())
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
 		banUser(t, hostAwait, email)
@@ -232,6 +282,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 0) // not provisioned because banned before signup
 		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)   // banneduser resource was created before signup
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 	})

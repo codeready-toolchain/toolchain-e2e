@@ -33,3 +33,5 @@ require (
 )
 
 go 1.16
+
+replace github.com/codeready-toolchain/toolchain-common => github.com/xcoulon/toolchain-common v0.0.0-20210726141435-e055f92e4fd5
