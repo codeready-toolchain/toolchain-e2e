@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: member-operator-config
-type: Opaque
-data:
-  deploy.webhook: 'false'
