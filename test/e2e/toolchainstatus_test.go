@@ -19,7 +19,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(
-		testconfig.AutomaticApproval().Enabled(),
+		testconfig.AutomaticApproval().Enabled(true),
 		testconfig.Metrics().ForceSynchronization(false))
 
 	userSignups := CreateMultipleSignups(t, hostAwait, memberAwait, 2)
