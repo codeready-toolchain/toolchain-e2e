@@ -337,58 +337,13 @@ func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...strin
 // and label key-value pair reaches the expected value
 func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float64, labels ...string) {
 	a.T.Logf("waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
-	var comparisonSummary string
+	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
-		if err != nil {
-			return false, nil
-		}
-		if value != expectedValue {
-			comparisonSummary = fmt.Sprintf("Waited for metric '%s{%v}' to reach '%v' (currently: %v)",
-				family, labels, expectedValue, value)
-			return false, nil
-		}
-		return true, nil
+		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
+		return value == expectedValue && err == nil, nil
 	})
-	require.NoError(a.T, err, comparisonSummary)
-}
-
-// WaitUntilMetricHasValueOrMore waits until the exposed metric with the given family
-// and label key-value pair has reached the expected value (or more)
-func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue float64, labels ...string) error {
-	a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
-		if err != nil {
-			a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or more but error occurred: %s", family, labels, expectedValue, err.Error())
-			return false, nil
-		}
-		if value < expectedValue {
-			a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or more (currently: %v)", family, labels, expectedValue, value)
-			return false, nil
-		}
-		return true, nil
-	})
-	return err
-}
-
-// WaitUntilMetricHasValueOrLess waits until the exposed metric with the given family
-// and label key-value pair has reached the expected value (or less)
-func (a *Awaitility) WaitUntilMetricHasValueOrLess(family string, expectedValue float64, labels ...string) error {
-	a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
-		if err != nil {
-			a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or less but error occurred: %s", family, labels, expectedValue, err.Error())
-			return false, nil
-		}
-		if value > expectedValue {
-			a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or less (currently: %v)", family, labels, expectedValue, value)
-			return false, nil
-		}
-		return true, nil
-	})
-	return err
+	require.NoError(a.T, err, "Waited for metric '%s{%v}' to reach '%v' (currently: %v)", family, labels, expectedValue, value)
 }
 
 // DeletePods deletes the pods matching the given criteria
