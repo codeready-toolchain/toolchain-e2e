@@ -100,6 +100,10 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 			}
 		}
 	}
+	// no match found, print the diffs
+	for _, c := range criteria {
+		a.T.Logf(c.Diff(nil))
+	}
 	return nil, nil
 }
 
@@ -233,7 +237,7 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 			return actual.Name == name
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return "" // unused
+			return fmt.Sprintf("expected MasterUserRecord named '%s'", name)
 		},
 	}
 }
