@@ -160,7 +160,7 @@ get-and-publish-host-operator:
 ###########################################################
 
 .PHONY: deploy-members
-deploy-members: create-member1 create-member2 get-and-publish-member-operator create-member-resources
+deploy-members: create-member1 create-member2 get-and-publish-member-operator
 
 .PHONY: create-member1
 create-member1:
@@ -174,15 +174,6 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns ${MEMBER_NS_2} app=member-operator
-endif
-
-.PHONY: create-member-resources
-create-member-resources:
-ifeq ($(MEMBER_REPO_PATH),)
-	$(eval MEMBER_REPO_PATH = /tmp/codeready-toolchain/member-operator)
-endif
-ifeq ($(SECOND_MEMBER_MODE),true)
-	oc apply -f deploy/member2-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2}
 endif
 
 .PHONY: deploy-host
