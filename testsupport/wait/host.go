@@ -69,22 +69,15 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 			return false, err
 		}
 		for _, c := range criteria {
-			if !c.Match(a, obj) {
+			if !c.Match(obj) {
 				return false, nil
 			}
 		}
 		mur = obj
 		return true, nil
 	})
-	// log message if an error occurred
-	if err != nil {
-		a.T.Logf("failed to find MasterUserRecord '%s' with matching criteria: %v", name, err)
-		for _, c := range criteria {
-			if !c.Match(a, mur) {
-				a.T.Log(c.Diff(mur))
-			}
-		}
-	}
+	// no match found, print the diffs
+	PrintMasterUserRecordWaitCriterionDiffs(a.T, mur, criteria...)
 	return mur, err
 }
 
@@ -95,15 +88,13 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 	}
 	for _, mur := range murList.Items {
 		for _, c := range criteria {
-			if c.Match(a, &mur) {
+			if c.Match(&mur) {
 				return &mur, nil
 			}
 		}
 	}
 	// no match found, print the diffs
-	for _, c := range criteria {
-		a.T.Logf(c.Diff(nil))
-	}
+	PrintMasterUserRecordWaitCriterionDiffs(a.T, nil, criteria...)
 	return nil, nil
 }
 
@@ -173,14 +164,23 @@ func (a *HostAwaitility) UpdateUserSignupSpec(userSignupName string, modifyUserS
 
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion struct {
-	Match func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool
+	Match func(mur *toolchainv1alpha1.MasterUserRecord) bool
 	Diff  func(mur *toolchainv1alpha1.MasterUserRecord) string
+}
+
+func PrintMasterUserRecordWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) {
+	t.Log("failed to find MasterUserRecord with matching criteria")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			t.Log(c.Diff(actual))
+		}
+	}
 }
 
 // UntilMasterUserRecordHasProvisionedTime checks if MasterUserRecord status has the given provisioned time
 func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.MasterUserRecord) bool {
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return actual.Status.ProvisionedTime != nil && expectedTime.Time == actual.Status.ProvisionedTime.Time
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
@@ -195,7 +195,7 @@ func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRe
 // UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
 func UntilMasterUserRecordHasCondition(expected toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.MasterUserRecord) bool {
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
@@ -207,7 +207,7 @@ func UntilMasterUserRecordHasCondition(expected toolchainv1alpha1.Condition) Mas
 // UntilMasterUserRecordHasConditions checks if MasterUserRecord status has the given set of conditions
 func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.MasterUserRecord) bool {
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
@@ -220,7 +220,7 @@ func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition)
 // sync index *different* from the given value for the given target cluster
 func UntilMasterUserRecordHasNotSyncIndex(expected string) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.MasterUserRecord) bool {
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			// lookup user account with target cluster
 			ua := actual.Spec.UserAccounts[0]
 			return ua.SyncIndex != expected
@@ -233,7 +233,7 @@ func UntilMasterUserRecordHasNotSyncIndex(expected string) MasterUserRecordWaitC
 
 func WithMurName(name string) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.MasterUserRecord) bool {
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return actual.Name == name
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
@@ -245,7 +245,7 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 // UntilMasterUserRecordHasUserAccountStatuses checks if MasterUserRecord status has the given set of status embedded UserAccounts
 func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.UserAccountStatusEmbedded) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.MasterUserRecord) bool {
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			if len(actual.Status.UserAccounts) != len(expected) {
 				return false
 			}
@@ -265,15 +265,24 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 
 // UserSignupWaitCriterion a function to check that a user account has the expected condition
 type UserSignupWaitCriterion struct {
-	Match func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool
-	Diff  func(ua *toolchainv1alpha1.UserSignup) string
+	Match func(*toolchainv1alpha1.UserSignup) bool
+	Diff  func(*toolchainv1alpha1.UserSignup) string
+}
+
+func PrintUserSignupWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) {
+	t.Log("failed to find UserSignup with matching criteria")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			t.Log(c.Diff(actual))
+		}
+	}
 }
 
 // UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
 // UserAccount has exactly all the given status conditions
 func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.UserSignup) bool {
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
@@ -286,7 +295,7 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 // UserAccount contains the given status condition
 func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.UserSignup) bool {
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
@@ -299,7 +308,7 @@ func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCrite
 // USerAccount has toolchain.dev.openshift.com/state equal to the given value
 func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.UserSignup) bool {
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
 			return actual.Labels != nil && actual.Labels[toolchainv1alpha1.UserSignupStateLabelKey] == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
@@ -352,22 +361,15 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 			return false, err
 		}
 		for _, c := range criteria {
-			if !c.Match(a, obj) {
+			if !c.Match(obj) {
 				return false, nil
 			}
 		}
 		userSignup = obj
 		return true, nil
 	})
-	// log message if an error occurred
-	if err != nil {
-		a.T.Logf("failed to find UserSignup '%s' with matching criteria: %v\n%s", name, err, spew.Sdump(userSignup))
-		for _, c := range criteria {
-			if !c.Match(a, userSignup) {
-				a.T.Log(c.Diff(userSignup))
-			}
-		}
-	}
+	// no match found, print the diffs
+	PrintUserSignupWaitCriterionDiffs(a.T, userSignup, criteria...)
 	return userSignup, err
 }
 
@@ -515,16 +517,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 		tier = obj
 		return true, nil
 	})
-	// log message if an error occurred
-	if err != nil {
-		a.T.Logf("failed to find NSTemplateTier '%s' with matching criteria: %v\n%s", name, err, spew.Sdump(tier))
-		for _, c := range criteria {
-			// if at least one criteria does not match, keep waiting
-			if !c.Match(tier) {
-				a.T.Log(c.Diff(tier))
-			}
-		}
-	}
+	PrintNSTemplateTierWaitCriterionDiffs(a.T, tier, criteria...)
 	require.NoError(a.T, err)
 
 	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
@@ -579,6 +572,16 @@ func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.Ti
 type NSTemplateTierWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateTier) bool
 	Diff  func(*toolchainv1alpha1.NSTemplateTier) string
+}
+
+func PrintNSTemplateTierWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) {
+	t.Log("failed to find NSTemplateTier with matching criteria:")
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			t.Log(c.Diff(actual))
+		}
+	}
 }
 
 // NSTemplateTierSpecMatcher a matcher for the
@@ -708,12 +711,24 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 
 // NotificationWaitCriterion checks if a Notification meets the given condition
 type NotificationWaitCriterion struct {
-	Match func(a *HostAwaitility, mur toolchainv1alpha1.Notification) bool
-	Diff  func(mur toolchainv1alpha1.Notification) string
+	Match func(toolchainv1alpha1.Notification) bool
+	Diff  func(toolchainv1alpha1.Notification) string
+}
+
+func PrintNotificationWaitCriterionDiffs(t *testing.T, actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) {
+	t.Log("failed to find notifications with matching criteria:")
+	for _, n := range actual {
+		for _, c := range criteria {
+			if !c.Match(n) {
+				t.Log(c.Diff(n))
+			}
+		}
+	}
 }
 
 // WaitForNotifications waits until there is an expected number of Notifications available for the provided user and with the notification type and which match the conditions (if provided).
 func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
+	a.T.Logf("waiting for notifications to match criteria for user '%s'", username)
 	var notifications []toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
@@ -730,7 +745,7 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 
 		for _, n := range notificationList.Items {
 			for _, c := range criteria {
-				if !c.Match(a, n) {
+				if !c.Match(n) {
 					return false, nil
 				}
 			}
@@ -739,16 +754,7 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		return true, nil
 	})
 	// log message if an error occurred
-	if err != nil {
-		a.T.Logf("expected %d notifications to match criteria for user '%s'. Found %d", numberOfNotifications, username, len(notifications))
-		for _, n := range notifications {
-			for _, c := range criteria {
-				if !c.Match(a, n) {
-					a.T.Log(c.Diff(n))
-				}
-			}
-		}
-	}
+	PrintNotificationWaitCriterionDiffs(a.T, notifications, criteria...)
 	return notifications, err
 }
 
@@ -769,7 +775,7 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationTyp
 // UntilNotificationHasConditions checks if Notification status has the given set of conditions
 func UntilNotificationHasConditions(expected ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
 	return NotificationWaitCriterion{
-		Match: func(a *HostAwaitility, actual toolchainv1alpha1.Notification) bool {
+		Match: func(actual toolchainv1alpha1.Notification) bool {
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual toolchainv1alpha1.Notification) string {
@@ -780,15 +786,24 @@ func UntilNotificationHasConditions(expected ...toolchainv1alpha1.Condition) Not
 
 // ToolchainStatusWaitCriterion a function to check that an ToolchainStatus has the expected condition
 type ToolchainStatusWaitCriterion struct {
-	Match func(*HostAwaitility, *toolchainv1alpha1.ToolchainStatus) bool
+	Match func(*toolchainv1alpha1.ToolchainStatus) bool
 	Diff  func(*toolchainv1alpha1.ToolchainStatus) string
+}
+
+func PrintToolchainStatusWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) {
+	t.Log("failed to find ToolchainStatus with matching criteria:")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			t.Log(c.Diff(actual))
+		}
+	}
 }
 
 // UntilToolchainStatusHasConditions returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has exactly all the given status conditions
 func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.ToolchainStatus) bool {
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
@@ -801,7 +816,7 @@ func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) 
 // ToolchainStatus has all members with some non-zero resource usage
 func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.ToolchainStatus) bool {
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
 			for _, member := range actual.Status.Members {
 				if !hasMemberStatusUsageSet(member.MemberStatus) {
 					return false
@@ -817,7 +832,7 @@ func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
 
 func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.ToolchainStatus) bool {
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
 			//Since all member operators currently run in the same cluster in the e2e test environment, then using the same memberCluster.Spec.APIEndpoint for all the member clusters should be fine.
 			for _, member := range actual.Status.Members {
 				// check Member field ApiEndpoint is assigned
@@ -837,7 +852,7 @@ func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCrite
 // ToolchainStatus has the given count of MasterUserRecords
 func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.ToolchainStatus) bool {
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
 			murs, ok := actual.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 			if !ok {
 				return false
@@ -875,21 +890,14 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 			return false, err
 		}
 		for _, c := range criteria {
-			if !c.Match(a, toolchainStatus) {
+			if !c.Match(toolchainStatus) {
 				return false, nil
 			}
 		}
 		return true, nil
 	})
 	// log message if an error occurred
-	if err != nil {
-		a.T.Logf("failed to find ToolchainStatus '%s' with matching criteria: %v", name, err)
-		for _, c := range criteria {
-			if !c.Match(a, toolchainStatus) {
-				a.T.Log(c.Diff(toolchainStatus))
-			}
-		}
-	}
+	PrintToolchainStatusWaitCriterionDiffs(a.T, toolchainStatus, criteria...)
 	return toolchainStatus, err
 }
 
