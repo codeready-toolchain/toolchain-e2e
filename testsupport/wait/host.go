@@ -94,7 +94,7 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 		}
 	}
 	// no match found, print the diffs
-	PrintMasterUserRecordWaitCriterionDiffs(a.T, nil, criteria...)
+	PrintMasterUserRecordWaitCriterionDiffs(a.T, &toolchainv1alpha1.MasterUserRecord{}, criteria...)
 	return nil, nil
 }
 
