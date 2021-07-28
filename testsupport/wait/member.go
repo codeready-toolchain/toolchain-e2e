@@ -135,7 +135,7 @@ func UntilUserAccountContainsCondition(condition toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions found in UserAccount '%s`", ua.Name)
 			return true
 		}
-		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
+		a.T.Logf("waiting for status condition of UserAccount '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
 		return false
 	}
 }
