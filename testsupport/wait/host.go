@@ -494,9 +494,8 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name exists and matches the given conditions
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	a.T.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
-	var tier *toolchainv1alpha1.NSTemplateTier
+	tier := &toolchainv1alpha1.NSTemplateTier{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		tier = &toolchainv1alpha1.NSTemplateTier{}
 		obj := &toolchainv1alpha1.NSTemplateTier{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
