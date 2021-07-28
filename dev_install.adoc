@@ -16,7 +16,7 @@ Install the link:required_tools.adoc[required tools].
 `export QUAY_NAMESPACE=<quay-username>`
 . Log in to quay.io using +
 `docker login quay.io`
-. Make sure that the visibility of these repositories on quay.io are all set to `public`:
+* Make sure that these repositories exist on quay.io and the visibility is set to `public` for all of them:
  * https://quay.io/repository/<quay-username>/host-operator?tab=settings
  * https://quay.io/repository/<quay-username>/host-operator-bundle?tab=settings
  * https://quay.io/repository/<quay-username>/host-operator-index?tab=settings
