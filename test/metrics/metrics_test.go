@@ -3,14 +3,12 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"testing"
 	"time"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
@@ -18,11 +16,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gofrs/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TestMetricsWhenUsersDeactivated verifies that `UserSignupsDeactivatedMetric` counter is increased when users are deactivated
+// (`UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged)
 func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
@@ -125,6 +124,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	})
 }
 
+// TestMetricsWhenUsersDeleted verifies that the `UsersPerActivationsAndDomainMetric` metric is NOT decreased when users are deleted
 func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// given
 	hostAwait, memberAwait, _ := WaitForDeployments(t)
@@ -157,6 +157,7 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "external") // same offset as above: users has been deleted but metric remains unchanged
 }
 
+// TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned
 func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	// given
@@ -165,130 +166,60 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
 
-	t.Run("ban provisioned usersignup", func(t *testing.T) {
+	// given
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
+	// Create a new UserSignup and approve it manually
+	userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+		Username("metricsbanprovisioned").
+		Email("metricsbanprovisioned@test.com").
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
+	// when creating the BannedUser resource
+	bannedUser := banUser(t, hostAwait, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+
+	// then
+	// confirm the user is banned
+	_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...))
+	require.NoError(t, err)
+	// verify the metrics
+	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
+	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
+	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
+	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
+	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
+
+	t.Run("unban the banned user", func(t *testing.T) {
 		// given
 		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
-		// Create a new UserSignup and approve it manually
-		userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, member2Await).
-			Username("metricsbanprovisioned").
-			Email("metricsbanprovisioned@test.com").
-			ManuallyApprove().
-			EnsureMUR().
-			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().Resources()
 
-		// when creating the BannedUser resource
-		bannedUser := banUser(t, hostAwait, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
-
-		// then
-		// confirm the user is banned
-		_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...))
-		require.NoError(t, err)
-		// verify the metrics
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1)
-		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
-
-		t.Run("unban the banned user", func(t *testing.T) {
-			// given
-			metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-
-			// when unbaning the user
-			err = hostAwait.Client.Delete(context.TODO(), bannedUser)
-			require.NoError(t, err)
-
-			// then
-			// confirm the BannedUser resource is deleted
-			err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
-			require.NoError(t, err)
-			// verify the metrics
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)         // unchanged: user signup already existed
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // user approved
-			metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)   // unchanged: banneduser already existed
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user provisioned on member1
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
-		})
-	})
-
-	t.Run("manually created usersignup with preexisting banneduser", func(t *testing.T) {
-		// given
-		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
-		id := uuid.Must(uuid.NewV4()).String()
-		email := "testuser" + id + "@test.com"
-		banUser(t, hostAwait, email)
-
-		// when creating the usersignup directly (not via the registration service)
-		userSignup := NewUserSignup(t, hostAwait, "testuser"+id, email)
-		userSignup.Spec.TargetCluster = memberAwait.ClusterName
-		err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
+		// when unbaning the user
+		err = hostAwait.Client.Delete(context.TODO(), bannedUser)
 		require.NoError(t, err)
 
 		// then
-		// check the UserSignup is created
-		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name)
+		// confirm the BannedUser resource is deleted
+		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
 		require.NoError(t, err)
-		// confirm that the user is banned
-		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
-		mur, err := hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
-		require.NoError(t, err)
-		assert.Nil(t, mur)
 		// verify the metrics
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 0) // not provisioned because banned before signup
-		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
+		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)         // unchanged: user signup already existed
+		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // user approved
+		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)   // unchanged: banneduser already existed
+		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user provisioned on member1
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 	})
-
-	t.Run("register new user with preexisting ban", func(t *testing.T) {
-		// given
-		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
-		id := uuid.Must(uuid.NewV4()).String()
-		email := "testuser" + id + "@test.com"
-		banUser(t, hostAwait, email)
-		// get valid generated token for e2e tests. IAT claim is overridden
-		// to avoid token used before issued error.
-		identity0 := authsupport.NewIdentity()
-		emailClaim0 := authsupport.WithEmailClaim(email)
-		token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
-		require.NoError(t, err)
-		route := hostAwait.RegistrationServiceURL
-
-		// when calling the signup endpoint with a valid token to initiate a signup process
-		req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
-		require.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer "+token0)
-		req.Header.Set("content-type", "application/json")
-		resp, err := HTTPClient.Do(req)
-
-		// then
-		require.NoError(t, err)
-		defer Close(t, resp)
-		// verify the metrics
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 0) // not provisioned because banned before signup
-		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)   // banneduser resource was created before signup
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
-	})
-
 }
 
+// TestMetricsWhenUserDisabled verifies that there is no impact on metrics when a user is re-enabled after being disabled
 func TestMetricsWhenUserDisabled(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
@@ -303,6 +234,13 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	// Get MasterUserRecord
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
 	require.NoError(t, err)
+	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
+	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // approved
+	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
+	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
+	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user is on member1
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 
 	// when disabling MUR
 	_, err = hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -313,7 +251,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	// then
 	// verify the metrics
 	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
-	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // approved even though (temporarily) disabled
+	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // still approved even though (temporarily) disabled
 	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
