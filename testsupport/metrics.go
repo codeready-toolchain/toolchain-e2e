@@ -21,7 +21,7 @@ type metricsProvider interface {
 	GetMetricValue(family string, labels ...string) float64
 	GetMetricValueOrZero(family string, labels ...string) float64
 	WaitForTestResourcesCleanup(initialDelay time.Duration) error
-	AssertMetricReachesValue(family string, expectedValue float64, labels ...string)
+	WaitUntiltMetricHasValue(family string, expectedValue float64, labels ...string)
 }
 
 // metric constants
@@ -86,7 +86,7 @@ func (m *MetricsAssertionHelper) WaitForMetricDelta(family string, delta float64
 	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
 	key := m.baselineKey(string(family), labels...)
 	adjustedValue := m.baselineValues[key] + delta
-	m.await.AssertMetricReachesValue(string(family), adjustedValue, labels...)
+	m.await.WaitUntiltMetricHasValue(string(family), adjustedValue, labels...)
 }
 
 // generates a key to retain the baseline metric value, by joining the metric name and its labels.
