@@ -56,12 +56,16 @@ Note #2: Only resources that a user has permissions to create will be successful
 . Complete the following steps:
 * Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
 * Log in to the quay.io using `docker login quay.io`
-* Make sure that the visibility of the `host-operator`, `member-operator`, `member-operator-webhook` and `registration-service` repositories on quay.io is set to `public`:
- ** https://quay.io/repository/<your-username>/host-operator?tab=settings
- ** https://quay.io/repository/<your-username>/member-operator?tab=settings
- ** https://quay.io/repository/<your-username>/member-operator-webhook?tab=settings
- ** https://quay.io/repository/<your-username>/registration-service?tab=settings
-* Log in to the target OpenShift 4.6+ cluster with cluster admin privileges using `oc login`
+* Make sure that these repositories exist on quay.io and the visibility is set to `public` for all of them:
+ ** https://quay.io/repository/<quay-username>/host-operator?tab=settings
+ ** https://quay.io/repository/<quay-username>/host-operator-bundle?tab=settings
+ ** https://quay.io/repository/<quay-username>/host-operator-index?tab=settings
+ ** https://quay.io/repository/<quay-username>/member-operator?tab=settings
+ ** https://quay.io/repository/<quay-username>/member-operator-webhook?tab=settings
+ ** https://quay.io/repository/<quay-username>/member-operator-bundle?tab=settings
+ ** https://quay.io/repository/<quay-username>/member-operator-index?tab=settings
+ ** https://quay.io/repository/<quay-username>/registration-service?tab=settings
+* Log in to the target OpenShift 4.7+ cluster with cluster admin privileges using `oc login`
 
 == Dev Sandbox Setup
 
@@ -69,7 +73,7 @@ Note #2: Only resources that a user has permissions to create will be successful
 `+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
 . Run the following to install the Dev Sandbox operators +
 `make dev-deploy-e2e`
-. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
+. Run `oc get toolchainstatus -n toolchain-host-operator` and ensure the Ready status is `True`
 +
 ```
 NAME               MURS   READY   LAST UPDATED
