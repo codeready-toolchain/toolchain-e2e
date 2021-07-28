@@ -25,6 +25,7 @@ const (
 	// tier names
 	base                     = "base"
 	baseextended             = "baseextended"
+	baseextendedidling       = "baseextendedidling"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	advanced                 = "advanced"
 	team                     = "team"
@@ -50,6 +51,9 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case baseextended:
 		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
+
+	case baseextendedidling:
+		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
 
 	case basedeactivationdisabled:
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
@@ -122,7 +126,7 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaRHOASOperatorCRs(),
 		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(11),
-		idlers("dev", "stage"))
+		idlers(43200, "dev", "stage"))
 }
 
 type baseextendedTierChecks struct {
@@ -131,6 +135,27 @@ type baseextendedTierChecks struct {
 
 func (a *baseextendedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{nsTemplateTier(a.tierName, 180)}
+}
+
+type baseextendedidlingTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(a.tierName,
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(11),
+		idlers(86400, "dev", "stage"))
 }
 
 type basedeactivationdisabledTierChecks struct {
@@ -476,14 +501,14 @@ func clusterObjectsChecks(tierName string, checkCreator ...clusterObjectsCheckCr
 	return checks
 }
 
-func idlers(namespaceTypes ...string) clusterObjectsCheckCreator {
+func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCreator {
 	return func(tierName string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 			for _, nt := range namespaceTypes {
 				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierName))
 				require.NoError(t, err)
 				assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-				assert.Equal(t, int32(43200), idler.Spec.TimeoutSeconds)
+				assert.Equal(t, int32(timeoutSeconds), idler.Spec.TimeoutSeconds)
 			}
 
 			// Make sure there is no unexpected idlers

@@ -26,7 +26,7 @@ set_tags() {
     if [[ -n "${CI}${CLONEREFS_OPTIONS}" ]]; then
         if [[ -n ${GITHUB_ACTIONS} ]]; then
             OPERATOR_REPO_NAME=${GITHUB_REPOSITORY##*/}
-            TAGS=from.${GITHUB_ACTOR}.${OPERATOR_REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
+            TAGS=from.${AUTHOR}.${OPERATOR_REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
         else
             AUTHOR=$(jq -r '.refs[0].pulls[0].author' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
             PULL_PULL_SHA=${PULL_PULL_SHA:-$(jq -r '.refs[0].pulls[0].sha' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')}
@@ -90,7 +90,7 @@ Note: If you have already deleted the unrelated branch from your fork, it can ta
             # retrieve the branch name
             BRANCH_NAME=$(echo ${BRANCH_REF} | awk -F'/' '{print $3}')
         else
-            AUTHOR_LINK=https://github.com/${GITHUB_ACTOR}
+            AUTHOR_LINK=https://github.com/${AUTHOR}
             BRANCH_REF=refs/heads/${GITHUB_HEAD_REF}
             BRANCH_NAME=${GITHUB_HEAD_REF}
             REPO_URL=${AUTHOR_LINK}/toolchain-e2e
