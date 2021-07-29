@@ -77,7 +77,9 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 		return true, nil
 	})
 	// no match found, print the diffs
-	PrintMasterUserRecordWaitCriterionDiffs(a.T, mur, criteria...)
+	if err != nil {
+		PrintMasterUserRecordWaitCriterionDiffs(a.T, mur, criteria...)
+	}
 	return mur, err
 }
 
@@ -164,8 +166,8 @@ func (a *HostAwaitility) UpdateUserSignupSpec(userSignupName string, modifyUserS
 
 // MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
 type MasterUserRecordWaitCriterion struct {
-	Match func(mur *toolchainv1alpha1.MasterUserRecord) bool
-	Diff  func(mur *toolchainv1alpha1.MasterUserRecord) string
+	Match func(*toolchainv1alpha1.MasterUserRecord) bool
+	Diff  func(*toolchainv1alpha1.MasterUserRecord) string
 }
 
 func PrintMasterUserRecordWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) {
@@ -368,8 +370,10 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 		userSignup = obj
 		return true, nil
 	})
-	// no match found, print the diffs
-	PrintUserSignupWaitCriterionDiffs(a.T, userSignup, criteria...)
+	if err != nil {
+		// no match found, print the diffs
+		PrintUserSignupWaitCriterionDiffs(a.T, userSignup, criteria...)
+	}
 	return userSignup, err
 }
 
@@ -516,7 +520,9 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 		tier = obj
 		return true, nil
 	})
-	PrintNSTemplateTierWaitCriterionDiffs(a.T, tier, criteria...)
+	if err != nil {
+		PrintNSTemplateTierWaitCriterionDiffs(a.T, tier, criteria...)
+	}
 	require.NoError(a.T, err)
 
 	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
@@ -753,7 +759,9 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		return true, nil
 	})
 	// log message if an error occurred
-	PrintNotificationWaitCriterionDiffs(a.T, notifications, criteria...)
+	if err != nil {
+		PrintNotificationWaitCriterionDiffs(a.T, notifications, criteria...)
+	}
 	return notifications, err
 }
 
@@ -896,7 +904,9 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 		return true, nil
 	})
 	// log message if an error occurred
-	PrintToolchainStatusWaitCriterionDiffs(a.T, toolchainStatus, criteria...)
+	if err != nil {
+		PrintToolchainStatusWaitCriterionDiffs(a.T, toolchainStatus, criteria...)
+	}
 	return toolchainStatus, err
 }
 
