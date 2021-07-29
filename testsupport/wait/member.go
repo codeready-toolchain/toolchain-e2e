@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -71,39 +73,69 @@ func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwait
 }
 
 // UserAccountWaitCriterion a function to check that a user account has the expected condition
-type UserAccountWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool
+type UserAccountWaitCriterion struct {
+	Match func(*toolchainv1alpha1.UserAccount) bool
+	Diff  func(*toolchainv1alpha1.UserAccount) string
+}
+
+func MatchUserAccountWaitCriterion(actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func SprintUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find UserAccount with matching criteria:\n")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
 
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
-	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		userAccount := ua.DeepCopy()
-		userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
-		expectedSpec := expected.DeepCopy()
-		expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
-		return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			userAccount := actual.DeepCopy()
+			userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			expectedSpec := expected.DeepCopy()
+			expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
+		},
 	}
 }
 
 // UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which loads the existing MUR
 // and compares the first UserAccountSpecEmbedded in the MUR with the actual UserAccount spec
 func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitCriterion {
-	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(ua.Name))
-		if err != nil {
-			return false
-		}
-		return ua.Spec.UserID == mur.Spec.UserID &&
-			ua.Spec.Disabled == mur.Spec.Disabled &&
-			reflect.DeepEqual(ua.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(actual.Name))
+			if err != nil {
+				return false
+			}
+			return actual.Spec.UserID == mur.Spec.UserID &&
+				actual.Spec.Disabled == mur.Spec.Disabled &&
+				reflect.DeepEqual(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
+		},
 	}
 }
 
 // UntilUserAccountHasConditions returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount has exactly all the given status conditions
 func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
-	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
-		return test.ConditionsMatch(ua.Status.Conditions, conditions...)
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, conditions...)
+		},
 	}
 }
 
@@ -119,32 +151,69 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 			}
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
-			}
+		if !MatchUserAccountWaitCriterion(obj, criteria...) {
+			// keep waiting
+			return false, nil
 		}
 		userAccount = obj
 		return true, nil
 	})
+	// no match found, print the diffs
+	if err != nil {
+		a.T.Log(SprintUserAccountWaitCriterionDiffs(userAccount, criteria...))
+	}
 	return userAccount, err
 }
 
 // NSTemplateSetWaitCriterion a function to check that an NSTemplateSet has the expected condition
-type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.NSTemplateSet) bool
+type NSTemplateSetWaitCriterion struct {
+	Match func(*toolchainv1alpha1.NSTemplateSet) bool
+	Diff  func(*toolchainv1alpha1.NSTemplateSet) string
+}
+
+func MatchNSTemplateSetWaitCriterion(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func SprintNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
 
 // UntilNSTemplateSetHasConditions returns a `NSTemplateSetWaitCriterion` which checks that the given
 // NSTemlateSet has exactly all the given status conditions
-func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
-	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
-		return test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...)
+func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+		},
 	}
 }
 
 // UntilNSTemplateSetHasTier checks if the NSTemplateTier has the expected tierName
-func UntilNSTemplateSetHasTier(tier string) NSTemplateSetWaitCriterion {
-	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
-		return nsTmplSet.Spec.TierName == tier
+func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return actual.Spec.TierName == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected tier name to be '%s', but it was '%s'", expected, actual.Spec.TierName)
+		},
 	}
 }
 
@@ -160,29 +229,31 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 			}
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, obj) {
-				return false, nil
-			}
+		if !MatchNSTemplateSetWaitCriterion(obj, criteria...) {
+			// keep waiting
+			return false, nil
 		}
 		nsTmplSet = obj
 		return true, nil
 	})
+	// no match found, print the diffs
+	if err != nil {
+		a.T.Log(SprintNSTemplateSetWaitCriterionDiffs(nsTmplSet, criteria...))
+	}
 	return nsTmplSet, err
 }
 
 // WaitUntilNSTemplateSetDeleted waits until the NSTemplateSet with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
+	a.T.Logf("waiting for until NSTemplateSet '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, nsTmplSet); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("deleted NSTemplateSet '%s'", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting for deletion of NSTemplateSet '%s'", name)
 		return false, nil
 	})
 }
@@ -229,6 +300,7 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*corev1.Names
 		return true, nil
 	})
 	if err != nil {
+		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s", username, ref)
 		return nil, err
 	}
 	ns := namespaceList.Items[0]
@@ -254,6 +326,10 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name 
 		roleBinding = obj
 		return true, nil
 	})
+	if err != nil {
+		a.T.Logf("failed to wait for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
+		return nil, err
+	}
 	return roleBinding, err
 }
 
@@ -276,6 +352,9 @@ func (a *MemberAwaitility) WaitForLimitRange(namespace *corev1.Namespace, name s
 		lr = obj
 		return true, nil
 	})
+	if err != nil {
+		a.T.Logf("failed to wait for LimitRange '%s' in namespace '%s'", name, namespace.Name)
+	}
 	return lr, err
 }
 
@@ -298,6 +377,9 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *corev1.Namespace, nam
 		np = obj
 		return true, nil
 	})
+	if err != nil {
+		a.T.Logf("failed to wait for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
+	}
 	return np, err
 }
 
@@ -320,15 +402,42 @@ func (a *MemberAwaitility) WaitForRole(namespace *corev1.Namespace, name string)
 		role = obj
 		return true, nil
 	})
+	if err != nil {
+		a.T.Logf("failed to wait for Role '%s' in namespace '%s'", name, namespace.Name)
+	}
 	return role, err
 }
 
 // ClusterResourceQuotaWaitCriterion a function to check that an ClusterResourceQuota has the expected criteria
-type ClusterResourceQuotaWaitCriterion func(a *MemberAwaitility, quota quotav1.ClusterResourceQuota) bool
+type ClusterResourceQuotaWaitCriterion struct {
+	Match func(*quotav1.ClusterResourceQuota) bool
+	Diff  func(*quotav1.ClusterResourceQuota) string
+}
+
+func MatchClusterResourceQuotaWaitCriteria(actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func SprintClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
 
 // WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
 func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...ClusterResourceQuotaWaitCriterion) (*quotav1.ClusterResourceQuota, error) {
-	a.T.Logf("waiting for ClusterResourceQuota '%s'", name)
+	a.T.Logf("waiting for ClusterResourceQuota '%s' to match criteria", name)
 	quota := &quotav1.ClusterResourceQuota{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &quotav1.ClusterResourceQuota{}
@@ -343,38 +452,77 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 			}
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, *obj) {
-				return false, nil
-			}
-		}
 		quota = obj
+		if !MatchClusterResourceQuotaWaitCriteria(obj, criteria...) {
+			// keep waiting
+			return false, nil
+		}
 		return true, nil
 	})
+	if err != nil {
+		// no match found, print the diffs
+		a.T.Log(SprintClusterResourceQuotaWaitCriterionDiffs(quota, criteria...))
+	}
 	return quota, err
 }
 
 // IdlerWaitCriterion a function to check that an Idler has the expected condition
-type IdlerWaitCriterion func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool
+type IdlerWaitCriterion struct {
+	Match func(*toolchainv1alpha1.Idler) bool
+	Diff  func(*toolchainv1alpha1.Idler) string
+}
+
+func MatchIdlerWaitCriteria(actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) bool {
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func SprintIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find Idler with matching criteria:\n")
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
 
 // IdlerConditions returns a `IdlerWaitCriterion` which checks that the given
 // Idler has exactly all the given status conditions
-func IdlerConditions(conditions ...toolchainv1alpha1.Condition) IdlerWaitCriterion {
-	return func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool {
-		return test.ConditionsMatch(idler.Status.Conditions, conditions...)
+func IdlerConditions(expected ...toolchainv1alpha1.Condition) IdlerWaitCriterion {
+	return IdlerWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Idler) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.Idler) string {
+			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+		},
 	}
 }
 
 // IdlerHasTier checks if the Idler has the given tier name set as a label
-func IdlerHasTier(tierName string) IdlerWaitCriterion {
-	return func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool {
-		return idler.Labels != nil && tierName == idler.Labels["toolchain.dev.openshift.com/tier"]
+func IdlerHasTier(expected string) IdlerWaitCriterion {
+	return IdlerWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Idler) bool {
+			return actual.Labels != nil && expected == actual.Labels["toolchain.dev.openshift.com/tier"]
+		},
+		Diff: func(actual *toolchainv1alpha1.Idler) string {
+			return fmt.Sprintf("expected Idler 'toolchain.dev.openshift.com/tier' label to be '%s' but it was '%s'", expected, actual.Labels["toolchain.dev.openshift.com/tier"])
+		},
 	}
 }
 
 // WaitForIdler waits until an Idler with the given name exists
 func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
-	a.T.Logf("waiting for Idler '%s'", name)
+	a.T.Logf("waiting for Idler '%s' to match criteria", name)
 	idler := &toolchainv1alpha1.Idler{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Idler{}
@@ -388,14 +536,17 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 			}
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, *obj) {
-				return false, nil
-			}
-		}
 		idler = obj
+		if !MatchIdlerWaitCriteria(obj, criteria...) {
+			// keep waiting
+			return false, nil
+		}
 		return true, nil
 	})
+	if err != nil {
+		// no match found, print the diffs
+		a.T.Log(SprintIdlerWaitCriteriaDiffs(idler, criteria...))
+	}
 	return idler, err
 }
 
@@ -431,17 +582,42 @@ func (a *MemberAwaitility) Create(obj client.Object) error {
 }
 
 // PodWaitCriterion a function to check that a Pod has the expected condition
-type PodWaitCriterion func(a *MemberAwaitility, pod corev1.Pod) bool
+type PodWaitCriterion struct {
+	Match func(*corev1.Pod) bool
+	Diff  func(*corev1.Pod) string
+}
+
+func MatchPodWaitCriterion(actual *corev1.Pod, criteria ...PodWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func SprintPodWaitCriterionDiffs(actual *corev1.Pod, criteria ...PodWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find Pod with matching criteria:\n")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
 
 // WaitForPod waits until a pod with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWaitCriterion) (corev1.Pod, error) {
+func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWaitCriterion) (*corev1.Pod, error) {
 	a.T.Logf("waiting for Pod '%s' in namespace '%s' with matching criteria", name, namespace)
-	pod := corev1.Pod{}
+	var pod *corev1.Pod
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.Pod{}
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: namespace,
 			Name:      name,
-		}, &pod); err != nil {
+		}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				// loop again
 				return false, nil
@@ -449,14 +625,17 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 			// exit
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, pod) {
-				// skip as soon as one criterion does not match
-				return false, nil
-			}
+		pod = obj
+		if !MatchPodWaitCriterion(obj, criteria...) {
+			// keep waiting
+			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		// no match found, print the diffs
+		a.T.Log(SprintPodWaitCriterionDiffs(pod, criteria...))
+	}
 	return pod, err
 }
 
@@ -472,11 +651,9 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 		}
 	pods:
 		for _, p := range foundPods.Items {
-			for _, match := range criteria {
-				if !match(a, p) {
-					// skip as soon as one criterion does not match
-					continue pods
-				}
+			if !MatchPodWaitCriterion(&p, criteria...) {
+				// skip of criteria do not match
+				continue pods
 			}
 			pod := p // copy
 			pds = append(pds, pod)
@@ -518,11 +695,9 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...Po
 			return true, nil
 		}
 		for _, p := range foundPods.Items {
-			for _, match := range criteria {
-				if !match(a, p) {
-					a.T.Logf("waiting for pods in namespace %s with a specific criterion to be deleted. Found pod which matches the criterion: '%s'. All available pods: '%s'", namespace, a.formatPod(p), a.listPods(*foundPods))
-					return false, nil
-				}
+			if !MatchPodWaitCriterion(&p, criteria...) {
+				// keep waiting
+				return false, nil
 			}
 		}
 		return true, nil
@@ -536,53 +711,79 @@ func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
 		obj := &corev1.Pod{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("deleted Pod with name %s", name)
 				return true, nil
 			}
 			return false, err
 		}
-		a.T.Logf("waiting for deletion of Pod with name '%s' in namespace %s", name, namespace)
 		return false, nil
 	})
 }
 
 // PodRunning checks if the Pod in the running phase
 func PodRunning() PodWaitCriterion {
-	return func(a *MemberAwaitility, pod corev1.Pod) bool {
-		return pod.Status.Phase == corev1.PodRunning
+	return PodWaitCriterion{
+		Match: func(actual *corev1.Pod) bool {
+			return actual.Status.Phase == corev1.PodRunning
+		},
+		Diff: func(actual *corev1.Pod) string {
+			return fmt.Sprintf("expected Pod to be 'Running', but it was '%s'", actual.Status.Phase)
+		},
 	}
 }
 
 // WithPodName checks if the Pod has the expected name
-func WithPodName(name string) PodWaitCriterion {
-	return func(a *MemberAwaitility, pod corev1.Pod) bool {
-		return pod.Name == name
+func WithPodName(expected string) PodWaitCriterion {
+	return PodWaitCriterion{
+		Match: func(actual *corev1.Pod) bool {
+			return actual.Name == expected
+		},
+		Diff: func(actual *corev1.Pod) string {
+			return fmt.Sprintf("expected Pod to be name '%s', but it was '%s'", expected, actual.Name)
+		},
 	}
 }
 
 // WithPodLabel checks if the Pod has the expected label
 func WithPodLabel(key, value string) PodWaitCriterion {
-	return func(a *MemberAwaitility, pod corev1.Pod) bool {
-		return pod.Labels[key] == value
+	return PodWaitCriterion{
+		Match: func(actual *corev1.Pod) bool {
+			return actual.Labels[key] == value
+		},
+		Diff: func(actual *corev1.Pod) string {
+			return fmt.Sprintf("expected Pod label '%s' to be '%s', but it was '%s'", key, value, actual.Labels[key])
+		},
 	}
 }
 
 func WithSandboxPriorityClass() PodWaitCriterion {
-	return func(a *MemberAwaitility, pod corev1.Pod) bool {
-		return checkPriorityClass(pod, "sandbox-users-pods", -3)
+	return PodWaitCriterion{
+		Match: func(actual *corev1.Pod) bool {
+			return checkPriorityClass(actual, "sandbox-users-pods", -3)
+		},
+		Diff: func(actual *corev1.Pod) string {
+			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods'/'-3', but it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+		},
 	}
 }
 
 func WithOriginalPriorityClass() PodWaitCriterion {
-	return func(a *MemberAwaitility, pod corev1.Pod) bool {
-		if pod.Name != "idler-test-pod-1" {
-			return checkPriorityClass(pod, "", 0)
-		}
-		return checkPriorityClass(pod, "system-cluster-critical", 2000000000)
+	return PodWaitCriterion{
+		Match: func(actual *corev1.Pod) bool {
+			if actual.Name != "idler-test-pod-1" {
+				return checkPriorityClass(actual, "", 0)
+			}
+			return checkPriorityClass(actual, "system-cluster-critical", 2000000000)
+		},
+		Diff: func(actual *corev1.Pod) string {
+			if actual.Name != "idler-test-pod-1" {
+				return fmt.Sprintf("expected priorityClass to be '(unamed)'/'0', but it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+			}
+			return fmt.Sprintf("expected priorityClass to be 'system-cluster-critical'/'2000000000', but it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+		},
 	}
 }
 
-func checkPriorityClass(pod corev1.Pod, name string, priority int) bool {
+func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
 	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
 }
 
@@ -599,7 +800,6 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) 
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
 		}
-
 		if len(namespaceList.Items) < 1 {
 			return true, nil
 		}
@@ -719,21 +919,55 @@ func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string
 }
 
 // MemberStatusWaitCriterion a function to check that an MemberStatus has the expected condition
-type MemberStatusWaitCriterion func(*MemberAwaitility, *toolchainv1alpha1.MemberStatus) bool
+type MemberStatusWaitCriterion struct {
+	Match func(*toolchainv1alpha1.MemberStatus) bool
+	Diff  func(*toolchainv1alpha1.MemberStatus) string
+}
+
+func MatchMemberStatusWaitCriterion(actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func SprintMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find MemberStatus with matching criteria:\n")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
 
 // UntilMemberStatusHasConditions returns a `MemberStatusWaitCriterion` which checks that the given
 // MemberStatus has exactly all the given status conditions
-func UntilMemberStatusHasConditions(conditions ...toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
-	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
-		return test.ConditionsMatch(memberStatus.Status.Conditions, conditions...)
+func UntilMemberStatusHasConditions(expected ...toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
+	return MemberStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MemberStatus) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+		},
 	}
 }
 
 // UntilMemberStatusHasUsageSet returns a `MemberStatusWaitCriterion` which checks that the given
 // MemberStatus has some non-zero resource usage set
 func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
-	return func(a *MemberAwaitility, memberStatus *toolchainv1alpha1.MemberStatus) bool {
-		return hasMemberStatusUsageSet(memberStatus.Status)
+	return MemberStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MemberStatus) bool {
+			return hasMemberStatusUsageSet(actual.Status)
+		},
+		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
+			return fmt.Sprintf("expected MemberStatus to have 'master' and 'worker' usages set: %v", actual.Status.ResourceUsage.MemoryUsagePerNodeRole)
+		},
 	}
 }
 
@@ -744,16 +978,17 @@ func hasMemberStatusUsageSet(status toolchainv1alpha1.MemberStatusStatus) bool {
 
 // UntilMemberStatusHasConsoleURLSet returns a `MemberStatusWaitCriterion` which checks that the given
 // MemberStatus has a non-empty console url set
-func UntilMemberStatusHasConsoleURLSet(expectedURL string, condition toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
-	return func(awaitility *MemberAwaitility, status *toolchainv1alpha1.MemberStatus) bool {
-		return hasMemberStatusConsoleURLSet(expectedURL, condition, status.Status)
+func UntilMemberStatusHasConsoleURLSet(expectedURL string, expectedCondition toolchainv1alpha1.Condition) MemberStatusWaitCriterion {
+	return MemberStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MemberStatus) bool {
+			return actual.Status.Routes != nil &&
+				actual.Status.Routes.ConsoleURL == expectedURL &&
+				test.ConditionsMatch(actual.Status.Routes.Conditions, expectedCondition)
+		},
+		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
+			return fmt.Sprintf("expected MemberStatus route for Console to be '%s' with condition '%v', but it was: %s", expectedURL, spew.Sdump(expectedCondition), spew.Sdump(actual.Status.Routes))
+		},
 	}
-}
-
-func hasMemberStatusConsoleURLSet(expectedURL string, condition toolchainv1alpha1.Condition, memberStatus toolchainv1alpha1.MemberStatusStatus) bool {
-	return memberStatus.Routes != nil &&
-		memberStatus.Routes.ConsoleURL == expectedURL &&
-		test.ConditionsMatch(memberStatus.Routes.Conditions, condition)
 }
 
 // WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any
@@ -761,28 +996,33 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 	name := "toolchain-member-status"
 	a.T.Logf("waiting for MemberStatus '%s' to match criteria", name)
 	// there should only be one member status with the name toolchain-member-status
-	return wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	var memberStatus *toolchainv1alpha1.MemberStatus
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		// retrieve the memberstatus from the member namespace
-		memberStatus := toolchainv1alpha1.MemberStatus{}
+		obj := &toolchainv1alpha1.MemberStatus{}
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
 			},
-			&memberStatus)
+			obj)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		for _, match := range criteria {
-			if !match(a, &memberStatus) {
-				return false, nil
-			}
+		memberStatus = obj
+		if !MatchMemberStatusWaitCriterion(obj, criteria...) {
+			// keep waiting
+			return false, nil
 		}
 		return true, nil
 	})
+	if err != nil {
+		a.T.Log(SprintMemberStatusWaitCriterionDiffs(memberStatus))
+	}
+	return err
 }
 
 // GetMemberOperatorConfig returns MemberOperatorConfig instance, nil if not found

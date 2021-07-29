@@ -68,11 +68,11 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 			}
 			return false, err
 		}
+		mur = obj
 		if !MatchMasterUserRecordWaitCriterion(obj, criteria...) {
 			// keep waiting
 			return false, nil
 		}
-		mur = obj
 		return true, nil
 	})
 	// no match found, print the diffs
@@ -178,7 +178,7 @@ func MatchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserReco
 
 func SprintMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) string {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find MasterUserRecord with matching criteria\n")
+	buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			buf.WriteString(c.Diff(actual))
@@ -291,7 +291,7 @@ func MatchUserSignupWaitCriterion(actual *toolchainv1alpha1.UserSignup, criteria
 
 func SprintUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) string {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find UserSignup with matching criteria\n")
+	buf.WriteString("failed to find UserSignup with matching criteria:\n")
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			buf.WriteString(c.Diff(actual))
@@ -383,11 +383,11 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 			}
 			return false, err
 		}
+		userSignup = obj
 		if !MatchUserSignupWaitCriterion(userSignup, criteria...) {
 			// keep waiting
 			return false, nil
 		}
-		userSignup = obj
 		return true, nil
 	})
 	if err != nil {
@@ -399,8 +399,8 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.BannedUser, error) {
-	var bannedUser *toolchainv1alpha1.BannedUser
 	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
+	var bannedUser *toolchainv1alpha1.BannedUser
 	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email)}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
@@ -426,7 +426,6 @@ func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
 	toolchainstatus := &toolchainv1alpha1.ToolchainStatus{}
 	if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, toolchainstatus); err != nil {
 		if errors.IsNotFound(err) {
-			a.T.Logf("ToolchainStatus is already deleted '%s'", name)
 			return nil
 		}
 		return err
@@ -529,12 +528,11 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 			// keep waiting
 			return false, nil
 		}
+		tier = obj
 		if !MatchNSTemplateTierWaitCriterion(obj, criteria...) {
 			// keep waiting
 			return false, nil
 		}
-		// stop waiting
-		tier = obj
 		return true, nil
 	})
 	if err != nil {
@@ -567,16 +565,14 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 // Returns an error if the resource did not exist (or something wrong happened)
 func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint: unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
+	a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
 		obj := &toolchainv1alpha1.TierTemplate{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
-			a.T.Logf("TierTemplate '%s' could not be fetched", name)
 			// return the error
 			return false, err
 		} else if errors.IsNotFound(err) {
-			a.T.Logf("waiting for TierTemplate '%s' '%s'", name, a.Namespace)
 			// keep waiting
 			return false, nil
 		}
@@ -791,11 +787,11 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		if numberOfNotifications != actualNotificationCount {
 			return false, nil
 		}
+		notifications = notificationList.Items
 		if !MatchNotificationWaitCriterion(notificationList.Items, criteria...) {
 			// keep waiting
 			return false, nil
 		}
-		notifications = notificationList.Items
 		return true, nil
 	})
 	// log message if an error occurred
@@ -934,20 +930,21 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 	name := "toolchain-status"
 	toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		toolchainStatus = &toolchainv1alpha1.ToolchainStatus{}
+		obj := &toolchainv1alpha1.ToolchainStatus{}
 		// retrieve the toolchainstatus from the host namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
 			},
-			toolchainStatus)
+			obj)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
+		toolchainStatus = obj
 		if !MatchToolchainStatusWaitCriterion(toolchainStatus, criteria...) {
 			// keep waiting
 			return false, nil

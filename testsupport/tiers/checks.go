@@ -8,6 +8,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/davecgh/go-spew/spew"
 
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
@@ -733,19 +734,24 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
-	expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
-		Selector: quotav1.ClusterResourceQuotaSelector{
-			AnnotationSelector: map[string]string{
-				"openshift.io/requester": userName,
-			},
+	return wait.ClusterResourceQuotaWaitCriterion{
+		Match: func(actual *quotav1.ClusterResourceQuota) bool {
+			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
+				Selector: quotav1.ClusterResourceQuotaSelector{
+					AnnotationSelector: map[string]string{
+						"openshift.io/requester": userName,
+					},
+				},
+				Quota: v1.ResourceQuotaSpec{
+					Hard: hard,
+				},
+			}
+			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
+				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
-		Quota: v1.ResourceQuotaSpec{
-			Hard: hard,
+		Diff: func(actual *quotav1.ClusterResourceQuota) string {
+			return fmt.Sprintf("expected ClusterResourceQuota to match: %s/%s/%s\nactual: %s", userName, tierName, spew.Sdump(hard), spew.Sdump(actual))
 		},
-	}
-	return func(a *wait.MemberAwaitility, actual quotav1.ClusterResourceQuota) bool {
-		return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
-			reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 	}
 }
 
