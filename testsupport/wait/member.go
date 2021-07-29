@@ -667,22 +667,6 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 	return pods, err
 }
 
-func (a *MemberAwaitility) listPods(pods corev1.PodList) string {
-	return a.listPodsAsArray(pods.Items)
-}
-
-func (a *MemberAwaitility) listPodsAsArray(pods []corev1.Pod) string {
-	var s string
-	for _, p := range pods {
-		s = fmt.Sprintf("%s\n%s", s, a.formatPod(p))
-	}
-	return s
-}
-
-func (a *MemberAwaitility) formatPod(pod corev1.Pod) string {
-	return fmt.Sprintf("Name: %s; Namespace: %s; Labels: %v; Phase: %s", pod.Name, pod.Namespace, pod.Labels, pod.Status.Phase)
-}
-
 // WaitUntilPodsDeleted waits until the pods are deleted from the given namespace
 func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...PodWaitCriterion) error {
 	a.T.Logf("waiting until Pods with matching criteria in namespace '%s' are deleted", namespace)
