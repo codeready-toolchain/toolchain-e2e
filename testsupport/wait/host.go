@@ -293,7 +293,7 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration)
 				a.T.Logf("UserSignup is being deleted: %s", us.Name)
 				return false, nil
 			}
-			a.T.Logf("UserSignup is not being deleted: %+v", us.Name)
+			a.T.Logf("UserSignup is not being deleted: %s", us.Name)
 		}
 
 		murList := &toolchainv1alpha1.MasterUserRecordList{}
