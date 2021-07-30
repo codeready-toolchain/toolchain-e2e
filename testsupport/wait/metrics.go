@@ -79,7 +79,8 @@ func getMetricValue(restConfig *rest.Config, url string, family string, expected
 			}
 		}
 	}
-	return -1, fmt.Errorf("metric '%s{%v}' not found", family, expectedLabels)
+	// here we can return `0` is the metric does not exist, which may be valid if the expected value is `0`, too.
+	return 0, fmt.Errorf("metric '%s{%v}' not found", family, expectedLabels)
 }
 
 func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {

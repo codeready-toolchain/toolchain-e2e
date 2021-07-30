@@ -271,7 +271,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 		}
 		// verify that the endpoint gives a `200 OK` response on a GET request
 		client := http.Client{
-			Timeout: time.Duration(1 * time.Second),
+			Timeout: time.Duration(5 * time.Second), // because sometimes the network connection may be a bit slow
 		}
 		var request *http.Request
 
@@ -296,7 +296,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 		resp, err := client.Do(request)
 		if err, ok := err.(*url.Error); ok && err.Timeout() {
 			// keep waiting if there was a timeout: the endpoint is not available yet (pod is still re-starting)
-			a.T.Logf("Waiting for availability of route '%s' in namespace '%s' (endpoint timeout)...\n", name, ns)
+			a.T.Logf("Waiting for availability of route '%s' in namespace '%s' (endpoint timeout): %v\n", name, ns, err)
 			return false, nil
 		} else if err != nil {
 			return false, err
@@ -350,7 +350,7 @@ func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float
 	var comparisonSummary string
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
-		if err != nil {
+		if err != nil && expectedValue != 0 {
 			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' but error occurred: %s", family, labels, expectedValue, err.Error())
 			return false, nil
 		}
@@ -470,7 +470,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 	err := wait.Poll(a.RetryInterval, 4*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
-			a.T.Logf("deployment '%s' in namesapace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
+			a.T.Logf("deployment '%s' in namespace '%s' is not ready - current conditions: %v", name, a.Namespace, deploymentConditions)
 			return false, nil
 		}
 		deployment := &appsv1.Deployment{}
@@ -479,7 +479,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 			a.T.Logf("waiting until all %d replicas of the %s deployment are available - current replicas: %d", replicas, name, deployment.Status.AvailableReplicas)
 			return false, nil
 		}
-		a.T.Logf("deployment '%s' in namesapace '%s' is ready", name, a.Namespace)
+		a.T.Logf("deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 		return true, nil
 	})
 	require.NoError(a.T, err)
