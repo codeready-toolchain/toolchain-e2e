@@ -3,6 +3,7 @@ package operators
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
@@ -38,9 +39,9 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	foundHost := false
 	foundMember := false
 	for _, sub := range subs.Items {
-		if sub.Name == hostSubscriptionName {
+		if strings.HasPrefix(sub.Name, hostSubscriptionName) {
 			foundHost = true
-		} else if sub.Name == memberSubscriptionName {
+		} else if strings.HasPrefix(sub.Name, memberSubscriptionName) {
 			foundMember = true
 		}
 	}
