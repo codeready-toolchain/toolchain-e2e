@@ -306,15 +306,14 @@ func TerminatingUserAccount() toolchainv1alpha1.Condition {
 		Type:    toolchainv1alpha1.ConditionReady,
 		Status:  corev1.ConditionFalse,
 		Reason:  toolchainv1alpha1.UserAccountTerminatingReason,
-		Message: "deleting user/identity",
+		Message: "deleting NSTemplateSet",
 	}
 }
 
-func UnableToTerminateNSTemplateSet(msg string) toolchainv1alpha1.Condition {
+func TerminatingNSTemplateSet() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
-		Type:    toolchainv1alpha1.ConditionReady,
-		Status:  corev1.ConditionFalse,
-		Reason:  toolchainv1alpha1.NSTemplateSetTerminatingFailedReason,
-		Message: msg,
+		Type:   toolchainv1alpha1.ConditionReady,
+		Status: corev1.ConditionFalse,
+		Reason: toolchainv1alpha1.NSTemplateSetTerminatingReason,
 	}
 }

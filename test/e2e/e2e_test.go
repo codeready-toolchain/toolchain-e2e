@@ -2,6 +2,9 @@ package e2e
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -15,9 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	//"strings"
-	"testing"
-	"time"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -289,14 +289,15 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
 
+		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(TerminatingNSTemplateSet()))
+		require.NoError(t, err)
+		require.NotEmpty(t, nsTmplSet)
+
 		// Check that namespace is not deleted and is in Terminating state after 10sec
 		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForNamespaceInTerminating(userNamespace)
 		require.NoError(t, err)
 
-		// Check all corresponding resources are blocked by the terminating ns and have expected conditions
-		ConditionMsg := "user namespace laracroft-dev deletion was triggered but is not complete yet, something could be blocking ns deletion"
-
-		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(UnableToTerminateNSTemplateSet(ConditionMsg)))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 

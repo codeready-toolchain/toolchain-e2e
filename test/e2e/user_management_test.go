@@ -633,7 +633,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		bannedUser := s.createAndCheckBannedUser(userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm the user is banned
-		_, err := s.hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(userSignup.Name,
+		_, err := s.hostAwait.WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...))
 		require.NoError(s.T(), err)
 
