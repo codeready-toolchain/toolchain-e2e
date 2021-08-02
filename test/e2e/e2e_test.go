@@ -75,18 +75,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
-	// host metrics should be available at this point
-	t.Run("verify metrics servers", func(t *testing.T) {
-
-		t.Run("verify host metrics server", func(t *testing.T) {
-			VerifyHostMetricsService(t, hostAwait)
-		})
-
-		t.Run("verify member metrics server", func(t *testing.T) {
-			VerifyMemberMetricsService(t, memberAwait)
-		})
-	})
-
 	memberAwait.WaitForUsersPodsWebhook()
 	memberAwait.WaitForAutoscalingBufferApp()
 
@@ -95,9 +83,6 @@ func TestE2EFlow(t *testing.T) {
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
-
-	// Get metrics assertion helper for testing metrics before creating any users
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
@@ -120,14 +105,6 @@ func TestE2EFlow(t *testing.T) {
 
 	targetedJohnMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(targetedJohnName))
 	require.NoError(t, err)
-
-	t.Run("verify metrics are correct at the beginning", func(t *testing.T) {
-		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 8)
-		metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 8)
-		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 8, "domain", "external")
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 7, "cluster_name", memberAwait.ClusterName)  // 7 users on member1
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait2.ClusterName) // 1 user on member2
-	})
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
 
@@ -381,14 +358,6 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
-
-		t.Run("verify metrics are correct at the end", func(t *testing.T) {
-			metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 9)
-			metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 9)
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 8, "activations", "1", "domain", "external") // 'johnsignup' was deleted but we keep track of his activation
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 6, "cluster_name", memberAwait.ClusterName)                  // 6 users left on member1 ('johnsignup' was deleted)
-			metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait2.ClusterName)                 // 1 user on member2
-		})
 	})
 
 }

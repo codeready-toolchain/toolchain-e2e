@@ -21,6 +21,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	defaultHostNS   = "toolchain-host-operator"
+	defaultMemberNS = "toolchain-member-operator"
+)
+
 var (
 	usernamePrefix          = "zippy"
 	kubeconfig              string
@@ -52,14 +57,6 @@ func Execute() {
 		Args:          cobra.NoArgs,
 		Run:           setup,
 	}
-
-	quayNS, found := os.LookupEnv("QUAY_NAMESPACE")
-	if !found || len(quayNS) == 0 {
-		fmt.Println("QUAY_NAMESPACE env var is not set, ensure the prerequisite setup steps are followed")
-		os.Exit(1)
-	}
-	defaultHostNS := fmt.Sprintf("%s-host-operator", quayNS)
-	defaultMemberNS := fmt.Sprintf("%s-member-operator", quayNS)
 
 	cmd.Flags().StringVar(&usernamePrefix, "username", usernamePrefix, "the prefix used for usersignup names")
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "absolute path to the kubeconfig file")

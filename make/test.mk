@@ -66,7 +66,7 @@ test-e2e-registration-local:
 e2e-run:
 	oc get toolchaincluster -n $(HOST_NS)
 	oc get toolchaincluster -n $(MEMBER_NS)
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ./test/e2e -v -timeout=90m -failfast || \
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ./test/e2e ./test/metrics -p 1 -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -122,17 +122,6 @@ e2e-service-account:
 #
 ###########################################################
 
-.PHONY: build-with-operators
-build-with-operators:
-	@echo "ignore and just create empty files to make openshift-ci happy"
-	mkdir -p ${E2E_REPO_PATH}/build/_output/bin/
-	mkdir -p build/_output/bin/
-	touch ${E2E_REPO_PATH}/build/_output/bin/host-operator
-	touch ${E2E_REPO_PATH}/build/_output/bin/member-operator
-	touch ${E2E_REPO_PATH}/build/_output/bin/member-operator-webhook
-	touch ${E2E_REPO_PATH}/build/_output/bin/registration-service
-	cp ${E2E_REPO_PATH}/build/_output/bin/* build/_output/bin/
-
 .PHONY: publish-current-bundles-for-e2e
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
 publish-current-bundles-for-e2e: get-and-publish-operators
@@ -187,7 +176,7 @@ create-host-resources:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
-	oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
+	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then \
