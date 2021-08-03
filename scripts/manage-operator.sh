@@ -26,11 +26,11 @@ set_tags() {
     if [[ -n "${CI}${CLONEREFS_OPTIONS}" ]]; then
         if [[ -n ${GITHUB_ACTIONS} ]]; then
             OPERATOR_REPO_NAME=${GITHUB_REPOSITORY##*/}
-            TAGS=from.${AUTHOR}.${OPERATOR_REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
+            TAGS=from.${OPERATOR_REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
         else
             AUTHOR=$(jq -r '.refs[0].pulls[0].author' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
             PULL_PULL_SHA=${PULL_PULL_SHA:-$(jq -r '.refs[0].pulls[0].sha' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')}
-            TAGS=from.${AUTHOR}.${REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
+            TAGS=from.${REPO_NAME}.PR${PULL_NUMBER}.${COMMIT_ID_SUFFIX}
         fi
     fi
 #    can be used only when the operator CSV doesn't bundle the environment information, but now we want to build bundle for both operators
