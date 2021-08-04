@@ -177,6 +177,17 @@ func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRe
 	}
 }
 
+// UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
+func UntilMasterUserRecordIsBeingDeleted() MasterUserRecordWaitCriterion {
+	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
+		if mur.DeletionTimestamp == nil {
+			a.T.Logf("mur '%s' in namespace '%s' does not have deletion timestamp", mur.Name, a.Namespace)
+			return false
+		}
+		return true
+	}
+}
+
 // UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
 func UntilMasterUserRecordHasCondition(condition toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return func(a *HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) bool {
@@ -240,8 +251,20 @@ func UntilMasterUserRecordHasUserAccountStatuses(expUaStatuses ...toolchainv1alp
 // UserSignupWaitCriterion a function to check that a user account has the expected condition
 type UserSignupWaitCriterion func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool
 
-// UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
-// UserAccount has exactly all the given status conditions
+// UntilUserSignupIsBeingDeleted returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has deletion timestamp set
+func UntilUserSignupIsBeingDeleted() UserSignupWaitCriterion {
+	return func(a *HostAwaitility, us *toolchainv1alpha1.UserSignup) bool {
+		if us.DeletionTimestamp == nil {
+			a.T.Logf("userSignup '%s' in namespace '%s' does not have deletion timestamp", us.Name, a.Namespace)
+			return false
+		}
+		return true
+	}
+}
+
+// UntilUserSignupHasConditions returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has exactly all the given status conditions
 func UntilUserSignupHasConditions(conditions ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return func(a *HostAwaitility, ua *toolchainv1alpha1.UserSignup) bool {
 		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {

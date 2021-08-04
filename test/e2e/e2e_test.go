@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -14,7 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestE2EFlow(t *testing.T) {
@@ -214,6 +217,102 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
+	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+		laraSignUp, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("laracroft").
+			Email("laracroft@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
+		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
+
+		laraUserName := "laracroft"
+		userNamespace := "laracroft-dev"
+		podName := "test-useraccount-delete-1"
+
+		//Create a pod with finalizer in user's namespace, which will block the deletion of namespace.
+		memberPod := corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Pod",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      podName,
+				Namespace: userNamespace,
+				Finalizers: []string{
+					"test/finalizer.toolchain.e2e.tests",
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name:  "test",
+					Image: "busybox",
+				}},
+			},
+		}
+		err = memberAwait.Client.Create(context.TODO(), &memberPod)
+		require.NoError(t, err)
+		pod, err := memberAwait.WaitForPod(userNamespace, podName)
+		require.NoError(t, err)
+		require.NotEmpty(t, pod)
+
+		deletePolicy := metav1.DeletePropagationForeground
+		deleteOpts := &client.DeleteOptions{
+			PropagationPolicy: &deletePolicy,
+		}
+		// now delete userSignup but nothing should be deleted yet
+		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
+		require.NoError(t, err)
+
+		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(TerminatingNSTemplateSet()))
+		require.NoError(t, err)
+		require.NotEmpty(t, nsTmplSet)
+
+		// Check that namespace is not deleted and is in Terminating state after 10sec
+		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForNamespaceInTerminating(userNamespace)
+		require.NoError(t, err)
+
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(TerminatingNSTemplateSet()))
+		require.NoError(t, err)
+		require.NotEmpty(t, nsTmplSet)
+
+		userAcc, err := memberAwait.WaitForUserAccount(laraUserName, wait.UntilUserAccountIsBeingDeleted(), wait.UntilUserAccountContainsCondition(TerminatingUserAccount()))
+		require.NoError(t, err)
+		require.NotEmpty(t, userAcc)
+
+		mur, err := hostAwait.WaitForMasterUserRecord(laraUserName, wait.UntilMasterUserRecordIsBeingDeleted(), wait.UntilMasterUserRecordHasCondition(UnableToDeleteUserAccount()))
+		require.NoError(t, err)
+		require.NotEmpty(t, mur)
+
+		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name, wait.UntilUserSignupIsBeingDeleted())
+		require.NoError(t, err)
+		require.NotEmpty(t, userSignup)
+
+		// now remove finalizer from pod and check all are deleted
+		_, err = memberAwait.UpdatePod(pod.Namespace, podName, func(pod *corev1.Pod) {
+			pod.Finalizers = nil
+		})
+		require.NoError(t, err)
+
+		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
+		assert.NoError(t, err, "laracroft-dev namespace is not deleted")
+
+		err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
+		assert.NoError(t, err, "NSTemplateSet is not deleted")
+
+		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+		require.NoError(t, err)
+
+	})
+
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
 		johnSignup, err := hostAwait.WaitForUserSignup(johnSignup.Name)
@@ -259,7 +358,6 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
-
 	})
 
 }
