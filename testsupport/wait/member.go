@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -671,6 +672,10 @@ func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
 				return true, nil
 			}
 			return false, err
+		}
+		if util.IsBeingDeleted(obj) {
+			a.T.Logf("pod with name %s is being deleted", name)
+			return true, nil
 		}
 		a.T.Logf("waiting for deletion of Pod with name '%s' in namespace %s", name, namespace)
 		return false, nil

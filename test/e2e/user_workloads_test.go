@@ -235,7 +235,9 @@ func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *co
 }
 
 func podSpec() corev1.PodSpec {
+	zero := int64(0)
 	return corev1.PodSpec{
+		TerminationGracePeriodSeconds: &zero,
 		Containers: []corev1.Container{{
 			Name:    "sleep",
 			Image:   "busybox",
