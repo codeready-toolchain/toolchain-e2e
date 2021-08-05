@@ -201,7 +201,11 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// when deleting the user account
-			err = memberAwait.Client.Delete(context.TODO(), ua)
+			deletePolicy := metav1.DeletePropagationForeground
+			deleteOpts := &client.DeleteOptions{
+				PropagationPolicy: &deletePolicy,
+			}
+			err = memberAwait.Client.Delete(context.TODO(), ua, deleteOpts)
 			require.NoError(t, err)
 			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsBeingDeleted())
 			require.NoError(t, err)
