@@ -203,8 +203,7 @@ func TestE2EFlow(t *testing.T) {
 			// when deleting the user account
 			err = memberAwait.Client.Delete(context.TODO(), ua)
 			require.NoError(t, err)
-			require.NoError(t, err)
-			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsBeingDeleted(), wait.UntilUserAccountContainsCondition(TerminatingUserAccount()))
+			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsBeingDeleted())
 			require.NoError(t, err)
 
 			// then the user account should be recreated
