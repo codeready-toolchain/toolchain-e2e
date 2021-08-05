@@ -3,6 +3,9 @@ kind: ToolchainConfig
 metadata:
   name: config
 spec:
+  host:
+    automaticApproval:
+      enabled: true
   members:
     default:
       autoscaler:
