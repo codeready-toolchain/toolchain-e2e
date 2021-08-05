@@ -1016,19 +1016,6 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility
 	return memberOperatorConfig, err
 }
 
-// DeleteUserAccount deletes the user account resource with the given name and
-// waits until it was actually deleted
-func (a *MemberAwaitility) DeleteUserAccount(name string) error {
-	ua, err := a.WaitForUserAccount(name)
-	if err != nil {
-		return err
-	}
-	if err = a.Client.Delete(context.TODO(), ua); err != nil {
-		return err
-	}
-	return a.WaitUntilUserAccountDeleted(name)
-}
-
 // GetMemberOperatorPod returns the pod running the member operator controllers
 func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 	pods := corev1.PodList{}
