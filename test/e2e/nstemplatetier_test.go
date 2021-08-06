@@ -37,7 +37,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	testingtiers := CreateAndApproveSignup(t, hostAwait, testingTiersName, memberAwait.ClusterName)
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "team", "test", "basedeactivationdisabled", "baseextended", "baseextendedidling", "base"}
+	tiersToCheck := []string{"advanced", "test", "basedeactivationdisabled", "baseextended", "baseextendedidling", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -92,7 +92,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 func TestUpdateNSTemplateTier(t *testing.T) {
 	// in this test, we have 2 groups of users, configured with their own tier (both using the "base" tier templates)
-	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "team" templates
+	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
@@ -109,12 +109,12 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces) but keep the ClusterResources refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "advanced", "")
-	// and when updating the "cookie" tier with the "team" template refs (ie, same number of namespaces)
-	updateTemplateTier(t, hostAwait, "cookie", "team", "team")
+	// and when updating the "cookie" tier with the "baseextendedidling" template refs (ie, same number of namespaces)
+	updateTemplateTier(t, hostAwait, "cookie", "baseextendedidling", "baseextendedidling")
 
 	// then
 	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "base")
-	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "team", "team")
+	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "baseextendedidling", "baseextendedidling")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "", "advanced")
@@ -235,7 +235,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 			UntilUserAccountHasConditions(Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
 			UntilUserAccountMatchesMur(hostAwait))
-		require.NoError(t, err, "Failing UserSignup: %+v", usersignup)
+		require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v", usersignup, userAccount)
 		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
@@ -258,7 +258,7 @@ func TestTierTemplates(t *testing.T) {
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
-	// verify that we have 21 tier templates (base: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, team: 3, test: 3)
+	// verify that we have 18 tier templates (base: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, test: 3)
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, 21)
+	assert.Len(t, allTiers.Items, 18)
 }
