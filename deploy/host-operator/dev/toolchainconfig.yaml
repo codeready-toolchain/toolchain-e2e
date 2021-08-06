@@ -6,6 +6,10 @@ spec:
   host:
     automaticApproval:
       enabled: true
+    deactivation:
+      deactivationDomainsExcluded: '@redhat.com'
+    registrationService:
+      environment: 'e2e-tests'
   members:
     default:
       autoscaler:

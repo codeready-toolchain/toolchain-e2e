@@ -3,11 +3,26 @@ kind: ToolchainConfig
 metadata:
   name: config
 spec:
+  host:
+    deactivation:
+      deactivationDomainsExcluded: '@excluded.com'
+    environment: 'e2e-tests'
+    notifications:
+      durationBeforeNotificationDeletion: '5s'
+    registrationService:
+      environment: 'e2e-tests'
+      verification:
+        enabled: true
+        excludedEmailDomains: 'redhat.com,acme.com'
+    tiers:
+      durationBeforeChangeTierRequestDeletion: '5s'
+    toolchainStatus:
+      toolchainStatusRefreshTime: '1s'
   members:
     default:
       autoscaler:
-        deploy: true
         bufferMemory: "50Mi"
         bufferReplicas: 2
+        deploy: true
       memberStatus:
         refreshPeriod: "1s"
