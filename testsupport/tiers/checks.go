@@ -28,7 +28,6 @@ const (
 	baseextendedidling       = "baseextendedidling"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	advanced                 = "advanced"
-	team                     = "team"
 	test                     = "test"
 
 	// common CPU limits
@@ -60,9 +59,6 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case advanced:
 		return &advancedTierChecks{tierName: advanced}, nil
-
-	case team:
-		return &teamTierChecks{tierName: team}, nil
 
 	case test:
 		return &testTierChecks{tierName: test}, nil
@@ -243,54 +239,6 @@ func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{}
-}
-
-type teamTierChecks struct {
-	tierName string
-}
-
-func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
-		limitRange(defaultCPULimit, "1Gi", "10m", "64Mi"),
-		rbacEditRoleBinding(),
-		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2),
-	)
-
-	checks = append(checks, commonNetworkPolicyChecks()...)
-
-	switch nsType {
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
-	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
-	}
-	return checks
-}
-
-func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
-func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(a.tierName,
-		clusterResourceQuotaCompute(cpuLimit, "2000m", "15Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9))
 }
 
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
