@@ -14,6 +14,11 @@ spec:
       verification:
         enabled: true
         excludedEmailDomains: 'redhat.com,acme.com'
+        secret:
+          ref: 'host-operator-secret'
+          twilioAccountSID: 'twilio.account.sid'
+          twilioAuthToken: 'twilio.auth.token'
+          twilioFromNumber: 'twilio.from_number'
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
     toolchainStatus:

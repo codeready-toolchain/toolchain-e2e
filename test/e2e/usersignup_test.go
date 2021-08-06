@@ -188,7 +188,7 @@ func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignu
 func (s *userSignupIntegrationTest) TestManualApproval() {
 	s.T().Run("default approval config - manual", func(t *testing.T) {
 		// given
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
@@ -309,7 +309,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 	s.T().Run("automatic approval with verification required", func(t *testing.T) {
-		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval())
+		s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		t.Run("verification required set to true", func(t *testing.T) {
 			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
