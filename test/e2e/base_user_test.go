@@ -72,7 +72,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	assert.Contains(s.T(), notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
 	assert.Equal(s.T(), userSignup.Namespace, notification.Namespace)
 	assert.Equal(s.T(), "userdeactivated", notification.Spec.Template)
-	assert.Equal(s.T(), userSignup.Name, notification.Spec.UserID)
+	assert.Equal(s.T(), userSignup.Name, notification.Spec.Context["UserID"])
 
 	err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 	require.NoError(s.T(), err)
