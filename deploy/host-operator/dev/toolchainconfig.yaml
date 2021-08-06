@@ -9,7 +9,7 @@ spec:
     deactivation:
       deactivationDomainsExcluded: '@redhat.com'
     registrationService:
-      environment: 'e2e-tests'
+      environment: 'dev'
   members:
     default:
       autoscaler:
