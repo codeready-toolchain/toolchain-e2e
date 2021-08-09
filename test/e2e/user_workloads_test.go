@@ -40,7 +40,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(s.memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute()
 
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
