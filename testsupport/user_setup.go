@@ -116,7 +116,7 @@ func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, userna
 		assert.Contains(t, notification.Name, mur.Name+"-provisioned-")
 		assert.Equal(t, mur.Namespace, notification.Namespace)
 		assert.Equal(t, "userprovisioned", notification.Spec.Template)
-		assert.Equal(t, mur.Spec.UserID, notification.Spec.UserID)
+		assert.Equal(t, mur.Spec.UserID, notification.Spec.Context["UserID"])
 	}
 
 	err = hostAwait.WaitUntilNotificationsDeleted(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned)
