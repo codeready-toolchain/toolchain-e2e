@@ -123,7 +123,7 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 			a.T.Logf("status conditions match in UserAccount '%s' in namespace '%s'", ua.Name, ua.Namespace)
 			return true
 		}
-		a.T.Logf("waiting for status condition of UserSignup '%s' in namespace '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Namespace, ua.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of UserAccount '%s' in namespace '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Namespace, ua.Status.Conditions, conditions)
 		return false
 	}
 }
