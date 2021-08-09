@@ -222,10 +222,10 @@ func UntilNSTemplateSetContainsCondition(condition toolchainv1alpha1.Condition) 
 func UntilNSTemplateSetHasTier(tier string) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
 		if nsTmplSet.Spec.TierName == tier {
-			a.T.Logf("tierName in NSTemplateSet '%s` matches the expected tier", nsTmplSet.Name)
+			a.T.Logf("tierName in NSTemplateSet '%s' in namespace '%s' matches the expected tier", nsTmplSet.Name, nsTmplSet.Namespace)
 			return true
 		}
-		a.T.Logf("waiting for NSTemplateSet '%s' having the expected tierName. Actual: '%s'; Expected: '%s'", nsTmplSet.Name, nsTmplSet.Spec.TierName, tier)
+		a.T.Logf("waiting for NSTemplateSet '%s' in namespace '%s' having the expected tierName. Actual: '%s'; Expected: '%s'", nsTmplSet.Name, nsTmplSet.Namespace, nsTmplSet.Spec.TierName, tier)
 		return false
 	}
 }
@@ -237,7 +237,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 		obj := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("waiting for availability of NSTemplateSet '%s'", name)
+				a.T.Logf("waiting for availability of NSTemplateSet '%s' in namespace '%s'", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
@@ -247,7 +247,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 				return false, nil
 			}
 		}
-		a.T.Logf("found NSTemplateSet '%s'", name)
+		a.T.Logf("found NSTemplateSet '%s' in namespace '%s'", name, a.Namespace)
 		nsTmplSet = obj
 		return true, nil
 	})
