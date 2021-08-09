@@ -233,6 +233,7 @@ func TestE2EFlow(t *testing.T) {
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
+			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
