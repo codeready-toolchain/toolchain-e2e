@@ -120,10 +120,10 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		if test.ConditionsMatch(ua.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in UserAccount '%s`", ua.Name)
+			a.T.Logf("status conditions match in UserAccount '%s' in namespace '%s'", ua.Name, ua.Namespace)
 			return true
 		}
-		a.T.Logf("waiting for status condition of UserSignup '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of UserSignup '%s' in namespace '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Namespace, ua.Status.Conditions, conditions)
 		return false
 	}
 }
@@ -133,10 +133,10 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 func UntilUserAccountContainsCondition(condition toolchainv1alpha1.Condition) UserAccountWaitCriterion {
 	return func(a *MemberAwaitility, ua *toolchainv1alpha1.UserAccount) bool {
 		if test.ContainsCondition(ua.Status.Conditions, condition) {
-			a.T.Logf("status conditions found in UserAccount '%s`", ua.Name)
+			a.T.Logf("status conditions found in UserAccount '%s' in namespace '%s'", ua.Name, ua.Namespace)
 			return true
 		}
-		a.T.Logf("waiting for status condition of UserAccount '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Status.Conditions, condition)
+		a.T.Logf("waiting for status condition of UserAccount '%s' in namespace '%s'. Actual: '%+v'; Expected: '%+v'", ua.Name, ua.Namespace, ua.Status.Conditions, condition)
 		return false
 	}
 }
@@ -185,10 +185,10 @@ type NSTemplateSetWaitCriterion func(a *MemberAwaitility, ua *toolchainv1alpha1.
 func UntilNSTemplateSetHasConditions(conditions ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
 		if test.ConditionsMatch(nsTmplSet.Status.Conditions, conditions...) {
-			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
+			a.T.Logf("status conditions match in NSTemplateSet '%s' in namespace '%s'", nsTmplSet.Name, nsTmplSet.Namespace)
 			return true
 		}
-		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, conditions)
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s' in namespace '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Namespace, nsTmplSet.Status.Conditions, conditions)
 		return false
 	}
 }
@@ -210,10 +210,10 @@ func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
 func UntilNSTemplateSetContainsCondition(condition toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
 	return func(a *MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
 		if test.ContainsCondition(nsTmplSet.Status.Conditions, condition) {
-			a.T.Logf("status conditions match in NSTemplateSet '%s`", nsTmplSet.Name)
+			a.T.Logf("status conditions match in NSTemplateSet '%s' in namespace '%s'", nsTmplSet.Name, nsTmplSet.Namespace)
 			return true
 		}
-		a.T.Logf("waiting for status condition of NSTemplateSet '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Status.Conditions, condition)
+		a.T.Logf("waiting for status condition of NSTemplateSet '%s' in namespace '%s'. Actual: '%+v'; Expected: '%+v'", nsTmplSet.Name, nsTmplSet.Namespace, nsTmplSet.Status.Conditions, condition)
 		return false
 	}
 }
