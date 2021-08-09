@@ -39,6 +39,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
 		EnsureMUR().
+		TargetCluster(s.memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute()
 
