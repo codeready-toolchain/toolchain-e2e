@@ -33,7 +33,7 @@ func (s *userWorkloadsTestSuite) SetupSuite() {
 
 func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Provision a user to idle with a short idling timeout
-	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
+	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	s.newSignupRequest().
 		Username("test-idler").
 		Email("test-idler@redhat.com").
