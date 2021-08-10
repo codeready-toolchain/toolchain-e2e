@@ -1,6 +1,6 @@
 
 #OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master
-OWNER_AND_BRANCH_LOCATION=MatousJobanek/toolchain-cicd/tree/more-user-friendly
+OWNER_AND_BRANCH_LOCATION=MatousJobanek/toolchain-cicd/more-user-friendly
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 
 .PHONY: run-cicd-script
