@@ -10,6 +10,9 @@ spec:
     notifications:
       durationBeforeNotificationDeletion: '5s'
     registrationService:
+      analytics:
+        segmentWriteKey: 'test segment write key'
+        woopraDomain: 'test woopra domain'
       environment: 'e2e-tests'
       verification:
         enabled: true
