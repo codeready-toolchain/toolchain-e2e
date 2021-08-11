@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20210721211719-002c2be44948
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20210728063123-fd1e91b3a2b5
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20210809234419-4a4ec2ec8202
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/go-logr/logr v0.4.0
@@ -31,7 +31,5 @@ require (
 	k8s.io/metrics v0.20.2
 	sigs.k8s.io/controller-runtime v0.8.3
 )
-
-replace github.com/codeready-toolchain/toolchain-common => github.com/rajivnathan/toolchain-common v0.0.0-20210806161817-32064200655e
 
 go 1.16
