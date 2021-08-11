@@ -10,6 +10,12 @@ spec:
       deactivationDomainsExcluded: '@redhat.com'
     registrationService:
       environment: 'dev'
+      verification:
+        secret:
+          ref: 'host-operator-secret'
+          twilioAccountSID: 'twilio.account.sid'
+          twilioAuthToken: 'twilio.auth.token'
+          twilioFromNumber: 'twilio.from_number'
   members:
     default:
       autoscaler:
