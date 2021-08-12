@@ -34,7 +34,10 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
-	testingtiers := CreateAndApproveSignup(t, hostAwait, testingTiersName, memberAwait.ClusterName)
+	testingtiers, _ := NewSignupRequest(t, hostAwait, memberAwait, nil).
+		Username(testingTiersName).
+		Execute().
+		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "test", "basedeactivationdisabled", "baseextended", "baseextendedidling", "base"}
@@ -100,9 +103,9 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	hostAwait, memberAwait, _ := WaitForDeployments(t)
 
 	// first group of users: the "cheesecake lovers"
-	cheesecakeSyncIndexes := setupAccounts(t, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait.ClusterName, count)
+	cheesecakeSyncIndexes := setupAccounts(t, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait, count)
 	// second group of users: the "cookie lovers"
-	cookieSyncIndexes := setupAccounts(t, hostAwait, "cookie", "cookielover%02d", memberAwait.ClusterName, count)
+	cookieSyncIndexes := setupAccounts(t, hostAwait, "cookie", "cookielover%02d", memberAwait, count)
 
 	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
 	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
@@ -140,14 +143,20 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt, targetCluster string, count int) map[string]string {
+func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) map[string]string {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
 	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
 	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		users[i] = CreateAndApproveSignup(t, hostAwait, fmt.Sprintf(nameFmt, i), targetCluster)
+		users[i] = CreateAndApproveSignup(t, hostAwait, fmt.Sprintf(nameFmt, i), targetCluster.ClusterName)
+		users[i], _ = NewSignupRequest(t, hostAwait, nil, nil).
+			Username(fmt.Sprintf(nameFmt, i)).
+			TargetCluster(targetCluster).
+			Execute().
+			Resources()
+
 	}
 	// and wait until there are all provisioned
 	for i := range users {

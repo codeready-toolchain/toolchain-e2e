@@ -90,11 +90,19 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup := CreateAndApproveSignup(t, hostAwait, johnsmithName, memberAwait.ClusterName)
+	johnSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		Username(johnsmithName).
+		Execute().Resources()
+
 	extrajohnName := "extrajohn"
-	johnExtraSignup := CreateAndApproveSignup(t, hostAwait, extrajohnName, memberAwait.ClusterName)
+	johnExtraSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		Username(extrajohnName).
+		Execute().Resources()
+
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup := CreateAndApproveSignup(t, hostAwait, targetedJohnName, memberAwait2.ClusterName)
+	targetedJohnSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		Username(targetedJohnName).
+		Execute().Resources()
 
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "base", memberAwait)
 	VerifyResourcesProvisionedForSignup(t, hostAwait, johnExtraSignup, "base", memberAwait)
