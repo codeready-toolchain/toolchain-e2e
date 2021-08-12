@@ -223,7 +223,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 func TestMetricsWhenUserDisabled(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval())
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
