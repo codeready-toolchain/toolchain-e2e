@@ -3,11 +3,34 @@ kind: ToolchainConfig
 metadata:
   name: config
 spec:
+  host:
+    deactivation:
+      deactivationDomainsExcluded: '@excluded.com'
+    environment: 'e2e-tests'
+    notifications:
+      durationBeforeNotificationDeletion: '5s'
+    registrationService:
+      analytics:
+        segmentWriteKey: 'test segment write key'
+        woopraDomain: 'test woopra domain'
+      environment: 'e2e-tests'
+      verification:
+        enabled: true
+        excludedEmailDomains: 'redhat.com,acme.com'
+        secret:
+          ref: 'host-operator-secret'
+          twilioAccountSID: 'twilio.account.sid'
+          twilioAuthToken: 'twilio.auth.token'
+          twilioFromNumber: 'twilio.from_number'
+    tiers:
+      durationBeforeChangeTierRequestDeletion: '5s'
+    toolchainStatus:
+      toolchainStatusRefreshTime: '1s'
   members:
     default:
       autoscaler:
-        deploy: true
         bufferMemory: "50Mi"
         bufferReplicas: 2
+        deploy: true
       memberStatus:
         refreshPeriod: "1s"

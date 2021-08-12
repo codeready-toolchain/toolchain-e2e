@@ -916,9 +916,11 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 		config := a.GetToolchainConfig()
 		// if the current config wasn't found
 		if config == nil {
-			// then create it back with the original values
-			err := a.Client.Create(context.TODO(), originalConfig)
-			require.NoError(a.T, err)
+			if originalConfig != nil {
+				// then create it back with the original values
+				err := a.Client.Create(context.TODO(), originalConfig)
+				require.NoError(a.T, err)
+			}
 		} else {
 			// otherwise just update it
 			err := a.updateToolchainConfigWithRetry(originalConfig)
