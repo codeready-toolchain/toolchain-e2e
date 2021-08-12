@@ -492,7 +492,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval())
+	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 	// Create UserSignup
 	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
