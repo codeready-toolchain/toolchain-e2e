@@ -134,20 +134,28 @@ get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and
 .PHONY: get-and-publish-member-operator
 get-and-publish-member-operator:
 ifneq (${MEMBER_NS_2},"")
-	$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
+    ifneq (${MEMBER_NS_2},)
+		$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
+    endif
 endif
-ifneq (${MEMBER_REPO_PATH},)
-	$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
+ifneq (${MEMBER_REPO_PATH},"")
+    ifneq (${MEMBER_REPO_PATH},)
+		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
+    endif
 endif
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -e ${ENVIRONMENT} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM}"
 
 .PHONY: get-and-publish-host-operator
 get-and-publish-host-operator:
-ifneq (${REG_REPO_PATH},)
-	$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
+ifneq (${REG_REPO_PATH},"")
+    ifneq (${REG_REPO_PATH},)
+		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
+    endif
 endif
-ifneq (${HOST_REPO_PATH},)
-	$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
+ifneq (${HOST_REPO_PATH},"")
+    ifneq (${HOST_REPO_PATH},)
+		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
+    endif
 endif
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -e ${ENVIRONMENT} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${MEMBER_NS_2_PARAM} ${REG_REPO_PATH_PARAM}"
 
