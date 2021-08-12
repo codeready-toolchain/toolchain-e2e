@@ -105,16 +105,16 @@ print-operator-logs:
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
 	echo ${MEMBER_NS_2}
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
 
 .PHONY: e2e-service-account
 e2e-service-account:
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
 
 ###########################################################
 #
@@ -133,11 +133,23 @@ get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and
 
 .PHONY: get-and-publish-member-operator
 get-and-publish-member-operator:
-	PUBLISH_OPERATOR=${PUBLISH_OPERATOR} INSTALL_OPERATOR=${INSTALL_OPERATOR} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} MEMBER_REPO_PATH=${MEMBER_REPO_PATH} ENVIRONMENT=${ENVIRONMENT} DATE_SUFFIX=${DATE_SUFFIX} QUAY_NAMESPACE=${QUAY_NAMESPACE} ./scripts/manage-member-operator.sh
+ifneq (${MEMBER_NS_2},"")
+	$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
+endif
+ifneq (${MEMBER_REPO_PATH},)
+	$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
+endif
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -e ${ENVIRONMENT} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM}"
 
 .PHONY: get-and-publish-host-operator
 get-and-publish-host-operator:
-	PUBLISH_OPERATOR=${PUBLISH_OPERATOR} INSTALL_OPERATOR=${INSTALL_OPERATOR} HOST_NS=${HOST_NS} HOST_REPO_PATH=${HOST_REPO_PATH} REG_REPO_PATH=${REG_REPO_PATH} ENVIRONMENT=${ENVIRONMENT} DATE_SUFFIX=${DATE_SUFFIX} QUAY_NAMESPACE=${QUAY_NAMESPACE} ./scripts/manage-host-operator.sh
+ifneq (${REG_REPO_PATH},)
+	$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
+endif
+ifneq (${HOST_REPO_PATH},)
+	$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
+endif
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -e ${ENVIRONMENT} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${MEMBER_NS_2_PARAM} ${REG_REPO_PATH_PARAM}"
 
 ###########################################################
 #
