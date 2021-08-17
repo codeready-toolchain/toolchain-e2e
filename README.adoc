@@ -112,27 +112,16 @@ All e2e resources (host operator, member operator, registration-service, CRDs, e
 
 By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 
-NOTE: You can override the default namespace names via `make dev-deploy-e2e DEV_HOST_NS=my-host DEV_MEMBER_NS=my-member`
-
 NOTE: If running in CodeReady Containers `eval $(crc oc-env)` is required.
 
-== How to Test Mailgun Notification in Dev Environment
+== How to Test Mailgun/Twilio Notifications in a Dev Environment
 * Get a cluster and setup the following env vars
 ** `export QUAY_NAMESPACE=<your-quay-namespace>`
 ** `export KUBECONFIG=<location-to-kubeconfig>`
 * Run `docker login quay.io`
 * Create https://github.com/codeready-toolchain/toolchain-infra/tree/master/config/oauth[IdP]
-* Create `<username>-host-operator` namespace
-* Create https://github.com/codeready-toolchain/toolchain-infra/blob/master/config/host_operator_secret.yaml[host-operator-secret]  on `<username>-host-operator` namespace
-* Create https://github.com/codeready-toolchain/toolchain-infra/blob/master/config/host-operator-config.yaml[host-operator-config]  on `<username>-host-operator` namespace
-* In https://github.com/codeready-toolchain/host-operator/blob/master/deploy/env/dev.yaml[host-operator/deploy/env/dev.yaml] add the following (similar to what is found in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/env/prod.yaml[host-operator/deploy/env/prod.yaml]): 
-```
-host-operator:
-  secret:
-    name: host-operator-secret
-  config-map:
-    name: host-operator-config
-```
+* If you need to change any of the default configuration, modify the ToolchainConfig in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/deploy/host-operator/dev/toolchainconfig.yaml[deploy/host-operator/dev/toolchainconfig.yaml]
+* To set working notification/verification secrets, modify them in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/deploy/host-operator/dev/secrets.yaml[deploy/host-operator/dev/secrets.yaml]
 * Run `make dev-deploy-e2e-local`
 * Go to the registration-service link and sign in
 * Click on the `Get Started With CodeReady Toolchain` button
