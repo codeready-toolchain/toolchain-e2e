@@ -30,12 +30,14 @@ const (
 
 func TestNSTemplateTiers(t *testing.T) {
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
-	testingtiers, _ := NewSignupRequest(t, hostAwait, memberAwait, nil).
+	testingtiers, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
 		Username(testingTiersName).
+		ManuallyApprove().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().
 		Resources()
 
@@ -150,13 +152,14 @@ func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt st
 	// let's create a few users (more than `maxPoolSize`)
 	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		users[i] = CreateAndApproveSignup(t, hostAwait, fmt.Sprintf(nameFmt, i), targetCluster.ClusterName)
-		users[i], _ = NewSignupRequest(t, hostAwait, nil, nil).
+		users[i], _ = NewSignupRequest(t, hostAwait, targetCluster, nil).
 			Username(fmt.Sprintf(nameFmt, i)).
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
 			Execute().
 			Resources()
-
 	}
 	// and wait until there are all provisioned
 	for i := range users {

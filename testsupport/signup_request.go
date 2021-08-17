@@ -205,7 +205,15 @@ func (r *signupRequest) Execute() SignupRequest {
 
 	if r.ensureMUR {
 		// Confirm the MUR was created and ready
-		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, "base", r.memberAwait, r.member2Await)
+		members := []*wait.MemberAwaitility{}
+		if r.memberAwait != nil {
+			members = append(members, r.memberAwait)
+		}
+		if r.member2Await != nil {
+			members = append(members, r.member2Await)
+		}
+
+		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, "base", members...)
 		mur, err := r.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 		require.NoError(r.t, err)
 		r.mur = mur
