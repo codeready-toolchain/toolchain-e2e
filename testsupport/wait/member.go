@@ -271,18 +271,18 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 }
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*v1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespace(username, ref, tierName string) (*v1.Namespace, error) {
 	namespaceList := &v1.NamespaceList{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &v1.NamespaceList{}
-		tier, kind, _, err := Split(ref)
+		_, kind, _, err := Split(ref)
 		if err != nil {
 			return false, err
 		}
 		labels := map[string]string{
 			"toolchain.dev.openshift.com/owner":       username,
 			"toolchain.dev.openshift.com/templateref": ref,
-			"toolchain.dev.openshift.com/tier":        tier,
+			"toolchain.dev.openshift.com/tier":        tierName,
 			"toolchain.dev.openshift.com/type":        kind,
 			"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 		}
@@ -471,6 +471,16 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 		return true, nil
 	})
 	return quota, err
+}
+
+func WithTierLabel(tieName string) ClusterResourceQuotaWaitCriterion {
+	return func(a *MemberAwaitility, quota quotav1.ClusterResourceQuota) bool {
+		if quota.Labels[toolchainv1alpha1.TierLabelKey] == tieName {
+			return true
+		}
+		a.T.Logf("waiting until the ClusterResourceQuota %s has the tier label set Expected: '%s' Actual: '%s'", quota.Name, tieName, quota.Labels[toolchainv1alpha1.TierLabelKey])
+		return false
+	}
 }
 
 // IdlerWaitCriterion a function to check that an Idler has the expected condition

@@ -175,7 +175,7 @@ func TestE2EFlow(t *testing.T) {
 			namespaces := make([]*corev1.Namespace, 0, 2)
 			templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
 			for _, ref := range templateRefs.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref)
+				ns, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref, "base")
 				require.NoError(t, err)
 				namespaces = append(namespaces, ns)
 			}
@@ -188,7 +188,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			// wait for the namespaces to be re-created before validating all other resources to avoid race condition
 			for _, ref := range templateRefs.Namespaces {
-				_, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref)
+				_, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref, "base")
 				require.NoError(t, err)
 			}
 			VerifyResourcesProvisionedForSignup(t, hostAwait, johnSignup, "base", memberAwait)

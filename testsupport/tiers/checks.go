@@ -496,7 +496,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-compute", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-compute", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -516,7 +516,7 @@ func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-deployments", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-deployments", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -534,7 +534,7 @@ func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-replicas", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-replicas", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -552,7 +552,7 @@ func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-routes", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-routes", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -574,7 +574,7 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-jobs", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-jobs", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -590,7 +590,7 @@ func clusterResourceQuotaServices() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-services", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-services", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -606,7 +606,7 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-bc", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-bc", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -622,7 +622,7 @@ func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-secrets", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-secrets", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -638,7 +638,7 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-cm", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-cm", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -658,7 +658,7 @@ func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-rhoas", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-rhoas", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
@@ -674,7 +674,7 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierName, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-sbo", userName), criteria)
+			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-sbo", userName), criteria, wait.WithTierLabel(tierName))
 			require.NoError(t, err)
 		}
 	}
