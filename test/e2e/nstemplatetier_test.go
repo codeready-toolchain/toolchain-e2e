@@ -150,6 +150,7 @@ func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt st
 	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
+	// and wait until they are all provisioned by calling EnsureMUR()
 	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
 		users[i], _ = NewSignupRequest(t, hostAwait, targetCluster, nil).
@@ -161,11 +162,7 @@ func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt st
 			Execute().
 			Resources()
 	}
-	// and wait until there are all provisioned
-	for i := range users {
-		_, err := hostAwait.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
-		require.NoError(t, err)
-	}
+
 	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {

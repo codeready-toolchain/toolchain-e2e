@@ -9,12 +9,10 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -31,15 +29,13 @@ func CreateMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, targetC
 			continue
 		}
 		// Create an approved UserSignup resource
-		userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", i))
-		states.SetApproved(userSignup, true)
-		if targetCluster != nil {
-			userSignup.Spec.TargetCluster = targetCluster.ClusterName
-		}
-		err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
-		hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
-		require.NoError(t, err)
-		signups[i] = userSignup
+		signups[i], _ = NewSignupRequest(t, hostAwait, targetCluster, nil).
+			Username(name).
+			Email(fmt.Sprintf("multiple-signup-testuser-%d@test.com", i)).
+			ManuallyApprove().
+			TargetCluster(targetCluster).
+			Execute().
+			Resources()
 	}
 	return signups
 }
