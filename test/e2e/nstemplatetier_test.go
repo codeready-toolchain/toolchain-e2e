@@ -207,7 +207,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 
 func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
 	//
-	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(aliasTierClusterResources)
+	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
 
 	// let's wait until all MasterUserRecords have been updated
