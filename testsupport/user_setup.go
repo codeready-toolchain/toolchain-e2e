@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -15,9 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -48,88 +45,6 @@ func CreateMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, targetC
 }
 
 type IdentityOption func(*authsupport.Identity) error
-
-func WithIdentityID(idStr string) IdentityOption {
-	return func(identity *authsupport.Identity) error {
-		id, err := uuid.FromString(idStr)
-		if err != nil {
-			return err
-		}
-		identity.ID = id
-		return nil
-	}
-}
-
-func WithEmail(email string) IdentityOption {
-	return func(identity *authsupport.Identity) error {
-		identity.Email = email
-		return nil
-	}
-}
-
-func CreateAndApproveSignup(t *testing.T, hostAwait *wait.HostAwaitility, username, targetCluster string, options ...IdentityOption) *toolchainv1alpha1.UserSignup {
-	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
-	// 1. Create a UserSignup resource via calling registration service
-	identity := &authsupport.Identity{
-		ID:       uuid.Must(uuid.NewV4()),
-		Username: username,
-		Email:    username + "@acme.com",
-	}
-	for _, apply := range options {
-		err := apply(identity)
-		require.NoError(t, err)
-	}
-	postSignup(t, hostAwait.RegistrationServiceURL, *identity)
-
-	// at this stage, the usersignup should not be approved nor completed
-	userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String(),
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
-	require.NoError(t, err)
-	require.Equal(t, identity.Username+"-First-Name", userSignup.Spec.GivenName)
-	require.Equal(t, identity.Username+"-Last-Name", userSignup.Spec.FamilyName)
-	require.Equal(t, identity.Username+"-Company-Name", userSignup.Spec.Company)
-	require.Equal(t, identity.Email, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
-
-	// 2. approve the UserSignup
-	userSignup.Spec.TargetCluster = targetCluster
-	states.SetApproved(userSignup, true)
-	err = hostAwait.Client.Update(context.TODO(), userSignup)
-	require.NoError(t, err)
-	// Check the updated conditions
-	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-	require.NoError(t, err)
-
-	// First, wait for the MasterUserRecord to exist, no matter what status
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
-	require.NoError(t, err)
-	// check that there's an annotation with the user's email address
-	assert.Equal(t, identity.Email, mur.Annotations[toolchainv1alpha1.MasterUserRecordEmailAnnotationKey]) // same as on userSignup
-
-	// Wait for the the notification CR to be created & sent
-	notifications, err := hostAwait.WaitForNotifications(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned, 1, wait.UntilNotificationHasConditions(Sent()))
-	require.NoError(t, err)
-	require.NotEmpty(t, notifications)
-	for _, notification := range notifications {
-		assert.Contains(t, notification.Name, mur.Name+"-provisioned-")
-		assert.Equal(t, mur.Namespace, notification.Namespace)
-		assert.Equal(t, "userprovisioned", notification.Spec.Template)
-		assert.Equal(t, mur.Spec.UserID, notification.Spec.Context["UserID"])
-	}
-
-	err = hostAwait.WaitUntilNotificationsDeleted(mur.Name, toolchainv1alpha1.NotificationTypeProvisioned)
-	require.NoError(t, err)
-
-	// delete the userSignup at the end of the test
-	t.Cleanup(func() {
-		if err := hostAwait.Client.Delete(context.TODO(), userSignup); err != nil && !errors.IsNotFound(err) {
-			require.NoError(t, err)
-		}
-	})
-	return userSignup
-}
 
 // NewUserSignup creates a new UserSignup resoruce with the given values:
 // specApproved defines if the UserSignup should be manually approved
@@ -166,33 +81,6 @@ var HTTPClient = &http.Client{
 			InsecureSkipVerify: true,
 		},
 	},
-}
-
-func postSignup(t *testing.T, route string, identity authsupport.Identity) {
-	require.NotEmpty(t, route)
-	// Call signup endpoint with a valid token.
-	emailClaim := authsupport.WithEmailClaim(identity.Email)
-	givenNameClaim := authsupport.WithGivenNameClaim(identity.Username + "-First-Name")
-	familyNameClaim := authsupport.WithFamilyNameClaim(identity.Username + "-Last-Name")
-	companyClaim := authsupport.WithCompanyClaim(identity.Username + "-Company-Name")
-	iatClaim := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-	token, err := authsupport.GenerateSignedE2ETestToken(identity, emailClaim, companyClaim, givenNameClaim, familyNameClaim, iatClaim)
-	require.NoError(t, err)
-
-	req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
-	require.NoError(t, err)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("content-type", "application/json")
-	client := HTTPClient
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err)
-	}()
-	r, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.True(t, resp.StatusCode < 300, "unexpected status code after posting user signup: '%d' ('%s')", resp.StatusCode, string(r))
 }
 
 func ToIdentityName(userID string) string {

@@ -39,6 +39,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 			Username(username).
 			Email(username + "@redhat.com").
 			ManuallyApprove().
+			EnsureMUR().
 			TargetCluster(member2Await).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().
@@ -107,8 +108,10 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 			require.NoError(t, err)
 			err = hostAwait.WaitUntilMasterUserRecordDeleted(username)
 			require.NoError(t, err)
+
 			// reactivate the user
 			usersignups[username], _ = NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+				IdentityID(uuid.Must(uuid.FromString(usersignups[username].Spec.Userid))).
 				Username(username).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
@@ -265,6 +268,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		Username("janedoe").
 		ManuallyApprove().
 		TargetCluster(memberAwait).
+		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().
 		Resources()

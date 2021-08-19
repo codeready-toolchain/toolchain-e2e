@@ -499,6 +499,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		Username("janedoe").
 		EnsureMUR().
 		ManuallyApprove().
+		TargetCluster(s.memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
