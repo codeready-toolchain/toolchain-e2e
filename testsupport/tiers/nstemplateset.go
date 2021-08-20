@@ -40,7 +40,7 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 	}
 	if expectedRevisions.ClusterResources != nil {
 		for _, check := range tierChecksClusterResources.GetClusterObjectChecks() {
-			check(t, memberAwait, nsTmplSet.Name)
+			check(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
 		}
 	}
 
