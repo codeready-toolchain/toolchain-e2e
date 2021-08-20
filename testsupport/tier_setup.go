@@ -76,7 +76,7 @@ func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, or
 		},
 		Spec: origTierTemplate.Spec,
 	}
-	origTierTemplate.Spec.TierName = tierName
+	newTierTemplate.Spec.TierName = tierName
 	err = hostAwait.CreateWithCleanup(context.TODO(), newTierTemplate)
 	require.NoError(t, err)
 	return newTierTemplate.Name
