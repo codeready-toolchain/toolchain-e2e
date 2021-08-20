@@ -14,6 +14,7 @@ spec:
         segmentWriteKey: 'test segment write key'
         woopraDomain: 'test woopra domain'
       environment: 'e2e-tests'
+      replicas: 2
       verification:
         enabled: true
         excludedEmailDomains: 'redhat.com,acme.com'
