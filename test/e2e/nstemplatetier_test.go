@@ -37,6 +37,8 @@ func TestNSTemplateTiers(t *testing.T) {
 	testingtiers, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
 		Username(testingTiersName).
 		ManuallyApprove().
+		TargetCluster(memberAwait).
+		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().
 		Resources()
