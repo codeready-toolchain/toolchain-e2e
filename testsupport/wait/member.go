@@ -157,8 +157,8 @@ func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
 func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
 	var userAccount *toolchainv1alpha1.UserAccount
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.UserAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+		userAccount = &toolchainv1alpha1.UserAccount{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, userAccount); err != nil {
 			if errors.IsNotFound(err) {
 				a.T.Logf("waiting for availability of useraccount '%s' in namespace '%s'", name, a.Namespace)
 				return false, nil
@@ -166,12 +166,11 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(a, obj) {
+			if !match(a, userAccount) {
 				return false, nil
 			}
 		}
 		a.T.Logf("found UserAccount '%s'", name)
-		userAccount = obj
 		return true, nil
 	})
 	return userAccount, err
