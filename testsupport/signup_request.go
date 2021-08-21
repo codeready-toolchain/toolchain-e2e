@@ -62,6 +62,10 @@ type SignupRequest interface {
 	// TargetCluster may be provided in order to specify the user's target cluster
 	TargetCluster(targetCluster *wait.MemberAwaitility) SignupRequest
 
+	// IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
+	// "Subject" and "IdentityID" claims in the user's auth token.  If not set, a new UUID value will be used
+	IdentityID(id uuid.UUID) SignupRequest
+
 	// Username specifies the username of the user
 	Username(username string) SignupRequest
 
@@ -92,6 +96,7 @@ type signupRequest struct {
 	ensureMUR            bool
 	manuallyApprove      bool
 	verificationRequired bool
+	identityID           *uuid.UUID
 	username             string
 	email                string
 	requiredHTTPStatus   int
@@ -99,6 +104,12 @@ type signupRequest struct {
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
 	mur                  *toolchainv1alpha1.MasterUserRecord
+}
+
+func (r *signupRequest) IdentityID(id uuid.UUID) SignupRequest {
+	value := id
+	r.identityID = &value
+	return r
 }
 
 func (r *signupRequest) Username(username string) SignupRequest {
@@ -148,9 +159,16 @@ func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 func (r *signupRequest) Execute() SignupRequest {
 	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.hostAwait)
 
+	var identityID uuid.UUID
+	if r.identityID != nil {
+		identityID = *r.identityID
+	} else {
+		identityID = uuid.Must(uuid.NewV4())
+	}
+
 	// Create a token and identity to sign up with
 	userIdentity := &authsupport.Identity{
-		ID:       uuid.Must(uuid.NewV4()),
+		ID:       identityID,
 		Username: r.username,
 	}
 
@@ -205,7 +223,15 @@ func (r *signupRequest) Execute() SignupRequest {
 
 	if r.ensureMUR {
 		// Confirm the MUR was created and ready
-		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, "base", r.memberAwait, r.member2Await)
+		members := []*wait.MemberAwaitility{}
+		if r.memberAwait != nil {
+			members = append(members, r.memberAwait)
+		}
+		if r.member2Await != nil {
+			members = append(members, r.member2Await)
+		}
+
+		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, "base", members...)
 		mur, err := r.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 		require.NoError(r.t, err)
 		r.mur = mur
@@ -227,7 +253,8 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
 	resp, err := httpClient.Do(req)
-	require.NoError(t, err)
+
+	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)
 
 	defer Close(t, resp)
 
