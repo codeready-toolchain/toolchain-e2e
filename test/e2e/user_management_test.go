@@ -495,16 +495,18 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 	// Create UserSignup
-	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
+	userSignup, mur := s.newSignupRequest().
+		Username("janedoe").
+		EnsureMUR().
+		ManuallyApprove().
+		TargetCluster(s.memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
 
 	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait)
 
-	// Get MasterUserRecord
-	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
-	require.NoError(s.T(), err)
-
 	// Disable MUR
-	mur, err = s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+	mur, err := s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 		mur.Spec.Disabled = true
 	})
 	require.NoError(s.T(), err)
