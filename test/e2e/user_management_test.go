@@ -101,7 +101,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), DeactivatedNotificationFailed())...))
+			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), UserSignupMissingEmailAnnotation())...))
 		require.NoError(t, err)
 	})
 
