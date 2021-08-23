@@ -269,6 +269,16 @@ func Deactivated() []toolchainv1alpha1.Condition {
 	}
 }
 
+func DeactivatedNotificationFailed() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "Failed to create user deactivation notification",
+		},
+	}
+}
+
 func Running() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,

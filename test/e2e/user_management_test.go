@@ -80,6 +80,29 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		})
 	})
 
+	s.T().Run("verify notification fails on user deactivation with no usersignup email", func(t *testing.T) {
+
+		// User on member cluster 1
+		userNoEmail, _ := s.newSignupRequest().
+			Username("usernoemail").
+			Email("usernoemail@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(s.memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
+		// Delete the user's email and set them to deactivated
+		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
+			delete(us.Annotations, toolchainv1alpha1.UserSignupUserEmailAnnotationKey)
+			states.SetDeactivated(us, true)
+		})
+		require.NoError(s.T(), err)
+		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
+
+		s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), DeactivatedNotificationFailed())...))
+	})
+
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
 
 		userSignupMember1, murMember1 := s.newSignupRequest().
