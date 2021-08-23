@@ -100,7 +100,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
-		s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), DeactivatedNotificationFailed())...))
+		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), DeactivatedNotificationFailed())...))
+		require.NoError(t, err)
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
