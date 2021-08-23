@@ -14,7 +14,7 @@ objects:
       name: kiali-ossm
       source: redhat-operators
       sourceNamespace: openshift-marketplace
-      startingCSV: kiali-operator.v1.24.5
+      startingCSV: kiali-operator.v1.24.8
 parameters:
   - name: KIALI_NAMESPACE
     value: openshift-operators

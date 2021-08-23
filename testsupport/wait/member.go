@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -88,6 +89,9 @@ func MatchUserAccountWaitCriterion(actual *toolchainv1alpha1.UserAccount, criter
 }
 
 func SprintUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) string {
+	if actual == nil {
+		return "failed to find UserAccount"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find UserAccount with matching criteria:\n")
 	for _, c := range criteria {
@@ -139,9 +143,28 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 	}
 }
 
+// UntilUserAccountContainsCondition returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount contains the given condition
+func UntilUserAccountContainsCondition(condition toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return test.ContainsCondition(actual.Status.Conditions, condition)
+		},
+	}
+}
+
+// UntilUserAccountIsBeingDeleted returns a `UserAccountWaitCriterion` which checks that the given
+// USerAccount has the deletion timestamp set
+func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
-	a.T.Logf("waiting for UserAccount '%s' to match criteria", name)
 	var userAccount *toolchainv1alpha1.UserAccount
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserAccount{}
@@ -151,11 +174,11 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 			}
 			return false, err
 		}
+		userAccount = obj
 		if !MatchUserAccountWaitCriterion(obj, criteria...) {
 			// keep waiting
 			return false, nil
 		}
-		userAccount = obj
 		return true, nil
 	})
 	// no match found, print the diffs
@@ -181,6 +204,9 @@ func MatchNSTemplateSetWaitCriterion(actual *toolchainv1alpha1.NSTemplateSet, cr
 }
 
 func SprintNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) string {
+	if actual == nil {
+		return "failed to find NSTemplateSet"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
 	for _, c := range criteria {
@@ -190,6 +216,19 @@ func SprintNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateS
 		}
 	}
 	return buf.String()
+}
+
+// UntilNSTemplateSetIsBeingDeleted returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet has Deletion Timestamp set
+func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return actual.DeletionTimestamp != nil
+		},
+		Diff: func(_ *toolchainv1alpha1.NSTemplateSet) string {
+			return "expected deletion timestamp to be set"
+		},
+	}
 }
 
 // UntilNSTemplateSetHasConditions returns a `NSTemplateSetWaitCriterion` which checks that the given
@@ -229,11 +268,11 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 			}
 			return false, err
 		}
+		nsTmplSet = obj
 		if !MatchNSTemplateSetWaitCriterion(obj, criteria...) {
 			// keep waiting
 			return false, nil
 		}
-		nsTmplSet = obj
 		return true, nil
 	})
 	// no match found, print the diffs
@@ -305,6 +344,32 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*corev1.Names
 	}
 	ns := namespaceList.Items[0]
 	return &ns, nil
+}
+
+//WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
+func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*corev1.Namespace, error) {
+	ns := &corev1.Namespace{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.Namespace{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: nsName}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				a.T.Logf("waiting for ns '%s' to be in Terminating state, but ns not found.", nsName)
+				return false, nil
+			}
+			return false, err
+		}
+		if obj.DeletionTimestamp == nil || obj.Status.Phase != corev1.NamespaceTerminating {
+			a.T.Logf("waiting for namespace '%s' to have deletion timestamp and be in 'Terminating' phase. Current phase: '%s' and deletionTimestamp: '%v'", nsName, obj.Status.Phase, obj.DeletionTimestamp)
+			return false, nil
+		}
+		a.T.Logf("found Namespace '%s'", nsName)
+		ns = obj
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ns, nil
 }
 
 // WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
@@ -424,6 +489,9 @@ func MatchClusterResourceQuotaWaitCriteria(actual *quotav1.ClusterResourceQuota,
 }
 
 func SprintClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) string {
+	if actual == nil {
+		return "failed to find ClusterResourceQuota"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
 	for _, c := range criteria {
@@ -483,6 +551,9 @@ func MatchIdlerWaitCriteria(actual *toolchainv1alpha1.Idler, criteria ...IdlerWa
 }
 
 func SprintIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) string {
+	if actual == nil {
+		return "failed to find Idler"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find Idler with matching criteria:\n")
 	for _, c := range criteria {
@@ -597,6 +668,9 @@ func MatchPodWaitCriterion(actual *corev1.Pod, criteria ...PodWaitCriterion) boo
 }
 
 func SprintPodWaitCriterionDiffs(actual *corev1.Pod, criteria ...PodWaitCriterion) string {
+	if actual == nil {
+		return "failed to find Pod"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find Pod with matching criteria:\n")
 	for _, c := range criteria {
@@ -698,6 +772,9 @@ func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
 				return true, nil
 			}
 			return false, err
+		}
+		if util.IsBeingDeleted(obj) {
+			return true, nil
 		}
 		return false, nil
 	})
@@ -918,6 +995,9 @@ func MatchMemberStatusWaitCriterion(actual *toolchainv1alpha1.MemberStatus, crit
 }
 
 func SprintMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) string {
+	if actual == nil {
+		return "failed to find MemberStatus"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find MemberStatus with matching criteria:\n")
 	for _, c := range criteria {
@@ -1061,19 +1141,6 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility
 		return true, nil
 	})
 	return memberOperatorConfig, err
-}
-
-// DeleteUserAccount deletes the user account resource with the given name and
-// waits until it was actually deleted
-func (a *MemberAwaitility) DeleteUserAccount(name string) error {
-	ua, err := a.WaitForUserAccount(name)
-	if err != nil {
-		return err
-	}
-	if err = a.Client.Delete(context.TODO(), ua); err != nil {
-		return err
-	}
-	return a.WaitUntilUserAccountDeleted(name)
 }
 
 // GetMemberOperatorPod returns the pod running the member operator controllers
@@ -1270,4 +1337,23 @@ func (a *MemberAwaitility) WaitForExpectedNumberOfResources(expected int, list f
 		}
 		return false, nil
 	})
+}
+
+func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
+	var m *corev1.Pod
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshPod := &corev1.Pod{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: podName}, freshPod); err != nil {
+			return true, err
+		}
+
+		modifyPod(freshPod)
+		if err := a.Client.Update(context.TODO(), freshPod); err != nil {
+			a.T.Logf("error updating Pod '%s' Will retry again...", podName)
+			return false, nil
+		}
+		m = freshPod
+		return true, nil
+	})
+	return m, err
 }

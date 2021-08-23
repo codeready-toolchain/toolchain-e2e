@@ -203,6 +203,15 @@ func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRe
 	}
 }
 
+// UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
+func UntilMasterUserRecordIsBeingDeleted() MasterUserRecordWaitCriterion {
+	return MasterUserRecordWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
+			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
 // UntilMasterUserRecordHasCondition checks if MasterUserRecord status has the given conditions (among others)
 func UntilMasterUserRecordHasCondition(expected toolchainv1alpha1.Condition) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
@@ -299,6 +308,16 @@ func SprintUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, cr
 		}
 	}
 	return buf.String()
+}
+
+// UntilUserSignupIsBeingDeleted returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has deletion timestamp set
+func UntilUserSignupIsBeingDeleted() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.DeletionTimestamp != nil
+		},
+	}
 }
 
 // UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
@@ -1076,9 +1095,11 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 		config := a.GetToolchainConfig()
 		// if the current config wasn't found
 		if config == nil {
-			// then create it back with the original values
-			err := a.Client.Create(context.TODO(), originalConfig)
-			require.NoError(a.T, err)
+			if originalConfig != nil {
+				// then create it back with the original values
+				err := a.Client.Create(context.TODO(), originalConfig)
+				require.NoError(a.T, err)
+			}
 		} else {
 			// otherwise just update it
 			err := a.updateToolchainConfigWithRetry(originalConfig)

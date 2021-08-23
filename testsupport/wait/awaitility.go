@@ -265,7 +265,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 		}
 		// verify that the endpoint gives a `200 OK` response on a GET request
 		client := http.Client{
-			Timeout: time.Duration(1 * time.Second),
+			Timeout: time.Duration(5 * time.Second), // because sometimes the network connection may be a bit slow
 		}
 		var request *http.Request
 
@@ -340,7 +340,7 @@ func (a *Awaitility) WaitUntiltMetricHasValue(family string, expectedValue float
 	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
-		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
+		// if error occurred, ignore and return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		return value == expectedValue && err == nil, nil
 	})
 	require.NoError(a.T, err, "waited for metric '%s{%v}' to reach '%v'. Current value: %v", family, labels, expectedValue, value)
