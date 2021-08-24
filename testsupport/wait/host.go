@@ -69,15 +69,11 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 			return false, err
 		}
 		mur = obj
-		if !MatchMasterUserRecordWaitCriterion(obj, criteria...) {
-			// keep waiting
-			return false, nil
-		}
-		return true, nil
+		return matchMasterUserRecordWaitCriterion(obj, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(SprintMasterUserRecordWaitCriterionDiffs(mur, criteria...))
+		a.T.Log(sprintMasterUserRecordWaitCriterionDiffs(mur, criteria...))
 	}
 	return mur, err
 }
@@ -88,12 +84,12 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 		return nil, err
 	}
 	for _, mur := range murList.Items {
-		if MatchMasterUserRecordWaitCriterion(&mur, criteria...) {
+		if matchMasterUserRecordWaitCriterion(&mur, criteria...) {
 			return &mur, nil
 		}
 	}
 	// no match found, print the diffs
-	a.T.Log(SprintMasterUserRecordWaitCriterionDiffs(&toolchainv1alpha1.MasterUserRecord{}, criteria...))
+	a.T.Log(sprintMasterUserRecordWaitCriterionDiffs(&toolchainv1alpha1.MasterUserRecord{}, criteria...))
 	return nil, nil
 }
 
@@ -161,13 +157,13 @@ func (a *HostAwaitility) UpdateUserSignupSpec(userSignupName string, modifyUserS
 	return userSignup, err
 }
 
-// MasterUserRecordWaitCriterion checks if a MasterUserRecord meets the given condition
+// MasterUserRecordWaitCriterion a struct to compare with an expected MasterUserRecord
 type MasterUserRecordWaitCriterion struct {
 	Match func(*toolchainv1alpha1.MasterUserRecord) bool
 	Diff  func(*toolchainv1alpha1.MasterUserRecord) string
 }
 
-func MatchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) bool {
+func matchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) bool {
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			return false
@@ -176,7 +172,7 @@ func MatchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserReco
 	return true
 }
 
-func SprintMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) string {
+func sprintMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) string {
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
 	for _, c := range criteria {
@@ -283,13 +279,13 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 	}
 }
 
-// UserSignupWaitCriterion a function to check that a user account has the expected condition
+// UserSignupWaitCriterion a struct to compare with an expected UserSignup
 type UserSignupWaitCriterion struct {
 	Match func(*toolchainv1alpha1.UserSignup) bool
 	Diff  func(*toolchainv1alpha1.UserSignup) string
 }
 
-func MatchUserSignupWaitCriterion(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) bool {
+func matchUserSignupWaitCriterion(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) bool {
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			return false
@@ -298,7 +294,7 @@ func MatchUserSignupWaitCriterion(actual *toolchainv1alpha1.UserSignup, criteria
 	return true
 }
 
-func SprintUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) string {
+func sprintUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) string {
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find UserSignup with matching criteria:\n")
 	for _, c := range criteria {
@@ -403,15 +399,11 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 			return false, err
 		}
 		userSignup = obj
-		if !MatchUserSignupWaitCriterion(userSignup, criteria...) {
-			// keep waiting
-			return false, nil
-		}
-		return true, nil
+		return matchUserSignupWaitCriterion(userSignup, criteria...), nil
 	})
 	if err != nil {
 		// no match found, print the diffs
-		a.T.Log(SprintUserSignupWaitCriterionDiffs(userSignup, criteria...))
+		a.T.Log(sprintUserSignupWaitCriterionDiffs(userSignup, criteria...))
 	}
 	return userSignup, err
 }
@@ -548,14 +540,10 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 			return false, nil
 		}
 		tier = obj
-		if !MatchNSTemplateTierWaitCriterion(obj, criteria...) {
-			// keep waiting
-			return false, nil
-		}
-		return true, nil
+		return matchNSTemplateTierWaitCriterion(obj, criteria...), nil
 	})
 	if err != nil {
-		a.T.Log(SprintNSTemplateTierWaitCriterionDiffs(tier, criteria...))
+		a.T.Log(sprintNSTemplateTierWaitCriterionDiffs(tier, criteria...))
 	}
 	require.NoError(a.T, err)
 
@@ -587,13 +575,11 @@ func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.Ti
 	a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.TierTemplate{}
-		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
-		if err != nil && !errors.IsNotFound(err) {
-			// return the error
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
-		} else if errors.IsNotFound(err) {
-			// keep waiting
-			return false, nil
 		}
 		tierTemplate = obj
 		return true, nil
@@ -605,13 +591,13 @@ func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.Ti
 	return tierTemplate, err
 }
 
-// NSTemplateTierWaitCriterion the criterion that must be met so the wait is over
+// NSTemplateTierWaitCriterion a struct to compare with an expected NSTemplateTier
 type NSTemplateTierWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateTier) bool
 	Diff  func(*toolchainv1alpha1.NSTemplateTier) string
 }
 
-func MatchNSTemplateTierWaitCriterion(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) bool {
+func matchNSTemplateTierWaitCriterion(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) bool {
 	for _, c := range criteria {
 		// if at least one criteria does not match, keep waiting
 		if !c.Match(actual) {
@@ -621,7 +607,7 @@ func MatchNSTemplateTierWaitCriterion(actual *toolchainv1alpha1.NSTemplateTier, 
 	return true
 }
 
-func SprintNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) string {
+func sprintNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) string {
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find NSTemplateTier with matching criteria:\n")
 	for _, c := range criteria {
@@ -634,7 +620,7 @@ func SprintNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplate
 	return buf.String()
 }
 
-// NSTemplateTierSpecMatcher a matcher for the
+// NSTemplateTierSpecMatcher a struct to compare with an expected NSTemplateTierSpec
 type NSTemplateTierSpecMatcher struct {
 	Match func(toolchainv1alpha1.NSTemplateTierSpec) bool
 	Diff  func(toolchainv1alpha1.NSTemplateTierSpec) string
@@ -704,11 +690,7 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 			}
 			return false, err
 		}
-		if test.ConditionsMatch(obj.Status.Conditions, condition) {
-			changeTierRequest = obj
-			return true, nil
-		}
-		return false, nil
+		return test.ConditionsMatch(obj.Status.Conditions, condition), nil
 	})
 	// log message if an error occurred
 	if err != nil {
@@ -747,10 +729,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 		if err := a.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(namespace)); err != nil {
 			return false, err
 		}
-		if len(templateUpdateRequests.Items) == count {
-			return true, nil
-		}
-		return false, nil
+		return len(templateUpdateRequests.Items) == count, nil
 	})
 	// log message if an error occurred
 	if err != nil {
@@ -759,13 +738,13 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 	return err
 }
 
-// NotificationWaitCriterion checks if a Notification meets the given condition
+// NotificationWaitCriterion a struct to compare with an expected Notification
 type NotificationWaitCriterion struct {
 	Match func(toolchainv1alpha1.Notification) bool
 	Diff  func(toolchainv1alpha1.Notification) string
 }
 
-func MatchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
+func matchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
 	for _, n := range actual {
 		for _, c := range criteria {
 			if !c.Match(n) {
@@ -776,7 +755,7 @@ func MatchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, cri
 	return true
 }
 
-func SprintNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) string {
+func sprintNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) string {
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find notifications with matching criteria:\n")
 	for _, n := range actual {
@@ -807,15 +786,11 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 			return false, nil
 		}
 		notifications = notificationList.Items
-		if !MatchNotificationWaitCriterion(notificationList.Items, criteria...) {
-			// keep waiting
-			return false, nil
-		}
-		return true, nil
+		return matchNotificationWaitCriterion(notificationList.Items, criteria...), nil
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Log(SprintNotificationWaitCriterionDiffs(notifications, criteria...))
+		a.T.Log(sprintNotificationWaitCriterionDiffs(notifications, criteria...))
 	}
 	return notifications, err
 }
@@ -846,13 +821,13 @@ func UntilNotificationHasConditions(expected ...toolchainv1alpha1.Condition) Not
 	}
 }
 
-// ToolchainStatusWaitCriterion a function to check that an ToolchainStatus has the expected condition
+// ToolchainStatusWaitCriterion a struct to compare with an expected ToolchainStatus
 type ToolchainStatusWaitCriterion struct {
 	Match func(*toolchainv1alpha1.ToolchainStatus) bool
 	Diff  func(*toolchainv1alpha1.ToolchainStatus) string
 }
 
-func MatchToolchainStatusWaitCriterion(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) bool {
+func matchToolchainStatusWaitCriterion(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) bool {
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			return false
@@ -861,7 +836,7 @@ func MatchToolchainStatusWaitCriterion(actual *toolchainv1alpha1.ToolchainStatus
 	return true
 }
 
-func SprintToolchainStatusWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) string {
+func sprintToolchainStatusWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) string {
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
 	for _, c := range criteria {
@@ -964,15 +939,11 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 			return false, err
 		}
 		toolchainStatus = obj
-		if !MatchToolchainStatusWaitCriterion(toolchainStatus, criteria...) {
-			// keep waiting
-			return false, nil
-		}
-		return true, nil
+		return matchToolchainStatusWaitCriterion(toolchainStatus, criteria...), nil
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Log(SprintToolchainStatusWaitCriterionDiffs(toolchainStatus, criteria...))
+		a.T.Log(sprintToolchainStatusWaitCriterionDiffs(toolchainStatus, criteria...))
 	}
 	return toolchainStatus, err
 }
@@ -989,15 +960,36 @@ func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig
 	return config
 }
 
-// ToolchainConfigWaitCriterion a function to check that an ToolchainConfig has the expected condition
+// ToolchainConfigWaitCriterion a struct to compare with an expected ToolchainConfig
 type ToolchainConfigWaitCriterion struct {
-	Match func(*HostAwaitility, *toolchainv1alpha1.ToolchainConfig) bool
+	Match func(*toolchainv1alpha1.ToolchainConfig) bool
 	Diff  func(*toolchainv1alpha1.ToolchainConfig) string
+}
+
+func matchToolchainConfigWaitCriterion(actual *toolchainv1alpha1.ToolchainConfig, criteria ...ToolchainConfigWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func sprintToolchainConfigWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainConfig, criteria ...ToolchainConfigWaitCriterion) string {
+	buf := &strings.Builder{}
+	buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			buf.WriteString(c.Diff(actual))
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
 }
 
 func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) ToolchainConfigWaitCriterion {
 	return ToolchainConfigWaitCriterion{
-		Match: func(a *HostAwaitility, actual *toolchainv1alpha1.ToolchainConfig) bool {
+		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
@@ -1010,37 +1002,27 @@ func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) T
 func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
 	// there should only be one ToolchainConfig with the name "config"
 	name := "config"
-	toolchainConfig := &toolchainv1alpha1.ToolchainConfig{}
+	var toolchainConfig *toolchainv1alpha1.ToolchainConfig
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		toolchainConfig = &toolchainv1alpha1.ToolchainConfig{}
+		obj := &toolchainv1alpha1.ToolchainConfig{}
 		// retrieve the ToolchainConfig from the host namespace
-		err = a.Client.Get(context.TODO(),
+		if err := a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
 			},
-			toolchainConfig)
-		if err != nil {
+			obj); err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		for _, c := range criteria {
-			if !c.Match(a, toolchainConfig) {
-				return false, nil
-			}
-		}
-		return true, nil
+		toolchainConfig = obj
+		return matchToolchainConfigWaitCriterion(toolchainConfig, criteria...), nil
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Logf("failed to find ToolchainConfig '%s' with matching criteria: %v", name, err)
-		for _, c := range criteria {
-			if !c.Match(a, toolchainConfig) {
-				a.T.Log(c.Diff(toolchainConfig))
-			}
-		}
+		a.T.Log(sprintToolchainConfigWaitCriterionDiffs(toolchainConfig, criteria...))
 	}
 	return toolchainConfig, err
 }
