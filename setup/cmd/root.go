@@ -191,7 +191,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			startTime := time.Now()
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
-			if err := idlers.UpdateTimeout(cl, username, 15*time.Second); err != nil {
+			if err := idlers.UpdateTimeout(cl, username, 12*time.Hour); err != nil {
 				term.Fatalf(err, "failed to update idlers for user '%s'", username)
 			}
 
