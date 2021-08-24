@@ -1312,17 +1312,24 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment() {
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfResources(expected int, list func() (int, error)) error {
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		actual, err := list()
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expected int, list func() (int, error)) error {
+	var actual int
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		a, err := list()
 		if err != nil {
 			return false, err
 		}
+		actual = a
 		if actual == expected {
 			return true, nil
 		}
+
 		return false, nil
 	})
+	if err != nil {
+		a.T.Logf("expected number of resources of kind '%s' to match: %s", kind, Diff(expected, actual))
+	}
+	return err
 }
 
 func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
