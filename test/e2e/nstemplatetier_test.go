@@ -100,7 +100,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 func TestSetDefaultTier(t *testing.T) {
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
@@ -108,7 +108,14 @@ func TestSetDefaultTier(t *testing.T) {
 
 	t.Run(fmt.Sprintf("original default tier"), func(t *testing.T) {
 		// Create and approve a new user that should be provisioned to the base tier
-		defaultTierUser := CreateAndApproveSignup(t, hostAwait, "defaulttier", memberAwait.ClusterName)
+		defaultTierUser, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("defaulttier").
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
 
 		// wait for the user to be provisioned and verify it's provisioned to the base tier
 		VerifyResourcesProvisionedForSignup(t, hostAwait, defaultTierUser, "base", memberAwait)
@@ -117,7 +124,14 @@ func TestSetDefaultTier(t *testing.T) {
 	t.Run(fmt.Sprintf("changed default tier configuration"), func(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
-		defaultTierUserChanged := CreateAndApproveSignup(t, hostAwait, "defaulttierchanged", memberAwait.ClusterName)
+		defaultTierUserChanged, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("defaulttierchanged").
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
 
 		// wait for the user to be provisioned and verify it's provisioned to the advanced tier
 		VerifyResourcesProvisionedForSignup(t, hostAwait, defaultTierUserChanged, "advanced", memberAwait)
