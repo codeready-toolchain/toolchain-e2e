@@ -512,7 +512,7 @@ func (a *Awaitility) Cleanup(objects ...client.Object) {
 						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
 							return false, err
 						}
-						fmt.Println("")
+						
 						return true, nil
 					}
 					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
