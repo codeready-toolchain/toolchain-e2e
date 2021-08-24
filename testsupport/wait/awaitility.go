@@ -341,7 +341,8 @@ func (a *Awaitility) WaitUntiltMetricHasValue(family string, expectedValue float
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, ignore and return `false` to keep waiting (may be due to endpoint temporarily unavailable)
-		return value == expectedValue && err == nil, nil
+		// unless the expected value is `0`, in which case the metric is bot exposed (value==0 and err!= nil), but it's fine too.
+		return (value == expectedValue && err == nil) || (expectedValue == 0 && value == 0), nil
 	})
 	require.NoError(a.T, err, "waited for metric '%s{%v}' to reach '%v'. Current value: %v", family, labels, expectedValue, value)
 }
