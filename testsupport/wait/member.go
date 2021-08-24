@@ -147,10 +147,13 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 
 // UntilUserAccountHasConditions returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount has exactly all the given status conditions
-func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+func UntilUserAccountHasConditions(expected ...toolchainv1alpha1.Condition) UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
-			return test.ConditionsMatch(actual.Status.Conditions, conditions...)
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
+			return fmt.Sprintf("expected conditions to match: %s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
