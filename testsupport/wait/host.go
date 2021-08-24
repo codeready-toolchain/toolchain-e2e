@@ -313,6 +313,9 @@ func UntilUserSignupIsBeingDeleted() UserSignupWaitCriterion {
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
 			return actual.DeletionTimestamp != nil
 		},
+		Diff: func(_ *toolchainv1alpha1.UserSignup) string {
+			return "expected a non nil DeletionTimestamp"
+		},
 	}
 }
 
