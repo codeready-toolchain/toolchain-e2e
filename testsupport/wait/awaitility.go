@@ -146,7 +146,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(clusterType cluster.Ty
 // WaitForNamedToolchainClusterWithCondition waits until there is a ToolchainCluster with the given name
 // and with the given ClusterCondition (if it the condition is nil, then it skips this check)
 func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
-	a.T.Logf("waiting for ToolchainCluster '%s' in namespace '%s'", name, a.Namespace)
+	a.T.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have condition '%v'", name, a.Namespace, condition)
 	timeout := a.Timeout
 	if condition != nil {
 		timeout = ToolchainClusterConditionTimeout
