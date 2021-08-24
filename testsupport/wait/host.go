@@ -683,7 +683,7 @@ func HasClusterResourcesTemplateRef(expected string) NSTemplateTierSpecMatcher {
 }
 
 // WaitForChangeTierRequest waits until there a ChangeTierRequest is available with the given status conditions
-func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolchainv1alpha1.Condition) (*toolchainv1alpha1.ChangeTierRequest, error) {
+func (a *HostAwaitility) WaitForChangeTierRequest(name string, expected toolchainv1alpha1.Condition) (*toolchainv1alpha1.ChangeTierRequest, error) {
 	var changeTierRequest *toolchainv1alpha1.ChangeTierRequest
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.ChangeTierRequest{}
@@ -693,14 +693,15 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, condition toolcha
 			}
 			return false, err
 		}
-		return test.ConditionsMatch(obj.Status.Conditions, condition), nil
+		changeTierRequest = obj
+		return test.ConditionsMatch(obj.Status.Conditions, expected), nil
 	})
 	// log message if an error occurred
 	if err != nil {
 		if changeTierRequest == nil {
-			a.T.Logf("failed to find ChangeTierRequest '%s' with condition '%s'. Actual: nil", name, spew.Sdump(condition))
+			a.T.Logf("failed to find ChangeTierRequest '%s' with condition '%s'. Actual: nil", name, spew.Sdump(expected))
 		} else {
-			a.T.Logf("failed to find ChangeTierRequest '%s' with condition '%s'. Actual: %s", name, spew.Sdump(condition), spew.Sdump(changeTierRequest.Status.Conditions))
+			a.T.Logf("expected conditions to match: '%s'", Diff(expected, changeTierRequest.Status.Conditions))
 		}
 	}
 	return changeTierRequest, err
