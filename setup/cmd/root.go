@@ -39,6 +39,7 @@ var (
 	skipCSVGen              bool
 	skipDefaultTemplate     bool
 	operatorsLimit          int
+	idlerTimeout            string
 )
 
 var (
@@ -70,6 +71,7 @@ func Execute() {
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
+	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "12h", "overrides the default idler timeout")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -99,6 +101,11 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 	if operatorsLimit > len(operators.Templates) {
 		term.Fatalf(fmt.Errorf("the operators limit value must be less than or equal to '%d'", len(operators.Templates)), "invalid operators limit value '%d'", operatorsLimit)
+	}
+
+	idlerDuration, err := time.ParseDuration(idlerTimeout)
+	if err != nil {
+		term.Fatalf(err, "invalid idler-timeout value '%s'", idlerTimeout)
 	}
 
 	// add the default user-workloads.yaml file automatically
@@ -191,7 +198,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			startTime := time.Now()
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
-			if err := idlers.UpdateTimeout(cl, username, 12*time.Hour); err != nil {
+			if err := idlers.UpdateTimeout(cl, username, idlerDuration); err != nil {
 				term.Fatalf(err, "failed to update idlers for user '%s'", username)
 			}
 
