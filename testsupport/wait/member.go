@@ -112,6 +112,13 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 			expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
 			return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
 		},
+		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
+			userAccount := actual.DeepCopy()
+			userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			expectedSpec := expected.DeepCopy()
+			expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			return fmt.Sprintf("expected specs to match: %s", Diff(expectedSpec, userAccount.Spec))
+		},
 	}
 }
 
@@ -143,10 +150,13 @@ func UntilUserAccountHasConditions(conditions ...toolchainv1alpha1.Condition) Us
 
 // UntilUserAccountContainsCondition returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount contains the given condition
-func UntilUserAccountContainsCondition(condition toolchainv1alpha1.Condition) UserAccountWaitCriterion {
+func UntilUserAccountContainsCondition(expected toolchainv1alpha1.Condition) UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
-			return test.ContainsCondition(actual.Status.Conditions, condition)
+			return test.ContainsCondition(actual.Status.Conditions, expected)
+		},
+		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
+			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
 		},
 	}
 }
@@ -552,7 +562,7 @@ func IdlerConditions(expected ...toolchainv1alpha1.Condition) IdlerWaitCriterion
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.Idler) string {
-			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+			return fmt.Sprintf("expected conditions to match: %s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }

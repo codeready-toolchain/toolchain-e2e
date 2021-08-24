@@ -14,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
@@ -512,7 +513,6 @@ func (a *Awaitility) Cleanup(objects ...client.Object) {
 						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
 							return false, err
 						}
-						
 						return true, nil
 					}
 					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)

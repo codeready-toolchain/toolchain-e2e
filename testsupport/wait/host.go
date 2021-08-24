@@ -314,7 +314,7 @@ func UntilUserSignupIsBeingDeleted() UserSignupWaitCriterion {
 			return actual.DeletionTimestamp != nil
 		},
 		Diff: func(_ *toolchainv1alpha1.UserSignup) string {
-			return "expected a non nil DeletionTimestamp"
+			return "expected a non-nil DeletionTimestamp"
 		},
 	}
 }
@@ -996,7 +996,7 @@ func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) T
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
-			return fmt.Sprintf("expected ToolchainConfig conditions to contain: %s. Actual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+			return fmt.Sprintf("expected ToolchainConfig conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
 		},
 	}
 }

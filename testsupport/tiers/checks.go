@@ -8,7 +8,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/davecgh/go-spew/spew"
 
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
@@ -698,7 +697,7 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.Resource
 				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
 		Diff: func(actual *quotav1.ClusterResourceQuota) string {
-			return fmt.Sprintf("expected ClusterResourceQuota to match: %s/%s/%s\nactual: %s", userName, tierName, spew.Sdump(hard), spew.Sdump(actual))
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual))
 		},
 	}
 }
