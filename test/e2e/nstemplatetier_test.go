@@ -106,7 +106,7 @@ func TestSetDefaultTier(t *testing.T) {
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	t.Run(fmt.Sprintf("original default tier"), func(t *testing.T) {
+	t.Run("original default tier", func(t *testing.T) {
 		// Create and approve a new user that should be provisioned to the base tier
 		defaultTierUser, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
 			Username("defaulttier").
@@ -121,7 +121,7 @@ func TestSetDefaultTier(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, hostAwait, defaultTierUser, "base", memberAwait)
 	})
 
-	t.Run(fmt.Sprintf("changed default tier configuration"), func(t *testing.T) {
+	t.Run("changed default tier configuration", func(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
 		defaultTierUserChanged, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
