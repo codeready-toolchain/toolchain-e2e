@@ -79,24 +79,21 @@ Note #2: Only resources that a user has permissions to create will be successful
 NAME               MURS   READY   LAST UPDATED
 toolchain-status   0      True    2021-03-24T22:39:36Z
 ```
-. Populate the cluster with 3000 users and resources for all users
+. Populate the cluster with 2000 users and both default and custom resources for all users
 +
-Creating 3000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 3 separate terminals using a unique username prefix in each terminal.
+Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 3 separate terminals using a unique username prefix in each terminal.
 +
 Terminal 1: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --active 1000 --username cupcake`
+`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cupcake`
 +
 Terminal 2: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --active 1000 --username cheesecake`
-+
-Terminal 3: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --active 1000 --username tiramisu`
+`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cheesecake`
 +
 Note 1: You do not need to add the default template (https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[setup/resources/user-workloads.yaml]), it is automatically added when you run the setup.
 +
-Note 2: CSV resources are automatically created for each active user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason. Use `go run setup/main.go --help` to see the full set of options. +
-. Grab some coffee ☕️, populating the cluster with 3000 users can take over 4 hours depending on network latency +
-Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go <path to the user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --active <number_of_users_left_to_create>`
+Note 2: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason. Use `go run setup/main.go --help` to see the full set of options. +
+. Grab some coffee ☕️, populating the cluster with 2000 users can take over 4 hours depending on network latency +
+Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <number_of_users_left_to_create> --custom <number_of_users_left_to_create>`
 
 === Evaluate the Cluster and Operator(s)
 
