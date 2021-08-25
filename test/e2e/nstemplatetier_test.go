@@ -108,7 +108,7 @@ func TestSetDefaultTier(t *testing.T) {
 
 	t.Run("original default tier", func(t *testing.T) {
 		// Create and approve a new user that should be provisioned to the base tier
-		defaultTierUser, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
 			Username("defaulttier").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
@@ -116,15 +116,12 @@ func TestSetDefaultTier(t *testing.T) {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().
 			Resources()
-
-		// wait for the user to be provisioned and verify it's provisioned to the base tier
-		VerifyResourcesProvisionedForSignup(t, hostAwait, defaultTierUser, "base", memberAwait)
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
-		defaultTierUserChanged, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
 			Username("defaulttierchanged").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
@@ -132,9 +129,6 @@ func TestSetDefaultTier(t *testing.T) {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().
 			Resources()
-
-		// wait for the user to be provisioned and verify it's provisioned to the advanced tier
-		VerifyResourcesProvisionedForSignup(t, hostAwait, defaultTierUserChanged, "advanced", memberAwait)
 	})
 }
 
