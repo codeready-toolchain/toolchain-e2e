@@ -231,7 +231,11 @@ func (r *signupRequest) Execute() SignupRequest {
 			members = append(members, r.member2Await)
 		}
 
-		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, "base", members...)
+		expectedTier := "base"
+		if r.hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier != nil {
+			expectedTier = *r.hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier
+		}
+		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, expectedTier, members...)
 		mur, err := r.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 		require.NoError(r.t, err)
 		r.mur = mur
