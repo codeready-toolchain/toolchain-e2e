@@ -6,7 +6,7 @@ REQUIRED_EXECUTABLES = go gofmt git oc sed yamllint find grep python3 jq yq
 ifneq (,$(findstring docker-,$(MAKECMDGOALS)))
     REQUIRED_EXECUTABLES = docker
 endif
-# Don't check for any tool if the command was "make help", "make test-unit" or just "make" (without a target).
+# Don't check for any tool if "make help" is run or "make" without a target.
 ifneq ($(MAKECMDGOALS),help)
 ifneq ($(MAKECMDGOALS),)
 ifeq ($(VERBOSE),1)
