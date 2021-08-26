@@ -222,3 +222,14 @@ display-eval:
 	@echo 'export REGISTRATION_SERVICE_NS=$$HOST_NS'
 	@echo '# Run this command to configure your shell:'
 	@echo '# eval $$(make display-eval)'
+
+
+###########################################################
+#
+# Unit Tests (to verify the assertions and other utilities
+# in the `testsupport` package)
+#
+###########################################################
+.PHONY: test-unit
+test-unit:
+	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
