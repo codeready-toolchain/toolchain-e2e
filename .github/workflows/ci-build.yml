@@ -40,14 +40,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     
-    - name: Unit Test
+    - name: Unit Tests with Coverage
       run: |
         make test-unit-with-coverage
 
     - name: Upload code coverage
       uses: codecov/codecov-action@v1
       with:
-        files: ./out/coverage/coverage.txt
+        files: ./build/_output/coverage/coverage.txt
         flags: unittests # optional
         fail_ci_if_error: true # optional (default = false)
         verbose: true # optional (default = false)
