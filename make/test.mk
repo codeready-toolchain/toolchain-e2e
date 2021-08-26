@@ -230,6 +230,8 @@ display-eval:
 # in the `testsupport` package)
 #
 ###########################################################
+
 .PHONY: test-unit
+## Run the unit tests in the 'testsupport/...' packages
 test-unit:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
