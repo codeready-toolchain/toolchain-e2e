@@ -235,7 +235,7 @@ display-eval:
 COV_DIR = $(OUT_DIR)/coverage
 
 .PHONY: test
-## Run the unit tests in the 'testsupport/...' packages (with coverage)
+## Run the unit tests in the 'testsupport/...' packages
 test:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
 
