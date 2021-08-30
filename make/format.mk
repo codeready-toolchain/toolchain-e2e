@@ -1,7 +1,7 @@
 GOFORMAT_FILES := $(shell find  . -name '*.go' | grep -vEf ./gofmt_exclude)
 
 .PHONY: check-go-format
-## Exits with an error if there are files that do not match formatting defined by gofmt
+## Verify the formatting defined by 'gofmt'
 check-go-format:
 	$(Q)gofmt -s -l ${GOFORMAT_FILES} 2>&1 \
 		| tee $(OUT_DIR)/gofmt-errors \

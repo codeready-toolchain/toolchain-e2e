@@ -3,7 +3,7 @@ OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 
 .PHONY: run-cicd-script
-## Runs script from toolchain-cicd repo. If the script is found locally, then it runs the local version. If not, then it downloads the script from master
+## Run script from toolchain-cicd repo. If the script is found locally, then it runs the local version. If not, then it downloads the script from master
 run-cicd-script:
 ifneq ("$(wildcard ../toolchain-cicd/${SCRIPT_PATH})","")
 	@echo "running the script from local toolchain-cicd repo..."
