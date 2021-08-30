@@ -5,11 +5,11 @@ DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
 .PHONY: dev-deploy-e2e
-## deploys the resources with one member operator instance
+## Deploy the resources with one member operator instance
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
 
 .PHONY: dev-deploy-e2e-two-members
-## deploys the resources with two instances of member operator
+## Deploy the resources with two instances of member operator
 dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-service-link
 
 .PHONY: deploy-e2e-to-dev-namespaces
