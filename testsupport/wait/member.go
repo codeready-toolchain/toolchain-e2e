@@ -92,6 +92,11 @@ func sprintUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, 
 	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find UserAccount with matching criteria:\n")
+	buf.WriteString("----\n")
+	buf.WriteString("actual:\n")
+	buf.WriteString(spew.Sdump(actual))
+	buf.WriteString("\n----\n")
+	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			buf.WriteString(c.Diff(actual))
@@ -223,6 +228,11 @@ func sprintNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateS
 	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
+	buf.WriteString("----\n")
+	buf.WriteString("actual:\n")
+	buf.WriteString(spew.Sdump(actual))
+	buf.WriteString("\n----\n")
+	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			buf.WriteString(c.Diff(actual))
@@ -496,6 +506,11 @@ func sprintClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourc
 	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
+	buf.WriteString("----\n")
+	buf.WriteString("actual:\n")
+	buf.WriteString(spew.Sdump(actual))
+	buf.WriteString("\n----\n")
+	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			buf.WriteString(c.Diff(actual))
@@ -525,8 +540,8 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 		quota = obj
 		return matchClusterResourceQuotaWaitCriteria(obj, criteria...), nil
 	})
+	// no match found, print the diffs
 	if err != nil {
-		// no match found, print the diffs
 		a.T.Log(sprintClusterResourceQuotaWaitCriterionDiffs(quota, criteria...))
 	}
 	return quota, err
@@ -554,6 +569,11 @@ func sprintIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...I
 	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find Idler with matching criteria:\n")
+	buf.WriteString("----\n")
+	buf.WriteString("actual:\n")
+	buf.WriteString(spew.Sdump(actual))
+	buf.WriteString("\n----\n")
+	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
 		// if at least one criteria does not match, keep waiting
 		if !c.Match(actual) {
@@ -608,8 +628,8 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 		idler = obj
 		return matchIdlerWaitCriteria(obj, criteria...), nil
 	})
+	// no match found, print the diffs
 	if err != nil {
-		// no match found, print the diffs
 		a.T.Log(sprintIdlerWaitCriteriaDiffs(idler, criteria...))
 	}
 	return idler, err
@@ -696,8 +716,8 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 		pod = obj
 		return matchPodWaitCriterion(obj, criteria...), nil
 	})
+	// no match found, print the diffs
 	if err != nil {
-		// no match found, print the diffs
 		a.T.Log(sprintPodWaitCriterionDiffs(pod, criteria...))
 	}
 	return pod, err
@@ -990,6 +1010,11 @@ func sprintMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus
 	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find MemberStatus with matching criteria:\n")
+	buf.WriteString("----\n")
+	buf.WriteString("actual:\n")
+	buf.WriteString(spew.Sdump(actual))
+	buf.WriteString("\n----\n")
+	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
 		if !c.Match(actual) {
 			buf.WriteString(c.Diff(actual))
@@ -1070,7 +1095,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 		return matchMemberStatusWaitCriterion(obj, criteria...), nil
 	})
 	if err != nil {
-		a.T.Log(sprintMemberStatusWaitCriterionDiffs(memberStatus))
+		a.T.Log(sprintMemberStatusWaitCriterionDiffs(memberStatus, criteria...))
 	}
 	return err
 }

@@ -1,8 +1,9 @@
 package testsupport
 
 import (
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"testing"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -15,7 +16,7 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expect
 	err := memberAwait.WaitForMemberStatus(
 		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
-		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
+		wait.UntilMemberStatusHasConsoleURLSet("http://example.com", RoutesAvailable()))
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
