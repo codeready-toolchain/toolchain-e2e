@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ghodss/yaml"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -15,7 +16,9 @@ func init() {
 
 func Diff(actual, expected interface{}) string {
 	dmp := diffmatchpatch.New()
-	actualdmp, expecteddmp, dmpStrings := dmp.DiffLinesToChars(spew.Sdump(actual), spew.Sdump(expected))
+	e, _ := yaml.Marshal(expected)
+	a, _ := yaml.Marshal(actual)
+	actualdmp, expecteddmp, dmpStrings := dmp.DiffLinesToChars(string(a), string(e))
 	diffs := dmp.DiffMain(actualdmp, expecteddmp, false)
 	diffs = dmp.DiffCharsToLines(diffs, dmpStrings)
 	return diffPrettyText(diffs)

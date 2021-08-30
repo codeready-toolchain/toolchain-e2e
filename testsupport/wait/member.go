@@ -11,7 +11,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/ghodss/yaml"
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
@@ -94,7 +94,8 @@ func sprintUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, 
 	buf.WriteString("failed to find UserAccount with matching criteria:\n")
 	buf.WriteString("----\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -171,7 +172,9 @@ func UntilUserAccountContainsCondition(expected toolchainv1alpha1.Condition) Use
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
-			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Status.Conditions)
+			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", e, a)
 		},
 	}
 }
@@ -230,7 +233,8 @@ func sprintNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateS
 	buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
 	buf.WriteString("----\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -275,7 +279,7 @@ func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 			return actual.Spec.TierName == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected tier name to be '%s', but it was '%s'", expected, actual.Spec.TierName)
+			return fmt.Sprintf("expected tier name to be '%s'\nbut it was '%s'", expected, actual.Spec.TierName)
 		},
 	}
 }
@@ -508,7 +512,8 @@ func sprintClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourc
 	buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
 	buf.WriteString("----\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -571,7 +576,8 @@ func sprintIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...I
 	buf.WriteString("failed to find Idler with matching criteria:\n")
 	buf.WriteString("----\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -797,7 +803,7 @@ func PodRunning() PodWaitCriterion {
 			return actual.Status.Phase == corev1.PodRunning
 		},
 		Diff: func(actual *corev1.Pod) string {
-			return fmt.Sprintf("expected Pod to be 'Running', but it was '%s'", actual.Status.Phase)
+			return fmt.Sprintf("expected Pod to be 'Running'\nbut it was '%s'", actual.Status.Phase)
 		},
 	}
 }
@@ -809,7 +815,7 @@ func WithPodName(expected string) PodWaitCriterion {
 			return actual.Name == expected
 		},
 		Diff: func(actual *corev1.Pod) string {
-			return fmt.Sprintf("expected Pod to be name '%s', but it was '%s'", expected, actual.Name)
+			return fmt.Sprintf("expected Pod to be name '%s'\nbut it was '%s'", expected, actual.Name)
 		},
 	}
 }
@@ -821,7 +827,7 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 			return actual.Labels[key] == value
 		},
 		Diff: func(actual *corev1.Pod) string {
-			return fmt.Sprintf("expected Pod label '%s' to be '%s', but it was '%s'", key, value, actual.Labels[key])
+			return fmt.Sprintf("expected Pod label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
 		},
 	}
 }
@@ -832,7 +838,7 @@ func WithSandboxPriorityClass() PodWaitCriterion {
 			return checkPriorityClass(actual, "sandbox-users-pods", -3)
 		},
 		Diff: func(actual *corev1.Pod) string {
-			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods'/'-3', but it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods'/'-3'\nbut it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
 		},
 	}
 }
@@ -847,9 +853,9 @@ func WithOriginalPriorityClass() PodWaitCriterion {
 		},
 		Diff: func(actual *corev1.Pod) string {
 			if actual.Name != "idler-test-pod-1" {
-				return fmt.Sprintf("expected priorityClass to be '(unamed)'/'0', but it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+				return fmt.Sprintf("expected priorityClass to be '(unamed)'/'0'\nbut it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
 			}
-			return fmt.Sprintf("expected priorityClass to be 'system-cluster-critical'/'2000000000', but it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+			return fmt.Sprintf("expected priorityClass to be 'system-cluster-critical'/'2000000000'\nbut it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
 		},
 	}
 }
@@ -1012,7 +1018,8 @@ func sprintMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus
 	buf.WriteString("failed to find MemberStatus with matching criteria:\n")
 	buf.WriteString("----\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -1065,7 +1072,9 @@ func UntilMemberStatusHasConsoleURLSet(expectedURL string, expectedCondition too
 				test.ConditionsMatch(actual.Status.Routes.Conditions, expectedCondition)
 		},
 		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
-			return fmt.Sprintf("expected MemberStatus route for Console to be '%s' with condition '%v', but it was: %s", expectedURL, spew.Sdump(expectedCondition), spew.Sdump(actual.Status.Routes))
+			e, _ := yaml.Marshal(expectedCondition)
+			a, _ := yaml.Marshal(actual.Status.Routes)
+			return fmt.Sprintf("expected MemberStatus route for Console to be '%s' with condition\n%s\nbut it was: \n%s", expectedURL, e, a)
 		},
 	}
 }

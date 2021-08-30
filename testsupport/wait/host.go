@@ -14,7 +14,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -177,7 +177,8 @@ func sprintMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUs
 	buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
 	buf.WriteString("----\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -220,7 +221,9 @@ func UntilMasterUserRecordHasCondition(expected toolchainv1alpha1.Condition) Mas
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Status.Conditions)
+			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", e, a)
 		},
 	}
 }
@@ -303,7 +306,8 @@ func sprintUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, cr
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find UserSignup with matching criteria:\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -349,7 +353,9 @@ func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCrite
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Status.Conditions)
+			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", e, a)
 		},
 	}
 }
@@ -624,7 +630,8 @@ func sprintNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplate
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find NSTemplateTier with matching criteria:\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -679,7 +686,8 @@ func HasNoTemplateRefWithSuffix(suffix string) NSTemplateTierSpecMatcher {
 			return !strings.HasSuffix(actual.ClusterResources.TemplateRef, suffix)
 		},
 		Diff: func(actual toolchainv1alpha1.NSTemplateTierSpec) string {
-			return fmt.Sprintf("expected no TemplateRef with suffix '%s'. Actual: %s", suffix, spew.Sdump(actual))
+			a, _ := yaml.Marshal(actual)
+			return fmt.Sprintf("expected no TemplateRef with suffix '%s'. Actual: %s", suffix, a)
 		},
 	}
 }
@@ -713,7 +721,8 @@ func (a *HostAwaitility) WaitForChangeTierRequest(name string, expected toolchai
 	// log message if an error occurred
 	if err != nil {
 		if changeTierRequest == nil {
-			a.T.Logf("failed to find ChangeTierRequest '%s' with condition '%s'. Actual: nil", name, spew.Sdump(expected))
+			e, _ := yaml.Marshal(expected)
+			a.T.Logf("failed to find ChangeTierRequest '%s' with condition\n%s. Actual: nil", name, e)
 		} else {
 			a.T.Logf("expected conditions to match: '%s'", Diff(expected, changeTierRequest.Status.Conditions))
 		}
@@ -777,7 +786,8 @@ func sprintNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notificatio
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find notifications with matching criteria:\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, n := range actual {
@@ -862,7 +872,8 @@ func sprintToolchainStatusWaitCriterionDiffs(actual *toolchainv1alpha1.Toolchain
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -900,7 +911,8 @@ func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			return fmt.Sprintf("expected all status members to have usage set. Actual: %s", spew.Sdump(actual.Status.Members))
+			a, _ := yaml.Marshal(actual.Status.Members)
+			return fmt.Sprintf("expected all status members to have usage set. Actual: %s", a)
 		},
 	}
 }
@@ -918,7 +930,8 @@ func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCrite
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			return fmt.Sprintf("expected all status members to have API Endpoint '%s'. Actual: %s", apiEndpoint, spew.Sdump(actual.Status.Members))
+			a, _ := yaml.Marshal(actual.Status.Members)
+			return fmt.Sprintf("expected all status members to have API Endpoint '%s'. Actual: %s", apiEndpoint, a)
 		},
 	}
 }
@@ -1005,7 +1018,8 @@ func sprintToolchainConfigWaitCriterionDiffs(actual *toolchainv1alpha1.Toolchain
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
 	buf.WriteString("actual:\n")
-	buf.WriteString(spew.Sdump(actual))
+	y, _ := yaml.Marshal(actual)
+	buf.Write(y)
 	buf.WriteString("\n----\n")
 	buf.WriteString("diffs:\n")
 	for _, c := range criteria {
@@ -1023,7 +1037,9 @@ func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) T
 			return test.ContainsCondition(actual.Status.Conditions, expected)
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
-			return fmt.Sprintf("expected ToolchainConfig conditions to contain: %s.\n\tactual: %s", spew.Sdump(expected), spew.Sdump(actual.Status.Conditions))
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Status.Conditions)
+			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", e, a)
 		},
 	}
 }

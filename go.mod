@@ -5,6 +5,7 @@ require (
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210816150728-75450e8d842e
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gosuri/uilive v0.0.4 // indirect

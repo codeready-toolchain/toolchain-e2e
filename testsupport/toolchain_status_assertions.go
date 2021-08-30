@@ -16,7 +16,7 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expect
 	err := memberAwait.WaitForMemberStatus(
 		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
-		wait.UntilMemberStatusHasConsoleURLSet("http://example.com", RoutesAvailable()))
+		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
