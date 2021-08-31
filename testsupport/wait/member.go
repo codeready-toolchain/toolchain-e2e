@@ -26,6 +26,7 @@ import (
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -71,6 +72,55 @@ func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwait
 	}
 }
 
+func (a *MemberAwaitility) sprintAllResources() string {
+	all, err := a.allResources()
+	buf := &strings.Builder{}
+	if err != nil {
+		buf.WriteString("unable to list other resources in the member namespace:\n")
+		buf.WriteString(err.Error())
+		buf.WriteString("\n")
+	} else {
+		buf.WriteString("other resources in the member namespace:\n")
+		for _, r := range all {
+			y, _ := yaml.Marshal(r)
+			buf.Write(y)
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
+
+// list all relevant resources in the member namespace, in case of test failure and for faster troubleshooting.
+func (a *MemberAwaitility) allResources() ([]runtime.Object, error) {
+	all := []runtime.Object{}
+	// useraccounts
+	useraccounts := toolchainv1alpha1.UserAccountList{}
+	if err := a.Client.List(context.TODO(), &useraccounts, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range useraccounts.Items {
+		all = append(all, &i)
+	}
+	// nstemplatesets
+	nstemplatesets := toolchainv1alpha1.NSTemplateSetList{}
+	if err := a.Client.List(context.TODO(), &nstemplatesets, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range nstemplatesets.Items {
+		all = append(all, &i)
+	}
+	// memberstatuses
+	memberstatuses := toolchainv1alpha1.MemberStatusList{}
+	if err := a.Client.List(context.TODO(), &memberstatuses, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range memberstatuses.Items {
+		all = append(all, &i)
+	}
+
+	return all, nil
+}
+
 // UserAccountWaitCriterion a struct to compare with a given UserAccount
 type UserAccountWaitCriterion struct {
 	Match func(*toolchainv1alpha1.UserAccount) bool
@@ -86,25 +136,28 @@ func matchUserAccountWaitCriterion(actual *toolchainv1alpha1.UserAccount, criter
 	return true
 }
 
-func sprintUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) string {
-	if actual == nil {
-		return "failed to find UserAccount"
-	}
+func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find UserAccount with matching criteria:\n")
-	buf.WriteString("----\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find UserAccount\n")
+	} else {
+		buf.WriteString("failed to find UserAccount with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the member namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+	a.T.Log(buf.String())
 }
 
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
@@ -205,7 +258,7 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintUserAccountWaitCriterionDiffs(userAccount, criteria...))
+		a.printUserAccountWaitCriterionDiffs(userAccount, criteria...)
 	}
 	return userAccount, err
 }
@@ -225,25 +278,28 @@ func matchNSTemplateSetWaitCriterion(actual *toolchainv1alpha1.NSTemplateSet, cr
 	return true
 }
 
-func sprintNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) string {
-	if actual == nil {
-		return "failed to find NSTemplateSet"
-	}
+func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
-	buf.WriteString("----\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find NSTemplateSet\n")
+	} else {
+		buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the member namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+	a.T.Log(buf.String())
 }
 
 // UntilNSTemplateSetIsBeingDeleted returns a `NSTemplateSetWaitCriterion` which checks that the given
@@ -301,7 +357,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintNSTemplateSetWaitCriterionDiffs(nsTmplSet, criteria...))
+		a.printNSTemplateSetWaitCriterionDiffs(nsTmplSet, criteria...)
 	}
 	return nsTmplSet, err
 }
@@ -504,25 +560,28 @@ func matchClusterResourceQuotaWaitCriteria(actual *quotav1.ClusterResourceQuota,
 	return true
 }
 
-func sprintClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) string {
-	if actual == nil {
-		return "failed to find ClusterResourceQuota"
-	}
+func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
-	buf.WriteString("----\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find ClusterResourceQuota\n")
+	} else {
+		buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the member namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+	a.T.Log(buf.String())
 }
 
 // WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
@@ -547,7 +606,7 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintClusterResourceQuotaWaitCriterionDiffs(quota, criteria...))
+		a.printClusterResourceQuotaWaitCriterionDiffs(quota, criteria...)
 	}
 	return quota, err
 }
@@ -568,26 +627,29 @@ func matchIdlerWaitCriteria(actual *toolchainv1alpha1.Idler, criteria ...IdlerWa
 	return true
 }
 
-func sprintIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) string {
-	if actual == nil {
-		return "failed to find Idler"
-	}
+func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find Idler with matching criteria:\n")
-	buf.WriteString("----\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		// if at least one criteria does not match, keep waiting
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find Idler\n")
+	} else {
+		buf.WriteString("failed to find Idler with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			// if at least one criteria does not match, keep waiting
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the member namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+	a.T.Log(buf.String())
 }
 
 // IdlerConditions returns a `IdlerWaitCriterion` which checks that the given
@@ -636,7 +698,7 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintIdlerWaitCriteriaDiffs(idler, criteria...))
+		a.printIdlerWaitCriteriaDiffs(idler, criteria...)
 	}
 	return idler, err
 }
@@ -687,19 +749,22 @@ func matchPodWaitCriterion(actual *corev1.Pod, criteria ...PodWaitCriterion) boo
 	return true
 }
 
-func sprintPodWaitCriterionDiffs(actual *corev1.Pod, criteria ...PodWaitCriterion) string {
-	if actual == nil {
-		return "failed to find Pod"
-	}
+func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, criteria ...PodWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find Pod with matching criteria:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find Pod\n")
+	} else {
+		buf.WriteString("failed to find Pod with matching criteria:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the member namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+	a.T.Log(buf.String())
 }
 
 // WaitForPod waits until a pod with the given name exists in the given namespace
@@ -724,7 +789,7 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintPodWaitCriterionDiffs(pod, criteria...))
+		a.printPodWaitCriterionDiffs(pod, criteria...)
 	}
 	return pod, err
 }
@@ -1010,25 +1075,28 @@ func matchMemberStatusWaitCriterion(actual *toolchainv1alpha1.MemberStatus, crit
 	return true
 }
 
-func sprintMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) string {
-	if actual == nil {
-		return "failed to find MemberStatus"
-	}
+func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find MemberStatus with matching criteria:\n")
-	buf.WriteString("----\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find MemberStatus\n")
+	} else {
+		buf.WriteString("failed to find MemberStatus with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the member namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+	a.T.Log(buf.String())
 }
 
 // UntilMemberStatusHasConditions returns a `MemberStatusWaitCriterion` which checks that the given
@@ -1104,7 +1172,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 		return matchMemberStatusWaitCriterion(obj, criteria...), nil
 	})
 	if err != nil {
-		a.T.Log(sprintMemberStatusWaitCriterionDiffs(memberStatus, criteria...))
+		a.printMemberStatusWaitCriterionDiffs(memberStatus, criteria...)
 	}
 	return err
 }

@@ -19,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
@@ -57,6 +58,78 @@ func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitilit
 	}
 }
 
+func (a *HostAwaitility) sprintAllResources() string {
+	all, err := a.allResources()
+	buf := &strings.Builder{}
+	if err != nil {
+		buf.WriteString("unable to list other resources in the host namespace:\n")
+		buf.WriteString(err.Error())
+		buf.WriteString("\n")
+	} else {
+		buf.WriteString("other resources in the host namespace:\n")
+		for _, r := range all {
+			y, _ := yaml.Marshal(r)
+			buf.Write(y)
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
+
+// list all relevant resources in the host namespace, in case of test failure and for faster troubleshooting.
+func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
+	all := []runtime.Object{}
+	// usersignups
+	usersignups := toolchainv1alpha1.UserSignupList{}
+	if err := a.Client.List(context.TODO(), &usersignups, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range usersignups.Items {
+		all = append(all, &i)
+	}
+	// masteruserrecords
+	masteruserrecords := toolchainv1alpha1.MasterUserRecordList{}
+	if err := a.Client.List(context.TODO(), &masteruserrecords, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range masteruserrecords.Items {
+		all = append(all, &i)
+	}
+	// notifications
+	notifications := toolchainv1alpha1.NotificationList{}
+	if err := a.Client.List(context.TODO(), &notifications, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range notifications.Items {
+		all = append(all, &i)
+	}
+	// nstemplatetiers
+	nstemplatetiers := toolchainv1alpha1.NSTemplateTierList{}
+	if err := a.Client.List(context.TODO(), &nstemplatetiers, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range nstemplatetiers.Items {
+		all = append(all, &i)
+	}
+	// toolchainconfig
+	toolchainconfigs := toolchainv1alpha1.ToolchainConfigList{}
+	if err := a.Client.List(context.TODO(), &toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range toolchainconfigs.Items {
+		all = append(all, &i)
+	}
+	// toolchainstatus
+	toolchainstatuses := toolchainv1alpha1.ToolchainStatusList{}
+	if err := a.Client.List(context.TODO(), &toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range usersignups.Items {
+		all = append(all, &i)
+	}
+	return all, nil
+}
+
 // WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	var mur *toolchainv1alpha1.MasterUserRecord
@@ -73,7 +146,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintMasterUserRecordWaitCriterionDiffs(mur, criteria...))
+		a.printMasterUserRecordWaitCriterionDiffs(mur, criteria...)
 	}
 	return mur, err
 }
@@ -89,7 +162,7 @@ func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCri
 		}
 	}
 	// no match found, print the diffs
-	a.T.Log(sprintMasterUserRecordWaitCriterionDiffs(&toolchainv1alpha1.MasterUserRecord{}, criteria...))
+	a.printMasterUserRecordWaitCriterionDiffs(&toolchainv1alpha1.MasterUserRecord{}, criteria...)
 	return nil, nil
 }
 
@@ -172,22 +245,29 @@ func matchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserReco
 	return true
 }
 
-func sprintMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) string {
+func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
-	buf.WriteString("----\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find MasterUserRecord\n")
+	} else {
+		buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+
+	a.T.Log(buf.String())
 }
 
 // UntilMasterUserRecordHasProvisionedTime checks if MasterUserRecord status has the given provisioned time
@@ -302,21 +382,28 @@ func matchUserSignupWaitCriterion(actual *toolchainv1alpha1.UserSignup, criteria
 	return true
 }
 
-func sprintUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) string {
+func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find UserSignup with matching criteria:\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find UserSignup\n")
+	} else {
+		buf.WriteString("failed to find UserSignup with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+
+	a.T.Log(buf.String())
 }
 
 // UntilUserSignupIsBeingDeleted returns a `UserSignupWaitCriterion` which checks that the given
@@ -421,7 +508,7 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintUserSignupWaitCriterionDiffs(userSignup, criteria...))
+		a.printUserSignupWaitCriterionDiffs(userSignup, criteria...)
 	}
 	return userSignup, err
 }
@@ -562,7 +649,7 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintNSTemplateTierWaitCriterionDiffs(tier, criteria...))
+		a.printNSTemplateTierWaitCriterionDiffs(tier, criteria...)
 	}
 	require.NoError(a.T, err)
 
@@ -626,22 +713,28 @@ func matchNSTemplateTierWaitCriterion(actual *toolchainv1alpha1.NSTemplateTier, 
 	return true
 }
 
-func sprintNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) string {
+func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find NSTemplateTier with matching criteria:\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		// if at least one criteria does not match, keep waiting
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find NSTemplateTier\n")
+	} else {
+		buf.WriteString("failed to find NSTemplateTier with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+
+	a.T.Log(buf.String())
 }
 
 // NSTemplateTierSpecMatcher a struct to compare with an expected NSTemplateTierSpec
@@ -782,26 +875,30 @@ func matchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, cri
 	return true
 }
 
-func sprintNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) string {
-	if len(actual) == 0 {
-		return "no notification found with matching criteria"
-	}
+func (a *HostAwaitility) printNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find notifications with matching criteria:\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, n := range actual {
-		for _, c := range criteria {
-			if !c.Match(n) {
-				buf.WriteString(c.Diff(n))
-				buf.WriteString("\n")
+	if len(actual) == 0 {
+		buf.WriteString("no notification found\n")
+	} else {
+		buf.WriteString("failed to find notifications with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, n := range actual {
+			for _, c := range criteria {
+				if !c.Match(n) {
+					buf.WriteString(c.Diff(n))
+					buf.WriteString("\n")
+				}
 			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+
+	a.T.Log(buf.String())
 }
 
 // WaitForNotifications waits until there is an expected number of Notifications available for the provided user and with the notification type and which match the conditions (if provided).
@@ -815,17 +912,15 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		if err := a.Client.List(context.TODO(), notificationList, opts); err != nil {
 			return false, err
 		}
-
-		actualNotificationCount := len(notificationList.Items)
-		if numberOfNotifications != actualNotificationCount {
+		notifications = notificationList.Items
+		if numberOfNotifications != len(notificationList.Items) {
 			return false, nil
 		}
-		notifications = notificationList.Items
 		return matchNotificationWaitCriterion(notificationList.Items, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintNotificationWaitCriterionDiffs(notifications, criteria...))
+		a.printNotificationWaitCriterionDiffs(notifications, criteria...)
 	}
 	return notifications, err
 }
@@ -871,21 +966,28 @@ func matchToolchainStatusWaitCriterion(actual *toolchainv1alpha1.ToolchainStatus
 	return true
 }
 
-func sprintToolchainStatusWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) string {
+func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find Toolchainstatus\n")
+	} else {
+		buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+
+	a.T.Log(buf.String())
 }
 
 // UntilToolchainStatusHasConditions returns a `ToolchainStatusWaitCriterion` which checks that the given
@@ -985,7 +1087,7 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintToolchainStatusWaitCriterionDiffs(toolchainStatus, criteria...))
+		a.printToolchainStatusWaitCriterionDiffs(toolchainStatus, criteria...)
 	}
 	return toolchainStatus, err
 }
@@ -1017,21 +1119,28 @@ func matchToolchainConfigWaitCriterion(actual *toolchainv1alpha1.ToolchainConfig
 	return true
 }
 
-func sprintToolchainConfigWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainConfig, criteria ...ToolchainConfigWaitCriterion) string {
+func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainConfig, criteria ...ToolchainConfigWaitCriterion) {
 	buf := &strings.Builder{}
-	buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
-	buf.WriteString("actual:\n")
-	y, _ := yaml.Marshal(actual)
-	buf.Write(y)
-	buf.WriteString("\n----\n")
-	buf.WriteString("diffs:\n")
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			buf.WriteString(c.Diff(actual))
-			buf.WriteString("\n")
+	if actual == nil {
+		buf.WriteString("failed to find ToolchainConfig\n")
+	} else {
+		buf.WriteString("failed to find ToolchainConfig with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
 		}
 	}
-	return buf.String()
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	buf.WriteString(a.sprintAllResources())
+
+	a.T.Log(buf.String())
 }
 
 func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) ToolchainConfigWaitCriterion {
@@ -1071,7 +1180,7 @@ func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitC
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.T.Log(sprintToolchainConfigWaitCriterionDiffs(toolchainConfig, criteria...))
+		a.printToolchainConfigWaitCriterionDiffs(toolchainConfig, criteria...)
 	}
 	return toolchainConfig, err
 }
