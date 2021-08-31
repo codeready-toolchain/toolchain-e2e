@@ -217,7 +217,7 @@ func TestE2EFlow(t *testing.T) {
 
 		t.Run("delete useraccount and expect recreation", func(t *testing.T) {
 			// given
-			ua, err := memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername + "_")
+			ua, err := memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername)
 			require.NoError(t, err)
 
 			// when deleting the user account
