@@ -783,6 +783,9 @@ func matchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, cri
 }
 
 func sprintNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) string {
+	if len(actual) == 0 {
+		return "no notification found with matching criteria"
+	}
 	buf := &strings.Builder{}
 	buf.WriteString("failed to find notifications with matching criteria:\n")
 	buf.WriteString("actual:\n")
