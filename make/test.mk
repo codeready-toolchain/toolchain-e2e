@@ -35,8 +35,13 @@ test-e2e: deploy-e2e e2e-run
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: build clean-e2e-files deploy-host deploy-members e2e-service-account setup-toolchainclusters
+deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
 
+label-olm-ns:
+# adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+# so that deployment also works when network policies were configured with `sandbox-cli`
+	@-oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+	
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
