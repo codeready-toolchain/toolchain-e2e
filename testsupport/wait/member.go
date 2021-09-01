@@ -472,16 +472,6 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 	return quota, err
 }
 
-func WithTierLabel(tieName string) ClusterResourceQuotaWaitCriterion {
-	return func(a *MemberAwaitility, quota quotav1.ClusterResourceQuota) bool {
-		if quota.Labels[toolchainv1alpha1.TierLabelKey] == tieName {
-			return true
-		}
-		a.T.Logf("waiting until the ClusterResourceQuota %s has the tier label set Expected: '%s' Actual: '%s'", quota.Name, tieName, quota.Labels[toolchainv1alpha1.TierLabelKey])
-		return false
-	}
-}
-
 // IdlerWaitCriterion a function to check that an Idler has the expected condition
 type IdlerWaitCriterion func(a *MemberAwaitility, idler toolchainv1alpha1.Idler) bool
 
