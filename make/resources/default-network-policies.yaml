@@ -1,0 +1,66 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: default-network-policies
+objects:
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    labels:
+      provider: sandbox-sre
+    name: allow-from-same-namespace
+    namespace: ${NAMESPACE}
+  spec:
+    ingress:
+    - from:
+      - podSelector: {}
+    podSelector: null
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    labels:
+      provider: sandbox-sre
+    name: allow-from-ingress-namespace
+    namespace: ${NAMESPACE}
+  spec:
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            network.openshift.io/policy-group: ingress
+    podSelector: null
+- kind: NetworkPolicy
+  apiVersion: networking.k8s.io/v1
+  metadata:
+    labels:
+      provider: sandbox-sre
+    name: allow-from-openshift-customer-monitoring-namespace
+    namespace: ${NAMESPACE}
+  spec:
+    podSelector: {}
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: openshift-customer-monitoring
+    policyTypes:
+    - Ingress
+- kind: NetworkPolicy
+  apiVersion: networking.k8s.io/v1
+  metadata:
+    labels:
+      provider: sandbox-sre
+    name: allow-from-openshift-operator-lifecycle-manager-namespace
+    namespace: ${NAMESPACE}
+  spec:
+    podSelector: {}
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: openshift-operator-lifecycle-manager
+    policyTypes:
+    - Ingress
+parameters:
+- name: NAMESPACE
+  required: true

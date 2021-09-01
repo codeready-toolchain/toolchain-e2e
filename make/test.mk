@@ -40,8 +40,14 @@ deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-se
 label-olm-ns:
 # adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
 # so that deployment also works when network policies were configured with `sandbox-cli`
-	@-oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
-	
+	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+	@echo "adding network policies in $(HOST_NS) namespace"
+	@-oc process -p NAMESPACE=$(HOST_NS) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	@echo "adding network policies in $(MEMBER_NS) namespace"
+	@-oc process -p NAMESPACE=$(MEMBER_NS) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	@echo "adding network policies in $(MEMBER_NS_2) namespace"
+	@-oc process -p NAMESPACE=$(MEMBER_NS_2) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
