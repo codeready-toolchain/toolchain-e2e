@@ -196,6 +196,7 @@ create-host-resources:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
+	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
 	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster

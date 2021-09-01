@@ -70,7 +70,9 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
 	metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0)                                                           // all deactivated
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // all deactivated on member-1
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName)                 // all deactivated on member-2
+
 }
 
 // TestMetricsWhenUsersReactivated activates and deactivates a few users, and check the metrics.
