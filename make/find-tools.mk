@@ -1,9 +1,5 @@
 # Check all required tools are accessible
-ifneq ($(CLONEREFS_OPTIONS),)
 REQUIRED_EXECUTABLES = go gofmt git oc sed yamllint find grep python3 jq yq
-else
-REQUIRED_EXECUTABLES = go gofmt git oc operator-sdk sed yamllint find grep python3 jq yq
-endif
 # If we're running e.g. "make docker-build", nothing but docker is required
 # because all the above build tools are supposed to be included in the docker
 # image.

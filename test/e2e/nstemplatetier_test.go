@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -95,6 +96,40 @@ func TestNSTemplateTiers(t *testing.T) {
 		err := hostAwait.WaitUntilChangeTierRequestDeleted(name)
 		assert.NoError(t, err)
 	}
+}
+
+func TestSetDefaultTier(t *testing.T) {
+	// given
+	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
+
+	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
+	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
+	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
+
+	t.Run("original default tier", func(t *testing.T) {
+		// Create and approve a new user that should be provisioned to the base tier
+		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("defaulttier").
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+	})
+
+	t.Run("changed default tier configuration", func(t *testing.T) {
+		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
+		// Create and approve a new user that should be provisioned to the advanced tier
+		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("defaulttierchanged").
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+	})
 }
 
 func TestUpdateNSTemplateTier(t *testing.T) {

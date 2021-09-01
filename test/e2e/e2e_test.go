@@ -297,7 +297,7 @@ func TestE2EFlow(t *testing.T) {
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
 
-		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(TerminatingNSTemplateSet()))
+		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
@@ -305,7 +305,7 @@ func TestE2EFlow(t *testing.T) {
 		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForNamespaceInTerminating(userNamespace)
 		require.NoError(t, err)
 
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetContainsCondition(TerminatingNSTemplateSet()))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 

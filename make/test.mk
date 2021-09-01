@@ -196,6 +196,7 @@ create-host-resources:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
+	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
 	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
@@ -222,3 +223,25 @@ display-eval:
 	@echo 'export REGISTRATION_SERVICE_NS=$$HOST_NS'
 	@echo '# Run this command to configure your shell:'
 	@echo '# eval $$(make display-eval)'
+
+
+###########################################################
+#
+# Unit Tests (to verify the assertions and other utilities
+# in the `testsupport` package)
+#
+###########################################################
+
+# Output directory for coverage information
+COV_DIR = $(OUT_DIR)/coverage
+
+.PHONY: test
+## Run the unit tests in the 'testsupport/...' packages
+test:
+	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
+
+.PHONY: test-with-coverage
+## Run the unit tests in the 'testsupport/...' packages (with coverage)
+test-with-coverage:
+	@-mkdir -p $(COV_DIR)
+	@go test -coverprofile=$(COV_DIR)/coverage.txt -covermode=atomic github.com/codeready-toolchain/toolchain-e2e/testsupport/...

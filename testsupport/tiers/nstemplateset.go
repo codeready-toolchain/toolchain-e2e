@@ -1,10 +1,12 @@
 package tiers
 
 import (
+	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,41 +50,29 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 
 // UntilNSTemplateSetHasTemplateRefs checks if the NSTemplateTier has the expected template refs
 func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
-	return func(a *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet) bool {
-		actualNamespaces := nsTmplSet.Spec.Namespaces
-		if len(actualNamespaces) != len(expectedRevisions.Namespaces) {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'",
-				nsTmplSet.Name, actualNamespaces, expectedRevisions.Namespaces)
-			return false
-		}
-		if expectedRevisions.ClusterResources == nil && nsTmplSet.Spec.ClusterResources != nil {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref - it should be nil but it is not. Actual: '%v'",
-				nsTmplSet.Name, nsTmplSet.Spec.ClusterResources)
-			return false
-		}
-		if expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources == nil {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref - it should not be nil but it is. Expected: '%v'",
-				nsTmplSet.Name, expectedRevisions.Namespaces)
-			return false
-		}
-		if (expectedRevisions.ClusterResources != nil && nsTmplSet.Spec.ClusterResources != nil) &&
-			*expectedRevisions.ClusterResources != nsTmplSet.Spec.ClusterResources.TemplateRef {
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected cluster resource template ref. Actual: '%v'; Expected: '%v'",
-				nsTmplSet.Name, nsTmplSet.Spec.ClusterResources, expectedRevisions.ClusterResources)
-			return false
-		}
-
-	ExpectedNamespaces:
-		for _, expectedNsRef := range expectedRevisions.Namespaces {
-			for _, ns := range actualNamespaces {
-				if expectedNsRef == ns.TemplateRef {
-					continue ExpectedNamespaces
-				}
+	return wait.NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			actualNamespaces := actual.Spec.Namespaces
+			if len(actualNamespaces) != len(expectedRevisions.Namespaces) ||
+				expectedRevisions.ClusterResources == nil ||
+				actual.Spec.ClusterResources == nil ||
+				*expectedRevisions.ClusterResources != actual.Spec.ClusterResources.TemplateRef {
+				return false
 			}
-			a.T.Logf("waiting for NSTemplateSet '%s' to have the expected namespace template refs. Actual: '%s'; Expected: '%s'; Missing: '%s'",
-				nsTmplSet.Name, actualNamespaces, expectedRevisions.Namespaces, expectedNsRef)
-			return false
-		}
-		return true
+
+		ExpectedNamespaces:
+			for _, expectedNsRef := range expectedRevisions.Namespaces {
+				for _, ns := range actualNamespaces {
+					if expectedNsRef == ns.TemplateRef {
+						continue ExpectedNamespaces
+					}
+				}
+				return false
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected NSTemplateSet '%s' to have the following cluster and namespace revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec.Namespaces))
+		},
 	}
 }
