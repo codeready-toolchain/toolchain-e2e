@@ -1,8 +1,9 @@
 package testsupport
 
 import (
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"testing"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
