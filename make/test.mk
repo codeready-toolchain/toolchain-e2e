@@ -37,7 +37,7 @@ test-e2e: deploy-e2e e2e-run
 deploy-e2e: INSTALL_OPERATOR=true
 deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
 
-label-olm-ns:
+label-olm-ns: create-host-project create-member1 create-member2
 # adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
 # so that deployment also works when network policies were configured with `sandbox-cli`
 	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
