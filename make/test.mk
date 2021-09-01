@@ -183,14 +183,14 @@ deploy-members: create-member1 create-member2 get-and-publish-member-operator
 create-member1:
 	@echo "Deploying member operator to $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
-	-oc label ns ${MEMBER_NS} app=member-operator
+	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 
 .PHONY: create-member2
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
-	-oc label ns ${MEMBER_NS_2} app=member-operator
+	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 endif
 
 .PHONY: deploy-host
@@ -200,7 +200,7 @@ deploy-host: create-host-project get-and-publish-host-operator create-host-resou
 create-host-project:
 	@echo "Deploying host operator to ${HOST_NS}..."
 	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
-	-oc label ns ${HOST_NS} app=host-operator
+	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
 create-host-resources:
@@ -225,7 +225,7 @@ endif
 create-project:
 	-oc new-project ${PROJECT_NAME} 1>/dev/null
 	-oc project ${PROJECT_NAME}
-	-oc label ns ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
 
 .PHONY: display-eval
 display-eval:
