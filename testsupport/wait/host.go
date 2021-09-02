@@ -844,8 +844,9 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 
 // WaitForTemplateUpdateRequests waits until there is exactly `count` number of TemplateUpdateRequests
 func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count int) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
+	templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		templateUpdateRequests = &toolchainv1alpha1.TemplateUpdateRequestList{}
 		if err := a.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(namespace)); err != nil {
 			return false, err
 		}
@@ -853,7 +854,8 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Logf("failed to find TemplateUpdateRequests in namespace '%s': %v", namespace, err)
+		a.T.Logf("the actual number of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.\nTemplateUpdateRequests present in the namespace:\n%+v",
+			namespace, count, templateUpdateRequests.Items)
 	}
 	return err
 }

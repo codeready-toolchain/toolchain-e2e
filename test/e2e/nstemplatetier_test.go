@@ -218,10 +218,12 @@ func updateTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName string
 	tier := getTier(t, hostAwait, tierName)
 
 	if aliasTierClusterResources != "" {
-		tier.Spec.ClusterResources = getTier(t, hostAwait, aliasTierClusterResources).Spec.ClusterResources
+		baseTier := getTier(t, hostAwait, aliasTierClusterResources)
+		SetClusterTierTemplateFromTier(t, hostAwait, tier, baseTier)
 	}
 	if aliasTierNamespaces != "" {
-		tier.Spec.Namespaces = getTier(t, hostAwait, aliasTierNamespaces).Spec.Namespaces
+		baseTier := getTier(t, hostAwait, aliasTierNamespaces)
+		SetNamespaceTierTemplatesFromTier(t, hostAwait, tier, baseTier)
 	}
 	err := hostAwait.Client.Update(context.TODO(), tier)
 	require.NoError(t, err)

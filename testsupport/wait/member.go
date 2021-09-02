@@ -380,20 +380,20 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
 func (a *MemberAwaitility) WaitForNamespace(username, ref, tierName string) (*corev1.Namespace, error) {
 	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", username, ref)
+	_, kind, _, err := Split(ref)
+	if err != nil {
+		return nil, err
+	}
+	labels := map[string]string{
+		"toolchain.dev.openshift.com/owner":       username,
+		"toolchain.dev.openshift.com/templateref": ref,
+		"toolchain.dev.openshift.com/tier":        tierName,
+		"toolchain.dev.openshift.com/type":        kind,
+		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
+	}
 	namespaceList := &corev1.NamespaceList{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &corev1.NamespaceList{}
-		_, kind, _, err := Split(ref)
-		if err != nil {
-			return false, err
-		}
-		labels := map[string]string{
-			"toolchain.dev.openshift.com/owner":       username,
-			"toolchain.dev.openshift.com/templateref": ref,
-			"toolchain.dev.openshift.com/tier":        tierName,
-			"toolchain.dev.openshift.com/type":        kind,
-			"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
-		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
@@ -416,7 +416,14 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref, tierName string) (*co
 		return ns.Status.Phase == corev1.NamespaceActive, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s'", username, ref)
+		namespaceList = &corev1.NamespaceList{}
+		opts := client.MatchingLabels(map[string]string{
+			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+		})
+		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
+			a.T.Logf("unable to list all namespaces: %v", err)
+		}
+		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v \n present namespaces: %+v", username, ref, labels, namespaceList.Items)
 		return nil, err
 	}
 	ns := namespaceList.Items[0]

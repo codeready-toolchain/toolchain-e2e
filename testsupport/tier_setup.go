@@ -8,6 +8,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint: golint
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,17 +45,9 @@ func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName stri
 		},
 	}
 
-	for _, ns := range baseTier.Spec.Namespaces {
-		tier.Spec.Namespaces = append(tier.Spec.Namespaces, toolchainv1alpha1.NSTemplateTierNamespace{
-			TemplateRef: createNewTierTemplate(t, hostAwait, tierName, ns.TemplateRef, baseTier.Namespace),
-		})
-	}
+	SetNamespaceTierTemplatesFromTier(t, hostAwait, tier, baseTier)
 
-	if baseTier.Spec.ClusterResources != nil {
-		tier.Spec.ClusterResources = &toolchainv1alpha1.NSTemplateTierClusterResources{
-			TemplateRef: createNewTierTemplate(t, hostAwait, tierName, baseTier.Spec.ClusterResources.TemplateRef, baseTier.Namespace),
-		}
-	}
+	SetClusterTierTemplateFromTier(t, hostAwait, tier, baseTier)
 
 	err = Modify(tier, modifiers...)
 	require.NoError(t, err)
@@ -63,6 +56,22 @@ func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName stri
 	require.NoError(t, err)
 
 	return tier
+}
+
+func SetNamespaceTierTemplatesFromTier(t *testing.T, hostAwait *HostAwaitility, targetTier *toolchainv1alpha1.NSTemplateTier, sourceTier *toolchainv1alpha1.NSTemplateTier) {
+	for _, ns := range sourceTier.Spec.Namespaces {
+		targetTier.Spec.Namespaces = append(targetTier.Spec.Namespaces, toolchainv1alpha1.NSTemplateTierNamespace{
+			TemplateRef: createNewTierTemplate(t, hostAwait, targetTier.Name, ns.TemplateRef, sourceTier.Namespace),
+		})
+	}
+}
+
+func SetClusterTierTemplateFromTier(t *testing.T, hostAwait *HostAwaitility, targetTier *toolchainv1alpha1.NSTemplateTier, sourceTier *toolchainv1alpha1.NSTemplateTier) {
+	if sourceTier.Spec.ClusterResources != nil {
+		targetTier.Spec.ClusterResources = &toolchainv1alpha1.NSTemplateTierClusterResources{
+			TemplateRef: createNewTierTemplate(t, hostAwait, targetTier.Name, sourceTier.Spec.ClusterResources.TemplateRef, sourceTier.Namespace),
+		}
+	}
 }
 
 func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, origTemplateRef, namespace string) string {
@@ -77,8 +86,11 @@ func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, or
 		Spec: origTierTemplate.Spec,
 	}
 	newTierTemplate.Spec.TierName = tierName
-	err = hostAwait.CreateWithCleanup(context.TODO(), newTierTemplate)
-	require.NoError(t, err)
+	if err := hostAwait.CreateWithCleanup(context.TODO(), newTierTemplate); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			require.NoError(t, err)
+		}
+	}
 	return newTierTemplate.Name
 }
 
