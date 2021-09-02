@@ -37,17 +37,11 @@ test-e2e: deploy-e2e e2e-run
 deploy-e2e: INSTALL_OPERATOR=true
 deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
 
-label-olm-ns: create-host-project create-member1 create-member2
+label-olm-ns:
 # adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
 # so that deployment also works when network policies were configured with `sandbox-cli`
 	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
-	@echo "adding network policies in $(HOST_NS) namespace"
-	@-oc process -p NAMESPACE=$(HOST_NS) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
-	@echo "adding network policies in $(MEMBER_NS) namespace"
-	@-oc process -p NAMESPACE=$(MEMBER_NS) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
-	@echo "adding network policies in $(MEMBER_NS_2) namespace"
-	@-oc process -p NAMESPACE=$(MEMBER_NS_2) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
-
+	
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
@@ -223,9 +217,12 @@ endif
 
 .PHONY: create-project
 create-project:
-	-oc new-project ${PROJECT_NAME} 1>/dev/null
-	-oc project ${PROJECT_NAME}
-	-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	@-oc new-project ${PROJECT_NAME} 1>/dev/null
+	@-oc project ${PROJECT_NAME}
+	@-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	@echo "adding network policies in $(HOST_NS) namespace"
+	@-oc process -p NAMESPACE=$(HOST_NS) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	
 
 .PHONY: display-eval
 display-eval:
