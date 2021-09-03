@@ -35,8 +35,13 @@ test-e2e: deploy-e2e e2e-run
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: build clean-e2e-files deploy-host deploy-members e2e-service-account setup-toolchainclusters
+deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
 
+label-olm-ns:
+# adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+# so that deployment also works when network policies were configured with `sandbox-cli`
+	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+	
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
@@ -172,14 +177,14 @@ deploy-members: create-member1 create-member2 get-and-publish-member-operator
 create-member1:
 	@echo "Deploying member operator to $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
-	-oc label ns ${MEMBER_NS} app=member-operator
+	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 
 .PHONY: create-member2
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
-	-oc label ns ${MEMBER_NS_2} app=member-operator
+	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 endif
 
 .PHONY: deploy-host
@@ -189,7 +194,7 @@ deploy-host: create-host-project get-and-publish-host-operator create-host-resou
 create-host-project:
 	@echo "Deploying host operator to ${HOST_NS}..."
 	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
-	-oc label ns ${HOST_NS} app=host-operator
+	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
 create-host-resources:
@@ -212,9 +217,12 @@ endif
 
 .PHONY: create-project
 create-project:
-	-oc new-project ${PROJECT_NAME} 1>/dev/null
-	-oc project ${PROJECT_NAME}
-	-oc label ns ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	@-oc new-project ${PROJECT_NAME} 1>/dev/null
+	@-oc project ${PROJECT_NAME}
+	@-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	@echo "adding network policies in $(PROJECT_NAME) namespace"
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	
 
 .PHONY: display-eval
 display-eval:

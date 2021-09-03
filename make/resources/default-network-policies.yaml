@@ -1,0 +1,18 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: default-network-policies
+objects:
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    namespace: ${NAMESPACE}
+    name: allow-all-ingress
+  spec:
+    podSelector: {}
+    ingress:
+    - {}
+    policyTypes:
+    - Ingress
+parameters:
+- name: NAMESPACE
