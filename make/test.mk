@@ -220,8 +220,8 @@ create-project:
 	@-oc new-project ${PROJECT_NAME} 1>/dev/null
 	@-oc project ${PROJECT_NAME}
 	@-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
-	@echo "adding network policies in $(HOST_NS) namespace"
-	@-oc process -p NAMESPACE=$(HOST_NS) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	@echo "adding network policies in $(PROJECT_NAME) namespace"
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
 	
 
 .PHONY: display-eval
