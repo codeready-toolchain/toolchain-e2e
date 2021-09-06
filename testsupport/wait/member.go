@@ -416,14 +416,11 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref, tierName string) (*co
 		return ns.Status.Phase == corev1.NamespaceActive, nil
 	})
 	if err != nil {
-		namespaceList = &corev1.NamespaceList{}
+		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", username, ref, labels)
 		opts := client.MatchingLabels(map[string]string{
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
-		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
-			a.T.Logf("unable to list all namespaces: %v", err)
-		}
-		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v \n present namespaces: %+v", username, ref, labels, namespaceList.Items)
+		a.listAndPrint("Namespaces", &corev1.NamespaceList{}, opts)
 		return nil, err
 	}
 	ns := namespaceList.Items[0]

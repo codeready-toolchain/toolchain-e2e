@@ -85,6 +85,7 @@ func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, or
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      strings.Replace(origTierTemplate.Name, origTierTemplate.Spec.TierName, tierName, 1),
+			Labels:    map[string]string{"producer": "toolchain-e2e"},
 		},
 		Spec: origTierTemplate.Spec,
 	}

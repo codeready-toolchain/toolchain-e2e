@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
@@ -13,12 +14,15 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/ghodss/yaml"
 
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -476,52 +480,52 @@ var (
 
 // Cleanup schedules removal of the given objects at the end of the current test
 func (a *Awaitility) Cleanup(objects ...client.Object) {
-	//for _, obj := range objects {
-	//	userSignup, isUserSignup := obj.(*toolchainv1alpha1.UserSignup)
-	//	objToClean, ok := obj.DeepCopyObject().(client.Object)
-	//	require.True(a.T, ok)
-	//	cleanup := func() {
-	//		metaAccess, err := meta.Accessor(objToClean)
-	//		require.NoError(a.T, err)
-	//		kind := objToClean.GetObjectKind().GroupVersionKind().Kind
-	//		if kind == "" {
-	//			kind = reflect.TypeOf(obj).Elem().Name()
-	//		}
-	//		a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
-	//		if err := a.Client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
-	//			if errors.IsNotFound(err) {
-	//				// if the object was UserSignup, then let's check that the MUR was deleted as well
-	//				deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, true)
-	//				require.NoError(a.T, err)
-	//				// either if it was deleted or if it wasn't UserSignup, then return here
-	//				if deleted {
-	//					a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
-	//					return
-	//				}
-	//			}
-	//		}
-	//
-	//		// wait until deletion is done
-	//		a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
-	//		require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-	//			if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
-	//				if errors.IsNotFound(err) {
-	//					// if the object was UserSignup, then let's check that the MUR is deleted as well
-	//					if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
-	//						return false, err
-	//					}
-	//					return true, nil
-	//				}
-	//				a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
-	//				return false, err
-	//			}
-	//			fmt.Print(".")
-	//			return false, nil
-	//		}))
-	//	}
-	//	a.toClean = append(a.toClean, cleanup)
-	//	a.T.Cleanup(cleanup)
-	//}
+	for _, obj := range objects {
+		userSignup, isUserSignup := obj.(*toolchainv1alpha1.UserSignup)
+		objToClean, ok := obj.DeepCopyObject().(client.Object)
+		require.True(a.T, ok)
+		cleanup := func() {
+			metaAccess, err := meta.Accessor(objToClean)
+			require.NoError(a.T, err)
+			kind := objToClean.GetObjectKind().GroupVersionKind().Kind
+			if kind == "" {
+				kind = reflect.TypeOf(obj).Elem().Name()
+			}
+			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
+			if err := a.Client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
+				if errors.IsNotFound(err) {
+					// if the object was UserSignup, then let's check that the MUR was deleted as well
+					deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, true)
+					require.NoError(a.T, err)
+					// either if it was deleted or if it wasn't UserSignup, then return here
+					if deleted {
+						a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+						return
+					}
+				}
+			}
+
+			// wait until deletion is done
+			a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
+					if errors.IsNotFound(err) {
+						// if the object was UserSignup, then let's check that the MUR is deleted as well
+						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
+							return false, err
+						}
+						return true, nil
+					}
+					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
+					return false, err
+				}
+				fmt.Print(".")
+				return false, nil
+			}))
+		}
+		a.toClean = append(a.toClean, cleanup)
+		a.T.Cleanup(cleanup)
+	}
 }
 
 func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
@@ -560,24 +564,34 @@ func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1
 
 // Clean triggers cleanup of all resources that were marked to be cleaned before that
 func (a *Awaitility) Clean() {
-	//for _, clean := range a.toClean {
-	//	clean()
-	//}
-	//if a.Type == cluster.Host {
-	//	require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-	//		murList := &toolchainv1alpha1.MasterUserRecordList{}
-	//		if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
-	//			return false, err
-	//		}
-	//		for _, mur := range murList.Items {
-	//			if util.IsBeingDeleted(&mur) {
-	//				a.T.Logf("there is still at least one MUR that is being deleted, but is not completely gone yet: %s", mur.Name)
-	//				return false, nil
-	//			}
-	//		}
-	//		a.T.Logf("all MURs are successfully deleted")
-	//		return true, nil
-	//	}))
-	//}
-	//a.toClean = nil
+	for _, clean := range a.toClean {
+		clean()
+	}
+	if a.Type == cluster.Host {
+		require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+			murList := &toolchainv1alpha1.MasterUserRecordList{}
+			if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+				return false, err
+			}
+			for _, mur := range murList.Items {
+				if util.IsBeingDeleted(&mur) {
+					a.T.Logf("there is still at least one MUR that is being deleted, but is not completely gone yet: %s", mur.Name)
+					return false, nil
+				}
+			}
+			a.T.Logf("all MURs are successfully deleted")
+			return true, nil
+		}))
+	}
+	a.toClean = nil
+}
+
+func (a *Awaitility) listAndPrint(resourceKind string, list client.ObjectList, additionalOptions ...client.ListOption) {
+	content := []byte("")
+	if err := a.Client.List(context.TODO(), list, append(additionalOptions, client.InNamespace(a.Namespace))...); err != nil {
+		a.T.Logf("unable to list %s: %s", resourceKind, err)
+	} else {
+		content, _ = yaml.Marshal(list)
+	}
+	a.T.Logf("%s present in the namespace:\n%s", resourceKind, string(content))
 }
