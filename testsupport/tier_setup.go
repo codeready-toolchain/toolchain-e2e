@@ -59,6 +59,7 @@ func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName stri
 }
 
 func SetNamespaceTierTemplatesFromTier(t *testing.T, hostAwait *HostAwaitility, targetTier *toolchainv1alpha1.NSTemplateTier, sourceTier *toolchainv1alpha1.NSTemplateTier) {
+	targetTier.Spec.Namespaces = []toolchainv1alpha1.NSTemplateTierNamespace{}
 	for _, ns := range sourceTier.Spec.Namespaces {
 		targetTier.Spec.Namespaces = append(targetTier.Spec.Namespaces, toolchainv1alpha1.NSTemplateTierNamespace{
 			TemplateRef: createNewTierTemplate(t, hostAwait, targetTier.Name, ns.TemplateRef, sourceTier.Namespace),
@@ -71,6 +72,8 @@ func SetClusterTierTemplateFromTier(t *testing.T, hostAwait *HostAwaitility, tar
 		targetTier.Spec.ClusterResources = &toolchainv1alpha1.NSTemplateTierClusterResources{
 			TemplateRef: createNewTierTemplate(t, hostAwait, targetTier.Name, sourceTier.Spec.ClusterResources.TemplateRef, sourceTier.Namespace),
 		}
+	} else {
+		targetTier.Spec.ClusterResources = nil
 	}
 }
 
@@ -81,7 +84,7 @@ func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, or
 	newTierTemplate := &toolchainv1alpha1.TierTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      strings.Replace(origTierTemplate.Name, "base", tierName, 1),
+			Name:      strings.Replace(origTierTemplate.Name, origTierTemplate.Spec.TierName, tierName, 1),
 		},
 		Spec: origTierTemplate.Spec,
 	}

@@ -854,10 +854,25 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Logf("the actual number of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.\nTemplateUpdateRequests present in the namespace:\n%+v",
-			namespace, count, templateUpdateRequests.Items)
+		requests, _ := yaml.Marshal(templateUpdateRequests)
+
+		a.T.Logf("the actual number '%d' of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.",
+			len(templateUpdateRequests.Items), namespace, count)
+		a.T.Logf("TemplateUpdateRequests present in the namespace:\n%s", requests)
+		a.listAndPrint("MasterUserRecords", namespace, &toolchainv1alpha1.MasterUserRecordList{})
+		a.listAndPrint("NSTemplateTiers", namespace, &toolchainv1alpha1.NSTemplateTierList{})
 	}
 	return err
+}
+
+func (a *HostAwaitility) listAndPrint(resourceKind, namespace string, list client.ObjectList) {
+	content := []byte("")
+	if err := a.Client.List(context.TODO(), list, client.InNamespace(namespace)); err != nil {
+		a.T.Logf("unable to list %s: %s", resourceKind, err)
+	} else {
+		content, _ = yaml.Marshal(list)
+	}
+	a.T.Logf("%s present in the namespace:\n%s", resourceKind, string(content))
 }
 
 // NotificationWaitCriterion a struct to compare with an expected Notification
