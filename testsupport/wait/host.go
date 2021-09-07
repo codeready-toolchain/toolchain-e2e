@@ -1267,11 +1267,11 @@ func (a *HostAwaitility) updateToolchainConfigWithRetry(updatedConfig *toolchain
 // GetHostOperatorPod returns the pod running the host operator controllers
 func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 	pods := corev1.PodList{}
-	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"name": "controller-manager"}); err != nil {
+	if err := a.Client.List(context.TODO(), &pods, client.InNamespace(a.Namespace), client.MatchingLabels{"control-plane": "controller-manager"}); err != nil {
 		return corev1.Pod{}, err
 	}
 	if len(pods.Items) != 1 {
-		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'name=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
+		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'control-plane=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
 }

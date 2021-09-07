@@ -12,7 +12,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/go-logr/logr"
@@ -50,14 +49,14 @@ func TestPerformance(t *testing.T) {
 			require.NoError(t, err)
 
 			// host metrics should become available again at this point
-			_, err = hostAwait.WaitForRouteToBeAvailable(hostAwait.Namespace, "host-operator-metrics", "/metrics")
+			_, err = hostAwait.WaitForRouteToBeAvailable(hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
 			require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 			start := time.Now()
 			// measure time it takes to have an empty queue on the master-user-records
-			err = hostAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(config.GetUserCount()), "controller", "usersignup-controller", "result", "success")
+			err = hostAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(config.GetUserCount()), "controller", "usersignup", "result", "success")
 			assert.NoError(t, err, "failed to reach the expected number of reconcile loops")
-			err = hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "usersignup-controller")
+			err = hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "usersignup")
 			assert.NoError(t, err, "failed to reach the expected queue depth")
 			end := time.Now()
 			hostOperatorPod, err := hostAwait.GetHostOperatorPod()
@@ -79,9 +78,9 @@ func TestPerformance(t *testing.T) {
 
 			start := time.Now()
 			// measure time it takes to have an empty queue on the master-user-records
-			err = memberAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(2*config.GetUserCount()), "controller", "useraccount-controller", "result", "success")
+			err = memberAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(2*config.GetUserCount()), "controller", "useraccount", "result", "success")
 			assert.NoError(t, err, "failed to reach the expected number of reconcile loops")
-			err = memberAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "useraccount-controller")
+			err = memberAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "useraccount")
 			assert.NoError(t, err, "failed to reach the expected queue depth")
 			end := time.Now()
 			memberOperatorPod, err := memberAwait.GetMemberOperatorPod()
@@ -129,7 +128,7 @@ func initLogger() (logr.Logger, *os.File, error) {
 // createSignupsByBatch creates signups by batch (see `config.GetUserBatchSize()`) and monitors the CPU and memory while the
 // provisioning is in progress. Logs the max CPU and memory during captured during each batch by polling the `/metrics`
 // endpoint in a separate go routine.
-func createSignupsByBatch(t *testing.T, hostAwait *wait.HostAwaitility, config Configuration, logger logr.Logger, memberAwait *wait.MemberAwaitility) {
+func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Configuration, logger logr.Logger, memberAwait *MemberAwaitility) {
 
 	require.Equal(t, 0, config.GetUserCount()%config.GetUserBatchSize(), "number of accounts must be a multiple of %d", config.GetUserBatchSize())
 
@@ -154,15 +153,16 @@ func createSignupsByBatch(t *testing.T, hostAwait *wait.HostAwaitility, config C
 		}
 
 		t.Logf("Waiting for all users to be processed")
-		err := hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "masteruserrecord-controller")
+		err := hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "masteruserrecord")
 		require.NoError(t, err)
 
 		for _, signup := range signups {
+			hostAwait.T.Logf("waiting for user %s ('%s') to be ready", signup.Name, signup.Spec.Username)
 			mur, err := hostAwait.WaitForMasterUserRecord(signup.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
 			require.NoError(t, err)
 			// now, run a pod (with the `sleep 28800` command in each namespace)
 			userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
-				wait.UntilUserAccountHasConditions(Provisioned()))
+				UntilUserAccountHasConditions(Provisioned()))
 			require.NoError(t, err)
 			for _, templateRef := range userAccount.Spec.NSTemplateSet.Namespaces {
 				ns, err := memberAwait.WaitForNamespace(mur.Name, templateRef.TemplateRef)
