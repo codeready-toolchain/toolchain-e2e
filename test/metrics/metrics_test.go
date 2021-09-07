@@ -33,7 +33,17 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
-		usersignups[username] = CreateAndApproveSignup(t, hostAwait, username, member2Await.ClusterName, WithEmail(username+"@redhat.com")) // testing on internal accounts
+
+		// Create UserSignup
+		usersignups[username], _ = NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+			Username(username).
+			Email(username + "@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(member2Await).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
 	}
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
 	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 2)                                                            // all signups
@@ -60,7 +70,9 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
 	metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0)                                                           // all deactivated
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // all deactivated on member-1
+	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName)                 // all deactivated on member-2
+
 }
 
 // TestMetricsWhenUsersReactivated activates and deactivates a few users, and check the metrics.
@@ -69,7 +81,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 // user-0003 will be activated 3 times
 func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
@@ -80,7 +92,16 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	// when
 	for i := 1; i <= 3; i++ {
 		username := fmt.Sprintf("user-%04d", i)
-		usersignups[username] = CreateAndApproveSignup(t, hostAwait, username, memberAwait.ClusterName)
+
+		usersignups[username], _ = NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+			Username(username).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
 			_, err := hostAwait.UpdateUserSignupSpec(usersignups[username].Name, func(usersignup *toolchainv1alpha1.UserSignup) {
@@ -89,8 +110,17 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 			require.NoError(t, err)
 			err = hostAwait.WaitUntilMasterUserRecordDeleted(username)
 			require.NoError(t, err)
+
 			// reactivate the user
-			CreateAndApproveSignup(t, hostAwait, username, memberAwait.ClusterName, WithIdentityID(usersignups[username].Spec.Userid))
+			usersignups[username], _ = NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+				IdentityID(uuid.Must(uuid.FromString(usersignups[username].Spec.Userid))).
+				Username(username).
+				ManuallyApprove().
+				TargetCluster(memberAwait).
+				EnsureMUR().
+				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+				Execute().
+				Resources()
 		}
 	}
 
@@ -127,7 +157,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 // TestMetricsWhenUsersDeleted verifies that the `UsersPerActivationsAndDomainMetric` metric is NOT decreased when users are deleted
 func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
@@ -137,7 +167,13 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
-		usersignups[username] = CreateAndApproveSignup(t, hostAwait, username, memberAwait.ClusterName)
+		usersignups[username], _ = NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+			Username(username).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
 	}
 
 	// when deleting user "user-0001"
@@ -230,10 +266,15 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
 
 	// Create UserSignup
-	userSignup := CreateAndApproveSignup(t, hostAwait, "janedoe", memberAwait.ClusterName)
-	// Get MasterUserRecord
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
-	require.NoError(t, err)
+	_, mur := NewSignupRequest(t, hostAwait, memberAwait, member2Await).
+		Username("janedoe").
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().
+		Resources()
+
 	metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 1)
 	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 1) // approved
 	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
@@ -243,7 +284,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", member2Await.ClusterName) // no user on member2
 
 	// when disabling MUR
-	_, err = hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+	_, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 		mur.Spec.Disabled = true
 	})
 	require.NoError(t, err)

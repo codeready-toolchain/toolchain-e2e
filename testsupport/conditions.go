@@ -269,6 +269,27 @@ func Deactivated() []toolchainv1alpha1.Condition {
 	}
 }
 
+func UserSignupMissingEmailAnnotation() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:    toolchainv1alpha1.UserSignupComplete,
+			Status:  corev1.ConditionFalse,
+			Reason:  toolchainv1alpha1.UserSignupMissingUserEmailAnnotationReason,
+			Message: "missing annotation at usersignup",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupDeactivatedNotificationUserIsActiveReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupDeactivatingNotificationUserNotInPreDeactivationReason,
+		},
+	}
+}
+
 func Running() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.ConditionReady,

@@ -80,6 +80,31 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		})
 	})
 
+	s.T().Run("verify notification fails on user deactivation with no usersignup email", func(t *testing.T) {
+
+		// User on member cluster 1
+		userNoEmail, _ := s.newSignupRequest().
+			Username("usernoemail").
+			Email("usernoemail@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(s.memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
+		// Delete the user's email and set them to deactivated
+		userSignup, err := s.hostAwait.UpdateUserSignupSpec(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
+			delete(us.Annotations, toolchainv1alpha1.UserSignupUserEmailAnnotationKey)
+			states.SetDeactivated(us, true)
+		})
+		require.NoError(s.T(), err)
+		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
+
+		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), UserSignupMissingEmailAnnotation())...))
+		require.NoError(t, err)
+	})
+
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
 
 		userSignupMember1, murMember1 := s.newSignupRequest().
@@ -495,16 +520,18 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 	// Create UserSignup
-	userSignup := CreateAndApproveSignup(s.T(), s.hostAwait, "janedoe", s.memberAwait.ClusterName)
+	userSignup, mur := s.newSignupRequest().
+		Username("janedoe").
+		EnsureMUR().
+		ManuallyApprove().
+		TargetCluster(s.memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
 
 	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait)
 
-	// Get MasterUserRecord
-	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Spec.Username)
-	require.NoError(s.T(), err)
-
 	// Disable MUR
-	mur, err = s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+	mur, err := s.hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 		mur.Spec.Disabled = true
 	})
 	require.NoError(s.T(), err)

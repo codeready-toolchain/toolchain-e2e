@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -30,11 +31,18 @@ const (
 
 func TestNSTemplateTiers(t *testing.T) {
 	// given
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
-	testingtiers := CreateAndApproveSignup(t, hostAwait, testingTiersName, memberAwait.ClusterName)
+	testingtiers, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		Username(testingTiersName).
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().
+		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "test", "basedeactivationdisabled", "baseextended", "baseextendedidling", "base"}
@@ -90,6 +98,40 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 }
 
+func TestSetDefaultTier(t *testing.T) {
+	// given
+	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
+
+	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
+	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
+	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
+
+	t.Run("original default tier", func(t *testing.T) {
+		// Create and approve a new user that should be provisioned to the base tier
+		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("defaulttier").
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+	})
+
+	t.Run("changed default tier configuration", func(t *testing.T) {
+		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
+		// Create and approve a new user that should be provisioned to the advanced tier
+		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("defaulttierchanged").
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+	})
+}
+
 func TestUpdateNSTemplateTier(t *testing.T) {
 	// in this test, we have 2 groups of users, configured with their own tier (both using the "base" tier templates)
 	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
@@ -100,9 +142,9 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	hostAwait, memberAwait, _ := WaitForDeployments(t)
 
 	// first group of users: the "cheesecake lovers"
-	cheesecakeSyncIndexes := setupAccounts(t, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait.ClusterName, count)
+	cheesecakeSyncIndexes := setupAccounts(t, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait, count)
 	// second group of users: the "cookie lovers"
-	cookieSyncIndexes := setupAccounts(t, hostAwait, "cookie", "cookielover%02d", memberAwait.ClusterName, count)
+	cookieSyncIndexes := setupAccounts(t, hostAwait, "cookie", "cookielover%02d", memberAwait, count)
 
 	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
 	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
@@ -140,20 +182,24 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt, targetCluster string, count int) map[string]string {
+func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) map[string]string {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
 	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
+	// and wait until they are all provisioned by calling EnsureMUR()
 	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		users[i] = CreateAndApproveSignup(t, hostAwait, fmt.Sprintf(nameFmt, i), targetCluster)
+		users[i], _ = NewSignupRequest(t, hostAwait, targetCluster, nil).
+			Username(fmt.Sprintf(nameFmt, i)).
+			ManuallyApprove().
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			TargetCluster(targetCluster).
+			Execute().
+			Resources()
 	}
-	// and wait until there are all provisioned
-	for i := range users {
-		_, err := hostAwait.WaitForMasterUserRecord(fmt.Sprintf(nameFmt, i))
-		require.NoError(t, err)
-	}
+
 	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {
@@ -235,7 +281,13 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 			UntilUserAccountHasConditions(Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, tier.Name, templateRefs)),
 			UntilUserAccountMatchesMur(hostAwait))
-		require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v", usersignup, userAccount)
+		if err != nil {
+			nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
+			if err != nil {
+				t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
+			}
+			require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", usersignup, userAccount, nsTemplateSet)
+		}
 		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			UntilMasterUserRecordHasNotSyncIndex(syncIndex),

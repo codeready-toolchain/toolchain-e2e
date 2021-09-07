@@ -684,27 +684,24 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
-	expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
-		Selector: quotav1.ClusterResourceQuotaSelector{
-			AnnotationSelector: map[string]string{
-				"openshift.io/requester": userName,
-			},
+	return wait.ClusterResourceQuotaWaitCriterion{
+		Match: func(actual *quotav1.ClusterResourceQuota) bool {
+			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
+				Selector: quotav1.ClusterResourceQuotaSelector{
+					AnnotationSelector: map[string]string{
+						"openshift.io/requester": userName,
+					},
+				},
+				Quota: v1.ResourceQuotaSpec{
+					Hard: hard,
+				},
+			}
+			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
+				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
-		Quota: v1.ResourceQuotaSpec{
-			Hard: hard,
+		Diff: func(actual *quotav1.ClusterResourceQuota) string {
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual))
 		},
-	}
-	return func(a *wait.MemberAwaitility, actual quotav1.ClusterResourceQuota) bool {
-		if actual.Labels == nil || tierName != actual.Labels["toolchain.dev.openshift.com/tier"] {
-			a.T.Logf("waiting for ClusterResourceQuota '%s' to have the expected tier name. Actual labels: '%v'; Expected: '%s'", userName, actual.Labels, tierName)
-			return false
-		}
-		if !reflect.DeepEqual(expectedQuotaSpec, actual.Spec) {
-			a.T.Logf("waiting for ClusterResourceQuota '%s'. Actual: '%+v'; Expected: '%+v'", userName, expectedQuotaSpec, actual)
-			return false
-		}
-		a.T.Logf("expected ClusterResourceQuota matches actual ClusterResourceQuota")
-		return true
 	}
 }
 
@@ -714,7 +711,7 @@ func count(resource v1.ResourceName) v1.ResourceName {
 
 func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("Role", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("Roles", number, func() (int, error) {
 			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -726,7 +723,7 @@ func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unpar
 
 func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("RoleBinding", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("RoleBindings", number, func() (int, error) {
 			roleBindings := &rbacv1.RoleBindingList{}
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -738,7 +735,7 @@ func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint
 
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("LimitRange", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("LimitRanges", number, func() (int, error) {
 			limitRanges := &v1.LimitRangeList{}
 			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -750,7 +747,7 @@ func numberOfLimitRanges(number int) namespaceObjectsCheck {
 
 func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicy", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicies", number, func() (int, error) {
 			nps := &netv1.NetworkPolicyList{}
 			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -763,7 +760,7 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 	return func(_ string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuota", number, func() (int, error) {
+			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", number, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",

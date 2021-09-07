@@ -35,8 +35,13 @@ test-e2e: deploy-e2e e2e-run
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: build clean-e2e-files deploy-host deploy-members e2e-service-account setup-toolchainclusters
+deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
 
+label-olm-ns:
+# adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+# so that deployment also works when network policies were configured with `sandbox-cli`
+	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
+	
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
@@ -134,20 +139,28 @@ get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and
 .PHONY: get-and-publish-member-operator
 get-and-publish-member-operator:
 ifneq (${MEMBER_NS_2},"")
-	$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
+    ifneq (${MEMBER_NS_2},)
+		$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
+    endif
 endif
-ifneq (${MEMBER_REPO_PATH},)
-	$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
+ifneq (${MEMBER_REPO_PATH},"")
+    ifneq (${MEMBER_REPO_PATH},)
+		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
+    endif
 endif
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -e ${ENVIRONMENT} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM}"
 
 .PHONY: get-and-publish-host-operator
 get-and-publish-host-operator:
-ifneq (${REG_REPO_PATH},)
-	$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
+ifneq (${REG_REPO_PATH},"")
+    ifneq (${REG_REPO_PATH},)
+		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
+    endif
 endif
-ifneq (${HOST_REPO_PATH},)
-	$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
+ifneq (${HOST_REPO_PATH},"")
+    ifneq (${HOST_REPO_PATH},)
+		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
+    endif
 endif
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -e ${ENVIRONMENT} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${MEMBER_NS_2_PARAM} ${REG_REPO_PATH_PARAM}"
 
@@ -164,14 +177,14 @@ deploy-members: create-member1 create-member2 get-and-publish-member-operator
 create-member1:
 	@echo "Deploying member operator to $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
-	-oc label ns ${MEMBER_NS} app=member-operator
+	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 
 .PHONY: create-member2
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
-	-oc label ns ${MEMBER_NS_2} app=member-operator
+	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 endif
 
 .PHONY: deploy-host
@@ -181,13 +194,14 @@ deploy-host: create-host-project get-and-publish-host-operator create-host-resou
 create-host-project:
 	@echo "Deploying host operator to ${HOST_NS}..."
 	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
-	-oc label ns ${HOST_NS} app=host-operator
+	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
 create-host-resources:
 ifeq ($(HOST_REPO_PATH),)
 	$(eval HOST_REPO_PATH = /tmp/codeready-toolchain/host-operator)
 endif
+	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
 	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
@@ -203,9 +217,12 @@ endif
 
 .PHONY: create-project
 create-project:
-	-oc new-project ${PROJECT_NAME} 1>/dev/null
-	-oc project ${PROJECT_NAME}
-	-oc label ns ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	@-oc new-project ${PROJECT_NAME} 1>/dev/null
+	@-oc project ${PROJECT_NAME}
+	@-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
+	@echo "adding network policies in $(PROJECT_NAME) namespace"
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	
 
 .PHONY: display-eval
 display-eval:
@@ -214,3 +231,25 @@ display-eval:
 	@echo 'export REGISTRATION_SERVICE_NS=$$HOST_NS'
 	@echo '# Run this command to configure your shell:'
 	@echo '# eval $$(make display-eval)'
+
+
+###########################################################
+#
+# Unit Tests (to verify the assertions and other utilities
+# in the `testsupport` package)
+#
+###########################################################
+
+# Output directory for coverage information
+COV_DIR = $(OUT_DIR)/coverage
+
+.PHONY: test
+## Run the unit tests in the 'testsupport/...' packages
+test:
+	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
+
+.PHONY: test-with-coverage
+## Run the unit tests in the 'testsupport/...' packages (with coverage)
+test-with-coverage:
+	@-mkdir -p $(COV_DIR)
+	@go test -coverprofile=$(COV_DIR)/coverage.txt -covermode=atomic github.com/codeready-toolchain/toolchain-e2e/testsupport/...
