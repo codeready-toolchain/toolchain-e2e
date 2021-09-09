@@ -109,7 +109,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 }
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(a.tierName,
+	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
@@ -138,7 +138,7 @@ type baseextendedidlingTierChecks struct {
 }
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(a.tierName,
+	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
@@ -198,7 +198,7 @@ func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespace
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(a.tierName,
+	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
@@ -439,18 +439,18 @@ func networkPolicyIngress(name, group string) namespaceObjectsCheck {
 	}
 }
 
-type clusterObjectsCheckCreator func(string) clusterObjectsCheck
+type clusterObjectsCheckCreator func() clusterObjectsCheck
 
-func clusterObjectsChecks(tierName string, checkCreator ...clusterObjectsCheckCreator) []clusterObjectsCheck {
+func clusterObjectsChecks(checkCreator ...clusterObjectsCheckCreator) []clusterObjectsCheck {
 	var checks []clusterObjectsCheck
 	for _, createCheck := range checkCreator {
-		checks = append(checks, createCheck(tierName))
+		checks = append(checks, createCheck())
 	}
 	return checks
 }
 
 func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			for _, nt := range namespaceTypes {
 				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierLabel))
@@ -473,7 +473,7 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 }
 
 func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheckCreator { // nolint: unparam
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -503,7 +503,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 }
 
 func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -523,7 +523,7 @@ func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -541,7 +541,7 @@ func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -559,7 +559,7 @@ func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -581,7 +581,7 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaServices() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -597,7 +597,7 @@ func clusterResourceQuotaServices() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -613,7 +613,7 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -629,7 +629,7 @@ func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -645,7 +645,7 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -665,7 +665,7 @@ func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
-	return func(tierName string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
@@ -755,7 +755,7 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 }
 
 func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
-	return func(_ string) clusterObjectsCheck {
+	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", number, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
