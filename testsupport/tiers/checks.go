@@ -24,6 +24,7 @@ import (
 const (
 	// tier names
 	base                     = "base"
+	baselarge                = "baselarge"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
 	basedeactivationdisabled = "basedeactivationdisabled"
@@ -47,6 +48,9 @@ func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
+
+	case baselarge:
+		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
 
 	case baseextended:
 		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
@@ -124,7 +128,28 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaConfigMap(),
 		clusterResourceQuotaRHOASOperatorCRs(),
 		clusterResourceQuotaSBOCRs(),
-		numberOfClusterResourceQuotas(11),
+		numberOfClusterResourceQuotas(),
+		idlers(43200, "dev", "stage"))
+}
+
+type baselargeTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(a.tierName,
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(),
 		idlers(43200, "dev", "stage"))
 }
 
@@ -153,7 +178,7 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		clusterResourceQuotaConfigMap(),
 		clusterResourceQuotaRHOASOperatorCRs(),
 		clusterResourceQuotaSBOCRs(),
-		numberOfClusterResourceQuotas(11),
+		numberOfClusterResourceQuotas(),
 		idlers(86400, "dev", "stage"))
 }
 
@@ -194,7 +219,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaConfigMap(),
 		clusterResourceQuotaRHOASOperatorCRs(),
 		clusterResourceQuotaSBOCRs(),
-		numberOfClusterResourceQuotas(11),
+		numberOfClusterResourceQuotas(),
 		idlers(0, "dev", "stage"))
 }
 
@@ -789,10 +814,11 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	}
 }
 
-func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
+func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
+	expectedCRQs := 11
 	return func(_ string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", number, func() (int, error) {
+			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", expectedCRQs, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
