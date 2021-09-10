@@ -208,7 +208,10 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9))
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(11),
+		idlers(0, "dev", "stage"))
 }
 
 func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
