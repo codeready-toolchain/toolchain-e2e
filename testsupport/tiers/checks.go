@@ -24,6 +24,7 @@ import (
 const (
 	// tier names
 	base                     = "base"
+	baselarge                = "baselarge"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
 	basedeactivationdisabled = "basedeactivationdisabled"
@@ -47,6 +48,9 @@ func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
+
+	case baselarge:
+		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
 
 	case baseextended:
 		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
@@ -111,6 +115,27 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(a.tierName,
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(11),
+		idlers(43200, "dev", "stage"))
+}
+
+type baselargeTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(a.tierName,
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
