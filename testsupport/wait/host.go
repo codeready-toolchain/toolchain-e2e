@@ -859,8 +859,8 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 		a.T.Logf("the actual number '%d' of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.",
 			len(templateUpdateRequests.Items), namespace, count)
 		a.T.Logf("TemplateUpdateRequests present in the namespace:\n%s", requests)
-		a.listAndPrint("MasterUserRecords", &toolchainv1alpha1.MasterUserRecordList{})
-		a.listAndPrint("NSTemplateTiers", &toolchainv1alpha1.NSTemplateTierList{})
+		a.listAndPrint("MasterUserRecords", namespace, &toolchainv1alpha1.MasterUserRecordList{})
+		a.listAndPrint("NSTemplateTiers", namespace, &toolchainv1alpha1.NSTemplateTierList{})
 	}
 	return err
 }

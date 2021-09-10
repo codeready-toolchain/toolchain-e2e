@@ -590,12 +590,20 @@ func (a *Awaitility) Clean() {
 	a.toClean = nil
 }
 
-func (a *Awaitility) listAndPrint(resourceKind string, list client.ObjectList, additionalOptions ...client.ListOption) {
+func (a *Awaitility) listAndPrint(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) {
+	a.T.Logf(a.listAndReturnContent(resourceKind, namespace, list, additionalOptions...))
+}
+
+func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) string {
 	content := []byte("")
-	if err := a.Client.List(context.TODO(), list, append(additionalOptions, client.InNamespace(a.Namespace))...); err != nil {
-		a.T.Logf("unable to list %s: %s", resourceKind, err)
+	listOptions := additionalOptions
+	if a.Namespace != "" {
+		listOptions = append(additionalOptions, client.InNamespace(namespace))
+	}
+	if err := a.Client.List(context.TODO(), list, listOptions...); err != nil {
+		return fmt.Sprintf("unable to list %s: %s", resourceKind, err)
 	} else {
 		content, _ = yaml.Marshal(list)
 	}
-	a.T.Logf("%s present in the namespace:\n%s", resourceKind, string(content))
+	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
 }
