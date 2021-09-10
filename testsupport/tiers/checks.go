@@ -456,10 +456,9 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			for _, nt := range namespaceTypes {
-				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierLabel))
+				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierLabel), wait.IdlerHasTimeoutSeconds(timeoutSeconds))
 				require.NoError(t, err)
 				assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-				assert.Equal(t, int32(timeoutSeconds), idler.Spec.TimeoutSeconds)
 			}
 
 			// Make sure there is no unexpected idlers

@@ -669,6 +669,18 @@ func IdlerConditions(expected ...toolchainv1alpha1.Condition) IdlerWaitCriterion
 	}
 }
 
+// IdlerHasTimeoutSeconds checks if the Idler has the given timeout set
+func IdlerHasTimeoutSeconds(timeoutSeconds int) IdlerWaitCriterion {
+	return IdlerWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Idler) bool {
+			return int32(timeoutSeconds) == actual.Spec.TimeoutSeconds
+		},
+		Diff: func(actual *toolchainv1alpha1.Idler) string {
+			return fmt.Sprintf("expected Idler timeoutSeconds to be '%d' but it was '%d'", timeoutSeconds, actual.Spec.TimeoutSeconds)
+		},
+	}
+}
+
 // IdlerHasTier checks if the Idler has the given tier name set as a label
 func IdlerHasTier(expected string) IdlerWaitCriterion {
 	return IdlerWaitCriterion{
