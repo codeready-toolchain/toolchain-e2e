@@ -95,8 +95,8 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
 		execPodsRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2))
+		numberOfToolchainRoles(2),
+		numberOfToolchainRoleBindings(4))
 
 	checks = append(checks, commonNetworkPolicyChecks()...)
 
