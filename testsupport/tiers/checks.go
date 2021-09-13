@@ -347,7 +347,7 @@ func rbacEditRole() namespaceObjectsCheck {
 				{
 					APIGroups: []string{""},
 					Resources: []string{"pods/exec"},
-					Verbs:     []string{"get", "list", "watch", "create", "update", "delete"},
+					Verbs:     []string{"get", "list", "watch", "create", "delete", "update"},
 				},
 			},
 		}
