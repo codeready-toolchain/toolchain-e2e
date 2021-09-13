@@ -595,15 +595,13 @@ func (a *Awaitility) listAndPrint(resourceKind, namespace string, list client.Ob
 }
 
 func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) string {
-	content := []byte("")
 	listOptions := additionalOptions
 	if a.Namespace != "" {
 		listOptions = append(additionalOptions, client.InNamespace(namespace))
 	}
 	if err := a.Client.List(context.TODO(), list, listOptions...); err != nil {
 		return fmt.Sprintf("unable to list %s: %s", resourceKind, err)
-	} else {
-		content, _ = yaml.Marshal(list)
 	}
+	content, _ := yaml.Marshal(list)
 	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
 }
