@@ -90,6 +90,7 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find UserAccount\n")
+		buf.WriteString(a.listAndReturnContent("UserAccount", a.Namespace, &toolchainv1alpha1.UserAccountList{}))
 	} else {
 		buf.WriteString("failed to find UserAccount with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -105,8 +106,6 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.listAndReturnContent("UserAccount", a.Namespace, &toolchainv1alpha1.UserAccountList{}))
 	a.T.Log(buf.String())
 }
 
@@ -232,6 +231,7 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find NSTemplateSet\n")
+		buf.WriteString(a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
 	} else {
 		buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -247,8 +247,6 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
 	a.T.Log(buf.String())
 }
 
@@ -518,6 +516,7 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *q
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find ClusterResourceQuota\n")
+		buf.WriteString(a.listAndReturnContent("ClusterResourceQuota", "", &quotav1.ClusterResourceQuotaList{}))
 	} else {
 		buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -533,8 +532,6 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *q
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.listAndReturnContent("ClusterResourceQuota", "", &quotav1.ClusterResourceQuotaList{}))
 	a.T.Log(buf.String())
 }
 
@@ -585,6 +582,8 @@ func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Idler\n")
+		buf.WriteString(a.listAndReturnContent("Idler", "", &toolchainv1alpha1.IdlerList{}))
+		buf.WriteString(a.listAndReturnContent("Idler", "", &toolchainv1alpha1.IdlerList{}))
 	} else {
 		buf.WriteString("failed to find Idler with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -601,8 +600,6 @@ func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.listAndReturnContent("Idler", "", &toolchainv1alpha1.IdlerList{}))
 	a.T.Log(buf.String())
 }
 
@@ -651,10 +648,6 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 		obj := &toolchainv1alpha1.Idler{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				idlerList := &toolchainv1alpha1.IdlerList{}
-				if err := a.Client.List(context.TODO(), idlerList, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
-					return false, err
-				}
 				return false, nil
 			}
 			return false, err
@@ -719,6 +712,7 @@ func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, ns str
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Pod\n")
+		buf.WriteString(a.listAndReturnContent("Pod", ns, &corev1.PodList{}))
 	} else {
 		buf.WriteString("failed to find Pod with matching criteria:\n")
 		for _, c := range criteria {
@@ -728,8 +722,6 @@ func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, ns str
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.listAndReturnContent("Pod", ns, &corev1.PodList{}))
 	a.T.Log(buf.String())
 }
 
@@ -1045,6 +1037,8 @@ func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchain
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find MemberStatus\n")
+		buf.WriteString(a.listAndReturnContent("MemberStatus", "", &toolchainv1alpha1.MemberStatusList{}))
+		buf.WriteString(a.listAndReturnContent("ToolchainCluster", "", &toolchainv1alpha1.ToolchainClusterList{}))
 	} else {
 		buf.WriteString("failed to find MemberStatus with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -1060,8 +1054,6 @@ func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchain
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.listAndReturnContent("MemberStatus", "", &toolchainv1alpha1.MemberStatusList{}))
 	a.T.Log(buf.String())
 }
 

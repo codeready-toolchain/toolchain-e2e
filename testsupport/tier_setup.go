@@ -2,7 +2,7 @@ package testsupport
 
 import (
 	"context"
-	"strings"
+	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -84,7 +84,7 @@ func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, or
 	newTierTemplate := &toolchainv1alpha1.TierTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      strings.Replace(origTierTemplate.Name, origTierTemplate.Spec.TierName, tierName, 1),
+			Name:      fmt.Sprintf("%sfrom%s", tierName, origTierTemplate.Name),
 			Labels:    map[string]string{"producer": "toolchain-e2e"},
 		},
 		Spec: origTierTemplate.Spec,
