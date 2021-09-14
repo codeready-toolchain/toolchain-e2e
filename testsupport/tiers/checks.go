@@ -62,7 +62,7 @@ func NewChecks(tier string) (TierChecks, error) {
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
 
 	case advanced:
-		return &advancedTierChecks{tierName: advanced}, nil
+		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
 
 	case test:
 		return &testTierChecks{tierName: test}, nil
@@ -92,8 +92,11 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2))
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+		execPodsRole(),
+		numberOfToolchainRoles(2),
+		numberOfToolchainRoleBindings(4))
 
 	checks = append(checks, commonNetworkPolicyChecks()...)
 
@@ -196,30 +199,11 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 }
 
 type advancedTierChecks struct {
-	tierName string
+	baseTierChecks
 }
 
 func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
-		rbacEditRoleBinding(),
-		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2))
-
-	checks = append(checks, commonNetworkPolicyChecks()...)
-
-	switch nsType {
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(5))
-	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(4))
-	}
-	return checks
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -325,7 +309,55 @@ func rbacEditRoleBinding() namespaceObjectsCheck {
 	}
 }
 
+func crtadminViewRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-view")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "Group", rb.Subjects[0].Kind)
+		assert.Equal(t, "crtadmin-users-view", rb.Subjects[0].Name)
+		assert.Equal(t, "view", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func crtadminPodsRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-pods")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "Group", rb.Subjects[0].Kind)
+		assert.Equal(t, "crtadmin-users-view", rb.Subjects[0].Name)
+		assert.Equal(t, "exec-pods", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
 func rbacEditRole() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		role, err := memberAwait.WaitForRole(ns, "exec-pods")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 1)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods/exec"},
+					Verbs:     []string{"get", "list", "watch", "create", "delete", "update"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func execPodsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
