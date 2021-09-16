@@ -1,4 +1,4 @@
-package wait
+package metrics
 
 import (
 	"bytes"
@@ -8,12 +8,22 @@ import (
 	"net/http"
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	"k8s.io/client-go/rest"
 )
 
-func getMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
+// func GetPodMetrics(cl client.Client, name, ns string) (*metrics.PodMetrics, error) {
+// 	podMetrics := metrics.PodMetrics{}
+// 	err := cl.Get(context.TODO(), types.NamespacedName{
+// 		Namespace: ns,
+// 		Name:      name,
+// 	}, &podMetrics)
+// 	return &podMetrics, err
+// }
+
+func GetMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
 	if len(expectedLabels)%2 != 0 {
 		return -1, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")
 	}

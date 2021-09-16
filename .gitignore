@@ -6,6 +6,7 @@ deploy/test
 out/
 coverage.txt
 _output/
+setup/_results
 tmp/
 
 # Created by https://www.gitignore.io/api/go,vim,git,macos,linux,emacs,windows,eclipse,intellij+all,visualstudiocode

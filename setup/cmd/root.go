@@ -1,49 +1,48 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/idlers"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/operators"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
+	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
 )
 
-const (
-	defaultHostNS   = "toolchain-host-operator"
-	defaultMemberNS = "toolchain-member-operator"
-
-	customTemplateUsersParam  = "custom"
-	defaultTemplateUsersParam = "default"
-)
-
 var (
-	usernamePrefix          = "zippy"
-	kubeconfig              string
-	verbose                 bool
-	hostOperatorNamespace   string
-	memberOperatorNamespace string
-	customTemplatePaths     []string
-	numberOfUsers           int
-	userBatches             int
-	defaultTemplateUsers    int
-	customTemplateUsers     int
-	skipCSVGen              bool
-	operatorsLimit          int
-	idlerTimeout            string
+	usernamePrefix       = "zippy"
+	kubeconfig           string
+	verbose              bool
+	customTemplatePaths  []string
+	numberOfUsers        int
+	userBatches          int
+	defaultTemplateUsers int
+	customTemplateUsers  int
+	skipCSVGen           bool
+	operatorsLimit       int
+	idlerTimeout         string
+	token                string
+	workloads            []string
 )
 
 var (
@@ -68,14 +67,16 @@ func Execute() {
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console")
 	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 2000, "the number of user accounts to provision")
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create user accounts in batches of N, increasing batch size may cause performance problems")
-	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator")
-	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
+	cmd.Flags().StringVar(&cfg.HostOperatorNamespace, "host-ns", cfg.DefaultHostNS, "the namespace of Host operator")
+	cmd.Flags().StringVar(&cfg.MemberOperatorNamespace, "member-ns", cfg.DefaultMemberNS, "the namespace of the Member operator")
 	cmd.Flags().StringSliceVar(&customTemplatePaths, "template", []string{}, "the path to the OpenShift template to apply for each custom user")
-	cmd.Flags().IntVarP(&defaultTemplateUsers, defaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
-	cmd.Flags().IntVarP(&customTemplateUsers, customTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
+	cmd.Flags().IntVarP(&defaultTemplateUsers, cfg.DefaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
+	cmd.Flags().IntVarP(&customTemplateUsers, cfg.CustomTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
+	cmd.Flags().StringVarP(&token, "token", "t", "", "Openshift API token")
+	cmd.Flags().StringSliceVar(&workloads, "workloads", []string{}, "workload namespace:name pairs that should have metrics collected during the setup. all values are comma-separated eg. \"--workloads service-binding-operator:service-binding-operator,rhoas-operator:rhoas-operator\"")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -91,16 +92,16 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Infof("Default Template Users:    '%d'", defaultTemplateUsers)
 	term.Infof("Custom Template Users:     '%d'", customTemplateUsers)
 	term.Infof("User Batch Size:           '%d'", userBatches)
-	term.Infof("Host Operator Namespace:   '%s'", hostOperatorNamespace)
-	term.Infof("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
+	term.Infof("Host Operator Namespace:   '%s'", cfg.HostOperatorNamespace)
+	term.Infof("Member Operator Namespace: '%s'\n", cfg.MemberOperatorNamespace)
 
 	// validate params
 	if numberOfUsers < 1 {
 		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid users value '%d'", numberOfUsers)
 	}
 
-	usersWithinBounds(term, defaultTemplateUsers, defaultTemplateUsersParam)
-	usersWithinBounds(term, customTemplateUsers, customTemplateUsersParam)
+	usersWithinBounds(term, defaultTemplateUsers, cfg.DefaultTemplateUsersParam)
+	usersWithinBounds(term, customTemplateUsers, cfg.CustomTemplateUsersParam)
 
 	if numberOfUsers%userBatches != 0 {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
@@ -118,6 +119,13 @@ func setup(cmd *cobra.Command, args []string) {
 		term.Fatalf(errors.New(""), "'%d' users are set to have custom templates applied but no custom templates were provided", customTemplateUsers)
 	}
 
+	for _, w := range workloads {
+		pair := strings.Split(w, ":")
+		if len(pair)%2 == 1 {
+			term.Fatalf(err, "invalid workloads values provided '%v' - values must be namespace:name pairs", workloads)
+		}
+	}
+
 	// add the default user-workloads.yaml file automatically
 	defaultTemplatePath := "setup/resources/user-workloads.yaml"
 
@@ -125,6 +133,14 @@ func setup(cmd *cobra.Command, args []string) {
 	cl, config, scheme, err := cfg.NewClient(term, kubeconfig)
 	if err != nil {
 		term.Fatalf(err, "cannot create client")
+	}
+
+	if len(token) == 0 {
+		tokenRequestURI, err := getTokenRequestURI(cl)
+		if err != nil {
+			term.Fatalf(err, "token flag is required - could not determine token request URI")
+		}
+		term.Fatalf(fmt.Errorf("token flag is required"), "request a token from %s", tokenRequestURI)
 	}
 
 	var templateListStr string
@@ -165,6 +181,23 @@ func setup(cmd *cobra.Command, args []string) {
 	// provision the users
 	term.Infof("🍿 provisioning users...")
 
+	// start capturing metrics
+	captureMetrics := metrics.New(term, cl, token, 5*time.Second)
+	for _, w := range workloads {
+		pair := strings.Split(w, ":")
+		if len(pair) != 2 {
+			term.Fatalf(err, "invalid workloads values provided '%v' - values must be namespace:name pairs", workloads)
+		}
+		if err := cl.Get(context.TODO(), types.NamespacedName{Namespace: pair[0], Name: pair[1]}, &appsv1.Deployment{}); err != nil {
+			term.Fatalf(err, "invalid workload provided '%s'", w)
+		}
+		captureMetrics.AddQueries(
+			metrics.QueryWorkloadCPUUtilisation(pair[0], pair[1]),
+			metrics.QueryWorkloadMemoryUtilisation(pair[0], pair[1]),
+		)
+	}
+	stopMetrics := captureMetrics.Start()
+
 	uip := uiprogress.New()
 	uip.Start()
 
@@ -178,7 +211,7 @@ func setup(cmd *cobra.Command, args []string) {
 		defer wg.Done()
 		for usersignupBar.Incr() {
 			username := fmt.Sprintf("%s-%04d", usernamePrefix, usersignupBar.Current())
-			if err := users.Create(cl, username, hostOperatorNamespace, memberOperatorNamespace); err != nil {
+			if err := users.Create(cl, username, cfg.HostOperatorNamespace, cfg.MemberOperatorNamespace); err != nil {
 				term.Fatalf(err, "failed to provision user '%s'", username)
 			}
 			time.Sleep(time.Millisecond * 20)
@@ -264,11 +297,14 @@ func setup(cmd *cobra.Command, args []string) {
 		}()
 	}
 
+	defer close(stopMetrics)
 	wg.Wait()
 	uip.Stop()
+	term.Infof("🏁 done provisioning users")
+	term.Infof("\n📈 Results 📉")
 	term.Infof("Average Idler Update Time (Seconds): %v", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
 	term.Infof("Average Time Per User (Seconds): %v", AverageTimePerUser.Seconds()/float64(numberOfUsers))
-	term.Infof("🏁 done provisioning users")
+	captureMetrics.PrintResults()
 	term.Infof("👋 have fun!")
 }
 
@@ -276,4 +312,15 @@ func usersWithinBounds(term terminal.Terminal, value int, templateType string) {
 	if value < 0 || value > numberOfUsers {
 		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid '%s' users value '%d'", templateType, value)
 	}
+}
+
+func getTokenRequestURI(cl client.Client) (string, error) {
+	route := routev1.Route{}
+	if err := cl.Get(context.TODO(), types.NamespacedName{
+		Namespace: cfg.OauthNS,
+		Name:      cfg.OauthName,
+	}, &route); err != nil {
+		return "", err
+	}
+	return "https://" + route.Spec.Host + "/oauth/token/display", nil
 }
