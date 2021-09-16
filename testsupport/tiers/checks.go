@@ -179,7 +179,7 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		clusterResourceQuotaRHOASOperatorCRs(),
 		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
-		idlers(86400, "dev", "stage"))
+		idlers(518400, "dev", "stage"))
 }
 
 type basedeactivationdisabledTierChecks struct {
