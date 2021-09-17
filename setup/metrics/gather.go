@@ -11,7 +11,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	routev1 "github.com/openshift/api/route/v1"
 	prometheus "github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
 
 	"k8s.io/apimachinery/pkg/types"
 	k8sutil "k8s.io/apimachinery/pkg/util/wait"
@@ -21,18 +20,9 @@ import (
 type Gatherer struct {
 	client   client.Client
 	interval time.Duration
-	queries  []*QueryDef
+	queries  []*VectoryQuery
 	term     terminal.Terminal
 	token    string
-}
-
-type QueryFn func(apiClient prometheus.API) (float64, prometheus.Warnings, error)
-
-type QueryDef struct {
-	count int
-	name  string
-	query QueryFn
-	sum   float64
 }
 
 func New(term terminal.Terminal, cl client.Client, token string, interval time.Duration) Gatherer {
@@ -43,9 +33,10 @@ func New(term terminal.Terminal, cl client.Client, token string, interval time.D
 		token:    token,
 	}
 
-	g.AddQueries(
+	g.queries = append(g.queries,
 		QueryClusterCPUUtilisation(),
 		QueryClusterMemoryUtilisation(),
+		QueryEtcdMemoryUtilisation(),
 		QueryWorkloadCPUUtilisation(cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
 		QueryWorkloadMemoryUtilisation(cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
 		QueryWorkloadCPUUtilisation(cfg.MemberOperatorNamespace, cfg.MemberOperatorWorkload),
@@ -53,6 +44,10 @@ func New(term terminal.Terminal, cl client.Client, token string, interval time.D
 	)
 
 	return g
+}
+
+func (g *Gatherer) AddQueries(queries ...*VectoryQuery) {
+	g.queries = append(g.queries, queries...)
 }
 
 func (g *Gatherer) Start() chan struct{} {
@@ -73,7 +68,7 @@ func (g *Gatherer) Start() chan struct{} {
 	go func() {
 		k8sutil.Until(func() {
 			for _, q := range g.queries {
-				val, warnings, err := q.query(apiClient)
+				val, warnings, err := q.doQuery(apiClient)
 				if err != nil {
 					if strings.Contains(err.Error(), "client error: 403") {
 						url, tokenErr := auth.GetTokenRequestURI(g.client)
@@ -94,60 +89,6 @@ func (g *Gatherer) Start() chan struct{} {
 	return stop
 }
 
-func (g *Gatherer) AddQueries(queries ...*QueryDef) {
-	g.queries = append(g.queries, queries...)
-}
-
-func QueryClusterCPUUtilisation() *QueryDef {
-	query := `1 - avg(rate(node_cpu_seconds_total{mode="idle", cluster=""}[5m]))`
-	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-		return vectorQuery(apiClient, query)
-	}
-	return &QueryDef{name: "Cluster CPU Utilisation", query: fn}
-}
-
-func QueryClusterMemoryUtilisation() *QueryDef {
-	query := `1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{cluster=""})`
-	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-		return vectorQuery(apiClient, query)
-	}
-	return &QueryDef{name: "Cluster Memory Utilisation", query: fn}
-}
-
-func QueryWorkloadCPUUtilisation(namespace, name string) *QueryDef {
-	query := fmt.Sprintf(`sum(
-		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster="", namespace="%[1]s"}
-	  * on(namespace,pod)
-		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
-	) by (pod)
-	/sum(
-		kube_pod_container_resource_requests{cluster="", namespace="%[1]s", resource="cpu"}
-	  * on(namespace,pod) 
-		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
-	) by (pod)`, namespace, name)
-	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-		return vectorQuery(apiClient, query)
-	}
-	return &QueryDef{name: fmt.Sprintf("%s CPU Utilisation", name), query: fn}
-}
-
-func QueryWorkloadMemoryUtilisation(namespace, name string) *QueryDef {
-	query := fmt.Sprintf(`sum(
-		container_memory_working_set_bytes{cluster="", namespace="%[1]s", container!="", image!=""}
-	  * on(namespace,pod)
-		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
-	) by (pod)
-	/sum(
-		kube_pod_container_resource_requests{cluster="", namespace="%[1]s", resource="memory"}
-	  * on(namespace,pod)
-		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
-	) by (pod)`, namespace, name)
-	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-		return vectorQuery(apiClient, query)
-	}
-	return &QueryDef{name: fmt.Sprintf("%s Memory Utilisation", name), query: fn}
-}
-
 func (g *Gatherer) getPrometheusEndpoint() (string, error) {
 	prometheusRoute := routev1.Route{}
 	if err := g.client.Get(context.TODO(), types.NamespacedName{
@@ -161,21 +102,52 @@ func (g *Gatherer) getPrometheusEndpoint() (string, error) {
 
 func (g *Gatherer) PrintResults() {
 	for _, q := range g.queries {
-		g.term.Infof("Average %s: %f", q.name, q.sum/float64(q.count))
+		g.term.Infof("%s: %f", q.name, q.sum/float64(q.count))
 	}
 }
 
-func vectorQuery(apiClient prometheus.API, query string) (float64, prometheus.Warnings, error) {
-	var averageValue float64
-	val, warnings, err := apiClient.Query(context.TODO(), query, time.Now())
-	vector := val.(model.Vector)
-	if len(vector) == 0 {
-		return -1, warnings, fmt.Errorf("metrics value could not be retrieved")
-	}
-	for _, v := range vector {
-		averageValue += float64(v.Value)
-	}
-	averageValue /= float64(len(vector))
+func QueryClusterCPUUtilisation() *VectoryQuery {
+	name := "Average Cluster CPU Utilisation"
+	query := `1 - avg(rate(node_cpu_seconds_total{mode="idle", cluster=""}[5m]))`
+	return &VectoryQuery{name: name, query: query}
+}
 
-	return averageValue, warnings, err
+func QueryClusterMemoryUtilisation() *VectoryQuery {
+	name := "Average Cluster Memory Utilisation"
+	query := `1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{cluster=""})`
+	return &VectoryQuery{name: name, query: query}
+}
+
+func QueryEtcdMemoryUtilisation() *VectoryQuery {
+	name := "Average etcd Instance Memory Utilisation"
+	query := `process_resident_memory_bytes{job="etcd"}`
+	return &VectoryQuery{name: name, query: query}
+}
+
+func QueryWorkloadCPUUtilisation(namespace, name string) *VectoryQuery {
+	query := fmt.Sprintf(`sum(
+		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster="", namespace="%[1]s"}
+	  * on(namespace,pod)
+		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
+	) by (pod)
+	/sum(
+		kube_pod_container_resource_requests{cluster="", namespace="%[1]s", resource="cpu"}
+	  * on(namespace,pod) 
+		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
+	) by (pod)`, namespace, name)
+	return &VectoryQuery{name: fmt.Sprintf("Average %s CPU Utilisation", name), query: query}
+}
+
+func QueryWorkloadMemoryUtilisation(namespace, name string) *VectoryQuery {
+	query := fmt.Sprintf(`sum(
+		container_memory_working_set_bytes{cluster="", namespace="%[1]s", container!="", image!=""}
+	  * on(namespace,pod)
+		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
+	) by (pod)
+	/sum(
+		kube_pod_container_resource_requests{cluster="", namespace="%[1]s", resource="memory"}
+	  * on(namespace,pod)
+		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
+	) by (pod)`, namespace, name)
+	return &VectoryQuery{name: fmt.Sprintf("Average %s Memory Utilisation", name), query: query}
 }
