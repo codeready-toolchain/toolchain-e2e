@@ -397,23 +397,27 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 
 // GetMemoryUsage retrieves the memory usage (in KB) of a given the pod
 func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
-	podMetrics := metrics.PodMetrics{}
+	var containerMetrics metrics.ContainerMetrics
 	if err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		podMetrics := metrics.PodMetrics{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: ns,
 			Name:      podname,
 		}, &podMetrics); err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
-		if len(podMetrics.Containers) != 1 {
-			return false, nil // keep waiting
+		for _, c := range podMetrics.Containers {
+			if c.Name == "manager" {
+				containerMetrics = c
+				return true, nil
+			}
 		}
-		return true, nil
+		return false, nil // keep waiting
 	}); err != nil {
 		return -1, err
 	}
-	// assume the pod is running a single container
-	return podMetrics.Containers[0].Usage.Memory().ScaledValue(resource.Kilo), nil
+	// the pod contains multiple
+	return containerMetrics.Usage.Memory().ScaledValue(resource.Kilo), nil
 }
 
 // CreateNamespace creates a namespace with the given name and waits until it gets active
