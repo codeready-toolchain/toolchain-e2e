@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestUserWorkloads(t *testing.T) {
+func aTestUserWorkloads(t *testing.T) {
 	suite.Run(t, &userWorkloadsTestSuite{})
 }
 

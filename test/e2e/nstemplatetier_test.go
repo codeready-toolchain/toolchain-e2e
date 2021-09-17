@@ -29,7 +29,7 @@ const (
 	MaxPoolSize = 5 // same as hard-coded value in host operator
 )
 
-func TestNSTemplateTiers(t *testing.T) {
+func aTestNSTemplateTiers(t *testing.T) {
 	// given
 	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
 
@@ -98,7 +98,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 }
 
-func TestSetDefaultTier(t *testing.T) {
+func aTestSetDefaultTier(t *testing.T) {
 	// given
 	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
 
@@ -132,7 +132,7 @@ func TestSetDefaultTier(t *testing.T) {
 	})
 }
 
-func TestUpdateNSTemplateTier(t *testing.T) {
+func aTestUpdateNSTemplateTier(t *testing.T) {
 	// in this test, we have 2 groups of users, configured with their own tier (both using the "base" tier templates)
 	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
 	// finally, all user namespaces are verified.
@@ -304,7 +304,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 	return updatedSyncIndexes
 }
 
-func TestTierTemplates(t *testing.T) {
+func aTestTierTemplates(t *testing.T) {
 	// given
 	hostAwait, _, _ := WaitForDeployments(t)
 	// when the tiers are created during the startup then we can verify them

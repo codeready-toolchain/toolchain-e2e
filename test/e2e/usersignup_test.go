@@ -21,7 +21,7 @@ type userSignupIntegrationTest struct {
 	baseUserIntegrationTest
 }
 
-func TestRunUserSignupIntegrationTest(t *testing.T) {
+func aTestRunUserSignupIntegrationTest(t *testing.T) {
 	suite.Run(t, &userSignupIntegrationTest{})
 }
 

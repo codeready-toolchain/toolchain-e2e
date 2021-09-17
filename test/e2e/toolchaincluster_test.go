@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestToolchainClusterE2E(t *testing.T) {
+func aTestToolchainClusterE2E(t *testing.T) {
 	hostAwait, memberAwait, _ := WaitForDeployments(t)
 
 	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)

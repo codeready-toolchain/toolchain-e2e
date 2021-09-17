@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -344,6 +345,55 @@ func TestE2EFlow(t *testing.T) {
 
 	})
 
+	t.Run("role accidentally deleted by user is recreated", func(t *testing.T) {
+
+		userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("wonderwoman").
+			Email("wonderwoman@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+		devNs := corev1.Namespace{}
+		err := memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
+		require.NoError(t, err)
+
+		stageNs := corev1.Namespace{}
+		err = memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
+		require.NoError(t, err)
+
+		userRole, err := memberAwait.WaitForRole(&devNs, "rbac-edit")
+		require.NoError(t, err)
+		require.NotEmpty(t, userRole)
+		fmt.Println(userRole.Labels)
+		require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
+
+		//when role deleted
+		err = memberAwait.Client.Delete(context.TODO(),userRole)
+		require.NoError(t, err)
+		fmt.Printf(">>>>> role deleted at time: :%v", time.Now())
+
+		// then verify role is recreated
+		userRole, err = memberAwait.WaitForRole(&devNs, "rbac-edit")
+		require.NoError(t, err)
+		require.NotEmpty(t, userRole)
+
+		// then the user account should be recreated
+		VerifyResourcesProvisionedForSignup(t, hostAwait, userSignup, "base", memberAwait)
+
+
+		//userrole := rbacv1.Role{}
+		//err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{
+		//	Namespace: "wonderwoman-dev",
+		//	Name: "rbac-edit",
+		//}, &userrole)
+		//require.NoError(t, err)
+		//rolebinding : user-edit and user-rbac-edit
+		//fmt.Println(">>>>>>>>>>> Now Stop")
+		//time.Sleep(3*time.Minute)
+	})
+
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
 		johnSignup, err := hostAwait.WaitForUserSignup(johnSignup.Name)
@@ -387,7 +437,7 @@ func TestE2EFlow(t *testing.T) {
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
 			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+7))
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
