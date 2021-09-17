@@ -3,8 +3,10 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-e2e/setup/auth"
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	routev1 "github.com/openshift/api/route/v1"
@@ -73,6 +75,12 @@ func (g *Gatherer) Start() chan struct{} {
 			for _, q := range g.queries {
 				val, warnings, err := q.query(apiClient)
 				if err != nil {
+					if strings.Contains(err.Error(), "client error: 403") {
+						url, tokenErr := auth.GetTokenRequestURI(g.client)
+						if tokenErr == nil {
+							g.term.Fatalf(err, "metrics query failed with 403 (Forbidden) - retrieve a new token from %s", url)
+						}
+					}
 					g.term.Fatalf(err, "metrics query failed")
 				} else if len(warnings) > 0 {
 					g.term.Fatalf(fmt.Errorf("%v", warnings), "metrics query had unexpected warnings")

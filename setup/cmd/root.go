@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-e2e/setup/auth"
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/idlers"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics"
@@ -19,10 +20,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
-	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
@@ -136,7 +135,7 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 
 	if len(token) == 0 {
-		tokenRequestURI, err := getTokenRequestURI(cl)
+		tokenRequestURI, err := auth.GetTokenRequestURI(cl)
 		if err != nil {
 			term.Fatalf(err, "token flag is required - could not determine token request URI")
 		}
@@ -312,15 +311,4 @@ func usersWithinBounds(term terminal.Terminal, value int, templateType string) {
 	if value < 0 || value > numberOfUsers {
 		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid '%s' users value '%d'", templateType, value)
 	}
-}
-
-func getTokenRequestURI(cl client.Client) (string, error) {
-	route := routev1.Route{}
-	if err := cl.Get(context.TODO(), types.NamespacedName{
-		Namespace: cfg.OauthNS,
-		Name:      cfg.OauthName,
-	}, &route); err != nil {
-		return "", err
-	}
-	return "https://" + route.Spec.Host + "/oauth/token/display", nil
 }
