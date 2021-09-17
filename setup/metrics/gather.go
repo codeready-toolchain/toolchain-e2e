@@ -26,13 +26,13 @@ type Gatherer struct {
 	token    string
 }
 
-type QueryFn func(apiClient prometheus.API) (model.Value, prometheus.Warnings, error)
+type QueryFn func(apiClient prometheus.API) (float64, prometheus.Warnings, error)
 
 type QueryDef struct {
+	count int
 	name  string
 	query QueryFn
 	sum   float64
-	count int
 }
 
 func New(term terminal.Terminal, cl client.Client, token string, interval time.Duration) Gatherer {
@@ -85,11 +85,8 @@ func (g *Gatherer) Start() chan struct{} {
 				} else if len(warnings) > 0 {
 					g.term.Fatalf(fmt.Errorf("%v", warnings), "metrics query had unexpected warnings")
 				}
-				vector := val.(model.Vector)
-				if len(vector) == 0 {
-					g.term.Fatalf(fmt.Errorf("metrics value could not be retrieved"), "metrics query failed")
-				}
-				q.sum += float64(vector[0].Value)
+
+				q.sum += val
 				q.count++
 			}
 		}, g.interval, stop)
@@ -103,16 +100,16 @@ func (g *Gatherer) AddQueries(queries ...*QueryDef) {
 
 func QueryClusterCPUUtilisation() *QueryDef {
 	query := `1 - avg(rate(node_cpu_seconds_total{mode="idle", cluster=""}[5m]))`
-	fn := func(apiClient prometheus.API) (model.Value, prometheus.Warnings, error) {
-		return apiClient.Query(context.TODO(), query, time.Now())
+	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
+		return vectorQuery(apiClient, query)
 	}
 	return &QueryDef{name: "Cluster CPU Utilisation", query: fn}
 }
 
 func QueryClusterMemoryUtilisation() *QueryDef {
 	query := `1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{cluster=""})`
-	fn := func(apiClient prometheus.API) (model.Value, prometheus.Warnings, error) {
-		return apiClient.Query(context.TODO(), query, time.Now())
+	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
+		return vectorQuery(apiClient, query)
 	}
 	return &QueryDef{name: "Cluster Memory Utilisation", query: fn}
 }
@@ -128,8 +125,8 @@ func QueryWorkloadCPUUtilisation(namespace, name string) *QueryDef {
 	  * on(namespace,pod) 
 		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
 	) by (pod)`, namespace, name)
-	fn := func(apiClient prometheus.API) (model.Value, prometheus.Warnings, error) {
-		return apiClient.Query(context.TODO(), query, time.Now())
+	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
+		return vectorQuery(apiClient, query)
 	}
 	return &QueryDef{name: fmt.Sprintf("%s CPU Utilisation", name), query: fn}
 }
@@ -145,8 +142,8 @@ func QueryWorkloadMemoryUtilisation(namespace, name string) *QueryDef {
 	  * on(namespace,pod)
 		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
 	) by (pod)`, namespace, name)
-	fn := func(apiClient prometheus.API) (model.Value, prometheus.Warnings, error) {
-		return apiClient.Query(context.TODO(), query, time.Now())
+	fn := func(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
+		return vectorQuery(apiClient, query)
 	}
 	return &QueryDef{name: fmt.Sprintf("%s Memory Utilisation", name), query: fn}
 }
@@ -166,4 +163,19 @@ func (g *Gatherer) PrintResults() {
 	for _, q := range g.queries {
 		g.term.Infof("Average %s: %f", q.name, q.sum/float64(q.count))
 	}
+}
+
+func vectorQuery(apiClient prometheus.API, query string) (float64, prometheus.Warnings, error) {
+	var averageValue float64
+	val, warnings, err := apiClient.Query(context.TODO(), query, time.Now())
+	vector := val.(model.Vector)
+	if len(vector) == 0 {
+		return -1, warnings, fmt.Errorf("metrics value could not be retrieved")
+	}
+	for _, v := range vector {
+		averageValue += float64(v.Value)
+	}
+	averageValue /= float64(len(vector))
+
+	return averageValue, warnings, err
 }
