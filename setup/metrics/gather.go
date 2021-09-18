@@ -102,26 +102,29 @@ func (g *Gatherer) getPrometheusEndpoint() (string, error) {
 
 func (g *Gatherer) PrintResults() {
 	for _, q := range g.queries {
-		g.term.Infof("%s: %f", q.name, q.sum/float64(q.count))
+		g.term.Infof("%s: %s", q.name, q.sum/float64(q.count))
 	}
 }
 
 func QueryClusterCPUUtilisation() *VectoryQuery {
-	name := "Average Cluster CPU Utilisation"
-	query := `1 - avg(rate(node_cpu_seconds_total{mode="idle", cluster=""}[5m]))`
-	return &VectoryQuery{name: name, query: query}
+	return &VectoryQuery{
+		name:  "Average Cluster CPU Utilisation",
+		query: `1 - avg(rate(node_cpu_seconds_total{mode="idle", cluster=""}[5m]))`,
+	}
 }
 
 func QueryClusterMemoryUtilisation() *VectoryQuery {
-	name := "Average Cluster Memory Utilisation"
-	query := `1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{cluster=""})`
-	return &VectoryQuery{name: name, query: query}
+	return &VectoryQuery{
+		name:  "Average Cluster Memory Utilisation",
+		query: `1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{cluster=""})`,
+	}
 }
 
 func QueryEtcdMemoryUtilisation() *VectoryQuery {
-	name := "Average etcd Instance Memory Utilisation"
-	query := `process_resident_memory_bytes{job="etcd"}`
-	return &VectoryQuery{name: name, query: query}
+	return &VectoryQuery{
+		name:  "Average etcd Instance Memory Utilisation",
+		query: `process_resident_memory_bytes{job="etcd"}`,
+	}
 }
 
 func QueryWorkloadCPUUtilisation(namespace, name string) *VectoryQuery {
@@ -135,7 +138,10 @@ func QueryWorkloadCPUUtilisation(namespace, name string) *VectoryQuery {
 	  * on(namespace,pod) 
 		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
 	) by (pod)`, namespace, name)
-	return &VectoryQuery{name: fmt.Sprintf("Average %s CPU Utilisation", name), query: query}
+	return &VectoryQuery{
+		name:  fmt.Sprintf("Average %s CPU Utilisation", name),
+		query: query,
+	}
 }
 
 func QueryWorkloadMemoryUtilisation(namespace, name string) *VectoryQuery {
@@ -149,5 +155,8 @@ func QueryWorkloadMemoryUtilisation(namespace, name string) *VectoryQuery {
 	  * on(namespace,pod)
 		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
 	) by (pod)`, namespace, name)
-	return &VectoryQuery{name: fmt.Sprintf("Average %s Memory Utilisation", name), query: query}
+	return &VectoryQuery{
+		name:  fmt.Sprintf("Average %s Memory Utilisation", name),
+		query: query,
+	}
 }

@@ -10,10 +10,11 @@ import (
 )
 
 type VectoryQuery struct {
-	count int
-	name  string
-	query string
-	sum   float64
+	count        int
+	name         string
+	query        string
+	sum          float64
+	stringResult func(float64, int) string
 }
 
 func (v VectoryQuery) doQuery(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
@@ -33,4 +34,8 @@ func (v VectoryQuery) doQuery(apiClient prometheus.API) (float64, prometheus.War
 	}
 
 	return averageValue / float64(len(vector)), warnings, err
+}
+
+func (v VectoryQuery) result() string {
+	return v.stringResult(v.sum, v.count)
 }
