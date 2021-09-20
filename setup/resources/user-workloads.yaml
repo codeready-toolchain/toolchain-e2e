@@ -10,7 +10,7 @@ objects:
       labels:
         app: nginx
     spec:
-      replicas: 1
+      replicas: 0
       selector:
         matchLabels:
           app: nginx
@@ -203,7 +203,7 @@ objects:
         app: guestbook
         tier: proxy
     spec:
-      replicas: 3
+      replicas: 0
       selector:
         matchLabels:
           tier: proxy
@@ -223,7 +223,7 @@ objects:
         app: guestbook2
         tier: proxy2
     spec:
-      replicas: 3
+      replicas: 0
       selector:
         matchLabels:
           tier: proxy2

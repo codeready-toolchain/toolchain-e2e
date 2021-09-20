@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,10 +15,19 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 
 	"github.com/gosuri/uiprogress"
 	"github.com/gosuri/uitable/util/strutil"
 	"github.com/spf13/cobra"
+)
+
+const (
+	defaultHostNS   = "toolchain-host-operator"
+	defaultMemberNS = "toolchain-member-operator"
+
+	customTemplateUsersParam  = "custom"
+	defaultTemplateUsersParam = "default"
 )
 
 var (
@@ -26,12 +36,14 @@ var (
 	verbose                 bool
 	hostOperatorNamespace   string
 	memberOperatorNamespace string
-	templatePaths           []string
+	customTemplatePaths     []string
 	numberOfUsers           int
 	userBatches             int
-	activeUsers             int
+	defaultTemplateUsers    int
+	customTemplateUsers     int
 	skipCSVGen              bool
-	skipDefaultTemplate     bool
+	operatorsLimit          int
+	idlerTimeout            string
 )
 
 var (
@@ -51,25 +63,19 @@ func Execute() {
 		Run:           setup,
 	}
 
-	quayNS, found := os.LookupEnv("QUAY_NAMESPACE")
-	if !found || len(quayNS) == 0 {
-		fmt.Println("QUAY_NAMESPACE env var is not set, ensure the prerequisite setup steps are followed")
-		os.Exit(1)
-	}
-	defaultHostNS := fmt.Sprintf("%s-host-operator", quayNS)
-	defaultMemberNS := fmt.Sprintf("%s-member-operator", quayNS)
-
 	cmd.Flags().StringVar(&usernamePrefix, "username", usernamePrefix, "the prefix used for usersignup names")
 	cmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "absolute path to the kubeconfig file")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "if 'debug' traces should be displayed in the console")
-	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 3000, "the number of user accounts to provision")
+	cmd.Flags().IntVarP(&numberOfUsers, "users", "u", 2000, "the number of user accounts to provision")
 	cmd.Flags().IntVarP(&userBatches, "batch", "b", 25, "create user accounts in batches of N, increasing batch size may cause performance problems")
 	cmd.Flags().StringVar(&hostOperatorNamespace, "host-ns", defaultHostNS, "the namespace of Host operator")
 	cmd.Flags().StringVar(&memberOperatorNamespace, "member-ns", defaultMemberNS, "the namespace of the Member operator")
-	cmd.Flags().StringSliceVar(&templatePaths, "template", []string{}, "the path to the OpenShift template to apply")
-	cmd.Flags().IntVarP(&activeUsers, "active", "a", 3000, "how many users will have the user workloads template applied")
+	cmd.Flags().StringSliceVar(&customTemplatePaths, "template", []string{}, "the path to the OpenShift template to apply for each custom user")
+	cmd.Flags().IntVarP(&defaultTemplateUsers, defaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
+	cmd.Flags().IntVarP(&customTemplateUsers, customTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
-	cmd.Flags().BoolVar(&skipDefaultTemplate, "skip-default-template", false, "skip the setup/resources/user-workloads.yaml template file when creating resources")
+	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
+	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -81,27 +87,39 @@ func setup(cmd *cobra.Command, args []string) {
 	cmd.SilenceUsage = true
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
 
-	term.Debugf("Number of Users:           '%d'", numberOfUsers)
-	term.Debugf("Active Users:              '%d'", activeUsers)
-	term.Debugf("User Batch Size:           '%d'", userBatches)
-	term.Debugf("Host Operator Namespace:   '%s'", hostOperatorNamespace)
-	term.Debugf("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
+	term.Infof("Number of Users:           '%d'", numberOfUsers)
+	term.Infof("Default Template Users:    '%d'", defaultTemplateUsers)
+	term.Infof("Custom Template Users:     '%d'", customTemplateUsers)
+	term.Infof("User Batch Size:           '%d'", userBatches)
+	term.Infof("Host Operator Namespace:   '%s'", hostOperatorNamespace)
+	term.Infof("Member Operator Namespace: '%s'\n", memberOperatorNamespace)
 
-	// validate number of users
+	// validate params
 	if numberOfUsers < 1 {
 		term.Fatalf(fmt.Errorf("value must be more than 0"), "invalid users value '%d'", numberOfUsers)
 	}
-	if activeUsers < 0 || activeUsers > numberOfUsers {
-		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid active users value '%d'", activeUsers)
-	}
+
+	usersWithinBounds(term, defaultTemplateUsers, defaultTemplateUsersParam)
+	usersWithinBounds(term, customTemplateUsers, customTemplateUsersParam)
+
 	if numberOfUsers%userBatches != 0 {
 		term.Fatalf(fmt.Errorf("users value must be a multiple of the batch size '%d'", userBatches), "invalid users value '%d'", numberOfUsers)
 	}
+	if operatorsLimit > len(operators.Templates) {
+		term.Fatalf(fmt.Errorf("the operators limit value must be less than or equal to '%d'", len(operators.Templates)), "invalid operators limit value '%d'", operatorsLimit)
+	}
+
+	idlerDuration, err := time.ParseDuration(idlerTimeout)
+	if err != nil {
+		term.Fatalf(err, "invalid idler-timeout value '%s'", idlerTimeout)
+	}
+
+	if customTemplateUsers > 0 && len(customTemplatePaths) == 0 {
+		term.Fatalf(errors.New(""), "'%d' users are set to have custom templates applied but no custom templates were provided", customTemplateUsers)
+	}
 
 	// add the default user-workloads.yaml file automatically
-	if !skipDefaultTemplate {
-		templatePaths = append(templatePaths, "setup/resources/user-workloads.yaml")
-	}
+	defaultTemplatePath := "setup/resources/user-workloads.yaml"
 
 	term.Infof("🕖 initializing...\n")
 	cl, config, scheme, err := cfg.NewClient(term, kubeconfig)
@@ -110,7 +128,8 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 
 	var templateListStr string
-	for _, p := range templatePaths {
+	templateListStr += "\n - (default) " + defaultTemplatePath
+	for _, p := range customTemplatePaths {
 		absPath, err := filepath.Abs(p)
 		if err != nil {
 			term.Fatalf(err, "invalid template file: '%s'", absPath)
@@ -119,7 +138,7 @@ func setup(cmd *cobra.Command, args []string) {
 		if err != nil {
 			term.Fatalf(err, "invalid template file: '%s'", absPath)
 		}
-		templateListStr += "\n - " + absPath
+		templateListStr += "\n - (custom) " + absPath
 	}
 
 	term.Infof("📋 template list: %s\n", templateListStr)
@@ -127,11 +146,19 @@ func setup(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if err := operators.VerifySandboxOperatorsInstalled(cl); err != nil {
+		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
+	}
+
 	if !skipCSVGen {
 		term.Infof("⏳ preparing cluster for setup...")
-		// install an all-namespaces operator that will generate a CSV resource in each namespace
-		if err := operators.EnsureAllNamespacesOperator(cl, hostOperatorNamespace); err != nil {
-			term.Fatalf(err, "failed to ensure the all-namespaces operator is installed")
+		// install operators for member clusters
+		templatePaths := []string{}
+		for i := 0; i < operatorsLimit; i++ {
+			templatePaths = append(templatePaths, "setup/operators/installtemplates/"+operators.Templates[i])
+		}
+		if err := operators.EnsureOperatorsInstalled(cl, scheme, templatePaths); err != nil {
+			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
 	}
 
@@ -161,7 +188,7 @@ func setup(cmd *cobra.Command, args []string) {
 				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current(); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
 					userNS := fmt.Sprintf("%s-stage", userToCheck)
-					if err := resources.WaitForNamespace(cl, userNS); err != nil {
+					if err := wait.ForNamespace(cl, userNS); err != nil {
 						term.Fatalf(err, "failed to find namespace '%s'", userNS)
 					}
 				}
@@ -180,7 +207,7 @@ func setup(cmd *cobra.Command, args []string) {
 
 			startTime := time.Now()
 			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
-			if err := idlers.UpdateTimeout(cl, username, 15*time.Second); err != nil {
+			if err := idlers.UpdateTimeout(cl, username, idlerDuration); err != nil {
 				term.Fatalf(err, "failed to update idlers for user '%s'", username)
 			}
 
@@ -189,27 +216,53 @@ func setup(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	setupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft(fmt.Sprintf("user setup (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
-	})
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for setupBar.Incr() {
-			username := fmt.Sprintf("%s-%04d", usernamePrefix, setupBar.Current())
+	if defaultTemplateUsers > 0 {
+		defaultUserSetupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
+			return strutil.PadLeft(fmt.Sprintf("setup users with default template (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
+		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for defaultUserSetupBar.Incr() {
+				username := fmt.Sprintf("%s-%04d", usernamePrefix, defaultUserSetupBar.Current())
 
-			startTime := time.Now()
+				startTime := time.Now()
 
-			// create resources for every nth user
-			if setupBar.Current() <= activeUsers {
-				if err := resources.CreateFromTemplateFiles(cl, scheme, username, templatePaths); err != nil {
-					term.Fatalf(err, "failed to create resources for user '%s'", username)
+				// create resources for every nth user
+				if defaultUserSetupBar.Current() <= defaultTemplateUsers {
+					if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, []string{defaultTemplatePath}); err != nil {
+						term.Fatalf(err, "failed to create resources for user '%s'", username)
+					}
 				}
+				userTime := time.Since(startTime)
+				AverageTimePerUser += userTime
 			}
-			userTime := time.Since(startTime)
-			AverageTimePerUser += userTime
-		}
-	}()
+		}()
+	}
+
+	if customTemplateUsers > 0 && len(customTemplatePaths) > 0 {
+		customUserSetupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
+			return strutil.PadLeft(fmt.Sprintf("setup users with custom templates (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
+		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for customUserSetupBar.Incr() {
+				username := fmt.Sprintf("%s-%04d", usernamePrefix, customUserSetupBar.Current())
+
+				startTime := time.Now()
+
+				// create resources for every nth user
+				if customUserSetupBar.Current() <= customTemplateUsers {
+					if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, customTemplatePaths); err != nil {
+						term.Fatalf(err, "failed to create resources for user '%s'", username)
+					}
+				}
+				userTime := time.Since(startTime)
+				AverageTimePerUser += userTime
+			}
+		}()
+	}
 
 	wg.Wait()
 	uip.Stop()
@@ -217,4 +270,10 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Infof("Average Time Per User (Seconds): %v", AverageTimePerUser.Seconds()/float64(numberOfUsers))
 	term.Infof("🏁 done provisioning users")
 	term.Infof("👋 have fun!")
+}
+
+func usersWithinBounds(term terminal.Terminal, value int, templateType string) {
+	if value < 0 || value > numberOfUsers {
+		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid '%s' users value '%d'", templateType, value)
+	}
 }

@@ -9,8 +9,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	uuid "github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -20,64 +19,19 @@ import (
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	ctx          *framework.Context
 	hostAwait    *wait.HostAwaitility
 	memberAwait  *wait.MemberAwaitility
 	member2Await *wait.MemberAwaitility
 }
 
-// createAndCheckUserSignup creates a new UserSignup resource with the given values:
-// specApproved defines if the UserSignup should be manually approved
-// username defines the required username set in the spec
-// email is set in "user-email" annotation
-// targetCluster ensures the UserSignup is created with Spec.TargetCluster set to member cluster associated with the provided member awaitility, a 'nil' value will skip setting Spec.TargetCluster
-//
-// The method then waits until the UserSignup contains the given set of conditions and the corresponding MUR is created
-func (s *baseUserIntegrationTest) createAndCheckUserSignup(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
-	conditions ...toolchainv1alpha1.Condition) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-
-	userSignup := s.createAndCheckUserSignupNoMUR(specApproved, username, email, targetCluster, conditions...)
-
-	// Confirm the MUR was created and ready
-	VerifyResourcesProvisionedForSignup(s.T(), s.hostAwait, userSignup, "base", s.memberAwait, s.member2Await)
-	mur, err := s.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-	require.NoError(s.T(), err)
-
-	return userSignup, mur
-}
-
-// createAndCheckUserSignupNoMUR creates a new UserSignup resoruce with the given values:
-// specApproved defines if the UserSignup should be manually approved
-// username defines the required username set in the spec
-// email is set in "user-email" annotation
-// targetCluster ensures the UserSignup is created with Spec.TargetCluster set to member cluster associated with the provided member awaitility, a 'nil' value will skip setting Spec.TargetCluster
-//
-// The method then waits until the UserSignup contains the given set of conditions
-func (s *baseUserIntegrationTest) createAndCheckUserSignupNoMUR(specApproved bool, username string, email string, targetCluster *wait.MemberAwaitility,
-	conditions ...toolchainv1alpha1.Condition) *toolchainv1alpha1.UserSignup {
-
-	WaitUntilBaseNSTemplateTierIsUpdated(s.T(), s.hostAwait)
-	// Create a new UserSignup with the given approved flag
-	userSignup := NewUserSignup(s.T(), s.hostAwait, username, email)
-	states.SetApproved(userSignup, specApproved)
-	if targetCluster != nil {
-		userSignup.Spec.TargetCluster = targetCluster.ClusterName
-	}
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), userSignup, CleanupOptions(s.ctx))
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	// Check the UserSignup is approved now
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(conditions...))
-	require.NoError(s.T(), err)
-
-	return userSignup
+func (s *baseUserIntegrationTest) newSignupRequest() SignupRequest {
+	return NewSignupRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {
 	// Create the BannedUser
 	bannedUser := newBannedUser(s.hostAwait, email)
-	err := s.hostAwait.FrameworkClient.Create(context.TODO(), bannedUser, CleanupOptions(s.ctx))
+	err := s.hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)
@@ -87,7 +41,7 @@ func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolch
 func newBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
 	return &toolchainv1alpha1.BannedUser{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      uuid.NewV4().String(),
+			Name:      uuid.Must(uuid.NewV4()).String(),
 			Namespace: host.Namespace,
 			Labels: map[string]string{
 				toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
@@ -118,13 +72,15 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	assert.Contains(s.T(), notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
 	assert.Equal(s.T(), userSignup.Namespace, notification.Namespace)
 	assert.Equal(s.T(), "userdeactivated", notification.Spec.Template)
-	assert.Equal(s.T(), userSignup.Name, notification.Spec.UserID)
+	assert.Equal(s.T(), userSignup.Name, notification.Spec.Context["UserID"])
 
 	err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 	require.NoError(s.T(), err)
 
+	// We wait for the "Approved()" condition status here because it doesn't specify a reason for the approval,
+	// and the reason should not be necessary for the purpose of this test.
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(s.T(), err)
 	require.True(s.T(), states.Deactivated(userSignup), "usersignup should be deactivated")
@@ -149,7 +105,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1
 	require.NoError(s.T(), err)
 
 	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ApprovedByAdmin()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)
 	require.False(s.T(), states.Deactivated(userSignup), "usersignup should not be deactivated")

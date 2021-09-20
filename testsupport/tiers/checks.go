@@ -24,10 +24,11 @@ import (
 const (
 	// tier names
 	base                     = "base"
+	baselarge                = "baselarge"
 	baseextended             = "baseextended"
+	baseextendedidling       = "baseextendedidling"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	advanced                 = "advanced"
-	team                     = "team"
 	test                     = "test"
 
 	// common CPU limits
@@ -48,17 +49,20 @@ func NewChecks(tier string) (TierChecks, error) {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
 
+	case baselarge:
+		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
+
 	case baseextended:
 		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
+
+	case baseextendedidling:
+		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
 
 	case basedeactivationdisabled:
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
 
 	case advanced:
-		return &advancedTierChecks{tierName: advanced}, nil
-
-	case team:
-		return &teamTierChecks{tierName: team}, nil
+		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
 
 	case test:
 		return &testTierChecks{tierName: test}, nil
@@ -88,8 +92,11 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
 		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2))
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+		execPodsRole(),
+		numberOfToolchainRoles(2),
+		numberOfToolchainRoleBindings(4))
 
 	checks = append(checks, commonNetworkPolicyChecks()...)
 
@@ -121,8 +128,29 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaConfigMap(),
 		clusterResourceQuotaRHOASOperatorCRs(),
 		clusterResourceQuotaSBOCRs(),
-		numberOfClusterResourceQuotas(11),
-		idlers("dev", "stage"))
+		numberOfClusterResourceQuotas(),
+		idlers(43200, "dev", "stage"))
+}
+
+type baselargeTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(a.tierName,
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(),
+		idlers(43200, "dev", "stage"))
 }
 
 type baseextendedTierChecks struct {
@@ -131,6 +159,27 @@ type baseextendedTierChecks struct {
 
 func (a *baseextendedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{nsTemplateTier(a.tierName, 180)}
+}
+
+type baseextendedidlingTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(a.tierName,
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(),
+		idlers(518400, "dev", "stage"))
 }
 
 type basedeactivationdisabledTierChecks struct {
@@ -147,34 +196,16 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 		networkPolicyAllowFromMonitoring(),
 		networkPolicyAllowFromIngress(),
 		networkPolicyAllowFromOlmNamespaces(),
+		networkPolicyAllowFromConsoleNamespaces(),
 	}
 }
 
 type advancedTierChecks struct {
-	tierName string
+	baseTierChecks
 }
 
 func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-func (a *advancedTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
-		rbacEditRoleBinding(),
-		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2))
-
-	checks = append(checks, commonNetworkPolicyChecks()...)
-
-	switch nsType {
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
-	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
-	}
-	return checks
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -188,7 +219,10 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9))
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(),
+		idlers(0, "dev", "stage"))
 }
 
 func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
@@ -219,54 +253,6 @@ func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility)
 
 func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{}
-}
-
-type teamTierChecks struct {
-	tierName string
-}
-
-func (a *teamTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-func (a *teamTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
-		limitRange(defaultCPULimit, "1Gi", "10m", "64Mi"),
-		rbacEditRoleBinding(),
-		rbacEditRole(),
-		numberOfToolchainRoles(1),
-		numberOfToolchainRoleBindings(2),
-	)
-
-	checks = append(checks, commonNetworkPolicyChecks()...)
-
-	switch nsType {
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(6))
-	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(5))
-	}
-	return checks
-}
-
-func (a *teamTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
-func (a *teamTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(a.tierName,
-		clusterResourceQuotaCompute(cpuLimit, "2000m", "15Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9))
 }
 
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
@@ -325,7 +311,55 @@ func rbacEditRoleBinding() namespaceObjectsCheck {
 	}
 }
 
+func crtadminViewRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-view")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "Group", rb.Subjects[0].Kind)
+		assert.Equal(t, "crtadmin-users-view", rb.Subjects[0].Name)
+		assert.Equal(t, "view", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func crtadminPodsRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-pods")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "Group", rb.Subjects[0].Kind)
+		assert.Equal(t, "crtadmin-users-view", rb.Subjects[0].Name)
+		assert.Equal(t, "exec-pods", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
 func rbacEditRole() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		role, err := memberAwait.WaitForRole(ns, "exec-pods")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 1)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods/exec"},
+					Verbs:     []string{"get", "list", "watch", "create", "delete", "update"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func execPodsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
@@ -443,6 +477,10 @@ func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
 	return networkPolicyIngress("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
 }
 
+func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
+	return networkPolicyIngress("allow-from-console-namespaces", "network.openshift.io/policy-group", "console")
+}
+
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 	return networkPolicyIngressFromPolicyGroup("allow-from-codeready-workspaces-operator", "codeready-workspaces")
 }
@@ -485,14 +523,14 @@ func clusterObjectsChecks(tierName string, checkCreator ...clusterObjectsCheckCr
 	return checks
 }
 
-func idlers(namespaceTypes ...string) clusterObjectsCheckCreator {
+func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCreator {
 	return func(tierName string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
 			for _, nt := range namespaceTypes {
 				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierName))
 				require.NoError(t, err)
 				assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-				assert.Equal(t, int32(43200), idler.Spec.TimeoutSeconds)
+				assert.Equal(t, int32(timeoutSeconds), idler.Spec.TimeoutSeconds)
 			}
 
 			// Make sure there is no unexpected idlers
@@ -717,27 +755,24 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
-	expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
-		Selector: quotav1.ClusterResourceQuotaSelector{
-			AnnotationSelector: map[string]string{
-				"openshift.io/requester": userName,
-			},
+	return wait.ClusterResourceQuotaWaitCriterion{
+		Match: func(actual *quotav1.ClusterResourceQuota) bool {
+			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
+				Selector: quotav1.ClusterResourceQuotaSelector{
+					AnnotationSelector: map[string]string{
+						"openshift.io/requester": userName,
+					},
+				},
+				Quota: v1.ResourceQuotaSpec{
+					Hard: hard,
+				},
+			}
+			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
+				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
-		Quota: v1.ResourceQuotaSpec{
-			Hard: hard,
+		Diff: func(actual *quotav1.ClusterResourceQuota) string {
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual))
 		},
-	}
-	return func(a *wait.MemberAwaitility, actual quotav1.ClusterResourceQuota) bool {
-		if actual.Labels == nil || tierName != actual.Labels["toolchain.dev.openshift.com/tier"] {
-			a.T.Logf("waiting for ClusterResourceQuota '%s' to have the expected tier name. Actual labels: '%v'; Expected: '%s'", userName, actual.Labels, tierName)
-			return false
-		}
-		if !reflect.DeepEqual(expectedQuotaSpec, actual.Spec) {
-			a.T.Logf("waiting for ClusterResourceQuota '%s'. Actual: '%+v'; Expected: '%+v'", userName, expectedQuotaSpec, actual)
-			return false
-		}
-		a.T.Logf("expected ClusterResourceQuota matches actual ClusterResourceQuota")
-		return true
 	}
 }
 
@@ -747,7 +782,7 @@ func count(resource v1.ResourceName) v1.ResourceName {
 
 func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("Role", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("Roles", number, func() (int, error) {
 			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -759,7 +794,7 @@ func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unpar
 
 func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint: unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("RoleBinding", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("RoleBindings", number, func() (int, error) {
 			roleBindings := &rbacv1.RoleBindingList{}
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -771,7 +806,7 @@ func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint
 
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("LimitRange", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("LimitRanges", number, func() (int, error) {
 			limitRanges := &v1.LimitRangeList{}
 			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -783,7 +818,7 @@ func numberOfLimitRanges(number int) namespaceObjectsCheck {
 
 func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicy", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicies", number, func() (int, error) {
 			nps := &netv1.NetworkPolicyList{}
 			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -793,10 +828,11 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	}
 }
 
-func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
+func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
+	expectedCRQs := 11
 	return func(_ string) clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName string) {
-			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuota", number, func() (int, error) {
+			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", expectedCRQs, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",

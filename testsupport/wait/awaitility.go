@@ -3,31 +3,36 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	"github.com/codeready-toolchain/toolchain-common/pkg/status"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/rest"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	DefaultOperatorRetryInterval     = time.Millisecond * 500
-	DefaultOperatorTimeout           = time.Second * 180
 	DefaultRetryInterval             = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
 	DefaultTimeout                   = time.Second * 60
 	MemberNsVar                      = "MEMBER_NS"
@@ -40,18 +45,20 @@ const (
 type Awaitility struct {
 	T             *testing.T
 	Client        client.Client
+	RestConfig    *rest.Config
 	ClusterName   string
 	Namespace     string
 	Type          cluster.Type
 	RetryInterval time.Duration
 	Timeout       time.Duration
 	MetricsURL    string
+	toClean       []func()
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
 var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
 	Type:   toolchainv1alpha1.ToolchainClusterReady,
-	Status: v1.ConditionTrue,
+	Status: corev1.ConditionTrue,
 }
 
 // WithRetryOptions returns a new Awaitility with the given "RetryOption"s applied
@@ -95,6 +102,7 @@ func (o TimeoutOption) apply(a *Awaitility) {
 
 // WaitForMetricsService waits until there's a service with the given name in the current namespace
 func (a *Awaitility) WaitForMetricsService(name string) (corev1.Service, error) {
+	a.T.Logf("waiting for Service '%s' in namespace '%s'", name, a.Namespace)
 	var metricsSvc *corev1.Service
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		metricsSvc = &corev1.Service{}
@@ -107,12 +115,10 @@ func (a *Awaitility) WaitForMetricsService(name string) (corev1.Service, error) 
 			metricsSvc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for availability of service '%s' in namespace '%s'...", name, a.Namespace)
 				return false, nil
 			}
 			return false, err
 		}
-		a.T.Logf("found service '%s'", metricsSvc.Name)
 		return true, nil
 	})
 	return *metricsSvc, err
@@ -122,6 +128,7 @@ func (a *Awaitility) WaitForMetricsService(name string) (corev1.Service, error) 
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
 func (a *Awaitility) WaitForToolchainClusterWithCondition(clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
+	a.T.Logf("waiting for ToolchainCluster for cluster type '%s' in namespace '%s'", clusterType, namespace)
 	timeout := a.Timeout
 	if condition != nil {
 		timeout = ToolchainClusterConditionTimeout
@@ -132,7 +139,6 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(clusterType cluster.Ty
 		if c, ready, err = a.GetToolchainCluster(clusterType, namespace, condition); ready {
 			return true, nil
 		}
-		a.T.Logf("waiting for availability of %s ToolchainCluster CR (in namespace %s) representing operator running in namespace '%s'", clusterType, a.Namespace, a.Namespace)
 		return false, err
 	})
 	return c, err
@@ -141,6 +147,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(clusterType cluster.Ty
 // WaitForNamedToolchainClusterWithCondition waits until there is a ToolchainCluster with the given name
 // and with the given ClusterCondition (if it the condition is nil, then it skips this check)
 func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
+	a.T.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have condition '%v'", name, a.Namespace, condition)
 	timeout := a.Timeout
 	if condition != nil {
 		timeout = ToolchainClusterConditionTimeout
@@ -152,10 +159,8 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, cond
 			return false, err
 		}
 		if containsClusterCondition(c.Status.Conditions, condition) {
-			a.T.Logf("found %s ToolchainCluster", name)
 			return true, nil
 		}
-		a.T.Logf("waiting for %s ToolchainCluster having the expected condition (expected: %+v vs actual: %+v)", name, condition, c.Status.Conditions)
 		return false, err
 	})
 	return c, err
@@ -178,11 +183,8 @@ func (a *Awaitility) GetToolchainCluster(clusterType cluster.Type, namespace str
 	// assume there is zero or 1 match only
 	for _, cl := range clusters.Items {
 		if containsClusterCondition(cl.Status.Conditions, condition) {
-			a.T.Logf("found '%s' ToolchainCluster running in namespace '%s'", clusterType, namespace)
 			return cl, true, nil
 		}
-		a.T.Logf("found %s ToolchainCluster running in namespace '%s' but with insufficient conditions: %+v", clusterType, namespace, cl.Status.Conditions)
-
 	}
 	return toolchainv1alpha1.ToolchainCluster{}, false, nil
 }
@@ -203,7 +205,7 @@ func containsClusterCondition(conditions []toolchainv1alpha1.ToolchainClusterCon
 // It waits until the route is available (or returns an error) by first checking the resource status
 // and then making a call to the given endpoint
 func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1.Route, error) {
-	a.T.Logf("Setting up route for service '%s' with endpoint '%s'", serviceName, endpoint)
+	a.T.Logf("setting up route for service '%s' with endpoint '%s'", serviceName, endpoint)
 	service, err := a.WaitForMetricsService(serviceName)
 	if err != nil {
 		return routev1.Route{}, err
@@ -223,10 +225,10 @@ func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1
 			},
 			Spec: routev1.RouteSpec{
 				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("http-metrics"),
+					TargetPort: intstr.FromString("https"),
 				},
 				TLS: &routev1.TLSConfig{
-					Termination: routev1.TLSTerminationEdge,
+					Termination: routev1.TLSTerminationPassthrough,
 				},
 				To: routev1.RouteTargetReference{
 					Kind: service.Kind,
@@ -244,6 +246,7 @@ func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1
 // WaitForRouteToBeAvailable wais until the given route is available, ie, it has an Ingress with a host configured
 // and the endpoint is reachable (with a `200 OK` status response)
 func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (routev1.Route, error) {
+	a.T.Logf("waiting for route '%s' in namespace '%s'", name, ns)
 	route := routev1.Route{}
 	// retrieve the route for the registration service
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -253,33 +256,41 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 				Name:      name,
 			}, &route); err != nil {
 			if errors.IsNotFound(err) {
-				a.T.Logf("Waiting for creation of route '%s' in namespace '%s'...\n", name, ns)
 				return false, nil
 			}
 			return false, err
 		}
 		// assume there's a single Ingress and that its host will not be empty when the route is ready
 		if len(route.Status.Ingress) == 0 || route.Status.Ingress[0].Host == "" {
-			a.T.Logf("Waiting for availability of route '%s' in namespace '%s'...\n", name, ns)
 			return false, nil
 		}
 		// verify that the endpoint gives a `200 OK` response on a GET request
-		var location string
 		client := http.Client{
-			Timeout: time.Duration(1 * time.Second),
+			Timeout: time.Duration(5 * time.Second), // because sometimes the network connection may be a bit slow
 		}
+		var request *http.Request
+
 		if route.Spec.TLS != nil {
-			location = "https://" + route.Status.Ingress[0].Host + endpoint
 			client.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
 			}
+			request, err = http.NewRequest("Get", "https://"+route.Status.Ingress[0].Host+endpoint, nil)
+			if err != nil {
+				return false, err
+			}
+			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
+
 		} else {
-			location = "http://" + route.Status.Ingress[0].Host + endpoint
+			request, err = http.NewRequest("Get", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
+			if err != nil {
+				return false, err
+			}
 		}
-		resp, err := client.Get(location)
+		resp, err := client.Do(request)
 		if err, ok := err.(*url.Error); ok && err.Timeout() {
 			// keep waiting if there was a timeout: the endpoint is not available yet (pod is still re-starting)
-			a.T.Logf("Waiting for availability of route '%s' in namespace '%s' (endpoint timeout)...\n", name, ns)
 			return false, nil
 		} else if err != nil {
 			return false, err
@@ -287,7 +298,11 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 		defer func() {
 			_ = resp.Body.Close()
 		}()
-		return resp.StatusCode == http.StatusOK, nil
+
+		if resp.StatusCode != http.StatusOK {
+			return false, nil
+		}
+		return true, nil
 	})
 	return route, err
 }
@@ -295,7 +310,14 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) float64 {
-	value, err := getMetricValue(a.MetricsURL, family, labelAndValues)
+	var value float64
+	var err error
+	//err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	if value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err != nil {
+		require.NoError(a.T, err)
+	}
+
+	//})
 	require.NoError(a.T, err)
 	return value
 }
@@ -306,66 +328,55 @@ func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...strin
 	if len(labelAndValues)%2 != 0 {
 		a.T.Fatal("`labelAndValues` must be pairs of labels and values")
 	}
-	if value, err := getMetricValue(a.MetricsURL, family, labelAndValues); err == nil {
+	if value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err == nil {
 		return value
 	}
 	return 0
 }
 
-// AssertMetricReachesValue asserts that the exposed metric with the given family
+// WaitUntiltMetricHasValue asserts that the exposed metric with the given family
 // and label key-value pair reaches the expected value
-func (a *Awaitility) AssertMetricReachesValue(family string, expectedValue float64, labels ...string) {
-	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
+func (a *Awaitility) WaitUntiltMetricHasValue(family string, expectedValue float64, labels ...string) {
+	a.T.Logf("waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
+	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.MetricsURL, family, labels)
-		if err != nil {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' but error occurred: %s", family, labels, expectedValue, err.Error())
-			return false, nil
-		}
-		if value != expectedValue {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' (currently: %v)", family, labels, expectedValue, value)
-			return false, nil
-		}
-		return true, nil
+		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
+		// if error occurred, ignore and return `false` to keep waiting (may be due to endpoint temporarily unavailable)
+		// unless the expected value is `0`, in which case the metric is bot exposed (value==0 and err!= nil), but it's fine too.
+		return (value == expectedValue && err == nil) || (expectedValue == 0 && value == 0), nil
 	})
-	require.NoError(a.T, err)
+	require.NoError(a.T, err, "waited for metric '%s{%v}' to reach '%v'. Current value: %v", family, labels, expectedValue, value)
 }
 
 // WaitUntilMetricHasValueOrMore waits until the exposed metric with the given family
 // and label key-value pair has reached the expected value (or more)
 func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue float64, labels ...string) error {
-	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
+	a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
+	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.MetricsURL, family, labels)
-		if err != nil {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more but error occurred: %s", family, labels, expectedValue, err.Error())
-			return false, nil
-		}
-		if value < expectedValue {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or more (currently: %v)", family, labels, expectedValue, value)
-			return false, nil
-		}
-		return true, nil
+		value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
+		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
+		return value >= expectedValue && err == nil, nil
 	})
+	if err != nil {
+		a.T.Logf("waited for metric '%s{%v}' to reach '%v' or more. Current value: %v", family, labels, expectedValue, value)
+	}
 	return err
 }
 
 // WaitUntilMetricHasValueOrLess waits until the exposed metric with the given family
 // and label key-value pair has reached the expected value (or less)
 func (a *Awaitility) WaitUntilMetricHasValueOrLess(family string, expectedValue float64, labels ...string) error {
-	a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
+	a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
+	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.MetricsURL, family, labels)
-		if err != nil {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less but error occurred: %s", family, labels, expectedValue, err.Error())
-			return false, nil
-		}
-		if value > expectedValue {
-			a.T.Logf("Waiting for metric '%s{%v}' to reach '%v' or less (currently: %v)", family, labels, expectedValue, value)
-			return false, nil
-		}
-		return true, nil
+		value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
+		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
+		return value <= expectedValue && err == nil, nil
 	})
+	if err != nil {
+		a.T.Logf("waited for metric '%s{%v}' to reach '%v' or less. Current value: %v", family, labels, expectedValue, value)
+	}
 	return err
 }
 
@@ -386,23 +397,27 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 
 // GetMemoryUsage retrieves the memory usage (in KB) of a given the pod
 func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
-	podMetrics := metrics.PodMetrics{}
+	var containerMetrics metrics.ContainerMetrics
 	if err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		podMetrics := metrics.PodMetrics{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: ns,
 			Name:      podname,
 		}, &podMetrics); err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
-		if len(podMetrics.Containers) != 1 {
-			return false, nil // keep waiting
+		for _, c := range podMetrics.Containers {
+			if c.Name == "manager" {
+				containerMetrics = c
+				return true, nil
+			}
 		}
-		return true, nil
+		return false, nil // keep waiting
 	}); err != nil {
 		return -1, err
 	}
-	// assume the pod is running a single container
-	return podMetrics.Containers[0].Usage.Memory().ScaledValue(resource.Kilo), nil
+	// the pod contains multiple
+	return containerMetrics.Usage.Memory().ScaledValue(resource.Kilo), nil
 }
 
 // CreateNamespace creates a namespace with the given name and waits until it gets active
@@ -430,4 +445,146 @@ func (a *Awaitility) CreateNamespace(name string) {
 			require.NoError(a.T, err)
 		}
 	})
+}
+
+// WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
+func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
+	a.T.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
+	err := wait.Poll(a.RetryInterval, 4*a.Timeout, func() (done bool, err error) {
+		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
+		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
+			return false, nil
+		}
+		deployment := &appsv1.Deployment{}
+		require.NoError(a.T, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
+		if int(deployment.Status.AvailableReplicas) != replicas {
+			return false, nil
+		}
+		return true, nil
+	})
+	require.NoError(a.T, err)
+}
+
+// CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
+func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if err := a.Client.Create(ctx, obj, opts...); err != nil {
+		return err
+	}
+	a.Cleanup(obj)
+	return nil
+}
+
+var (
+	propagationPolicy     = metav1.DeletePropagationForeground
+	propagationPolicyOpts = client.DeleteOption(&client.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	})
+)
+
+// Cleanup schedules removal of the given objects at the end of the current test
+func (a *Awaitility) Cleanup(objects ...client.Object) {
+	for _, obj := range objects {
+		userSignup, isUserSignup := obj.(*toolchainv1alpha1.UserSignup)
+		objToClean, ok := obj.DeepCopyObject().(client.Object)
+		require.True(a.T, ok)
+		cleanup := func() {
+			metaAccess, err := meta.Accessor(objToClean)
+			require.NoError(a.T, err)
+			kind := objToClean.GetObjectKind().GroupVersionKind().Kind
+			if kind == "" {
+				kind = reflect.TypeOf(obj).Elem().Name()
+			}
+			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
+			if err := a.Client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
+				if errors.IsNotFound(err) {
+					// if the object was UserSignup, then let's check that the MUR was deleted as well
+					deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, true)
+					require.NoError(a.T, err)
+					// either if it was deleted or if it wasn't UserSignup, then return here
+					if deleted {
+						a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+						return
+					}
+				}
+			}
+
+			// wait until deletion is done
+			a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
+					if errors.IsNotFound(err) {
+						// if the object was UserSignup, then let's check that the MUR is deleted as well
+						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
+							return false, err
+						}
+						return true, nil
+					}
+					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
+					return false, err
+				}
+				fmt.Print(".")
+				return false, nil
+			}))
+		}
+		a.toClean = append(a.toClean, cleanup)
+		a.T.Cleanup(cleanup)
+	}
+}
+
+func (a *Awaitility) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
+	// only applicable for UserSignups with compliant username set
+	if isUserSignup {
+		if userSignup.Status.CompliantUsername != "" {
+			mur := &toolchainv1alpha1.MasterUserRecord{}
+			if err := a.Client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), mur); err != nil {
+				// if MUR is not found then we are good
+				if errors.IsNotFound(err) {
+					a.T.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+					return true, nil
+				}
+				a.T.Logf("problem with getting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
+				return false, err
+			}
+			if delete {
+				a.T.Logf("deleting also the related MasterUserRecord: %s", userSignup.Status.CompliantUsername)
+				if err := a.Client.Delete(context.TODO(), mur, propagationPolicyOpts); err != nil {
+					if errors.IsNotFound(err) {
+						a.T.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+						return true, nil
+					}
+					a.T.Logf("problem with deleting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
+					return false, err
+				}
+			}
+			a.T.Logf("waiting until MasterUserRecord: %s is completely deleted", userSignup.Status.CompliantUsername)
+			return false, nil
+		}
+		a.T.Logf("the UserSignup doesn't have CompliantUsername set")
+		return true, nil
+	}
+	return true, nil
+}
+
+// Clean triggers cleanup of all resources that were marked to be cleaned before that
+func (a *Awaitility) Clean() {
+	for _, clean := range a.toClean {
+		clean()
+	}
+	if a.Type == cluster.Host {
+		require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+			murList := &toolchainv1alpha1.MasterUserRecordList{}
+			if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+				return false, err
+			}
+			for _, mur := range murList.Items {
+				if util.IsBeingDeleted(&mur) {
+					a.T.Logf("there is still at least one MUR that is being deleted, but is not completely gone yet: %s", mur.Name)
+					return false, nil
+				}
+			}
+			a.T.Logf("all MURs are successfully deleted")
+			return true, nil
+		}))
+	}
+	a.toClean = nil
 }

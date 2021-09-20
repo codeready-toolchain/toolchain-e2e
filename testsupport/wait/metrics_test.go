@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/rest"
 )
 
 const response = `# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
@@ -57,12 +58,16 @@ func TestGetMetricValue(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	config := &rest.Config{
+		BearerToken: "1a2b3bc",
+	}
+
 	url := strings.TrimPrefix(ts.URL, "https://")
 
 	t.Run("valid metrics", func(t *testing.T) {
 		t.Run("counter with no labels", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "sandbox_user_signups_total", []string{})
+			result, err := getMetricValue(config, url, "sandbox_user_signups_total", []string{})
 			// then
 			require.NoError(t, err)
 			assert.Equal(t, float64(7), result)
@@ -70,7 +75,7 @@ func TestGetMetricValue(t *testing.T) {
 
 		t.Run("counter with single label", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "workqueue_depth", []string{"name", "masteruserrecord-controller"})
+			result, err := getMetricValue(config, url, "workqueue_depth", []string{"name", "masteruserrecord-controller"})
 			// then
 			require.NoError(t, err)
 			assert.Equal(t, float64(0), result)
@@ -78,7 +83,7 @@ func TestGetMetricValue(t *testing.T) {
 
 		t.Run("counter with two labels", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "controller_runtime_reconcile_total", []string{"controller", "usersignup-controller", "result", "success"})
+			result, err := getMetricValue(config, url, "controller_runtime_reconcile_total", []string{"controller", "usersignup-controller", "result", "success"})
 			// then
 			require.NoError(t, err)
 			assert.Equal(t, float64(10), result)
@@ -86,7 +91,7 @@ func TestGetMetricValue(t *testing.T) {
 
 		t.Run("gauge with no labels", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "sandbox_master_user_record_current", []string{})
+			result, err := getMetricValue(config, url, "sandbox_master_user_record_current", []string{})
 			// then
 			require.NoError(t, err)
 			assert.Equal(t, float64(7), result)
@@ -96,25 +101,25 @@ func TestGetMetricValue(t *testing.T) {
 	t.Run("failures", func(t *testing.T) {
 		t.Run("metric does not exist", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "non_existent_counter", []string{})
+			result, err := getMetricValue(config, url, "non_existent_counter", []string{})
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "metric 'non_existent_counter{[]}' not found")
-			assert.Equal(t, float64(-1), result)
+			assert.Equal(t, float64(0), result)
 		})
 
 		t.Run("metric family exists but labels do not match", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "workqueue_depth", []string{"name", "non-existent-controller"})
+			result, err := getMetricValue(config, url, "workqueue_depth", []string{"name", "non-existent-controller"})
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "metric 'workqueue_depth{[name non-existent-controller]}' not found")
-			assert.Equal(t, float64(-1), result)
+			assert.Equal(t, float64(0), result)
 		})
 
 		t.Run("odd number of label parameters", func(t *testing.T) {
 			// when
-			result, err := getMetricValue(url, "workqueue_depth", []string{"name"})
+			result, err := getMetricValue(config, url, "workqueue_depth", []string{"name"})
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "received odd number of label arguments, labels must be key-value pairs")

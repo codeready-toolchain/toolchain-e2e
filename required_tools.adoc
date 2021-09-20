@@ -1,9 +1,10 @@
 == Required Pre-installed Tools
-* go
+* go 1.16 or later
 * git
-* operator-sdk 0.19.2
+* operator-sdk 1.8.0
 * sed
 * yamllint
 * jq
 * yq (python-yq from https://github.com/kislyuk/yq#installation, other distributions may not work)
-* docker (if building from source)
+* podman (if you need to use docker, then run the make targets with this variable set: `IMAGE_BUILDER=docker`)
+* opm (https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/ or https://github.com/operator-framework/operator-registry/releases - the version should correspond with the OpenShift version you are running)

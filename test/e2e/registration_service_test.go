@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -24,8 +23,7 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	uuid "github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -41,14 +39,12 @@ type registrationServiceTestSuite struct {
 	suite.Suite
 	namespace   string
 	route       string
-	ctx         *framework.Context
 	hostAwait   *wait.HostAwaitility
 	memberAwait *wait.MemberAwaitility
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
-	userSignupList := &toolchainv1alpha1.UserSignupList{}
-	s.ctx, s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T(), userSignupList)
+	s.hostAwait, s.memberAwait, _ = WaitForDeployments(s.T())
 	s.namespace = s.hostAwait.RegistrationServiceNs
 	s.route = s.hostAwait.RegistrationServiceURL
 }
@@ -60,7 +56,7 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 
 	resp, err := httpClient.Do(req)
 	require.NoError(s.T(), err)
-	defer close(s.T(), resp)
+	defer Close(s.T(), resp)
 
 	assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
@@ -73,7 +69,7 @@ func (s *registrationServiceTestSuite) TestHealth() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
@@ -113,7 +109,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
@@ -147,7 +143,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		assert.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
@@ -159,7 +155,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 
 func (s *registrationServiceTestSuite) TestSignupFails() {
 	identity0 := authsupport.NewIdentity()
-	emailClaim0 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
+	emailClaim0 := authsupport.WithEmailClaim(uuid.Must(uuid.NewV4()).String() + "@acme.com")
 
 	s.Run("post signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
@@ -171,7 +167,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -216,7 +212,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 		resp, err := httpClient.Do(req)
 		require.NoError(s.T(), err)
-		defer close(s.T(), resp)
+		defer Close(s.T(), resp)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -257,7 +253,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
 		identity1 := authsupport.NewIdentity()
-		emailClaim1 := authsupport.WithEmailClaim(uuid.NewV4().String() + "@acme.com")
+		emailClaim1 := authsupport.WithEmailClaim(uuid.Must(uuid.NewV4()).String() + "@acme.com")
 		iatClaim1 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
 
 		// Not identical to the token used in POST signup - should return resource not found.
@@ -273,7 +269,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// to avoid token used before issued error. Username claim is also
 		// overridden to trigger error and ensure that usersignup is not created.
 		identity := authsupport.NewIdentity()
-		emailValue := uuid.NewV4().String() + "@acme.com"
+		emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		emailClaim := authsupport.WithEmailClaim(emailValue)
 		usernameClaim := authsupport.WithPreferredUsernameClaim("test-crtadmin")
 		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, usernameClaim)
@@ -300,7 +296,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		// Wait for the UserSignup to be created
 		userSignup, err := s.hostAwait.WaitForUserSignup(userSignupName,
-			wait.UntilUserSignupHasConditions(PendingApproval()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(s.T(), err)
 		emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -334,7 +330,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
 		identity := authsupport.NewIdentity()
-		emailValue := uuid.NewV4().String() + "@acme.com"
+		emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		emailClaim := authsupport.WithEmailClaim(emailValue)
 		t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim)
 		require.NoError(s.T(), err)
@@ -348,7 +344,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		})
 		require.NoError(s.T(), err)
 		_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-			wait.UntilUserSignupHasConditions(DeactivatedWithoutPreDeactivation()...),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(s.T(), err)
 
@@ -378,7 +374,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 		for i, userID := range userIDs {
 			identity := authsupport.NewIdentity()
-			emailValue := uuid.NewV4().String() + "@acme.com"
+			emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 			emailClaim := authsupport.WithEmailClaim(emailValue)
 			t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
 			require.NoError(s.T(), err)
@@ -394,7 +390,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	// Create a token and identity to sign up with
 	identity0 := authsupport.NewIdentity()
-	emailValue := uuid.NewV4().String() + "@some.domain"
+	emailValue := uuid.Must(uuid.NewV4()).String() + "@some.domain"
 	emailClaim0 := authsupport.WithEmailClaim(emailValue)
 	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
 	require.NoError(s.T(), err)
@@ -404,7 +400,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Wait for the UserSignup to be created
 	userSignup, err := s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -421,7 +417,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Confirm the status of the UserSignup is correct
 	_, err = s.hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 
@@ -503,7 +499,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Create another token and identity to sign up with
 	otherIdentity := authsupport.NewIdentity()
-	otherEmailValue := uuid.NewV4().String() + "@other.domain"
+	otherEmailValue := uuid.Must(uuid.NewV4()).String() + "@other.domain"
 	otherEmailClaim := authsupport.WithEmailClaim(otherEmailValue)
 	otherToken, err := authsupport.GenerateSignedE2ETestToken(*otherIdentity, otherEmailClaim)
 	require.NoError(s.T(), err)
@@ -513,7 +509,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Wait for the UserSignup to be created
 	otherUserSignup, err := s.hostAwait.WaitForUserSignup(otherIdentity.ID.String(),
-		wait.UntilUserSignupHasConditions(VerificationRequired()...),
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
 	otherEmailAnnotation := otherUserSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
@@ -549,8 +545,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 	// Ensure the UserSignup is deactivated
 	_, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(
-			ManuallyDeactivated()...))
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
 	require.NoError(s.T(), err)
 
 	// Now attempt the verification again
@@ -603,7 +598,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	resp, err := httpClient.Do(req)
 	require.NoError(t, err)
 
-	defer close(t, resp)
+	defer Close(t, resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -623,11 +618,4 @@ func parseResponse(t *testing.T, responseBody map[string]interface{}) (map[strin
 	status, ok := responseBody["status"].(map[string]interface{})
 	require.True(t, ok)
 	return responseBody, status
-}
-
-func close(t *testing.T, resp *http.Response) {
-	_, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	err = resp.Body.Close()
-	require.NoError(t, err)
 }

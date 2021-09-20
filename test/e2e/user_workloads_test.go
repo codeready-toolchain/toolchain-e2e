@@ -5,8 +5,7 @@ import (
 	"testing"
 	"time"
 
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
@@ -29,17 +28,21 @@ type userWorkloadsTestSuite struct {
 }
 
 func (s *userWorkloadsTestSuite) SetupSuite() {
-	s.ctx, s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T(), &toolchainv1alpha1.UserSignupList{})
-}
-
-func (s *userWorkloadsTestSuite) TearDownTest() {
-	s.ctx.Cleanup()
+	s.hostAwait, s.memberAwait, s.member2Await = WaitForDeployments(s.T())
 }
 
 func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Provision a user to idle with a short idling timeout
-	s.hostAwait.UpdateToolchainConfig(test.AutomaticApproval().Enabled())
-	s.createAndCheckUserSignup(true, "test-idler", "test-idler@redhat.com", s.memberAwait, ApprovedByAdmin()...)
+	s.hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
+	s.newSignupRequest().
+		Username("test-idler").
+		Email("test-idler@redhat.com").
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(s.memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute()
+
 	idler, err := s.memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
 
@@ -233,7 +236,9 @@ func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *co
 }
 
 func podSpec() corev1.PodSpec {
+	zero := int64(0)
 	return corev1.PodSpec{
+		TerminationGracePeriodSeconds: &zero,
 		Containers: []corev1.Container{{
 			Name:    "sleep",
 			Image:   "busybox",

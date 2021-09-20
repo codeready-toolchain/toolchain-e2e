@@ -16,9 +16,7 @@ import (
 )
 
 func TestToolchainClusterE2E(t *testing.T) {
-	toolchainClusterList := &toolchainv1alpha1.ToolchainClusterList{}
-	ctx, hostAwait, memberAwait, _ := WaitForDeployments(t, toolchainClusterList)
-	defer ctx.Cleanup()
+	hostAwait, memberAwait, _ := WaitForDeployments(t)
 
 	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
 	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
