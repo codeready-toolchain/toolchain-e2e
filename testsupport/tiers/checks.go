@@ -478,7 +478,7 @@ func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-console-namespaces", "network.openshift.io/policy-group", "console")
+	return networkPolicyIngressFromPolicyGroup("allow-from-console-namespaces", "console")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
