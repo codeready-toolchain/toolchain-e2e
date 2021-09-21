@@ -9,12 +9,12 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 
-	applyclientlib "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	ctemplate "github.com/codeready-toolchain/toolchain-common/pkg/template"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -66,10 +66,10 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		}
 
 		// find the subscription resource
-		var subscriptionResource applyclientlib.ToolchainObject
+		var subscriptionResource runtimeclient.Object
 		foundSub := false
 		for _, obj := range objsToProcess {
-			if obj.GetGvk().Kind == "Subscription" {
+			if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
 				subscriptionResource = obj
 				foundSub = true
 			}

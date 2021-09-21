@@ -616,8 +616,8 @@ github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGr
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv3vaXspKw=
-github.com/xcoulon/toolchain-common v0.0.0-20210914134654-45c375935ced h1:Vv+dqETgTZ/nfzZRg1N3Locjb5KYnraON90cKM7Hsoo=
-github.com/xcoulon/toolchain-common v0.0.0-20210914134654-45c375935ced/go.mod h1:sfSHDs+ksRHzZbpbFsOXtSylQcvpQ6aaXa2TimVCCyI=
+github.com/xcoulon/toolchain-common v0.0.0-20210921100839-b43561751e72 h1:GRtdrCQ/F2QzJNDLFQoxeJBnFqp7MNmFjjXABAXX2NE=
+github.com/xcoulon/toolchain-common v0.0.0-20210921100839-b43561751e72/go.mod h1:sfSHDs+ksRHzZbpbFsOXtSylQcvpQ6aaXa2TimVCCyI=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
