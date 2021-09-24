@@ -11,7 +11,6 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
@@ -121,11 +120,7 @@ type TooolchainObjectModifier func(obj applyclientlib.ToolchainObject) error
 func NamespaceModifier(userNS string) TooolchainObjectModifier {
 	return func(obj applyclientlib.ToolchainObject) error {
 		// enforce the creation of the objects in the `userNS` namespace
-		m, err := meta.Accessor(obj.GetClientObject())
-		if err != nil {
-			return err
-		}
-		m.SetNamespace(userNS)
+		obj.GetClientObject().SetNamespace(userNS)
 		return nil
 	}
 }
