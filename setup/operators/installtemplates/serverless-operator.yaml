@@ -1,0 +1,29 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-serverless-operator
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${SERVERLESS_OPERATOR_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: serverless-operator
+      namespace: ${SERVERLESS_OPERATOR_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: serverless-operator-subscription
+      namespace: ${SERVERLESS_OPERATOR_NAMESPACE}
+    spec:
+      channel: stable
+      installPlanApproval: Automatic
+      name: serverless-operator
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+      startingCSV: serverless-operator.v1.17.0
+parameters:
+  - name: SERVERLESS_OPERATOR_NAMESPACE
+    value: serverless-operator
