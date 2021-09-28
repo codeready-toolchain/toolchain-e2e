@@ -23,12 +23,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type Awaitilities struct {
+	hostAwaitility     *wait.HostAwaitility
+	memberAwaitilities []*wait.MemberAwaitility
+}
+
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
 // and corresponding ToolchainCluster CRDs are present, running and ready. Based on the given cluster type
 // that represents the current operator that is the target of the e2e test it retrieves namespace names.
 // Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForDeployments(t *testing.T) (*wait.HostAwaitility, *wait.MemberAwaitility, *wait.MemberAwaitility) {
+func WaitForDeployments(t *testing.T) Awaitilities {
 	memberNs := os.Getenv(wait.MemberNsVar)
 	memberNs2 := os.Getenv(wait.MemberNsVar2)
 	hostNs := os.Getenv(wait.HostNsVar)
@@ -89,7 +94,34 @@ func WaitForDeployments(t *testing.T) (*wait.HostAwaitility, *wait.MemberAwaitil
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
-	return hostAwait, memberAwait, member2Await
+	memberAwaitilities := []*wait.MemberAwaitility{memberAwait, member2Await}
+	return Awaitilities{
+		hostAwaitility:     hostAwait,
+		memberAwaitilities: memberAwaitilities,
+	}
+}
+
+func (a Awaitilities) Host(t *testing.T) *wait.HostAwaitility {
+	require.NotNil(t, a.hostAwaitility, "host awaitility is not initialized")
+	return a.hostAwaitility
+}
+
+type memberSelector func(*wait.MemberAwaitility) bool
+
+func (a Awaitilities) SecondMember(m *wait.MemberAwaitility) bool {
+	return m.ClusterName == a.memberAwaitilities[1].ClusterName
+}
+
+func (a Awaitilities) Member(t *testing.T, selectors ...memberSelector) *wait.MemberAwaitility {
+	require.NotEmpty(t, a.memberAwaitilities, "there are no initialized member awaitilities")
+	for _, selector := range selectors {
+		for _, m := range a.memberAwaitilities {
+			if selector(m) {
+				return m
+			}
+		}
+	}
+	return a.memberAwaitilities[0]
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {

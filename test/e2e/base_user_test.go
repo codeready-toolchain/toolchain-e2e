@@ -19,19 +19,18 @@ import (
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	hostAwait    *wait.HostAwaitility
-	memberAwait  *wait.MemberAwaitility
-	member2Await *wait.MemberAwaitility
+	awaitilities Awaitilities
 }
 
 func (s *baseUserIntegrationTest) newSignupRequest() SignupRequest {
-	return NewSignupRequest(s.T(), s.hostAwait, s.memberAwait, s.member2Await)
+	return NewSignupRequest(s.T(), s.awaitilities)
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {
+	hostAwait := s.awaitilities.Host(s.T())
 	// Create the BannedUser
-	bannedUser := newBannedUser(s.hostAwait, email)
-	err := s.hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
+	bannedUser := newBannedUser(hostAwait, email)
+	err := hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
 	require.NoError(s.T(), err)
 
 	s.T().Logf("BannedUser '%s' created", bannedUser.Spec.Email)
@@ -54,17 +53,18 @@ func newBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.B
 }
 
 func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
-	userSignup, err := s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+	hostAwait := s.awaitilities.Host(s.T())
+	userSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivated(us, true)
 	})
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
-	err = s.hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+	err = hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
 	require.NoError(s.T(), err)
 
 	// "deactivated"
-	notifications, err := s.hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
+	notifications, err := hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
 	require.NoError(s.T(), err)
 	require.NotEmpty(s.T(), notifications)
 	require.Len(s.T(), notifications, 1)
@@ -74,12 +74,12 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	assert.Equal(s.T(), "userdeactivated", notification.Spec.Template)
 	assert.Equal(s.T(), userSignup.Name, notification.Spec.Context["UserID"])
 
-	err = s.hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
+	err = hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 	require.NoError(s.T(), err)
 
 	// We wait for the "Approved()" condition status here because it doesn't specify a reason for the approval,
 	// and the reason should not be necessary for the purpose of this test.
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(s.T(), err)
@@ -87,13 +87,14 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 }
 
 func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
-	err := s.hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+	hostAwait := s.awaitilities.Host(s.T())
+	err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: userSignup.Namespace,
 		Name:      userSignup.Name,
 	}, userSignup)
 	require.NoError(s.T(), err)
 
-	userSignup, err = s.hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+	userSignup, err = hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivating(us, false)
 		states.SetDeactivated(us, false)
 		states.SetApproved(us, true)
@@ -101,10 +102,10 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' reactivated", userSignup.Name)
 
-	_, err = s.hostAwait.WaitForMasterUserRecord(mur.Name)
+	_, err = hostAwait.WaitForMasterUserRecord(mur.Name)
 	require.NoError(s.T(), err)
 
-	userSignup, err = s.hostAwait.WaitForUserSignup(userSignup.Name,
+	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)

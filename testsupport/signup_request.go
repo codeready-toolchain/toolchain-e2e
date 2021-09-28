@@ -75,13 +75,11 @@ type SignupRequest interface {
 	VerificationRequired() SignupRequest
 }
 
-func NewSignupRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, member2Await *wait.MemberAwaitility) SignupRequest {
+func NewSignupRequest(t *testing.T, awaitilities Awaitilities) SignupRequest {
 	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &signupRequest{
 		t:                  t,
-		hostAwait:          hostAwait,
-		memberAwait:        memberAwait,
-		member2Await:       member2Await,
+		awaitilities:       awaitilities,
 		requiredHTTPStatus: http.StatusAccepted,
 		username:           defaultUsername,
 		email:              fmt.Sprintf("%s@test.com", defaultUsername),
@@ -90,9 +88,7 @@ func NewSignupRequest(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait 
 
 type signupRequest struct {
 	t                    *testing.T
-	hostAwait            *wait.HostAwaitility
-	memberAwait          *wait.MemberAwaitility
-	member2Await         *wait.MemberAwaitility
+	awaitilities         Awaitilities
 	ensureMUR            bool
 	manuallyApprove      bool
 	verificationRequired bool
@@ -157,7 +153,8 @@ func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 }
 
 func (r *signupRequest) Execute() SignupRequest {
-	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.hostAwait)
+	hostAwait := r.awaitilities.Host(r.t)
+	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.awaitilities.Host(r.t))
 
 	var identityID uuid.UUID
 	if r.identityID != nil {
@@ -177,16 +174,16 @@ func (r *signupRequest) Execute() SignupRequest {
 	require.NoError(r.t, err)
 
 	// Call the signup endpoint
-	invokeEndpoint(r.t, "POST", r.hostAwait.RegistrationServiceURL+"/api/v1/signup",
+	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
 		token0, "", r.requiredHTTPStatus)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := r.hostAwait.WaitForUserSignup(userIdentity.ID.String())
+	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.ID.String())
 	require.NoError(r.t, err)
 
 	if r.targetCluster != nil {
-		if r.hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
-			require.False(r.t, *r.hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
+		if hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
+			require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
 				"cannot specify a target cluster for new signup requests while automatic approval is enabled")
 		}
 	}
@@ -207,7 +204,7 @@ func (r *signupRequest) Execute() SignupRequest {
 			}
 		}
 
-		userSignup, err = r.hostAwait.UpdateUserSignupSpec(userSignup.Name, doUpdate)
+		userSignup, err = hostAwait.UpdateUserSignupSpec(userSignup.Name, doUpdate)
 		require.NoError(r.t, err)
 	}
 
@@ -215,34 +212,25 @@ func (r *signupRequest) Execute() SignupRequest {
 
 	// If any required conditions have been specified, confirm the UserSignup has them
 	if len(r.conditions) > 0 {
-		userSignup, err = r.hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(r.conditions...))
+		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(r.conditions...))
 		require.NoError(r.t, err)
 	}
 
 	r.userSignup = userSignup
 
 	if r.ensureMUR {
-		// Confirm the MUR was created and ready
-		members := []*wait.MemberAwaitility{}
-		if r.memberAwait != nil {
-			members = append(members, r.memberAwait)
-		}
-		if r.member2Await != nil {
-			members = append(members, r.member2Await)
-		}
-
 		expectedTier := "base"
-		if r.hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier != nil {
-			expectedTier = *r.hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier
+		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier != nil {
+			expectedTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier
 		}
-		VerifyResourcesProvisionedForSignup(r.t, r.hostAwait, userSignup, expectedTier, members...)
-		mur, err := r.hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
+		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, expectedTier)
+		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 		require.NoError(r.t, err)
 		r.mur = mur
 	}
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
-	r.hostAwait.Cleanup(r.userSignup)
+	hostAwait.Cleanup(r.userSignup)
 
 	return r
 }
