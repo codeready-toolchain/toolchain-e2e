@@ -3,7 +3,6 @@ package resources
 import (
 	"fmt"
 
-	applyclientlib "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	ctemplate "github.com/codeready-toolchain/toolchain-common/pkg/template"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
@@ -11,14 +10,14 @@ import (
 
 	templatev1 "github.com/openshift/api/template/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
-func CreateUserResourcesFromTemplateFiles(cl client.Client, s *runtime.Scheme, username string, templatePaths []string) error {
+func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Scheme, username string, templatePaths []string) error {
 	userNS := fmt.Sprintf("%s-stage", username)
-	combinedObjsToProcess := []applyclientlib.ToolchainObject{}
+	combinedObjsToProcess := []runtimeclient.Object{}
 	for _, templatePath := range templatePaths {
 		// get the template from the file if it hasn't been processed already
 		if _, ok := tmpls[templatePath]; !ok {
