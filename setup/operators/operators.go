@@ -9,12 +9,12 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 
-	applyclientlib "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	ctemplate "github.com/codeready-toolchain/toolchain-common/pkg/template"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -23,8 +23,11 @@ const (
 )
 
 var Templates = []string{
-	"sbo.yaml",
+	"rhoam-operator.yaml",
 	"rhoas.yaml",
+	"sbo.yaml",
+	"serverless-operator.yaml",
+	"web-terminal-operator.yaml",
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
@@ -66,10 +69,10 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		}
 
 		// find the subscription resource
-		var subscriptionResource applyclientlib.ToolchainObject
+		var subscriptionResource runtimeclient.Object
 		foundSub := false
 		for _, obj := range objsToProcess {
-			if obj.GetGvk().Kind == "Subscription" {
+			if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
 				subscriptionResource = obj
 				foundSub = true
 			}
