@@ -32,8 +32,8 @@ func (s *userWorkloadsTestSuite) SetupSuite() {
 }
 
 func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
 	// Provision a user to idle with a short idling timeout
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	s.newSignupRequest().
@@ -93,7 +93,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 }
 
 func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	s.createStandalonePod(namespace, "idler-test-pod-1")
 	d := s.createDeployment(namespace)
 	n := 1 + int(*d.Spec.Replicas) // total number of created pods
@@ -123,7 +123,7 @@ func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string, additionalPo
 }
 
 func (s *userWorkloadsTestSuite) createDeployment(namespace string) *appsv1.Deployment {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Create a Deployment with two pods
 	replicas := int32(3)
 	deployment := &appsv1.Deployment{
@@ -141,7 +141,7 @@ func (s *userWorkloadsTestSuite) createDeployment(namespace string) *appsv1.Depl
 }
 
 func (s *userWorkloadsTestSuite) createReplicaSet(namespace string) *appsv1.ReplicaSet {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Standalone ReplicaSet
 	replicas := int32(2)
 	rs := &appsv1.ReplicaSet{
@@ -159,7 +159,7 @@ func (s *userWorkloadsTestSuite) createReplicaSet(namespace string) *appsv1.Repl
 }
 
 func (s *userWorkloadsTestSuite) createDaemonSet(namespace string) *appsv1.DaemonSet {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Standalone ReplicaSet
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-daemonset", Namespace: namespace},
@@ -175,7 +175,7 @@ func (s *userWorkloadsTestSuite) createDaemonSet(namespace string) *appsv1.Daemo
 }
 
 func (s *userWorkloadsTestSuite) createJob(namespace string) *batchv1.Job {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Job
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-job", Namespace: namespace},
@@ -191,7 +191,7 @@ func (s *userWorkloadsTestSuite) createJob(namespace string) *batchv1.Job {
 }
 
 func (s *userWorkloadsTestSuite) createDeploymentConfig(namespace string) *openshiftappsv1.DeploymentConfig {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Create a Deployment with two pods
 	spec := podTemplateSpec("idler-dc")
 	replicas := int32(2)
@@ -210,7 +210,7 @@ func (s *userWorkloadsTestSuite) createDeploymentConfig(namespace string) *opens
 }
 
 func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *corev1.ReplicationController {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Standalone ReplicationController
 	spec := podTemplateSpec("idler-rc")
 	replicas := int32(2)
@@ -229,7 +229,7 @@ func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *
 }
 
 func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *corev1.Pod {
-	memberAwait := s.awaitilities.Member(s.T())
+	memberAwait := s.awaitilities.Member()
 	// Create a Deployment with two pods
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

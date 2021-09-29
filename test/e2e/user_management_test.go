@@ -41,9 +41,9 @@ func (s *userManagementTestSuite) SetupSuite() {
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
-	memberAwait2 := s.awaitilities.Member(s.T(), s.awaitilities.SecondMember)
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
+	memberAwait2 := s.awaitilities.Member(s.awaitilities.SecondMember)
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(false),
 		testconfig.Deactivation().DeactivatingNotificationDays(-1))
@@ -368,8 +368,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host(s.T())
-		memberAwait := s.awaitilities.Member(s.T())
+		hostAwait := s.awaitilities.Host()
+		memberAwait := s.awaitilities.Member()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup and approve it manually
@@ -400,8 +400,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("manually created usersignup with preexisting banneduser", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host(s.T())
-		memberAwait := s.awaitilities.Member(s.T())
+		hostAwait := s.awaitilities.Host()
+		memberAwait := s.awaitilities.Member()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 		id := uuid.Must(uuid.NewV4()).String()
@@ -432,7 +432,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host(s.T())
+		hostAwait := s.awaitilities.Host()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 		id := uuid.Must(uuid.NewV4()).String()
@@ -471,8 +471,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host(s.T())
-		memberAwait := s.awaitilities.Member(s.T())
+		hostAwait := s.awaitilities.Host()
+		memberAwait := s.awaitilities.Member()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup
@@ -525,8 +525,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 	// Create UserSignup

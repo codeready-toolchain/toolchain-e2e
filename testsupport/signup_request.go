@@ -153,8 +153,8 @@ func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 }
 
 func (r *signupRequest) Execute() SignupRequest {
-	hostAwait := r.awaitilities.Host(r.t)
-	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.awaitilities.Host(r.t))
+	hostAwait := r.awaitilities.Host()
+	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.awaitilities.Host())
 
 	var identityID uuid.UUID
 	if r.identityID != nil {

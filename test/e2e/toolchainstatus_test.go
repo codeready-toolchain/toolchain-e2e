@@ -18,9 +18,9 @@ func TestForceMetricsSynchronization(t *testing.T) {
 
 	// given
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host(t)
-	memberAwait := awaitilities.Member(t)
-	memberAwait2 := awaitilities.Member(t, awaitilities.SecondMember)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member()
+	memberAwait2 := awaitilities.Member(awaitilities.SecondMember)
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(true),
 		testconfig.Metrics().ForceSynchronization(false))

@@ -32,14 +32,14 @@ const (
 func TestNSTemplateTiers(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host(t)
+	hostAwait := awaitilities.Host()
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
 	testingtiers, _ := NewSignupRequest(t, awaitilities).
 		Username(testingTiersName).
 		ManuallyApprove().
-		TargetCluster(awaitilities.Member(t)).
+		TargetCluster(awaitilities.Member()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().
@@ -102,8 +102,8 @@ func TestNSTemplateTiers(t *testing.T) {
 func TestSetDefaultTier(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host(t)
-	memberAwait := awaitilities.Member(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member()
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
@@ -143,8 +143,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	count := 2*MaxPoolSize + 1
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host(t)
-	memberAwait := awaitilities.Member(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member()
 
 	// first group of users: the "cheesecake lovers"
 	cheesecakeSyncIndexes := setupAccounts(t, awaitilities, "cheesecake", "cheesecakelover%02d", memberAwait, count)
@@ -189,7 +189,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 // returns the tier, users and their "syncIndexes"
 func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) map[string]string {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
-	hostAwait := awaitilities.Host(t)
+	hostAwait := awaitilities.Host()
 	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
@@ -313,7 +313,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 func TestTierTemplates(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host(t)
+	hostAwait := awaitilities.Host()
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))

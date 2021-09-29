@@ -30,9 +30,9 @@ func (s *userSignupIntegrationTest) SetupSuite() {
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
-	memberAwait2 := s.awaitilities.Member(s.T(), s.awaitilities.SecondMember)
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
+	memberAwait2 := s.awaitilities.Member(s.awaitilities.SecondMember)
 	hostAwait.Clean()
 	memberAwait.Clean()
 	memberAwait2.Clean()
@@ -40,7 +40,7 @@ func (s *userSignupIntegrationTest) TearDownTest() {
 
 func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	// given
-	hostAwait := s.awaitilities.Host(s.T())
+	hostAwait := s.awaitilities.Host()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 	// when & then
@@ -134,9 +134,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 }
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
-	memberAwait2 := s.awaitilities.Member(s.T(), s.awaitilities.SecondMember)
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
+	memberAwait2 := s.awaitilities.Member(s.awaitilities.SecondMember)
 	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
@@ -186,7 +186,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
-	hostAwait := s.awaitilities.Host(s.T())
+	hostAwait := s.awaitilities.Host()
 	hostAwait.CheckMasterUserRecordIsDeleted(userSignup.Spec.Username)
 	currentUserSignup, err := hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(t, err)
@@ -194,7 +194,7 @@ func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignu
 }
 
 func (s *userSignupIntegrationTest) TestManualApproval() {
-	hostAwait := s.awaitilities.Host(s.T())
+	hostAwait := s.awaitilities.Host()
 	s.T().Run("default approval config - manual", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
@@ -227,8 +227,8 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 }
 
 func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
 	// given
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
 
@@ -319,7 +319,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 }
 
 func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
-	hostAwait := s.awaitilities.Host(s.T())
+	hostAwait := s.awaitilities.Host()
 	s.T().Run("automatic approval with verification required", func(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
 
@@ -330,7 +330,7 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 }
 
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
-	hostAwait := s.awaitilities.Host(s.T())
+	hostAwait := s.awaitilities.Host()
 	// Create user signup
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
 
@@ -467,8 +467,8 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
-	hostAwait := s.awaitilities.Host(s.T())
-	memberAwait := s.awaitilities.Member(s.T())
+	hostAwait := s.awaitilities.Host()
+	memberAwait := s.awaitilities.Member()
 	// Create a new UserSignup
 	username := "testuser" + uuid.Must(uuid.NewV4()).String()
 	email := username + "@test.com"

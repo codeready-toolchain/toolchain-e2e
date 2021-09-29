@@ -17,8 +17,8 @@ import (
 
 func TestToolchainClusterE2E(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host(t)
-	memberAwait := awaitilities.Member(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member()
 
 	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
 	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)

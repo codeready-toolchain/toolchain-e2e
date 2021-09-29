@@ -18,7 +18,7 @@ import (
 )
 
 func CreateMultipleSignups(t *testing.T, awaitilities Awaitilities, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
-	hostAwait := awaitilities.Host(t)
+	hostAwait := awaitilities.Host()
 	signups := make([]*toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		name := fmt.Sprintf("multiple-signup-testuser-%d", i)

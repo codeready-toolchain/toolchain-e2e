@@ -24,6 +24,7 @@ import (
 )
 
 type Awaitilities struct {
+	t                  *testing.T
 	hostAwaitility     *wait.HostAwaitility
 	memberAwaitilities []*wait.MemberAwaitility
 }
@@ -96,13 +97,13 @@ func WaitForDeployments(t *testing.T) Awaitilities {
 	t.Log("all operators are ready and in running state")
 	memberAwaitilities := []*wait.MemberAwaitility{memberAwait, member2Await}
 	return Awaitilities{
+		t:                  t,
 		hostAwaitility:     hostAwait,
 		memberAwaitilities: memberAwaitilities,
 	}
 }
 
-func (a Awaitilities) Host(t *testing.T) *wait.HostAwaitility {
-	require.NotNil(t, a.hostAwaitility, "host awaitility is not initialized")
+func (a Awaitilities) Host() *wait.HostAwaitility {
 	return a.hostAwaitility
 }
 
@@ -112,8 +113,8 @@ func (a Awaitilities) SecondMember(m *wait.MemberAwaitility) bool {
 	return m.ClusterName == a.memberAwaitilities[1].ClusterName
 }
 
-func (a Awaitilities) Member(t *testing.T, selectors ...memberSelector) *wait.MemberAwaitility {
-	require.NotEmpty(t, a.memberAwaitilities, "there are no initialized member awaitilities")
+func (a Awaitilities) Member(selectors ...memberSelector) *wait.MemberAwaitility {
+	require.NotEmpty(a.t, a.memberAwaitilities, "there are no initialized member awaitilities")
 	for _, selector := range selectors {
 		for _, m := range a.memberAwaitilities {
 			if selector(m) {
