@@ -39,7 +39,7 @@ type registrationServiceTestSuite struct {
 	suite.Suite
 	namespace    string
 	route        string
-	awaitilities Awaitilities
+	awaitilities wait.Awaitilities
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {

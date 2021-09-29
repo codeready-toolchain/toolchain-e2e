@@ -23,18 +23,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Awaitilities struct {
-	t                  *testing.T
-	hostAwaitility     *wait.HostAwaitility
-	memberAwaitilities []*wait.MemberAwaitility
-}
-
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
 // and corresponding ToolchainCluster CRDs are present, running and ready. Based on the given cluster type
 // that represents the current operator that is the target of the e2e test it retrieves namespace names.
 // Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForDeployments(t *testing.T) Awaitilities {
+func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	memberNs := os.Getenv(wait.MemberNsVar)
 	memberNs2 := os.Getenv(wait.MemberNsVar2)
 	hostNs := os.Getenv(wait.HostNsVar)
@@ -95,34 +89,7 @@ func WaitForDeployments(t *testing.T) Awaitilities {
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
-	memberAwaitilities := []*wait.MemberAwaitility{memberAwait, member2Await}
-	return Awaitilities{
-		t:                  t,
-		hostAwaitility:     hostAwait,
-		memberAwaitilities: memberAwaitilities,
-	}
-}
-
-func (a Awaitilities) Host() *wait.HostAwaitility {
-	return a.hostAwaitility
-}
-
-type memberSelector func(*wait.MemberAwaitility) bool
-
-func (a Awaitilities) SecondMember(m *wait.MemberAwaitility) bool {
-	return m.ClusterName == a.memberAwaitilities[1].ClusterName
-}
-
-func (a Awaitilities) Member(selectors ...memberSelector) *wait.MemberAwaitility {
-	require.NotEmpty(a.t, a.memberAwaitilities, "there are no initialized member awaitilities")
-	for _, selector := range selectors {
-		for _, m := range a.memberAwaitilities {
-			if selector(m) {
-				return m
-			}
-		}
-	}
-	return a.memberAwaitilities[0]
+	return wait.NewAwaitilities(t, hostAwait, memberAwait, member2Await)
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {

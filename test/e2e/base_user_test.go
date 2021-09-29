@@ -19,7 +19,7 @@ import (
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	awaitilities Awaitilities
+	awaitilities wait.Awaitilities
 }
 
 func (s *baseUserIntegrationTest) newSignupRequest() SignupRequest {

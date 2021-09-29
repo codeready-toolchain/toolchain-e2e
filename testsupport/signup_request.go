@@ -75,7 +75,7 @@ type SignupRequest interface {
 	VerificationRequired() SignupRequest
 }
 
-func NewSignupRequest(t *testing.T, awaitilities Awaitilities) SignupRequest {
+func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
 	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &signupRequest{
 		t:                  t,
@@ -88,7 +88,7 @@ func NewSignupRequest(t *testing.T, awaitilities Awaitilities) SignupRequest {
 
 type signupRequest struct {
 	t                    *testing.T
-	awaitilities         Awaitilities
+	awaitilities         wait.Awaitilities
 	ensureMUR            bool
 	manuallyApprove      bool
 	verificationRequired bool

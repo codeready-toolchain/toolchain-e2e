@@ -12,16 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyMultipleSignups(t *testing.T, awaitilities Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
+func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base")
 	}
 }
 
-func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities Awaitilities, signup *toolchainv1alpha1.UserSignup,
+func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup,
 	tier string) {
 
-	hostAwait := awaitilities.hostAwaitility
+	hostAwait := awaitilities.Host()
 	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
@@ -102,8 +102,8 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 	}
 }
 
-func getMurTargetMember(t *testing.T, awaitilities Awaitilities, mur *toolchainv1alpha1.MasterUserRecord) *wait.MemberAwaitility {
-	for _, member := range awaitilities.memberAwaitilities {
+func getMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord) *wait.MemberAwaitility {
+	for _, member := range awaitilities.AllMembers() {
 		for _, ua := range mur.Spec.UserAccounts {
 			if ua.TargetCluster == member.ClusterName {
 				return member
