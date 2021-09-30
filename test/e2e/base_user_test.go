@@ -19,15 +19,15 @@ import (
 
 type baseUserIntegrationTest struct {
 	suite.Suite
-	awaitilities wait.Awaitilities
+	wait.Awaitilities
 }
 
 func (s *baseUserIntegrationTest) newSignupRequest() SignupRequest {
-	return NewSignupRequest(s.T(), s.awaitilities)
+	return NewSignupRequest(s.T(), s.Awaitilities)
 }
 
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {
-	hostAwait := s.awaitilities.Host()
+	hostAwait := s.Host()
 	// Create the BannedUser
 	bannedUser := newBannedUser(hostAwait, email)
 	err := hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
@@ -53,7 +53,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.B
 }
 
 func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
-	hostAwait := s.awaitilities.Host()
+	hostAwait := s.Host()
 	userSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivated(us, true)
 	})
@@ -87,7 +87,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 }
 
 func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
-	hostAwait := s.awaitilities.Host()
+	hostAwait := s.Host()
 	err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: userSignup.Namespace,
 		Name:      userSignup.Name,

@@ -37,13 +37,13 @@ type userManagementTestSuite struct {
 }
 
 func (s *userManagementTestSuite) SetupSuite() {
-	s.awaitilities = WaitForDeployments(s.T())
+	s.Awaitilities = WaitForDeployments(s.T())
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
-	hostAwait := s.awaitilities.Host()
-	memberAwait := s.awaitilities.Member()
-	memberAwait2 := s.awaitilities.Member(s.awaitilities.SecondMember)
+	hostAwait := s.Host()
+	memberAwait := s.Member()
+	memberAwait2 := s.Member(s.SecondMember)
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(false),
 		testconfig.Deactivation().DeactivatingNotificationDays(-1))
@@ -249,7 +249,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		// Verify resources have been provisioned
-		VerifyResourcesProvisionedForSignup(t, s.awaitilities, userSignupMember1, "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "base")
 	})
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
@@ -300,7 +300,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			require.NoError(s.T(), err)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base")
 
 			s.T().Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
@@ -368,8 +368,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 func (s *userManagementTestSuite) TestUserBanning() {
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host()
-		memberAwait := s.awaitilities.Member()
+		hostAwait := s.Host()
+		memberAwait := s.Member()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup and approve it manually
@@ -400,8 +400,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("manually created usersignup with preexisting banneduser", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host()
-		memberAwait := s.awaitilities.Member()
+		hostAwait := s.Host()
+		memberAwait := s.Member()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 		id := uuid.Must(uuid.NewV4()).String()
@@ -432,7 +432,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host()
+		hostAwait := s.Host()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 		id := uuid.Must(uuid.NewV4()).String()
@@ -471,8 +471,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 	})
 
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
-		hostAwait := s.awaitilities.Host()
-		memberAwait := s.awaitilities.Member()
+		hostAwait := s.Host()
+		memberAwait := s.Member()
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup
@@ -525,8 +525,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
-	hostAwait := s.awaitilities.Host()
-	memberAwait := s.awaitilities.Member()
+	hostAwait := s.Host()
+	memberAwait := s.Member()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 
 	// Create UserSignup
@@ -538,7 +538,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.awaitilities, userSignup, "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
 
 	// Disable MUR
 	mur, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -578,6 +578,6 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.awaitilities, userSignup, "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
 	})
 }

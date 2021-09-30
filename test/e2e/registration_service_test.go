@@ -37,14 +37,14 @@ func TestRegistrationService(t *testing.T) {
 
 type registrationServiceTestSuite struct {
 	suite.Suite
-	namespace    string
-	route        string
-	awaitilities wait.Awaitilities
+	wait.Awaitilities
+	namespace string
+	route     string
 }
 
 func (s *registrationServiceTestSuite) SetupSuite() {
-	s.awaitilities = WaitForDeployments(s.T())
-	hostAwait := s.awaitilities.Host()
+	s.Awaitilities = WaitForDeployments(s.T())
+	hostAwait := s.Host()
 	s.namespace = hostAwait.RegistrationServiceNs
 	s.route = hostAwait.RegistrationServiceURL
 }
@@ -281,7 +281,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.Equal(s.T(), "error creating UserSignup resource", response["details"])
 		require.Equal(s.T(), float64(403), response["code"])
 
-		hostAwait := s.awaitilities.Host()
+		hostAwait := s.Host()
 		userSignup, err := hostAwait.WaitForUserSignup(identity.ID.String())
 		require.Nil(s.T(), userSignup)
 		require.Error(s.T(), err)
@@ -291,8 +291,8 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 
 func (s *registrationServiceTestSuite) TestSignupOK() {
 
-	hostAwait := s.awaitilities.Host()
-	memberAwait := s.awaitilities.Member()
+	hostAwait := s.Host()
+	memberAwait := s.Member()
 	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *toolchainv1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
@@ -321,7 +321,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Wait the Master User Record to be provisioned
-		VerifyResourcesProvisionedForSignup(s.T(), s.awaitilities, userSignup, "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		s.assertGetSignupStatusProvisioned(identity.Username, token)
@@ -391,7 +391,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 }
 
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
-	hostAwait := s.awaitilities.Host()
+	hostAwait := s.Host()
 	// Create a token and identity to sign up with
 	identity0 := authsupport.NewIdentity()
 	emailValue := uuid.Must(uuid.NewV4()).String() + "@some.domain"
@@ -565,8 +565,8 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
-	hostAwait := s.awaitilities.Host()
-	memberAwait := s.awaitilities.Member()
+	hostAwait := s.Host()
+	memberAwait := s.Member()
 	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", bearerToken, "", http.StatusOK))
 	assert.Equal(s.T(), username, mp["compliantUsername"])
 	assert.Equal(s.T(), username, mp["username"])
