@@ -21,7 +21,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -488,13 +487,11 @@ func (a *Awaitility) Cleanup(objects ...client.Object) {
 		objToClean, ok := obj.DeepCopyObject().(client.Object)
 		require.True(a.T, ok)
 		cleanup := func() {
-			metaAccess, err := meta.Accessor(objToClean)
-			require.NoError(a.T, err)
 			kind := objToClean.GetObjectKind().GroupVersionKind().Kind
 			if kind == "" {
 				kind = reflect.TypeOf(obj).Elem().Name()
 			}
-			a.T.Logf("deleting %s: %s ...", kind, metaAccess.GetName())
+			a.T.Logf("deleting %s: %s ...", kind, objToClean.GetName())
 			if err := a.Client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
 				if errors.IsNotFound(err) {
 					// if the object was UserSignup, then let's check that the MUR was deleted as well
@@ -502,16 +499,16 @@ func (a *Awaitility) Cleanup(objects ...client.Object) {
 					require.NoError(a.T, err)
 					// either if it was deleted or if it wasn't UserSignup, then return here
 					if deleted {
-						a.T.Logf("%s: %s was already deleted", kind, metaAccess.GetName())
+						a.T.Logf("%s: %s was already deleted", kind, objToClean.GetName())
 						return
 					}
 				}
 			}
 
 			// wait until deletion is done
-			a.T.Logf("waiting until %s: %s is completely deleted", kind, metaAccess.GetName())
+			a.T.Logf("waiting until %s: %s is completely deleted", kind, objToClean.GetName())
 			require.NoError(a.T, wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-				if err := a.Client.Get(context.TODO(), test.NamespacedName(metaAccess.GetNamespace(), metaAccess.GetName()), objToClean); err != nil {
+				if err := a.Client.Get(context.TODO(), test.NamespacedName(objToClean.GetNamespace(), objToClean.GetName()), objToClean); err != nil {
 					if errors.IsNotFound(err) {
 						// if the object was UserSignup, then let's check that the MUR is deleted as well
 						if deleted, err := a.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
@@ -519,7 +516,7 @@ func (a *Awaitility) Cleanup(objects ...client.Object) {
 						}
 						return true, nil
 					}
-					a.T.Logf("problem with getting the related %s '%s': %s", kind, metaAccess.GetName(), err)
+					a.T.Logf("problem with getting the related %s '%s': %s", kind, objToClean.GetName(), err)
 					return false, err
 				}
 				fmt.Print(".")
