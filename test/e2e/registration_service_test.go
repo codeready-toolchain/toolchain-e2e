@@ -31,7 +31,7 @@ import (
 
 var httpClient = HTTPClient
 
-func aTestRegistrationService(t *testing.T) {
+func TestRegistrationService(t *testing.T) {
 	suite.Run(t, &registrationServiceTestSuite{})
 }
 

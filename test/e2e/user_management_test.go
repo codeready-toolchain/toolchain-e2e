@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func aTestUserManagement(t *testing.T) {
+func TestUserManagement(t *testing.T) {
 	suite.Run(t, &userManagementTestSuite{})
 }
 

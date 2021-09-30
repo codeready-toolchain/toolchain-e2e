@@ -22,7 +22,7 @@ import (
 
 // TestMetricsWhenUsersDeactivated verifies that `UserSignupsDeactivatedMetric` counter is increased when users are deactivated
 // (`UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged)
-func aTestMetricsWhenUsersDeactivated(t *testing.T) {
+func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
@@ -79,7 +79,7 @@ func aTestMetricsWhenUsersDeactivated(t *testing.T) {
 // user-0001 will be activated 1 time
 // user-0002 will be activated 2 times
 // user-0003 will be activated 3 times
-func aTestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
+func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
@@ -155,7 +155,7 @@ func aTestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 }
 
 // TestMetricsWhenUsersDeleted verifies that the `UsersPerActivationsAndDomainMetric` metric is NOT decreased when users are deleted
-func aTestMetricsWhenUsersDeleted(t *testing.T) {
+func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
@@ -194,7 +194,7 @@ func aTestMetricsWhenUsersDeleted(t *testing.T) {
 }
 
 // TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned
-func aTestMetricsWhenUsersBanned(t *testing.T) {
+func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
@@ -256,7 +256,7 @@ func aTestMetricsWhenUsersBanned(t *testing.T) {
 }
 
 // TestMetricsWhenUserDisabled verifies that there is no impact on metrics when a user is re-enabled after being disabled
-func aTestMetricsWhenUserDisabled(t *testing.T) {
+func TestMetricsWhenUserDisabled(t *testing.T) {
 	// given
 	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))

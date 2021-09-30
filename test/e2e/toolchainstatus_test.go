@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func aTestForceMetricsSynchronization(t *testing.T) {
+func TestForceMetricsSynchronization(t *testing.T) {
 	t.Skip("skipping this test due to flakyness")
 
 	// given
