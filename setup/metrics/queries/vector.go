@@ -1,4 +1,4 @@
-package metrics
+package queries
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type VectoryQuery struct {
 	stringResult func(float64, int) string
 }
 
-func (v VectoryQuery) doQuery(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
+func (v VectoryQuery) DoQuery(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
 	var averageValue float64
 	val, warnings, err := apiClient.Query(context.TODO(), v.query, time.Now())
 	if val == nil {
@@ -36,6 +36,6 @@ func (v VectoryQuery) doQuery(apiClient prometheus.API) (float64, prometheus.War
 	return averageValue / float64(len(vector)), warnings, err
 }
 
-func (v VectoryQuery) result() string {
+func (v VectoryQuery) Result() string {
 	return v.stringResult(v.sum, v.count)
 }

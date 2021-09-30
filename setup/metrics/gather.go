@@ -102,7 +102,7 @@ func (g *Gatherer) getPrometheusEndpoint() (string, error) {
 
 func (g *Gatherer) PrintResults() {
 	for _, q := range g.queries {
-		g.term.Infof("%s: %s", q.name, q.sum/float64(q.count))
+		g.term.Infof("%s: %s", q.name, bytesToMBString(q.sum/float64(q.count)))
 	}
 }
 

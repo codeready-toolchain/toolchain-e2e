@@ -139,7 +139,7 @@ func setup(cmd *cobra.Command, args []string) {
 		if err != nil {
 			term.Fatalf(err, "token flag is required - could not determine token request URI")
 		}
-		term.Fatalf(fmt.Errorf("token flag is required"), "request a token from %s", tokenRequestURI)
+		term.Fatalf(fmt.Errorf("request a token from %s", tokenRequestURI), "token flag is required")
 	}
 
 	var templateListStr string
