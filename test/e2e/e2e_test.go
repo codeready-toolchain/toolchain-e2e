@@ -372,7 +372,6 @@ func TestE2EFlow(t *testing.T) {
 		//when role deleted
 		err = memberAwait.Client.Delete(context.TODO(),userRole)
 		require.NoError(t, err)
-		fmt.Printf(">>>>> role deleted at time: :%v", time.Now())
 
 		// then verify role is recreated
 		userRole, err = memberAwait.WaitForRole(&devNs, "rbac-edit")
@@ -381,17 +380,44 @@ func TestE2EFlow(t *testing.T) {
 
 		// then the user account should be recreated
 		VerifyResourcesProvisionedForSignup(t, hostAwait, userSignup, "base", memberAwait)
+	})
 
+	t.Run("rolebinding accidentally deleted by user is recreated", func(t *testing.T) {
 
-		//userrole := rbacv1.Role{}
-		//err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{
-		//	Namespace: "wonderwoman-dev",
-		//	Name: "rbac-edit",
-		//}, &userrole)
-		//require.NoError(t, err)
-		//rolebinding : user-edit and user-rbac-edit
-		//fmt.Println(">>>>>>>>>>> Now Stop")
-		//time.Sleep(3*time.Minute)
+		userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+			Username("wonderwoman2").
+			Email("wonderwoman2@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+		devNs := corev1.Namespace{}
+		err := memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman2-dev"}, &devNs)
+		require.NoError(t, err)
+
+		stageNs := corev1.Namespace{}
+		err = memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman2-stage"}, &stageNs)
+		require.NoError(t, err)
+
+		userRoleBinding, err := memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
+		require.NoError(t, err)
+		require.NotEmpty(t, userRoleBinding)
+		fmt.Println(userRoleBinding.Labels)
+		require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
+
+		//when rolebinding deleted
+		err = memberAwait.Client.Delete(context.TODO(),userRoleBinding)
+		require.NoError(t, err)
+
+		// then verify role is recreated
+		userRoleBinding, err = memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
+		require.NoError(t, err)
+		require.NotEmpty(t, userRoleBinding)
+
+		// then the user account should be recreated
+		VerifyResourcesProvisionedForSignup(t, hostAwait, userSignup, "base", memberAwait)
+
 	})
 
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
