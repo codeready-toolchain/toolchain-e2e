@@ -356,11 +356,11 @@ func TestE2EFlow(t *testing.T) {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 		devNs := corev1.Namespace{}
-		err := memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
+		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
 		require.NoError(t, err)
 
 		stageNs := corev1.Namespace{}
-		err = memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
 		require.NoError(t, err)
 
 		userRole, err := memberAwait.WaitForRole(&devNs, "rbac-edit")
@@ -370,7 +370,7 @@ func TestE2EFlow(t *testing.T) {
 		require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
 
 		//when role deleted
-		err = memberAwait.Client.Delete(context.TODO(),userRole)
+		err = memberAwait.Client.Delete(context.TODO(), userRole)
 		require.NoError(t, err)
 
 		// then verify role is recreated
@@ -393,11 +393,11 @@ func TestE2EFlow(t *testing.T) {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 		devNs := corev1.Namespace{}
-		err := memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman2-dev"}, &devNs)
+		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman2-dev"}, &devNs)
 		require.NoError(t, err)
 
 		stageNs := corev1.Namespace{}
-		err = memberAwait.Client.Get(context.TODO(),types.NamespacedName{Name: "wonderwoman2-stage"}, &stageNs)
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman2-stage"}, &stageNs)
 		require.NoError(t, err)
 
 		userRoleBinding, err := memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
@@ -407,7 +407,7 @@ func TestE2EFlow(t *testing.T) {
 		require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
 
 		//when rolebinding deleted
-		err = memberAwait.Client.Delete(context.TODO(),userRoleBinding)
+		err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
 		require.NoError(t, err)
 
 		// then verify role is recreated
