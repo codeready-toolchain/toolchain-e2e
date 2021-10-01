@@ -15,6 +15,7 @@ import (
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/idlers"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/operators"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
@@ -180,8 +181,10 @@ func setup(cmd *cobra.Command, args []string) {
 	// provision the users
 	term.Infof("🍿 provisioning users...")
 
-	// start capturing metrics
+	// init the metrics gatherer
 	captureMetrics := metrics.New(term, cl, token, 5*time.Second)
+
+	// add queries for each custom workload
 	for _, w := range workloads {
 		pair := strings.Split(w, ":")
 		if len(pair) != 2 {
@@ -191,10 +194,12 @@ func setup(cmd *cobra.Command, args []string) {
 			term.Fatalf(err, "invalid workload provided '%s'", w)
 		}
 		captureMetrics.AddQueries(
-			metrics.QueryWorkloadCPUUtilisation(pair[0], pair[1]),
-			metrics.QueryWorkloadMemoryUtilisation(pair[0], pair[1]),
+			queries.QueryWorkloadCPUUsage(pair[0], pair[1]),
+			queries.QueryWorkloadMemoryUsage(pair[0], pair[1]),
 		)
 	}
+
+	// start capturing metrics
 	stopMetrics := captureMetrics.Start()
 
 	uip := uiprogress.New()
@@ -301,8 +306,8 @@ func setup(cmd *cobra.Command, args []string) {
 	uip.Stop()
 	term.Infof("🏁 done provisioning users")
 	term.Infof("\n📈 Results 📉")
-	term.Infof("Average Idler Update Time (Seconds): %v", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
-	term.Infof("Average Time Per User (Seconds): %v", AverageTimePerUser.Seconds()/float64(numberOfUsers))
+	term.Infof("Average Idler Update Time: %.2f s", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
+	term.Infof("Average Time Per User: %.2f s", AverageTimePerUser.Seconds()/float64(numberOfUsers))
 	captureMetrics.PrintResults()
 	term.Infof("👋 have fun!")
 }

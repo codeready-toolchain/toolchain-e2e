@@ -36,6 +36,9 @@ const (
 
 	OpenshiftMonitoringNS = "openshift-monitoring"
 	PrometheusRouteName   = "prometheus-k8s"
+
+	OLMOperatorNamespace = "openshift-operator-lifecycle-manager"
+	OLMOperatorWorkload  = "olm-operator"
 )
 
 var (
