@@ -39,7 +39,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	testingtiers, _ := NewSignupRequest(t, awaitilities).
 		Username(testingTiersName).
 		ManuallyApprove().
-		TargetCluster(awaitilities.Member()).
+		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().
@@ -103,7 +103,7 @@ func TestSetDefaultTier(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
+	memberAwait := awaitilities.Member1()
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
@@ -144,7 +144,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	count := 2*MaxPoolSize + 1
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
+	memberAwait := awaitilities.Member1()
 
 	// first group of users: the "cheesecake lovers"
 	cheesecakeSyncIndexes := setupAccounts(t, awaitilities, "cheesecake", "cheesecakelover%02d", memberAwait, count)

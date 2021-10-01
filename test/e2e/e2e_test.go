@@ -25,8 +25,8 @@ func TestE2EFlow(t *testing.T) {
 	// full flow from usersignup with approval down to namespaces creation
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
-	memberAwait2 := awaitilities.Member(awaitilities.SecondMember)
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
 
 	consoleURL := memberAwait.GetConsoleURL()
 	// host and member cluster statuses should be available at this point
@@ -89,7 +89,7 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
-	signups := CreateMultipleSignups(t, awaitilities, awaitilities.Member(), 5)
+	signups := CreateMultipleSignups(t, awaitilities, awaitilities.Member1(), 5)
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"

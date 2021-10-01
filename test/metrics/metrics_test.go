@@ -26,8 +26,8 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
-	memberAwait2 := awaitilities.Member(awaitilities.SecondMember)
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
@@ -86,7 +86,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
+	memberAwait := awaitilities.Member1()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
@@ -164,7 +164,7 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
+	memberAwait := awaitilities.Member1()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
@@ -206,8 +206,8 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
-	memberAwait2 := awaitilities.Member(awaitilities.SecondMember)
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
@@ -270,8 +270,8 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
-	memberAwait2 := awaitilities.Member(awaitilities.SecondMember)
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)

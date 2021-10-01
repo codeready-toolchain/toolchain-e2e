@@ -292,7 +292,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 func (s *registrationServiceTestSuite) TestSignupOK() {
 
 	hostAwait := s.Host()
-	memberAwait := s.Member()
+	memberAwait := s.Member1()
 	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *toolchainv1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusAccepted)
@@ -566,7 +566,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username, bearerToken string) {
 	hostAwait := s.Host()
-	memberAwait := s.Member()
+	memberAwait := s.Member1()
 	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", bearerToken, "", http.StatusOK))
 	assert.Equal(s.T(), username, mp["compliantUsername"])
 	assert.Equal(s.T(), username, mp["username"])

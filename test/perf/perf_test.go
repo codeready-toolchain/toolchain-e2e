@@ -34,7 +34,7 @@ func TestPerformance(t *testing.T) {
 	defer out.Close()
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member()
+	memberAwait := awaitilities.Member1()
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
 

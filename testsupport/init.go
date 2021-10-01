@@ -89,7 +89,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
-	return wait.NewAwaitilities(t, hostAwait, memberAwait, member2Await)
+	return wait.NewAwaitilities(hostAwait, memberAwait, member2Await)
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {

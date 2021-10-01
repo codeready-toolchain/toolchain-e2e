@@ -31,8 +31,8 @@ func (s *userSignupIntegrationTest) SetupSuite() {
 
 func (s *userSignupIntegrationTest) TearDownTest() {
 	hostAwait := s.Host()
-	memberAwait := s.Member()
-	memberAwait2 := s.Member(s.SecondMember)
+	memberAwait := s.Member1()
+	memberAwait2 := s.Member2()
 	hostAwait.Clean()
 	memberAwait.Clean()
 	memberAwait2.Clean()
@@ -135,8 +135,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	hostAwait := s.Host()
-	memberAwait := s.Member()
-	memberAwait2 := s.Member(s.SecondMember)
+	memberAwait := s.Member1()
+	memberAwait2 := s.Member2()
 	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
@@ -228,7 +228,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 
 func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	hostAwait := s.Host()
-	memberAwait := s.Member()
+	memberAwait := s.Member1()
 	// given
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
 
@@ -468,7 +468,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
 	hostAwait := s.Host()
-	memberAwait := s.Member()
+	memberAwait := s.Member1()
 	// Create a new UserSignup
 	username := "testuser" + uuid.Must(uuid.NewV4()).String()
 	email := username + "@test.com"
