@@ -23,12 +23,13 @@ import (
 
 const (
 	// tier names
+	advanced                 = "advanced"
 	base                     = "base"
-	baselarge                = "baselarge"
+	basedeactivationdisabled = "basedeactivationdisabled"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
-	basedeactivationdisabled = "basedeactivationdisabled"
-	advanced                 = "advanced"
+	baselarge                = "baselarge"
+	hackathon                = "hackathon"
 	test                     = "test"
 
 	// common CPU limits
@@ -60,6 +61,9 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case basedeactivationdisabled:
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
+
+	case hackathon:
+		return &hackathonTierChecks{baseTierChecks{tierName: hackathon}}, nil
 
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
@@ -229,6 +233,14 @@ func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitil
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
+}
+
+type hackathonTierChecks struct {
+	baseTierChecks
+}
+
+func (a *hackathonTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 50)}
 }
 
 // testTierChecks checks only that the "test" tier exists and has correct template references.
