@@ -350,7 +350,7 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("role accidentally deleted by user is recreated", func(t *testing.T) {
 
-		userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		userSignup, _ := NewSignupRequest(t, awaitilities).
 			Username("wonderwoman").
 			Email("wonderwoman@redhat.com").
 			ManuallyApprove().
@@ -382,12 +382,12 @@ func TestE2EFlow(t *testing.T) {
 		require.NotEmpty(t, userRole)
 
 		// then the user account should be recreated
-		VerifyResourcesProvisionedForSignup(t, hostAwait, userSignup, "base", memberAwait)
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 	})
 
 	t.Run("rolebinding accidentally deleted by user is recreated", func(t *testing.T) {
 
-		userSignup, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		userSignup, _ := NewSignupRequest(t, awaitilities).
 			Username("wonderwoman2").
 			Email("wonderwoman2@redhat.com").
 			ManuallyApprove().
@@ -419,7 +419,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NotEmpty(t, userRoleBinding)
 
 		// then the user account should be recreated
-		VerifyResourcesProvisionedForSignup(t, hostAwait, userSignup, "base", memberAwait)
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 
 	})
 
