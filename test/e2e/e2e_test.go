@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -348,8 +347,7 @@ func TestE2EFlow(t *testing.T) {
 
 	})
 
-	t.Run("role accidentally deleted by user is recreated", func(t *testing.T) {
-
+	t.Run("Try to delete namespaced scoped resources of users, and expect recreation", func(t *testing.T) {
 		userSignup, _ := NewSignupRequest(t, awaitilities).
 			Username("wonderwoman").
 			Email("wonderwoman@redhat.com").
@@ -366,61 +364,44 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
 		require.NoError(t, err)
 
-		userRole, err := memberAwait.WaitForRole(&devNs, "rbac-edit")
-		require.NoError(t, err)
-		require.NotEmpty(t, userRole)
-		fmt.Println(userRole.Labels)
-		require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
+		t.Run("role accidentally deleted by user is recreated", func(t *testing.T) {
+			userRole, err := memberAwait.WaitForRole(&devNs, "rbac-edit")
+			require.NoError(t, err)
+			require.NotEmpty(t, userRole)
+			require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
 
-		//when role deleted
-		err = memberAwait.Client.Delete(context.TODO(), userRole)
-		require.NoError(t, err)
+			//when role deleted
+			err = memberAwait.Client.Delete(context.TODO(), userRole)
+			require.NoError(t, err)
 
-		// then verify role is recreated
-		userRole, err = memberAwait.WaitForRole(&devNs, "rbac-edit")
-		require.NoError(t, err)
-		require.NotEmpty(t, userRole)
+			// then verify role is recreated
+			userRole, err = memberAwait.WaitForRole(&devNs, "rbac-edit")
+			require.NoError(t, err)
+			require.NotEmpty(t, userRole)
 
-		// then the user account should be recreated
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
-	})
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
 
-	t.Run("rolebinding accidentally deleted by user is recreated", func(t *testing.T) {
+		t.Run("rolebinding accidentally deleted by user is recreated", func(t *testing.T) {
 
-		userSignup, _ := NewSignupRequest(t, awaitilities).
-			Username("wonderwoman2").
-			Email("wonderwoman2@redhat.com").
-			ManuallyApprove().
-			EnsureMUR().
-			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().Resources()
-		devNs := corev1.Namespace{}
-		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman2-dev"}, &devNs)
-		require.NoError(t, err)
+			userRoleBinding, err := memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
+			require.NoError(t, err)
+			require.NotEmpty(t, userRoleBinding)
+			require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
 
-		stageNs := corev1.Namespace{}
-		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman2-stage"}, &stageNs)
-		require.NoError(t, err)
+			//when rolebinding deleted
+			err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
+			require.NoError(t, err)
 
-		userRoleBinding, err := memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
-		require.NoError(t, err)
-		require.NotEmpty(t, userRoleBinding)
-		fmt.Println(userRoleBinding.Labels)
-		require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
+			// then verify role is recreated
+			userRoleBinding, err = memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
+			require.NoError(t, err)
+			require.NotEmpty(t, userRoleBinding)
 
-		//when rolebinding deleted
-		err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
-		require.NoError(t, err)
-
-		// then verify role is recreated
-		userRoleBinding, err = memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
-		require.NoError(t, err)
-		require.NotEmpty(t, userRoleBinding)
-
-		// then the user account should be recreated
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
-
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
 	})
 
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
