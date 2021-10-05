@@ -17,7 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func CreateMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+func CreateMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+	hostAwait := awaitilities.Host()
 	signups := make([]*toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
 		name := fmt.Sprintf("multiple-signup-testuser-%d", i)
@@ -29,7 +30,7 @@ func CreateMultipleSignups(t *testing.T, hostAwait *wait.HostAwaitility, targetC
 			continue
 		}
 		// Create an approved UserSignup resource
-		signups[i], _ = NewSignupRequest(t, hostAwait, targetCluster, nil).
+		signups[i], _ = NewSignupRequest(t, awaitilities).
 			Username(name).
 			Email(fmt.Sprintf("multiple-signup-testuser-%d@test.com", i)).
 			ManuallyApprove().
