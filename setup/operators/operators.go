@@ -23,7 +23,7 @@ const (
 )
 
 var Templates = []string{
-	// "rhoam-operator.yaml",
+	"rhoam-operator.yaml",
 	"rhoas.yaml",
 	"sbo.yaml",
 	"serverless-operator.yaml",
