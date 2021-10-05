@@ -20,6 +20,7 @@ type Terminal interface {
 	Errorf(err error, msg string, args ...interface{})
 	Fatalf(err error, msg string, args ...interface{})
 	PromptBoolf(msg string, args ...interface{}) bool
+	AddPreFatalExitHook(func())
 }
 
 // New returns a new terminal with the given funcs to
@@ -45,9 +46,10 @@ func (t *DefaultTerminal) OutOrStdout() io.Writer {
 // DefaultTerminal a wrapper around a Cobra command, with extra methods
 // to display messages.
 type DefaultTerminal struct {
-	in      func() io.Reader
-	out     func() io.Writer
-	verbose bool
+	in             func() io.Reader
+	out            func() io.Writer
+	fatalExitHooks []func()
+	verbose        bool
 }
 
 // Debugf prints a message (if verbose was enabled)
@@ -78,8 +80,14 @@ func (t DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
 
 // Fatalf prints a message with the red color and exits the program with a `1` return code
 func (t DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
+	defer os.Exit(1)
 	t.Errorf(err, msg, args...)
-	os.Exit(1)
+	if len(t.fatalExitHooks) == 0 {
+		t.Infof("No fatal exit hooks")
+	}
+	for _, hook := range t.fatalExitHooks {
+		hook()
+	}
 }
 
 // PromptBoolf prints a message and waits for the user's boolean response
@@ -99,4 +107,8 @@ func (t DefaultTerminal) PromptBoolf(msg string, args ...interface{}) bool {
 		return false
 	}
 	return strings.ToLower(result) == "y"
+}
+
+func (t *DefaultTerminal) AddPreFatalExitHook(hook func()) {
+	t.fatalExitHooks = append(t.fatalExitHooks, hook)
 }

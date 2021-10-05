@@ -22,7 +22,7 @@ var (
 	k8sClient        client.Client
 	queryInterval    time.Duration
 	prometheusClient prometheus.API
-	mqueries         []*queries.Query
+	mqueries         []queries.Query
 	term             terminal.Terminal
 )
 
@@ -56,7 +56,7 @@ func Init(t terminal.Terminal, cl client.Client, token string, interval time.Dur
 	)
 }
 
-func AddQueries(queries ...*queries.Query) {
+func AddQueries(queries ...queries.Query) {
 	mqueries = append(mqueries, queries...)
 }
 
@@ -65,6 +65,9 @@ func StartGathering() chan struct{} {
 		term.Infof("Metrics gatherer has no queries defined, skipping metrics gathering...")
 		return nil
 	}
+
+	// ensure metrics are dumped if there's a fatal error
+	term.AddPreFatalExitHook(PrintResults)
 
 	stop := make(chan struct{})
 	go func() {
@@ -101,7 +104,11 @@ func getPrometheusEndpoint(client client.Client) (string, error) {
 }
 
 func PrintResults() {
+	if len(mqueries) == 0 {
+		// metrics were not initialized, nothing to print
+		return
+	}
 	for _, q := range mqueries {
-		term.Infof("%s: %s", q.Name, q.Result())
+		term.Infof("%s: %s", q.Name(), q.Result())
 	}
 }

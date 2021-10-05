@@ -182,7 +182,7 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Infof("🍿 provisioning users...")
 
 	// init the metrics gatherer
-	metrics.Init(term, cl, token, 5*time.Second)
+	metrics.Init(term, cl, token, 5*time.Minute)
 
 	// add queries for each custom workload
 	for _, w := range workloads {
