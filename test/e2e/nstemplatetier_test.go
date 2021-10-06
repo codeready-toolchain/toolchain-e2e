@@ -10,6 +10,8 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -224,10 +226,12 @@ func updateTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName string
 	tier := getTier(t, hostAwait, tierName)
 
 	if aliasTierClusterResources != "" {
-		tier.Spec.ClusterResources = getTier(t, hostAwait, aliasTierClusterResources).Spec.ClusterResources
+		baseTier := getTier(t, hostAwait, aliasTierClusterResources)
+		SetClusterTierTemplateFromTier(t, hostAwait, tier, baseTier)
 	}
 	if aliasTierNamespaces != "" {
-		tier.Spec.Namespaces = getTier(t, hostAwait, aliasTierNamespaces).Spec.Namespaces
+		baseTier := getTier(t, hostAwait, aliasTierNamespaces)
+		SetNamespaceTierTemplatesFromTier(t, hostAwait, tier, baseTier)
 	}
 	err := hostAwait.Client.Update(context.TODO(), tier)
 	require.NoError(t, err)
@@ -259,7 +263,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 
 func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
 	//
-	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(aliasTierClusterResources)
+	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
 
 	// let's wait until all MasterUserRecords have been updated
@@ -302,7 +306,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tierName))
 		require.NoError(t, err)
 		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
 	}
@@ -314,9 +318,16 @@ func TestTierTemplates(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
+
+	selector := labels.NewSelector()
+	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
+	require.NoError(t, err)
+	notCreatedByE2e := client.MatchingLabelsSelector{
+		Selector: selector.Add(*e2eProducer),
+	}
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
-	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
+	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	// verify that we have 24 tier templates (base: 3, baselarge: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, test: 3, hackathon: 3)
 	require.NoError(t, err)
 	assert.Len(t, allTiers.Items, 24)
