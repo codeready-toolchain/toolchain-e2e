@@ -844,8 +844,9 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 
 // WaitForTemplateUpdateRequests waits until there is exactly `count` number of TemplateUpdateRequests
 func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count int) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
+	templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		templateUpdateRequests = &toolchainv1alpha1.TemplateUpdateRequestList{}
 		if err := a.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(namespace)); err != nil {
 			return false, err
 		}
@@ -853,7 +854,13 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Logf("failed to find TemplateUpdateRequests in namespace '%s': %v", namespace, err)
+		requests, _ := yaml.Marshal(templateUpdateRequests)
+
+		a.T.Logf("the actual number '%d' of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.",
+			len(templateUpdateRequests.Items), namespace, count)
+		a.T.Logf("TemplateUpdateRequests present in the namespace:\n%s", requests)
+		a.listAndPrint("MasterUserRecords", namespace, &toolchainv1alpha1.MasterUserRecordList{})
+		a.listAndPrint("NSTemplateTiers", namespace, &toolchainv1alpha1.NSTemplateTierList{})
 	}
 	return err
 }
