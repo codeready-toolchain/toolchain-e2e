@@ -157,6 +157,10 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		idlers(43200, "dev", "stage"))
 }
 
+func (a *baselargeTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 90)}
+}
+
 type baseextendedTierChecks struct {
 	baseTierChecks
 }
