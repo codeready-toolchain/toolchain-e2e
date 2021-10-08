@@ -2,10 +2,13 @@ package testsupport
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint: golint
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,14 +35,19 @@ func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName stri
 	}, baseTier)
 	require.NoError(t, err)
 
-	// now let's create the new NSTemplateTier with the same templates as the "base" tier
 	tier := &toolchainv1alpha1.NSTemplateTier{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: baseTier.Namespace,
 			Name:      tierName,
 		},
-		Spec: baseTier.Spec,
+		Spec: toolchainv1alpha1.NSTemplateTierSpec{
+			DeactivationTimeoutDays: baseTier.Spec.DeactivationTimeoutDays,
+		},
 	}
+
+	SetNamespaceTierTemplatesFromTier(t, hostAwait, tier, baseTier)
+
+	SetClusterTierTemplateFromTier(t, hostAwait, tier, baseTier)
 
 	err = Modify(tier, modifiers...)
 	require.NoError(t, err)
@@ -48,6 +56,46 @@ func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName stri
 	require.NoError(t, err)
 
 	return tier
+}
+
+func SetNamespaceTierTemplatesFromTier(t *testing.T, hostAwait *HostAwaitility, targetTier *toolchainv1alpha1.NSTemplateTier, sourceTier *toolchainv1alpha1.NSTemplateTier) {
+	targetTier.Spec.Namespaces = []toolchainv1alpha1.NSTemplateTierNamespace{}
+	for _, ns := range sourceTier.Spec.Namespaces {
+		targetTier.Spec.Namespaces = append(targetTier.Spec.Namespaces, toolchainv1alpha1.NSTemplateTierNamespace{
+			TemplateRef: createNewTierTemplate(t, hostAwait, targetTier.Name, ns.TemplateRef, sourceTier.Namespace),
+		})
+	}
+}
+
+func SetClusterTierTemplateFromTier(t *testing.T, hostAwait *HostAwaitility, targetTier *toolchainv1alpha1.NSTemplateTier, sourceTier *toolchainv1alpha1.NSTemplateTier) {
+	if sourceTier.Spec.ClusterResources != nil {
+		targetTier.Spec.ClusterResources = &toolchainv1alpha1.NSTemplateTierClusterResources{
+			TemplateRef: createNewTierTemplate(t, hostAwait, targetTier.Name, sourceTier.Spec.ClusterResources.TemplateRef, sourceTier.Namespace),
+		}
+	} else {
+		targetTier.Spec.ClusterResources = nil
+	}
+}
+
+func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, origTemplateRef, namespace string) string {
+	origTierTemplate := &toolchainv1alpha1.TierTemplate{}
+	err := hostAwait.Client.Get(context.TODO(), test.NamespacedName(hostAwait.Namespace, origTemplateRef), origTierTemplate)
+	require.NoError(t, err)
+	newTierTemplate := &toolchainv1alpha1.TierTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      fmt.Sprintf("%sfrom%s", tierName, origTierTemplate.Name),
+			Labels:    map[string]string{"producer": "toolchain-e2e"},
+		},
+		Spec: origTierTemplate.Spec,
+	}
+	newTierTemplate.Spec.TierName = tierName
+	if err := hostAwait.CreateWithCleanup(context.TODO(), newTierTemplate); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			require.NoError(t, err)
+		}
+	}
+	return newTierTemplate.Name
 }
 
 func MoveUserToTier(t *testing.T, hostAwait *HostAwaitility, username string, tier toolchainv1alpha1.NSTemplateTier) *toolchainv1alpha1.MasterUserRecord {
