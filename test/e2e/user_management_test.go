@@ -123,7 +123,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, *baseDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
+		murSyncIndex := MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name).Spec.UserAccounts[0].SyncIndex
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
@@ -362,6 +362,32 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				require.NoError(s.T(), err)
 			})
 		})
+	})
+
+	s.T().Run("test reset deactivating state when promoting user", func(t *testing.T) {
+		userSignup, _ := s.newSignupRequest().
+			Username("promoteuser").
+			Email("promoteuser@redhat.com").
+			EnsureMUR().
+			ManuallyApprove().
+			TargetCluster(s.Member1()).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
+		// Set the deactivating state on the UserSignup
+		updatedUserSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivating(us, true)
+		})
+		require.NoError(s.T(), err)
+
+		// Move the user to the new tier
+		_ = MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+
+		// Ensure the deactivating state is reset after promotion
+		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
+		require.NoError(t, err)
+		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, promotedUserSignup, "advanced")
 	})
 }
 

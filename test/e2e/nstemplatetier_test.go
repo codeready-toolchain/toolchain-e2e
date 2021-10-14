@@ -211,7 +211,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt st
 	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {
-		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), *tier)
+		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), tier.Name)
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}
