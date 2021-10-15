@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -182,6 +183,37 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// cookie tier
 	// there should be 3 entries in the status.history (1 create + 2 updates)
 	verifyStatus(t, hostAwait, "cookie", 3)
+}
+
+func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
+		userSignup, _ := NewSignupRequest(t, awaitilities).
+			Username("promoteuser").
+			Email("promoteuser@redhat.com").
+			ManuallyApprove().
+			TargetCluster(awaitilities.Member1()).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+
+		// Set the deactivating state on the UserSignup
+		updatedUserSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivating(us, true)
+		})
+		require.NoError(t, err)
+
+		// Move the user to the new tier
+		_ = MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+
+		// Ensure the deactivating state is reset after promotion
+		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
+		require.NoError(t, err)
+		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced")
+	})
 }
 
 // setupAccounts takes care of:

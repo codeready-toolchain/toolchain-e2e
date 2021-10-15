@@ -363,32 +363,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			})
 		})
 	})
-
-	s.T().Run("test reset deactivating state when promoting user", func(t *testing.T) {
-		userSignup, _ := s.newSignupRequest().
-			Username("promoteuser").
-			Email("promoteuser@redhat.com").
-			EnsureMUR().
-			ManuallyApprove().
-			TargetCluster(s.Member1()).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().Resources()
-
-		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetDeactivating(us, true)
-		})
-		require.NoError(s.T(), err)
-
-		// Move the user to the new tier
-		_ = MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
-
-		// Ensure the deactivating state is reset after promotion
-		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
-		require.NoError(t, err)
-		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, promotedUserSignup, "advanced")
-	})
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
