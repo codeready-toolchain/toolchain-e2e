@@ -244,7 +244,7 @@ type hackathonTierChecks struct {
 }
 
 func (a *hackathonTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 50)}
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 80)}
 }
 
 // testTierChecks checks only that the "test" tier exists and has correct template references.
