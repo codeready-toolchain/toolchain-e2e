@@ -44,6 +44,11 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
 
+	// Verify last target cluster annotation is set
+	lastCluster, foundLastCluster := userSignup.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey]
+	require.True(t, foundLastCluster)
+	require.Equal(t, userAccount.ClusterName, lastCluster)
+
 	// Verify provisioned User
 	_, err = memberAwait.WaitForUser(userAccount.Name)
 	assert.NoError(t, err)

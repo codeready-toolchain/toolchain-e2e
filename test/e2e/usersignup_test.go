@@ -466,6 +466,50 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	}
 }
 
+func (s *userSignupIntegrationTest) TestReturningUserProvisionedToLastCluster() {
+	hostAwait := s.Host()
+	memberAwait := s.Member1()
+	memberAwait2 := s.Member2()
+	s.T().Run("test returning users provisioned to same cluster as last time", func(t *testing.T) {
+		// given
+		var memberLimits []testconfig.PerMemberClusterOptionInt
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		require.NoError(t, err)
+		for _, m := range toolchainStatus.Status.Members {
+			if memberAwait.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait.ClusterName, m.UserAccountCount+1))
+			} else if memberAwait2.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.UserAccountCount+1))
+			}
+		}
+		require.Len(s.T(), memberLimits, 2)
+
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(0, memberLimits...))
+
+		// when
+		signup1, _ := s.newSignupRequest().
+			Username("multimember-1").
+			Email("multi1@redhat.com").
+			EnsureMUR().
+			LastCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute().Resources()
+
+		signup2, _ := s.newSignupRequest().
+			Username("multimember-2").
+			Email("multi2@redhat.com").
+			EnsureMUR().
+			LastCluster(memberAwait2).
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute().Resources()
+
+		// then
+		// Confirm the MUR was created and target cluster was set
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, signup1, "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, signup2, "base")
+	})
+}
+
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()

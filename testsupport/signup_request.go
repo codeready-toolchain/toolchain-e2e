@@ -43,6 +43,9 @@ type SignupRequest interface {
 	// once, and must be called after all other functions EXCEPT for Resources()
 	Execute() SignupRequest
 
+	// LastCluster may be provided in order to specify the user's target cluster
+	LastCluster(lastCluster *wait.MemberAwaitility) SignupRequest
+
 	// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
 	ManuallyApprove() SignupRequest
 
@@ -96,6 +99,7 @@ type signupRequest struct {
 	username             string
 	email                string
 	requiredHTTPStatus   int
+	lastCluster          *wait.MemberAwaitility
 	targetCluster        *wait.MemberAwaitility
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
@@ -124,6 +128,11 @@ func (r *signupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1
 
 func (r *signupRequest) EnsureMUR() SignupRequest {
 	r.ensureMUR = true
+	return r
+}
+
+func (r *signupRequest) LastCluster(lastCluster *wait.MemberAwaitility) SignupRequest {
+	r.lastCluster = lastCluster
 	return r
 }
 
@@ -181,11 +190,9 @@ func (r *signupRequest) Execute() SignupRequest {
 	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.ID.String())
 	require.NoError(r.t, err)
 
-	if r.targetCluster != nil {
-		if hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
-			require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
-				"cannot specify a target cluster for new signup requests while automatic approval is enabled")
-		}
+	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
+		require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
+			"cannot specify a target cluster for new signup requests while automatic approval is enabled")
 	}
 
 	if r.manuallyApprove || r.targetCluster != nil || (r.verificationRequired != states.VerificationRequired(userSignup)) {
@@ -204,7 +211,19 @@ func (r *signupRequest) Execute() SignupRequest {
 			}
 		}
 
-		userSignup, err = hostAwait.UpdateUserSignupSpec(userSignup.Name, doUpdate)
+		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
+		require.NoError(r.t, err)
+	}
+
+	if r.lastCluster != nil {
+		doUpdate := func(instance *toolchainv1alpha1.UserSignup) {
+			instance.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey] = r.lastCluster.ClusterName
+			if r.targetCluster != nil {
+				instance.Spec.TargetCluster = r.targetCluster.ClusterName
+			}
+		}
+
+		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
 		require.NoError(r.t, err)
 	}
 

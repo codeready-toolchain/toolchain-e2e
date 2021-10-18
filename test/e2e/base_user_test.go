@@ -54,7 +54,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.B
 
 func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
 	hostAwait := s.Host()
-	userSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+	userSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivated(us, true)
 	})
 	require.NoError(s.T(), err)
@@ -94,7 +94,7 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1
 	}, userSignup)
 	require.NoError(s.T(), err)
 
-	userSignup, err = hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivating(us, false)
 		states.SetDeactivated(us, false)
 		states.SetApproved(us, true)

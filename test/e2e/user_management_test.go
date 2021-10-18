@@ -95,7 +95,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Execute().Resources()
 
 		// Delete the user's email and set them to deactivated
-		userSignup, err := hostAwait.UpdateUserSignupSpec(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
+		userSignup, err := hostAwait.UpdateUserSignup(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
 			delete(us.Annotations, toolchainv1alpha1.UserSignupUserEmailAnnotationKey)
 			states.SetDeactivated(us, true)
 		})
