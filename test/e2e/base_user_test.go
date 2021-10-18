@@ -52,7 +52,7 @@ func newBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.B
 	}
 }
 
-func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
+func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup) *toolchainv1alpha1.UserSignup {
 	hostAwait := s.Host()
 	userSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivated(us, true)
@@ -60,7 +60,7 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
 
-	err = hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+	err = hostAwait.WaitUntilMasterUserRecordDeleted(userSignup.Status.CompliantUsername)
 	require.NoError(s.T(), err)
 
 	// "deactivated"
@@ -84,9 +84,11 @@ func (s *baseUserIntegrationTest) deactivateAndCheckUser(userSignup *toolchainv1
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(s.T(), err)
 	require.True(s.T(), states.Deactivated(userSignup), "usersignup should be deactivated")
+
+	return userSignup
 }
 
-func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
+func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1alpha1.UserSignup) *toolchainv1alpha1.UserSignup {
 	hostAwait := s.Host()
 	err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{
 		Namespace: userSignup.Namespace,
@@ -102,12 +104,14 @@ func (s *baseUserIntegrationTest) reactivateAndCheckUser(userSignup *toolchainv1
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' reactivated", userSignup.Name)
 
-	_, err = hostAwait.WaitForMasterUserRecord(mur.Name)
-	require.NoError(s.T(), err)
-
 	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)
 	require.False(s.T(), states.Deactivated(userSignup), "usersignup should not be deactivated")
+
+	_, err = hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
+	require.NoError(s.T(), err)
+
+	return userSignup
 }

@@ -470,6 +470,41 @@ func (s *userSignupIntegrationTest) TestReturningUserProvisionedToLastCluster() 
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
 	memberAwait2 := s.Member2()
+
+	s.T().Run("test a single user activated then deactivated then reactivated and verify provisioned to same cluster both times", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
+
+		// when
+		userSignup, _ := s.newSignupRequest().
+			Username("multimember-1").
+			Email("multi1@redhat.com").
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute().Resources()
+
+		// then
+		// Confirm the MUR was created and target cluster was set
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+
+		s.T().Run("user activated -> deactivated -> reactivated", func(t *testing.T) {
+			// given
+			mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+			require.NoError(t, err)
+			firstSignupMember := GetMurTargetMember(t, s.Awaitilities, mur)
+
+			// when
+			s.deactivateAndCheckUser(userSignup)
+			userSignup = s.reactivateAndCheckUser(userSignup)
+			mur2, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+
+			// then
+			require.NoError(t, err)
+			secondSignupMember := GetMurTargetMember(t, s.Awaitilities, mur2)
+			require.Equal(t, firstSignupMember.ClusterName, secondSignupMember.ClusterName)
+		})
+	})
+
 	s.T().Run("test returning users provisioned to same cluster as last time", func(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
