@@ -54,7 +54,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 
 		// User on member cluster 1
-		userSignupMember1, murMember1 := s.newSignupRequest().
+		userSignupMember1, _ := s.newSignupRequest().
 			Username("usertodeactivate").
 			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
@@ -64,7 +64,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Execute().Resources()
 
 		// User on member cluster 2
-		userSignupMember2, murMember2 := s.newSignupRequest().
+		userSignupMember2, _ := s.newSignupRequest().
 			Username("usertodeactivate2").
 			Email("usertodeactivate2@example.com").
 			ManuallyApprove().
@@ -73,12 +73,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
-		s.deactivateAndCheckUser(userSignupMember1, murMember1)
-		s.deactivateAndCheckUser(userSignupMember2, murMember2)
+		s.deactivateAndCheckUser(userSignupMember1)
+		s.deactivateAndCheckUser(userSignupMember2)
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-			s.reactivateAndCheckUser(userSignupMember1, murMember1)
-			s.reactivateAndCheckUser(userSignupMember2, murMember2)
+			s.reactivateAndCheckUser(userSignupMember1)
+			s.reactivateAndCheckUser(userSignupMember2)
 		})
 	})
 
