@@ -477,8 +477,8 @@ func (s *userSignupIntegrationTest) TestReturningUserProvisionedToLastCluster() 
 
 		// when
 		userSignup, _ := s.newSignupRequest().
-			Username("multimember-1").
-			Email("multi1@redhat.com").
+			Username("returninguser").
+			Email("returninguser@redhat.com").
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
