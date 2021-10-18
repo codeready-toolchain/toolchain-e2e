@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -184,6 +185,37 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyStatus(t, hostAwait, "cookie", 3)
 }
 
+func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
+		userSignup, _ := NewSignupRequest(t, awaitilities).
+			Username("promoteuser").
+			Email("promoteuser@redhat.com").
+			ManuallyApprove().
+			TargetCluster(awaitilities.Member1()).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+
+		// Set the deactivating state on the UserSignup
+		updatedUserSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivating(us, true)
+		})
+		require.NoError(t, err)
+
+		// Move the user to the new tier
+		_ = MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+
+		// Ensure the deactivating state is reset after promotion
+		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
+		require.NoError(t, err)
+		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced")
+	})
+}
+
 // setupAccounts takes care of:
 // 1. creating a new tier with the TemplateRefs of the "base" tier.
 // 2. creating 10 users (signups, MURs, etc.)
@@ -211,7 +243,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt st
 	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {
-		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), *tier)
+		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), tier.Name)
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}

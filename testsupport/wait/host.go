@@ -448,7 +448,7 @@ func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCrite
 }
 
 // UntilUserSignupHasStateLabel returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has toolchain.dev.openshift.com/state equal to the given value
+// UserAccount has toolchain.dev.openshift.com/state equal to the given value
 func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
