@@ -251,6 +251,7 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+		// given
 		laraSignUp, _ := NewSignupRequest(t, awaitilities).
 			Username("laracroft").
 			Email("laracroft@redhat.com").
@@ -264,42 +265,36 @@ func TestE2EFlow(t *testing.T) {
 
 		laraUserName := "laracroft"
 		userNamespace := "laracroft-dev"
-		podName := "test-useraccount-delete-1"
+		cmName := "test-useraccount-delete-1"
 
-		//Create a pod with finalizer in user's namespace, which will block the deletion of namespace.
-		memberPod := corev1.Pod{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Pod",
-				APIVersion: "v1",
-			},
+		// Create a configmap with finalizer in user's namespace, which will block the deletion of namespace.
+		cm := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      podName,
+				Name:      cmName,
 				Namespace: userNamespace,
 				Finalizers: []string{
 					"test/finalizer.toolchain.e2e.tests",
 				},
 			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{
-					Name:  "test",
-					Image: "busybox",
-				}},
+			Data: map[string]string{
+				"video_game": "Tomb Raider",
 			},
 		}
-		err = memberAwait.Client.Create(context.TODO(), &memberPod)
+		err = memberAwait.Client.Create(context.TODO(), cm)
 		require.NoError(t, err)
-		pod, err := memberAwait.WaitForPod(userNamespace, podName)
+		cm, err := memberAwait.WaitForConfigMap(userNamespace, cmName)
 		require.NoError(t, err)
-		require.NotEmpty(t, pod)
+		require.NotEmpty(t, cm)
 
 		deletePolicy := metav1.DeletePropagationForeground
 		deleteOpts := &client.DeleteOptions{
 			PropagationPolicy: &deletePolicy,
 		}
-		// now delete userSignup but nothing should be deleted yet
+		// when deleting the userSignup
 		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
 		require.NoError(t, err)
 
+		// then nothing should be deleted yet (because of the CM with its own finalizer)
 		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
@@ -324,26 +319,29 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, userSignup)
 
-		// now remove finalizer from pod and check all are deleted
-		_, err = memberAwait.UpdatePod(pod.Namespace, podName, func(pod *corev1.Pod) {
-			pod.Finalizers = nil
+		t.Run("remove finalizer", func(t *testing.T) {
+			// when removing the finalizer from the CM
+			_, err = memberAwait.UpdateConfigMap(cm.Namespace, cmName, func(cm *corev1.ConfigMap) {
+				cm.Finalizers = nil
+			})
+			require.NoError(t, err)
+
+			// then check all are deleted
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
+			assert.NoError(t, err, "NSTemplateSet is not deleted")
+
+			err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+			require.NoError(t, err)
+
+			err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
+			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
+
+			err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
+			require.NoError(t, err)
+
+			err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+			require.NoError(t, err)
 		})
-		require.NoError(t, err)
-
-		err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
-		assert.NoError(t, err, "laracroft-dev namespace is not deleted")
-
-		err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
-		assert.NoError(t, err, "NSTemplateSet is not deleted")
-
-		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
-		require.NoError(t, err)
-
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-		require.NoError(t, err)
-
-		err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
-		require.NoError(t, err)
 
 	})
 
