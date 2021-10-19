@@ -123,7 +123,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, *baseDeactivationDisabledTier).Spec.UserAccounts[0].SyncIndex
+		murSyncIndex := MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name).Spec.UserAccounts[0].SyncIndex
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
 			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
