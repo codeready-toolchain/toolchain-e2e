@@ -218,9 +218,6 @@ func (r *signupRequest) Execute() SignupRequest {
 	if r.lastCluster != nil {
 		doUpdate := func(instance *toolchainv1alpha1.UserSignup) {
 			instance.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey] = r.lastCluster.ClusterName
-			if r.targetCluster != nil {
-				instance.Spec.TargetCluster = r.targetCluster.ClusterName
-			}
 		}
 
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
