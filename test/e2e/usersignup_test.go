@@ -471,77 +471,43 @@ func (s *userSignupIntegrationTest) TestReturningUserProvisionedToLastCluster() 
 	memberAwait := s.Member1()
 	memberAwait2 := s.Member2()
 
-	s.T().Run("test a single user activated then deactivated then reactivated and verify provisioned to same cluster both times", func(t *testing.T) {
+	s.T().Run("test returning user provisioned to same cluster", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
+		clustersToTest := []*wait.MemberAwaitility{memberAwait, memberAwait2}
 
-		// when
-		userSignup, _ := s.newSignupRequest().
-			Username("returninguser").
-			Email("returninguser@redhat.com").
-			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
-			Execute().Resources()
-
-		// then
-		// Confirm the MUR was created and target cluster was set
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
-
-		s.T().Run("user activated -> deactivated -> reactivated", func(t *testing.T) {
-			// given
-			mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
-			require.NoError(t, err)
-			firstSignupMember := GetMurTargetMember(t, s.Awaitilities, mur)
-
+		for i, cluster := range clustersToTest {
 			// when
-			s.deactivateAndCheckUser(userSignup)
-			userSignup = s.reactivateAndCheckUser(userSignup)
-			mur2, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+			s.T().Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", cluster.ClusterName), func(t *testing.T) {
+				// given
+				userSignup, mur := s.newSignupRequest().
+					Username(fmt.Sprintf("returninguser%d", i)).
+					Email(fmt.Sprintf("returninguser%d@redhat.com", i)).
+					EnsureMUR().
+					ManuallyApprove().
+					TargetCluster(cluster). // use TargetCluster initially to force user to provision to the expected cluster
+					RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+					Execute().Resources()
 
-			// then
-			require.NoError(t, err)
-			secondSignupMember := GetMurTargetMember(t, s.Awaitilities, mur2)
-			require.Equal(t, firstSignupMember.ClusterName, secondSignupMember.ClusterName)
-		})
-	})
+				firstSignupMember := GetMurTargetMember(t, s.Awaitilities, mur)
 
-	s.T().Run("test returning users provisioned to same cluster as last time", func(t *testing.T) {
-		// given
-		var memberLimits []testconfig.PerMemberClusterOptionInt
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
-		require.NoError(t, err)
-		for _, m := range toolchainStatus.Status.Members {
-			if memberAwait.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait.ClusterName, m.UserAccountCount+1))
-			} else if memberAwait2.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.UserAccountCount+1))
-			}
+				// when
+				s.deactivateAndCheckUser(userSignup)
+				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
+				userSignup, err := s.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+					us.Spec.TargetCluster = ""
+				})
+				require.NoError(t, err)
+
+				userSignup = s.reactivateAndCheckUser(userSignup)
+				mur2, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+
+				// then
+				require.NoError(t, err)
+				secondSignupMember := GetMurTargetMember(t, s.Awaitilities, mur2)
+				require.Equal(t, firstSignupMember.ClusterName, secondSignupMember.ClusterName)
+			})
 		}
-		require.Len(s.T(), memberLimits, 2)
-
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(0, memberLimits...))
-
-		// when
-		signup1, _ := s.newSignupRequest().
-			Username("multimember-1").
-			Email("multi1@redhat.com").
-			EnsureMUR().
-			LastCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
-			Execute().Resources()
-
-		signup2, _ := s.newSignupRequest().
-			Username("multimember-2").
-			Email("multi2@redhat.com").
-			EnsureMUR().
-			LastCluster(memberAwait2).
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
-			Execute().Resources()
-
-		// then
-		// Confirm the MUR was created and target cluster was set
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, signup1, "base")
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, signup2, "base")
 	})
 }
 
