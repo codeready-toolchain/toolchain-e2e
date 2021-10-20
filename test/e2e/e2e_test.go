@@ -327,14 +327,14 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// then check all are deleted
+			err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
+			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
+
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
 			assert.NoError(t, err, "NSTemplateSet is not deleted")
 
 			err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
 			require.NoError(t, err)
-
-			err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
-			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
 
 			err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
 			require.NoError(t, err)
