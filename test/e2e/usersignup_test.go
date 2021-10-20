@@ -466,51 +466,6 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	}
 }
 
-func (s *userSignupIntegrationTest) TestReturningUserProvisionedToLastCluster() {
-	hostAwait := s.Host()
-	memberAwait := s.Member1()
-	memberAwait2 := s.Member2()
-
-	s.T().Run("test returning user provisioned to same cluster", func(t *testing.T) {
-		// given
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
-		clustersToTest := []*wait.MemberAwaitility{memberAwait, memberAwait2}
-
-		for i, cluster := range clustersToTest {
-			// when
-			s.T().Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", cluster.ClusterName), func(t *testing.T) {
-				// given
-				userSignup, mur := s.newSignupRequest().
-					Username(fmt.Sprintf("returninguser%d", i)).
-					Email(fmt.Sprintf("returninguser%d@redhat.com", i)).
-					EnsureMUR().
-					ManuallyApprove().
-					TargetCluster(cluster). // use TargetCluster initially to force user to provision to the expected cluster
-					RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-					Execute().Resources()
-
-				firstSignupMember := GetMurTargetMember(t, s.Awaitilities, mur)
-
-				// when
-				s.deactivateAndCheckUser(userSignup)
-				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
-				userSignup, err := s.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-					us.Spec.TargetCluster = ""
-				})
-				require.NoError(t, err)
-
-				userSignup = s.reactivateAndCheckUser(userSignup)
-				mur2, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
-
-				// then
-				require.NoError(t, err)
-				secondSignupMember := GetMurTargetMember(t, s.Awaitilities, mur2)
-				require.Equal(t, firstSignupMember.ClusterName, secondSignupMember.ClusterName)
-			})
-		}
-	})
-}
-
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()

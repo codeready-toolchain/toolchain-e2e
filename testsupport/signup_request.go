@@ -43,9 +43,6 @@ type SignupRequest interface {
 	// once, and must be called after all other functions EXCEPT for Resources()
 	Execute() SignupRequest
 
-	// LastCluster may be provided in order to specify the user's target cluster
-	LastCluster(lastCluster *wait.MemberAwaitility) SignupRequest
-
 	// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
 	ManuallyApprove() SignupRequest
 
@@ -99,7 +96,6 @@ type signupRequest struct {
 	username             string
 	email                string
 	requiredHTTPStatus   int
-	lastCluster          *wait.MemberAwaitility
 	targetCluster        *wait.MemberAwaitility
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
@@ -128,11 +124,6 @@ func (r *signupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1
 
 func (r *signupRequest) EnsureMUR() SignupRequest {
 	r.ensureMUR = true
-	return r
-}
-
-func (r *signupRequest) LastCluster(lastCluster *wait.MemberAwaitility) SignupRequest {
-	r.lastCluster = lastCluster
 	return r
 }
 
@@ -209,15 +200,6 @@ func (r *signupRequest) Execute() SignupRequest {
 			if r.targetCluster != nil {
 				instance.Spec.TargetCluster = r.targetCluster.ClusterName
 			}
-		}
-
-		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
-		require.NoError(r.t, err)
-	}
-
-	if r.lastCluster != nil {
-		doUpdate := func(instance *toolchainv1alpha1.UserSignup) {
-			instance.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey] = r.lastCluster.ClusterName
 		}
 
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
