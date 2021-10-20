@@ -593,20 +593,18 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 		clustersToTest := []*wait.MemberAwaitility{memberAwait, memberAwait2}
 
-		for i, cluster := range clustersToTest {
+		for i, initialTargetCluster := range clustersToTest {
 			// when
-			s.T().Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", cluster.ClusterName), func(t *testing.T) {
+			s.T().Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", initialTargetCluster.ClusterName), func(t *testing.T) {
 				// given
-				userSignup, mur := s.newSignupRequest().
+				userSignup, _ := s.newSignupRequest().
 					Username(fmt.Sprintf("returninguser%d", i)).
 					Email(fmt.Sprintf("returninguser%d@redhat.com", i)).
 					EnsureMUR().
 					ManuallyApprove().
-					TargetCluster(cluster). // use TargetCluster initially to force user to provision to the expected cluster
+					TargetCluster(initialTargetCluster). // use TargetCluster initially to force user to provision to the expected cluster
 					RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 					Execute().Resources()
-
-				firstSignupMember := GetMurTargetMember(t, s.Awaitilities, mur)
 
 				// when
 				s.deactivateAndCheckUser(userSignup)
@@ -621,8 +619,8 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 
 				// then
 				require.NoError(t, err)
-				secondSignupMember := GetMurTargetMember(t, s.Awaitilities, mur2)
-				require.Equal(t, firstSignupMember.ClusterName, secondSignupMember.ClusterName)
+				secondSignupCluster := GetMurTargetMember(t, s.Awaitilities, mur2)
+				require.Equal(t, initialTargetCluster.ClusterName, secondSignupCluster.ClusterName)
 			})
 		}
 	})
