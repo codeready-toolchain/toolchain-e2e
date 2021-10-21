@@ -119,9 +119,24 @@ func TestE2EFlow(t *testing.T) {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
+	originalSubJohnName := "originalsubjohn"
+	originalSubJohnClaim := "originalsub:john"
+	originalSubJohnSignup, _ := NewSignupRequest(t, awaitilities).
+		Username(originalSubJohnName).
+		OriginalSub(originalSubJohnClaim).
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
+	// Confirm the originalSub property has been set during signup
+	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.OriginalSub)
+
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "base")
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)

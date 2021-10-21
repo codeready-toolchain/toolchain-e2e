@@ -35,6 +35,9 @@ type SignupRequest interface {
 	// Email specifies the email address to use for the new UserSignup
 	Email(email string) SignupRequest
 
+	// OriginalSub specifies the original sub value which will be used for migrating the user to a new IdP client
+	OriginalSub(originalSub string) SignupRequest
+
 	// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
 	// the Resources() function to return a non-nil value for its second return parameter.
 	EnsureMUR() SignupRequest
@@ -100,6 +103,7 @@ type signupRequest struct {
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
 	mur                  *toolchainv1alpha1.MasterUserRecord
+	originalSub          string
 }
 
 func (r *signupRequest) IdentityID(id uuid.UUID) SignupRequest {
@@ -115,6 +119,11 @@ func (r *signupRequest) Username(username string) SignupRequest {
 
 func (r *signupRequest) Email(email string) SignupRequest {
 	r.email = email
+	return r
+}
+
+func (r *signupRequest) OriginalSub(originalSub string) SignupRequest {
+	r.originalSub = originalSub
 	return r
 }
 
@@ -169,8 +178,11 @@ func (r *signupRequest) Execute() SignupRequest {
 		Username: r.username,
 	}
 
-	emailClaim0 := authsupport.WithEmailClaim(r.email)
-	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, emailClaim0)
+	claims := []authsupport.ExtraClaim{authsupport.WithEmailClaim(r.email)}
+	if r.originalSub != "" {
+		claims = append(claims, authsupport.WithOriginalSubClaim(r.originalSub))
+	}
+	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, claims...)
 	require.NoError(r.t, err)
 
 	// Call the signup endpoint

@@ -1,6 +1,8 @@
 package testsupport
 
 import (
+	"encoding/base64"
+	"fmt"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -51,6 +53,20 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Verify provisioned Identity
 	_, err = memberAwait.WaitForIdentity(ToIdentityName(userAccount.Spec.UserID))
 	assert.NoError(t, err)
+
+	// Verify second (and third if relevant) identities also
+	if userAccount.Spec.OriginalSub != "" {
+		// Verify
+		encodedName := fmt.Sprintf("b64:%s", base64.StdEncoding.EncodeToString([]byte(userAccount.Spec.OriginalSub)))
+		_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName))
+		assert.NoError(t, err)
+
+		unpaddedName := fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.OriginalSub)))
+		if unpaddedName != encodedName {
+			_, err = memberAwait.WaitForIdentity(ToIdentityName(unpaddedName))
+			assert.NoError(t, err)
+		}
+	}
 
 	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tier)
 
