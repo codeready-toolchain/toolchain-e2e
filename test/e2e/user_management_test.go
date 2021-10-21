@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -54,7 +55,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 
 		// User on member cluster 1
-		userSignupMember1, murMember1 := s.newSignupRequest().
+		userSignupMember1, _ := s.newSignupRequest().
 			Username("usertodeactivate").
 			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
@@ -64,7 +65,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Execute().Resources()
 
 		// User on member cluster 2
-		userSignupMember2, murMember2 := s.newSignupRequest().
+		userSignupMember2, _ := s.newSignupRequest().
 			Username("usertodeactivate2").
 			Email("usertodeactivate2@example.com").
 			ManuallyApprove().
@@ -73,12 +74,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
-		s.deactivateAndCheckUser(userSignupMember1, murMember1)
-		s.deactivateAndCheckUser(userSignupMember2, murMember2)
+		s.deactivateAndCheckUser(userSignupMember1)
+		s.deactivateAndCheckUser(userSignupMember2)
 
 		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
-			s.reactivateAndCheckUser(userSignupMember1, murMember1)
-			s.reactivateAndCheckUser(userSignupMember2, murMember2)
+			s.reactivateAndCheckUser(userSignupMember1)
+			s.reactivateAndCheckUser(userSignupMember2)
 		})
 	})
 
@@ -95,7 +96,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Execute().Resources()
 
 		// Delete the user's email and set them to deactivated
-		userSignup, err := hostAwait.UpdateUserSignupSpec(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
+		userSignup, err := hostAwait.UpdateUserSignup(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
 			delete(us.Annotations, toolchainv1alpha1.UserSignupUserEmailAnnotationKey)
 			states.SetDeactivated(us, true)
 		})
@@ -579,5 +580,48 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		require.NoError(s.T(), err)
 
 		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+	})
+}
+
+func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
+	hostAwait := s.Host()
+	memberAwait := s.Member1()
+	memberAwait2 := s.Member2()
+
+	s.T().Run("test returning user provisioned to same cluster", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
+		clustersToTest := []*wait.MemberAwaitility{memberAwait, memberAwait2}
+
+		for i, initialTargetCluster := range clustersToTest {
+			// when
+			s.T().Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", initialTargetCluster.ClusterName), func(t *testing.T) {
+				// given
+				userSignup, _ := s.newSignupRequest().
+					Username(fmt.Sprintf("returninguser%d", i)).
+					Email(fmt.Sprintf("returninguser%d@redhat.com", i)).
+					EnsureMUR().
+					ManuallyApprove().
+					TargetCluster(initialTargetCluster). // use TargetCluster initially to force user to provision to the expected cluster
+					RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+					Execute().Resources()
+
+				// when
+				s.deactivateAndCheckUser(userSignup)
+				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
+				userSignup, err := s.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+					us.Spec.TargetCluster = ""
+				})
+				require.NoError(t, err)
+
+				userSignup = s.reactivateAndCheckUser(userSignup)
+				mur2, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+
+				// then
+				require.NoError(t, err)
+				secondSignupCluster := GetMurTargetMember(t, s.Awaitilities, mur2)
+				require.Equal(t, initialTargetCluster.ClusterName, secondSignupCluster.ClusterName)
+			})
+		}
 	})
 }

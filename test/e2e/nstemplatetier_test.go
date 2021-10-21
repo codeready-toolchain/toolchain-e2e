@@ -200,7 +200,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 			Resources()
 
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		updatedUserSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivating(us, true)
 		})
 		require.NoError(t, err)
