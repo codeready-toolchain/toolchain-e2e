@@ -1,10 +1,12 @@
 = Dev Sandbox Setup
 
-This document describes how to setup a Dev Sandbox environment that is similar to production and is used as part of an onboarding process for new operators.
+This document describes how to use the setup tool to set up a Dev Sandbox environment that is similar to production and is used as part of an onboarding process for new operators.
 
 == Prereqs
 
-. Provision an OCP cluster on AWS with sufficient resources: 4xlarge master nodes and at least 3 2xlarge worker nodes.
+. Provision the *latest available* GA version of OCP on AWS with sufficient resources: 3 `m5.4xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
++
+The latest version of openshift-install can be downloaded from https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
 +
 For example, if using the openshift-install tool to install OCP on AWS you can create an install-config.yaml file that has the following configuration:
 +
@@ -44,11 +46,11 @@ publish: External
 
 . Install the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.adoc[required tools].
 
-. Install your operator(s)
+. Install the onboarding operator(s) manually. Other operators that have already been onboarded will be installed automatically by the tool.
 
 . Create an OpenShift template file that defines resources for testing the performance of your onboarding operator and any other resources that users typically create when using your operator. A Dev Sandbox template is provided with a default set of resources to help mimic a production environment https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[user-workloads.yaml] and should be used alongside the onboarding operator's template file you create in this step.
 +
-This setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
+The setup tool will automatically create resources on behalf of the users in their `stage` namespaces. The resources are defined in template files and fed to the tool using the `--template` parameter.
 +
 Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
 Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
@@ -65,7 +67,7 @@ Note #2: Only resources that a user has permissions to create will be successful
  ** https://quay.io/repository/<quay-username>/member-operator-bundle?tab=settings
  ** https://quay.io/repository/<quay-username>/member-operator-index?tab=settings
  ** https://quay.io/repository/<quay-username>/registration-service?tab=settings
-* Log in to the target OpenShift 4.7+ cluster with cluster admin privileges using `oc login`
+* Log in to the target OpenShift cluster with cluster admin privileges using `oc login`
 
 == Dev Sandbox Setup
 
@@ -81,7 +83,7 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 ```
 . Populate the cluster with 2000 users and both default and custom resources for all users
 +
-Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 3 separate terminals using a unique username prefix in each terminal.
+Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 2 separate terminals using a unique username prefix in each terminal.
 +
 Terminal 1: +
 `go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cupcake`
@@ -89,9 +91,11 @@ Terminal 1: +
 Terminal 2: +
 `go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cheesecake`
 +
-Note 1: You do not need to add the default template (https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[setup/resources/user-workloads.yaml]), it is automatically added when you run the setup.
+Note 1: You do not need to add the default template (https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[setup/resources/user-workloads.yaml]), it is automatically added when you run the setup. You can control how many users will have the default template applied using the `--default` flag.
 +
-Note 2: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason. Use `go run setup/main.go --help` to see the full set of options. +
+Note 2: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason.
++
+Use `go run setup/main.go --help` to see the full set of options. +
 . Grab some coffee ☕️, populating the cluster with 2000 users can take over 4 hours depending on network latency +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <number_of_users_left_to_create> --custom <number_of_users_left_to_create>`
 
