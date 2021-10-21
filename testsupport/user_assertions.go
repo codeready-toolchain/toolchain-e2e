@@ -41,7 +41,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tier, templateRefs)),
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tier, templateRefs, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
@@ -90,7 +90,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	assert.NoError(t, err)
 }
 
-func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs) toolchainv1alpha1.UserAccountSpec {
+func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs, originalSub string) toolchainv1alpha1.UserAccountSpec {
 	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
 	for _, ref := range templateRefs.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
@@ -115,6 +115,7 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 				ClusterResources: clusterResources,
 			},
 		},
+		OriginalSub: originalSub,
 	}
 }
 
