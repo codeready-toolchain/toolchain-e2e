@@ -28,7 +28,7 @@ import (
 // that represents the current operator that is the target of the e2e test it retrieves namespace names.
 // Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForDeployments(t *testing.T) (*wait.HostAwaitility, *wait.MemberAwaitility, *wait.MemberAwaitility) {
+func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	memberNs := os.Getenv(wait.MemberNsVar)
 	memberNs2 := os.Getenv(wait.MemberNsVar2)
 	hostNs := os.Getenv(wait.HostNsVar)
@@ -89,7 +89,7 @@ func WaitForDeployments(t *testing.T) (*wait.HostAwaitility, *wait.MemberAwaitil
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
-	return hostAwait, memberAwait, member2Await
+	return wait.NewAwaitilities(hostAwait, memberAwait, member2Await)
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {

@@ -17,12 +17,15 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	t.Skip("skipping this test due to flakyness")
 
 	// given
-	hostAwait, memberAwait, member2Await := WaitForDeployments(t)
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(true),
 		testconfig.Metrics().ForceSynchronization(false))
 
-	userSignups := CreateMultipleSignups(t, hostAwait, memberAwait, 2)
+	userSignups := CreateMultipleSignups(t, awaitilities, memberAwait, 2)
 
 	// delete the current toolchainstatus/toolchain-status resource and restart the host-operator pod,
 	// so we can start with accurate counters/metrics and not get flaky because of previous tests,
@@ -34,7 +37,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 	require.NoError(t, err)
 
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, member2Await.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
 
 	t.Run("tampering activation-counter annotations", func(t *testing.T) {
 

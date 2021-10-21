@@ -15,6 +15,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
+	"github.com/ghodss/yaml"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -578,4 +579,20 @@ func (a *Awaitility) Clean() {
 		}))
 	}
 	a.toClean = nil
+}
+
+func (a *Awaitility) listAndPrint(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) {
+	a.T.Logf(a.listAndReturnContent(resourceKind, namespace, list, additionalOptions...))
+}
+
+func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) string {
+	listOptions := additionalOptions
+	if a.Namespace != "" {
+		listOptions = append(additionalOptions, client.InNamespace(namespace))
+	}
+	if err := a.Client.List(context.TODO(), list, listOptions...); err != nil {
+		return fmt.Sprintf("unable to list %s: %s", resourceKind, err)
+	}
+	content, _ := yaml.Marshal(list)
+	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
 }

@@ -6,10 +6,13 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -31,21 +34,22 @@ const (
 
 func TestNSTemplateTiers(t *testing.T) {
 	// given
-	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
-	testingtiers, _ := NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+	testingtiers, _ := NewSignupRequest(t, awaitilities).
 		Username(testingTiersName).
 		ManuallyApprove().
-		TargetCluster(memberAwait).
+		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().
 		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "test", "basedeactivationdisabled", "baseextended", "baseextendedidling", "baselarge", "base"}
+	tiersToCheck := []string{"advanced", "basedeactivationdisabled", "baseextended", "baseextendedidling", "baselarge", "hackathon", "test", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -59,7 +63,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	var changeTierRequestNames []string
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, hostAwait, testingtiers, "base", memberAwait)
+	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "base")
 	for _, tierToCheck := range tiersToCheck {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -86,7 +90,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			require.NoError(t, err)
 			_, err := hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, hostAwait, testingtiers, tierToCheck, memberAwait)
+			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, tierToCheck)
 			changeTierRequestNames = append(changeTierRequestNames, changeTierRequest.Name)
 		})
 	}
@@ -100,7 +104,9 @@ func TestNSTemplateTiers(t *testing.T) {
 
 func TestSetDefaultTier(t *testing.T) {
 	// given
-	hostAwait, memberAwait, memberAwait2 := WaitForDeployments(t)
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
@@ -108,7 +114,7 @@ func TestSetDefaultTier(t *testing.T) {
 
 	t.Run("original default tier", func(t *testing.T) {
 		// Create and approve a new user that should be provisioned to the base tier
-		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		NewSignupRequest(t, awaitilities).
 			Username("defaulttier").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
@@ -121,7 +127,7 @@ func TestSetDefaultTier(t *testing.T) {
 	t.Run("changed default tier configuration", func(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
-		NewSignupRequest(t, hostAwait, memberAwait, memberAwait2).
+		NewSignupRequest(t, awaitilities).
 			Username("defaulttierchanged").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
@@ -139,12 +145,14 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
 	count := 2*MaxPoolSize + 1
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
 
 	// first group of users: the "cheesecake lovers"
-	cheesecakeSyncIndexes := setupAccounts(t, hostAwait, "cheesecake", "cheesecakelover%02d", memberAwait, count)
+	cheesecakeSyncIndexes := setupAccounts(t, awaitilities, "cheesecake", "cheesecakelover%02d", memberAwait, count)
 	// second group of users: the "cookie lovers"
-	cookieSyncIndexes := setupAccounts(t, hostAwait, "cookie", "cookielover%02d", memberAwait, count)
+	cookieSyncIndexes := setupAccounts(t, awaitilities, "cookie", "cookielover%02d", memberAwait, count)
 
 	cheesecakeSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
 	cookieSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
@@ -177,20 +185,52 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyStatus(t, hostAwait, "cookie", 3)
 }
 
+func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
+		userSignup, _ := NewSignupRequest(t, awaitilities).
+			Username("promoteuser").
+			Email("promoteuser@redhat.com").
+			ManuallyApprove().
+			TargetCluster(awaitilities.Member1()).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().
+			Resources()
+
+		// Set the deactivating state on the UserSignup
+		updatedUserSignup, err := hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivating(us, true)
+		})
+		require.NoError(t, err)
+
+		// Move the user to the new tier
+		_ = MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+
+		// Ensure the deactivating state is reset after promotion
+		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
+		require.NoError(t, err)
+		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced")
+	})
+}
+
 // setupAccounts takes care of:
 // 1. creating a new tier with the TemplateRefs of the "base" tier.
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) map[string]string {
+func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) map[string]string {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
+	hostAwait := awaitilities.Host()
 	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
 	// and wait until they are all provisioned by calling EnsureMUR()
 	users := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		users[i], _ = NewSignupRequest(t, hostAwait, targetCluster, nil).
+		users[i], _ = NewSignupRequest(t, awaitilities).
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			EnsureMUR().
@@ -203,7 +243,7 @@ func setupAccounts(t *testing.T, hostAwait *HostAwaitility, tierName, nameFmt st
 	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {
-		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), *tier)
+		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), tier.Name)
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}
@@ -218,10 +258,12 @@ func updateTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName string
 	tier := getTier(t, hostAwait, tierName)
 
 	if aliasTierClusterResources != "" {
-		tier.Spec.ClusterResources = getTier(t, hostAwait, aliasTierClusterResources).Spec.ClusterResources
+		baseTier := getTier(t, hostAwait, aliasTierClusterResources)
+		SetClusterTierTemplateFromTier(t, hostAwait, tier, baseTier)
 	}
 	if aliasTierNamespaces != "" {
-		tier.Spec.Namespaces = getTier(t, hostAwait, aliasTierNamespaces).Spec.Namespaces
+		baseTier := getTier(t, hostAwait, aliasTierNamespaces)
+		SetNamespaceTierTemplatesFromTier(t, hostAwait, tier, baseTier)
 	}
 	err := hostAwait.Client.Update(context.TODO(), tier)
 	require.NoError(t, err)
@@ -253,7 +295,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 
 func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
 	//
-	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(aliasTierClusterResources)
+	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
 
 	// let's wait until all MasterUserRecords have been updated
@@ -296,7 +338,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tierName))
 		require.NoError(t, err)
 		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
 	}
@@ -306,11 +348,19 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 
 func TestTierTemplates(t *testing.T) {
 	// given
-	hostAwait, _, _ := WaitForDeployments(t)
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+
+	selector := labels.NewSelector()
+	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
+	require.NoError(t, err)
+	notCreatedByE2e := client.MatchingLabelsSelector{
+		Selector: selector.Add(*e2eProducer),
+	}
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
-	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
-	// verify that we have 18 tier templates (base: 3, baselarge: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, test: 3)
+	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
+	// verify that we have 24 tier templates (base: 3, baselarge: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, test: 3, hackathon: 3)
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, 21)
+	assert.Len(t, allTiers.Items, 24)
 }

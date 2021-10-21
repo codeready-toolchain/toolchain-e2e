@@ -32,7 +32,7 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 
 	// Verify all namespaces and objects within
 	for _, templateRef := range expectedRevisions.Namespaces {
-		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef)
+		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName)
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
@@ -42,7 +42,7 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 	}
 	if expectedRevisions.ClusterResources != nil {
 		for _, check := range tierChecksClusterResources.GetClusterObjectChecks() {
-			check(t, memberAwait, nsTmplSet.Name)
+			check(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
 		}
 	}
 

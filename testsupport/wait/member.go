@@ -26,7 +26,6 @@ import (
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -72,55 +71,6 @@ func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwait
 	}
 }
 
-func (a *MemberAwaitility) sprintAllResources() string {
-	all, err := a.allResources()
-	buf := &strings.Builder{}
-	if err != nil {
-		buf.WriteString("unable to list other resources in the member namespace:\n")
-		buf.WriteString(err.Error())
-		buf.WriteString("\n")
-	} else {
-		buf.WriteString("other resources in the member namespace:\n")
-		for _, r := range all {
-			y, _ := yaml.Marshal(r)
-			buf.Write(y)
-			buf.WriteString("\n")
-		}
-	}
-	return buf.String()
-}
-
-// list all relevant resources in the member namespace, in case of test failure and for faster troubleshooting.
-func (a *MemberAwaitility) allResources() ([]runtime.Object, error) {
-	all := []runtime.Object{}
-	// useraccounts
-	useraccounts := toolchainv1alpha1.UserAccountList{}
-	if err := a.Client.List(context.TODO(), &useraccounts, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range useraccounts.Items {
-		all = append(all, &i)
-	}
-	// nstemplatesets
-	nstemplatesets := toolchainv1alpha1.NSTemplateSetList{}
-	if err := a.Client.List(context.TODO(), &nstemplatesets, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range nstemplatesets.Items {
-		all = append(all, &i)
-	}
-	// memberstatuses
-	memberstatuses := toolchainv1alpha1.MemberStatusList{}
-	if err := a.Client.List(context.TODO(), &memberstatuses, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range memberstatuses.Items {
-		all = append(all, &i)
-	}
-
-	return all, nil
-}
-
 // UserAccountWaitCriterion a struct to compare with a given UserAccount
 type UserAccountWaitCriterion struct {
 	Match func(*toolchainv1alpha1.UserAccount) bool
@@ -140,6 +90,7 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find UserAccount\n")
+		buf.WriteString(a.listAndReturnContent("UserAccount", a.Namespace, &toolchainv1alpha1.UserAccountList{}))
 	} else {
 		buf.WriteString("failed to find UserAccount with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -155,8 +106,6 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 	a.T.Log(buf.String())
 }
 
@@ -282,6 +231,7 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find NSTemplateSet\n")
+		buf.WriteString(a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
 	} else {
 		buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -297,8 +247,6 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 	a.T.Log(buf.String())
 }
 
@@ -378,22 +326,22 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 }
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*corev1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespace(username, ref, tierName string) (*corev1.Namespace, error) {
 	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", username, ref)
+	_, kind, _, err := Split(ref)
+	if err != nil {
+		return nil, err
+	}
+	labels := map[string]string{
+		"toolchain.dev.openshift.com/owner":       username,
+		"toolchain.dev.openshift.com/templateref": ref,
+		"toolchain.dev.openshift.com/tier":        tierName,
+		"toolchain.dev.openshift.com/type":        kind,
+		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
+	}
 	namespaceList := &corev1.NamespaceList{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		namespaceList = &corev1.NamespaceList{}
-		tier, kind, _, err := Split(ref)
-		if err != nil {
-			return false, err
-		}
-		labels := map[string]string{
-			"toolchain.dev.openshift.com/owner":       username,
-			"toolchain.dev.openshift.com/templateref": ref,
-			"toolchain.dev.openshift.com/tier":        tier,
-			"toolchain.dev.openshift.com/type":        kind,
-			"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
-		}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
 			return false, err
@@ -416,7 +364,11 @@ func (a *MemberAwaitility) WaitForNamespace(username, ref string) (*corev1.Names
 		return ns.Status.Phase == corev1.NamespaceActive, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s'", username, ref)
+		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", username, ref, labels)
+		opts := client.MatchingLabels(map[string]string{
+			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+		})
+		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
 		return nil, err
 	}
 	ns := namespaceList.Items[0]
@@ -564,6 +516,7 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *q
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find ClusterResourceQuota\n")
+		buf.WriteString(a.listAndReturnContent("ClusterResourceQuota", "", &quotav1.ClusterResourceQuotaList{}))
 	} else {
 		buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -579,8 +532,6 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *q
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 	a.T.Log(buf.String())
 }
 
@@ -631,6 +582,8 @@ func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Idler\n")
+		buf.WriteString(a.listAndReturnContent("Idler", "", &toolchainv1alpha1.IdlerList{}))
+		buf.WriteString(a.listAndReturnContent("Idler", "", &toolchainv1alpha1.IdlerList{}))
 	} else {
 		buf.WriteString("failed to find Idler with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -647,8 +600,6 @@ func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 	a.T.Log(buf.String())
 }
 
@@ -661,6 +612,18 @@ func IdlerConditions(expected ...toolchainv1alpha1.Condition) IdlerWaitCriterion
 		},
 		Diff: func(actual *toolchainv1alpha1.Idler) string {
 			return fmt.Sprintf("expected conditions to match: %s", Diff(expected, actual.Status.Conditions))
+		},
+	}
+}
+
+// IdlerHasTimeoutSeconds checks if the Idler has the given timeout set
+func IdlerHasTimeoutSeconds(timeoutSeconds int) IdlerWaitCriterion {
+	return IdlerWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Idler) bool {
+			return int32(timeoutSeconds) == actual.Spec.TimeoutSeconds
+		},
+		Diff: func(actual *toolchainv1alpha1.Idler) string {
+			return fmt.Sprintf("expected Idler timeoutSeconds to be '%d' but it was '%d'", timeoutSeconds, actual.Spec.TimeoutSeconds)
 		},
 	}
 }
@@ -685,10 +648,6 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 		obj := &toolchainv1alpha1.Idler{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				idlerList := &toolchainv1alpha1.IdlerList{}
-				if err := a.Client.List(context.TODO(), idlerList, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
-					return false, err
-				}
 				return false, nil
 			}
 			return false, err
@@ -749,10 +708,11 @@ func matchPodWaitCriterion(actual *corev1.Pod, criteria ...PodWaitCriterion) boo
 	return true
 }
 
-func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, criteria ...PodWaitCriterion) {
+func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, ns string, criteria ...PodWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Pod\n")
+		buf.WriteString(a.listAndReturnContent("Pod", ns, &corev1.PodList{}))
 	} else {
 		buf.WriteString("failed to find Pod with matching criteria:\n")
 		for _, c := range criteria {
@@ -762,8 +722,6 @@ func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, criter
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 	a.T.Log(buf.String())
 }
 
@@ -789,9 +747,32 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printPodWaitCriterionDiffs(pod, criteria...)
+		a.printPodWaitCriterionDiffs(pod, namespace, criteria...)
 	}
 	return pod, err
+}
+
+// WaitForConfigMap waits until a ConfigMap with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForConfigMap(namespace, name string) (*corev1.ConfigMap, error) {
+	a.T.Logf("waiting for ConfigMap '%s' in namespace '%s'", name, namespace)
+	var cm *corev1.ConfigMap
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.ConfigMap{}
+		if err = a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				// loop again
+				return false, nil
+			}
+			// exit
+			return false, err
+		}
+		cm = obj
+		return true, nil
+	})
+	return cm, err
 }
 
 // WaitForPods waits until "n" number of pods exist in the given namespace
@@ -1079,6 +1060,8 @@ func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchain
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find MemberStatus\n")
+		buf.WriteString(a.listAndReturnContent("MemberStatus", "", &toolchainv1alpha1.MemberStatusList{}))
+		buf.WriteString(a.listAndReturnContent("ToolchainCluster", "", &toolchainv1alpha1.ToolchainClusterList{}))
 	} else {
 		buf.WriteString("failed to find MemberStatus with matching criteria:\n")
 		buf.WriteString("----\n")
@@ -1094,8 +1077,6 @@ func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchain
 			}
 		}
 	}
-	// also include other resources relevant in the member namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 	a.T.Log(buf.String())
 }
 
@@ -1451,4 +1432,25 @@ func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(p
 		return true, nil
 	})
 	return m, err
+}
+
+func (a *MemberAwaitility) UpdateConfigMap(namespace, cmName string, modifyCM func(*corev1.ConfigMap)) (*corev1.ConfigMap, error) {
+	var cm *corev1.ConfigMap
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.ConfigMap{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      cmName},
+			obj); err != nil {
+			return true, err
+		}
+		modifyCM(obj)
+		if err := a.Client.Update(context.TODO(), obj); err != nil {
+			a.T.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
+			return false, nil
+		}
+		cm = obj
+		return true, nil
+	})
+	return cm, err
 }

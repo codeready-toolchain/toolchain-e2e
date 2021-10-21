@@ -32,7 +32,9 @@ func TestPerformance(t *testing.T) {
 	logger, out, err := initLogger()
 	require.NoError(t, err)
 	defer out.Close()
-	hostAwait, memberAwait, _ := WaitForDeployments(t)
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
 
@@ -165,7 +167,7 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 				UntilUserAccountHasConditions(Provisioned()))
 			require.NoError(t, err)
 			for _, templateRef := range userAccount.Spec.NSTemplateSet.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(mur.Name, templateRef.TemplateRef)
+				ns, err := memberAwait.WaitForNamespace(mur.Name, templateRef.TemplateRef, userAccount.Spec.NSTemplateSet.TierName)
 				require.NoError(t, err)
 				if ns.Labels["toolchain.dev.openshift.com/type"] != "stage" {
 					// skip pod creation if the namespace is not "stage", otherwise, we may run out of capacity of pods on the nodes
