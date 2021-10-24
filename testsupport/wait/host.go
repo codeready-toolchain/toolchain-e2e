@@ -211,7 +211,7 @@ func (a *HostAwaitility) UpdateMasterUserRecord(status bool, murName string, mod
 // UpdateUserSignup tries to update the Spec of the given UserSignup
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated UserSignup
-func (a *HostAwaitility) UpdateUserSignupSpec(userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
+func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshUserSignup := &toolchainv1alpha1.UserSignup{}

@@ -59,7 +59,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 
 	// when deactivating the users
 	for username, usersignup := range usersignups {
-		_, err := hostAwait.UpdateUserSignupSpec(usersignup.Name, func(usersignup *toolchainv1alpha1.UserSignup) {
+		_, err := hostAwait.UpdateUserSignup(usersignup.Name, func(usersignup *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivated(usersignup, true)
 		})
 		require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
-			_, err := hostAwait.UpdateUserSignupSpec(usersignups[username].Name, func(usersignup *toolchainv1alpha1.UserSignup) {
+			_, err := hostAwait.UpdateUserSignup(usersignups[username].Name, func(usersignup *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(usersignup, true)
 			})
 			require.NoError(t, err)
