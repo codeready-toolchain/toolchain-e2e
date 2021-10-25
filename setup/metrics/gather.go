@@ -18,6 +18,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	OpenshiftMonitoringNS = "openshift-monitoring"
+	PrometheusRouteName   = "prometheus-k8s"
+
+	OLMOperatorNamespace = "openshift-operator-lifecycle-manager"
+	OLMOperatorWorkload  = "olm-operator"
+
+	OSAPIServerNamespace = "openshift-apiserver"
+	OSAPIServerWorkload  = "apiserver"
+)
+
 var (
 	k8sClient        client.Client
 	queryInterval    time.Duration
@@ -47,8 +58,10 @@ func Init(t terminal.Terminal, cl client.Client, token string, interval time.Dur
 		queries.QueryClusterCPUUtilisation(),
 		queries.QueryClusterMemoryUtilisation(),
 		queries.QueryEtcdMemoryUsage(),
-		queries.QueryWorkloadCPUUsage(cfg.OLMOperatorNamespace, cfg.OLMOperatorWorkload),
-		queries.QueryWorkloadMemoryUsage(cfg.OLMOperatorNamespace, cfg.OLMOperatorWorkload),
+		queries.QueryWorkloadCPUUsage(OLMOperatorNamespace, OLMOperatorWorkload),
+		queries.QueryWorkloadMemoryUsage(OLMOperatorNamespace, OLMOperatorWorkload),
+		queries.QueryWorkloadCPUUsage(OSAPIServerNamespace, OSAPIServerWorkload),
+		queries.QueryWorkloadMemoryUsage(OSAPIServerNamespace, OSAPIServerWorkload),
 		queries.QueryWorkloadCPUUsage(cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
 		queries.QueryWorkloadMemoryUsage(cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
 		queries.QueryWorkloadCPUUsage(cfg.MemberOperatorNamespace, cfg.MemberOperatorWorkload),
@@ -95,8 +108,8 @@ func StartGathering() chan struct{} {
 func getPrometheusEndpoint(client client.Client) (string, error) {
 	prometheusRoute := routev1.Route{}
 	if err := client.Get(context.TODO(), types.NamespacedName{
-		Namespace: cfg.OpenshiftMonitoringNS,
-		Name:      cfg.PrometheusRouteName,
+		Namespace: OpenshiftMonitoringNS,
+		Name:      PrometheusRouteName,
 	}, &prometheusRoute); err != nil {
 		return "", err
 	}
