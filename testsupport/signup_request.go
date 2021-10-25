@@ -181,11 +181,9 @@ func (r *signupRequest) Execute() SignupRequest {
 	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.ID.String())
 	require.NoError(r.t, err)
 
-	if r.targetCluster != nil {
-		if hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
-			require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
-				"cannot specify a target cluster for new signup requests while automatic approval is enabled")
-		}
+	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
+		require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
+			"cannot specify a target cluster for new signup requests while automatic approval is enabled")
 	}
 
 	if r.manuallyApprove || r.targetCluster != nil || (r.verificationRequired != states.VerificationRequired(userSignup)) {
@@ -204,7 +202,7 @@ func (r *signupRequest) Execute() SignupRequest {
 			}
 		}
 
-		userSignup, err = hostAwait.UpdateUserSignupSpec(userSignup.Name, doUpdate)
+		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
 		require.NoError(r.t, err)
 	}
 

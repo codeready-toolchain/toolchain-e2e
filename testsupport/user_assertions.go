@@ -34,7 +34,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 
-	memberAwait := getMurTargetMember(t, awaitilities, mur)
+	memberAwait := GetMurTargetMember(t, awaitilities, mur)
 
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
@@ -43,6 +43,11 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
+
+	// Verify last target cluster annotation is set
+	lastCluster, foundLastCluster := userSignup.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey]
+	require.True(t, foundLastCluster)
+	require.Equal(t, memberAwait.ClusterName, lastCluster)
 
 	// Verify provisioned User
 	_, err = memberAwait.WaitForUser(userAccount.Name)
@@ -102,7 +107,7 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 	}
 }
 
-func getMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord) *wait.MemberAwaitility {
+func GetMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord) *wait.MemberAwaitility {
 	for _, member := range awaitilities.AllMembers() {
 		for _, ua := range mur.Spec.UserAccounts {
 			if ua.TargetCluster == member.ClusterName {
