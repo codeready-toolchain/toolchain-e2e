@@ -57,6 +57,7 @@ func Init(t terminal.Terminal, cl client.Client, token string, interval time.Dur
 	mqueries = append(mqueries,
 		queries.QueryClusterCPUUtilisation(),
 		queries.QueryClusterMemoryUtilisation(),
+		queries.QueryNodeMemoryUtilisation(),
 		queries.QueryEtcdMemoryUsage(),
 		queries.QueryWorkloadCPUUsage(OLMOperatorNamespace, OLMOperatorWorkload),
 		queries.QueryWorkloadMemoryUsage(OLMOperatorNamespace, OLMOperatorWorkload),
@@ -122,6 +123,6 @@ func PrintResults() {
 		return
 	}
 	for _, q := range mqueries {
-		term.Infof("%s: %s", q.Name(), q.Result())
+		term.Infof(q.Result())
 	}
 }
