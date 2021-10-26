@@ -19,6 +19,8 @@ type baseQuery struct {
 	name        string
 	query       string
 	sampleCount int
+	max         float64
+	sum         float64
 }
 
 func (b baseQuery) Name() string {
@@ -43,61 +45,38 @@ func (b *baseQuery) DoQuery(apiClient prometheus.API) (float64, prometheus.Warni
 
 	datapoint := vectorSum / float64(len(vector))
 
+	b.max = max(b.max, datapoint)
+	b.sum += datapoint
+	b.sampleCount++
+
 	return datapoint, warnings, err
 }
 
 type utilizationQuery struct {
 	baseQuery
-	max float64
-	sum float64
-}
-
-func (q *utilizationQuery) DoQuery(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-	datapoint, warnings, err := q.baseQuery.DoQuery(apiClient)
-	q.max = max(q.max, datapoint)
-	q.sum += datapoint
-	q.sampleCount++
-	return datapoint, warnings, err
 }
 
 func (q *utilizationQuery) Result() string {
 	avg := q.sum / float64(q.sampleCount)
-	return fmt.Sprintf("Average %s: %s\nMax %s: %s", q.name, percentage(avg), q.name, percentage(q.max))
+	return fmt.Sprintf("Average %s: %.2f", q.name, avg*100) + " %%\n" + fmt.Sprintf("Max %s: %.2f", q.name, q.max*100) + " %%"
 }
 
 type memoryQuery struct {
 	baseQuery
-	lastValue float64
-}
-
-func (q *memoryQuery) DoQuery(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-	datapoint, warnings, err := q.baseQuery.DoQuery(apiClient)
-	q.lastValue = datapoint
-	q.sampleCount++
-
-	return datapoint, warnings, err
 }
 
 func (q *memoryQuery) Result() string {
-	return bytesToMBString(q.lastValue)
+	avg := q.sum / float64(q.sampleCount)
+	return fmt.Sprintf("Average %s: %s\nMax %s: %s", q.name, bytesToMBString(avg), q.name, bytesToMBString(q.max))
 }
 
 type cpuQuery struct {
 	baseQuery
-	sum float64
-}
-
-func (q *cpuQuery) DoQuery(apiClient prometheus.API) (float64, prometheus.Warnings, error) {
-	datapoint, warnings, err := q.baseQuery.DoQuery(apiClient)
-	q.sum += datapoint
-	q.sampleCount++
-
-	return datapoint, warnings, err
 }
 
 func (q *cpuQuery) Result() string {
-	result := q.sum / float64(q.sampleCount)
-	return simple(result)
+	avg := q.sum / float64(q.sampleCount)
+	return fmt.Sprintf("Average %s: %s\nMax %s: %s", q.name, simple(avg), q.name, simple(q.max))
 }
 
 func max(current, newVal float64) float64 {

@@ -11,7 +11,3 @@ func bytesToMBString(bytes float64) string {
 func simple(value float64) string {
 	return fmt.Sprintf("%.4f", value)
 }
-
-func percentage(value float64) string {
-	return fmt.Sprintf("%.2f %%", value*100)
-}
