@@ -76,6 +76,9 @@ type SignupRequest interface {
 	// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
 	// required state.
 	VerificationRequired() SignupRequest
+
+	// Disables automatic cleanup of the UserSignup resource after the test has completed
+	DisableCleanup() SignupRequest
 }
 
 func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
@@ -104,6 +107,7 @@ type signupRequest struct {
 	userSignup           *toolchainv1alpha1.UserSignup
 	mur                  *toolchainv1alpha1.MasterUserRecord
 	originalSub          string
+	cleanupDisabled      bool
 }
 
 func (r *signupRequest) IdentityID(id uuid.UUID) SignupRequest {
@@ -158,6 +162,11 @@ func (r *signupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) Sign
 
 func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 	r.requiredHTTPStatus = httpStatus
+	return r
+}
+
+func (r *signupRequest) DisableCleanup() SignupRequest {
+	r.cleanupDisabled = true
 	return r
 }
 
@@ -240,7 +249,10 @@ func (r *signupRequest) Execute() SignupRequest {
 	}
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
-	hostAwait.Cleanup(r.userSignup)
+	// and if cleanup hasn't been disabled
+	if !r.cleanupDisabled {
+		hostAwait.Cleanup(r.userSignup)
+	}
 
 	return r
 }
