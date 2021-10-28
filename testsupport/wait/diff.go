@@ -19,7 +19,7 @@ func Diff(actual, expected interface{}) string {
 	e, _ := yaml.Marshal(expected)
 	a, _ := yaml.Marshal(actual)
 	actualdmp, expecteddmp, dmpStrings := dmp.DiffLinesToChars(string(a), string(e))
-	diffs := dmp.DiffMain(actualdmp, expecteddmp, false)
+	diffs := dmp.DiffMain(actualdmp, expecteddmp, true)
 	diffs = dmp.DiffCharsToLines(diffs, dmpStrings)
 	return diffPrettyText(diffs)
 }
