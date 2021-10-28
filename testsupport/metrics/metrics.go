@@ -14,15 +14,6 @@ import (
 	"github.com/prometheus/common/expfmt"
 )
 
-// func GetPodMetrics(cl client.Client, name, ns string) (*metrics.PodMetrics, error) {
-// 	podMetrics := metrics.PodMetrics{}
-// 	err := cl.Get(context.TODO(), types.NamespacedName{
-// 		Namespace: ns,
-// 		Name:      name,
-// 	}, &podMetrics)
-// 	return &podMetrics, err
-// }
-
 func GetMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
 	if len(expectedLabels)%2 != 0 {
 		return -1, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")

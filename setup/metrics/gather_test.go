@@ -14,7 +14,6 @@ import (
 )
 
 func TestExecuteQueryAndProcessResult(t *testing.T) {
-	// dummyTerm := &DummyTerminal{}
 	var testTime = model.Now()
 
 	tests := []testcase{
@@ -123,7 +122,6 @@ func TestExecuteQueryAndProcessResult(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		// dummyTerm.Clear()
 		t.Run(fmt.Sprintf("test %s", tc.query.name), func(t *testing.T) {
 			// given
 			g := &Gatherer{
