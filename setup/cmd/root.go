@@ -182,8 +182,9 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Infof("🍿 provisioning users...")
 
 	// init the metrics gatherer
-	metrics.Init(term, cl, token, 5*time.Minute)
+	metricsInstance := metrics.New(term, cl, token, 5*time.Minute)
 
+	prometheusClient := metrics.GetPrometheusClient(term, cl, token)
 	// add queries for each custom workload
 	for _, w := range workloads {
 		pair := strings.Split(w, ":")
@@ -193,14 +194,14 @@ func setup(cmd *cobra.Command, args []string) {
 		if err := cl.Get(context.TODO(), types.NamespacedName{Namespace: pair[0], Name: pair[1]}, &appsv1.Deployment{}); err != nil {
 			term.Fatalf(err, "invalid workload provided '%s'", w)
 		}
-		metrics.AddQueries(
-			queries.QueryWorkloadCPUUsage(pair[0], pair[1]),
-			queries.QueryWorkloadMemoryUsage(pair[0], pair[1]),
+		metricsInstance.AddQueries(
+			queries.QueryWorkloadCPUUsage(prometheusClient, pair[0], pair[1]),
+			queries.QueryWorkloadMemoryUsage(prometheusClient, pair[0], pair[1]),
 		)
 	}
 
 	// start gathering metrics
-	stopMetrics := metrics.StartGathering()
+	stopMetrics := metricsInstance.StartGathering()
 
 	uip := uiprogress.New()
 	uip.Start()
@@ -308,7 +309,7 @@ func setup(cmd *cobra.Command, args []string) {
 	term.Infof("\n📈 Results 📉")
 	term.Infof("Average Idler Update Time: %.2f s", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
 	term.Infof("Average Time Per User: %.2f s", AverageTimePerUser.Seconds()/float64(numberOfUsers))
-	metrics.PrintResults()
+	metricsInstance.PrintResults()
 	term.Infof("👋 have fun!")
 }
 

@@ -1,8 +1,8 @@
 package metrics
 
 import (
-	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -10,10 +10,9 @@ import (
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
-	routev1 "github.com/openshift/api/route/v1"
-	prometheus "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
 
-	"k8s.io/apimachinery/pkg/types"
 	k8sutil "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,100 +28,142 @@ const (
 	OSAPIServerWorkload  = "apiserver"
 )
 
-var (
-	k8sClient        client.Client
-	queryInterval    time.Duration
-	prometheusClient prometheus.API
-	mqueries         []queries.Query
-	term             terminal.Terminal
-)
+type Gatherer struct {
+	k8sClient     client.Client
+	queryInterval time.Duration
+	mqueries      []queries.Query
+	results       map[string]aggregateResult
+	term          terminal.Terminal
+}
 
-func Init(t terminal.Terminal, cl client.Client, token string, interval time.Duration) {
-	k8sClient = cl
-	queryInterval = interval
-	term = t
+type aggregateResult struct {
+	sampleCount int
+	max         float64
+	sum         float64
+}
 
-	url, err := getPrometheusEndpoint(cl)
-	if err != nil {
-		term.Fatalf(err, "error creating client: failed to get prometheus endpoint")
+// New creates a new gatherer with default queries
+func New(t terminal.Terminal, cl client.Client, token string, interval time.Duration) *Gatherer {
+	g := &Gatherer{
+		k8sClient:     cl,
+		queryInterval: interval,
+		term:          t,
 	}
 
-	httpClient, err := Client(url, token)
-	if err != nil {
-		term.Fatalf(err, "error creating client")
-	}
+	prometheusClient := GetPrometheusClient(t, cl, token)
 
-	prometheusClient = prometheus.NewAPI(httpClient)
-
-	mqueries = append(mqueries,
-		queries.QueryClusterCPUUtilisation(),
-		queries.QueryClusterMemoryUtilisation(),
-		queries.QueryNodeMemoryUtilisation(),
-		queries.QueryEtcdMemoryUsage(),
-		queries.QueryWorkloadCPUUsage(OLMOperatorNamespace, OLMOperatorWorkload),
-		queries.QueryWorkloadMemoryUsage(OLMOperatorNamespace, OLMOperatorWorkload),
-		queries.QueryWorkloadCPUUsage(OSAPIServerNamespace, OSAPIServerWorkload),
-		queries.QueryWorkloadMemoryUsage(OSAPIServerNamespace, OSAPIServerWorkload),
-		queries.QueryWorkloadCPUUsage(cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
-		queries.QueryWorkloadMemoryUsage(cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
-		queries.QueryWorkloadCPUUsage(cfg.MemberOperatorNamespace, cfg.MemberOperatorWorkload),
-		queries.QueryWorkloadMemoryUsage(cfg.MemberOperatorNamespace, cfg.MemberOperatorWorkload),
+	// Add default queries
+	g.AddQueries(
+		queries.QueryClusterCPUUtilisation(prometheusClient),
+		queries.QueryClusterMemoryUtilisation(prometheusClient),
+		queries.QueryNodeMemoryUtilisation(prometheusClient),
+		queries.QueryEtcdMemoryUsage(prometheusClient),
+		queries.QueryWorkloadCPUUsage(prometheusClient, OLMOperatorNamespace, OLMOperatorWorkload),
+		queries.QueryWorkloadMemoryUsage(prometheusClient, OLMOperatorNamespace, OLMOperatorWorkload),
+		queries.QueryWorkloadCPUUsage(prometheusClient, OSAPIServerNamespace, OSAPIServerWorkload),
+		queries.QueryWorkloadMemoryUsage(prometheusClient, OSAPIServerNamespace, OSAPIServerWorkload),
+		queries.QueryWorkloadCPUUsage(prometheusClient, cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
+		queries.QueryWorkloadMemoryUsage(prometheusClient, cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
+		queries.QueryWorkloadCPUUsage(prometheusClient, cfg.MemberOperatorNamespace, cfg.MemberOperatorWorkload),
+		queries.QueryWorkloadMemoryUsage(prometheusClient, cfg.MemberOperatorNamespace, cfg.MemberOperatorWorkload),
 	)
+	g.results = make(map[string]aggregateResult, len(g.mqueries))
+
+	return g
 }
 
-func AddQueries(queries ...queries.Query) {
-	mqueries = append(mqueries, queries...)
+func (g *Gatherer) AddQueries(queries ...queries.Query) {
+	g.mqueries = append(g.mqueries, queries...)
 }
 
-func StartGathering() chan struct{} {
-	if len(mqueries) == 0 {
-		term.Infof("Metrics gatherer has no queries defined, skipping metrics gathering...")
+func (g *Gatherer) StartGathering() chan struct{} {
+	if len(g.mqueries) == 0 {
+		g.term.Infof("Metrics gatherer has no queries defined, skipping metrics gathering...")
 		return nil
 	}
 
 	// ensure metrics are dumped if there's a fatal error
-	term.AddPreFatalExitHook(PrintResults)
+	g.term.AddPreFatalExitHook(g.PrintResults)
 
 	stop := make(chan struct{})
 	go func() {
 		k8sutil.Until(func() {
-			for _, q := range mqueries {
-				_, warnings, err := q.DoQuery(prometheusClient)
+			for _, q := range g.mqueries {
+				err := g.sample(q)
 				if err != nil {
-					if strings.Contains(err.Error(), "client error: 403") {
-						url, tokenErr := auth.GetTokenRequestURI(k8sClient)
-						if tokenErr == nil {
-							term.Fatalf(err, "metrics query failed with 403 (Forbidden) - retrieve a new token from %s", url)
-						}
-					}
-					term.Fatalf(err, "metrics query failed - check whether prometheus is still healthy in the cluster")
-				} else if len(warnings) > 0 {
-					term.Fatalf(fmt.Errorf("%v", warnings), "metrics query had unexpected warnings")
+					g.term.Fatalf(err, "metrics error")
 				}
-
 			}
-		}, queryInterval, stop)
+		}, g.queryInterval, stop)
 	}()
 	return stop
 }
 
-func getPrometheusEndpoint(client client.Client) (string, error) {
-	prometheusRoute := routev1.Route{}
-	if err := client.Get(context.TODO(), types.NamespacedName{
-		Namespace: OpenshiftMonitoringNS,
-		Name:      PrometheusRouteName,
-	}, &prometheusRoute); err != nil {
-		return "", err
+func (g *Gatherer) sample(q queries.Query) error {
+	val, warnings, err := q.Execute()
+	if err != nil {
+		if strings.Contains(err.Error(), "client error: 403") {
+			url, tokenErr := auth.GetTokenRequestURI(g.k8sClient)
+			if tokenErr != nil {
+				return errors.Wrapf(err, "metrics query failed with 403 (Forbidden)")
+			}
+			return errors.Wrapf(err, "metrics query failed with 403 (Forbidden) - retrieve a new token from %s", url)
+		}
+		return errors.Wrapf(err, "metrics query failed - check whether prometheus is still healthy in the cluster")
+	} else if len(warnings) > 0 {
+		return errors.Wrapf(fmt.Errorf("warnings: %v", warnings), "metrics query had unexpected warnings")
 	}
-	return "https://" + prometheusRoute.Spec.Host, nil
+
+	vector := val.(model.Vector)
+	if len(vector) == 0 {
+		return fmt.Errorf("metrics value could not be retrieved for query %s", q.Name())
+	}
+
+	// if a result returns multiple vector samples we'll take the average of the values to get a single datapoint for the sake of simplicity
+	var vectorSum float64
+	for _, v := range vector {
+		vectorSum += float64(v.Value)
+	}
+	datapoint := vectorSum / float64(len(vector))
+
+	r := g.results[q.Name()]
+	r.max = math.Max(r.max, datapoint)
+	r.sum += datapoint
+	r.sampleCount++
+	g.results[q.Name()] = r
+	return nil
 }
 
-func PrintResults() {
-	if len(mqueries) == 0 {
-		// metrics were not initialized, nothing to print
-		return
+// PrintResults iterates through each query and prints the aggregated results to the terminal
+func (g *Gatherer) PrintResults() {
+	for _, q := range g.mqueries {
+		switch q.ResultType() {
+		case "percentage":
+			PrintPercentage(g.term, q.Name(), g.results[q.Name()])
+		case "memory":
+			PrintMemory(g.term, q.Name(), g.results[q.Name()])
+		case "simple":
+			PrintSimple(g.term, q.Name(), g.results[q.Name()])
+		default:
+			g.term.Fatalf(fmt.Errorf("query %s is missing a result type", q.Name()), "invalid query")
+		}
 	}
-	for _, q := range mqueries {
-		term.Infof(q.Result())
-	}
+}
+
+func PrintPercentage(t terminal.Terminal, name string, r aggregateResult) {
+	avg := r.sum / float64(r.sampleCount)
+	t.Infof("Average %s: %.2f %%", name, avg*100)
+	t.Infof("Max %s: %.2f %%", name, r.max*100)
+}
+
+func PrintMemory(t terminal.Terminal, name string, r aggregateResult) {
+	avg := r.sum / float64(r.sampleCount)
+	t.Infof("Average %s: %s", name, bytesToMBString(avg))
+	t.Infof("Max %s: %s", name, bytesToMBString(r.max))
+}
+
+func PrintSimple(t terminal.Terminal, name string, r aggregateResult) {
+	avg := r.sum / float64(r.sampleCount)
+	t.Infof("Average %s: %s", name, simple(avg))
+	t.Infof("Max %s: %s", name, simple(r.max))
 }

@@ -82,9 +82,6 @@ func (t DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
 func (t DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
 	defer os.Exit(1)
 	t.Errorf(err, msg, args...)
-	if len(t.fatalExitHooks) == 0 {
-		t.Infof("No fatal exit hooks")
-	}
 	for _, hook := range t.fatalExitHooks {
 		hook()
 	}
