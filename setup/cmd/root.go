@@ -136,11 +136,14 @@ func setup(cmd *cobra.Command, args []string) {
 	}
 
 	if len(token) == 0 {
-		tokenRequestURI, err := auth.GetTokenRequestURI(cl)
+		token, err = auth.GetTokenFromOC()
 		if err != nil {
-			term.Fatalf(err, "token flag is required - could not determine token request URI")
+			tokenRequestURI, err := auth.GetTokenRequestURI(cl)
+			if err != nil {
+				term.Fatalf(err, "a token is required to capture metrics, use oc login to log into the cluster")
+			}
+			term.Fatalf(fmt.Errorf("a token can be requested from %s", tokenRequestURI), "a token is required to capture metrics, use oc login to log into the cluster. alternatively request a token and use the token flag")
 		}
-		term.Fatalf(fmt.Errorf("request a token from %s", tokenRequestURI), "token flag is required")
 	}
 
 	var templateListStr string

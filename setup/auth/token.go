@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"os/exec"
+	"strings"
 
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	routev1 "github.com/openshift/api/route/v1"
@@ -18,4 +20,14 @@ func GetTokenRequestURI(cl client.Client) (string, error) {
 		return "", err
 	}
 	return "https://" + route.Spec.Host + "/oauth/token/display", nil
+}
+
+func GetTokenFromOC() (string, error) {
+	cmd := exec.Command("oc", "whoami", "-t")
+	o, err := cmd.Output()
+
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(o)), nil
 }
