@@ -23,27 +23,27 @@ type Query interface {
 	ResultType() string
 }
 
-type baseQuery struct {
+type BaseQuery struct {
 	apiClient  prometheus.API
 	name       string
 	query      string
 	resultType ResultType
 }
 
-func (b baseQuery) Name() string {
+func (b BaseQuery) Name() string {
 	return b.name
 }
 
-func (b *baseQuery) Execute() (model.Value, prometheus.Warnings, error) {
+func (b *BaseQuery) Execute() (model.Value, prometheus.Warnings, error) {
 	return b.apiClient.Query(context.TODO(), b.query, time.Now())
 }
 
-func (b baseQuery) ResultType() string {
+func (b BaseQuery) ResultType() string {
 	return string(b.resultType)
 }
 
-func QueryEtcdMemoryUsage(apiClient prometheus.API) *baseQuery {
-	return &baseQuery{
+func QueryEtcdMemoryUsage(apiClient prometheus.API) *BaseQuery {
+	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       "etcd Instance Memory Usage",
 		query:      `process_resident_memory_bytes{job="etcd"}`,
@@ -51,8 +51,8 @@ func QueryEtcdMemoryUsage(apiClient prometheus.API) *baseQuery {
 	}
 }
 
-func QueryClusterCPUUtilisation(apiClient prometheus.API) *baseQuery {
-	return &baseQuery{
+func QueryClusterCPUUtilisation(apiClient prometheus.API) *BaseQuery {
+	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       "Cluster CPU Utilisation",
 		query:      `1 - avg(rate(node_cpu_seconds_total{mode="idle", cluster=""}[5m]))`,
@@ -60,8 +60,8 @@ func QueryClusterCPUUtilisation(apiClient prometheus.API) *baseQuery {
 	}
 }
 
-func QueryClusterMemoryUtilisation(apiClient prometheus.API) *baseQuery {
-	return &baseQuery{
+func QueryClusterMemoryUtilisation(apiClient prometheus.API) *BaseQuery {
+	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       "Cluster Memory Utilisation",
 		query:      `1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=""}) / sum(node_memory_MemTotal_bytes{cluster=""})`,
@@ -69,13 +69,13 @@ func QueryClusterMemoryUtilisation(apiClient prometheus.API) *baseQuery {
 	}
 }
 
-func QueryWorkloadCPUUsage(apiClient prometheus.API, namespace, name string) *baseQuery {
+func QueryWorkloadCPUUsage(apiClient prometheus.API, namespace, name string) *BaseQuery {
 	query := fmt.Sprintf(`sum(
 		node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster="", namespace="%[1]s"}
 	  * on(namespace,pod)
 		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
 	) by (pod)`, namespace, name)
-	return &baseQuery{
+	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       fmt.Sprintf("%s CPU Usage", name),
 		query:      query,
@@ -83,13 +83,13 @@ func QueryWorkloadCPUUsage(apiClient prometheus.API, namespace, name string) *ba
 	}
 }
 
-func QueryWorkloadMemoryUsage(apiClient prometheus.API, namespace, name string) *baseQuery {
+func QueryWorkloadMemoryUsage(apiClient prometheus.API, namespace, name string) *BaseQuery {
 	query := fmt.Sprintf(`sum(
 		container_memory_working_set_bytes{cluster="", namespace="%[1]s", container!="", image!=""}
 	  * on(namespace,pod)
 		group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster="", namespace="%[1]s", workload="%[2]s", workload_type="deployment"}
 	) by (pod)`, namespace, name)
-	return &baseQuery{
+	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       fmt.Sprintf("%s Memory Usage", name),
 		query:      query,
@@ -97,10 +97,10 @@ func QueryWorkloadMemoryUsage(apiClient prometheus.API, namespace, name string) 
 	}
 }
 
-func QueryNodeMemoryUtilisation(apiClient prometheus.API) *baseQuery {
+func QueryNodeMemoryUtilisation(apiClient prometheus.API) *BaseQuery {
 	query := `1 - sum (node_memory_MemAvailable_bytes * on(instance) (group by(instance)(label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.*)"))))/
 	sum (node_memory_MemTotal_bytes * on(instance) (group by(instance)(label_replace(kube_node_role{role="master"}, "instance", "$1", "node", "(.*)"))))`
-	return &baseQuery{
+	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       "Node Memory Usage",
 		query:      query,
