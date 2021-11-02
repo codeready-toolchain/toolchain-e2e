@@ -342,7 +342,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		userSignup := signupUser(t, emailValue, identity.ID.String(), identity)
 
 		// Deactivate the usersignup
-		userSignup, err = hostAwait.UpdateUserSignupSpec(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivated(us, true)
 		})
 		require.NoError(s.T(), err)

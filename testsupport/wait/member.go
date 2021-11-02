@@ -752,6 +752,29 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 	return pod, err
 }
 
+// WaitForConfigMap waits until a ConfigMap with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForConfigMap(namespace, name string) (*corev1.ConfigMap, error) {
+	a.T.Logf("waiting for ConfigMap '%s' in namespace '%s'", name, namespace)
+	var cm *corev1.ConfigMap
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.ConfigMap{}
+		if err = a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				// loop again
+				return false, nil
+			}
+			// exit
+			return false, err
+		}
+		cm = obj
+		return true, nil
+	})
+	return cm, err
+}
+
 // WaitForPods waits until "n" number of pods exist in the given namespace
 func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
 	a.T.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
@@ -1409,4 +1432,25 @@ func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(p
 		return true, nil
 	})
 	return m, err
+}
+
+func (a *MemberAwaitility) UpdateConfigMap(namespace, cmName string, modifyCM func(*corev1.ConfigMap)) (*corev1.ConfigMap, error) {
+	var cm *corev1.ConfigMap
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.ConfigMap{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      cmName},
+			obj); err != nil {
+			return true, err
+		}
+		modifyCM(obj)
+		if err := a.Client.Update(context.TODO(), obj); err != nil {
+			a.T.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
+			return false, nil
+		}
+		cm = obj
+		return true, nil
+	})
+	return cm, err
 }

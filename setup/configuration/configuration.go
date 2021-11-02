@@ -11,15 +11,34 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 
 	quotav1 "github.com/openshift/api/quota/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	OauthNS   = "openshift-authentication"
+	OauthName = "oauth-openshift"
+
+	DefaultHostNS        = "toolchain-host-operator"
+	HostOperatorWorkload = "host-operator-controller-manager"
+
+	DefaultMemberNS        = "toolchain-member-operator"
+	MemberOperatorWorkload = "member-operator-controller-manager"
+
+	CustomTemplateUsersParam  = "custom"
+	DefaultTemplateUsersParam = "default"
+)
+
 var (
+	HostOperatorNamespace   string
+	MemberOperatorNamespace string
+
 	DefaultRetryInterval = time.Millisecond * 200
 	DefaultTimeout       = time.Minute * 5
 )
@@ -47,13 +66,22 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 	}
 
 	cl, err := client.New(clientConfig, client.Options{Scheme: s})
+	term.Infof("API endpoint: %s", clientConfig.Host)
 	return cl, clientConfig, s, err
 }
 
 // NewScheme returns the scheme configured with all the needed types
 func NewScheme() (*runtime.Scheme, error) {
 	s := runtime.NewScheme()
-	builder := append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme, quotav1.Install, operatorsv1alpha1.AddToScheme, templatev1.Install)
+	builder := append(
+		runtime.SchemeBuilder{},
+		toolchainv1alpha1.AddToScheme,
+		quotav1.Install,
+		operatorsv1alpha1.AddToScheme,
+		templatev1.Install,
+		routev1.Install,
+		appsv1.AddToScheme,
+	)
 	err := builder.AddToScheme(s)
 	return s, err
 }

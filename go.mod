@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20210811194925-19aeb221d584
+	github.com/codeready-toolchain/api v0.0.0-20211018173325-31068bb3f4ac
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20210928071424-2ace1784e8d2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
@@ -17,6 +17,7 @@ require (
 	github.com/openshift/api v0.0.0-20210428205234-a8389931bee7
 	github.com/operator-framework/api v0.9.2
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.28.0
 	github.com/redhat-cop/operator-utils v1.1.3-0.20210602122509-2eaf121122d2
