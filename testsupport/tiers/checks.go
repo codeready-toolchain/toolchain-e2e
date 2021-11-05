@@ -299,7 +299,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 		numberOfToolchainServiceAccounts(1),
 	)
 
-	checks = append(checks, commonNetworkPolicyChecks()...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
 }
 
