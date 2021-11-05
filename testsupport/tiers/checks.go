@@ -70,7 +70,7 @@ func NewChecks(tier string) (TierChecks, error) {
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
 
 	case appstudio:
-		return &appstudioTierChecks{baseTierChecks{tierName: appstudio}}, nil
+		return &appstudioTierChecks{tierName: appstudio}, nil
 
 	case test:
 		return &testTierChecks{tierName: test}, nil
@@ -276,7 +276,7 @@ func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 type appstudioTierChecks struct {
-	baseTierChecks
+	tierName string
 }
 
 func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
