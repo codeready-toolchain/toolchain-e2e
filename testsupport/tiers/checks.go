@@ -425,7 +425,7 @@ func crtadminPodsRoleBinding() namespaceObjectsCheck {
 	}
 }
 
-func rbacEditRole() namespaceObjectsCheck {
+func execPodsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "exec-pods")
 		require.NoError(t, err)
@@ -445,7 +445,7 @@ func rbacEditRole() namespaceObjectsCheck {
 	}
 }
 
-func execPodsRole() namespaceObjectsCheck {
+func rbacEditRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
