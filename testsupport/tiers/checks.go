@@ -389,7 +389,7 @@ func userViewRoleBinding() namespaceObjectsCheck {
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userName, rb.Subjects[0].Name)
-		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "view", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
