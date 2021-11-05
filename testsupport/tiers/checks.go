@@ -284,7 +284,7 @@ func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
 }
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
+	checks := []namespaceObjectsCheck{
 		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		userViewRoleBinding(),
 		crtadminPodsRoleBinding(),
@@ -294,10 +294,11 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 		execPodsRole(),
 		toolchainSaReadRole(),
 		appstudioServiceAccount(),
+		numberOfLimitRanges(1),
 		numberOfToolchainRoles(2),
 		numberOfToolchainRoleBindings(5),
 		numberOfToolchainServiceAccounts(1),
-	)
+	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
