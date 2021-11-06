@@ -948,7 +948,7 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 
 func appstudioServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		_, err := memberAwait.WaitForServiceAccount(ns, fmt.Sprintf("appstudio-%s-edit", userName))
+		_, err := memberAwait.WaitForServiceAccount(ns, fmt.Sprintf("appstudio-%s", userName))
 		require.NoError(t, err)
 	}
 }
