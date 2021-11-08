@@ -14,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
 	"github.com/ghodss/yaml"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -28,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
-	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
+	k8smetrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -310,14 +311,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValue(family string, labelAndValues ...string) float64 {
-	var value float64
-	var err error
-	//err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-	if value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err != nil {
-		require.NoError(a.T, err)
-	}
-
-	//})
+	value, err := metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues)
 	require.NoError(a.T, err)
 	return value
 }
@@ -328,7 +322,7 @@ func (a *Awaitility) GetMetricValueOrZero(family string, labelAndValues ...strin
 	if len(labelAndValues)%2 != 0 {
 		a.T.Fatal("`labelAndValues` must be pairs of labels and values")
 	}
-	if value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err == nil {
+	if value, err := metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues); err == nil {
 		return value
 	}
 	return 0
@@ -340,7 +334,7 @@ func (a *Awaitility) WaitUntiltMetricHasValue(family string, expectedValue float
 	a.T.Logf("waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
 	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err := getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
+		value, err := metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, ignore and return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		// unless the expected value is `0`, in which case the metric is bot exposed (value==0 and err!= nil), but it's fine too.
 		return (value == expectedValue && err == nil) || (expectedValue == 0 && value == 0), nil
@@ -354,7 +348,7 @@ func (a *Awaitility) WaitUntilMetricHasValueOrMore(family string, expectedValue 
 	a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
 	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
+		value, err = metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		return value >= expectedValue && err == nil, nil
 	})
@@ -370,7 +364,7 @@ func (a *Awaitility) WaitUntilMetricHasValueOrLess(family string, expectedValue 
 	a.T.Logf("waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
 	var value float64
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		value, err = getMetricValue(a.RestConfig, a.MetricsURL, family, labels)
+		value, err = metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		return value <= expectedValue && err == nil, nil
 	})
@@ -397,9 +391,9 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 
 // GetMemoryUsage retrieves the memory usage (in KB) of a given the pod
 func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
-	var containerMetrics metrics.ContainerMetrics
+	var containerMetrics k8smetrics.ContainerMetrics
 	if err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		podMetrics := metrics.PodMetrics{}
+		podMetrics := k8smetrics.PodMetrics{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: ns,
 			Name:      podname,
