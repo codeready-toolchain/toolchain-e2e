@@ -80,52 +80,58 @@ func (a *HostAwaitility) sprintAllResources() string {
 func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 	all := []runtime.Object{}
 	// usersignups
-	usersignups := toolchainv1alpha1.UserSignupList{}
-	if err := a.Client.List(context.TODO(), &usersignups, client.InNamespace(a.Namespace)); err != nil {
+	usersignups := &toolchainv1alpha1.UserSignupList{}
+	if err := a.Client.List(context.TODO(), usersignups, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// masteruserrecords
-	masteruserrecords := toolchainv1alpha1.MasterUserRecordList{}
-	if err := a.Client.List(context.TODO(), &masteruserrecords, client.InNamespace(a.Namespace)); err != nil {
+	masteruserrecords := &toolchainv1alpha1.MasterUserRecordList{}
+	if err := a.Client.List(context.TODO(), masteruserrecords, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range masteruserrecords.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// notifications
-	notifications := toolchainv1alpha1.NotificationList{}
-	if err := a.Client.List(context.TODO(), &notifications, client.InNamespace(a.Namespace)); err != nil {
+	notifications := &toolchainv1alpha1.NotificationList{}
+	if err := a.Client.List(context.TODO(), notifications, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range notifications.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// nstemplatetiers
-	nstemplatetiers := toolchainv1alpha1.NSTemplateTierList{}
-	if err := a.Client.List(context.TODO(), &nstemplatetiers, client.InNamespace(a.Namespace)); err != nil {
+	nstemplatetiers := &toolchainv1alpha1.NSTemplateTierList{}
+	if err := a.Client.List(context.TODO(), nstemplatetiers, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range nstemplatetiers.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// toolchainconfig
-	toolchainconfigs := toolchainv1alpha1.ToolchainConfigList{}
-	if err := a.Client.List(context.TODO(), &toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
+	toolchainconfigs := &toolchainv1alpha1.ToolchainConfigList{}
+	if err := a.Client.List(context.TODO(), toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range toolchainconfigs.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// toolchainstatus
-	toolchainstatuses := toolchainv1alpha1.ToolchainStatusList{}
-	if err := a.Client.List(context.TODO(), &toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
+	toolchainstatuses := &toolchainv1alpha1.ToolchainStatusList{}
+	if err := a.Client.List(context.TODO(), toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	return all, nil
 }
