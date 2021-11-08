@@ -24,6 +24,7 @@ import (
 const (
 	// tier names
 	advanced                 = "advanced"
+	appstudio                = "appstudio"
 	base                     = "base"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	baseextended             = "baseextended"
@@ -67,6 +68,9 @@ func NewChecks(tier string) (TierChecks, error) {
 
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
+
+	case appstudio:
+		return &appstudioTierChecks{tierName: appstudio}, nil
 
 	case test:
 		return &testTierChecks{tierName: test}, nil
@@ -271,6 +275,58 @@ func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return []clusterObjectsCheck{}
 }
 
+type appstudioTierChecks struct {
+	tierName string
+}
+
+func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
+}
+
+func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+		userViewRoleBinding(),
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+		appstudioEditRoleBinding(),
+		userSaReadRoleBinding(),
+		execPodsRole(),
+		toolchainSaReadRole(),
+		appstudioServiceAccount(),
+		numberOfLimitRanges(1),
+		numberOfToolchainRoles(2),
+		numberOfToolchainRoleBindings(5),
+		numberOfToolchainServiceAccounts(1),
+	}
+
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	return checks
+}
+
+func (a *appstudioTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "appstudio")
+	return templateRefs
+}
+
+func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(),
+		idlers(43200, ""))
+}
+
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
 func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expectedNSTypes ...string) {
 	require.Len(t, templateRefs.Namespaces, len(expectedNSTypes))
@@ -327,6 +383,20 @@ func rbacEditRoleBinding() namespaceObjectsCheck {
 	}
 }
 
+func userViewRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, "user-view")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
+		assert.Equal(t, "view", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
 func crtadminViewRoleBinding() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-view")
@@ -355,7 +425,7 @@ func crtadminPodsRoleBinding() namespaceObjectsCheck {
 	}
 }
 
-func rbacEditRole() namespaceObjectsCheck {
+func execPodsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "exec-pods")
 		require.NoError(t, err)
@@ -375,7 +445,7 @@ func rbacEditRole() namespaceObjectsCheck {
 	}
 }
 
-func execPodsRole() namespaceObjectsCheck {
+func rbacEditRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
@@ -543,7 +613,13 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			for _, nt := range namespaceTypes {
-				idler, err := memberAwait.WaitForIdler(fmt.Sprintf("%s-%s", userName, nt), wait.IdlerHasTier(tierLabel), wait.IdlerHasTimeoutSeconds(timeoutSeconds))
+				var idlerName string
+				if nt == "" {
+					idlerName = userName
+				} else {
+					idlerName = fmt.Sprintf("%s-%s", userName, nt)
+				}
+				idler, err := memberAwait.WaitForIdler(idlerName, wait.IdlerHasTier(tierLabel), wait.IdlerHasTimeoutSeconds(timeoutSeconds))
 				require.NoError(t, err)
 				assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
 			}
@@ -819,6 +895,18 @@ func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint
 	}
 }
 
+func numberOfToolchainServiceAccounts(number int) namespaceObjectsCheck { // nolint: unparam
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		err := memberAwait.WaitForExpectedNumberOfResources("ServiceAccounts", number, func() (int, error) {
+			serviceAccounts := &corev1.ServiceAccountList{}
+			err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name))
+			require.NoError(t, err)
+			return len(serviceAccounts.Items), err
+		})
+		require.NoError(t, err)
+	}
+}
+
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("LimitRanges", number, func() (int, error) {
@@ -859,5 +947,64 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 			})
 			require.NoError(t, err)
 		}
+	}
+}
+
+// Appstudio tier specific objects
+
+func appstudioServiceAccount() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		_, err := memberAwait.WaitForServiceAccount(ns, fmt.Sprintf("appstudio-%s", userName))
+		require.NoError(t, err)
+	}
+}
+
+func appstudioEditRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-edit", userName))
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+		assert.Equal(t, "appstudio-"+userName, rb.Subjects[0].Name)
+		assert.Equal(t, "", rb.Subjects[0].APIGroup)
+		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func userSaReadRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, userName+"-sa-read")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "Group", rb.Subjects[0].Kind)
+		assert.Equal(t, "system:serviceaccounts:"+memberAwait.Namespace, rb.Subjects[0].Name)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.Subjects[0].APIGroup)
+		assert.Equal(t, "toolchain-sa-read", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func toolchainSaReadRole() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		role, err := memberAwait.WaitForRole(ns, "toolchain-sa-read")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 1)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets", "serviceaccounts"},
+					Verbs:     []string{"get", "list"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }

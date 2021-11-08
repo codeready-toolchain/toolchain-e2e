@@ -44,6 +44,8 @@ platform:
 publish: External
 ----
 
+. Log in to the cluster using `oc login`, this is required for the tool to interact with the cluster and gather metrics during the run.
+
 . Install the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.adoc[required tools].
 
 . Install the onboarding operator(s) manually. Other operators that have already been onboarded will be installed automatically by the tool.
@@ -86,14 +88,16 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 2 separate terminals using a unique username prefix in each terminal.
 +
 Terminal 1: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cupcake`
+`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cupcake --workloads namespace:deploymentName`
 +
 Terminal 2: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cheesecake`
+`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cheesecake --workloads namespace:deploymentName`
 +
 Note 1: You do not need to add the default template (https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[setup/resources/user-workloads.yaml]), it is automatically added when you run the setup. You can control how many users will have the default template applied using the `--default` flag.
 +
-Note 2: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason.
+Note 2: The `--workloads` flag tells the tool to capture the CPU and memory of a deployment and include the results in the summary upon completion of the setup. Use this for including any deployments related to the onboarding operator. The format must follow `--workloads namespace:name` 
++
+Note 3: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason.
 +
 Use `go run setup/main.go --help` to see the full set of options. +
 . Grab some coffee ☕️, populating the cluster with 2000 users can take over 4 hours depending on network latency +
@@ -106,6 +110,7 @@ With the cluster now under load, it's time to evaluate the environment.
 1. Use your operators as a user would and evaluate the performance.
 2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
 3. Monitor the memory usage of operators. There are many more resources created on this cluster than most operators have been tested with so it's important to look for any possible areas for concern.
+4. Compare the Results summary to the Baseline figures provided in the onboarding doc.
 
 == Clean up
 
