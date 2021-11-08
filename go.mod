@@ -8,6 +8,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
 	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/google/go-cmp v0.5.5
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
