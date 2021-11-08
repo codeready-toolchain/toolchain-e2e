@@ -44,6 +44,8 @@ platform:
 publish: External
 ----
 
+. Log in to the cluster using `oc login`, this is required for the tool to interact with the cluster and gather metrics during the run.
+
 . Install the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.adoc[required tools].
 
 . Install the onboarding operator(s) manually. Other operators that have already been onboarded will be installed automatically by the tool.
