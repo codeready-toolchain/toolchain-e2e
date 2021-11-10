@@ -95,7 +95,6 @@ func TestE2EFlow(t *testing.T) {
 	johnsmithName := "johnsmith"
 	johnSignup, _ := NewSignupRequest(t, awaitilities).
 		Username(johnsmithName).
-		DisableCleanup().
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
