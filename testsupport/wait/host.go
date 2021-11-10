@@ -80,52 +80,58 @@ func (a *HostAwaitility) sprintAllResources() string {
 func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 	all := []runtime.Object{}
 	// usersignups
-	usersignups := toolchainv1alpha1.UserSignupList{}
-	if err := a.Client.List(context.TODO(), &usersignups, client.InNamespace(a.Namespace)); err != nil {
+	usersignups := &toolchainv1alpha1.UserSignupList{}
+	if err := a.Client.List(context.TODO(), usersignups, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// masteruserrecords
-	masteruserrecords := toolchainv1alpha1.MasterUserRecordList{}
-	if err := a.Client.List(context.TODO(), &masteruserrecords, client.InNamespace(a.Namespace)); err != nil {
+	masteruserrecords := &toolchainv1alpha1.MasterUserRecordList{}
+	if err := a.Client.List(context.TODO(), masteruserrecords, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range masteruserrecords.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// notifications
-	notifications := toolchainv1alpha1.NotificationList{}
-	if err := a.Client.List(context.TODO(), &notifications, client.InNamespace(a.Namespace)); err != nil {
+	notifications := &toolchainv1alpha1.NotificationList{}
+	if err := a.Client.List(context.TODO(), notifications, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range notifications.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// nstemplatetiers
-	nstemplatetiers := toolchainv1alpha1.NSTemplateTierList{}
-	if err := a.Client.List(context.TODO(), &nstemplatetiers, client.InNamespace(a.Namespace)); err != nil {
+	nstemplatetiers := &toolchainv1alpha1.NSTemplateTierList{}
+	if err := a.Client.List(context.TODO(), nstemplatetiers, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range nstemplatetiers.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// toolchainconfig
-	toolchainconfigs := toolchainv1alpha1.ToolchainConfigList{}
-	if err := a.Client.List(context.TODO(), &toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
+	toolchainconfigs := &toolchainv1alpha1.ToolchainConfigList{}
+	if err := a.Client.List(context.TODO(), toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range toolchainconfigs.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	// toolchainstatus
-	toolchainstatuses := toolchainv1alpha1.ToolchainStatusList{}
-	if err := a.Client.List(context.TODO(), &toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
+	toolchainstatuses := &toolchainv1alpha1.ToolchainStatusList{}
+	if err := a.Client.List(context.TODO(), toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		all = append(all, &i)
+		copy := i
+		all = append(all, &copy)
 	}
 	return all, nil
 }
@@ -315,7 +321,7 @@ func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition)
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -362,7 +368,7 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected UserAccount statuses to match: %s", Diff(actual.Status.UserAccounts, expected))
+			return fmt.Sprintf("expected UserAccount statuses to match: %s", Diff(expected, actual.Status.UserAccounts))
 		},
 	}
 }
@@ -427,7 +433,7 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -953,7 +959,7 @@ func UntilNotificationHasConditions(expected ...toolchainv1alpha1.Condition) Not
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual toolchainv1alpha1.Notification) string {
-			return fmt.Sprintf("expected Notification conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected Notification conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -1005,7 +1011,7 @@ func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) 
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			return fmt.Sprintf("expected ToolchainStatus conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected ToolchainStatus conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }

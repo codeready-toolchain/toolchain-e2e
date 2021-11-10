@@ -148,7 +148,7 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase))
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase, actual.Spec.UserAccountSpecBase))
 		},
 	}
 }
@@ -271,7 +271,7 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -420,6 +420,27 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name 
 		return nil, err
 	}
 	return roleBinding, err
+}
+
+func (a *MemberAwaitility) WaitForServiceAccount(namespace *corev1.Namespace, name string) (*corev1.ServiceAccount, error) {
+	a.T.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace.Name)
+	serviceAccount := &corev1.ServiceAccount{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.ServiceAccount{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		serviceAccount = obj
+		return true, nil
+	})
+	if err != nil {
+		a.T.Logf("failed to wait for ServiceAccount '%s' in namespace '%s'.", name, namespace.Name)
+		return nil, err
+	}
+	return serviceAccount, err
 }
 
 // WaitForLimitRange waits until a LimitRange with the given name exists in the given namespace
@@ -1088,7 +1109,7 @@ func UntilMemberStatusHasConditions(expected ...toolchainv1alpha1.Condition) Mem
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
