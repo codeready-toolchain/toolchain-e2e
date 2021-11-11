@@ -362,41 +362,28 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
 		require.NoError(t, err)
 
-		t.Run("role accidentally deleted by user is recreated", func(t *testing.T) {
-			userRole, err := memberAwait.WaitForRole(&devNs, "rbac-edit")
-			require.NoError(t, err)
-			require.NotEmpty(t, userRole)
-			require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
-
-			//when role deleted
-			err = memberAwait.Client.Delete(context.TODO(), userRole)
-			require.NoError(t, err)
-
-			// then verify role is recreated
-			userRole, err = memberAwait.WaitForRole(&devNs, "rbac-edit")
-			require.NoError(t, err)
-			require.NotEmpty(t, userRole)
-
+		t.Run("role accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+			DeletedRoleAndAwaitRecreation(t, memberAwait, devNs, "rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})
 
-		t.Run("rolebinding accidentally deleted by user is recreated", func(t *testing.T) {
+		t.Run("role accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
+			DeletedRoleAndAwaitRecreation(t, memberAwait, stageNs, "rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
 
-			userRoleBinding, err := memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
-			require.NoError(t, err)
-			require.NotEmpty(t, userRoleBinding)
-			require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
+		t.Run("rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
 
-			//when rolebinding deleted
-			err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
-			require.NoError(t, err)
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "user-rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
 
-			// then verify role is recreated
-			userRoleBinding, err = memberAwait.WaitForRoleBinding(&devNs, "user-rbac-edit")
-			require.NoError(t, err)
-			require.NotEmpty(t, userRoleBinding)
+		t.Run("rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
 
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "user-rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})
