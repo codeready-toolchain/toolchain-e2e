@@ -321,7 +321,7 @@ func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition)
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -368,7 +368,7 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected UserAccount statuses to match: %s", Diff(actual.Status.UserAccounts, expected))
+			return fmt.Sprintf("expected UserAccount statuses to match: %s", Diff(expected, actual.Status.UserAccounts))
 		},
 	}
 }
@@ -433,7 +433,7 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -959,7 +959,7 @@ func UntilNotificationHasConditions(expected ...toolchainv1alpha1.Condition) Not
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual toolchainv1alpha1.Notification) string {
-			return fmt.Sprintf("expected Notification conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected Notification conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -1011,7 +1011,7 @@ func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) 
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			return fmt.Sprintf("expected ToolchainStatus conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected ToolchainStatus conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }

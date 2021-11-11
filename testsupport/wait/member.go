@@ -148,7 +148,7 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase))
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase, actual.Spec.UserAccountSpecBase))
 		},
 	}
 }
@@ -271,7 +271,7 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -1109,7 +1109,7 @@ func UntilMemberStatusHasConditions(expected ...toolchainv1alpha1.Condition) Mem
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
