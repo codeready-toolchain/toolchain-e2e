@@ -98,7 +98,7 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 		Disabled: false,
 		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
 			NSLimit: "default",
-			NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+			NSTemplateSet: &toolchainv1alpha1.NSTemplateSetSpec{
 				TierName:         tier,
 				Namespaces:       namespaces,
 				ClusterResources: clusterResources,
