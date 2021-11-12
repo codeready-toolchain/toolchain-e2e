@@ -20,11 +20,10 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 	}
 }
 
-func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup,
-	tier string) {
+func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
 
 	hostAwait := awaitilities.Host()
-	templateRefs := tiers.GetTemplateRefs(hostAwait, tier)
+	templateRefs := tiers.GetTemplateRefs(hostAwait, tierName)
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
 	userSignup, err := hostAwait.WaitForUserSignup(signup.Name,
@@ -33,7 +32,9 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
+		wait.UntilMasterUserRecordHasTierName(tierName),
+		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 
 	memberAwait := GetMurTargetMember(t, awaitilities, mur)
@@ -41,7 +42,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tier, templateRefs, userSignup.Spec.OriginalSub)),
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tierName, templateRefs, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
@@ -67,7 +68,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		assert.NoError(t, err)
 	}
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tier)
+	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tierName)
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
