@@ -250,6 +250,19 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 	a.T.Log(buf.String())
 }
 
+// UntilNSTemplateSetHasNoOwnerReferences returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet has no Owner References
+func UntilNSTemplateSetHasNoOwnerReferences() NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return len(actual.OwnerReferences) == 0
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected no owner refs: %v", actual.OwnerReferences)
+		},
+	}
+}
+
 // UntilNSTemplateSetIsBeingDeleted returns a `NSTemplateSetWaitCriterion` which checks that the given
 // NSTemplateSet has Deletion Timestamp set
 func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
