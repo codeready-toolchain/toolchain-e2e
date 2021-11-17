@@ -56,15 +56,15 @@ func TestMigrateNSTemplateSet(t *testing.T) {
 			ownerRef,
 		}
 		t.Logf("pre-updated ResourceVersion: %s", updatedNSTmplSet.ResourceVersion)
-		err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+		err = memberAwait.Client.Update(context.TODO(), updatedNSTmplSet)
 		require.NoError(t, err)
 		t.Logf("post-updated ResourceVersion: %s", nsTmplSet.ResourceVersion)
 		assert.Greater(t, updatedNSTmplSet.ResourceVersion, nsTmplSet.ResourceVersion) // verify that the updated happened, ie, the ResourceVersion was incremented
 		// check that the update occurred
 		reconciledNSTmplSet, err := memberAwait.WaitForNSTmplSet(userSignup.Spec.Username, wait.UntilNSTemplateSetHasNoOwnerReferences())
 		require.NoError(t, err)
-		require.NotEmpty(t, nsTmplSet)
-		assert.Greater(t, reconciledNSTmplSet.ResourceVersion, nsTmplSet.ResourceVersion) // verify that a reconcile loop occurred, ie, the ResourceVersion was incremented once more
+		require.NotEmpty(t, reconciledNSTmplSet)
+		assert.Greater(t, reconciledNSTmplSet.ResourceVersion, updatedNSTmplSet.ResourceVersion) // verify that a reconcile loop occurred, ie, the ResourceVersion was incremented once more
 	})
 
 }
