@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20211018173325-31068bb3f4ac
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20211015175119-b8c44c873137
+	github.com/codeready-toolchain/api v0.0.0-20211116140337-1aaf7ef57cc2
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20211116140718-3ae87ec76ddb
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.0
@@ -22,7 +22,6 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.28.0
 	github.com/redhat-cop/operator-utils v1.1.3-0.20210602122509-2eaf121122d2
-	github.com/sergi/go-diff v1.1.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
