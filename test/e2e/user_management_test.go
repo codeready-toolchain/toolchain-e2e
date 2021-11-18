@@ -77,7 +77,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.deactivateAndCheckUser(userSignupMember1)
 		s.deactivateAndCheckUser(userSignupMember2)
 
-		s.T().Run("reactivate a deactivated user", func(t *testing.T) {
+		t.Run("reactivate a deactivated user", func(t *testing.T) {
 			s.reactivateAndCheckUser(userSignupMember1)
 			s.reactivateAndCheckUser(userSignupMember2)
 		})
@@ -303,7 +303,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			// Verify resources have been provisioned
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base")
 
-			s.T().Run("user set to deactivated after deactivating", func(t *testing.T) {
+			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
 				tierDeactivationDuration := time.Duration(baseTier.Spec.DeactivationTimeoutDays+4) * time.Hour * 24
 				mur, err = hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -595,7 +595,7 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 
 		for i, initialTargetCluster := range clustersToTest {
 			// when
-			s.T().Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", initialTargetCluster.ClusterName), func(t *testing.T) {
+			t.Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", initialTargetCluster.ClusterName), func(t *testing.T) {
 				// given
 				userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 					Username(fmt.Sprintf("returninguser%d", i)).
