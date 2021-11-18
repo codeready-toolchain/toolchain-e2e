@@ -22,10 +22,6 @@ type baseUserIntegrationTest struct {
 	wait.Awaitilities
 }
 
-func (s *baseUserIntegrationTest) newSignupRequest() SignupRequest {
-	return NewSignupRequest(s.T(), s.Awaitilities)
-}
-
 func (s *baseUserIntegrationTest) createAndCheckBannedUser(email string) *toolchainv1alpha1.BannedUser {
 	hostAwait := s.Host()
 	// Create the BannedUser

@@ -15,7 +15,7 @@ import (
 func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, userAccount *toolchainv1alpha1.UserAccount, tier string) {
 	// Verify provisioned NSTemplateSet
 	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(userAccount.Name, wait.UntilNSTemplateSetHasTier(tier))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tierChecks, err := NewChecks(tier)
 	require.NoError(t, err)

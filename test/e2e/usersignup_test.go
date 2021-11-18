@@ -44,7 +44,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
 
 	// when & then
-	s.newSignupRequest().
+	NewSignupRequest(s.T(), s.Awaitilities).
 		Username("automatic1").
 		Email("automatic1@redhat.com").
 		EnsureMUR().
@@ -56,7 +56,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).ResourceCapacityThreshold(1))
 
 		// when
-		userSignup, _ := s.newSignupRequest().
+		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("automatic2").
 			Email("automatic2@redhat.com").
 			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
@@ -86,7 +86,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
 
 		// when
-		userSignup1, _ := s.newSignupRequest().
+		userSignup1, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("waitinglist1").
 			Email("waitinglist1@redhat.com").
 			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
@@ -94,7 +94,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		userSignup2, _ := s.newSignupRequest().
+		userSignup2, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("waitinglist2").
 			Email("waitinglist2@redhat.com").
 			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
@@ -154,14 +154,14 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(0, memberLimits...))
 
 		// when
-		_, mur1 := s.newSignupRequest().
+		_, mur1 := NewSignupRequest(t, s.Awaitilities).
 			Username("multimember-1").
 			Email("multi1@redhat.com").
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
 
-		_, mur2 := s.newSignupRequest().
+		_, mur2 := NewSignupRequest(t, s.Awaitilities).
 			Username("multimember-2").
 			Email("multi2@redhat.com").
 			EnsureMUR().
@@ -173,7 +173,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
-			userSignupPending, _ := s.newSignupRequest().
+			userSignupPending, _ := NewSignupRequest(t, s.Awaitilities).
 				Username("multimember-3").
 				Email("multi3@redhat.com").
 				RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
@@ -201,7 +201,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
-			userSignup, _ := s.newSignupRequest().
+			userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 				Username("manual1").
 				Email("manual1@redhat.com").
 				ManuallyApprove().
@@ -213,7 +213,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 		})
 		t.Run("user is not approved manually thus won't be provisioned", func(t *testing.T) {
 			// when
-			userSignup, _ := s.newSignupRequest().
+			userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 				Username("manual2").
 				Email("manual2@redhat.com").
 				RequireConditions(ConditionSet(Default(), PendingApproval())...).
@@ -233,7 +233,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
 
 	// when & then
-	s.newSignupRequest().
+	NewSignupRequest(s.T(), s.Awaitilities).
 		Username("manualwithcapacity1").
 		Email("manualwithcapacity1@redhat.com").
 		ManuallyApprove().
@@ -246,7 +246,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).ResourceCapacityThreshold(1))
 
 		// when
-		userSignup, _ := s.newSignupRequest().
+		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("manualwithcapacity2").
 			Email("manualwithcapacity2@redhat.com").
 			ManuallyApprove().
@@ -274,7 +274,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1))
 
 		// when
-		userSignup, _ := s.newSignupRequest().
+		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("manualwithcapacity3").
 			Email("manualwithcapacity3@redhat.com").
 			ManuallyApprove().
@@ -305,7 +305,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				MaxNumberOfUsers(1))
 
 		// when & then
-		userSignup, _ := s.newSignupRequest().
+		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("withtargetcluster").
 			Email("withtargetcluster@redhat.com").
 			ManuallyApprove().
@@ -350,7 +350,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create UserSignup with a username that we don't need to transform
-	userSignup, _ := s.newSignupRequest().
+	userSignup, _ := NewSignupRequest(s.T(), s.Awaitilities).
 		Username("paul-no-need-to-transform").
 		Email("paulnoneedtotransform@hotel.com").
 		ManuallyApprove().
@@ -361,7 +361,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	require.Equal(s.T(), "paul-no-need-to-transform", userSignup.Status.CompliantUsername)
 
 	// Create UserSignup with a username to transform
-	userSignup, _ = s.newSignupRequest().
+	userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 		Username("paul@hotel.com").
 		Email("paul@hotel.com").
 		ManuallyApprove().
@@ -372,7 +372,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	require.Equal(s.T(), "paul", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the original username matching the transformed username of the existing signup
-	userSignup, _ = s.newSignupRequest().
+	userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 		Username("paul").
 		Email("paulathotel@hotel.com").
 		ManuallyApprove().
@@ -383,7 +383,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
 
 	// Create another UserSignup with the same original username but different user ID
-	userSignup, _ = s.newSignupRequest().
+	userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 		Username("paul@hotel.com").
 		Email("paul@hotel.com").
 		ManuallyApprove().
@@ -396,7 +396,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create another UserSignups with a forbidden prefix
 	for _, prefix := range []string{"kube", "openshift", "default", "redhat", "sandbox"} {
 		// prefix with hyphen
-		userSignup, _ = s.newSignupRequest().
+		userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 			Username(prefix + "-paul").
 			Email("paul@hotel.com").
 			ManuallyApprove().
@@ -407,7 +407,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		require.Equal(s.T(), fmt.Sprintf("crt-%s-paul", prefix), userSignup.Status.CompliantUsername)
 
 		// prefix without delimiter
-		userSignup, _ = s.newSignupRequest().
+		userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 			Username(prefix + "paul").
 			Email("paul@hotel.com").
 			ManuallyApprove().
@@ -418,7 +418,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		require.Equal(s.T(), fmt.Sprintf("crt-%spaul", prefix), userSignup.Status.CompliantUsername)
 
 		// prefix as a name
-		userSignup, _ = s.newSignupRequest().
+		userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 			Username(prefix).
 			Email("paul@hotel.com").
 			ManuallyApprove().
@@ -432,7 +432,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create another UserSignups with a forbidden suffix
 	for _, suffix := range []string{"admin"} {
 		// suffix with hyphen
-		userSignup, _ = s.newSignupRequest().
+		userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 			Username("paul-" + suffix).
 			Email("paul@hotel.com").
 			ManuallyApprove().
@@ -443,7 +443,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		require.Equal(s.T(), fmt.Sprintf("paul-%s-crt", suffix), userSignup.Status.CompliantUsername)
 
 		// suffix without delimiter
-		userSignup, _ = s.newSignupRequest().
+		userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 			Username("paul" + suffix).
 			Email("paul@hotel.com").
 			ManuallyApprove().
@@ -454,7 +454,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		require.Equal(s.T(), fmt.Sprintf("paul%s-crt", suffix), userSignup.Status.CompliantUsername)
 
 		// suffix as a name
-		userSignup, _ = s.newSignupRequest().
+		userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
 			Username(suffix).
 			Email("paul@hotel.com").
 			ManuallyApprove().
