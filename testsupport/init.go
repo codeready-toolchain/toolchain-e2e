@@ -70,7 +70,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	require.NoError(t, err)
 	hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
 	require.NoError(t, err)
-	hostAwait.RestConfig = hostConfig
+	hostAwait.RestConfig = hostConfig.Config
 
 	// setup host metrics route for metrics verification in tests
 	hostMetricsRoute, err := hostAwait.SetupRouteForService("host-operator-metrics-service", "/metrics")
@@ -98,7 +98,7 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
 	require.NoError(t, err)
 
-	memberClient, err := client.New(memberConfig, client.Options{
+	memberClient, err := client.New(memberConfig.Config, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
@@ -106,7 +106,7 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("member", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
-	memberAwait := wait.NewMemberAwaitility(t, memberConfig, memberClient, namespace, clusterName)
+	memberAwait := wait.NewMemberAwaitility(t, memberConfig.Config, memberClient, namespace, clusterName)
 
 	memberAwait.WaitForDeploymentToGetReady("member-operator-controller-manager", 1)
 
