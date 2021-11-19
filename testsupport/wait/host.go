@@ -13,6 +13,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
@@ -23,6 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,6 +34,7 @@ type HostAwaitility struct {
 	*Awaitility
 	RegistrationServiceNs  string
 	RegistrationServiceURL string
+	APIProxyURL            string
 }
 
 // NewHostAwaitility initializes a HostAwaitility
@@ -55,6 +59,7 @@ func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitilit
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
+		APIProxyURL:            a.APIProxyURL,
 	}
 }
 
@@ -1287,4 +1292,34 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'control-plane=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
+}
+
+// GetAPIProxyURL retrieves the api proxy route and returns its URL
+func (a *HostAwaitility) GetAPIProxyURL() string {
+	route := &routev1.Route{}
+	namespacedName := types.NamespacedName{Namespace: a.Namespace, Name: "api"}
+	err := a.Client.Get(context.TODO(), namespacedName, route)
+	require.NoError(a.T, err)
+
+	return fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
+}
+
+// GetAPIProxyURL retrieves the api proxy route and returns its URL
+func (a *HostAwaitility) CreateAPIProxyClient(token string) client.Client {
+	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	require.NoError(a.T, err)
+	proxyKubeConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	require.NoError(a.T, err)
+
+	s := scheme.Scheme
+	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
+	require.NoError(a.T, builder.AddToScheme(s))
+
+	proxyKubeConfig.APIPath = a.APIProxyURL
+	proxyKubeConfig.BearerToken = token
+	proxyCl, err := client.New(proxyKubeConfig, client.Options{
+		Scheme: s,
+	})
+	require.NoError(a.T, err)
+	return proxyCl
 }
