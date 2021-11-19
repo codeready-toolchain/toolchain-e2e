@@ -1304,8 +1304,8 @@ func (a *HostAwaitility) GetAPIProxyURL() string {
 	return fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
 }
 
-// GetAPIProxyURL retrieves the api proxy route and returns its URL
-func (a *HostAwaitility) CreateAPIProxyClient(token string) client.Client {
+// CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
+func (a *HostAwaitility) CreateAPIProxyClient(usertoken string) client.Client {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(a.T, err)
 	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
@@ -1318,7 +1318,7 @@ func (a *HostAwaitility) CreateAPIProxyClient(token string) client.Client {
 	proxyKubeConfig := &rest.Config{
 		Host:            a.APIProxyURL,
 		TLSClientConfig: defaultConfig.TLSClientConfig,
-		BearerToken:     token,
+		BearerToken:     usertoken,
 	}
 	proxyCl, err := client.New(proxyKubeConfig, client.Options{
 		Scheme: s,

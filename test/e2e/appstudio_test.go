@@ -24,8 +24,8 @@ type appstudioUsers struct {
 	signup                *toolchainv1alpha1.UserSignup
 }
 
+// full flow from usersignup with approval down to namespaces creation and cleanup
 func TestAppStudioFlow(t *testing.T) {
-	// full flow from usersignup with approval down to namespaces creation and cleanup
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -52,6 +52,7 @@ func TestAppStudioFlow(t *testing.T) {
 			username:              "appstudiomember2",
 		},
 	}
+	promotionTier := "appstudio"
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
@@ -75,8 +76,6 @@ func TestAppStudioFlow(t *testing.T) {
 			// promoted to the appstudio tier in order to test appstudio scenarios
 			t.Run("promote to appstudio tier", func(t *testing.T) {
 				// given
-				promotionTier := "appstudio"
-
 				changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, user.signup.Status.CompliantUsername, promotionTier)
 
 				// when
@@ -93,7 +92,8 @@ func TestAppStudioFlow(t *testing.T) {
 				assert.NoError(t, err)
 			})
 
-			t.Run("use proxy to create a configmap in each user appstudio namespace via proxy API", func(t *testing.T) {
+			t.Run("use proxy to create a configmap in the user appstudio namespace via proxy API", func(t *testing.T) {
+				// given
 				cmName := fmt.Sprintf("%s-test-cm", user.username)
 				expectedCM := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -105,20 +105,21 @@ func TestAppStudioFlow(t *testing.T) {
 					},
 				}
 
+				// when
 				proxyCl := hostAwait.CreateAPIProxyClient(user.token)
 				err := proxyCl.Create(context.TODO(), expectedCM)
 				require.NoError(t, err)
 
+				// then
 				createdCM := &corev1.ConfigMap{}
 				err = proxyCl.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: cmName}, createdCM)
-				require.NoError(t, err)
-
 				require.NoError(t, err)
 				require.NotEmpty(t, createdCM)
 				require.Equal(t, "venus", createdCM.Data["planet"])
 			})
 
 			t.Run("try to create a resource in an unauthorized namespace", func(t *testing.T) {
+				// given
 				cmName := fmt.Sprintf("%s-appstudio-test-cm", user.username)
 				expectedCM := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -130,13 +131,17 @@ func TestAppStudioFlow(t *testing.T) {
 					},
 				}
 
+				// when
 				proxyCl := hostAwait.CreateAPIProxyClient(user.token)
+
+				// then
 				err := proxyCl.Create(context.TODO(), expectedCM)
 				require.EqualError(t, err, fmt.Sprintf(`configmaps is forbidden: User "system:serviceaccount:%[1]s:appstudio-%[1]s" cannot create resource "configmaps" in API group "" in the namespace "%[2]s"`, user.username, hostAwait.Namespace))
 			})
 
 			if index == 1 { // only for the second user
 				t.Run("try to create a resource in the other users namespace", func(t *testing.T) {
+					// given
 					cmName := fmt.Sprintf("%s-appstudio-test-cm", users[0].username)
 					expectedCM := &corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
@@ -148,8 +153,11 @@ func TestAppStudioFlow(t *testing.T) {
 						},
 					}
 
+					// when
 					proxyCl := hostAwait.CreateAPIProxyClient(user.token)
 					err := proxyCl.Create(context.TODO(), expectedCM)
+
+					// then
 					require.EqualError(t, err, fmt.Sprintf(`configmaps is forbidden: User "system:serviceaccount:%[1]s:appstudio-%[1]s" cannot create resource "configmaps" in API group "" in the namespace "%[2]s"`, user.username, users[0].expectedMemberCluster.Namespace))
 				})
 			}
@@ -192,5 +200,4 @@ func TestAppStudioFlow(t *testing.T) {
 			})
 		})
 	} // end users loop
-
 }
