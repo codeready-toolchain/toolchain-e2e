@@ -1308,15 +1308,18 @@ func (a *HostAwaitility) GetAPIProxyURL() string {
 func (a *HostAwaitility) CreateAPIProxyClient(token string) client.Client {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(a.T, err)
-	proxyKubeConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
 	require.NoError(a.T, err)
 
 	s := scheme.Scheme
 	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
 	require.NoError(a.T, builder.AddToScheme(s))
 
-	proxyKubeConfig.APIPath = a.APIProxyURL
-	proxyKubeConfig.BearerToken = token
+	proxyKubeConfig := &rest.Config{
+		Host:            a.APIProxyURL,
+		TLSClientConfig: defaultConfig.TLSClientConfig,
+		BearerToken:     token,
+	}
 	proxyCl, err := client.New(proxyKubeConfig, client.Options{
 		Scheme: s,
 	})
