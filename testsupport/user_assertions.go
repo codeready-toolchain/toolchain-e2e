@@ -1,9 +1,12 @@
 package testsupport
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -130,4 +133,36 @@ func GetMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolc
 
 	require.FailNowf(t, "Unable to find a target member cluster", "MasterUserRecord: %+v", mur)
 	return nil
+}
+
+func DeletedRoleAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitility, ns corev1.Namespace, role string) {
+	userRole, err := memberAwait.WaitForRole(&ns, role)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRole)
+	require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
+
+	//when role deleted
+	err = memberAwait.Client.Delete(context.TODO(), userRole)
+	require.NoError(t, err)
+
+	// then verify role is recreated
+	userRole, err = memberAwait.WaitForRole(&ns, role)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRole)
+}
+
+func DeleteRoleBindingAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitility, ns corev1.Namespace, rolebinding string) {
+	userRoleBinding, err := memberAwait.WaitForRoleBinding(&ns, rolebinding)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRoleBinding)
+	require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
+
+	//when rolebinding deleted
+	err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
+	require.NoError(t, err)
+
+	// then verify role is recreated
+	userRoleBinding, err = memberAwait.WaitForRoleBinding(&ns, rolebinding)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRoleBinding)
 }
