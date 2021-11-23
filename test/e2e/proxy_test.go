@@ -36,12 +36,6 @@ func TestProxyFlow(t *testing.T) {
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
-	require.NoError(t, err, "failed while waiting for ToolchainStatus")
-	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
-
 	users := []proxyUsers{
 		{
 			expectedMemberCluster: memberAwait,
@@ -69,7 +63,7 @@ func TestProxyFlow(t *testing.T) {
 			user.token = req.GetToken()
 
 			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "base")
-			_, err = hostAwait.GetMasterUserRecord(wait.WithMurName(user.username))
+			_, err := hostAwait.GetMasterUserRecord(wait.WithMurName(user.username))
 			require.NoError(t, err)
 
 			// since the registration service always provisions users to the default tier users need to be
