@@ -106,7 +106,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// then
 				createdCM := &corev1.ConfigMap{}
-				err = proxyCl.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: cmName}, createdCM)
+				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: cmName}, createdCM)
 				require.NoError(t, err)
 				require.NotEmpty(t, createdCM)
 				require.Equal(t, "venus", createdCM.Data["planet"])
