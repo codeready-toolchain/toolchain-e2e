@@ -136,6 +136,11 @@ func TestProxyFlow(t *testing.T) {
 			if index == 1 { // only for the second user
 				t.Run("try to create a resource in the other users namespace", func(t *testing.T) {
 					// given
+					// verify first user's namespace still exists
+					ns := &corev1.Namespace{}
+					err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: users[0].username}, ns)
+					require.NoError(t, err, "failed to verify the first user's namespace still exists")
+
 					cmName := fmt.Sprintf("%s-proxy-test-cm", users[0].username)
 					expectedCM := &corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
@@ -149,7 +154,7 @@ func TestProxyFlow(t *testing.T) {
 
 					// when
 					proxyCl := hostAwait.CreateAPIProxyClient(user.token)
-					err := proxyCl.Create(context.TODO(), expectedCM)
+					err = proxyCl.Create(context.TODO(), expectedCM)
 
 					// then
 					require.EqualError(t, err, fmt.Sprintf(`configmaps is forbidden: User "system:serviceaccount:%[1]s:appstudio-%[1]s" cannot create resource "configmaps" in API group "" in the namespace "%[2]s"`, user.username, users[0].expectedMemberCluster.Namespace))
