@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-type appstudioUsers struct {
+type proxyUsers struct {
 	expectedMemberCluster *wait.MemberAwaitility
 	username              string
 	token                 string
@@ -25,7 +25,7 @@ type appstudioUsers struct {
 }
 
 // full flow from usersignup with approval down to namespaces creation and cleanup
-func TestAppStudioFlow(t *testing.T) {
+func TestProxyFlow(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -42,14 +42,14 @@ func TestAppStudioFlow(t *testing.T) {
 	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
 
-	users := []appstudioUsers{
+	users := []proxyUsers{
 		{
 			expectedMemberCluster: memberAwait,
-			username:              "appstudiomember1",
+			username:              "proxymember1",
 		},
 		{
 			expectedMemberCluster: memberAwait2,
-			username:              "appstudiomember2",
+			username:              "proxymember2",
 		},
 	}
 	promotionTier := "appstudio"
@@ -73,7 +73,7 @@ func TestAppStudioFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// since the registration service always provisions users to the default tier users need to be
-			// promoted to the appstudio tier in order to test appstudio scenarios
+			// promoted to the appstudio tier in order to test proxy scenarios
 			t.Run("promote to appstudio tier", func(t *testing.T) {
 				// given
 				changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, user.signup.Status.CompliantUsername, promotionTier)
@@ -120,7 +120,7 @@ func TestAppStudioFlow(t *testing.T) {
 
 			t.Run("try to create a resource in an unauthorized namespace", func(t *testing.T) {
 				// given
-				cmName := fmt.Sprintf("%s-appstudio-test-cm", user.username)
+				cmName := fmt.Sprintf("%s-proxy-test-cm", user.username)
 				expectedCM := &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      cmName,
@@ -142,7 +142,7 @@ func TestAppStudioFlow(t *testing.T) {
 			if index == 1 { // only for the second user
 				t.Run("try to create a resource in the other users namespace", func(t *testing.T) {
 					// given
-					cmName := fmt.Sprintf("%s-appstudio-test-cm", users[0].username)
+					cmName := fmt.Sprintf("%s-proxy-test-cm", users[0].username)
 					expectedCM := &corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      cmName,
