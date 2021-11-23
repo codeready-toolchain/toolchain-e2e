@@ -155,43 +155,6 @@ func TestProxyFlow(t *testing.T) {
 					require.EqualError(t, err, fmt.Sprintf(`configmaps is forbidden: User "system:serviceaccount:%[1]s:appstudio-%[1]s" cannot create resource "configmaps" in API group "" in the namespace "%[2]s"`, user.username, users[0].expectedMemberCluster.Namespace))
 				})
 			}
-
-			t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
-				// given
-				signup, err := hostAwait.WaitForUserSignup(user.signup.Name)
-				require.NoError(t, err)
-
-				// when
-				err = hostAwait.Client.Delete(context.TODO(), user.signup)
-
-				// then
-				require.NoError(t, err)
-				t.Logf("usersignup '%s' deleted (resource name='%s')", user.username, signup.Name)
-
-				err = hostAwait.WaitUntilMasterUserRecordDeleted(user.username)
-				assert.NoError(t, err, "MasterUserRecord is not deleted")
-
-				err = memberAwait.WaitUntilUserAccountDeleted(user.username)
-				assert.NoError(t, err, "UserAccount is not deleted")
-
-				err = memberAwait.WaitUntilUserDeleted(user.username)
-				assert.NoError(t, err, "User is not deleted")
-
-				err = memberAwait.WaitUntilIdentityDeleted(user.username)
-				assert.NoError(t, err, "Identity is not deleted")
-
-				err = memberAwait.WaitUntilNSTemplateSetDeleted(user.username)
-				assert.NoError(t, err, "NSTemplateSet id not deleted")
-
-				err = memberAwait.WaitUntilClusterResourceQuotasDeleted(user.username)
-				assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
-
-				err = memberAwait.WaitUntilNamespaceDeleted(user.username, "dev")
-				assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
-
-				err = memberAwait.WaitUntilNamespaceDeleted(user.username, "stage")
-				assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
-			})
 		})
 	} // end users loop
 }
