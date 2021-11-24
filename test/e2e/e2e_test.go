@@ -119,9 +119,24 @@ func TestE2EFlow(t *testing.T) {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
+	originalSubJohnName := "originalsubjohn"
+	originalSubJohnClaim := "originalsub:john"
+	originalSubJohnSignup, _ := NewSignupRequest(t, awaitilities).
+		Username(originalSubJohnName).
+		OriginalSub(originalSubJohnClaim).
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().Resources()
+
+	// Confirm the originalSub property has been set during signup
+	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.OriginalSub)
+
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "base")
 
 	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
 	require.NoError(t, err)
@@ -244,9 +259,9 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9))
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
@@ -345,6 +360,50 @@ func TestE2EFlow(t *testing.T) {
 
 	})
 
+	t.Run("Try to delete namespaced scoped resources of users, and expect recreation", func(t *testing.T) {
+		userSignup, _ := NewSignupRequest(t, awaitilities).
+			Username("wonderwoman").
+			Email("wonderwoman@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+		devNs := corev1.Namespace{}
+		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
+		require.NoError(t, err)
+
+		stageNs := corev1.Namespace{}
+		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
+		require.NoError(t, err)
+
+		t.Run("role accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+			DeletedRoleAndAwaitRecreation(t, memberAwait, devNs, "rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("role accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
+			DeletedRoleAndAwaitRecreation(t, memberAwait, stageNs, "rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "user-rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
+
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "user-rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+	})
+
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
 		johnSignup, err := hostAwait.WaitForUserSignup(johnSignup.Name)
@@ -386,9 +445,9 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+7))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 6)
+		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 

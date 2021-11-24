@@ -12,22 +12,50 @@ import (
 )
 
 func TestDiff(t *testing.T) {
-	now := metav1.NewTime(time.Now())
-	actual := toolchainv1alpha1.Condition{
-		Type:               toolchainv1alpha1.ChangeTierRequestComplete,
-		Status:             v1.ConditionTrue,
-		Reason:             "cookie",
-		Message:            "cookie",
-		LastTransitionTime: now,
-		LastUpdatedTime:    &now,
-	}
-	expected := toolchainv1alpha1.Condition{
-		Type:               toolchainv1alpha1.ChangeTierRequestComplete,
-		Status:             v1.ConditionTrue,
-		Reason:             "chocolate",
-		Message:            "chocolate",
-		LastTransitionTime: now,
-		LastUpdatedTime:    &now,
-	}
-	t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(actual, expected)))
+
+	t.Run("on single condition", func(t *testing.T) {
+		now := metav1.NewTime(time.Now())
+		actual := toolchainv1alpha1.Condition{
+			Type:               toolchainv1alpha1.ChangeTierRequestComplete,
+			Status:             v1.ConditionTrue,
+			Reason:             "a reason",
+			Message:            "a message",
+			LastTransitionTime: now,
+			LastUpdatedTime:    &now,
+		}
+		expected := toolchainv1alpha1.Condition{
+			Type:               toolchainv1alpha1.ChangeTierRequestComplete,
+			Status:             v1.ConditionTrue,
+			Reason:             "another reason",
+			Message:            "another message",
+			LastTransitionTime: now,
+			LastUpdatedTime:    &now,
+		}
+		t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(expected, actual)))
+	})
+
+	t.Run("on multiple conditions", func(t *testing.T) {
+		now := metav1.NewTime(time.Now())
+		actual := []toolchainv1alpha1.Condition{
+			{
+				Type:               toolchainv1alpha1.ConditionReady,
+				Status:             v1.ConditionFalse,
+				Reason:             "Provisioning",
+				LastTransitionTime: now,
+			},
+		}
+		expected := []toolchainv1alpha1.Condition{
+			{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: v1.ConditionTrue,
+				Reason: "Provisioned",
+			},
+			{
+				Type:   toolchainv1alpha1.MasterUserRecordUserProvisionedNotificationCreated,
+				Status: v1.ConditionTrue,
+				Reason: toolchainv1alpha1.MasterUserRecordNotificationCRCreatedReason,
+			},
+		}
+		t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(expected, actual)))
+	})
 }

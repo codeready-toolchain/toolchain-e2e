@@ -115,16 +115,16 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			userAccount := actual.DeepCopy()
-			userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			userAccount.Spec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
 			expectedSpec := expected.DeepCopy()
-			expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			expectedSpec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
 			return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
 			userAccount := actual.DeepCopy()
-			userAccount.Spec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			userAccount.Spec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
 			expectedSpec := expected.DeepCopy()
-			expectedSpec.NSTemplateSet = toolchainv1alpha1.NSTemplateSetSpec{}
+			expectedSpec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
 			return fmt.Sprintf("expected specs to match: %s", Diff(expectedSpec, userAccount.Spec))
 		},
 	}
@@ -148,7 +148,7 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase))
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase, actual.Spec.UserAccountSpecBase))
 		},
 	}
 }
@@ -250,6 +250,19 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 	a.T.Log(buf.String())
 }
 
+// UntilNSTemplateSetHasNoOwnerReferences returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet has no Owner References
+func UntilNSTemplateSetHasNoOwnerReferences() NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return len(actual.OwnerReferences) == 0
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected no owner refs: %v", actual.OwnerReferences)
+		},
+	}
+}
+
 // UntilNSTemplateSetIsBeingDeleted returns a `NSTemplateSetWaitCriterion` which checks that the given
 // NSTemplateSet has Deletion Timestamp set
 func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
@@ -271,7 +284,7 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }
@@ -1109,7 +1122,7 @@ func UntilMemberStatusHasConditions(expected ...toolchainv1alpha1.Condition) Mem
 			return test.ConditionsMatch(actual.Status.Conditions, expected...)
 		},
 		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
-			return fmt.Sprintf("expected conditions to match:\n%s", Diff(actual.Status.Conditions, expected))
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
 		},
 	}
 }

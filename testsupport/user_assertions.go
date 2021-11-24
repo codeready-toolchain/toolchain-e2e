@@ -1,7 +1,12 @@
 package testsupport
 
 import (
+	"context"
+	"encoding/base64"
+	"fmt"
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -39,7 +44,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tier, templateRefs)),
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tier, templateRefs, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
@@ -56,6 +61,14 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Verify provisioned Identity
 	_, err = memberAwait.WaitForIdentity(ToIdentityName(userAccount.Spec.UserID))
 	assert.NoError(t, err)
+
+	// Verify second (and third if relevant) identities also
+	if userAccount.Spec.OriginalSub != "" {
+		// Verify
+		encodedName := fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.OriginalSub)))
+		_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName))
+		assert.NoError(t, err)
+	}
 
 	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tier)
 
@@ -79,7 +92,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	assert.NoError(t, err)
 }
 
-func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs) toolchainv1alpha1.UserAccountSpec {
+func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs, originalSub string) toolchainv1alpha1.UserAccountSpec {
 	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
 	for _, ref := range templateRefs.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
@@ -98,12 +111,13 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 		Disabled: false,
 		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
 			NSLimit: "default",
-			NSTemplateSet: toolchainv1alpha1.NSTemplateSetSpec{
+			NSTemplateSet: &toolchainv1alpha1.NSTemplateSetSpec{
 				TierName:         tier,
 				Namespaces:       namespaces,
 				ClusterResources: clusterResources,
 			},
 		},
+		OriginalSub: originalSub,
 	}
 }
 
@@ -118,4 +132,36 @@ func GetMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolc
 
 	require.FailNowf(t, "Unable to find a target member cluster", "MasterUserRecord: %+v", mur)
 	return nil
+}
+
+func DeletedRoleAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitility, ns corev1.Namespace, role string) {
+	userRole, err := memberAwait.WaitForRole(&ns, role)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRole)
+	require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
+
+	//when role deleted
+	err = memberAwait.Client.Delete(context.TODO(), userRole)
+	require.NoError(t, err)
+
+	// then verify role is recreated
+	userRole, err = memberAwait.WaitForRole(&ns, role)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRole)
+}
+
+func DeleteRoleBindingAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitility, ns corev1.Namespace, rolebinding string) {
+	userRoleBinding, err := memberAwait.WaitForRoleBinding(&ns, rolebinding)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRoleBinding)
+	require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
+
+	//when rolebinding deleted
+	err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
+	require.NoError(t, err)
+
+	// then verify role is recreated
+	userRoleBinding, err = memberAwait.WaitForRoleBinding(&ns, rolebinding)
+	require.NoError(t, err)
+	require.NotEmpty(t, userRoleBinding)
 }

@@ -35,6 +35,9 @@ type SignupRequest interface {
 	// Email specifies the email address to use for the new UserSignup
 	Email(email string) SignupRequest
 
+	// OriginalSub specifies the original sub value which will be used for migrating the user to a new IdP client
+	OriginalSub(originalSub string) SignupRequest
+
 	// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
 	// the Resources() function to return a non-nil value for its second return parameter.
 	EnsureMUR() SignupRequest
@@ -73,6 +76,9 @@ type SignupRequest interface {
 	// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
 	// required state.
 	VerificationRequired() SignupRequest
+
+	// Disables automatic cleanup of the UserSignup resource after the test has completed
+	DisableCleanup() SignupRequest
 }
 
 func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
@@ -100,6 +106,8 @@ type signupRequest struct {
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
 	mur                  *toolchainv1alpha1.MasterUserRecord
+	originalSub          string
+	cleanupDisabled      bool
 }
 
 func (r *signupRequest) IdentityID(id uuid.UUID) SignupRequest {
@@ -115,6 +123,11 @@ func (r *signupRequest) Username(username string) SignupRequest {
 
 func (r *signupRequest) Email(email string) SignupRequest {
 	r.email = email
+	return r
+}
+
+func (r *signupRequest) OriginalSub(originalSub string) SignupRequest {
+	r.originalSub = originalSub
 	return r
 }
 
@@ -152,6 +165,11 @@ func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
 	return r
 }
 
+func (r *signupRequest) DisableCleanup() SignupRequest {
+	r.cleanupDisabled = true
+	return r
+}
+
 func (r *signupRequest) Execute() SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.awaitilities.Host())
@@ -169,8 +187,11 @@ func (r *signupRequest) Execute() SignupRequest {
 		Username: r.username,
 	}
 
-	emailClaim0 := authsupport.WithEmailClaim(r.email)
-	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, emailClaim0)
+	claims := []authsupport.ExtraClaim{authsupport.WithEmailClaim(r.email)}
+	if r.originalSub != "" {
+		claims = append(claims, authsupport.WithOriginalSubClaim(r.originalSub))
+	}
+	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, claims...)
 	require.NoError(r.t, err)
 
 	// Call the signup endpoint
@@ -228,7 +249,10 @@ func (r *signupRequest) Execute() SignupRequest {
 	}
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
-	hostAwait.Cleanup(r.userSignup)
+	// and if cleanup hasn't been disabled
+	if !r.cleanupDisabled {
+		hostAwait.Cleanup(r.userSignup)
+	}
 
 	return r
 }
@@ -242,6 +266,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
+	req.Close = true
 	resp, err := httpClient.Do(req)
 
 	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)
