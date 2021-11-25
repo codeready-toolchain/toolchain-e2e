@@ -252,7 +252,7 @@ func (r *signupRequest) Execute() SignupRequest {
 			expectedTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier
 		}
 		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, expectedTier)
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
+		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasTierName(expectedTier))
 		require.NoError(r.t, err)
 		r.mur = mur
 	}
