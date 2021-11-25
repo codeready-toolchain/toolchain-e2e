@@ -271,7 +271,8 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 		}
 	}
 	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
+	a.listAndPrint("UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
+	a.listAndPrint("MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
 
 	a.T.Log(buf.String())
 }
@@ -369,6 +370,17 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
 			return fmt.Sprintf("expected UserAccount statuses to match: %s", Diff(expected, actual.Status.UserAccounts))
+		},
+	}
+}
+
+func UntilMasterUserRecordHasTierName(expected string) MasterUserRecordWaitCriterion {
+	return MasterUserRecordWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
+			return actual.Spec.TierName == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+			return fmt.Sprintf("expected spec.TierName to match: %s", Diff(expected, actual.Spec.TierName))
 		},
 	}
 }
