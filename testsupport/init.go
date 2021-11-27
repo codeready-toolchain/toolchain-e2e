@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -63,7 +64,10 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	hostAwait.RegistrationServiceURL = registrationServiceURL
 
 	// set api proxy values
-	hostAwait.APIProxyURL = hostAwait.GetAPIProxyURL()
+	// hostAwait.APIProxyURL = hostAwait.GetAPIProxyURL()
+	apiRoute, err := hostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "api", "/proxyhealth")
+	require.NoError(t, err)
+	hostAwait.APIProxyURL = fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path)
 
 	// wait for member operators to be ready
 	memberAwait := getMemberAwaitility(t, cl, hostAwait, memberNs)

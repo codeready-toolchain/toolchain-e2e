@@ -13,7 +13,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
@@ -1304,16 +1303,6 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'control-plane=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
-}
-
-// GetAPIProxyURL retrieves the api proxy route and returns its URL
-func (a *HostAwaitility) GetAPIProxyURL() string {
-	route := &routev1.Route{}
-	namespacedName := types.NamespacedName{Namespace: a.Namespace, Name: "api"}
-	err := a.Client.Get(context.TODO(), namespacedName, route)
-	require.NoError(a.T, err)
-
-	return fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
 }
 
 // CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
