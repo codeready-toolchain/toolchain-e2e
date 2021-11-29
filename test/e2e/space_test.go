@@ -101,7 +101,8 @@ func TestSpace(t *testing.T) {
 		require.NoError(t, err)
 		templateRefs := tiers.GetTemplateRefs(hostAwait, space.Spec.TierName)
 		for _, templateRef := range templateRefs.Namespaces {
-			memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName)
+			_, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName)
+			require.NoError(t, err)
 		}
 		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
