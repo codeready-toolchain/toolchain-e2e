@@ -575,8 +575,8 @@ func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 	a.T.Logf("waiting until BannedUser '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		mur := &toolchainv1alpha1.BannedUser{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
+		user := &toolchainv1alpha1.BannedUser{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
 			}
@@ -1326,4 +1326,73 @@ func (a *HostAwaitility) CreateAPIProxyClient(usertoken string) client.Client {
 	})
 	require.NoError(a.T, err)
 	return proxyCl
+}
+
+type SpaceWaitCriterion struct {
+	Match func(*toolchainv1alpha1.Space) bool
+	Diff  func(*toolchainv1alpha1.Space) string
+}
+
+func matchSpaceWaitCriterion(actual *toolchainv1alpha1.Space, criteria ...SpaceWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+// WaitForSpace waits until the Space with the given name is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+	var space *toolchainv1alpha1.Space
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.Space{}
+		// retrieve the Space from the host namespace
+		if err := a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			},
+			obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		space = obj
+		return matchSpaceWaitCriterion(space, criteria...), nil
+	})
+	return space, err
+}
+
+// UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
+// Space has exactly all the given status conditions
+func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
+		},
+	}
+}
+
+// WaitUntilSpaceDeleted waits until the Space with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
+	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		space := &toolchainv1alpha1.Space{}
+		if err := a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			}, space); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
 }
