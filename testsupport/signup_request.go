@@ -46,6 +46,9 @@ type SignupRequest interface {
 	// once, and must be called after all other functions EXCEPT for Resources()
 	Execute() SignupRequest
 
+	// GetToken may be called only after a call to Execute(). It returns the token that was generated for the request
+	GetToken() string
+
 	// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
 	ManuallyApprove() SignupRequest
 
@@ -106,6 +109,7 @@ type signupRequest struct {
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
 	mur                  *toolchainv1alpha1.MasterUserRecord
+	token                string
 	originalSub          string
 	cleanupDisabled      bool
 }
@@ -138,6 +142,10 @@ func (r *signupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1
 func (r *signupRequest) EnsureMUR() SignupRequest {
 	r.ensureMUR = true
 	return r
+}
+
+func (r *signupRequest) GetToken() string {
+	return r.token
 }
 
 func (r *signupRequest) ManuallyApprove() SignupRequest {
@@ -193,6 +201,7 @@ func (r *signupRequest) Execute() SignupRequest {
 	}
 	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, claims...)
 	require.NoError(r.t, err)
+	r.token = token0
 
 	// Call the signup endpoint
 	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
