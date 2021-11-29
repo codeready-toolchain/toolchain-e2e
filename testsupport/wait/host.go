@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,6 +33,7 @@ type HostAwaitility struct {
 	*Awaitility
 	RegistrationServiceNs  string
 	RegistrationServiceURL string
+	APIProxyURL            string
 }
 
 // NewHostAwaitility initializes a HostAwaitility
@@ -55,6 +58,7 @@ func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitilit
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
+		APIProxyURL:            a.APIProxyURL,
 	}
 }
 
@@ -1299,4 +1303,27 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 		return corev1.Pod{}, fmt.Errorf("unexpected number of pods with label 'control-plane=controller-manager' in namespace '%s': %d ", a.Namespace, len(pods.Items))
 	}
 	return pods.Items[0], nil
+}
+
+// CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
+func (a *HostAwaitility) CreateAPIProxyClient(usertoken string) client.Client {
+	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	require.NoError(a.T, err)
+	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	require.NoError(a.T, err)
+
+	s := scheme.Scheme
+	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
+	require.NoError(a.T, builder.AddToScheme(s))
+
+	proxyKubeConfig := &rest.Config{
+		Host:            a.APIProxyURL,
+		TLSClientConfig: defaultConfig.TLSClientConfig,
+		BearerToken:     usertoken,
+	}
+	proxyCl, err := client.New(proxyKubeConfig, client.Options{
+		Scheme: s,
+	})
+	require.NoError(a.T, err)
+	return proxyCl
 }
