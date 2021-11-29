@@ -109,11 +109,13 @@ print-operator-logs:
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	echo ${MEMBER_NS_2}
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s"
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
+	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
+	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
+
 
 .PHONY: e2e-service-account
 e2e-service-account:
