@@ -242,16 +242,7 @@ display-eval:
 #
 ###########################################################
 
-# Output directory for coverage information
-COV_DIR = $(OUT_DIR)/coverage
-
 .PHONY: test
 ## Run the unit tests in the 'testsupport/...' packages
 test:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
-
-.PHONY: test-with-coverage
-## Run the unit tests in the 'testsupport/...' packages (with coverage)
-test-with-coverage:
-	@-mkdir -p $(COV_DIR)
-	@go test -coverprofile=$(COV_DIR)/coverage.txt -covermode=atomic github.com/codeready-toolchain/toolchain-e2e/testsupport/...
