@@ -1,0 +1,31 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-devworkspace-operator
+objects:
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: CatalogSource
+    metadata:
+      name: devworkspace-operator-catalog
+      namespace: ${DWO_NAMESPACE}
+    spec:
+      sourceType: grpc
+      image: quay.io/devfile/devworkspace-operator-index:release
+      publisher: Red Hat
+      displayName: DevWorkspace Operator Catalog
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: devworkspace-operator
+      namespace: ${DWO_NAMESPACE}
+    spec:
+      channel: fast
+      installPlanApproval: Automatic
+      name: devworkspace-operator
+      source: devworkspace-operator-catalog
+      sourceNamespace: ${DWO_NAMESPACE}
+      startingCSV: devworkspace-operator.v0.11.0
+parameters:
+  - name: DWO_NAMESPACE
+    value: openshift-operators
+
