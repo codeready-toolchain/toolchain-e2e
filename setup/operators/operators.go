@@ -23,6 +23,7 @@ const (
 )
 
 var Templates = []string{
+	"devworkspace-operator.yaml",
 	"rhoas.yaml",
 	"sbo.yaml",
 	"serverless-operator.yaml",
