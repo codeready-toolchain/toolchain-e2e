@@ -105,11 +105,9 @@ func TestSpace(t *testing.T) {
 		// wait until NSTemplateSet has been created and Space is in `Ready` status
 		nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
 		require.NoError(t, err)
-		templateRefs := tiers.GetTemplateRefs(hostAwait, space.Spec.TierName)
-		for _, templateRef := range templateRefs.Namespaces {
-			_, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName)
-			require.NoError(t, err)
-		}
+		tierChecks, err := tiers.NewChecks("base")
+		require.NoError(t, err)
+		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
 		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
 
