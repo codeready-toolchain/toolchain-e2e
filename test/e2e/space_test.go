@@ -124,6 +124,10 @@ func TestSpace(t *testing.T) {
 			require.NoError(t, err)
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(nsTmplSet.Name)
 			require.NoError(t, err)
+			err = memberAwait.WaitUntilNamespaceDeleted(nsTmplSet.Name, "dev")
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNamespaceDeleted(nsTmplSet.Name, "stage")
+			require.NoError(t, err)
 		})
 	})
 
