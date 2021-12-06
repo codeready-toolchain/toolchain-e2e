@@ -8,6 +8,9 @@ DEV_ENVIRONMENT := dev
 ## Deploy the resources with one member operator instance
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
 
+.PHONY: dev-deploy-e2e-and-print-local-debug
+dev-deploy-e2e-and-print-local-debug: dev-deploy-e2e print-local-debug-info
+
 .PHONY: dev-deploy-e2e-two-members
 ## Deploy the resources with two instances of member operator
 dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-service-link

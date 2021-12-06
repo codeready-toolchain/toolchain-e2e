@@ -36,6 +36,8 @@ test-e2e: deploy-e2e e2e-run
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
 deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
+	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
+	@echo ""
 
 label-olm-ns:
 # adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
@@ -83,13 +85,27 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-controller-manager NAMESPACE=${MEMBER_NS_2} ADDITIONAL_PARAMS="-c manager"; fi
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
 else
-	@echo "you can print logs using the commands:"
+	$(MAKE) print-local-debug-info  HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS}
+endif
+
+.PHONY: deploy-e2e-and-print-local-debug
+deploy-e2e-and-print-local-debug: deploy-e2e print-local-debug-info
+
+.PHONY: print-local-debug-info
+print-local-debug-info:
+	@echo "You can print logs using the commands:"
 	@echo "oc logs deployment.apps/host-operator-controller-manager -c manager --namespace ${HOST_NS}"
 	@echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS}"
 	@if [[ ${SECOND_MEMBER_MODE} == true ]]; then echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS_2}"; fi
 	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
 	@echo "oc logs deployment.apps/registration-service --namespace ${REGISTRATION_SERVICE_NS}"
-endif
+	@echo ""
+	@echo "Add the following lines at the very beginning of the test/suite that you want to run/debug from your IDE:"
+	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
+	@echo 'os.Setenv("MEMBER_NS_2","${MEMBER_NS_2}")'
+	@echo 'os.Setenv("HOST_NS","${HOST_NS}")'
+	@echo 'os.Setenv("REGISTRATION_SERVICE_NS","${REGISTRATION_SERVICE_NS}")'
+
 
 .PHONY: print-operator-logs
 print-operator-logs:
