@@ -26,7 +26,8 @@ func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberA
 	require.True(t, found)
 	_, err = hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilAllMembersHaveUsageSet(),
-		wait.UntilAllMembersHaveAPIEndpoint(memberCluster.Spec.APIEndpoint))
+		wait.UntilAllMembersHaveAPIEndpoint(memberCluster.Spec.APIEndpoint),
+		wait.UntilProxyURLIsPresent(hostAwait.APIProxyURL))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
 
