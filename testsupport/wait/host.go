@@ -1070,6 +1070,17 @@ func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCrite
 	}
 }
 
+func UntilProxyURLIsPresent(proxyURL string) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			return strings.TrimSuffix(actual.Status.HostRoutes.ProxyURL, "/") == strings.TrimSuffix(proxyURL, "/")
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			return fmt.Sprintf("Proxy endpoint in the ToolchainStatus doesn't match. Expected: '%s'. Actual: %s", proxyURL, actual.Status.HostRoutes.ProxyURL)
+		},
+	}
+}
+
 // UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has the given count of MasterUserRecords
 func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
