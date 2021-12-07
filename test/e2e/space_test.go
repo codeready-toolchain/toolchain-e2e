@@ -97,7 +97,7 @@ func TestSpace(t *testing.T) {
 			space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(toolchainv1alpha1.Condition{
 				Type:    toolchainv1alpha1.ConditionReady,
 				Status:  corev1.ConditionFalse,
-				Reason:  toolchainv1alpha1.SpaceProvisioningFailedReason,
+				Reason:  toolchainv1alpha1.SpaceProvisioningPendingReason,
 				Message: "unspecified target member cluster",
 			}))
 			require.NoError(t, err)
