@@ -6,17 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/ghodss/yaml"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	k8swait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -225,14 +225,9 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 
 // TODO: this test should be removed once migration from MUR -> Spaces is completed.
 func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
-	os.Setenv("MEMBER_NS", "toolchain-member-09215228")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-09215228")
-	os.Setenv("HOST_NS", "toolchain-host-09215228")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-09215228")
-	// in this test, we have 2 groups of spaces, configured with their own tier (both using the "base" tier templates)
-	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
-	// finally, all user namespaces are verified.
-	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
+	// this is a temporary test where we have a group of spaces, configured with their own tier (both using the "base" tier templates)
+	// then, the tier is updated with the "advanced" templates and we verify that TemplateUpdateRequests are created but
+	// end up in a UnableToUpdate state because Space updates are not fully implemented yet
 
 	count := 2*MaxPoolSize + 1
 	awaitilities := WaitForDeployments(t)
@@ -243,52 +238,43 @@ func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	// setup regular users "muffin lovers" and spaces "icecream lovers"
-	// muffinSyncIndexes := setupAccounts(t, awaitilities, "muffin", "muffinlover%02d", memberAwait, count)
+	// setup icecream tier and spaces
 	setupSpaces(t, awaitilities, "icecream", "icecreamlover%02d", memberAwait, count)
 
-	// verify ice cream tier created successfully
-	icecreamTier, err := hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(1))
+	// verify icecream tier created successfully
+	_, err := hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(1))
 	require.NoError(t, err)
-	// muffinSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, muffinSyncIndexes, "muffin", "base", "base")
-
-	// when updating the "muffinTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces) but keep the ClusterResources refs
-	// updateTemplateTier(t, hostAwait, "muffin", "advanced", "")
-
-	// then
-	// muffinSyncIndexes = verifyResourceUpdates(t, hostAwait, memberAwait, muffinSyncIndexes, "muffin", "advanced", "base")
-
-	// when updating the "muffinTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
-	// updateTemplateTier(t, hostAwait, "muffin", "", "advanced")
-
-	// then
-	// verifyResourceUpdates(t, hostAwait, memberAwait, muffinSyncIndexes, "muffin", "advanced", "advanced")
-
-	// finally, verify the counters in the status.history for both 'muffin' tier
-	// muffin tier
-	// there should be 3 entries in the status.history (1 create + 2 update)
-	// verifyStatus(t, hostAwait, "muffin", 3)
-
-	// let's wait until all MasterUserRecords have been updated
-	// _, err = hostAwait.WaitForNSTemplateTier("icecream",
-	// 	UntilNSTemplateTierSpec(HasClusterResourcesTemplateRef(icecreamTier.Spec.ClusterResources.TemplateRef)))
-	// require.NoError(t, err)
-	content, _ := yaml.Marshal(icecreamTier)
-	t.Logf("icecream tier: %s", string(content))
 
 	updateTemplateTier(t, hostAwait, "icecream", "advanced", "")
 
-	updatedTier, err := hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(2))
+	// verify icecream tier update was processed
+	_, err = hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(2))
 	require.NoError(t, err)
-	content, _ = yaml.Marshal(updatedTier)
-	t.Logf("updated icecream tier: %s", string(content))
 
-	hash, err := computeTemplateRefsHash(updatedTier) // we can assume the JSON marshalling will always work
-	require.NoError(t, err)
-	t.Log("updated hash is " + hash)
-
-	// verify that the maximum number of TemplateUpdateRequests were created (they will currently fail because Space updates are not fully implemented yet)
-	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, UntilTURCountGreaterThan(MaxPoolSize-1))
+	// verify that the maximum number of TemplateUpdateRequests were created (they will currently end up in a UnableToUpdate state because Space updates are not fully implemented yet)
+	templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
+	err = k8swait.Poll(hostAwait.RetryInterval, 2*hostAwait.Timeout, func() (done bool, err error) {
+		templateUpdateRequests = &toolchainv1alpha1.TemplateUpdateRequestList{}
+		if err := hostAwait.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(hostAwait.Namespace)); err != nil {
+			return false, err
+		}
+		// wait until there are MaxPoolSize or more TemplateUpdateRequests created and all are in UnableToUpdate state
+		if len(templateUpdateRequests.Items) < MaxPoolSize-1 {
+			return false, nil
+		}
+		for _, item := range templateUpdateRequests.Items {
+			expectedCondition := toolchainv1alpha1.Condition{
+				Type:    toolchainv1alpha1.TemplateUpdateRequestComplete,
+				Status:  corev1.ConditionFalse,
+				Reason:  toolchainv1alpha1.TemplateUpdateRequestUnableToUpdateReason,
+				Message: fmt.Sprintf(`MasterUserRecord.toolchain.dev.openshift.com "%s" not found`, item.Name),
+			}
+			if !test.ContainsCondition(item.Status.Conditions, expectedCondition) {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
 	require.NoError(t, err)
 }
 
@@ -462,7 +448,7 @@ func verifyResourceUpdates(t *testing.T, hostAwait *HostAwaitility, memberAwaiti
 	require.NoError(t, err)
 
 	// verify that all TemplateUpdateRequests were deleted
-	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, UntilTURCountEquals(0))
+	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
 	require.NoError(t, err)
 
 	// verify individual user updates
