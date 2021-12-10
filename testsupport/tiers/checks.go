@@ -222,7 +222,7 @@ func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
