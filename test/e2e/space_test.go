@@ -94,12 +94,7 @@ func TestSpace(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(toolchainv1alpha1.Condition{
-				Type:    toolchainv1alpha1.ConditionReady,
-				Status:  corev1.ConditionFalse,
-				Reason:  toolchainv1alpha1.SpaceProvisioningPendingReason,
-				Message: "unspecified target member cluster",
-			}))
+			space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(ProvisioningPending("unspecified target member cluster")))
 			require.NoError(t, err)
 
 			t.Run("delete space", func(t *testing.T) {
@@ -134,12 +129,7 @@ func TestSpace(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(toolchainv1alpha1.Condition{
-				Type:    toolchainv1alpha1.ConditionReady,
-				Status:  corev1.ConditionFalse,
-				Reason:  toolchainv1alpha1.SpaceProvisioningFailedReason,
-				Message: "unknown target member cluster 'unknown'",
-			}))
+			space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(ProvisioningFailed("unknown target member cluster 'unknown'")))
 			require.NoError(t, err)
 
 			t.Run("delete space", func(t *testing.T) {
@@ -151,9 +141,36 @@ func TestSpace(t *testing.T) {
 
 				// then
 				require.NoError(t, err)
-				err = hostAwait.WaitUntilSpaceDeleted(space.Name)
+				_, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(TerminatingFailed("Cannot delete NSTemplateSet: unknown target member cluster: 'unknown'")))
 				require.NoError(t, err)
 			})
 		})
 	})
+}
+
+func ProvisioningPending(msg string) toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.SpaceProvisioningPendingReason,
+		Message: msg,
+	}
+}
+
+func ProvisioningFailed(msg string) toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.SpaceProvisioningFailedReason,
+		Message: msg,
+	}
+}
+
+func TerminatingFailed(msg string) toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.SpaceTerminatingFailedReason,
+		Message: msg,
+	}
 }
