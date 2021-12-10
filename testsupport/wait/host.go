@@ -1376,6 +1376,32 @@ func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterio
 	return space, err
 }
 
+func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.Space, criteria ...SpaceWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find Space\n")
+	} else {
+		buf.WriteString("failed to find Space with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := yaml.Marshal(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	// also include other resources relevant in the host namespace, to help troubleshooting
+	a.listAndPrint("UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
+	a.listAndPrint("MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
+
+	a.T.Log(buf.String())
+}
+
 // UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
 // Space has exactly all the given status conditions
 func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitCriterion {
@@ -1392,18 +1418,26 @@ func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitC
 // WaitUntilSpaceDeleted waits until the Space with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		space := &toolchainv1alpha1.Space{}
+	var s *toolchainv1alpha1.Space
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.Space{}
 		if err := a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
-			}, space); err != nil {
+			}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
 			}
 			return false, err
 		}
+		s = obj
 		return false, nil
 	})
+	if err != nil {
+		y, _ := yaml.Marshal(s)
+		a.T.Logf("Space '%s' was not deleted as expected: %s", name, y)
+		return err
+	}
+	return nil
 }
