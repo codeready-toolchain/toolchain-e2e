@@ -313,13 +313,11 @@ func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash s
 	}
 
 	// when
-	err := awaitilities.Host().Client.Create(context.TODO(), space)
+	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
 
 	// then
 	require.NoError(t, err)
 	t.Logf("Space created - %s: %s", templateTierHashLabelKey(tierName), hash)
-
-	awaitilities.Host().Cleanup(space)
 }
 
 type templateRefs struct {
