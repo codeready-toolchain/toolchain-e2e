@@ -1,0 +1,24 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: ToolchainConfig
+metadata:
+  name: config
+spec:
+  host:
+    tiers:
+      defaultTier: 'appstudio'
+    automaticApproval:
+      enabled: true
+    deactivation:
+      deactivationDomainsExcluded: '@redhat.com'
+    registrationService:
+      environment: 'dev'
+      verification:
+        secret:
+          ref: 'host-operator-secret'
+          twilioAccountSID: 'twilio.account.sid'
+          twilioAuthToken: 'twilio.auth.token'
+          twilioFromNumber: 'twilio.from_number'
+  members:
+    default:
+      autoscaler:
+        deploy: false
