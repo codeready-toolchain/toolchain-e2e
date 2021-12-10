@@ -1373,6 +1373,10 @@ func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterio
 		space = obj
 		return matchSpaceWaitCriterion(space, criteria...), nil
 	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceWaitCriterionDiffs(space, criteria...)
+	}
 	return space, err
 }
 
