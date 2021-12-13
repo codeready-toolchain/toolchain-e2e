@@ -44,6 +44,7 @@ func TestSpace(t *testing.T) {
 		err := hostAwait.Client.Create(context.TODO(), space)
 
 		// then
+		// then
 		require.NoError(t, err)
 		// wait until NSTemplateSet has been created and Space is in `Ready` status
 		nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
@@ -51,7 +52,9 @@ func TestSpace(t *testing.T) {
 		tierChecks, err := tiers.NewChecks("base")
 		require.NoError(t, err)
 		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
-		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
+		space, err = hostAwait.WaitForSpace(space.Name,
+			wait.UntilSpaceHasConditions(Provisioned()),
+			wait.UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 		require.NoError(t, err)
 
 		t.Run("delete space", func(t *testing.T) {

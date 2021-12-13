@@ -1419,6 +1419,19 @@ func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitC
 	}
 }
 
+// UntilSpaceHasStatusTargetCluster returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected `targetCluster` in its status
+func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Status.TargetCluster == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected status target clusters to match:\n%s", Diff(expected, actual.Status.TargetCluster))
+		},
+	}
+}
+
 // WaitUntilSpaceDeleted waits until the Space with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)

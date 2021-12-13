@@ -303,7 +303,7 @@ func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
 func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
-	a.T.Logf("waiting for NSTemplateTier '%s' to match criteria", name)
+	a.T.Logf("waiting for NSTemplateSet '%s' to match criteria", name)
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateSet{}
