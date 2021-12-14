@@ -88,6 +88,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
 			// given
+			t.Logf("promoting %s user to %s tier", testingTiersName, tierToCheck)
 			changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, testingTiersName, tierToCheck)
 
 			// when
