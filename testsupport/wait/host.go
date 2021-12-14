@@ -1399,11 +1399,22 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	a.listAndPrint("UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
-	a.listAndPrint("MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
-
+	// also include Spaces resources in the host namespace, to help troubleshooting
+	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
 	a.T.Log(buf.String())
+}
+
+// UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
+// Space has exactly all the given status conditions
+func UntilSpaceHasTier(expected string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Spec.TierName == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected tiernames to match:\n%s", Diff(expected, actual.Spec.TierName))
+		},
+	}
 }
 
 // UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
