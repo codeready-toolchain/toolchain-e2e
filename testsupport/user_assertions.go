@@ -55,20 +55,38 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	require.True(t, foundLastCluster)
 	require.Equal(t, memberAwait.ClusterName, lastCluster)
 
-	// Verify provisioned User
-	_, err = memberAwait.WaitForUser(userAccount.Name)
-	assert.NoError(t, err)
-
-	// Verify provisioned Identity
-	_, err = memberAwait.WaitForIdentity(ToIdentityName(userAccount.Spec.UserID))
-	assert.NoError(t, err)
-
-	// Verify second (and third if relevant) identities also
+	// Check the second identity
+	encodedName := ""
 	if userAccount.Spec.OriginalSub != "" {
-		// Verify
-		encodedName := fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.OriginalSub)))
-		_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName))
+		encodedName = fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.OriginalSub)))
+	}
+
+	if tierName != "appstudio" {
+		// Verify provisioned User
+		_, err = memberAwait.WaitForUser(userAccount.Name)
 		assert.NoError(t, err)
+
+		// Verify provisioned Identity
+		_, err = memberAwait.WaitForIdentity(ToIdentityName(userAccount.Spec.UserID))
+		assert.NoError(t, err)
+
+		// Verify the second identity
+		if encodedName != "" {
+			_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName))
+			assert.NoError(t, err)
+		}
+	} else {
+		// we don't expect User nor Identity resources to be present for AppStudio tier
+		// This can be removed as soon as we don't create UserAccounts in AppStudio environment.
+		err := memberAwait.WaitUntilUserDeleted(userAccount.Name)
+		assert.NoError(t, err)
+		err = memberAwait.WaitUntilIdentityDeleted(ToIdentityName(userAccount.Spec.UserID))
+		assert.NoError(t, err)
+		// Verify the second identity
+		if encodedName != "" {
+			err = memberAwait.WaitUntilIdentityDeleted(ToIdentityName(encodedName))
+			assert.NoError(t, err)
+		}
 	}
 
 	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tierName)
