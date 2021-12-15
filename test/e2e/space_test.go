@@ -8,7 +8,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -205,7 +204,7 @@ func TestUpdateSpace(t *testing.T) {
 
 	t.Run("update tier", func(t *testing.T) {
 		// given
-		ctr := testsupport.NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
+		ctr := NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
 
 		// when
 		err = hostAwait.Client.Create(context.TODO(), ctr)
