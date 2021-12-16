@@ -212,15 +212,22 @@ func TestUpdateSpace(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		err = hostAwait.WaitUntilChangeTierRequestDeleted(ctr.Name)
-		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasTier("advanced"), wait.UntilSpaceHasConditions(Provisioned()))
+		advancedTier, err := hostAwait.WaitForNSTemplateTier("advanced")
+		require.NoError(t, err)
+		hash, err := computeTemplateRefsHash(advancedTier) // we can assume the JSON marshalling will always work
+		require.NoError(t, err)
+
+		space, err = hostAwait.WaitForSpace(space.Name,
+			wait.UntilSpaceHasTier("advanced"),
+			wait.UntilSpaceHasLabelWithValue("toolchain.dev.openshift.com/advanced-tier-hash", hash),
+			wait.UntilSpaceHasNoLabel("toolchain.dev.openshift.com/base-tier-hash"),
+			wait.UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
 		nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
 		require.NoError(t, err)
 		tierChecks, err := tiers.NewChecks("advanced")
 		require.NoError(t, err)
 		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
-		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
-		require.NoError(t, err)
 	})
 
 }

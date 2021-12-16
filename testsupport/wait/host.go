@@ -13,6 +13,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
@@ -1405,6 +1406,33 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 	// also include Spaces resources in the host namespace, to help troubleshooting
 	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
 	a.T.Log(buf.String())
+}
+
+// UntilSpaceHasLabelWithValue returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected label with the given value
+func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Labels[key] == value
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected space to contain to label %s:%s:\n%s", key, value, spew.Sdump(actual.Labels))
+		},
+	}
+}
+
+// UntilSpaceHasNoLabel returns a `SpaceWaitCriterion` which checks that the given
+// Space has no label with the given key
+func UntilSpaceHasNoLabel(key string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			_, found := actual.Labels[key]
+			return !found
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected space to not contain to label %s:\n%s", key, spew.Sdump(actual.Labels))
+		},
+	}
 }
 
 // UntilSpaceHasTier returns a `SpaceWaitCriterion` which checks that the given
