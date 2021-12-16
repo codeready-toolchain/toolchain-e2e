@@ -882,6 +882,7 @@ func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count i
 			len(templateUpdateRequests.Items), namespace, count)
 		a.T.Logf("TemplateUpdateRequests present in the namespace:\n%s", requests)
 		a.listAndPrint("MasterUserRecords", namespace, &toolchainv1alpha1.MasterUserRecordList{})
+		a.listAndPrint("Spaces", namespace, &toolchainv1alpha1.SpaceList{})
 		a.listAndPrint("NSTemplateTiers", namespace, &toolchainv1alpha1.NSTemplateTierList{})
 	}
 	return err
