@@ -1405,8 +1405,8 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 	a.T.Log(buf.String())
 }
 
-// UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
-// Space has exactly all the given status conditions
+// UntilSpaceHasTier returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected tier name set in its Spec
 func UntilSpaceHasTier(expected string) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
