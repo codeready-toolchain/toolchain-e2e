@@ -221,6 +221,7 @@ func TestUpdateSpace(t *testing.T) {
 		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
 		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
+	})
 
 }
 
