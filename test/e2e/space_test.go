@@ -222,19 +222,6 @@ func TestUpdateSpace(t *testing.T) {
 		space, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
 
-		t.Run("delete space", func(t *testing.T) {
-			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
-			// along with its associated namespace
-
-			// when
-			err = hostAwait.Client.Delete(context.TODO(), space)
-
-			// then
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceDeleted(space.Name)
-			require.NoError(t, err)
-		})
-	})
 }
 
 func ProvisioningPending(msg string) toolchainv1alpha1.Condition {
