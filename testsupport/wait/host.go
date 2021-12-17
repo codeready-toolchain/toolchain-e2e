@@ -263,7 +263,7 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 		buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
 		buf.WriteString("----\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
+		y, _ := StringifyObject(actual)
 		buf.Write(y)
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
@@ -411,7 +411,7 @@ func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(actual *toolchainv1al
 	} else {
 		buf.WriteString("failed to find UserSignup with matching criteria:\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
+		y, _ := StringifyObject(actual)
 		buf.Write(y)
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
@@ -742,7 +742,7 @@ func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(actual *toolchain
 	} else {
 		buf.WriteString("failed to find NSTemplateTier with matching criteria:\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
+		y, _ := StringifyObject(actual)
 		buf.Write(y)
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
@@ -912,8 +912,10 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(actual []toolchainv
 	} else {
 		buf.WriteString("failed to find notifications with matching criteria:\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
-		buf.Write(y)
+		for _, obj := range actual {
+			y, _ := StringifyObject(&obj)
+			buf.Write(y)
+		}
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, n := range actual {
@@ -1003,7 +1005,7 @@ func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(actual *toolchai
 	} else {
 		buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
+		y, _ := StringifyObject(actual)
 		buf.Write(y)
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
@@ -1167,7 +1169,7 @@ func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(actual *toolchai
 	} else {
 		buf.WriteString("failed to find ToolchainConfig with matching criteria:\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
+		y, _ := StringifyObject(actual)
 		buf.Write(y)
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
@@ -1389,7 +1391,7 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 		buf.WriteString("failed to find Space with matching criteria:\n")
 		buf.WriteString("----\n")
 		buf.WriteString("actual:\n")
-		y, _ := yaml.Marshal(actual)
+		y, _ := StringifyObject(actual)
 		buf.Write(y)
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
