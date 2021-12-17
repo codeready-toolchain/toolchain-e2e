@@ -51,12 +51,9 @@ Install the link:required_tools.adoc[required tools].
 
 See the procedure to install the Dev Sandbox in a development environment link:dev_install.adoc[here].
 
-==== Multi-cluster Environment
-
-See the procedure to configure a Host cluster and a Member cluster link:multicluster_setup.adoc[here].
-
 === Running End-to-End Tests
 
+. link:quay.adoc[Configure your quay account for dev deployment]
 Although the e2e tests are in the separated repository than the actual operators are, it's still possible to run them against the current code that is at HEAD of the operator repositories.
 There are multiple Makefile targets that will execute the e2e tests, they just differ in where the operators' code is taken from:
 

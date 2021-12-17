@@ -1,4 +1,4 @@
-= Multi-Cluster Setup
+= Multi-Cluster Setup (This document is outdated!!!)
 
 Prerequisites:
 
