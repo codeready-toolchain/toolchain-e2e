@@ -47,3 +47,17 @@ clean-toolchain-resources-in-dev:
 	$(Q)oc get clusterresourcequotas -l "toolchain.dev.openshift.com/provider"=codeready-toolchain -o name -n $(DEV_MEMBER_NS) | xargs -i oc delete {}
 	$(Q)oc get pods -n $(DEV_HOST_NS) -l name=host-operator -o name | xargs -i oc delete -n $(DEV_HOST_NS) {}
 	$(Q)oc get pods -n $(DEV_MEMBER_NS) -l name=member-operator -o name | xargs -i oc delete -n $(DEV_MEMBER_NS) {}
+
+.PHONY: clean-toolchain-namespaces-in-dev
+## Delete dev namespaces
+clean-toolchain-namespaces-in-dev:
+	$(Q)oc delete namespace ${DEV_HOST_NS} || true
+	$(Q)oc delete namespace ${DEV_MEMBER_NS} || true
+
+.PHONY: clean-toolchain-crds
+## Delete all Toolchain CRDs
+clean-toolchain-crds:
+	$(Q)for CRD in `oc get crd -o name | grep toolchain`; do \
+		CRD_NAME=`oc get $${CRD} --template '{{.metadata.name}}'`; \
+		oc delete crd $${CRD_NAME}; \
+	done
