@@ -211,7 +211,8 @@ func TestUpdateSpace(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		err = hostAwait.WaitUntilChangeTierRequestDeleted(ctr.Name)
+		_, err := hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
+		require.NoError(t, err)
 		advancedTier, err := hostAwait.WaitForNSTemplateTier("advanced")
 		require.NoError(t, err)
 		hash, err := computeTemplateRefsHash(advancedTier) // we can assume the JSON marshalling will always work
