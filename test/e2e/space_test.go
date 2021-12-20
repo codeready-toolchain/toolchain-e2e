@@ -185,7 +185,7 @@ func TestUpdateSpace(t *testing.T) {
 	}
 
 	// when
-	err := hostAwait.Client.Create(context.TODO(), space)
+	err := hostAwait.CreateWithCleanup(context.TODO(), space)
 
 	// then
 	require.NoError(t, err)
