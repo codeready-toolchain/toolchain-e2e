@@ -1,0 +1,41 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-toolchain-host-operator
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    labels:
+      opsrc-provider: codeready-toolchain
+    name: dev-sandbox-host
+    namespace: ${SANDBOX_NAMESPACE}
+  spec:
+    displayName: Dev Sandbox Operators
+    image: quay.io/codeready-toolchain/host-operator-index:latest
+    sourceType: grpc
+    updateStrategy:
+      registryPoll:
+        interval: 5m0s
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: dev-sandbox-host
+    namespace: ${SANDBOX_NAMESPACE}
+  spec:
+    targetNamespaces:
+    - ${SANDBOX_NAMESPACE}
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: dev-sandbox-host
+    namespace: ${SANDBOX_NAMESPACE}
+  spec:
+    channel: staging
+    installPlanApproval: Automatic
+    name: toolchain-host-operator
+    source: dev-sandbox-host
+    sourceNamespace: ${SANDBOX_NAMESPACE}
+parameters:
+- name: SANDBOX_NAMESPACE
+  value: toolchain-host-operator
