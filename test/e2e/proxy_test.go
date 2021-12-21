@@ -54,22 +54,7 @@ func TestProxyFlow(t *testing.T) {
 	promotionTier := "appstudio"
 
 	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
-	preexistingIdentity := &userv1.Identity{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: ToIdentityName(users[0].identityID.String()),
-			UID:  types.UID(users[0].username + "identity"),
-		},
-	}
-	preexistingUser := &userv1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: users[0].username,
-		},
-		Identities: []string{
-			ToIdentityName(users[0].identityID.String()),
-		},
-	}
-	require.NoError(t, users[0].expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingUser))
-	require.NoError(t, users[0].expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
+	preexistingUser, preexistingIdentity := createPreexistingUserAndIdentity(t, users[0])
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
@@ -195,4 +180,30 @@ func TestProxyFlow(t *testing.T) {
 	// Verify provisioned Identity
 	_, err = memberAwait.WaitForIdentity(preexistingIdentity.Name)
 	assert.NoError(t, err)
+}
+
+func createPreexistingUserAndIdentity(t *testing.T, user proxyUsers) (*userv1.User, *userv1.Identity) {
+	preexistingUser := &userv1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: user.username,
+		},
+		Identities: []string{
+			ToIdentityName(user.identityID.String()),
+		},
+	}
+	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingUser))
+
+	preexistingIdentity := &userv1.Identity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ToIdentityName(user.identityID.String()),
+		},
+		ProviderName:     "rhd",
+		ProviderUserName: user.username,
+		User: corev1.ObjectReference{
+			Name: preexistingUser.Name,
+			UID:  preexistingUser.UID,
+		},
+	}
+	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
+	return preexistingUser, preexistingIdentity
 }
