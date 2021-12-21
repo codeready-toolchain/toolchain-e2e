@@ -8,6 +8,8 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
+	userv1 "github.com/openshift/api/user/v1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +23,7 @@ type proxyUsers struct {
 	expectedMemberCluster *wait.MemberAwaitility
 	username              string
 	token                 string
+	identityID            uuid.UUID
 	signup                *toolchainv1alpha1.UserSignup
 }
 
@@ -40,19 +43,40 @@ func TestProxyFlow(t *testing.T) {
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
+			identityID:            uuid.Must(uuid.NewV4()),
 		},
 		{
 			expectedMemberCluster: memberAwait2,
 			username:              "proxymember2",
+			identityID:            uuid.Must(uuid.NewV4()),
 		},
 	}
 	promotionTier := "appstudio"
+
+	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
+	preexistingIdentity := &userv1.Identity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ToIdentityName(users[0].identityID.String()),
+			UID:  types.UID(users[0].username + "identity"),
+		},
+	}
+	preexistingUser := &userv1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: users[0].username,
+		},
+		Identities: []string{
+			ToIdentityName(users[0].identityID.String()),
+		},
+	}
+	require.NoError(t, users[0].expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingUser))
+	require.NoError(t, users[0].expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
 			// Create and approve signup
 			req := NewSignupRequest(t, awaitilities).
 				Username(user.username).
+				IdentityID(user.identityID).
 				ManuallyApprove().
 				TargetCluster(user.expectedMemberCluster).
 				EnsureMUR().
@@ -162,4 +186,13 @@ func TestProxyFlow(t *testing.T) {
 			}
 		})
 	} // end users loop
+
+	// preexisting user & identity are still there
+	// Verify provisioned User
+	_, err := memberAwait.WaitForUser(preexistingUser.Name)
+	assert.NoError(t, err)
+
+	// Verify provisioned Identity
+	_, err = memberAwait.WaitForIdentity(preexistingIdentity.Name)
+	assert.NoError(t, err)
 }
