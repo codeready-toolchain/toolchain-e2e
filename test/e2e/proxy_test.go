@@ -108,7 +108,7 @@ func TestProxyFlow(t *testing.T) {
 					},
 				}
 				// Start a new websocket watcher which watches for config maps in the user's namespace
-				w := newWsWatcher(t, proxyUser{})
+				w := newWsWatcher(t, user)
 				closeConnection := w.Start()
 				defer closeConnection()
 
