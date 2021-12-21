@@ -218,7 +218,7 @@ func (w *wsWatcher) Start() func() {
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
 	config := w.user.expectedMemberCluster.RestConfig
-	socketUrl := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/configmaps?watch=true", config.Host, w.user.username)
+	socketURL := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/configmaps?watch=true", config.Host, w.user.username)
 	dialer := &websocket.Dialer{
 		//HandshakeTimeout: 45 * time.Second,
 		Subprotocols:    []string{protocol, "base64.binary.k8s.io"},
@@ -228,7 +228,7 @@ func (w *wsWatcher) Start() func() {
 	extraHeaders := make(http.Header, 1)
 	extraHeaders.Add("Origin", "http://localhost")
 
-	conn, _, err := dialer.Dial(socketUrl, extraHeaders)
+	conn, _, err := dialer.Dial(socketURL, extraHeaders)
 	require.NoError(w.t, err)
 	w.connection = conn
 	w.receivedCMs = make(map[string]*corev1.ConfigMap)
