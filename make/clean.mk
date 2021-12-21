@@ -12,7 +12,7 @@ clean:
 clean-users:
 	$(Q)-oc delete usersignups --all --all-namespaces
 	$(Q)-oc delete spaces --all --all-namespaces
-	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/provider=codeready-toolchain
+	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
 
 .PHONY: clean-cluster-wide-config
 ## Delete all cluster-wide configuration resources like PriorityClass, MutatingWebhookConfiguration, and ClusterRoleBinding for e2e SA
