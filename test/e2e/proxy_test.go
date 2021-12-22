@@ -211,6 +211,7 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
 	return preexistingUser, preexistingIdentity
 }
+
 func newWsWatcher(t *testing.T, user proxyUser) *wsWatcher {
 	return &wsWatcher{
 		t:    t,
