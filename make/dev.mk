@@ -42,7 +42,7 @@ print-reg-service-link:
 	@echo ""
 	@echo "Deployment complete! Waiting for the registration-service route being available"
 	@echo -n "."
-	@while [[ -z `oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null` ]]; do \
+	@while [[ -z `oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
 		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
             echo ""; \
             echo "The timeout of waiting for the registration-service route has been reached. Try to run 'make  print-reg-service-link' later or check the deployment logs"; \
@@ -52,8 +52,7 @@ print-reg-service-link:
 		sleep 1; \
 	done
 	@echo ""
-	$(eval ROUTE = $(shell oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}'))
-	@echo Access the Landing Page here: https://${ROUTE}
+	@echo Access the Landing Page here: https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 	@echo ""
 
@@ -72,10 +71,6 @@ dev-deploy-e2e-host-local:
 dev-deploy-e2e-registration-local:
 	$(MAKE) dev-deploy-e2e REG_REPO_PATH=${PWD}/../registration-service ENVIRONMENT=${DEV_ENVIRONMENT}
 
-.PHONY: appstudio-dev-deploy-latest
-appstudio-dev-deploy-latest: DEV_ENVIRONMENT=appstudio-dev
-appstudio-dev-deploy-latest: dev-deploy-latest
-
 .PHONY: dev-deploy-latest
 dev-deploy-latest:
 	$(MAKE) deploy-latest SECOND_MEMBER_MODE=false ENVIRONMENT=${DEV_ENVIRONMENT} MEMBER_NS=${DEV_MEMBER_NS} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS}
@@ -85,7 +80,9 @@ deploy-latest: create-member1 create-host-project deploy-operators-from-quay cre
 
 .PHONY: deploy-operators-from-quay
 deploy-operators-from-quay:
+	# install the operators
 	oc process -f deploy/install/toolchain-host-operator.yaml -p SANDBOX_NAMESPACE=${DEV_HOST_NS} | oc apply -f -
 	oc process -f deploy/install/toolchain-member-operator.yaml -p SANDBOX_NAMESPACE=${DEV_MEMBER_NS} | oc apply -f -
+	# wait until everything is installed
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/wait-until-is-installed.sh SCRIPT_PARAMS="-crd toolchainconfigs.toolchain.dev.openshift.com -cs dev-sandbox-host -n ${DEV_HOST_NS} -s dev-sandbox-host"
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/wait-until-is-installed.sh SCRIPT_PARAMS="-crd memberoperatorconfigs.toolchain.dev.openshift.com -cs dev-sandbox-member -n ${DEV_HOST_NS} -s dev-sandbox-member"
