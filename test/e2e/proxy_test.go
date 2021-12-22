@@ -269,19 +269,27 @@ func (w *wsWatcher) startMainLoop() {
 	}
 }
 
+type message struct {
+	MessageType string           `json:"type"`
+	ConfigMap   corev1.ConfigMap `json:"object"`
+}
+
 // receiveHandler listens to the incoming messages and stores them as config map objects
 func (w *wsWatcher) receiveHandler() {
 	defer close(w.done)
 	for {
 		_, msg, err := w.connection.ReadMessage()
-		require.NoError(w.t, err, "error in receive")
+		if err != nil {
+			w.t.Logf("Exiting message receiving loop. It's normal if the connection has been closed. Reason: %s\n", err.Error())
+			return
+		}
 		w.t.Logf("Received: %s", msg)
-		cm := corev1.ConfigMap{}
-		err = json.Unmarshal(msg, &cm)
+		message := message{}
+		err = json.Unmarshal(msg, &message)
 		require.NoError(w.t, err)
-		copyCM := cm
+		copyCM := message.ConfigMap
 		w.mu.Lock()
-		w.receivedCMs[cm.Name] = &copyCM
+		w.receivedCMs[copyCM.Name] = &copyCM
 		w.mu.Unlock()
 	}
 }
