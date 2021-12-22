@@ -1030,7 +1030,10 @@ func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
 			}
 			return false, err
 		}
-		return false, nil
+		if _, exists := user.Labels["toolchain.dev.openshift.com/owner"]; exists {
+			return false, nil
+		}
+		return true, nil
 	})
 }
 
@@ -1045,7 +1048,10 @@ func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
 			}
 			return false, err
 		}
-		return false, nil
+		if _, exists := identity.Labels["toolchain.dev.openshift.com/owner"]; exists {
+			return false, nil
+		}
+		return true, nil
 	})
 }
 
