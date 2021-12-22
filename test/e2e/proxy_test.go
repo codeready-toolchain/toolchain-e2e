@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -98,7 +99,7 @@ func TestProxyFlow(t *testing.T) {
 					},
 				}
 				// Start a new websocket watcher which watches for config maps in the user's namespace
-				w := newWsWatcher(t, user)
+				w := newWsWatcher(t, user, hostAwait.APIProxyURL)
 				closeConnection := w.Start()
 				defer closeConnection()
 
@@ -212,10 +213,13 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 	return preexistingUser, preexistingIdentity
 }
 
-func newWsWatcher(t *testing.T, user proxyUser) *wsWatcher {
+func newWsWatcher(t *testing.T, user proxyUser, proxyURL string) *wsWatcher {
+	u, err := url.Parse(proxyURL)
+	require.NoError(t, err)
 	return &wsWatcher{
-		t:    t,
-		user: user,
+		t:         t,
+		user:      user,
+		proxyHost: u.Host,
 	}
 }
 
@@ -227,6 +231,7 @@ type wsWatcher struct {
 	t          *testing.T
 	user       proxyUser
 	connection *websocket.Conn
+	proxyHost  string
 
 	mu          sync.RWMutex
 	receivedCMs map[string]*corev1.ConfigMap
@@ -242,8 +247,7 @@ func (w *wsWatcher) Start() func() {
 	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(w.user.token))
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
-	config := w.user.expectedMemberCluster.RestConfig
-	socketURL := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/configmaps?watch=true", config.Host, w.user.username)
+	socketURL := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/configmaps?watch=true", w.proxyHost, w.user.username)
 	dialer := &websocket.Dialer{
 		//HandshakeTimeout: 45 * time.Second,
 		Subprotocols:    []string{protocol, "base64.binary.k8s.io"},
