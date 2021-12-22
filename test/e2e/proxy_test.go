@@ -17,20 +17,19 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/gofrs/uuid"
-	userv1 "github.com/openshift/api/user/v1"
 
+	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
 )
 
-type proxyUsers struct {
+type proxyUser struct {
 	expectedMemberCluster *wait.MemberAwaitility
 	username              string
 	token                 string
@@ -51,7 +50,7 @@ func TestProxyFlow(t *testing.T) {
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	users := []proxyUsers{
+	users := []proxyUser{
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
@@ -187,7 +186,7 @@ func TestProxyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func createPreexistingUserAndIdentity(t *testing.T, user proxyUsers) (*userv1.User, *userv1.Identity) {
+func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
 	preexistingUser := &userv1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: user.username,
