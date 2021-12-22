@@ -6,8 +6,11 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
+	userv1 "github.com/openshift/api/user/v1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +24,7 @@ type proxyUsers struct {
 	expectedMemberCluster *wait.MemberAwaitility
 	username              string
 	token                 string
+	identityID            uuid.UUID
 	signup                *toolchainv1alpha1.UserSignup
 }
 
@@ -31,6 +35,7 @@ func TestProxyFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
+	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultTier("appstudio"))
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
@@ -40,19 +45,24 @@ func TestProxyFlow(t *testing.T) {
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
+			identityID:            uuid.Must(uuid.NewV4()),
 		},
 		{
 			expectedMemberCluster: memberAwait2,
 			username:              "proxymember2",
+			identityID:            uuid.Must(uuid.NewV4()),
 		},
 	}
-	promotionTier := "appstudio"
+
+	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
+	preexistingUser, preexistingIdentity := createPreexistingUserAndIdentity(t, users[0])
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
 			// Create and approve signup
 			req := NewSignupRequest(t, awaitilities).
 				Username(user.username).
+				IdentityID(user.identityID).
 				ManuallyApprove().
 				TargetCluster(user.expectedMemberCluster).
 				EnsureMUR().
@@ -62,29 +72,9 @@ func TestProxyFlow(t *testing.T) {
 			user.signup, _ = req.Resources()
 			user.token = req.GetToken()
 
-			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "base")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "appstudio")
 			_, err := hostAwait.GetMasterUserRecord(wait.WithMurName(user.username))
 			require.NoError(t, err)
-
-			// since the registration service always provisions users to the default tier users need to be
-			// promoted to the appstudio tier in order to test proxy scenarios
-			t.Run("promote to appstudio tier", func(t *testing.T) {
-				// given
-				changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, user.signup.Status.CompliantUsername, promotionTier)
-
-				// when
-				err = hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
-
-				// then
-				require.NoError(t, err)
-				_, err := hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
-				require.NoError(t, err)
-				VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, promotionTier)
-
-				// then - wait until ChangeTierRequest is deleted by our automatic GC
-				err = hostAwait.WaitUntilChangeTierRequestDeleted(changeTierRequest.Name)
-				assert.NoError(t, err)
-			})
 
 			t.Run("use proxy to create a configmap in the user appstudio namespace via proxy API", func(t *testing.T) {
 				// given
@@ -162,4 +152,39 @@ func TestProxyFlow(t *testing.T) {
 			}
 		})
 	} // end users loop
+
+	// preexisting user & identity are still there
+	// Verify provisioned User
+	_, err := memberAwait.WaitForUser(preexistingUser.Name)
+	assert.NoError(t, err)
+
+	// Verify provisioned Identity
+	_, err = memberAwait.WaitForIdentity(preexistingIdentity.Name)
+	assert.NoError(t, err)
+}
+
+func createPreexistingUserAndIdentity(t *testing.T, user proxyUsers) (*userv1.User, *userv1.Identity) {
+	preexistingUser := &userv1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: user.username,
+		},
+		Identities: []string{
+			ToIdentityName(user.identityID.String()),
+		},
+	}
+	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingUser))
+
+	preexistingIdentity := &userv1.Identity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ToIdentityName(user.identityID.String()),
+		},
+		ProviderName:     "rhd",
+		ProviderUserName: user.username,
+		User: corev1.ObjectReference{
+			Name: preexistingUser.Name,
+			UID:  preexistingUser.UID,
+		},
+	}
+	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
+	return preexistingUser, preexistingIdentity
 }
