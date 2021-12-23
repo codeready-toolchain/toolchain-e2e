@@ -277,8 +277,10 @@ func (w *wsWatcher) startMainLoop() {
 		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
 			// Send an echo packet every second
 			err := w.connection.WriteMessage(websocket.TextMessage, []byte("Hello from e2e tests!"))
-			w.t.Logf("Exiting main loop. It's normal if the connection has been closed. Reason: %s\n", err.Error())
-			return
+			if err != nil {
+				w.t.Logf("Exiting main loop. It's normal if the connection has been closed. Reason: %s\n", err.Error())
+				return
+			}
 		case <-w.interrupt:
 			// Received a SIGINT (Ctrl + C). Terminate gracefully...
 			// Close the websocket connection
