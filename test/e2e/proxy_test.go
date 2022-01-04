@@ -2,25 +2,35 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"sync"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/gofrs/uuid"
-	userv1 "github.com/openshift/api/user/v1"
 
+	"github.com/gofrs/uuid"
+	"github.com/gorilla/websocket"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	kubewait "k8s.io/apimachinery/pkg/util/wait"
 )
 
-type proxyUsers struct {
+type proxyUser struct {
 	expectedMemberCluster *wait.MemberAwaitility
 	username              string
 	token                 string
@@ -41,7 +51,7 @@ func TestProxyFlow(t *testing.T) {
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	users := []proxyUsers{
+	users := []proxyUser{
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
@@ -76,7 +86,7 @@ func TestProxyFlow(t *testing.T) {
 			_, err := hostAwait.GetMasterUserRecord(wait.WithMurName(user.username))
 			require.NoError(t, err)
 
-			t.Run("use proxy to create a configmap in the user appstudio namespace via proxy API", func(t *testing.T) {
+			t.Run("use proxy to create a configmap in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
 				// given
 				cmName := fmt.Sprintf("%s-test-cm", user.username)
 				expectedCM := &corev1.ConfigMap{
@@ -88,6 +98,10 @@ func TestProxyFlow(t *testing.T) {
 						"planet": "venus",
 					},
 				}
+				// Start a new websocket watcher which watches for config maps in the user's namespace
+				w := newWsWatcher(t, user, hostAwait.APIProxyURL)
+				closeConnection := w.Start()
+				defer closeConnection()
 
 				// when
 				proxyCl := hostAwait.CreateAPIProxyClient(user.token)
@@ -95,6 +109,16 @@ func TestProxyFlow(t *testing.T) {
 				require.NoError(t, err)
 
 				// then
+				// wait for the websocket watcher which uses the proxy to receive the config map
+				found, err := w.WaitForConfigMap(
+					user.expectedMemberCluster.RetryInterval,
+					user.expectedMemberCluster.Timeout,
+					expectedCM.Name,
+				)
+				require.NoError(t, err)
+				assert.NotEmpty(t, found)
+
+				// Double check that the CM does exist using a regular client (non-proxy)
 				createdCM := &corev1.ConfigMap{}
 				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: cmName}, createdCM)
 				require.NoError(t, err)
@@ -163,7 +187,7 @@ func TestProxyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func createPreexistingUserAndIdentity(t *testing.T, user proxyUsers) (*userv1.User, *userv1.Identity) {
+func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
 	preexistingUser := &userv1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: user.username,
@@ -187,4 +211,128 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUsers) (*userv1.Us
 	}
 	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
 	return preexistingUser, preexistingIdentity
+}
+
+func newWsWatcher(t *testing.T, user proxyUser, proxyURL string) *wsWatcher {
+	u, err := url.Parse(proxyURL)
+	require.NoError(t, err)
+	return &wsWatcher{
+		t:         t,
+		user:      user,
+		proxyHost: u.Host,
+	}
+}
+
+// wsWatcher represents a watcher which leverages a WebSocket connection to watch for config maps in the user's namespace.
+// The connection is established with the reg-service proxy instead of direct connection to the API server.
+type wsWatcher struct {
+	done       chan interface{}
+	interrupt  chan os.Signal
+	t          *testing.T
+	user       proxyUser
+	connection *websocket.Conn
+	proxyHost  string
+
+	mu          sync.RWMutex
+	receivedCMs map[string]*corev1.ConfigMap
+}
+
+// start creates a new WebSocket connection. The method returns a function which is to be used to close the connection when done.
+func (w *wsWatcher) Start() func() {
+	w.done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
+	w.interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
+
+	signal.Notify(w.interrupt, os.Interrupt) // Notify the interrupt channel for SIGINT
+
+	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(w.user.token))
+	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
+
+	socketURL := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/configmaps?watch=true", w.proxyHost, w.user.username)
+	dialer := &websocket.Dialer{
+		//HandshakeTimeout: 45 * time.Second,
+		Subprotocols:    []string{protocol, "base64.binary.k8s.io"},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	extraHeaders := make(http.Header, 1)
+	extraHeaders.Add("Origin", "http://localhost")
+
+	conn, _, err := dialer.Dial(socketURL, extraHeaders)
+	require.NoError(w.t, err)
+	w.connection = conn
+	w.receivedCMs = make(map[string]*corev1.ConfigMap)
+
+	go w.receiveHandler()
+	go w.startMainLoop()
+
+	return func() {
+		_ = w.connection.Close()
+	}
+}
+
+// startMainLoop starts the main loop for the client. Packets are sent here.
+func (w *wsWatcher) startMainLoop() {
+	for {
+		select {
+		case <-time.After(time.Duration(1) * time.Millisecond * 1000):
+			// Send an echo packet every second
+			err := w.connection.WriteMessage(websocket.TextMessage, []byte("Hello from e2e tests!"))
+			if err != nil {
+				w.t.Logf("Exiting main loop. It's normal if the connection has been closed. Reason: %s\n", err.Error())
+				return
+			}
+		case <-w.interrupt:
+			// Received a SIGINT (Ctrl + C). Terminate gracefully...
+			// Close the websocket connection
+			err := w.connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				w.t.Logf("Error during closing websocket: %s", err.Error())
+				return
+			}
+
+			select {
+			case <-w.done:
+				w.t.Log("Receiver Channel Closed! Exiting...")
+			case <-time.After(time.Duration(1) * time.Second):
+				w.t.Log("Timeout in closing receiving channel. Exiting...")
+			}
+			return
+		}
+	}
+}
+
+type message struct {
+	MessageType string           `json:"type"`
+	ConfigMap   corev1.ConfigMap `json:"object"`
+}
+
+// receiveHandler listens to the incoming messages and stores them as config map objects
+func (w *wsWatcher) receiveHandler() {
+	defer close(w.done)
+	for {
+		_, msg, err := w.connection.ReadMessage()
+		if err != nil {
+			w.t.Logf("Exiting message receiving loop. It's normal if the connection has been closed. Reason: %s\n", err.Error())
+			return
+		}
+		w.t.Logf("Received: %s", msg)
+		message := message{}
+		err = json.Unmarshal(msg, &message)
+		require.NoError(w.t, err)
+		copyCM := message.ConfigMap
+		w.mu.Lock()
+		w.receivedCMs[copyCM.Name] = &copyCM
+		w.mu.Unlock()
+	}
+}
+
+func (w *wsWatcher) WaitForConfigMap(retryInterval, timeout time.Duration, expectedCMName string) (*corev1.ConfigMap, error) {
+	var foundCM *corev1.ConfigMap
+	err := kubewait.Poll(retryInterval, timeout, func() (bool, error) {
+		defer w.mu.RUnlock()
+		w.mu.RLock()
+		foundCM = w.receivedCMs[expectedCMName]
+		return foundCM != nil, nil
+	})
+	return foundCM, err
 }
