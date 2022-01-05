@@ -239,7 +239,6 @@ func TestRetargetSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	member1Await := awaitilities.Member1()
 	member2Await := awaitilities.Member2()
-	rand.Seed(time.Now().UnixNano())
 
 	t.Run("to no other cluster", func(t *testing.T) {
 		// given
