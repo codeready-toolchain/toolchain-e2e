@@ -291,8 +291,7 @@ func TestRetargetSpace(t *testing.T) {
 				TierName:      "base",
 			},
 		}
-		// err := hostAwait.CreateWithCleanup(context.TODO(), space)
-		err := hostAwait.Client.Create(context.TODO(), space)
+		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until NSTemplateSet has been created
 		_, err = member1Await.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
