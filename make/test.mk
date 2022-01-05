@@ -229,6 +229,8 @@ create-host-resources:
 		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"member-$${TOOLCHAIN_CLUSTER_NAME}2\":{\"webhook\":{\"deploy\":false}}}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n $(HOST_NS) --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
+	# delete registration-service pods in case they already exist
+	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 
 .PHONY: create-project
 create-project:

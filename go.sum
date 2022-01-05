@@ -112,11 +112,11 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:zn76sxSg3SzpJ0PPJaLDCu+Bu0Lg3sKTORVIj19EIF8=
-github.com/codeready-toolchain/api v0.0.0-20211123132956-238f2adf05c8/go.mod h1:+QWudsY8VJYCWui6oamNNJ0eo1kmqi3UsA9lY687O8c=
-github.com/codeready-toolchain/api v0.0.0-20211210135648-e7df8c75a36a h1:zKk0qs2tAODrZcNvgLIPF385aXQCre7qeHcjKRRjI1Q=
-github.com/codeready-toolchain/api v0.0.0-20211210135648-e7df8c75a36a/go.mod h1:+QWudsY8VJYCWui6oamNNJ0eo1kmqi3UsA9lY687O8c=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20211202124850-3da88873a86a h1:4ptHJ8RKSzKu5BXif4brefVhNyQ+2QTt14N1TH+58/8=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20211202124850-3da88873a86a/go.mod h1:uLIbmzVFTx7w7AR3RrGTeD2MRqrhD+zlEsa+8t9Yh6Q=
+github.com/codeready-toolchain/api v0.0.0-20211206130419-fedaada130c4/go.mod h1:+QWudsY8VJYCWui6oamNNJ0eo1kmqi3UsA9lY687O8c=
+github.com/codeready-toolchain/api v0.0.0-20211216074502-fe3952c3820a h1:cyg6w23/VEI70tm0Nnh0uk78I5X60dBpkSAxXeho5G0=
+github.com/codeready-toolchain/api v0.0.0-20211216074502-fe3952c3820a/go.mod h1:+QWudsY8VJYCWui6oamNNJ0eo1kmqi3UsA9lY687O8c=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20211221162123-511f85a643df h1:ZQiCVR6+uo11RAYsRYXfZ4Ty9UtfsTSlMOksesVyt6I=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20211221162123-511f85a643df/go.mod h1:1rh5rsl4yL3flRVdVESKxRPhLkfDl/111DbH1PuTedQ=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/etcd v3.3.13+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
@@ -334,6 +334,7 @@ github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 h1:EGx4pi6eqNxGa
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/websocket v0.0.0-20170926233335-4201258b820c/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
+github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gosuri/uilive v0.0.4 h1:hUEBpQDj8D8jXgtCdBu7sWsy5sbW/5GhuO8KBwJ2jyY=
 github.com/gosuri/uilive v0.0.4/go.mod h1:V/epo5LjjlDE5RJUcqx8dbw+zc93y5Ya3yg8tfZ74VI=

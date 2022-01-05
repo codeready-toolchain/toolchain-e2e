@@ -1,14 +1,15 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20211210135648-e7df8c75a36a
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20211202124850-3da88873a86a
+	github.com/codeready-toolchain/api v0.0.0-20211216074502-fe3952c3820a
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20211221162123-511f85a643df
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.4.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/google/go-cmp v0.5.5
+	github.com/gorilla/websocket v1.4.2
 	github.com/gosuri/uilive v0.0.4 // indirect
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
