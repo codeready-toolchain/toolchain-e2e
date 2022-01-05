@@ -245,7 +245,7 @@ func TestRetargetSpace(t *testing.T) {
 		space := &toolchainv1alpha1.Space{
 			ObjectMeta: v1.ObjectMeta{
 				Namespace: hostAwait.Namespace,
-				Name:      "oddity-" + strconv.Itoa(rand.Int()),
+				GenerateName:      "oddity-",
 			},
 			Spec: toolchainv1alpha1.SpaceSpec{
 				TargetCluster: member1Await.ClusterName,
