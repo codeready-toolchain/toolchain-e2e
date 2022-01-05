@@ -263,13 +263,12 @@ func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
 		if len(templateUpdateRequests.Items) < MaxPoolSize-1 {
 			return false, nil
 		}
+		expectedCondition := toolchainv1alpha1.Condition{
+			Type:   toolchainv1alpha1.TemplateUpdateRequestComplete,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.TemplateUpdateRequestUpdatingReason,
+		}
 		for _, item := range templateUpdateRequests.Items {
-			expectedCondition := toolchainv1alpha1.Condition{
-				Type:    toolchainv1alpha1.TemplateUpdateRequestComplete,
-				Status:  corev1.ConditionFalse,
-				Reason:  toolchainv1alpha1.TemplateUpdateRequestUnableToUpdateReason,
-				Message: fmt.Sprintf(`MasterUserRecord.toolchain.dev.openshift.com "%s" not found`, item.Name),
-			}
 			if !test.ContainsCondition(item.Status.Conditions, expectedCondition) {
 				return false, nil
 			}
