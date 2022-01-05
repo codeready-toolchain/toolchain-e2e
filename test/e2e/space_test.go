@@ -274,6 +274,8 @@ func TestRetargetSpace(t *testing.T) {
 		require.NoError(t, err)
 		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 		require.NoError(t, err)
+		err = member2Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet is not created in member-2 cluster
+		require.NoError(t, err)
 
 	})
 
