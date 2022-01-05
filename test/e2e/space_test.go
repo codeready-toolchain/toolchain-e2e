@@ -310,11 +310,10 @@ func TestRetargetSpace(t *testing.T) {
 		// then
 		_, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
-		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
-		require.NoError(t, err)
 		_, err = member2Await.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned())) // expect NSTemplateSet to be created on member-2 cluster
 		require.NoError(t, err)
-
+		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
+		require.NoError(t, err)
 	})
 }
 
