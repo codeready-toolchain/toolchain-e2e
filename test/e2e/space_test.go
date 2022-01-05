@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -31,8 +30,8 @@ func TestCreateSpace(t *testing.T) {
 		// given
 		space := &toolchainv1alpha1.Space{
 			ObjectMeta: v1.ObjectMeta{
-				Namespace: hostAwait.Namespace,
-				Name:      "oddity-" + strconv.Itoa(rand.Int()),
+				Namespace:    hostAwait.Namespace,
+				GenerateName: "oddity-",
 			},
 			Spec: toolchainv1alpha1.SpaceSpec{
 				TargetCluster: memberAwait.ClusterName,
@@ -83,8 +82,8 @@ func TestCreateSpace(t *testing.T) {
 			// given
 			space := &toolchainv1alpha1.Space{
 				ObjectMeta: v1.ObjectMeta{
-					Namespace: hostAwait.Namespace,
-					Name:      "oddity-" + strconv.Itoa(rand.Int()),
+					Namespace:    hostAwait.Namespace,
+					GenerateName: "oddity-",
 				},
 				Spec: toolchainv1alpha1.SpaceSpec{
 					//TargetCluster missing
@@ -115,8 +114,8 @@ func TestCreateSpace(t *testing.T) {
 			// given
 			s := &toolchainv1alpha1.Space{
 				ObjectMeta: v1.ObjectMeta{
-					Namespace: hostAwait.Namespace,
-					Name:      "oddity-" + strconv.Itoa(rand.Int()),
+					Namespace:    hostAwait.Namespace,
+					GenerateName: "oddity-",
 				},
 				Spec: toolchainv1alpha1.SpaceSpec{
 					TargetCluster: "unknown",
@@ -175,8 +174,8 @@ func TestUpdateSpace(t *testing.T) {
 
 	space := &toolchainv1alpha1.Space{
 		ObjectMeta: v1.ObjectMeta{
-			Namespace: hostAwait.Namespace,
-			Name:      "oddity-" + strconv.Itoa(rand.Int()),
+			Namespace:    hostAwait.Namespace,
+			GenerateName: "oddity-",
 		},
 		Spec: toolchainv1alpha1.SpaceSpec{
 			TargetCluster: memberAwait.ClusterName,
@@ -244,8 +243,8 @@ func TestRetargetSpace(t *testing.T) {
 		// given
 		space := &toolchainv1alpha1.Space{
 			ObjectMeta: v1.ObjectMeta{
-				Namespace: hostAwait.Namespace,
-				GenerateName:      "oddity-",
+				Namespace:    hostAwait.Namespace,
+				GenerateName: "oddity-",
 			},
 			Spec: toolchainv1alpha1.SpaceSpec{
 				TargetCluster: member1Await.ClusterName,
@@ -283,8 +282,8 @@ func TestRetargetSpace(t *testing.T) {
 		// given
 		space := &toolchainv1alpha1.Space{
 			ObjectMeta: v1.ObjectMeta{
-				Namespace: hostAwait.Namespace,
-				Name:      "oddity-" + strconv.Itoa(rand.Int()),
+				Namespace:    hostAwait.Namespace,
+				GenerateName: "oddity-",
 			},
 			Spec: toolchainv1alpha1.SpaceSpec{
 				TargetCluster: member1Await.ClusterName,
