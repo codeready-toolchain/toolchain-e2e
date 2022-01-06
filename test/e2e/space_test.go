@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +36,7 @@ func TestCreateSpace(t *testing.T) {
 			},
 			Spec: toolchainv1alpha1.SpaceSpec{
 				TargetCluster: memberAwait.ClusterName,
-				TierName:      "base",
+				TierName:      "appstudio",
 			},
 		}
 
@@ -48,13 +49,18 @@ func TestCreateSpace(t *testing.T) {
 		// wait until NSTemplateSet has been created and Space is in `Ready` status
 		nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
 		require.NoError(t, err)
-		tierChecks, err := tiers.NewChecks("base")
+		tierChecks, err := tiers.NewChecks(space.Spec.TierName)
 		require.NoError(t, err)
 		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
 		space, err = hostAwait.WaitForSpace(space.Name,
 			wait.UntilSpaceHasConditions(Provisioned()),
 			wait.UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 		require.NoError(t, err)
+		// checks that namespace exists and has the expected label(s)
+		ns, err := memberAwait.WaitForNamespace(space.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, space.Spec.TierName)
+		require.NoError(t, err)
+		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
+		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
