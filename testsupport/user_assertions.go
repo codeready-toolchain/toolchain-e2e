@@ -115,7 +115,6 @@ func ExpectedUserAccount(userID string, tier string, templateRefs tiers.Template
 	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
 	for _, ref := range templateRefs.Namespaces {
 		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
-			Template:    "", // must be empty
 			TemplateRef: ref,
 		})
 	}
