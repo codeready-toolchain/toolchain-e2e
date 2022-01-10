@@ -162,19 +162,12 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	return mur, err
 }
 
-func (a *HostAwaitility) GetMasterUserRecord(criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
-	murList := &toolchainv1alpha1.MasterUserRecordList{}
-	if err := a.Client.List(context.TODO(), murList, client.InNamespace(a.Namespace)); err != nil {
+func (a *HostAwaitility) GetMasterUserRecord(name string) (*toolchainv1alpha1.MasterUserRecord, error) {
+	mur := &toolchainv1alpha1.MasterUserRecord{}
+	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), mur); err != nil {
 		return nil, err
 	}
-	for _, mur := range murList.Items {
-		if matchMasterUserRecordWaitCriterion(&mur, criteria...) {
-			return &mur, nil
-		}
-	}
-	// no match found, print the diffs
-	a.printMasterUserRecordWaitCriterionDiffs(&toolchainv1alpha1.MasterUserRecord{}, criteria...)
-	return nil, nil
+	return mur, nil
 }
 
 // UpdateMasterUserRecordSpec tries to update the Spec of the given MasterUserRecord
