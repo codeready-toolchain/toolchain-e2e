@@ -236,19 +236,18 @@ func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
-	// setup icecream tier and spaces
-	spaces := setupSpaces(t, awaitilities, "icecream", "icecreamlover%02d", memberAwait, count)
+	// setup chocolate tier and spaces
+	spaces := setupSpaces(t, awaitilities, "chocolate", "chocolatelover%02d", memberAwait, count)
 
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "icecream", "base", "base")
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "base", "base")
 
+	updateTemplateTier(t, hostAwait, "chocolate", "advanced", "")
 
-	updateTemplateTier(t, hostAwait, "icecream", "advanced", "")
-
-	// verify icecream tier update was processed
-	_, err := hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(2))
+	// verify chocolate tier update was processed
+	_, err := hostAwait.WaitForNSTemplateTier("chocolate", UntilNSTemplateTierStatusUpdates(2))
 	require.NoError(t, err)
 
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "icecream", "advanced", "base")
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "advanced", "base")
 }
 
 // setupSpaces takes care of:
@@ -406,7 +405,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 	}
 }
 
-func getChecksForTier(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, tierName, aliasTierNamespaces, aliasTierClusterResources string) (tiers.TemplateRefs, tiers.TierChecks, tiers.TierChecks) {
+func getChecksForTier(t *testing.T, hostAwait *HostAwaitility, tierName, aliasTierNamespaces, aliasTierClusterResources string) (tiers.TemplateRefs, tiers.TierChecks, tiers.TierChecks) {
 	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
 
@@ -427,7 +426,7 @@ func getChecksForTier(t *testing.T, hostAwait *HostAwaitility, memberAwaitility 
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
 
-	templateRefs, namespacesChecks, clusterResourcesChecks := getChecksForTier(t, hostAwait, memberAwaitility, tierName, aliasTierNamespaces, aliasTierClusterResources)
+	templateRefs, namespacesChecks, clusterResourcesChecks := getChecksForTier(t, hostAwait, tierName, aliasTierNamespaces, aliasTierClusterResources)
 
 	// verify that all TemplateUpdateRequests were deleted
 	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
@@ -467,7 +466,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 
 func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, spaces []string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
 
-	templateRefs, namespacesChecks, clusterResourcesChecks := getChecksForTier(t, hostAwait, memberAwaitility, tierName, aliasTierNamespaces, aliasTierClusterResources)
+	templateRefs, namespacesChecks, clusterResourcesChecks := getChecksForTier(t, hostAwait, tierName, aliasTierNamespaces, aliasTierClusterResources)
 
 	// verify that all TemplateUpdateRequests were deleted
 	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
