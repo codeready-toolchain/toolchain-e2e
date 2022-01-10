@@ -138,10 +138,10 @@ func TestE2EFlow(t *testing.T) {
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "base")
 
-	johnsmithMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(johnsmithName))
+	johnsmithMur, err := hostAwait.GetMasterUserRecord(johnsmithName)
 	require.NoError(t, err)
 
-	targetedJohnMur, err := hostAwait.GetMasterUserRecord(wait.WithMurName(targetedJohnName))
+	targetedJohnMur, err := hostAwait.GetMasterUserRecord(targetedJohnName)
 	require.NoError(t, err)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {

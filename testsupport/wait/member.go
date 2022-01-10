@@ -135,7 +135,7 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
-			mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(actual.Name))
+			mur, err := hostAwaitility.GetMasterUserRecord(actual.Name)
 			if err != nil {
 				return false
 			}
@@ -144,7 +144,7 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 				reflect.DeepEqual(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
-			mur, err := hostAwaitility.GetMasterUserRecord(WithMurName(actual.Name))
+			mur, err := hostAwaitility.GetMasterUserRecord(actual.Name)
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
