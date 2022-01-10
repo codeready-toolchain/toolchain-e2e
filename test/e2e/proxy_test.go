@@ -83,7 +83,7 @@ func TestProxyFlow(t *testing.T) {
 			user.token = req.GetToken()
 
 			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "appstudio")
-			_, err := hostAwait.GetMasterUserRecord(wait.WithMurName(user.username))
+			_, err := hostAwait.GetMasterUserRecord(user.username)
 			require.NoError(t, err)
 
 			t.Run("use proxy to create a configmap in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {

@@ -425,9 +425,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Confirm that the user is banned
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
-		mur, err := hostAwait.GetMasterUserRecord(wait.WithMurName("testuser" + id))
-		require.NoError(s.T(), err)
-		assert.Nil(s.T(), mur)
+		err = hostAwait.WaitUntilMasterUserRecordDeleted("testuser" + id)
 		require.NoError(s.T(), err)
 
 	})
