@@ -88,6 +88,9 @@ else
 	$(MAKE) print-local-debug-info  HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS}
 endif
 
+.PHONY: deploy-e2e-local-and-print-local-debug
+deploy-e2e-local-and-print-local-debug: deploy-e2e-local print-local-debug-info
+
 .PHONY: deploy-e2e-and-print-local-debug
 deploy-e2e-and-print-local-debug: deploy-e2e print-local-debug-info
 

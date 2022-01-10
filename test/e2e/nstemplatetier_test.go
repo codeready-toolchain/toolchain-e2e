@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	k8swait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -226,6 +225,10 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 
 // TODO: this test should be removed once migration from MUR -> Spaces is completed.
 func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
+	os.Setenv("MEMBER_NS", "toolchain-member-08143329")
+	os.Setenv("MEMBER_NS_2", "toolchain-member2-08143329")
+	os.Setenv("HOST_NS", "toolchain-host-08143329")
+	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-08143329")
 	// this is a temporary test where we have a group of spaces, configured with their own tier (both using the "base" tier templates)
 	// then, the tier is updated with the "advanced" templates and we verify that TemplateUpdateRequests are created but
 	// end up in a UnableToUpdate state because Space updates are not fully implemented yet
@@ -240,48 +243,60 @@ func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
 	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
 
 	// setup icecream tier and spaces
-	setupSpaces(t, awaitilities, "icecream", "icecreamlover%02d", memberAwait, count)
+	spaces := setupSpaces(t, awaitilities, "icecream", "icecreamlover%02d", memberAwait, count)
 
-	// verify icecream tier created successfully
-	_, err := hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(1))
-	require.NoError(t, err)
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "icecream", "base", "base")
+
+	// t.Log("Sleeping for 1 minute")
+	// time.Sleep(time.Minute)
 
 	updateTemplateTier(t, hostAwait, "icecream", "advanced", "")
 
 	// verify icecream tier update was processed
-	_, err = hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(2))
+	_, err := hostAwait.WaitForNSTemplateTier("icecream", UntilNSTemplateTierStatusUpdates(2))
 	require.NoError(t, err)
 
-	// verify that the maximum number of TemplateUpdateRequests were created (they will currently end up in a UnableToUpdate state because Space updates are not fully implemented yet)
-	templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
-	err = k8swait.Poll(hostAwait.RetryInterval, 2*hostAwait.Timeout, func() (done bool, err error) {
-		templateUpdateRequests = &toolchainv1alpha1.TemplateUpdateRequestList{}
-		if err := hostAwait.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(hostAwait.Namespace)); err != nil {
-			return false, err
-		}
-		// wait until there are MaxPoolSize or more TemplateUpdateRequests created and all are in UnableToUpdate state
-		if len(templateUpdateRequests.Items) < MaxPoolSize-1 {
-			return false, nil
-		}
-		expectedCondition := toolchainv1alpha1.Condition{
-			Type:   toolchainv1alpha1.TemplateUpdateRequestComplete,
-			Status: corev1.ConditionFalse,
-			Reason: toolchainv1alpha1.TemplateUpdateRequestUpdatingReason,
-		}
-		for _, item := range templateUpdateRequests.Items {
-			if !test.ContainsCondition(item.Status.Conditions, expectedCondition) {
-				return false, nil
-			}
-		}
-		return true, nil
-	})
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "icecream", "advanced", "base")
+}
+
+func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, spaces []string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
+
+	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
+
+	// let's wait until all MasterUserRecords have been updated
+	tier, err := hostAwait.WaitForNSTemplateTier(tierName,
+		UntilNSTemplateTierSpec(HasClusterResourcesTemplateRef(tierClusterResources.Spec.ClusterResources.TemplateRef)))
+	require.NoError(t, err)
+
+	templateRefs := tiers.GetTemplateRefs(hostAwait, tier.Name)
+	require.NoError(t, err)
+	namespacesChecks, err := tiers.NewChecks(aliasTierNamespaces)
+	require.NoError(t, err)
+	clusterResourcesChecks, err := tiers.NewChecks(aliasTierClusterResources)
+	require.NoError(t, err)
+
+	// verify that all TemplateUpdateRequests were deleted
+	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
+	require.NoError(t, err)
+
+	// verify individual space updates
+	for _, spaceName := range spaces {
+		_, err := hostAwait.WaitForSpace(spaceName,
+			UntilSpaceHasConditions(Provisioned()),
+			UntilSpaceHasStatusTargetCluster(memberAwaitility.ClusterName))
+		require.NoError(t, err)
+
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(spaceName, UntilNSTemplateSetHasTier(tierName))
+		require.NoError(t, err)
+		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
+	}
 }
 
 // setupSpaces takes care of:
 // 1. creating a new tier with the provided tierName and using the TemplateRefs of the "base" tier.
 // 2. creating `count` number of spaces
-func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) {
+func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) []string {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
 	hostAwait := awaitilities.Host()
 	_ = CreateNSTemplateTier(t, hostAwait, tierName)
@@ -291,13 +306,17 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt stri
 	hash, err := computeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 	t.Logf("NSTemplateTier hash is: %s", hash)
+
+	var spaces []string
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf(nameFmt, i)
-		createSpace(t, awaitilities, tier.Name, name, hash, targetCluster)
+		s := createSpace(t, awaitilities, tier.Name, name, hash, targetCluster)
+		spaces = append(spaces, s.Name)
 	}
+	return spaces
 }
 
-func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash string, targetCluster *MemberAwaitility) {
+func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash string, targetCluster *MemberAwaitility) *toolchainv1alpha1.Space {
 	space := &toolchainv1alpha1.Space{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: awaitilities.Host().Namespace,
@@ -313,11 +332,12 @@ func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash s
 	}
 
 	// when
-	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
+	err := awaitilities.Host().Client.Create(context.TODO(), space)
 
 	// then
 	require.NoError(t, err)
 	t.Logf("Space created - %s: %s", templateTierHashLabelKey(tierName), hash)
+	return space
 }
 
 type templateRefs struct {
