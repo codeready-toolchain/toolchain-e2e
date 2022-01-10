@@ -242,8 +242,6 @@ func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
 
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "icecream", "base", "base")
 
-	// t.Log("Sleeping for 1 minute")
-	// time.Sleep(time.Minute)
 
 	updateTemplateTier(t, hostAwait, "icecream", "advanced", "")
 
