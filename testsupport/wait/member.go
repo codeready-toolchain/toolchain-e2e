@@ -339,52 +339,43 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 }
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(username, ref, tierName string) (*corev1.Namespace, error) {
-	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", username, ref)
-	_, kind, _, err := Split(ref)
+func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string) (*corev1.Namespace, error) {
+	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", owner, tmplRef)
+	_, kind, _, err := Split(tmplRef)
 	if err != nil {
 		return nil, err
 	}
 	labels := map[string]string{
-		"toolchain.dev.openshift.com/owner":       username,
-		"toolchain.dev.openshift.com/templateref": ref,
+		"toolchain.dev.openshift.com/owner":       owner,
+		"toolchain.dev.openshift.com/templateref": tmplRef,
 		"toolchain.dev.openshift.com/tier":        tierName,
 		"toolchain.dev.openshift.com/type":        kind,
 		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 	}
-	namespaceList := &corev1.NamespaceList{}
+	var ns corev1.Namespace
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		namespaceList = &corev1.NamespaceList{}
+		objs := &corev1.NamespaceList{}
 		opts := client.MatchingLabels(labels)
-		if err := a.Client.List(context.TODO(), namespaceList, opts); err != nil {
+		if err := a.Client.List(context.TODO(), objs, opts); err != nil {
 			return false, err
 		}
-		// no match found, so we display the current list of namespaces
-		if len(namespaceList.Items) == 0 {
-			allNSs := &corev1.NamespaceList{}
-			if err := a.Client.List(context.TODO(), allNSs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
-				return false, err
-			}
-			allNSNames := make(map[string]map[string]string, len(allNSs.Items))
-			for _, ns := range allNSs.Items {
-				allNSNames[ns.Name] = ns.Labels
-			}
+		// no match found
+		if len(objs.Items) == 0 {
 			return false, nil
 		}
-		require.Len(a.T, namespaceList.Items, 1, "there should be only one Namespace found")
+		require.Len(a.T, objs.Items, 1, "there should be only one Namespace found")
 		// exclude namespace if it's not `Active` phase
-		ns := namespaceList.Items[0]
+		ns = objs.Items[0]
 		return ns.Status.Phase == corev1.NamespaceActive, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", username, ref, labels)
+		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", owner, tmplRef, labels)
 		opts := client.MatchingLabels(map[string]string{
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
 		return nil, err
 	}
-	ns := namespaceList.Items[0]
 	return &ns, nil
 }
 
