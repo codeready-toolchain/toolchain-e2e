@@ -2,6 +2,7 @@ package tiers
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -30,6 +31,8 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedRevisions))
 	assert.NoError(t, err)
 
+	namespaceObjectChecks := sync.WaitGroup{}
+	clusterObjectChecks := sync.WaitGroup{}
 	// Verify all namespaces and objects within
 	for _, templateRef := range expectedRevisions.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName)
@@ -37,15 +40,24 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
 		for _, check := range tierChecksNamespaces.GetNamespaceObjectChecks(nsType) {
-			check(t, ns, memberAwait, nsTmplSet.Name)
+			namespaceObjectChecks.Add(1)
+			go func(checkNamespaceObjects namespaceObjectsCheck) {
+				defer namespaceObjectChecks.Done()
+				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
+			}(check)
 		}
 	}
 	if expectedRevisions.ClusterResources != nil {
 		for _, check := range tierChecksClusterResources.GetClusterObjectChecks() {
-			check(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
+			clusterObjectChecks.Add(1)
+			go func(checkClusterObjects clusterObjectsCheck) {
+				defer clusterObjectChecks.Done()
+				checkClusterObjects(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
+			}(check)
 		}
 	}
-
+	namespaceObjectChecks.Wait()
+	clusterObjectChecks.Wait()
 }
 
 // UntilNSTemplateSetHasTemplateRefs checks if the NSTemplateTier has the expected template refs
