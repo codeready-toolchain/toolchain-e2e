@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 
@@ -225,10 +224,6 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 
 // TODO: this test should be removed once migration from MUR -> Spaces is completed.
 func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
-	os.Setenv("MEMBER_NS", "toolchain-member-08143329")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-08143329")
-	os.Setenv("HOST_NS", "toolchain-host-08143329")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-08143329")
 	// this is a temporary test where we have a group of spaces, configured with their own tier (both using the "base" tier templates)
 	// then, the tier is updated with the "advanced" templates and we verify that TemplateUpdateRequests are created but
 	// end up in a UnableToUpdate state because Space updates are not fully implemented yet
