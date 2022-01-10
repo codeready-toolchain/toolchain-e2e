@@ -160,26 +160,36 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// second group of users: the "cookie lovers"
 	cookieSyncIndexes := setupAccounts(t, awaitilities, "cookie", "cookielover%02d", memberAwait, count)
 
+	// setup chocolate tier to be used for creating spaces without
+	spaces := setupSpaces(t, awaitilities, "chocolate", "chocolatelover%02d", memberAwait, count)
+
 	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
 	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "base", "base")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces) but keep the ClusterResources refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "advanced", "")
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs (ie, same number of namespaces)
 	updateTemplateTier(t, hostAwait, "cookie", "baseextendedidling", "baseextendedidling")
+	// and when updating the "chocolate" tier to the "advanced" template for Namespace refs
+	updateTemplateTier(t, hostAwait, "chocolate", "advanced", "")
 
 	// then
 	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "base")
 	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "baseextendedidling", "baseextendedidling")
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "advanced", "base")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "", "advanced")
 	// and when updating the "cookie" tier to the "base" template refs
 	updateTemplateTier(t, hostAwait, "cookie", "base", "base")
+	// and when updating the "chocolate" tier to the "advanced" template for Namespace refs
+	updateTemplateTier(t, hostAwait, "chocolate", "", "advanced")
 
 	// then
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "advanced")
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "advanced", "advanced")
 
 	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
 	// cheesecake tier
@@ -189,6 +199,10 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// cookie tier
 	// there should be 3 entries in the status.history (1 create + 2 updates)
 	verifyStatus(t, hostAwait, "cookie", 3)
+
+	// chocolate tier
+	// there should be 3 entries in the status.history (1 create + 2 updates)
+	verifyStatus(t, hostAwait, "chocolate", 3)
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
@@ -220,34 +234,6 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
 		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced")
 	})
-}
-
-func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
-	// this is a temporary test where we have a group of spaces, configured with their own tier (both using the "base" tier templates)
-	// then, the tier is updated with the "advanced" templates and we verify that TemplateUpdateRequests are created but
-	// end up in a UnableToUpdate state because Space updates are not fully implemented yet
-
-	count := 2*MaxPoolSize + 1
-	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member1()
-
-	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
-	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
-
-	// setup chocolate tier and spaces
-	spaces := setupSpaces(t, awaitilities, "chocolate", "chocolatelover%02d", memberAwait, count)
-
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "base", "base")
-
-	updateTemplateTier(t, hostAwait, "chocolate", "advanced", "")
-
-	// verify chocolate tier update was processed
-	_, err := hostAwait.WaitForNSTemplateTier("chocolate", UntilNSTemplateTierStatusUpdates(2))
-	require.NoError(t, err)
-
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, "chocolate", "advanced", "base")
 }
 
 // setupSpaces takes care of:
