@@ -222,7 +222,6 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	})
 }
 
-// TODO: this test should be removed once migration from MUR -> Spaces is completed.
 func TestUpdateNSTemplateTierWithSpaces(t *testing.T) {
 	// this is a temporary test where we have a group of spaces, configured with their own tier (both using the "base" tier templates)
 	// then, the tier is updated with the "advanced" templates and we verify that TemplateUpdateRequests are created but
