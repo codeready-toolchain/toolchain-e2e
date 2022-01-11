@@ -73,7 +73,9 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
+		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierToCheck,
+			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+		require.NoError(t, err)
 
 		// verify each tier's tier object values, this corresponds to the NSTemplateTier resource that each tier has
 		t.Run(fmt.Sprintf("tier object check for %s", tierToCheck), func(t *testing.T) {
@@ -244,7 +246,7 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt stri
 	hostAwait := awaitilities.Host()
 	_ = CreateNSTemplateTier(t, hostAwait, tierName)
 	// verify ice cream tier created successfully
-	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
+	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName)
 	require.NoError(t, err)
 	hash, err := computeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
@@ -379,7 +381,7 @@ func getTier(t *testing.T, hostAwait *HostAwaitility, tierName string) *toolchai
 
 func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expectedCount int) {
 	var tier *toolchainv1alpha1.NSTemplateTier
-	tier, err := hostAwait.WaitForNSTemplateTier(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
 	// first update: creation -> 0 MasterUserRecords affected
 	assert.Equal(t, 0, tier.Status.Updates[0].Failures)
@@ -392,11 +394,10 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 }
 
 func getChecksForTier(t *testing.T, hostAwait *HostAwaitility, tierName, aliasTierNamespaces, aliasTierClusterResources string) (tiers.TemplateRefs, tiers.TierChecks, tiers.TierChecks) {
-	tierClusterResources, err := hostAwait.WaitForNSTemplateTier(tierName)
+	tierClusterResources, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName)
 	require.NoError(t, err)
 
-	// let's wait until all MasterUserRecords have been updated
-	tier, err := hostAwait.WaitForNSTemplateTier(tierName,
+	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName,
 		UntilNSTemplateTierSpec(HasClusterResourcesTemplateRef(tierClusterResources.Spec.ClusterResources.TemplateRef)))
 	require.NoError(t, err)
 

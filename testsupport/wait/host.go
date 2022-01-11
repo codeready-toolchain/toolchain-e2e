@@ -667,7 +667,15 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	if err != nil {
 		a.printNSTemplateTierWaitCriterionDiffs(tier, criteria...)
 	}
-	require.NoError(a.T, err)
+	return tier, err
+}
+
+// WaitForNSTemplateTierAndCheckTemplates waits until an NSTemplateTier with the given name exists matching the given conditions and then it verifies that all expected templates exist
+func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
+	tier, err := a.WaitForNSTemplateTier(name, criteria...)
+	if err != nil {
+		return nil, err
+	}
 
 	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
 	// and that there's a TierTemplate resource with the same name
