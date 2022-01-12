@@ -4,6 +4,8 @@ DEV_HOST_NS := toolchain-host-operator
 DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
+SHOW_CLEAN_COMMAND="make clean-dev-resources"
+
 .PHONY: dev-deploy-e2e
 ## Deploy the resources with one member operator instance
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
@@ -53,7 +55,7 @@ print-reg-service-link:
 	done
 	@echo ""
 	@echo Access the Landing Page here: https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
-	@echo "To clean the cluster run 'make clean-e2e-resources'"
+	@echo "To clean the cluster run '${SHOW_CLEAN_COMMAND}'"
 	@echo ""
 
 .PHONY: dev-deploy-e2e-member-local
