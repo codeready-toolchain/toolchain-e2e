@@ -42,7 +42,8 @@ deploy-e2e-local-to-dev-namespaces-two-members:
 .PHONY: print-reg-service-link
 print-reg-service-link:
 	@echo ""
-	@echo "Deployment complete! Waiting for the registration-service route being available"
+	@echo "Deployment complete!"
+	@echo "Waiting for the registration-service route being available"
 	@echo -n "."
 	@while [[ -z `oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
 		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
@@ -54,7 +55,24 @@ print-reg-service-link:
 		sleep 1; \
 	done
 	@echo ""
-	@echo Access the Landing Page here: https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
+	@echo "Waiting for the api route (that is used by proxy) being available"
+	@echo -n "."
+	@while [[ -z `oc get routes api -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
+		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
+            echo ""; \
+            echo "The timeout of waiting for the api route (that is used by proxy) has been reached. Try to run 'make  print-reg-service-link' later or check the deployment logs"; \
+            exit 1; \
+		fi; \
+		echo -n "."; \
+		sleep 1; \
+	done
+	@echo ""
+	@echo ""
+	@echo "==========================================================================================================================================="
+	@echo Access the Landing Page here:   https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
+	@echo Access Proxy here:              https://$$(oc get routes api -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
+	@echo "==========================================================================================================================================="
+	@echo ""
 	@echo "To clean the cluster run '${SHOW_CLEAN_COMMAND}'"
 	@echo ""
 
