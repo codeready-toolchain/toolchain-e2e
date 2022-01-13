@@ -800,6 +800,9 @@ func HasNoTemplateRefWithSuffix(suffix string) NSTemplateTierSpecMatcher {
 					return false
 				}
 			}
+			if actual.ClusterResources == nil {
+				return false
+			}
 			return !strings.HasSuffix(actual.ClusterResources.TemplateRef, suffix)
 		},
 		Diff: func(actual toolchainv1alpha1.NSTemplateTierSpec) string {
