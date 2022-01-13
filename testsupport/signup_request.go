@@ -12,6 +12,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
@@ -260,7 +261,7 @@ func (r *signupRequest) Execute() SignupRequest {
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
 	// and if cleanup hasn't been disabled
 	if !r.cleanupDisabled {
-		hostAwait.Cleanup(r.userSignup)
+		cleanup.AddCleanTasks(hostAwait.T, hostAwait.Client, r.userSignup)
 	}
 
 	return r
