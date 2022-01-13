@@ -578,6 +578,7 @@ func (s *registrationServiceTestSuite) assertGetSignupStatusProvisioned(username
 	require.NoError(s.T(), err)
 	require.True(s.T(), found)
 	assert.Equal(s.T(), memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])
+	assert.Equal(s.T(), hostAwait.APIProxyURL, mp["proxyURL"])
 }
 
 func (s *registrationServiceTestSuite) assertGetSignupStatusPendingApproval(username, bearerToken string) {
