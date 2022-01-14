@@ -53,6 +53,12 @@ type Awaitility struct {
 	MetricsURL    string
 }
 
+func (a *Awaitility) ForTest(t *testing.T) *Awaitility {
+	await := *a
+	await.T = t
+	return &await
+}
+
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
 var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
 	Type:   toolchainv1alpha1.ToolchainClusterReady,
