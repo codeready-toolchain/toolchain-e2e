@@ -63,6 +63,15 @@ func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitilit
 	}
 }
 
+func (a *HostAwaitility) ForTest(t *testing.T) *HostAwaitility {
+	return &HostAwaitility{
+		Awaitility:             a.Awaitility.ForTest(t),
+		RegistrationServiceNs:  a.RegistrationServiceNs,
+		RegistrationServiceURL: a.RegistrationServiceURL,
+		APIProxyURL:            a.APIProxyURL,
+	}
+}
+
 func (a *HostAwaitility) sprintAllResources() string {
 	all, err := a.allResources()
 	buf := &strings.Builder{}

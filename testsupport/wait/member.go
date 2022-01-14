@@ -65,6 +65,12 @@ func NewMemberAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns, c
 	}
 }
 
+func (a *MemberAwaitility) ForTest(t *testing.T) *MemberAwaitility {
+	return &MemberAwaitility{
+		Awaitility: a.Awaitility.ForTest(t),
+	}
+}
+
 func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: a.Awaitility.WithRetryOptions(options...),
