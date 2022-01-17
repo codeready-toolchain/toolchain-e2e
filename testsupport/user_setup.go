@@ -3,8 +3,10 @@ package testsupport
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 
@@ -80,6 +82,16 @@ var HTTPClient = &http.Client{
 	},
 }
 
+const (
+	dns1123Value string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+)
+
+var dns1123ValueRegexp = regexp.MustCompile("^" + dns1123Value + "$")
+
 func ToIdentityName(userID string) string {
-	return fmt.Sprintf("%s:%s", "rhd", userID)
+	if !dns1123ValueRegexp.MatchString(userID) {
+		return fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userID)))
+	} else {
+		return fmt.Sprintf("%s:%s", "rhd", userID)
+	}
 }
