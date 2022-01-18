@@ -8,6 +8,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -244,7 +245,7 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt stri
 	// verify ice cream tier created successfully
 	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName)
 	require.NoError(t, err)
-	hash, err := tiers.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
+	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 	t.Logf("NSTemplateTier hash is: %s", hash)
 
@@ -263,7 +264,7 @@ func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash s
 			Namespace: awaitilities.Host().Namespace,
 			Name:      name,
 			Labels: map[string]string{
-				tiers.TemplateTierHashLabelKey(tierName): hash,
+				testtier.TemplateTierHashLabelKey(tierName): hash,
 			},
 		},
 		Spec: toolchainv1alpha1.SpaceSpec{
@@ -277,7 +278,7 @@ func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash s
 
 	// then
 	require.NoError(t, err)
-	t.Logf("Space created - %s: %s", tiers.TemplateTierHashLabelKey(tierName), hash)
+	t.Logf("Space created - %s: %s", testtier.TemplateTierHashLabelKey(tierName), hash)
 	return space
 }
 
