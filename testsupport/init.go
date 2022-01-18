@@ -27,10 +27,10 @@ import (
 )
 
 var (
-	cachedHostAwait    *wait.HostAwaitility
-	cachedMemberAwait  *wait.MemberAwaitility
-	cachedMember2Await *wait.MemberAwaitility
-	initOnce           sync.Once
+	initHostAwait    *wait.HostAwaitility
+	initMemberAwait  *wait.MemberAwaitility
+	initMember2Await *wait.MemberAwaitility
+	initOnce         sync.Once
 )
 
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
@@ -55,64 +55,63 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		})
 		require.NoError(t, err)
 
-		cachedHostAwait = wait.NewHostAwaitility(t, kubeconfig, cl, hostNs, registrationServiceNs)
+		initHostAwait = wait.NewHostAwaitility(t, kubeconfig, cl, hostNs, registrationServiceNs)
 
 		// wait for host operator to be ready
-		cachedHostAwait.WaitForDeploymentToGetReady("host-operator-controller-manager", 1)
+		initHostAwait.WaitForDeploymentToGetReady("host-operator-controller-manager", 1)
 
 		// wait for registration service to be ready
-		cachedHostAwait.WaitForDeploymentToGetReady("registration-service", 2)
+		initHostAwait.WaitForDeploymentToGetReady("registration-service", 2)
 
 		// set registration service values
-		registrationServiceRoute, err := cachedHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "registration-service", "/")
+		registrationServiceRoute, err := initHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "registration-service", "/")
 		require.NoError(t, err, "failed while waiting for registration service route")
 
 		registrationServiceURL := "http://" + registrationServiceRoute.Spec.Host
 		if registrationServiceRoute.Spec.TLS != nil {
 			registrationServiceURL = "https://" + registrationServiceRoute.Spec.Host
 		}
-		cachedHostAwait.RegistrationServiceURL = registrationServiceURL
+		initHostAwait.RegistrationServiceURL = registrationServiceURL
 
 		// set api proxy values
-		// cachedHostAwait.APIProxyURL = cachedHostAwait.GetAPIProxyURL()
-		apiRoute, err := cachedHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "api", "/proxyhealth")
+		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "api", "/proxyhealth")
 		require.NoError(t, err)
-		cachedHostAwait.APIProxyURL = fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path)
-		if strings.HasSuffix(cachedHostAwait.APIProxyURL, "/") {
-			cachedHostAwait.APIProxyURL = cachedHostAwait.APIProxyURL[:len(cachedHostAwait.APIProxyURL)-1]
+		initHostAwait.APIProxyURL = fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path)
+		if strings.HasSuffix(initHostAwait.APIProxyURL, "/") {
+			initHostAwait.APIProxyURL = initHostAwait.APIProxyURL[:len(initHostAwait.APIProxyURL)-1]
 		}
 
 		// wait for member operators to be ready
-		cachedMemberAwait = getMemberAwaitility(t, cl, cachedHostAwait, memberNs)
+		initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
 
-		cachedMember2Await = getMemberAwaitility(t, cl, cachedHostAwait, memberNs2)
+		initMember2Await = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
 
-		hostToolchainCluster, err := cachedMemberAwait.WaitForToolchainClusterWithCondition("e2e", hostNs, wait.ReadyToolchainCluster)
+		hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition("e2e", hostNs, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 		hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
 		require.NoError(t, err)
-		cachedHostAwait.RestConfig = hostConfig.RestConfig
+		initHostAwait.RestConfig = hostConfig.RestConfig
 
 		// setup host metrics route for metrics verification in tests
-		hostMetricsRoute, err := cachedHostAwait.SetupRouteForService("host-operator-metrics-service", "/metrics")
+		hostMetricsRoute, err := initHostAwait.SetupRouteForService("host-operator-metrics-service", "/metrics")
 		require.NoError(t, err)
-		cachedHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
+		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
 		// setup member metrics route for metrics verification in tests
-		memberMetricsRoute, err := cachedMemberAwait.SetupRouteForService("member-operator-metrics-service", "/metrics")
+		memberMetricsRoute, err := initMemberAwait.SetupRouteForService("member-operator-metrics-service", "/metrics")
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
-		cachedMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
+		initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
-		_, err = cachedMemberAwait.WaitForToolchainClusterWithCondition(cachedHostAwait.Type, cachedHostAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = initMemberAwait.WaitForToolchainClusterWithCondition(initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 
-		_, err = cachedMember2Await.WaitForToolchainClusterWithCondition(cachedHostAwait.Type, cachedHostAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = initMember2Await.WaitForToolchainClusterWithCondition(initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 
 		t.Log("all operators are ready and in running state")
 	})
 
-	return wait.NewAwaitilities(cachedHostAwait.ForTest(t), cachedMemberAwait.ForTest(t), cachedMember2Await.ForTest(t))
+	return wait.NewAwaitilities(initHostAwait.ForTest(t), initMemberAwait.ForTest(t), initMember2Await.ForTest(t))
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
