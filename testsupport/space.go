@@ -31,8 +31,7 @@ func NewSpace(namespace, name, tierName string, targetCluster *wait.MemberAwaiti
 	return space
 }
 
-// VerifyResourcesProvisionedForSpaceWithTier verifies that the Space for the given name is provisioned with all needed labels and conditions.
-// It also checks the NSTemplateSet and all related namespace & cluster scoped resources
+// Same as VerifyResourcesProvisionedForSpaceWithTiers but reuses the provided tier name for the namespace and cluster resources names
 func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName string) *toolchainv1alpha1.Space {
 	return VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, targetCluster, spaceName, tierName, tierName, tierName)
 }
