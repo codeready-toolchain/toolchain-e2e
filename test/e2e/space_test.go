@@ -8,13 +8,9 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestCreateSpace(t *testing.T) {
@@ -29,16 +25,7 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("create space", func(t *testing.T) {
 		// given
-		space := &toolchainv1alpha1.Space{
-			ObjectMeta: v1.ObjectMeta{
-				Namespace:    hostAwait.Namespace,
-				GenerateName: "oddity-",
-			},
-			Spec: toolchainv1alpha1.SpaceSpec{
-				TargetCluster: memberAwait.ClusterName,
-				TierName:      "appstudio",
-			},
-		}
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", memberAwait)
 
 		// when
 		err := hostAwait.Client.Create(context.TODO(), space)
@@ -46,21 +33,7 @@ func TestCreateSpace(t *testing.T) {
 		// then
 		// then
 		require.NoError(t, err)
-		// wait until NSTemplateSet has been created and Space is in `Ready` status
-		nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
-		require.NoError(t, err)
-		tierChecks, err := tiers.NewChecks(space.Spec.TierName)
-		require.NoError(t, err)
-		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
-		space, err = hostAwait.WaitForSpace(space.Name,
-			wait.UntilSpaceHasConditions(Provisioned()),
-			wait.UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
-		require.NoError(t, err)
-		// checks that namespace exists and has the expected label(s)
-		ns, err := memberAwait.WaitForNamespace(space.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, space.Spec.TierName)
-		require.NoError(t, err)
-		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
-		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "appstudio")
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
@@ -73,11 +46,9 @@ func TestCreateSpace(t *testing.T) {
 			require.NoError(t, err)
 			err = hostAwait.WaitUntilSpaceDeleted(space.Name)
 			require.NoError(t, err)
-			err = memberAwait.WaitUntilNSTemplateSetDeleted(nsTmplSet.Name)
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(space.Name)
 			require.NoError(t, err)
-			err = memberAwait.WaitUntilNamespaceDeleted(nsTmplSet.Name, "dev")
-			require.NoError(t, err)
-			err = memberAwait.WaitUntilNamespaceDeleted(nsTmplSet.Name, "stage")
+			err = memberAwait.WaitUntilNamespaceDeleted(space.Name, "appstudio")
 			require.NoError(t, err)
 		})
 	})
@@ -86,16 +57,7 @@ func TestCreateSpace(t *testing.T) {
 
 		t.Run("missing target member cluster", func(t *testing.T) {
 			// given
-			space := &toolchainv1alpha1.Space{
-				ObjectMeta: v1.ObjectMeta{
-					Namespace:    hostAwait.Namespace,
-					GenerateName: "oddity-",
-				},
-				Spec: toolchainv1alpha1.SpaceSpec{
-					//TargetCluster missing
-					TierName: "base",
-				},
-			}
+			space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", nil)
 
 			// when
 			err := hostAwait.Client.Create(context.TODO(), space)
@@ -118,16 +80,8 @@ func TestCreateSpace(t *testing.T) {
 
 		t.Run("unknown target member cluster", func(t *testing.T) {
 			// given
-			s := &toolchainv1alpha1.Space{
-				ObjectMeta: v1.ObjectMeta{
-					Namespace:    hostAwait.Namespace,
-					GenerateName: "oddity-",
-				},
-				Spec: toolchainv1alpha1.SpaceSpec{
-					TargetCluster: "unknown",
-					TierName:      "base",
-				},
-			}
+			s := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", nil)
+			s.Spec.TargetCluster = "unknown"
 
 			// when
 			err := hostAwait.Client.Create(context.TODO(), s)
@@ -178,34 +132,15 @@ func TestUpdateSpace(t *testing.T) {
 
 	rand.Seed(time.Now().UnixNano())
 
-	space := &toolchainv1alpha1.Space{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace:    hostAwait.Namespace,
-			GenerateName: "oddity-",
-		},
-		Spec: toolchainv1alpha1.SpaceSpec{
-			TargetCluster: memberAwait.ClusterName,
-			TierName:      "base",
-		},
-	}
+	space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", memberAwait)
 
 	// when
 	err := hostAwait.CreateWithCleanup(context.TODO(), space)
 
 	// then
 	require.NoError(t, err)
-	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	space, err = hostAwait.WaitForSpace(space.Name,
-		wait.UntilSpaceHasConditions(Provisioned()),
-		wait.UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName),
-	)
-	require.NoError(t, err)
-	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
-	require.NoError(t, err)
-	tierChecks, err := tiers.NewChecks("base")
-	require.NoError(t, err)
-	tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
+
+	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "base")
 
 	t.Run("update tier", func(t *testing.T) {
 		// given
@@ -218,22 +153,7 @@ func TestUpdateSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err := hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		advancedTier, err := hostAwait.WaitForNSTemplateTier("advanced")
-		require.NoError(t, err)
-		hash, err := computeTemplateRefsHash(advancedTier) // we can assume the JSON marshalling will always work
-		require.NoError(t, err)
-
-		space, err = hostAwait.WaitForSpace(space.Name,
-			wait.UntilSpaceHasTier("advanced"),
-			wait.UntilSpaceHasLabelWithValue("toolchain.dev.openshift.com/advanced-tier-hash", hash),
-			wait.UntilSpaceHasNoLabel("toolchain.dev.openshift.com/base-tier-hash"),
-			wait.UntilSpaceHasConditions(Provisioned()))
-		require.NoError(t, err)
-		nsTmplSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
-		require.NoError(t, err)
-		tierChecks, err := tiers.NewChecks("advanced")
-		require.NoError(t, err)
-		tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
+		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "advanced")
 	})
 }
 
@@ -247,27 +167,11 @@ func TestRetargetSpace(t *testing.T) {
 
 	t.Run("to no other cluster", func(t *testing.T) {
 		// given
-		space := &toolchainv1alpha1.Space{
-			ObjectMeta: v1.ObjectMeta{
-				Namespace:    hostAwait.Namespace,
-				GenerateName: "oddity-",
-			},
-			Spec: toolchainv1alpha1.SpaceSpec{
-				TargetCluster: member1Await.ClusterName,
-				TierName:      "base",
-			},
-		}
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", member1Await)
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
-		// wait until NSTemplateSet has been created on member-1
-		_, err = member1Await.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
-		require.NoError(t, err)
-		// wait until Space is in `Ready` status
-		space, err = hostAwait.WaitForSpace(space.Name,
-			wait.UntilSpaceHasConditions(Provisioned()),
-			wait.UntilSpaceHasStatusTargetCluster(member1Await.ClusterName),
-		)
-		require.NoError(t, err)
+		// wait until Space has been provisioned on member-1
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// when
 		space.Spec.TargetCluster = ""
@@ -286,27 +190,11 @@ func TestRetargetSpace(t *testing.T) {
 
 	t.Run("to another cluster", func(t *testing.T) {
 		// given
-		space := &toolchainv1alpha1.Space{
-			ObjectMeta: v1.ObjectMeta{
-				Namespace:    hostAwait.Namespace,
-				GenerateName: "oddity-",
-			},
-			Spec: toolchainv1alpha1.SpaceSpec{
-				TargetCluster: member1Await.ClusterName,
-				TierName:      "base",
-			},
-		}
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", member1Await)
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
-		// wait until NSTemplateSet has been created
-		_, err = member1Await.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
-		require.NoError(t, err)
-		// wait until Space is in `Ready` status
-		space, err = hostAwait.WaitForSpace(space.Name,
-			wait.UntilSpaceHasConditions(Provisioned()),
-			wait.UntilSpaceHasStatusTargetCluster(member1Await.ClusterName),
-		)
-		require.NoError(t, err)
+		// wait until Space has been provisioned on member-1
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// when
 		space.Spec.TargetCluster = member2Await.ClusterName
@@ -314,10 +202,8 @@ func TestRetargetSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		// then
-		_, err = hostAwait.WaitForSpace(space.Name, wait.UntilSpaceHasConditions(Provisioned()))
-		require.NoError(t, err)
-		_, err = member2Await.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasConditions(Provisioned())) // expect NSTemplateSet to be created on member-2 cluster
-		require.NoError(t, err)
+		// wait until Space has been provisioned on member-1
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "base")
 		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 		require.NoError(t, err)
 	})
