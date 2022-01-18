@@ -8,7 +8,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -30,11 +29,6 @@ func NewSpace(namespace, name, tierName string, targetCluster *wait.MemberAwaiti
 		space.Spec.TargetCluster = targetCluster.ClusterName
 	}
 	return space
-}
-
-// GenerateName appends generated UUID to the given string
-func GenerateName(prefix string) string {
-	return fmt.Sprintf("%s-%s", prefix, uuid.Must(uuid.NewV4()).String())
 }
 
 // VerifyResourcesProvisionedForSpaceWithTier verifies that the Space for the given name is provisioned with all needed labels and conditions.
