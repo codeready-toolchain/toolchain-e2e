@@ -20,12 +20,15 @@ REGISTRATION_SERVICE_NS := $(HOST_NS)
 ENVIRONMENT := e2e-tests
 IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
+DEPLOY_LATEST := false
 
 ifneq ($(CLONEREFS_OPTIONS),)
 PUBLISH_OPERATOR := false
 else
 PUBLISH_OPERATOR := true
 endif
+
+SETUP_E2E_SERVICE_ACCOUNTS ?= true
 
 .PHONY: test-e2e
 ## Run the e2e tests
@@ -138,9 +141,11 @@ setup-toolchainclusters:
 
 .PHONY: e2e-service-account
 e2e-service-account:
+ifeq ($(SETUP_E2E_SERVICE_ACCOUNTS),true)
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
+endif
 
 ###########################################################
 #
@@ -169,7 +174,7 @@ ifneq (${MEMBER_REPO_PATH},"")
 		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM}"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM}"
 
 .PHONY: get-and-publish-host-operator
 get-and-publish-host-operator:
@@ -183,7 +188,7 @@ ifneq (${HOST_REPO_PATH},"")
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${MEMBER_NS_2_PARAM} ${REG_REPO_PATH_PARAM}"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM} ${REG_REPO_PATH_PARAM}"
 
 ###########################################################
 #
