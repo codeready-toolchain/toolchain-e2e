@@ -4,6 +4,8 @@ DEV_HOST_NS := toolchain-host-operator
 DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
 
+SHOW_CLEAN_COMMAND="make clean-dev-resources"
+
 .PHONY: dev-deploy-e2e
 ## Deploy the resources with one member operator instance
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
@@ -17,11 +19,11 @@ dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-s
 
 .PHONY: deploy-e2e-to-dev-namespaces
 deploy-e2e-to-dev-namespaces:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false
 
 .PHONY: deploy-e2e-to-dev-namespaces-two-members
 deploy-e2e-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false
 
 .PHONY: dev-deploy-e2e-local
 dev-deploy-e2e-local: deploy-e2e-local-to-dev-namespaces print-reg-service-link
@@ -31,16 +33,17 @@ dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members
 
 .PHONY: deploy-e2e-local-to-dev-namespaces
 deploy-e2e-local-to-dev-namespaces:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false
 
 .PHONY: deploy-e2e-local-to-dev-namespaces-two-members
 deploy-e2e-local-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false
 
 .PHONY: print-reg-service-link
 print-reg-service-link:
 	@echo ""
-	@echo "Deployment complete! Waiting for the registration-service route being available"
+	@echo "Deployment complete!"
+	@echo "Waiting for the registration-service route being available"
 	@echo -n "."
 	@while [[ -z `oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
 		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
@@ -52,8 +55,25 @@ print-reg-service-link:
 		sleep 1; \
 	done
 	@echo ""
-	@echo Access the Landing Page here: https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
-	@echo "To clean the cluster run 'make clean-e2e-resources'"
+	@echo "Waiting for the api route (that is used by proxy) being available"
+	@echo -n "."
+	@while [[ -z `oc get routes api -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
+		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
+            echo ""; \
+            echo "The timeout of waiting for the api route (that is used by proxy) has been reached. Try to run 'make  print-reg-service-link' later or check the deployment logs"; \
+            exit 1; \
+		fi; \
+		echo -n "."; \
+		sleep 1; \
+	done
+	@echo ""
+	@echo ""
+	@echo "==========================================================================================================================================="
+	@echo Access the Landing Page here:   https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
+	@echo Access Proxy here:              https://$$(oc get routes api -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
+	@echo "==========================================================================================================================================="
+	@echo ""
+	@echo "To clean the cluster run '${SHOW_CLEAN_COMMAND}'"
 	@echo ""
 
 .PHONY: dev-deploy-e2e-member-local
@@ -70,19 +90,3 @@ dev-deploy-e2e-host-local:
 ## Deploy the e2e resources with the local 'registration-service' repository only
 dev-deploy-e2e-registration-local:
 	$(MAKE) dev-deploy-e2e REG_REPO_PATH=${PWD}/../registration-service ENVIRONMENT=${DEV_ENVIRONMENT}
-
-.PHONY: dev-deploy-latest
-dev-deploy-latest:
-	$(MAKE) deploy-latest SECOND_MEMBER_MODE=false ENVIRONMENT=${DEV_ENVIRONMENT} MEMBER_NS=${DEV_MEMBER_NS} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS}
-
-.PHONY: deploy-latest
-deploy-latest: create-member1 create-host-project deploy-operators-from-quay create-host-resources setup-toolchainclusters print-reg-service-link
-
-.PHONY: deploy-operators-from-quay
-deploy-operators-from-quay:
-	# install the operators
-	oc process -f deploy/install/toolchain-host-operator.yaml -p SANDBOX_NAMESPACE=${DEV_HOST_NS} | oc apply -f -
-	oc process -f deploy/install/toolchain-member-operator.yaml -p SANDBOX_NAMESPACE=${DEV_MEMBER_NS} | oc apply -f -
-	# wait until everything is installed
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/wait-until-is-installed.sh SCRIPT_PARAMS="-crd toolchainconfigs.toolchain.dev.openshift.com -cs dev-sandbox-host -n ${DEV_HOST_NS} -s dev-sandbox-host"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/wait-until-is-installed.sh SCRIPT_PARAMS="-crd memberoperatorconfigs.toolchain.dev.openshift.com -cs dev-sandbox-member -n ${DEV_HOST_NS} -s dev-sandbox-member"

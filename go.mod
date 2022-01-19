@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20220110101730-04d30e90a574
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20220110102259-392256a24155
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20220118183120-7037f272026f
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.10.0
 	github.com/ghodss/yaml v1.0.0
@@ -27,7 +27,6 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	honnef.co/go/tools v0.0.1-2020.1.6 // indirect
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
 	k8s.io/client-go v0.20.2
