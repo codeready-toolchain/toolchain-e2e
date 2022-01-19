@@ -55,7 +55,7 @@ e2e-migration-first-run:
 e2e-migration-second-run:
 	@echo "Updating operators and verifying resources..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/verify"
-	@echo "After migration tests successfuly finished"
+	@echo "Migration tests successfully finished"
 
 .PHONY: e2e-deploy-latest
 e2e-deploy-latest:
