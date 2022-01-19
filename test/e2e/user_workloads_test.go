@@ -24,7 +24,8 @@ func TestUserWorkloads(t *testing.T) {
 }
 
 type userWorkloadsTestSuite struct {
-	baseUserIntegrationTest
+	suite.Suite
+	wait.Awaitilities
 }
 
 func (s *userWorkloadsTestSuite) SetupSuite() {

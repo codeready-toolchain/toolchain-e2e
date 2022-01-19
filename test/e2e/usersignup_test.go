@@ -18,7 +18,8 @@ import (
 )
 
 type userSignupIntegrationTest struct {
-	baseUserIntegrationTest
+	suite.Suite
+	wait.Awaitilities
 }
 
 func TestRunUserSignupIntegrationTest(t *testing.T) {
