@@ -1,0 +1,39 @@
+package testsupport
+
+import (
+	"context"
+	"testing"
+
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
+	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// CreateBannedUser creates the BannedUser resource
+func CreateBannedUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
+	bannedUser := NewBannedUser(hostAwait, email)
+	err := hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
+	require.NoError(t, err)
+
+	t.Logf("BannedUser '%s' created", bannedUser.Spec.Email)
+	return bannedUser
+}
+
+// NewBannedUser initializes a new BannedUser object
+func NewBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
+	return &toolchainv1alpha1.BannedUser{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      uuid.Must(uuid.NewV4()).String(),
+			Namespace: host.Namespace,
+			Labels: map[string]string{
+				toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
+			},
+		},
+		Spec: toolchainv1alpha1.BannedUserSpec{
+			Email: email,
+		},
+	}
+}

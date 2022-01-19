@@ -34,7 +34,8 @@ func TestUserManagement(t *testing.T) {
 }
 
 type userManagementTestSuite struct {
-	baseUserIntegrationTest
+	suite.Suite
+	wait.Awaitilities
 }
 
 func (s *userManagementTestSuite) SetupSuite() {
@@ -74,12 +75,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
-		s.deactivateAndCheckUser(userSignupMember1)
-		s.deactivateAndCheckUser(userSignupMember2)
+		DeactivateAndCheckUser(s.T(), s.Awaitilities, userSignupMember1)
+		DeactivateAndCheckUser(s.T(), s.Awaitilities, userSignupMember2)
 
 		t.Run("reactivate a deactivated user", func(t *testing.T) {
-			s.reactivateAndCheckUser(userSignupMember1)
-			s.reactivateAndCheckUser(userSignupMember2)
+			ReactivateAndCheckUser(s.T(), s.Awaitilities, userSignupMember1)
+			ReactivateAndCheckUser(s.T(), s.Awaitilities, userSignupMember2)
 		})
 	})
 
@@ -383,7 +384,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			Execute().Resources()
 
 		// Create the BannedUser
-		s.createAndCheckBannedUser(userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+		CreateBannedUser(s.T(), s.Host(), userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm the user is banned
 		_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(userSignup.Name,
@@ -407,7 +408,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
-		s.createAndCheckBannedUser(email)
+		CreateBannedUser(s.T(), s.Host(), email)
 
 		// For this test, we don't want to create the UserSignup via the registration service (the next test does this)
 		// Instead, we want to confirm the behaviour when a UserSignup with a banned email address is created manually
@@ -436,7 +437,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		id := uuid.Must(uuid.NewV4()).String()
 		email := "testuser" + id + "@test.com"
-		s.createAndCheckBannedUser(email)
+		CreateBannedUser(s.T(), s.Host(), email)
 
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
@@ -485,7 +486,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			Execute().Resources()
 
 		// Create the BannedUser
-		bannedUser := s.createAndCheckBannedUser(userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+		bannedUser := CreateBannedUser(s.T(), s.Host(), userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 
 		// Confirm the user is banned
 		_, err := hostAwait.WaitForUserSignup(userSignup.Name,
@@ -605,14 +606,14 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 					Execute().Resources()
 
 				// when
-				s.deactivateAndCheckUser(userSignup)
+				DeactivateAndCheckUser(s.T(), s.Awaitilities, userSignup)
 				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
 				userSignup, err := s.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 					us.Spec.TargetCluster = ""
 				})
 				require.NoError(t, err)
 
-				userSignup = s.reactivateAndCheckUser(userSignup)
+				userSignup = ReactivateAndCheckUser(s.T(), s.Awaitilities, userSignup)
 				mur2, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 
 				// then
