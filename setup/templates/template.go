@@ -25,9 +25,13 @@ func GetTemplateFromFile(filepath string) (*templatev1.Template, error) {
 	if err != nil {
 		return nil, err
 	}
+	return GetTemplateFromContent(content)
+}
+
+func GetTemplateFromContent(content []byte) (*templatev1.Template, error) {
 	decoder := serializer.NewCodecFactory(scheme.Scheme).UniversalDeserializer()
 	tmpl := &templatev1.Template{}
-	_, gvk, err := decoder.Decode([]byte(content), nil, tmpl)
+	_, gvk, err := decoder.Decode(content, nil, tmpl)
 	if err != nil {
 		return nil, err
 	}

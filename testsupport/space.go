@@ -16,7 +16,7 @@ import (
 )
 
 // NewSpace initializes a new Space object with the given value. If the targetCluster is nil, then the Space.Spec.TargetCluster is not set.
-func NewSpace(namespace, name, tierName string, targetCluster *wait.MemberAwaitility) *toolchainv1alpha1.Space {
+func NewSpace(namespace, name, tierName string, opts ...SpaceOption) *toolchainv1alpha1.Space {
 	space := &toolchainv1alpha1.Space{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
@@ -26,10 +26,18 @@ func NewSpace(namespace, name, tierName string, targetCluster *wait.MemberAwaiti
 			TierName: tierName,
 		},
 	}
-	if targetCluster != nil {
-		space.Spec.TargetCluster = targetCluster.ClusterName
+	for _, apply := range opts {
+		apply(space)
 	}
 	return space
+}
+
+type SpaceOption func(*toolchainv1alpha1.Space)
+
+func WithTargetCluster(clusterName string) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.Spec.TargetCluster = clusterName
+	}
 }
 
 // Same as VerifyResourcesProvisionedForSpaceWithTiers but reuses the provided tier name for the namespace and cluster resources names

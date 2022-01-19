@@ -2,13 +2,14 @@ package e2e
 
 import (
 	"context"
-	"math/rand"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -21,11 +22,9 @@ func TestCreateSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	rand.Seed(time.Now().UnixNano())
-
 	t.Run("create space", func(t *testing.T) {
 		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", memberAwait)
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(memberAwait.ClusterName))
 
 		// when
 		err := hostAwait.Client.Create(context.TODO(), space)
@@ -57,7 +56,7 @@ func TestCreateSpace(t *testing.T) {
 
 		t.Run("missing target member cluster", func(t *testing.T) {
 			// given
-			space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", nil)
+			space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio")
 
 			// when
 			err := hostAwait.Client.Create(context.TODO(), space)
@@ -80,7 +79,7 @@ func TestCreateSpace(t *testing.T) {
 
 		t.Run("unknown target member cluster", func(t *testing.T) {
 			// given
-			s := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", nil)
+			s := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster("unknown"))
 			s.Spec.TargetCluster = "unknown"
 
 			// when
@@ -121,18 +120,138 @@ func TestCreateSpace(t *testing.T) {
 	})
 }
 
-func TestUpdateSpace(t *testing.T) {
-
-	// given
+func TestSpaceRoles(t *testing.T) {
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	rand.Seed(time.Now().UnixNano())
+	// given
+	s := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(memberAwait.ClusterName))
 
-	space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", memberAwait)
+	// when
+	err := hostAwait.CreateWithCleanup(context.TODO(), s)
+
+	// then
+	require.NoError(t, err)
+	// wait until NSTemplateSet has been created and Space is in `Ready` status
+	s, err = hostAwait.WaitForSpace(s.Name,
+		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName),
+	)
+	require.NoError(t, err)
+	// wait until NSTemplateSet has been created and Space is in `Ready` status
+	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
+	require.NoError(t, err)
+	tierChecks, err := tiers.NewChecks("appstudio")
+	require.NoError(t, err)
+	tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
+
+	t.Run("add admin role and bindings", func(t *testing.T) {
+		// given
+		adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
+		err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl)
+		require.NoError(t, err)
+		nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+			{
+				TemplateRef: adminTierTmpl.Name,
+				Usernames:   []string{"user1", "user2"},
+			},
+		}
+
+		// when
+		err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+
+		// then
+		require.NoError(t, err)
+		_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
+		require.NoError(t, err)
+		ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio")
+		require.NoError(t, err)
+		// check that the `admin` role and role bindings were created
+		_, err = memberAwait.WaitForRole(ns, "space-admin")
+		assert.NoError(t, err)
+		_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
+		assert.NoError(t, err)
+		_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
+		assert.NoError(t, err)
+
+		t.Run("remove admin binding", func(t *testing.T) {
+			// given
+			nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+				{
+					TemplateRef: adminTierTmpl.Name,
+					Usernames:   []string{"user1"}, // removed `user2`
+				},
+			}
+
+			// when
+			err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+
+			// then
+			require.NoError(t, err)
+			_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
+			require.NoError(t, err)
+
+			// check that role and role bindings were created
+			ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio")
+			require.NoError(t, err)
+			_, err = memberAwait.WaitForRole(ns, "space-admin") // unchanged
+			assert.NoError(t, err)
+			_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin") // unchanged
+			assert.NoError(t, err)
+			err = memberAwait.WaitUntilRoleBindingDeleted(ns, "user2-space-admin") // deleted
+			assert.NoError(t, err)
+
+			t.Run("replace with viewer role and binding", func(t *testing.T) {
+				// given
+				viewerTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-viewer-123456", "space-role-viewer", "appstudio", "123456", []byte(spaceViewerTmpl))
+				err := hostAwait.CreateWithCleanup(context.TODO(), viewerTierTmpl)
+				require.NoError(t, err)
+				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+					{
+						TemplateRef: viewerTierTmpl.Name,
+						Usernames:   []string{"user3"},
+					},
+				}
+
+				// when
+				err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+
+				// then
+				require.NoError(t, err)
+				_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
+				require.NoError(t, err)
+				ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio")
+				require.NoError(t, err)
+
+				// 'admin' role and role binding should have been removed
+				err = memberAwait.WaitUntilRoleDeleted(ns, "space-admin") // deleted
+				assert.NoError(t, err)
+				err = memberAwait.WaitUntilRoleBindingDeleted(ns, "user2-space-admin") // deleted
+				assert.NoError(t, err)
+				// check that role and role bindings were created
+				// check that the `admin` role and role bindings were created
+				_, err = memberAwait.WaitForRole(ns, "space-viewer")
+				assert.NoError(t, err)
+				_, err = memberAwait.WaitForRoleBinding(ns, "user3-space-viewer")
+				assert.NoError(t, err)
+
+			})
+		})
+	})
+}
+
+func TestPromoteSpace(t *testing.T) {
+
+	// given
+	// make sure everything is ready before running the actual tests
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", WithTargetCluster(memberAwait.ClusterName))
 
 	// when
 	err := hostAwait.CreateWithCleanup(context.TODO(), space)
@@ -142,7 +261,7 @@ func TestUpdateSpace(t *testing.T) {
 
 	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "base")
 
-	t.Run("update tier", func(t *testing.T) {
+	t.Run("to advanced tier", func(t *testing.T) {
 		// given
 		ctr := NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
 
@@ -167,11 +286,11 @@ func TestRetargetSpace(t *testing.T) {
 
 	t.Run("to no other cluster", func(t *testing.T) {
 		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", member1Await)
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(member1Await.ClusterName))
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "appstudio")
 
 		// when
 		space.Spec.TargetCluster = ""
@@ -190,11 +309,11 @@ func TestRetargetSpace(t *testing.T) {
 
 	t.Run("to another cluster", func(t *testing.T) {
 		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", member1Await)
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(member1Await.ClusterName))
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "appstudio")
 
 		// when
 		space.Spec.TargetCluster = member2Await.ClusterName
@@ -203,7 +322,7 @@ func TestRetargetSpace(t *testing.T) {
 
 		// then
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "base")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "appstudio")
 		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 		require.NoError(t, err)
 	})
@@ -235,3 +354,82 @@ func TerminatingFailed(msg string) toolchainv1alpha1.Condition {
 		Message: msg,
 	}
 }
+
+const spaceAdminTmpl = `apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  labels:
+  name: space-admin-template
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: space-admin
+    namespace: ${NAMESPACE}
+  rules:
+    # examples
+    - apiGroups:
+        - ""
+      resources:
+        - "secrets"
+        - "serviceaccounts"
+      verbs:
+        - get
+        - list
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: ${USERNAME}-space-admin
+    namespace: ${NAMESPACE}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: space-admin
+  subjects:
+    - kind: User
+      name: ${USERNAME}
+parameters:
+- name: NAMESPACE
+  required: true
+- name: USERNAME
+  value: johnsmith
+`
+
+const spaceViewerTmpl = `apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: space-viewer-template
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: space-viewer
+    namespace: ${NAMESPACE}
+  rules:
+    # examples
+    - apiGroups:
+        - ""
+      resources:
+        - "secrets"
+        - "serviceaccounts"
+      verbs:
+        - get
+        - list
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: ${USERNAME}-space-viewer
+    namespace: ${NAMESPACE}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: space-viewer
+  subjects:
+    - kind: User
+      name: ${USERNAME}
+parameters:
+- name: NAMESPACE
+  required: true
+- name: USERNAME
+  value: johnsmith
+`

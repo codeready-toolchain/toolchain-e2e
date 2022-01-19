@@ -432,6 +432,21 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name 
 	return roleBinding, err
 }
 
+// WaitUntilRoleBindingDeleted waits until a Role with the given name does not exist anymore in the given namespace
+func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(namespace *corev1.Namespace, name string) error {
+	a.T.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		roleBinding := &rbacv1.RoleBinding{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, roleBinding); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
 func (a *MemberAwaitility) WaitForServiceAccount(namespace *corev1.Namespace, name string) (*corev1.ServiceAccount, error) {
 	a.T.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace.Name)
 	serviceAccount := &corev1.ServiceAccount{}
@@ -526,6 +541,21 @@ func (a *MemberAwaitility) WaitForRole(namespace *corev1.Namespace, name string)
 		a.T.Logf("failed to wait for Role '%s' in namespace '%s'", name, namespace.Name)
 	}
 	return role, err
+}
+
+// WaitUntilRoleDeleted waits until a Role with the given name does not exist anymore in the given namespace
+func (a *MemberAwaitility) WaitUntilRoleDeleted(namespace *corev1.Namespace, name string) error {
+	a.T.Logf("waiting for Role '%s' in namespace '%s' to be deleted", name, namespace.Name)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		role := &rbacv1.Role{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, role); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
 }
 
 // ClusterResourceQuotaWaitCriterion a struct to compare with a given ClusterResourceQuota
