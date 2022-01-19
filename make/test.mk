@@ -49,7 +49,7 @@ cover-migration-and-deploy: prepare-projects e2e-deploy-latest e2e-service-accou
 e2e-migration-first-run:
 	@echo "Setting up the environment before testing the operator migration..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/setup"
-	@echo "Before migration tests successfuly finished."
+	@echo "Environment successfully setup."
 
 .PHONY: e2e-migration-second-run
 e2e-migration-second-run:
