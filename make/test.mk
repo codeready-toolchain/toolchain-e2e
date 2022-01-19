@@ -33,7 +33,7 @@ SETUP_E2E_SERVICE_ACCOUNTS ?= true
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e cover-migration-and-deploy e2e-run
+test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -42,8 +42,8 @@ test-e2e: prepare-e2e cover-migration-and-deploy e2e-run
 test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
-.PHONY: cover-migration-and-deploy
-cover-migration-and-deploy: prepare-projects e2e-deploy-latest e2e-service-account setup-toolchainclusters e2e-migration-first-run get-publish-and-install-operators e2e-migration-second-run
+.PHONY: verify-migration-and-deploy-e2e
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account setup-toolchainclusters e2e-migration-first-run get-publish-and-install-operators e2e-migration-second-run
 
 .PHONY: e2e-migration-first-run
 e2e-migration-first-run:
