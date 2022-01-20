@@ -742,6 +742,27 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 	return result, err
 }
 
+// UpdateNSTemplateSet tries to update the Spec of the given NSTemplateSet
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated NSTemplateSet
+func (a *MemberAwaitility) UpdateNSTemplateSet(spaceName string, modifyNSTemplateSet func(nsTmplSet *toolchainv1alpha1.NSTemplateSet)) (*toolchainv1alpha1.NSTemplateSet, error) {
+	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshNSTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceName}, freshNSTmplSet); err != nil {
+			return true, err
+		}
+		modifyNSTemplateSet(freshNSTmplSet)
+		if err := a.Client.Update(context.TODO(), freshNSTmplSet); err != nil {
+			a.T.Logf("error updating NSTemplateSet '%s': %s. Will retry again...", spaceName, err.Error())
+			return false, nil
+		}
+		nsTmplSet = freshNSTmplSet
+		return true, nil
+	})
+	return nsTmplSet, err
+}
+
 // Create tries to create the object until success
 // Workaround for https://github.com/kubernetes/kubernetes/issues/67761
 func (a *MemberAwaitility) Create(obj client.Object) error {

@@ -153,15 +153,16 @@ func TestSpaceRoles(t *testing.T) {
 		adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
 		err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl)
 		require.NoError(t, err)
-		nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-			{
-				TemplateRef: adminTierTmpl.Name,
-				Usernames:   []string{"user1", "user2"},
-			},
-		}
 
 		// when
-		err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+		nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+			nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+				{
+					TemplateRef: adminTierTmpl.Name,
+					Usernames:   []string{"user1", "user2"},
+				},
+			}
+		})
 
 		// then
 		require.NoError(t, err)
@@ -178,16 +179,15 @@ func TestSpaceRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		t.Run("remove admin binding", func(t *testing.T) {
-			// given
-			nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-				{
-					TemplateRef: adminTierTmpl.Name,
-					Usernames:   []string{"user1"}, // removed `user2`
-				},
-			}
-
 			// when
-			err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+			nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+					{
+						TemplateRef: adminTierTmpl.Name,
+						Usernames:   []string{"user1"}, // removed `user2`
+					},
+				}
+			})
 
 			// then
 			require.NoError(t, err)
@@ -209,15 +209,16 @@ func TestSpaceRoles(t *testing.T) {
 				viewerTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-viewer-123456", "space-role-viewer", "appstudio", "123456", []byte(spaceViewerTmpl))
 				err := hostAwait.CreateWithCleanup(context.TODO(), viewerTierTmpl)
 				require.NoError(t, err)
-				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-					{
-						TemplateRef: viewerTierTmpl.Name,
-						Usernames:   []string{"user3"},
-					},
-				}
 
 				// when
-				err = memberAwait.Client.Update(context.TODO(), nsTmplSet)
+				nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+					nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+						{
+							TemplateRef: viewerTierTmpl.Name,
+							Usernames:   []string{"user3"},
+						},
+					}
+				})
 
 				// then
 				require.NoError(t, err)
