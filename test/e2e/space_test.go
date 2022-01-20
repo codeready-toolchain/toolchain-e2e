@@ -136,17 +136,7 @@ func TestSpaceRoles(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	s, err = hostAwait.WaitForSpace(s.Name,
-		wait.UntilSpaceHasConditions(Provisioned()),
-		wait.UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName),
-	)
-	require.NoError(t, err)
-	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
-	require.NoError(t, err)
-	tierChecks, err := tiers.NewChecks("appstudio")
-	require.NoError(t, err)
-	tiers.VerifyGivenNsTemplateSet(t, memberAwait, nsTmplSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
+	VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, s.Name, "appstudio")
 
 	t.Run("add admin role and bindings", func(t *testing.T) {
 		// given
