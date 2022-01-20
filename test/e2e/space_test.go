@@ -289,7 +289,7 @@ func TestRetargetSpace(t *testing.T) {
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// when
 		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
