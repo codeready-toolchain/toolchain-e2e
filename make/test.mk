@@ -43,16 +43,16 @@ test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: verify-migration-and-deploy-e2e
-verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account setup-toolchainclusters e2e-migration-first-run get-publish-and-install-operators e2e-migration-second-run
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account setup-toolchainclusters e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
-.PHONY: e2e-migration-first-run
-e2e-migration-first-run:
+.PHONY: e2e-migration-setup
+e2e-migration-setup:
 	@echo "Setting up the environment before testing the operator migration..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/setup"
 	@echo "Environment successfully setup."
 
-.PHONY: e2e-migration-second-run
-e2e-migration-second-run:
+.PHONY: e2e-migration-verify
+e2e-migration-verify:
 	@echo "Updating operators and verifying resources..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/verify"
 	@echo "Migration tests successfully finished"
