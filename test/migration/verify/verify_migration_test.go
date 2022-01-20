@@ -134,7 +134,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 	require.NoError(t, err)
 	require.Len(t, bannedUsers.Items, 1)
 
-	// Unban the user by deletign the BannedUser resource
+	// Unban the user by deleting the BannedUser resource
 	err = hostAwait.Client.Delete(context.TODO(), &bannedUsers.Items[0])
 	require.NoError(t, err)
 
