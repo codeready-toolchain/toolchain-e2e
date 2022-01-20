@@ -6,7 +6,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
@@ -135,8 +134,10 @@ func TestSpaceRoles(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
+	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name, wait.UntilNSTemplateSetHasConditions(Provisioned()))
+	require.NoError(t, err)
 	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, s.Name, "appstudio")
+	s = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, s.Name, "appstudio")
 
 	t.Run("add admin role and bindings", func(t *testing.T) {
 		// given
