@@ -293,8 +293,9 @@ func TestRetargetSpace(t *testing.T) {
 		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "appstudio")
 
 		// when
-		space.Spec.TargetCluster = ""
-		err = hostAwait.Client.Update(context.TODO(), space)
+		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
+			s.Spec.TargetCluster = ""
+		})
 		require.NoError(t, err)
 
 		// then
