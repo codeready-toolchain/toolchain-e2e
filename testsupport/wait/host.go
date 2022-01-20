@@ -243,9 +243,9 @@ func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignu
 	return userSignup, err
 }
 
-// UpdateUserSignup tries to update the Spec of the given UserSignup
+// UpdateSpace tries to update the Spec of the given Space
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated UserSignup
+// Returns the updated Space
 func (a *HostAwaitility) UpdateSpace(spaceName string, modifySpace func(s *toolchainv1alpha1.Space)) (*toolchainv1alpha1.Space, error) {
 	var s *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
