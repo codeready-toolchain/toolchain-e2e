@@ -768,7 +768,7 @@ func clusterResourceQuotaServices() clusterObjectsCheckCreator {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("10")
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
