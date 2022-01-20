@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -344,8 +345,53 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 	})
 }
 
+type NamespaceWaitCriterion struct {
+	Match func(*corev1.Namespace) bool
+	Diff  func(*corev1.Namespace) string
+}
+
+// UntilNamespaceIsActive returns a `NamespaceWaitCriterion` which checks that the given
+// Namespace is in `Active` phase
+func UntilNamespaceIsActive() NamespaceWaitCriterion {
+	return NamespaceWaitCriterion{
+		Match: func(actual *corev1.Namespace) bool {
+			return actual.Status.Phase == corev1.NamespaceActive
+		},
+		Diff: func(actual *corev1.Namespace) string {
+			return fmt.Sprintf("expected namespace to be active:\n%s", actual.Status.Phase)
+		},
+	}
+}
+
+// UntilNamespaceIsActive returns a `NamespaceWaitCriterion` which checks that the given
+// Namespace is in `Active` phase
+func UntilHasLastAppliedSpaceRoles(expected []toolchainv1alpha1.NSTemplateSetSpaceRole) NamespaceWaitCriterion {
+	return NamespaceWaitCriterion{
+		Match: func(actual *corev1.Namespace) bool {
+			lastAppliedSpaceRoles, found := actual.Annotations[toolchainv1alpha1.LastAppliedSpaceRolesAnnotationKey]
+			if !found {
+				return false
+			}
+			expectedLastAppliedSpaceRoles, _ := json.Marshal(expected) // assume that encoding always works
+			return string(expectedLastAppliedSpaceRoles) == lastAppliedSpaceRoles
+		},
+		Diff: func(actual *corev1.Namespace) string {
+			return "expected namespace to be match annotation"
+		},
+	}
+}
+
+func matchNamespaceWaitCriteria(actual *corev1.Namespace, criteria ...NamespaceWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string) (*corev1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, criteria ...NamespaceWaitCriterion) (*corev1.Namespace, error) {
 	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", owner, tmplRef)
 	_, kind, _, err := Split(tmplRef)
 	if err != nil {
@@ -372,7 +418,7 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string) (*c
 		require.Len(a.T, objs.Items, 1, "there should be only one Namespace found")
 		// exclude namespace if it's not `Active` phase
 		ns = objs.Items[0]
-		return ns.Status.Phase == corev1.NamespaceActive, nil
+		return matchNamespaceWaitCriteria(&ns, criteria...), nil
 	})
 	if err != nil {
 		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", owner, tmplRef, labels)

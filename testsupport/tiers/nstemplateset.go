@@ -35,7 +35,7 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 	clusterObjectChecks := sync.WaitGroup{}
 	// Verify all namespaces and objects within
 	for _, templateRef := range expectedRevisions.Namespaces {
-		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName)
+		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
