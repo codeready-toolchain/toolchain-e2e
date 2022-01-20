@@ -368,7 +368,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		}
 
 		encodedUserIDs := []string{
-			"f:528d76ea-a208-43ed-4cd5-ee76f4cebce8:johnsmith",
+			"5c9ea4b1-f528d76ea-a208-43ed-4cd5-ee76f4cebce8johnsmith",
 			"abcde-12345",
 			"c0177ca4-abcde-12345",
 			"ca3e1e0f-1234567",
