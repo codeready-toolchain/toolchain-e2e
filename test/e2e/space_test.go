@@ -175,11 +175,12 @@ func TestRetargetSpace(t *testing.T) {
 		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// retrieve the latest copy of the Space before updating
+		spaceName := space.Name
 		space = &toolchainv1alpha1.Space{}
 		err = hostAwait.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: hostAwait.Namespace,
-				Name:      space.Name,
+				Name:      spaceName,
 			},
 			space)
 		require.NoError(t, err)
