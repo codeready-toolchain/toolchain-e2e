@@ -55,7 +55,7 @@ func TestAfterMigration(t *testing.T) {
 
 	cleanup.ExecuteAllCleanTasks()
 
-	t.Run("run migration setup", func(t *testing.T) {
+	t.Run("run migration setup with new operator versions for compatibility", func(t *testing.T) {
 		// We need to run the migration setup part to be sure that when the PR is merged
 		// then the "setup migration test" will pass for the next PRs
 		// This means, that the migration setup logic has to be written in a way that is
