@@ -11,7 +11,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestCreateSpace(t *testing.T) {
@@ -174,20 +173,10 @@ func TestRetargetSpace(t *testing.T) {
 		// wait until Space has been provisioned on member-1
 		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
-		// retrieve the latest copy of the Space before updating
-		spaceName := space.Name
-		space = &toolchainv1alpha1.Space{}
-		err = hostAwait.Client.Get(context.TODO(),
-			types.NamespacedName{
-				Namespace: hostAwait.Namespace,
-				Name:      spaceName,
-			},
-			space)
-		require.NoError(t, err)
-
 		// when
-		space.Spec.TargetCluster = ""
-		err = hostAwait.Client.Update(context.TODO(), space)
+		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
+			s.Spec.TargetCluster = ""
+		})
 		require.NoError(t, err)
 
 		// then
