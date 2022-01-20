@@ -52,14 +52,14 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetMember, space.Name, "appstudio")
 
 	_, mur := NewSignupRequest(t, awaitilities).
-		Username(GenerateName("john-for-admin-of-oddity")).
+		Username(GenerateName("john-sb")).
 		ManuallyApprove().
 		TargetCluster(targetMember).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
-	spaceBinding := newSpaceBinding(space.Namespace, GenerateName("john-admin-oddity"), mur.Name, space.Name, "admin")
+	spaceBinding := newSpaceBinding(space.Namespace, GenerateName("john-admin-sb"), mur.Name, space.Name, "admin")
 	err = hostAwait.CreateWithCleanup(context.TODO(), spaceBinding)
 	require.NoError(t, err)
 
