@@ -243,6 +243,27 @@ func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignu
 	return userSignup, err
 }
 
+// UpdateSpace tries to update the Spec of the given Space
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated Space
+func (a *HostAwaitility) UpdateSpace(spaceName string, modifySpace func(s *toolchainv1alpha1.Space)) (*toolchainv1alpha1.Space, error) {
+	var s *toolchainv1alpha1.Space
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshSpace := &toolchainv1alpha1.Space{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceName}, freshSpace); err != nil {
+			return true, err
+		}
+		modifySpace(freshSpace)
+		if err := a.Client.Update(context.TODO(), freshSpace); err != nil {
+			a.T.Logf("error updating Space '%s': %s. Will retry again...", spaceName, err.Error())
+			return false, nil
+		}
+		s = freshSpace
+		return true, nil
+	})
+	return s, err
+}
+
 // MasterUserRecordWaitCriterion a struct to compare with an expected MasterUserRecord
 type MasterUserRecordWaitCriterion struct {
 	Match func(*toolchainv1alpha1.MasterUserRecord) bool
