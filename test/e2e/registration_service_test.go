@@ -360,19 +360,19 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 
 	s.Run("test User ID encodings", func() {
 		userIDs := []string{
+			"f:528d76ea-a208-43ed-4cd5-ee76f4cebce8:johnsmith",
 			"abcde-12345",
 			"abcde\\*-12345",
 			"-1234567",
 			"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-01234567890123456789",
-			//"abc:xyz",
 		}
 
 		encodedUserIDs := []string{
+			"f:528d76ea-a208-43ed-4cd5-ee76f4cebce8:johnsmith",
 			"abcde-12345",
 			"c0177ca4-abcde-12345",
 			"ca3e1e0f-1234567",
 			"e3632025-0123456789abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
-			//"a05a4053-abcxyz",
 		}
 
 		for i, userID := range userIDs {
