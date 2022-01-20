@@ -457,6 +457,24 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 	}
 }
 
+// UntilUserSignupContainsConditions returns a `UserAccountWaitCriterion` which checks that the given
+// UserAccount contains all the given status conditions
+func UntilUserSignupContainsConditions(shouldContain ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			for _, cond := range shouldContain {
+				if !test.ContainsCondition(actual.Status.Conditions, cond) {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected conditions to contain:\n%s", Diff(shouldContain, actual.Status.Conditions))
+		},
+	}
+}
+
 // ContainsCondition returns a `UserAccountWaitCriterion` which checks that the given
 // UserAccount contains the given status condition
 func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCriterion {
@@ -1430,20 +1448,6 @@ func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected space to contain to label %s:%s:\n%s", key, value, spew.Sdump(actual.Labels))
-		},
-	}
-}
-
-// UntilSpaceHasNoLabel returns a `SpaceWaitCriterion` which checks that the given
-// Space has no label with the given key
-func UntilSpaceHasNoLabel(key string) SpaceWaitCriterion {
-	return SpaceWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.Space) bool {
-			_, found := actual.Labels[key]
-			return !found
-		},
-		Diff: func(actual *toolchainv1alpha1.Space) string {
-			return fmt.Sprintf("expected space to not contain to label %s:\n%s", key, spew.Sdump(actual.Labels))
 		},
 	}
 }
