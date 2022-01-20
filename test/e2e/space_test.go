@@ -277,11 +277,11 @@ func TestRetargetSpace(t *testing.T) {
 
 	t.Run("to no other cluster", func(t *testing.T) {
 		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(member1Await.ClusterName))
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", WithTargetCluster(member1Await.ClusterName))
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "appstudio")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// when
 		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
@@ -301,11 +301,11 @@ func TestRetargetSpace(t *testing.T) {
 
 	t.Run("to another cluster", func(t *testing.T) {
 		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(member1Await.ClusterName))
+		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", WithTargetCluster(member1Await.ClusterName))
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "appstudio")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// when
 		space.Spec.TargetCluster = member2Await.ClusterName
@@ -314,7 +314,7 @@ func TestRetargetSpace(t *testing.T) {
 
 		// then
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "appstudio")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "base")
 		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 		require.NoError(t, err)
 	})
