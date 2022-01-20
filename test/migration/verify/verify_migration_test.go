@@ -122,7 +122,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 	require.NoError(t, err)
-	err = hostAwait.WaitUntilMasterUserRecordDeleted(migration.DeactivatedUser)
+	err = hostAwait.WaitUntilMasterUserRecordDeleted(migration.BannedUser)
 	require.NoError(t, err)
 
 	// get the BannedUser resource
