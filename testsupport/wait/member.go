@@ -432,7 +432,7 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name 
 	return roleBinding, err
 }
 
-// WaitUntilRoleBindingDeleted waits until a Role with the given name does not exist anymore in the given namespace
+// WaitUntilRoleBindingDeleted waits until a RoleBinding with the given name does not exist anymore in the given namespace
 func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(namespace *corev1.Namespace, name string) error {
 	a.T.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
