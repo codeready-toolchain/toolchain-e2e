@@ -366,17 +366,18 @@ func UntilNamespaceIsActive() NamespaceWaitCriterion {
 // UntilNamespaceIsActive returns a `NamespaceWaitCriterion` which checks that the given
 // Namespace is in `Active` phase
 func UntilHasLastAppliedSpaceRoles(expected []toolchainv1alpha1.NSTemplateSetSpaceRole) NamespaceWaitCriterion {
+	expectedLastAppliedSpaceRoles, _ := json.Marshal(expected) // assume that encoding always works
 	return NamespaceWaitCriterion{
 		Match: func(actual *corev1.Namespace) bool {
 			lastAppliedSpaceRoles, found := actual.Annotations[toolchainv1alpha1.LastAppliedSpaceRolesAnnotationKey]
 			if !found {
 				return false
 			}
-			expectedLastAppliedSpaceRoles, _ := json.Marshal(expected) // assume that encoding always works
+
 			return string(expectedLastAppliedSpaceRoles) == lastAppliedSpaceRoles
 		},
 		Diff: func(actual *corev1.Namespace) string {
-			return "expected namespace to be match annotation"
+			return fmt.Sprintf("expected namespace to be match annotation,\nExpected: %s\nActual annotations:%v", expectedLastAppliedSpaceRoles, actual.Annotations)
 		},
 	}
 }
