@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/codeready-toolchain/api/api/v1alpha1"
@@ -20,7 +21,7 @@ func TestSpaceBindingCleanup(t *testing.T) {
 
 	t.Run("when space is deleted", func(t *testing.T) {
 		// given
-		space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, hostAwait, memberAwait)
+		space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, hostAwait, memberAwait, "joe", "redhat")
 
 		// when
 		err := hostAwait.Client.Delete(context.TODO(), space)
@@ -33,7 +34,7 @@ func TestSpaceBindingCleanup(t *testing.T) {
 
 	t.Run("when mur is deleted", func(t *testing.T) {
 		// given
-		_, mur, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, hostAwait, memberAwait)
+		_, mur, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, hostAwait, memberAwait, "lara", "ibm")
 
 		// when
 		err := hostAwait.Client.Delete(context.TODO(), mur)
@@ -45,31 +46,31 @@ func TestSpaceBindingCleanup(t *testing.T) {
 	})
 }
 
-func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, hostAwait *wait.HostAwaitility, targetMember *wait.MemberAwaitility) (*v1alpha1.Space, *v1alpha1.MasterUserRecord, *v1alpha1.SpaceBinding) {
-	space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", targetMember)
+func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, hostAwait *wait.HostAwaitility, targetMember *wait.MemberAwaitility, murName, spaceName string) (*v1alpha1.Space, *v1alpha1.MasterUserRecord, *v1alpha1.SpaceBinding) {
+	space := NewSpace(hostAwait.Namespace, spaceName, "appstudio", targetMember)
 	err := hostAwait.CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
 	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetMember, space.Name, "appstudio")
 
 	_, mur := NewSignupRequest(t, awaitilities).
-		Username(GenerateName("john-sb")).
+		Username(murName).
 		ManuallyApprove().
 		TargetCluster(targetMember).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
-	spaceBinding := newSpaceBinding(space.Namespace, GenerateName("john-admin-sb"), mur.Name, space.Name, "admin")
+	spaceBinding := newSpaceBinding(space.Namespace, mur.Name, space.Name, "admin")
 	err = hostAwait.CreateWithCleanup(context.TODO(), spaceBinding)
 	require.NoError(t, err)
 
 	return space, mur, spaceBinding
 }
 
-func newSpaceBinding(namespace, name, mur, space, spaceRole string) *v1alpha1.SpaceBinding {
+func newSpaceBinding(namespace, mur, space, spaceRole string) *v1alpha1.SpaceBinding {
 	return &v1alpha1.SpaceBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      fmt.Sprintf("%s-%s", mur, space),
 			Namespace: namespace,
 			Labels: map[string]string{
 				v1alpha1.SpaceBindingMasterUserRecordLabelKey: mur,
