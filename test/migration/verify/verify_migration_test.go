@@ -24,6 +24,7 @@ func TestAfterMigration(t *testing.T) {
 	provisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.ProvisionedUser)
 	secondMemberProvisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.SecondMemberProvisionedUser)
 	appstudioProvisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.AppStudioProvisionedUser)
+	// note: listing banned/deactivated UserSignups should be done as part of setup because the tests are run in parallel and there can be multiple banned/deactivated UserSignups at that point which could lead to test flakiness
 	deactivatedSignup := listAndGetSignupWithState(t, awaitilities.Host(), toolchainv1alpha1.UserSignupStateLabelValueDeactivated)
 	bannedSignup := listAndGetSignupWithState(t, awaitilities.Host(), toolchainv1alpha1.UserSignupStateLabelValueBanned)
 
