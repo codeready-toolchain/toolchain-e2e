@@ -1538,3 +1538,18 @@ func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 	}
 	return nil
 }
+
+// WaitUntilSpaceBindingDeleted waits until the SpaceBinding with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
+	a.T.Logf("waiting until SpaceBinding '%s' in namespace '%s' is deleted", name, a.Namespace)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		mur := &toolchainv1alpha1.SpaceBinding{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
