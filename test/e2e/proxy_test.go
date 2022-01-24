@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -250,14 +251,16 @@ func (w *wsWatcher) Start() func() {
 	socketURL := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/configmaps?watch=true", w.proxyHost, w.user.username)
 	dialer := &websocket.Dialer{
 		//HandshakeTimeout: 45 * time.Second,
-		Subprotocols:    []string{protocol, "base64.binary.k8s.io"},
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, // nolint:gosec
+		},
 	}
 
 	extraHeaders := make(http.Header, 1)
 	extraHeaders.Add("Origin", "http://localhost")
 
-	conn, _, err := dialer.Dial(socketURL, extraHeaders)
+	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
 	require.NoError(w.t, err)
 	w.connection = conn
 	w.receivedCMs = make(map[string]*corev1.ConfigMap)
@@ -267,6 +270,10 @@ func (w *wsWatcher) Start() func() {
 
 	return func() {
 		_ = w.connection.Close()
+		if resp != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+		}
 	}
 }
 

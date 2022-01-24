@@ -817,7 +817,8 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 			return false, err
 		}
 	pods:
-		for _, p := range foundPods.Items {
+		for i := range foundPods.Items {
+			p := foundPods.Items[i] // avoids the 'G601: Implicit memory aliasing in for loop. (gosec)' problem
 			if !matchPodWaitCriterion(&p, criteria...) {
 				// skip of criteria do not match
 				continue pods
@@ -845,7 +846,8 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...Po
 		if len(foundPods.Items) == 0 {
 			return true, nil
 		}
-		for _, p := range foundPods.Items {
+		for i := range foundPods.Items {
+			p := foundPods.Items[i] // avoids the 'G601: Implicit memory aliasing in for loop. (gosec)' problem
 			if !matchPodWaitCriterion(&p, criteria...) {
 				// keep waiting
 				return false, nil
@@ -1463,7 +1465,7 @@ func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(p
 		modifyPod(freshPod)
 		if err := a.Client.Update(context.TODO(), freshPod); err != nil {
 			a.T.Logf("error updating Pod '%s' Will retry again...", podName)
-			return false, nil
+			return false, nil // nolint:nilerr
 		}
 		m = freshPod
 		return true, nil
@@ -1484,7 +1486,7 @@ func (a *MemberAwaitility) UpdateConfigMap(namespace, cmName string, modifyCM fu
 		modifyCM(obj)
 		if err := a.Client.Update(context.TODO(), obj); err != nil {
 			a.T.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
-			return false, nil
+			return false, nil // nolint:nilerr
 		}
 		cm = obj
 		return true, nil

@@ -75,7 +75,7 @@ var HTTPClient = &http.Client{
 	Timeout: time.Second * 10,
 	Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, // nolint:gosec
 		},
 	},
 }

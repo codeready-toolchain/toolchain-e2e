@@ -483,7 +483,7 @@ func rbacEditRole() namespaceObjectsCheck {
 	}
 }
 
-func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck { // nolint: unparam
+func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
 		require.NoError(t, err)
@@ -655,7 +655,7 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 	}
 }
 
-func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheckCreator { // nolint: unparam
+func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit string) clusterObjectsCheckCreator { // nolint:unparam
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
@@ -889,7 +889,7 @@ func count(resource v1.ResourceName) v1.ResourceName {
 	return v1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
 
-func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unparam
+func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("Roles", number, func() (int, error) {
 			roles := &rbacv1.RoleList{}
@@ -901,7 +901,7 @@ func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint: unpar
 	}
 }
 
-func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint: unparam
+func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("RoleBindings", number, func() (int, error) {
 			roleBindings := &rbacv1.RoleBindingList{}
@@ -913,7 +913,7 @@ func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint
 	}
 }
 
-func numberOfToolchainServiceAccounts(number int) namespaceObjectsCheck { // nolint: unparam
+func numberOfToolchainServiceAccounts(number int) namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("ServiceAccounts", number, func() (int, error) {
 			serviceAccounts := &corev1.ServiceAccountList{}

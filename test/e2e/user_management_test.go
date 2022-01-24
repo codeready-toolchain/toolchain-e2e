@@ -449,12 +449,12 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		route := hostAwait.RegistrationServiceURL
 
 		// Call signup endpoint with a valid token to initiate a signup process
-		req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
+		req, err := http.NewRequestWithContext(context.TODO(), "POST", route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token0)
 		req.Header.Set("content-type", "application/json")
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
 		require.NoError(s.T(), err)
 		defer Close(s.T(), resp)
 
