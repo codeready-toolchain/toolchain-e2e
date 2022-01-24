@@ -9,6 +9,9 @@ linters:
   enable:
     - gofmt 
     - unparam
+    - revive
+  disable:
+    - golint
 
 # all available settings of specific linters
 linters-settings:
