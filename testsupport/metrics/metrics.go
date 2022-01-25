@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +27,7 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		},
 	}
-	request, err := http.NewRequestWithContext(context.TODO(), "Get", uri, nil)
+	request, err := http.NewRequest("Get", uri, nil)
 	if err != nil {
 		return -1, err
 	}

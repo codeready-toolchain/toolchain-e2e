@@ -272,7 +272,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	if requestBody != "" {
 		reqBody = strings.NewReader(requestBody)
 	}
-	req, err := http.NewRequest(method, path, reqBody) //nolint:noctx
+	req, err := http.NewRequest(method, path, reqBody)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")

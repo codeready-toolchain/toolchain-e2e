@@ -51,7 +51,7 @@ func (s *registrationServiceTestSuite) SetupSuite() {
 
 func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	// just make sure that the landing page is reachable
-	req, err := http.NewRequestWithContext(context.TODO(), "GET", s.route, nil)
+	req, err := http.NewRequest("GET", s.route, nil)
 	require.NoError(s.T(), err)
 
 	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
@@ -64,7 +64,7 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 func (s *registrationServiceTestSuite) TestHealth() {
 	s.Run("get healthcheck 200 OK", func() {
 		// Call health endpoint.
-		req, err := http.NewRequestWithContext(context.TODO(), "GET", s.route+"/api/v1/health", nil)
+		req, err := http.NewRequest("GET", s.route+"/api/v1/health", nil)
 		require.NoError(s.T(), err)
 
 		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
@@ -104,7 +104,7 @@ func (s *registrationServiceTestSuite) TestHealth() {
 func (s *registrationServiceTestSuite) TestWoopra() {
 	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseValue string) {
 		// Call woopra domain endpoint.
-		req, err := http.NewRequestWithContext(context.TODO(), "GET", fmt.Sprintf("%s/api/v1/%s", s.route, endPointPath), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", s.route, endPointPath), nil)
 		require.NoError(s.T(), err)
 
 		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
@@ -138,7 +138,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 func (s *registrationServiceTestSuite) TestAuthConfig() {
 	s.Run("get authconfig 200 OK", func() {
 		// Call authconfig endpoint.
-		req, err := http.NewRequestWithContext(context.TODO(), "GET", s.route+"/api/v1/authconfig", nil)
+		req, err := http.NewRequest("GET", s.route+"/api/v1/authconfig", nil)
 		require.NoError(s.T(), err)
 
 		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
@@ -161,7 +161,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		// Call signup endpoint without a token.
 		requestBody, err := json.Marshal(map[string]string{})
 		require.NoError(s.T(), err)
-		req, err := http.NewRequestWithContext(context.TODO(), "POST", s.route+"/api/v1/signup", bytes.NewBuffer(requestBody))
+		req, err := http.NewRequest("POST", s.route+"/api/v1/signup", bytes.NewBuffer(requestBody))
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
 
@@ -206,7 +206,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 	})
 	s.Run("get signup error no token 401 Unauthorized", func() {
 		// Call signup endpoint without a token.
-		req, err := http.NewRequestWithContext(context.TODO(), "GET", s.route+"/api/v1/signup", nil)
+		req, err := http.NewRequest("GET", s.route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
 
@@ -598,7 +598,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	if requestBody != "" {
 		reqBody = strings.NewReader(requestBody)
 	}
-	req, err := http.NewRequestWithContext(context.TODO(), method, path, reqBody)
+	req, err := http.NewRequest(method, path, reqBody)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")

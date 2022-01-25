@@ -19,6 +19,7 @@ linters:
     - golint # deprecated, use 'revive'
     - scopelint # deprecated, use 'exportloopref'
     - contextcheck # too many false-positives
+    - noctx # not needed
 
 # all available settings of specific linters
 linters-settings:
