@@ -297,17 +297,15 @@ func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
-		userViewRoleBinding(),
-		crtadminPodsRoleBinding(),
-		crtadminViewRoleBinding(),
-		appstudioEditRoleBinding(),
-		userSaReadRoleBinding(),
-		execPodsRole(),
-		toolchainSaReadRole(),
 		appstudioServiceAccount(),
+		appstudioUserActionsRole(),
+		appstudioUserActionsRoleBinding(),
+		appstudioViewRoleBinding(),
+		toolchainSaReadRole(),
+		userSaReadRoleBinding(),
 		numberOfLimitRanges(1),
 		numberOfToolchainRoles(2),
-		numberOfToolchainRoleBindings(5),
+		numberOfToolchainRoleBindings(3),
 		numberOfToolchainServiceAccounts(1),
 	}
 
@@ -390,21 +388,6 @@ func rbacEditRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, userName, rb.Subjects[0].Name)
 		assert.Equal(t, "rbac-edit", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, userName, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-	}
-}
-
-func userViewRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-view")
-		require.NoError(t, err)
-		assert.Len(t, rb.Subjects, 1)
-		assert.Equal(t, "User", rb.Subjects[0].Kind)
-		assert.Equal(t, userName, rb.Subjects[0].Name)
-		assert.Equal(t, "view", rb.RoleRef.Name)
-		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		assert.Equal(t, userName, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
@@ -977,15 +960,60 @@ func appstudioServiceAccount() namespaceObjectsCheck {
 	}
 }
 
-func appstudioEditRoleBinding() namespaceObjectsCheck {
+func appstudioUserActionsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-edit", userName))
+		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 3)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components"},
+					Verbs:     []string{"get", "list", "watch", "create", "delete", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch", "create", "delete", "update", "patch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"create", "delete"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func appstudioUserActionsRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", userName))
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
 		assert.Equal(t, "appstudio-"+userName, rb.Subjects[0].Name)
 		assert.Equal(t, "", rb.Subjects[0].APIGroup)
-		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "appstudio-user-actions", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func appstudioViewRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", userName))
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+		assert.Equal(t, "appstudio-"+userName, rb.Subjects[0].Name)
+		assert.Equal(t, "", rb.Subjects[0].APIGroup)
+		assert.Equal(t, "view", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
