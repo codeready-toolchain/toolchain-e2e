@@ -393,7 +393,6 @@ func matchNamespaceWaitCriteria(actual *corev1.Namespace, criteria ...NamespaceW
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
 func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, criteria ...NamespaceWaitCriterion) (*corev1.Namespace, error) {
-	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", owner, tmplRef)
 	_, kind, _, err := Split(tmplRef)
 	if err != nil {
 		return nil, err
@@ -405,31 +404,32 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 		"toolchain.dev.openshift.com/type":        kind,
 		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 	}
-	var ns corev1.Namespace
+	a.T.Logf("waiting for namespace with labels %v", labels)
+	var ns *corev1.Namespace
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		objs := &corev1.NamespaceList{}
+		nss := &corev1.NamespaceList{}
 		opts := client.MatchingLabels(labels)
-		if err := a.Client.List(context.TODO(), objs, opts); err != nil {
+		if err := a.Client.List(context.TODO(), nss, opts); err != nil {
 			return false, err
 		}
-		// no match found
-		if len(objs.Items) == 0 {
+		if len(nss.Items) != 1 {
 			return false, nil
 		}
-		require.Len(a.T, objs.Items, 1, "there should be only one Namespace found")
-		// exclude namespace if it's not `Active` phase
-		ns = objs.Items[0]
-		return matchNamespaceWaitCriteria(&ns, criteria...), nil
+		ns = &nss.Items[0]
+		return matchNamespaceWaitCriteria(ns, criteria...), nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", owner, tmplRef, labels)
+		a.T.Logf("failed to wait for namespace with labels: %v", labels)
 		opts := client.MatchingLabels(map[string]string{
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
+		for _, c := range criteria {
+			a.T.Logf(c.Diff(ns))
+		}
 		return nil, err
 	}
-	return &ns, nil
+	return ns, nil
 }
 
 //WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
