@@ -1468,7 +1468,7 @@ func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
 			return actual.Labels[key] == value
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
-			return fmt.Sprintf("expected space to contain to label %s:%s:\n%s", key, value, spew.Sdump(actual.Labels))
+			return fmt.Sprintf("expected space to contain label %s:%s:\n%s", key, value, spew.Sdump(actual.Labels))
 		},
 	}
 }
