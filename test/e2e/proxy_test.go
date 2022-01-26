@@ -40,6 +40,15 @@ type proxyUser struct {
 }
 
 // full flow from usersignup with approval down to namespaces creation and cleanup
+//
+// !!! Additional context !!!
+// The test uses a dummy HAS API type called Application. The reason is that the regular
+// user doesn't have full permission for the standard types like ConfigMap. This means
+// that we could do create/read operations on that resource from this test.
+// To workaround this limitation, we created a dummy HAS API type that has the same name
+// and the same group as the actual one. The CRD is created as part of the test setup
+// and since the CRD name & group name matches, then RBAC allow us execute create/read
+// operations on that resource using the user permissions.
 func TestProxyFlow(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
