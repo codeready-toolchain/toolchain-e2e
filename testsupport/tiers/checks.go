@@ -970,12 +970,12 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"applications", "components"},
-					Verbs:     []string{"get", "list", "watch", "create", "delete", "update", "patch"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"tekton.dev"},
 					Resources: []string{"pipelineruns"},
-					Verbs:     []string{"get", "list", "watch", "create", "delete", "update", "patch"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{""},
