@@ -249,7 +249,7 @@ func (w *wsWatcher) Start() func() {
 	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(w.user.token))
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
-	socketURL := fmt.Sprintf("wss://%s/api/v1/namespaces/%s/applications.appstudio.redhat.com?watch=true", w.proxyHost, w.user.username)
+	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.username)
 	dialer := &websocket.Dialer{
 		//HandshakeTimeout: 45 * time.Second,
 		Subprotocols:    []string{protocol, "base64.binary.k8s.io"},
