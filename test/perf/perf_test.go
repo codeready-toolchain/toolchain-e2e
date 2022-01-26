@@ -167,7 +167,7 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 				UntilUserAccountHasConditions(Provisioned()))
 			require.NoError(t, err)
 			for _, templateRef := range userAccount.Spec.NSTemplateSet.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(mur.Name, templateRef.TemplateRef, userAccount.Spec.NSTemplateSet.TierName)
+				ns, err := memberAwait.WaitForNamespace(mur.Name, templateRef.TemplateRef, userAccount.Spec.NSTemplateSet.TierName, UntilNamespaceIsActive())
 				require.NoError(t, err)
 				if ns.Labels["toolchain.dev.openshift.com/type"] != "stage" {
 					// skip pod creation if the namespace is not "stage", otherwise, we may run out of capacity of pods on the nodes

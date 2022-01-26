@@ -9,14 +9,14 @@ import (
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewSpace initializes a new Space object with the given value. If the targetCluster is nil, then the Space.Spec.TargetCluster is not set.
-func NewSpace(namespace, name, tierName string, targetCluster *wait.MemberAwaitility) *toolchainv1alpha1.Space {
+func NewSpace(namespace, name, tierName string, opts ...SpaceOption) *toolchainv1alpha1.Space {
 	space := &toolchainv1alpha1.Space{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
@@ -26,10 +26,18 @@ func NewSpace(namespace, name, tierName string, targetCluster *wait.MemberAwaiti
 			TierName: tierName,
 		},
 	}
-	if targetCluster != nil {
-		space.Spec.TargetCluster = targetCluster.ClusterName
+	for _, apply := range opts {
+		apply(space)
 	}
 	return space
+}
+
+type SpaceOption func(*toolchainv1alpha1.Space)
+
+func WithTargetCluster(clusterName string) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.Spec.TargetCluster = clusterName
+	}
 }
 
 // Same as VerifyResourcesProvisionedForSpaceWithTiers but reuses the provided tier name for the namespace and cluster resources names
@@ -79,7 +87,7 @@ func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait
 
 	if aliasTierNamespaces == "appstudio" {
 		// checks that namespace exists and has the expected label(s)
-		ns, err := targetCluster.WaitForNamespace(space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName)
+		ns, err := targetCluster.WaitForNamespace(space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
 		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
 		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])

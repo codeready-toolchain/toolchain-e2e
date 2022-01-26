@@ -32,13 +32,41 @@ SETUP_E2E_SERVICE_ACCOUNTS ?= true
 
 .PHONY: test-e2e
 ## Run the e2e tests
-test-e2e: deploy-e2e e2e-run
+test-e2e: INSTALL_OPERATOR=true
+test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
+.PHONY: test-e2e-without-migration
+## Run the e2e tests without migration tests
+test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run
+	@echo "To clean the cluster run 'make clean-e2e-resources'"
+
+.PHONY: verify-migration-and-deploy-e2e
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account setup-toolchainclusters e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
+
+.PHONY: e2e-migration-setup
+e2e-migration-setup:
+	@echo "Setting up the environment before testing the operator migration..."
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/setup"
+	@echo "Environment successfully setup."
+
+.PHONY: e2e-migration-verify
+e2e-migration-verify:
+	@echo "Updating operators and verifying resources..."
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/verify"
+	@echo "Migration tests successfully finished"
+
+.PHONY: e2e-deploy-latest
+e2e-deploy-latest:
+	$(MAKE) get-publish-and-install-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true
+
+.PHONY: prepare-e2e
+prepare-e2e: build clean-e2e-files
+
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: build clean-e2e-files label-olm-ns deploy-host deploy-members e2e-service-account setup-toolchainclusters
+deploy-e2e: prepare-projects get-publish-and-install-operators e2e-service-account setup-toolchainclusters
 	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
@@ -74,9 +102,13 @@ test-e2e-registration-local:
 
 .PHONY: e2e-run
 e2e-run:
-	oc get toolchaincluster -n $(HOST_NS)
-	oc get toolchaincluster -n $(MEMBER_NS)
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ./test/e2e ./test/metrics -p 1 -v -timeout=90m -failfast || \
+	@echo "Running e2e tests..."
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e ./test/metrics"
+	@echo "The e2e tests successfully finished"
+
+.PHONY: execute-tests
+execute-tests:
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -p 1 -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -162,6 +194,9 @@ get-and-publish-operators: PUBLISH_OPERATOR=true
 get-and-publish-operators: INSTALL_OPERATOR=false
 get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and-publish-member-operator
 
+.PHONY: get-publish-and-install-operators
+get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
+
 .PHONY: get-and-publish-member-operator
 get-and-publish-member-operator:
 ifneq (${MEMBER_NS_2},"")
@@ -196,19 +231,19 @@ endif
 #
 ###########################################################
 
-.PHONY: deploy-members
-deploy-members: create-member1 create-member2 get-and-publish-member-operator
+.PHONY: prepare-projects
+prepare-projects: label-olm-ns create-host-project create-member1 create-member2
 
 .PHONY: create-member1
 create-member1:
-	@echo "Deploying member operator to $(MEMBER_NS)..."
+	@echo "Preparing namespace for member operator: $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 
 .PHONY: create-member2
 create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
-	@echo "Deploying second member operator to ${MEMBER_NS_2}..."
+	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 endif
@@ -218,7 +253,7 @@ deploy-host: create-host-project get-and-publish-host-operator create-host-resou
 
 .PHONY: create-host-project
 create-host-project:
-	@echo "Deploying host operator to ${HOST_NS}..."
+	@echo "Preparing namespace for host operator ${HOST_NS}..."
 	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
