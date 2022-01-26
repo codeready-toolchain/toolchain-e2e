@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/api/api/v1alpha1"
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	test "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -65,7 +64,7 @@ func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace() {
 
 func (r *SetupMigrationRunner) createAndWaitForSpace(name, tierName string, targetCluster *wait.MemberAwaitility) {
 	hostAwait := r.Awaitilities.Host()
-	space := test.NewSpace(hostAwait.Namespace, name, tierName, targetCluster)
+	space := test.NewSpace(hostAwait.Namespace, name, tierName, test.WithTargetCluster(targetCluster.ClusterName))
 	err := hostAwait.Client.Create(context.TODO(), space)
 	require.NoError(r.T, err)
 
@@ -136,7 +135,7 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser() {
 	require.NoError(r.T, err)
 }
 
-func (r *SetupMigrationRunner) prepareUser(name string, targetCluster *wait.MemberAwaitility) *v1alpha1.UserSignup {
+func (r *SetupMigrationRunner) prepareUser(name string, targetCluster *wait.MemberAwaitility) *toolchainv1alpha1.UserSignup {
 	requestBuilder := test.NewSignupRequest(r.T, r.Awaitilities).
 		Username(name).
 		ManuallyApprove().
