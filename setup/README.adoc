@@ -83,6 +83,11 @@ Note #2: Only resources that a user has permissions to create will be successful
 NAME               MURS   READY   LAST UPDATED
 toolchain-status   0      True    2021-03-24T22:39:36Z
 ```
+
+== Provisioning Test Users And Capturing Metrics
+
+*IMPORTANT: Performance results may be skewed when a fresh cluster is not used. Results for performance comparison and operator onboarding purposes should be captured using a fresh cluster.*
+
 . Populate the cluster with 2000 users and both default and custom resources for all users
 +
 Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 2 separate terminals using a unique username prefix in each terminal.
@@ -102,6 +107,8 @@ Note 3: CSV resources are automatically created for each default user as well. A
 Use `go run setup/main.go --help` to see the full set of options. +
 . Grab some coffee ☕️, populating the cluster with 2000 users can take over 4 hours depending on network latency +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <number_of_users_left_to_create> --custom <number_of_users_left_to_create>`
++
+. After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.
 
 === Evaluate the Cluster and Operator(s)
 
@@ -110,13 +117,15 @@ With the cluster now under load, it's time to evaluate the environment.
 1. Use your operators as a user would and evaluate the performance.
 2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
 3. Monitor the memory usage of operators. There are many more resources created on this cluster than most operators have been tested with so it's important to look for any possible areas for concern.
-4. Compare the Results summary to the Baseline figures provided in the onboarding doc.
+4. Compare the Results summary to the Baseline metrics provided in the onboarding doc.
 
 == Clean up
 
 === Remove Only Users and Their Namespaces
 
 Run `make clean-users`
+
+*Note: If rerunning the tool for performance comparison purposes a fresh cluster should be used to maintain accuracy.*
 
 === Remove All Sandbox-related Resources
 Run `make clean-e2e-resources`

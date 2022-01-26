@@ -76,10 +76,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// set api proxy values
 		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "api", "/proxyhealth")
 		require.NoError(t, err)
-		initHostAwait.APIProxyURL = fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path)
-		if strings.HasSuffix(initHostAwait.APIProxyURL, "/") {
-			initHostAwait.APIProxyURL = initHostAwait.APIProxyURL[:len(initHostAwait.APIProxyURL)-1]
-		}
+		initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
 
 		// wait for member operators to be ready
 		initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
