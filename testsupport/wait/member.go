@@ -2,6 +2,7 @@ package wait
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -344,9 +345,54 @@ func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
 	})
 }
 
+type NamespaceWaitCriterion struct {
+	Match func(*corev1.Namespace) bool
+	Diff  func(*corev1.Namespace) string
+}
+
+// UntilNamespaceIsActive returns a `NamespaceWaitCriterion` which checks that the given
+// Namespace is in `Active` phase
+func UntilNamespaceIsActive() NamespaceWaitCriterion {
+	return NamespaceWaitCriterion{
+		Match: func(actual *corev1.Namespace) bool {
+			return actual.Status.Phase == corev1.NamespaceActive
+		},
+		Diff: func(actual *corev1.Namespace) string {
+			return fmt.Sprintf("expected namespace to be active:\n%s", actual.Status.Phase)
+		},
+	}
+}
+
+// UntilNamespaceIsActive returns a `NamespaceWaitCriterion` which checks that the given
+// Namespace is in `Active` phase
+func UntilHasLastAppliedSpaceRoles(expected []toolchainv1alpha1.NSTemplateSetSpaceRole) NamespaceWaitCriterion {
+	expectedLastAppliedSpaceRoles, _ := json.Marshal(expected) // assume that encoding always works
+	return NamespaceWaitCriterion{
+		Match: func(actual *corev1.Namespace) bool {
+			lastAppliedSpaceRoles, found := actual.Annotations[toolchainv1alpha1.LastAppliedSpaceRolesAnnotationKey]
+			if !found {
+				return false
+			}
+
+			return string(expectedLastAppliedSpaceRoles) == lastAppliedSpaceRoles
+		},
+		Diff: func(actual *corev1.Namespace) string {
+			return fmt.Sprintf("expected namespace to be match annotation,\nExpected: %s\nActual annotations:%v", expectedLastAppliedSpaceRoles, actual.Annotations)
+		},
+	}
+}
+
+func matchNamespaceWaitCriteria(actual *corev1.Namespace, criteria ...NamespaceWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string) (*corev1.Namespace, error) {
-	a.T.Logf("waiting for namespace for user '%s' and ref '%s'", owner, tmplRef)
+func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, criteria ...NamespaceWaitCriterion) (*corev1.Namespace, error) {
 	_, kind, _, err := Split(tmplRef)
 	if err != nil {
 		return nil, err
@@ -358,31 +404,32 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string) (*c
 		"toolchain.dev.openshift.com/type":        kind,
 		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 	}
-	var ns corev1.Namespace
+	a.T.Logf("waiting for namespace with labels %v", labels)
+	var ns *corev1.Namespace
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		objs := &corev1.NamespaceList{}
+		nss := &corev1.NamespaceList{}
 		opts := client.MatchingLabels(labels)
-		if err := a.Client.List(context.TODO(), objs, opts); err != nil {
+		if err := a.Client.List(context.TODO(), nss, opts); err != nil {
 			return false, err
 		}
-		// no match found
-		if len(objs.Items) == 0 {
+		if len(nss.Items) != 1 {
 			return false, nil
 		}
-		require.Len(a.T, objs.Items, 1, "there should be only one Namespace found")
-		// exclude namespace if it's not `Active` phase
-		ns = objs.Items[0]
-		return ns.Status.Phase == corev1.NamespaceActive, nil
+		ns = &nss.Items[0]
+		return matchNamespaceWaitCriteria(ns, criteria...), nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace for user '%s' and ref '%s' with labels: %v", owner, tmplRef, labels)
+		a.T.Logf("failed to wait for namespace with labels: %v", labels)
 		opts := client.MatchingLabels(map[string]string{
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
+		for _, c := range criteria {
+			a.T.Logf(c.Diff(ns))
+		}
 		return nil, err
 	}
-	return &ns, nil
+	return ns, nil
 }
 
 //WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
@@ -430,6 +477,21 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name 
 		return nil, err
 	}
 	return roleBinding, err
+}
+
+// WaitUntilRoleBindingDeleted waits until a RoleBinding with the given name does not exist anymore in the given namespace
+func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(namespace *corev1.Namespace, name string) error {
+	a.T.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		roleBinding := &rbacv1.RoleBinding{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, roleBinding); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
 }
 
 func (a *MemberAwaitility) WaitForServiceAccount(namespace *corev1.Namespace, name string) (*corev1.ServiceAccount, error) {
@@ -526,6 +588,21 @@ func (a *MemberAwaitility) WaitForRole(namespace *corev1.Namespace, name string)
 		a.T.Logf("failed to wait for Role '%s' in namespace '%s'", name, namespace.Name)
 	}
 	return role, err
+}
+
+// WaitUntilRoleDeleted waits until a Role with the given name does not exist anymore in the given namespace
+func (a *MemberAwaitility) WaitUntilRoleDeleted(namespace *corev1.Namespace, name string) error {
+	a.T.Logf("waiting for Role '%s' in namespace '%s' to be deleted", name, namespace.Name)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		role := &rbacv1.Role{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, role); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
 }
 
 // ClusterResourceQuotaWaitCriterion a struct to compare with a given ClusterResourceQuota
@@ -710,6 +787,27 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 		return true, nil
 	})
 	return result, err
+}
+
+// UpdateNSTemplateSet tries to update the Spec of the given NSTemplateSet
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated NSTemplateSet
+func (a *MemberAwaitility) UpdateNSTemplateSet(spaceName string, modifyNSTemplateSet func(nsTmplSet *toolchainv1alpha1.NSTemplateSet)) (*toolchainv1alpha1.NSTemplateSet, error) {
+	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshNSTmplSet := &toolchainv1alpha1.NSTemplateSet{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceName}, freshNSTmplSet); err != nil {
+			return true, err
+		}
+		modifyNSTemplateSet(freshNSTmplSet)
+		if err := a.Client.Update(context.TODO(), freshNSTmplSet); err != nil {
+			a.T.Logf("error updating NSTemplateSet '%s': %s. Will retry again...", spaceName, err.Error())
+			return false, nil
+		}
+		nsTmplSet = freshNSTmplSet
+		return true, nil
+	})
+	return nsTmplSet, err
 }
 
 // Create tries to create the object until success

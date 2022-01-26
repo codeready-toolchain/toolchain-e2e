@@ -52,7 +52,7 @@ func TestGetMetricValue(t *testing.T) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/metrics" {
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, response)
+			fmt.Fprint(w, response)
 		}
 		w.WriteHeader(http.StatusNotFound)
 	}))

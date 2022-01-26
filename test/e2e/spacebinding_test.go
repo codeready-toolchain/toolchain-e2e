@@ -47,7 +47,7 @@ func TestSpaceBindingCleanup(t *testing.T) {
 }
 
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, hostAwait *wait.HostAwaitility, targetMember *wait.MemberAwaitility, murName, spaceName string) (*v1alpha1.Space, *v1alpha1.MasterUserRecord, *v1alpha1.SpaceBinding) {
-	space := NewSpace(hostAwait.Namespace, spaceName, "appstudio", targetMember)
+	space := NewSpace(hostAwait.Namespace, spaceName, "appstudio", WithTargetCluster(targetMember.ClusterName))
 	err := hostAwait.CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
 	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetMember, space.Name, "appstudio")
