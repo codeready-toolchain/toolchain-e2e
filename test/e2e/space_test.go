@@ -99,10 +99,11 @@ func TestCreateSpace(t *testing.T) {
 				require.NoError(t, err)
 
 				t.Run("update target cluster to unblock deletion", func(t *testing.T) {
-					// given
-					s.Spec.TargetCluster = memberAwait.ClusterName
+
 					// when
-					err = hostAwait.Client.Update(context.TODO(), s)
+					s, err = hostAwait.UpdateSpace(s.Name, func(s *toolchainv1alpha1.Space) {
+						s.Spec.TargetCluster = memberAwait.ClusterName
+					})
 
 					// then it should fail while the member cluster is unknown (ie, unreachable)
 					require.NoError(t, err)
@@ -453,8 +454,9 @@ func TestRetargetSpace(t *testing.T) {
 		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
 
 		// when
-		space.Spec.TargetCluster = member2Await.ClusterName
-		err = hostAwait.Client.Update(context.TODO(), space)
+		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
+			s.Spec.TargetCluster = member2Await.ClusterName
+		})
 		require.NoError(t, err)
 
 		// then
