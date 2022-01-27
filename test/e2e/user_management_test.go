@@ -454,7 +454,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		req.Header.Set("Authorization", "Bearer "+token0)
 		req.Header.Set("content-type", "application/json")
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
 		require.NoError(s.T(), err)
 		defer Close(s.T(), resp)
 

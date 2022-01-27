@@ -54,7 +54,7 @@ func (s *registrationServiceTestSuite) TestLandingPageReachable() {
 	req, err := http.NewRequest("GET", s.route, nil)
 	require.NoError(s.T(), err)
 
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
 	require.NoError(s.T(), err)
 	defer Close(s.T(), resp)
 
@@ -67,7 +67,7 @@ func (s *registrationServiceTestSuite) TestHealth() {
 		req, err := http.NewRequest("GET", s.route+"/api/v1/health", nil)
 		require.NoError(s.T(), err)
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
 		require.NoError(s.T(), err)
 		defer Close(s.T(), resp)
 
@@ -107,7 +107,7 @@ func (s *registrationServiceTestSuite) TestWoopra() {
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", s.route, endPointPath), nil)
 		require.NoError(s.T(), err)
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
 		require.NoError(s.T(), err)
 		defer Close(s.T(), resp)
 
@@ -141,7 +141,7 @@ func (s *registrationServiceTestSuite) TestAuthConfig() {
 		req, err := http.NewRequest("GET", s.route+"/api/v1/authconfig", nil)
 		require.NoError(s.T(), err)
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
 		require.NoError(s.T(), err)
 		defer Close(s.T(), resp)
 
@@ -165,9 +165,9 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
 
-		resp, err := httpClient.Do(req)
-		require.NoError(s.T(), err)
+		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
 		defer Close(s.T(), resp)
+		require.NoError(s.T(), err)
 
 		// Retrieve unauthorized http status code.
 		assert.Equal(s.T(), http.StatusUnauthorized, resp.StatusCode)
@@ -210,7 +210,7 @@ func (s *registrationServiceTestSuite) TestSignupFails() {
 		require.NoError(s.T(), err)
 		req.Header.Set("content-type", "application/json")
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
 		require.NoError(s.T(), err)
 		defer Close(s.T(), resp)
 
@@ -602,9 +602,8 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
 	require.NoError(t, err)
-
 	defer Close(t, resp)
 
 	body, err := ioutil.ReadAll(resp.Body)

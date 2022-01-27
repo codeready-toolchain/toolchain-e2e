@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -118,7 +119,7 @@ func (a *Awaitility) WaitForMetricsService(name string) (corev1.Service, error) 
 			},
 			metricsSvc)
 		if err != nil {
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
@@ -221,7 +222,7 @@ func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1
 		Namespace: service.Namespace,
 		Name:      service.Name,
 	}, &route); err != nil {
-		require.True(a.T, errors.IsNotFound(err), "failed to get route to access the '%s' service: %s", service.Name, err.Error())
+		require.True(a.T, apierrors.IsNotFound(err), "failed to get route to access the '%s' service: %s", service.Name, err.Error())
 		route = routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: service.Namespace,
@@ -259,7 +260,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 				Namespace: ns,
 				Name:      name,
 			}, &route); err != nil {
-			if errors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
@@ -277,7 +278,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 		if route.Spec.TLS != nil {
 			client.Transport = &http.Transport{
 				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
+					InsecureSkipVerify: true, // nolint:gosec
 				},
 			}
 			request, err = http.NewRequest("Get", "https://"+route.Status.Ingress[0].Host+endpoint, nil)
@@ -293,7 +294,8 @@ func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (route
 			}
 		}
 		resp, err := client.Do(request)
-		if err, ok := err.(*url.Error); ok && err.Timeout() {
+		urlError := &url.Error{}
+		if errors.As(err, &urlError) && urlError.Timeout() {
 			// keep waiting if there was a timeout: the endpoint is not available yet (pod is still re-starting)
 			return false, nil
 		} else if err != nil {
@@ -385,7 +387,7 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 		return err
 	}
 	for _, p := range pods.Items {
-		if err := a.Client.Delete(context.TODO(), &p); err != nil {
+		if err := a.Client.Delete(context.TODO(), &p); err != nil { // nolint:gosec
 			return err
 		}
 	}
@@ -400,7 +402,7 @@ func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: ns,
 			Name:      podname,
-		}, &podMetrics); err != nil && !errors.IsNotFound(err) {
+		}, &podMetrics); err != nil && !apierrors.IsNotFound(err) {
 			return false, err
 		}
 		for _, c := range podMetrics.Containers {
@@ -429,16 +431,16 @@ func (a *Awaitility) CreateNamespace(name string) {
 	require.NoError(a.T, err)
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		ns := &corev1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, ns); err != nil && !errors.IsNotFound(err) {
-			return false, err
-		} else if err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, ns); err != nil && apierrors.IsNotFound(err) {
 			return false, nil
+		} else if err != nil {
+			return false, err
 		}
 		return ns.Status.Phase == corev1.NamespaceActive, nil
 	})
 	require.NoError(a.T, err)
 	a.T.Cleanup(func() {
-		if err := a.Client.Delete(context.TODO(), ns); err != nil && !errors.IsNotFound(err) {
+		if err := a.Client.Delete(context.TODO(), ns); err != nil && !apierrors.IsNotFound(err) {
 			require.NoError(a.T, err)
 		}
 	})
@@ -450,7 +452,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 	err := wait.Poll(a.RetryInterval, 4*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
-			return false, nil
+			return false, nil // nolint:nilerr
 		}
 		deployment := &appsv1.Deployment{}
 		require.NoError(a.T, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
