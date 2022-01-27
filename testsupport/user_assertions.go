@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"regexp"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +17,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const (
+	dns1123Value string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+)
+
+var dns1123ValueRegexp = regexp.MustCompile("^" + dns1123Value + "$")
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
@@ -68,7 +75,12 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		assert.NoError(t, err)
 
 		// Verify provisioned Identity
-		_, err = memberAwait.WaitForIdentity(ToIdentityName(userAccount.Spec.UserID))
+		userID := userAccount.Spec.UserID
+		if !dns1123ValueRegexp.MatchString(userAccount.Spec.UserID) {
+			userID = fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.UserID)))
+		}
+
+		_, err = memberAwait.WaitForIdentity(ToIdentityName(userID))
 		assert.NoError(t, err)
 
 		// Verify the second identity
