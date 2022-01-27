@@ -92,7 +92,7 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 				username := "user0001"
 				tmpFile, err := ioutil.TempFile(os.TempDir(), "setup-template-")
 				require.NoError(t, err)
-				tmpFile.WriteString(deployment) // nolint: errcheck
+				_, _ = tmpFile.WriteString(deployment)
 
 				// when
 				err = CreateUserResourcesFromTemplateFiles(cl, s, username, []string{tmpFile.Name()})

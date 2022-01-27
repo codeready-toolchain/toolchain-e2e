@@ -7,7 +7,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint: golint
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint:revive
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	corev1 "k8s.io/api/core/v1"

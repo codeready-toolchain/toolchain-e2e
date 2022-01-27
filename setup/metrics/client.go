@@ -35,7 +35,7 @@ func Client(address, token string) (api.Client, error) {
 	cl := http.Client{
 		Timeout: time.Duration(10 * time.Second),
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint:gosec
 		},
 	}
 

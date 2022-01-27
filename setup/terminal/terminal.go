@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -75,7 +76,7 @@ func (t DefaultTerminal) Infof(msg string, args ...interface{}) {
 
 // Errorf prints a message with the red color
 func (t DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
-	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", fmt.Sprintf(msg, args...), err.Error())) // nolint: errcheck
+	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", fmt.Sprintf(msg, args...), err.Error())) // nolint:errcheck
 }
 
 // Fatalf prints a message with the red color and exits the program with a `1` return code
@@ -99,7 +100,7 @@ func (t DefaultTerminal) PromptBoolf(msg string, args ...interface{}) bool {
 
 	result, err := prompt.Run()
 
-	if err != nil && err != promptui.ErrAbort {
+	if err != nil && !errors.Is(err, promptui.ErrAbort) {
 		t.Errorf(err, "😳 Prompt failed")
 		return false
 	}

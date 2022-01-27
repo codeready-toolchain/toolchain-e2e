@@ -62,5 +62,5 @@ func (c Configuration) GetUserBatchSize() int {
 
 // GetUserBatchPause returns the configured `user.batch.pause` (or its default value)
 func (c Configuration) GetUserBatchPause() time.Duration {
-	return c.v.GetDuration(UserBatchPause) * time.Second
+	return time.Duration(c.v.GetInt(UserBatchPause)) * time.Second
 }

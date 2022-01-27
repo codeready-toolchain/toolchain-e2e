@@ -277,10 +277,8 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
 	req.Close = true
-	resp, err := httpClient.Do(req)
-
+	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
 	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)
-
 	defer Close(t, resp)
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -297,6 +295,9 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 }
 
 func Close(t *testing.T, resp *http.Response) {
+	if resp == nil {
+		return
+	}
 	_, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	err = resp.Body.Close()

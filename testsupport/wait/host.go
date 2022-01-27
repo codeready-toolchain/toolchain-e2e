@@ -748,7 +748,7 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, cri
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint: unparam
+func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint:unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
 	a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -966,7 +966,7 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(actual []toolchainv
 		buf.WriteString("failed to find notifications with matching criteria:\n")
 		buf.WriteString("actual:\n")
 		for _, obj := range actual {
-			y, _ := StringifyObject(&obj)
+			y, _ := StringifyObject(&obj) // nolint:gosec
 			buf.Write(y)
 		}
 		buf.WriteString("\n----\n")
