@@ -969,7 +969,7 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components"},
+					Resources: []string{"applications", "components", "componentdetectionquerys"},
 					Verbs:     []string{"*"},
 				},
 				{
