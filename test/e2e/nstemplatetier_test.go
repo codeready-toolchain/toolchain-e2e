@@ -429,5 +429,6 @@ func TestTierTemplates(t *testing.T) {
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	// verify that we have 26 tier templates (base: 3, baselarge: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, test: 3, hackathon: 3, appstudio: 2)
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, 26)
+	// we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
+	assert.True(t, len(allTiers.Items) >= 26)
 }
