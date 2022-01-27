@@ -12,6 +12,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -114,6 +115,19 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 		}
 	}
 	a.T.Log(buf.String())
+}
+
+// UntilUserAccountHasLabelWithValue returns a `UserAccountWaitCriterion` which checks that the given
+// UserAccount has the expected label with the given value
+func UntilUserAccountHasLabelWithValue(key, value string) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return actual.Labels[key] == value
+		},
+		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
+			return fmt.Sprintf("expected useraccount to contain label %s:%s:\n%s", key, value, spew.Sdump(actual.Labels))
+		},
+	}
 }
 
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
