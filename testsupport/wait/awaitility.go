@@ -386,9 +386,8 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 	if err != nil {
 		return err
 	}
-	for i := range pods.Items {
-		p := pods.Items[i] // avoids the 'G601: Implicit memory aliasing in for loop. (gosec)' problem
-		if err := a.Client.Delete(context.TODO(), &p); err != nil {
+	for _, p := range pods.Items {
+		if err := a.Client.Delete(context.TODO(), &p); err != nil { // nolint:gosec
 			return err
 		}
 	}

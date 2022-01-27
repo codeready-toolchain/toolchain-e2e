@@ -965,9 +965,8 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(actual []toolchainv
 	} else {
 		buf.WriteString("failed to find notifications with matching criteria:\n")
 		buf.WriteString("actual:\n")
-		for i := range actual {
-			obj := actual[i] // avoids the 'G601: Implicit memory aliasing in for loop. (gosec)' problem
-			y, _ := StringifyObject(&obj)
+		for _, obj := range actual {
+			y, _ := StringifyObject(&obj) // nolint:gosec
 			buf.Write(y)
 		}
 		buf.WriteString("\n----\n")
