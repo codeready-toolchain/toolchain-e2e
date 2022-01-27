@@ -24,7 +24,7 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 	client := http.Client{
 		Timeout: time.Duration(10 * time.Second),
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		},
 	}
 	request, err := http.NewRequest("Get", uri, nil)
@@ -85,7 +85,7 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 }
 
 func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {
-	switch t {
+	switch t { // nolint:exhaustive
 	case dto.MetricType_COUNTER:
 		return m.GetCounter().GetValue(), nil
 	case dto.MetricType_GAUGE:
@@ -93,6 +93,6 @@ func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {
 	case dto.MetricType_UNTYPED:
 		return m.GetUntyped().GetValue(), nil
 	default:
-		return -1, fmt.Errorf("unknown metric type %s", t.String())
+		return -1, fmt.Errorf("unknown or unsupported metric type %s", t.String())
 	}
 }

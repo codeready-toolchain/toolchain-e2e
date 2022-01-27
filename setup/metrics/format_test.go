@@ -10,7 +10,7 @@ func TestBytesToMBString(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Run("zero", func(t *testing.T) {
 			// given
-			var val float64 = 0
+			var val float64
 
 			// when
 			result := bytesToMBString(val)
@@ -34,7 +34,7 @@ func TestSimple(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Run("zero", func(t *testing.T) {
 			// given
-			var val float64 = 0
+			var val float64
 
 			// when
 			result := simple(val)
@@ -44,7 +44,7 @@ func TestSimple(t *testing.T) {
 
 		t.Run("non-zero value", func(t *testing.T) {
 			// given
-			var val float64 = 123456789.123456789
+			val := 123456789.123456789
 
 			// when
 			result := simple(val)
