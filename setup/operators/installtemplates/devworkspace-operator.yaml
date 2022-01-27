@@ -28,4 +28,3 @@ objects:
 parameters:
   - name: DWO_NAMESPACE
     value: openshift-operators
-

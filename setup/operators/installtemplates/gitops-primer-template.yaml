@@ -17,7 +17,7 @@ objects:
     metadata:
       name: gitops-primer-operator-subscription
       namespace: ${GITOPS_PRIMER_OPERATOR_NAMESPACE}
-    spec:                                                                                                                                                                               
+    spec:
       channel: alpha
       installPlanApproval: Automatic
       name: gitops-primer
