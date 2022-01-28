@@ -1113,7 +1113,7 @@ func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCrite
 			//Since all member operators currently run in the same cluster in the e2e test environment, then using the same memberCluster.Spec.APIEndpoint for all the member clusters should be fine.
 			for _, member := range actual.Status.Members {
 				// check Member field ApiEndpoint is assigned
-				if member.ApiEndpoint != apiEndpoint {
+				if member.APIEndpoint != apiEndpoint {
 					return false
 				}
 			}
