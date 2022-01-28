@@ -140,11 +140,12 @@ func TestSpaceRoles(t *testing.T) {
 	// wait until NSTemplateSet has been created and Space is in `Ready` status
 	s = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, s.Name, "appstudio")
 
+	// given
+	adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
+	err = hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl)
+	require.NoError(t, err)
+
 	t.Run("add admin role and bindings", func(t *testing.T) {
-		// given
-		adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
-		err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl)
-		require.NoError(t, err)
 
 		// when
 		nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
@@ -236,6 +237,142 @@ func TestSpaceRoles(t *testing.T) {
 				_, err = memberAwait.WaitForRole(ns, "space-viewer")
 				assert.NoError(t, err)
 				_, err = memberAwait.WaitForRoleBinding(ns, "user3-space-viewer")
+				assert.NoError(t, err)
+
+			})
+		})
+	})
+
+	t.Run("update space roles templates", func(t *testing.T) {
+
+		t.Run("with other content", func(t *testing.T) {
+
+			// when
+			nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+					{
+						TemplateRef: adminTierTmpl.Name,
+						Usernames:   []string{"user1", "user2"},
+					},
+				}
+			})
+
+			// then
+			require.NoError(t, err)
+			_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
+			require.NoError(t, err)
+			// fetch the namespace check the `last-applied-space-roles` annotation
+			ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
+				UntilNamespaceIsActive(),
+				UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
+			require.NoError(t, err)
+			// check that the `admin` role and role bindings were created
+			_, err = memberAwait.WaitForRole(ns, "space-admin")
+			assert.NoError(t, err)
+			_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
+			assert.NoError(t, err)
+			_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
+			assert.NoError(t, err)
+
+			t.Run("update templateref", func(t *testing.T) {
+				// given
+				adminTierTmpl2 := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-2-123456", "space-role-admin-2", "appstudio", "123456", []byte(spaceAdminTmpl2))
+				err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl2)
+				require.NoError(t, err)
+				// when
+				nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+					nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+						{
+							TemplateRef: adminTierTmpl2.Name,
+							Usernames:   []string{"user1", "user2"},
+						},
+					}
+				})
+				// then
+				require.NoError(t, err)
+				_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
+				require.NoError(t, err)
+				// fetch the namespace check the `last-applied-space-roles` annotation
+				ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
+					UntilNamespaceIsActive(),
+					UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
+				require.NoError(t, err)
+				// check that the new `admin 2` role and role bindings were created
+				_, err = memberAwait.WaitForRole(ns, "space-admin-2")
+				assert.NoError(t, err)
+				_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin-2")
+				assert.NoError(t, err)
+				_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin-2")
+				assert.NoError(t, err)
+				// also, check that the old `admin` role and role bindings were deleted
+				err = memberAwait.WaitUntilRoleDeleted(ns, "space-admin")
+				assert.NoError(t, err)
+				err = memberAwait.WaitUntilRoleBindingDeleted(ns, "user1-space-admin")
+				assert.NoError(t, err)
+				err = memberAwait.WaitUntilRoleBindingDeleted(ns, "user2-space-admin")
+				assert.NoError(t, err)
+
+			})
+		})
+
+		t.Run("with same content", func(t *testing.T) {
+
+			// when
+			nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+					{
+						TemplateRef: adminTierTmpl.Name,
+						Usernames:   []string{"user1", "user2"},
+					},
+				}
+			})
+
+			// then
+			require.NoError(t, err)
+			_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
+			require.NoError(t, err)
+			// fetch the namespace check the `last-applied-space-roles` annotation
+			ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
+				UntilNamespaceIsActive(),
+				UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
+			require.NoError(t, err)
+			// check that the `admin` role and role bindings were created
+			_, err = memberAwait.WaitForRole(ns, "space-admin")
+			assert.NoError(t, err)
+			_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
+			assert.NoError(t, err)
+			_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
+			assert.NoError(t, err)
+
+			t.Run("update templateref", func(t *testing.T) {
+				// given `adminTierTmpl3` has the same content (role & rolebindings) as `adminTierTmpl`, but the templateref is different
+				adminTierTmpl3 := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-3-123456", "space-role-admin-3", "appstudio", "123456", []byte(spaceAdminTmpl))
+				err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl3)
+				require.NoError(t, err)
+				// when
+				nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
+					nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
+						{
+							TemplateRef: adminTierTmpl3.Name,
+							Usernames:   []string{"user1", "user2"},
+						},
+					}
+				})
+				// then
+				require.NoError(t, err)
+				_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
+				require.NoError(t, err)
+				// fetch the namespace check the `last-applied-space-roles` annotation
+				ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
+					UntilNamespaceIsActive(),
+					UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
+				require.NoError(t, err)
+				// check that the existing `admin` role and role bindings still exist
+				_, err = memberAwait.WaitForRole(ns, "space-admin")
+				assert.NoError(t, err)
+				_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
+				assert.NoError(t, err)
+				_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
 				assert.NoError(t, err)
 
 			})
@@ -387,6 +524,46 @@ objects:
     apiGroup: rbac.authorization.k8s.io
     kind: Role
     name: space-admin
+  subjects:
+    - kind: User
+      name: ${USERNAME}
+parameters:
+- name: NAMESPACE
+  required: true
+- name: USERNAME
+  value: johnsmith
+`
+
+const spaceAdminTmpl2 = `apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  labels:
+  name: space-admin-template-2
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: space-admin-2
+    namespace: ${NAMESPACE}
+  rules:
+    # examples
+    - apiGroups:
+        - ""
+      resources:
+        - "secrets"
+        - "serviceaccounts"
+      verbs:
+        - get
+        - list
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: ${USERNAME}-space-admin-2
+    namespace: ${NAMESPACE}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: space-admin-2
   subjects:
     - kind: User
       name: ${USERNAME}
