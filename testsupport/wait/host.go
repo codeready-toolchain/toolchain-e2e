@@ -301,6 +301,7 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	a.listAndPrint("UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
 	a.listAndPrint("MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
+	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
 
 	a.T.Log(buf.String())
 }

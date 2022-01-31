@@ -33,7 +33,6 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
 
 	hostAwait := awaitilities.Host()
-	templateRefs := tiers.GetTemplateRefs(hostAwait, tierName)
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
 	userSignup, err := hostAwait.WaitForUserSignup(signup.Name,
@@ -52,7 +51,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tierName, templateRefs, userSignup.Spec.OriginalSub)),
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
@@ -124,30 +123,10 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	assert.NoError(t, err)
 }
 
-func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs, originalSub string) toolchainv1alpha1.UserAccountSpec {
-	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
-	for _, ref := range templateRefs.Namespaces {
-		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
-			TemplateRef: ref,
-		})
-	}
-	var clusterResources *toolchainv1alpha1.NSTemplateSetClusterResources
-	if templateRefs.ClusterResources != nil {
-		clusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-			TemplateRef: tier + "-" + "clusterresources" + "-" + *templateRefs.ClusterResources,
-		}
-	}
+func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {
 	return toolchainv1alpha1.UserAccountSpec{
-		UserID:   userID,
-		Disabled: false,
-		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
-			NSLimit: "default",
-			NSTemplateSet: &toolchainv1alpha1.NSTemplateSetSpec{
-				TierName:         tier,
-				Namespaces:       namespaces,
-				ClusterResources: clusterResources,
-			},
-		},
+		UserID:      userID,
+		Disabled:    false,
 		OriginalSub: originalSub,
 	}
 }
