@@ -108,11 +108,13 @@ e2e-run:
 
 .PHONY: execute-tests
 execute-tests:
+	@echo "Starting test $(shell date)"
 	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -p 1 -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
 print-logs:
+	@echo "Time: $(shell date)"
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=host-operator-controller-manager NAMESPACE=${HOST_NS} ADDITIONAL_PARAMS="-c manager"
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-controller-manager NAMESPACE=${MEMBER_NS} ADDITIONAL_PARAMS="-c manager"
