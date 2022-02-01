@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -252,34 +251,10 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt stri
 	var spaces []string
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf(nameFmt, i)
-		s := createSpace(t, awaitilities, tier.Name, name, hash, targetCluster)
+		s := CreateSpace(t, awaitilities, WithName(name), WithTierNameAndHashLabel(tier.Name, hash), WithTargetCluster(targetCluster))
 		spaces = append(spaces, s.Name)
 	}
 	return spaces
-}
-
-func createSpace(t *testing.T, awaitilities Awaitilities, tierName, name, hash string, targetCluster *MemberAwaitility) *toolchainv1alpha1.Space {
-	space := &toolchainv1alpha1.Space{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: awaitilities.Host().Namespace,
-			Name:      name,
-			Labels: map[string]string{
-				testtier.TemplateTierHashLabelKey(tierName): hash,
-			},
-		},
-		Spec: toolchainv1alpha1.SpaceSpec{
-			TargetCluster: targetCluster.ClusterName,
-			TierName:      tierName,
-		},
-	}
-
-	// when
-	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
-
-	// then
-	require.NoError(t, err)
-	t.Logf("Space created - %s: %s", testtier.TemplateTierHashLabelKey(tierName), hash)
-	return space
 }
 
 // setupAccounts takes care of:
