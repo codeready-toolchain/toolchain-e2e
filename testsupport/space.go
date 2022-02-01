@@ -19,7 +19,7 @@ import (
 
 var notAllowedChars = regexp.MustCompile("[^-a-z0-9]")
 
-// NewSpace initializes a new Space object with the given options. By default it sets tierName to "base".
+// NewSpace initializes a new Space object with the given options. By default, it doesn't set anything in the spec.
 func NewSpace(awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
 	namePrefix := strings.ToLower(awaitilities.Host().T.Name())
 	// Remove all invalid characters
@@ -34,9 +34,6 @@ func NewSpace(awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1a
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:    awaitilities.Host().Namespace,
 			GenerateName: namePrefix + "-",
-		},
-		Spec: toolchainv1alpha1.SpaceSpec{
-			TierName: "base",
 		},
 	}
 	for _, apply := range opts {
