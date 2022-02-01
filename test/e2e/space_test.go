@@ -115,13 +115,11 @@ func TestSpaceRoles(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// given & when
-	s := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
+	s := CreateAndVerifySpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
 
 	// then
 	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name, UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
-	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	s = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, s.Name, "appstudio")
 
 	// given
 	adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
@@ -371,11 +369,8 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	//  when
-	space := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait))
-
-	// then
-	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "base")
+	//  when & then
+	space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait))
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
@@ -401,11 +396,9 @@ func TestRetargetSpace(t *testing.T) {
 	member2Await := awaitilities.Member2()
 
 	t.Run("to no other cluster", func(t *testing.T) {
-		// given & when
-		space := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await))
-
+		// given
 		// wait until Space has been provisioned on member-1
-		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await))
 
 		// when
 		space, err := hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
@@ -424,11 +417,9 @@ func TestRetargetSpace(t *testing.T) {
 	})
 
 	t.Run("to another cluster", func(t *testing.T) {
-		// given & when
-		space := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await))
-
+		// given
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await))
 
 		// when
 		space, err := hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
