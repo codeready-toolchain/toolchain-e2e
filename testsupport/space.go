@@ -60,6 +60,7 @@ func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait
 		wait.UntilSpaceHasTier(tierName),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tierName), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
 	require.NoError(t, err)
 

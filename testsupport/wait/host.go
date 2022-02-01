@@ -1500,6 +1500,19 @@ func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitC
 	}
 }
 
+// UntilSpaceHasStateLabel returns a `SpaceWaitCriterion` which checks that the
+// Space has the expected value of the state label
+func UntilSpaceHasStateLabel(expected string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Labels != nil && actual.Labels[toolchainv1alpha1.SpaceStateLabelKey] == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected Space to match the state label value: %s \nactual labels: %s", expected, actual.Labels)
+		},
+	}
+}
+
 // UntilSpaceHasStatusTargetCluster returns a `SpaceWaitCriterion` which checks that the given
 // Space has the expected `targetCluster` in its status
 func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
