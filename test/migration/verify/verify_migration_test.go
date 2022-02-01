@@ -19,6 +19,11 @@ import (
 func TestAfterMigration(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
+	// increase timeout to be sure that the operators had enough time to properly initialize and reconcile all present resources
+	awaitilities = wait.NewAwaitilities(
+		awaitilities.Host().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)),
+		awaitilities.Member1().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)),
+		awaitilities.Member2().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)))
 
 	// get Signups for the users provisioned in the setup part
 	provisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.ProvisionedUser)

@@ -55,9 +55,15 @@ type Awaitility struct {
 }
 
 func (a *Awaitility) ForTest(t *testing.T) *Awaitility {
-	await := *a
+	await := a.copy()
 	await.T = t
-	return &await
+	return await
+}
+
+func (a *Awaitility) copy() *Awaitility {
+	result := new(Awaitility)
+	*result = *a
+	return result
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
@@ -68,14 +74,7 @@ var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
 
 // WithRetryOptions returns a new Awaitility with the given "RetryOption"s applied
 func (a *Awaitility) WithRetryOptions(options ...RetryOption) *Awaitility {
-	result := &Awaitility{
-		T:             a.T,
-		Type:          a.Type,
-		Client:        a.Client,
-		Namespace:     a.Namespace,
-		RetryInterval: DefaultRetryInterval,
-		Timeout:       DefaultTimeout,
-	}
+	result := a.copy()
 	for _, option := range options {
 		option.apply(result)
 	}
