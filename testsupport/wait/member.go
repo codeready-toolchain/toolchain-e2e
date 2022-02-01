@@ -28,6 +28,7 @@ import (
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -203,11 +204,21 @@ func UntilUserAccountContainsCondition(expected toolchainv1alpha1.Condition) Use
 }
 
 // UntilUserAccountIsBeingDeleted returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has the deletion timestamp set
+// UserAccount has the deletion timestamp set
 func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
+// UntilUserAccountIsCreatedAfter returns a `UserAccountWaitCriterion` which checks that the given
+// UserAccount has a creation timestamp that is after the given timestamp
+func UntilUserAccountIsCreatedAfter(timestamp metav1.Time) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return actual.CreationTimestamp.After(timestamp.Time)
 		},
 	}
 }

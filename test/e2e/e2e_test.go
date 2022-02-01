@@ -237,6 +237,7 @@ func TestE2EFlow(t *testing.T) {
 			// given
 			ua, err := memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername)
 			require.NoError(t, err)
+			originalCreationTimestamp := ua.CreationTimestamp
 
 			// when deleting the user account
 			deletePolicy := metav1.DeletePropagationForeground
@@ -245,10 +246,12 @@ func TestE2EFlow(t *testing.T) {
 			}
 			err = memberAwait.Client.Delete(context.TODO(), ua, deleteOpts)
 			require.NoError(t, err)
-			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsBeingDeleted())
+			// useraccount deletion happens very quickly so instead of waiting for the useraccount to
+			// have a deletion timestamp, ensure the creation timestamp is updated to a newer timestamp
+			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsCreatedAfter(originalCreationTimestamp))
 			require.NoError(t, err)
 
-			// then the user account should be recreated
+			// then verify the recreated user account
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "base")
 		})
 	})
