@@ -62,7 +62,9 @@ func TestCreateSpace(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			space, err = hostAwait.WaitForSpace(space.Name, UntilSpaceHasConditions(ProvisioningPending("unspecified target member cluster")))
+			space, err = hostAwait.WaitForSpace(space.Name,
+				UntilSpaceHasConditions(ProvisioningPending("unspecified target member cluster")),
+				UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValuePending))
 			require.NoError(t, err)
 
 			t.Run("delete space", func(t *testing.T) {

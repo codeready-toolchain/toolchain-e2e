@@ -964,13 +964,23 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 3)
+		assert.Len(t, role.Rules, 5)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"applications", "components", "componentdetectionqueries"},
 					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings"},
+					Verbs:     []string{"create", "get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokens"},
+					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
 					APIGroups: []string{"tekton.dev"},
