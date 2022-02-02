@@ -325,13 +325,9 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
-		userAcc, err := memberAwait.WaitForUserAccount(laraUserName, wait.UntilUserAccountIsBeingDeleted(), wait.UntilUserAccountContainsCondition(TerminatingUserAccount()))
+		space, err := hostAwait.WaitForSpace(laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(TerminatingSpace()))
 		require.NoError(t, err)
-		require.NotEmpty(t, userAcc)
-
-		mur, err := hostAwait.WaitForMasterUserRecord(laraUserName, wait.UntilMasterUserRecordIsBeingDeleted(), wait.UntilMasterUserRecordHasCondition(UnableToDeleteUserAccount()))
-		require.NoError(t, err)
-		require.NotEmpty(t, mur)
+		require.NotEmpty(t, space)
 
 		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name, wait.UntilUserSignupIsBeingDeleted())
 		require.NoError(t, err)

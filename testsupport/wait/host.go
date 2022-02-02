@@ -1461,6 +1461,15 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 	a.T.Log(buf.String())
 }
 
+// UntilSpaceIsBeingDeleted checks if Space has Deletion Timestamp
+func UntilSpaceIsBeingDeleted() SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
 // UntilSpaceHasLabelWithValue returns a `SpaceWaitCriterion` which checks that the given
 // Space has the expected label with the given value
 func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
