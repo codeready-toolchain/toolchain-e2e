@@ -449,6 +449,10 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
+		if ns == nil {
+			a.T.Logf("a namespace with the following labels was not found: %v", labels)
+			return nil, err
+		}
 		for _, c := range criteria {
 			a.T.Logf(c.Diff(ns))
 		}
