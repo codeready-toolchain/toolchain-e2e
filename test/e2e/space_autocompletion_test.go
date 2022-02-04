@@ -46,7 +46,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		space := CreateSpace(t, awaitilities, WithTierName(""))
 
 		// then
-		space = spaceIsPendingCluster(t, hostAwait, space.Name)
+		space = waitUntilSpaceIsPendingCluster(t, hostAwait, space.Name)
 		assert.Equal(t, "appstudio", space.Spec.TierName)
 
 		t.Run("reset the threshold and expect the space will be have the targetCluster set and will be also provisioned", func(t *testing.T) {
@@ -73,8 +73,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		space2 := CreateSpace(t, awaitilities, WithName("space-waitinglist2"))
 
 		// then
-		spaceIsPendingCluster(t, hostAwait, space1.Name)
-		spaceIsPendingCluster(t, hostAwait, space2.Name)
+		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
+		waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
 		t.Run("increment the max number of users and expect the both of the spaces will be provisioned. When we count the spaces, then this test will change", func(t *testing.T) {
 			// when
@@ -84,7 +84,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space1)
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space2)
 			// TODO: when we count the number of provisioned spaces, then the second space won't be provisioned immediately https://issues.redhat.com/browse/CRT-1427
-			// spaceIsPendingCluster(t, hostAwait, space2.Name)
+			// waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			//
 			//t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
 			//	// when
@@ -135,19 +135,19 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			space2 := CreateSpace(t, awaitilities, WithName("space-multimember-2"))
 
 			// then
-			spaceIsPendingCluster(t, hostAwait, space2.Name)
+			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
 				CreateAndVerifySpace(t, awaitilities, WithName("space-multimember-3"), WithTargetCluster(memberAwait1))
 				// and still
-				spaceIsPendingCluster(t, hostAwait, space2.Name)
+				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			})
 		})
 	})
 }
 
-func spaceIsPendingCluster(t *testing.T, hostAwait *wait.HostAwaitility, name string) *toolchainv1alpha1.Space {
+func waitUntilSpaceIsPendingCluster(t *testing.T, hostAwait *wait.HostAwaitility, name string) *toolchainv1alpha1.Space {
 	space, err := hostAwait.WaitForSpace(name,
 		wait.UntilSpaceHasTier("appstudio"),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValuePending),
