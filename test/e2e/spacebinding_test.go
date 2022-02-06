@@ -50,7 +50,7 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 	space := NewSpace(hostAwait.Namespace, spaceName, "appstudio", WithTargetCluster(targetMember.ClusterName))
 	err := hostAwait.CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
-	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetMember, space.Name, "appstudio")
+	space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, targetMember, space.Name, "appstudio")
 
 	_, mur := NewSignupRequest(t, awaitilities).
 		Username(murName).

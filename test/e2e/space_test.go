@@ -31,7 +31,7 @@ func TestCreateSpace(t *testing.T) {
 		// then
 		// then
 		require.NoError(t, err)
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "appstudio")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "appstudio")
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
@@ -140,7 +140,7 @@ func TestSpaceRoles(t *testing.T) {
 	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name, UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
 	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	s = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, s.Name, "appstudio")
+	s = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, s.Name, "appstudio")
 
 	// given
 	adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
@@ -398,7 +398,7 @@ func TestPromoteSpace(t *testing.T) {
 	// then
 	require.NoError(t, err)
 
-	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "base")
+	space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "base")
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
@@ -411,7 +411,7 @@ func TestPromoteSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err := hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "advanced")
+		VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "advanced")
 	})
 }
 
@@ -429,7 +429,7 @@ func TestRetargetSpace(t *testing.T) {
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member1Await, space.Name, "base")
 
 		// when
 		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
@@ -453,7 +453,7 @@ func TestRetargetSpace(t *testing.T) {
 		err := hostAwait.CreateWithCleanup(context.TODO(), space)
 		require.NoError(t, err)
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member1Await, space.Name, "base")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member1Await, space.Name, "base")
 
 		// when
 		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
@@ -463,7 +463,7 @@ func TestRetargetSpace(t *testing.T) {
 
 		// then
 		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "base")
+		space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member2Await, space.Name, "base")
 		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 		require.NoError(t, err)
 	})

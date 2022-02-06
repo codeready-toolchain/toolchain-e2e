@@ -91,12 +91,12 @@ func TestAfterMigration(t *testing.T) {
 }
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
-	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, awaitilities.Member1(), migration.ProvisionedAppStudioSpace, "appstudio")
+	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities.Host(), awaitilities.Member1(), migration.ProvisionedAppStudioSpace, "appstudio")
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
 }
 
 func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
-	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, awaitilities.Member2(), migration.SecondMemberProvisionedSpace, "base")
+	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities.Host(), awaitilities.Member2(), migration.SecondMemberProvisionedSpace, "base")
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
 }
 
