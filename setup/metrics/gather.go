@@ -57,13 +57,13 @@ func New(t terminal.Terminal, cl client.Client, token string, interval time.Dura
 
 	// Add default queries
 	g.AddQueries(
-		queries.QueryOpenshiftKubeAPIMemoryUtilisation(prometheusClient),
 		queries.QueryClusterCPUUtilisation(prometheusClient),
 		queries.QueryClusterMemoryUtilisation(prometheusClient),
 		queries.QueryNodeMemoryUtilisation(prometheusClient),
 		queries.QueryEtcdMemoryUsage(prometheusClient),
 		queries.QueryWorkloadCPUUsage(prometheusClient, OLMOperatorNamespace, OLMOperatorWorkload),
 		queries.QueryWorkloadMemoryUsage(prometheusClient, OLMOperatorNamespace, OLMOperatorWorkload),
+		queries.QueryOpenshiftKubeAPIMemoryUtilisation(prometheusClient),
 		queries.QueryWorkloadCPUUsage(prometheusClient, OSAPIServerNamespace, OSAPIServerWorkload),
 		queries.QueryWorkloadMemoryUsage(prometheusClient, OSAPIServerNamespace, OSAPIServerWorkload),
 		queries.QueryWorkloadCPUUsage(prometheusClient, cfg.HostOperatorNamespace, cfg.HostOperatorWorkload),
