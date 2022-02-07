@@ -26,9 +26,6 @@ const (
 
 	OSAPIServerNamespace = "openshift-apiserver"
 	OSAPIServerWorkload  = "apiserver"
-
-	OSKubeAPIServerNamespace = "openshift-kube-apiserver"
-	OSKubeAPIServerWorkload  = "apiserver"
 )
 
 type Gatherer struct {
