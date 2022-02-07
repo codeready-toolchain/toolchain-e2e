@@ -26,6 +26,9 @@ const (
 
 	OSAPIServerNamespace = "openshift-apiserver"
 	OSAPIServerWorkload  = "apiserver"
+
+	OSKubeAPIServerNamespace = "openshift-kube-apiserver"
+	OSKubeAPIServerWorkload  = "apiserver"
 )
 
 type Gatherer struct {
@@ -54,6 +57,7 @@ func New(t terminal.Terminal, cl client.Client, token string, interval time.Dura
 
 	// Add default queries
 	g.AddQueries(
+		queries.QueryOpenshiftKubeAPIMemoryUtilisation(prometheusClient),
 		queries.QueryClusterCPUUtilisation(prometheusClient),
 		queries.QueryClusterMemoryUtilisation(prometheusClient),
 		queries.QueryNodeMemoryUtilisation(prometheusClient),
