@@ -412,18 +412,6 @@ func (s *registrationServiceTestSuite) TestUserSignupFoundWhenNamedWithEncodedUs
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
 
-	// Approve usersignup.
-	states.SetApproved(userSignup, true)
-	userSignup.Spec.TargetCluster = s.Member1().ClusterName
-	err = hostAwait.Client.Update(context.TODO(), userSignup)
-	require.NoError(s.T(), err)
-
-	// Wait for the UserSignup status to be updated to verification required
-	_, err = hostAwait.WaitForUserSignup("arnold",
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
-	require.NoError(s.T(), err)
-
 	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
 	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
 	token0, err = authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithUsernameClaim("arnold"))
@@ -434,14 +422,6 @@ func (s *registrationServiceTestSuite) TestUserSignupFoundWhenNamedWithEncodedUs
 	require.IsType(s.T(), false, mpStatus["ready"])
 	assert.False(s.T(), mpStatus["ready"].(bool))
 	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
-	require.True(s.T(), mpStatus["verificationRequired"].(bool))
-
-	// Confirm the status of the UserSignup is correct
-	_, err = hostAwait.WaitForUserSignup(identity0.ID.String(),
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
-	require.NoError(s.T(), err)
-
 }
 
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
