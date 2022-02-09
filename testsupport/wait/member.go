@@ -1085,6 +1085,9 @@ func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 			}
 			return false, err
 		}
+		if _, exists := user.Labels[toolchainv1alpha1.ProviderLabelKey]; !exists {
+			return false, nil
+		}
 		if user.Name != "" && len(user.Identities) > 0 {
 			return true, nil
 		}
@@ -1104,6 +1107,9 @@ func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error
 				return false, nil
 			}
 			return false, err
+		}
+		if _, exists := identity.Labels[toolchainv1alpha1.ProviderLabelKey]; !exists {
+			return false, nil
 		}
 		if identity.Name != "" && identity.User.Name != "" {
 			return true, nil
