@@ -407,7 +407,7 @@ func (s *registrationServiceTestSuite) TestUserSignupFoundWhenNamedWithEncodedUs
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup("arnold",
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(s.T(), err)
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(s.T(), emailValue, emailAnnotation)
