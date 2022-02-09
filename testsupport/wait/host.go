@@ -356,32 +356,17 @@ func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition)
 	}
 }
 
-// UntilMasterUserRecordHasSyncIndex checks if MasterUserRecord has a
-// sync index that matches the given value for the given target cluster
-func UntilMasterUserRecordHasSyncIndex(expected string) MasterUserRecordWaitCriterion {
+// UntilMasterUserRecordHasSyncIndex checks if the MasterUserRecord has a
+// sync index that matches (or does not match) the given value
+func UntilMasterUserRecordHasSyncIndex(previousSyncIndex string, expectedToChange bool) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			// lookup user account with target cluster
 			ua := actual.Spec.UserAccounts[0]
-			return ua.SyncIndex == expected
+			changed := ua.SyncIndex != previousSyncIndex
+			return changed == expectedToChange
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected sync index to match.\n\twanted: '%s'\n\tactual: '%s'", expected, actual.Spec.UserAccounts[0].SyncIndex)
-		},
-	}
-}
-
-// UntilMasterUserRecordHasNotSyncIndex checks if MasterUserRecord has a
-// sync index *different* from the given value for the given target cluster
-func UntilMasterUserRecordHasNotSyncIndex(expected string) MasterUserRecordWaitCriterion {
-	return MasterUserRecordWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			// lookup user account with target cluster
-			ua := actual.Spec.UserAccounts[0]
-			return ua.SyncIndex != expected
-		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected sync index to be different.\n\twanted: '%s'\n\tactual: '%s'", expected, actual.Spec.UserAccounts[0].SyncIndex)
+			return fmt.Sprintf("unexpected sync index value.\n\texpected to change: '%t'\n\tpreviousSyncIndex: '%s'\n\tcurrent: '%s'", expectedToChange, previousSyncIndex, actual.Spec.UserAccounts[0].SyncIndex)
 		},
 	}
 }

@@ -125,10 +125,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name).Spec.UserAccounts[0].SyncIndex
+		murSyncIndex := murMember1.Spec.UserAccounts[0].SyncIndex
+		MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name)
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
-			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
+			wait.UntilMasterUserRecordHasSyncIndex(murSyncIndex, true))
 		require.NoError(s.T(), err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
@@ -310,6 +311,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				mur, err = hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 					mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 				})
+				murName := mur.Name
 				require.NoError(s.T(), err)
 				s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", mur.Name,
 					mur.Status.ProvisionedTime.String())
@@ -349,10 +351,15 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				// - The SyncIndex property of the UserAccount is intended for the express purpose of triggering
 				//   a reconciliation, so we set it to some new unique value here
 				syncIndex := uuid.Must(uuid.NewV4()).String()
-				mur, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+				_, err := hostAwait.UpdateMasterUserRecordSpec(murName, func(mur *toolchainv1alpha1.MasterUserRecord) {
 					mur.Spec.UserAccounts[0].SyncIndex = syncIndex
 				})
-				require.NoError(t, err)
+				if err != nil {
+					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
+					require.EqualError(t, err, `masteruserrecords.toolchain.dev.openshift.com "fulldeactivationlifecycle" not found`)
+				} else {
+					require.NoError(t, err)
+				}
 
 				// The user should now be set to deactivated
 				userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
@@ -360,7 +367,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				require.NoError(s.T(), err)
 
 				// The MUR should also be deleted
-				err = hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+				err = hostAwait.WaitUntilMasterUserRecordDeleted(murName)
 				require.NoError(s.T(), err)
 			})
 		})
