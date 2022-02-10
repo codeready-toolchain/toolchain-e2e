@@ -2,11 +2,13 @@ package verify
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/test/migration"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
@@ -25,10 +27,12 @@ func TestAfterMigration(t *testing.T) {
 		awaitilities.Member1().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)),
 		awaitilities.Member2().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)))
 
-	// get Signups for the users provisioned in the setup part
-	provisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.ProvisionedUser)
-	secondMemberProvisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.SecondMemberProvisionedUser)
-	appstudioProvisionedSignup := getSignupFromMUR(t, awaitilities.Host(), migration.AppStudioProvisionedUser)
+	// check MUR migrations and get Signups for the users provisioned in the setup part
+	t.Log("checking MUR Migrations")
+	provisionedSignup := checkMURMigratedAndGetSignup(t, awaitilities.Host(), migration.ProvisionedUser)
+	secondMemberProvisionedSignup := checkMURMigratedAndGetSignup(t, awaitilities.Host(), migration.SecondMemberProvisionedUser)
+	appstudioProvisionedSignup := checkMURMigratedAndGetSignup(t, awaitilities.Host(), migration.AppStudioProvisionedUser)
+
 	// note: listing banned/deactivated UserSignups should be done as part of setup because the tests are run in parallel and there can be multiple banned/deactivated UserSignups at that point which could lead to test flakiness
 	deactivatedSignup := listAndGetSignupWithState(t, awaitilities.Host(), toolchainv1alpha1.UserSignupStateLabelValueDeactivated)
 	bannedSignup := listAndGetSignupWithState(t, awaitilities.Host(), toolchainv1alpha1.UserSignupStateLabelValueBanned)
@@ -162,13 +166,43 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base")
 }
 
-func getSignupFromMUR(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
-	provisionedMur, err := hostAwait.WaitForMasterUserRecord(murName)
+func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
+	provisionedMur, err := hostAwait.WaitForMasterUserRecord(murName, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 	require.NoError(t, err)
+
+	checkMURMigrated(t, hostAwait, provisionedMur)
+
 	signup, err := hostAwait.WaitForUserSignup(provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])
 	require.NoError(t, err)
 
 	return signup
+}
+
+// checkMURMigrated ensures that all MURs are correctly migrated
+func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) {
+	// should have tier name set
+	require.NotEmpty(t, mur.Spec.TierName)
+
+	// should not have tier hash label
+	require.Empty(t, mur.Labels[fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName)])
+
+	// useraccounts should not have NSLimit nor NSTemplateSet
+	require.Len(t, mur.Spec.UserAccounts, 1)
+	require.Empty(t, mur.Spec.UserAccounts[0].Spec.NSLimit)
+	require.Nil(t, mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
+
+	tier, err := hostAwait.WaitForNSTemplateTier(mur.Spec.TierName)
+	require.NoError(t, err)
+	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
+	require.NoError(t, err)
+
+	// space should be assigned and provisioned with correct tier name
+	hostAwait.WaitForSpace(mur.Name,
+		wait.UntilSpaceHasTier(mur.Spec.TierName),
+		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
+		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
+		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
 }
 
 func listAndGetSignupWithState(t *testing.T, hostAwait *wait.HostAwaitility, state string) *toolchainv1alpha1.UserSignup {
