@@ -197,12 +197,13 @@ func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolcha
 	require.NoError(t, err)
 
 	// space should be assigned and provisioned with correct tier name
-	hostAwait.WaitForSpace(mur.Name,
+	_, err = hostAwait.WaitForSpace(mur.Name,
 		wait.UntilSpaceHasTier(mur.Spec.TierName),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
+	require.NoError(t, err)
 }
 
 func listAndGetSignupWithState(t *testing.T, hostAwait *wait.HostAwaitility, state string) *toolchainv1alpha1.UserSignup {
