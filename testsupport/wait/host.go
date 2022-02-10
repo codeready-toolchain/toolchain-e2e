@@ -10,6 +10,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
@@ -1491,7 +1492,7 @@ func UntilSpaceHasTier(expected string) SpaceWaitCriterion {
 			return actual.Spec.TierName == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
-			return fmt.Sprintf("expected tiernames to match:\n%s", Diff(expected, actual.Spec.TierName))
+			return fmt.Sprintf("expected tier name to match:\n%s", Diff(expected, actual.Spec.TierName))
 		},
 	}
 }
@@ -1518,6 +1519,49 @@ func UntilSpaceHasStateLabel(expected string) SpaceWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected Space to match the state label value: %s \nactual labels: %s", expected, actual.Labels)
+		},
+	}
+}
+
+// UntilSpaceHasConditionForTime returns a `SpaceWaitCriterion` which checks that the given
+// Space has the condition set at least for the given amount of time
+func UntilSpaceHasConditionForTime(expected toolchainv1alpha1.Condition, duration time.Duration) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			foundCond, exists := condition.FindConditionByType(actual.Status.Conditions, expected.Type)
+			if exists && foundCond.Reason == expected.Reason && foundCond.Status == expected.Status {
+				return foundCond.LastTransitionTime.Time.Before(time.Now().Add(-duration))
+			}
+			return false
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected conditions to match:\n%s\nAnd having the LastTransitionTime %s or older", Diff(expected, actual.Status.Conditions), time.Now().Add(-duration).String())
+		},
+	}
+}
+
+// UntilSpaceHasAnyTargetClusterSet returns a `SpaceWaitCriterion` which checks that the given
+// Space has any `spec.targetCluster` set
+func UntilSpaceHasAnyTargetClusterSet() SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Spec.TargetCluster != ""
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected target clusters not to be empty. Actual Space resource:\n%v", actual)
+		},
+	}
+}
+
+// UntilSpaceHasAnyTierNameSet returns a `SpaceWaitCriterion` which checks that the given
+// Space has any `spec.tierName` set
+func UntilSpaceHasAnyTierNameSet() SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Spec.TierName != ""
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected tier name not to be empty. Actual Space resource:\n%v", actual)
 		},
 	}
 }

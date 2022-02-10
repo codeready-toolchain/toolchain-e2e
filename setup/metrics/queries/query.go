@@ -42,6 +42,15 @@ func (b BaseQuery) ResultType() string {
 	return string(b.resultType)
 }
 
+func QueryOpenshiftKubeAPIMemoryUtilisation(apiClient prometheus.API) *BaseQuery {
+	return &BaseQuery{
+		apiClient:  apiClient,
+		name:       "openshift-kube-apiserver",
+		query:      `sum(container_memory_usage_bytes{namespace="openshift-kube-apiserver", pod=~"kube-apiserver-.*"})`,
+		resultType: Memory,
+	}
+}
+
 func QueryEtcdMemoryUsage(apiClient prometheus.API) *BaseQuery {
 	return &BaseQuery{
 		apiClient:  apiClient,

@@ -22,23 +22,15 @@ func TestCreateSpace(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	t.Run("create space", func(t *testing.T) {
-		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(memberAwait.ClusterName))
-
-		// when
-		err := hostAwait.Client.Create(context.TODO(), space)
-
-		// then
-		// then
-		require.NoError(t, err)
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "appstudio")
+		// given & when & then
+		space := CreateAndVerifySpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
 			// along with its associated namespace
 
 			// when
-			err = hostAwait.Client.Delete(context.TODO(), space)
+			err := hostAwait.Client.Delete(context.TODO(), space)
 
 			// then
 			require.NoError(t, err)
@@ -51,71 +43,40 @@ func TestCreateSpace(t *testing.T) {
 		})
 	})
 
-	t.Run("failed to create space", func(t *testing.T) {
-
-		t.Run("missing target member cluster", func(t *testing.T) {
-			// given
-			space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio")
-
-			// when
-			err := hostAwait.Client.Create(context.TODO(), space)
-
-			// then
-			require.NoError(t, err)
-			space, err = hostAwait.WaitForSpace(space.Name,
-				UntilSpaceHasConditions(ProvisioningPending("unspecified target member cluster")),
-				UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValuePending))
-			require.NoError(t, err)
-
-			t.Run("delete space", func(t *testing.T) {
-				// when
-				err = hostAwait.Client.Delete(context.TODO(), space)
-
-				// then
-				require.NoError(t, err)
-				err = hostAwait.WaitUntilSpaceDeleted(space.Name)
-				require.NoError(t, err)
-			})
+	t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
+		// given & when
+		s := CreateSpace(t, awaitilities, WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
+			space.Spec.TargetCluster = "unknown"
 		})
 
-		t.Run("unknown target member cluster", func(t *testing.T) {
-			// given
-			s := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster("unknown"))
-			s.Spec.TargetCluster = "unknown"
+		// then
+		s, err := hostAwait.WaitForSpace(s.Name, UntilSpaceHasConditions(ProvisioningFailed("unknown target member cluster 'unknown'")))
+		require.NoError(t, err)
 
+		t.Run("unable to delete space", func(t *testing.T) {
 			// when
-			err := hostAwait.Client.Create(context.TODO(), s)
+			err = hostAwait.Client.Delete(context.TODO(), s)
 
-			// then
+			// then it should fail while the member cluster is unknown (ie, unreachable)
 			require.NoError(t, err)
-			s, err = hostAwait.WaitForSpace(s.Name, UntilSpaceHasConditions(ProvisioningFailed("unknown target member cluster 'unknown'")))
+			s, err = hostAwait.WaitForSpace(s.Name, UntilSpaceHasConditions(TerminatingFailed("cannot delete NSTemplateSet: unknown target member cluster: 'unknown'")))
 			require.NoError(t, err)
 
-			t.Run("unable to delete space", func(t *testing.T) {
+			t.Run("update target cluster to unblock deletion", func(t *testing.T) {
+
 				// when
-				err = hostAwait.Client.Delete(context.TODO(), s)
+				s, err = hostAwait.UpdateSpace(s.Name, func(s *toolchainv1alpha1.Space) {
+					s.Spec.TargetCluster = memberAwait.ClusterName
+				})
 
 				// then it should fail while the member cluster is unknown (ie, unreachable)
 				require.NoError(t, err)
-				s, err = hostAwait.WaitForSpace(s.Name, UntilSpaceHasConditions(TerminatingFailed("cannot delete NSTemplateSet: unknown target member cluster: 'unknown'")))
-				require.NoError(t, err)
 
-				t.Run("update target cluster to unblock deletion", func(t *testing.T) {
-
+				t.Run("space should be finally deleted", func(t *testing.T) {
 					// when
-					s, err = hostAwait.UpdateSpace(s.Name, func(s *toolchainv1alpha1.Space) {
-						s.Spec.TargetCluster = memberAwait.ClusterName
-					})
-
-					// then it should fail while the member cluster is unknown (ie, unreachable)
+					err = hostAwait.WaitUntilSpaceDeleted(s.Name)
+					// then
 					require.NoError(t, err)
-
-					t.Run("space should be finally deleted", func(t *testing.T) {
-						// when
-						err = hostAwait.WaitUntilSpaceDeleted(s.Name)
-						// then
-						require.NoError(t, err)
-					})
 				})
 			})
 		})
@@ -129,18 +90,12 @@ func TestSpaceRoles(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	// given
-	s := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "appstudio", WithTargetCluster(memberAwait.ClusterName))
-
-	// when
-	err := hostAwait.CreateWithCleanup(context.TODO(), s)
+	// given & when
+	s := CreateAndVerifySpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
 
 	// then
-	require.NoError(t, err)
 	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name, UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
-	// wait until NSTemplateSet has been created and Space is in `Ready` status
-	s = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, s.Name, "appstudio")
 
 	// given
 	adminTierTmpl := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-123456", "space-role-admin", "appstudio", "123456", []byte(spaceAdminTmpl))
@@ -390,28 +345,21 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", WithTargetCluster(memberAwait.ClusterName))
-
-	// when
-	err := hostAwait.CreateWithCleanup(context.TODO(), space)
-
-	// then
-	require.NoError(t, err)
-
-	space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "base")
+	//  when & then
+	space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait))
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
 		ctr := NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
 
 		// when
-		err = hostAwait.Client.Create(context.TODO(), ctr)
+		err := hostAwait.Client.Create(context.TODO(), ctr)
 
 		// then
 		require.NoError(t, err)
-		_, err := hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
+		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "advanced")
+		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "advanced")
 	})
 }
 
@@ -423,50 +371,20 @@ func TestRetargetSpace(t *testing.T) {
 	member1Await := awaitilities.Member1()
 	member2Await := awaitilities.Member2()
 
-	t.Run("to no other cluster", func(t *testing.T) {
-		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", WithTargetCluster(member1Await.ClusterName))
-		err := hostAwait.CreateWithCleanup(context.TODO(), space)
-		require.NoError(t, err)
-		// wait until Space has been provisioned on member-1
-		VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member1Await, space.Name, "base")
+	// wait until Space has been provisioned on member-1
+	space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await))
 
-		// when
-		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
-			s.Spec.TargetCluster = ""
-		})
-		require.NoError(t, err)
-
-		// then
-		_, err = hostAwait.WaitForSpace(space.Name, UntilSpaceHasConditions(ProvisioningPending("unspecified target member cluster")))
-		require.NoError(t, err)
-		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
-		require.NoError(t, err)
-		err = member2Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet is not created in member-2 cluster
-		require.NoError(t, err)
-
+	// when
+	space, err := hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
+		s.Spec.TargetCluster = member2Await.ClusterName
 	})
+	require.NoError(t, err)
 
-	t.Run("to another cluster", func(t *testing.T) {
-		// given
-		space := NewSpace(hostAwait.Namespace, GenerateName("oddity"), "base", WithTargetCluster(member1Await.ClusterName))
-		err := hostAwait.CreateWithCleanup(context.TODO(), space)
-		require.NoError(t, err)
-		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member1Await, space.Name, "base")
-
-		// when
-		space, err = hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
-			s.Spec.TargetCluster = member2Await.ClusterName
-		})
-		require.NoError(t, err)
-
-		// then
-		// wait until Space has been provisioned on member-1
-		space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member2Await, space.Name, "base")
-		err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
-		require.NoError(t, err)
-	})
+	// then
+	// wait until Space has been provisioned on member-1
+	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "base")
+	err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
+	require.NoError(t, err)
 }
 
 func ProvisioningPending(msg string) toolchainv1alpha1.Condition {
