@@ -414,7 +414,7 @@ func (s *registrationServiceTestSuite) TestUserSignupFoundWhenNamedWithEncodedUs
 
 	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
 	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
-	token0, err = authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithUsernameClaim("arnold"))
+	token0, err = authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithPreferredUsernameClaim("arnold"))
 	require.NoError(s.T(), err)
 	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK))
 	assert.Equal(s.T(), "", mp["compliantUsername"])
