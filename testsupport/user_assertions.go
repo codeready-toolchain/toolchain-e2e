@@ -11,6 +11,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -100,6 +101,19 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 			assert.NoError(t, err)
 		}
 	}
+
+	tier, err := hostAwait.WaitForNSTemplateTier(mur.Spec.TierName)
+	require.NoError(t, err)
+	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
+	require.NoError(t, err)
+
+	_, err = hostAwait.WaitForSpace(mur.Name,
+		wait.UntilSpaceHasTier(mur.Spec.TierName),
+		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
+		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
+		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
+	require.NoError(t, err)
 
 	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tierName)
 
