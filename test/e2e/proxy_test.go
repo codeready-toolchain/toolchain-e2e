@@ -203,9 +203,6 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 	preexistingUser := &userv1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: user.username,
-			Labels: map[string]string{
-				toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
-			},
 		},
 		Identities: []string{
 			ToIdentityName(user.identityID.String()),
@@ -216,9 +213,6 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 	preexistingIdentity := &userv1.Identity{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ToIdentityName(user.identityID.String()),
-			Labels: map[string]string{
-				toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
-			},
 		},
 		ProviderName:     "rhd",
 		ProviderUserName: user.username,

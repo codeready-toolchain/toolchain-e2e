@@ -1073,7 +1073,7 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) 
 	})
 }
 
-// UserWaitCriterion a struct to compare with a given MemberStatus
+// UserWaitCriterion a struct to compare with a given User
 type UserWaitCriterion struct {
 	Match func(*userv1.User) bool
 	Diff  func(*userv1.User) string
@@ -1138,12 +1138,12 @@ func WithUserLabel(key, value string) UserWaitCriterion {
 			return actual.Labels[key] == value
 		},
 		Diff: func(actual *userv1.User) string {
-			return fmt.Sprintf("expected Pod label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
+			return fmt.Sprintf("expected User label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
 		},
 	}
 }
 
-// IdentityWaitCriterion a struct to compare with a given MemberStatus
+// IdentityWaitCriterion a struct to compare with a given Identity
 type IdentityWaitCriterion struct {
 	Match func(*userv1.Identity) bool
 	Diff  func(*userv1.Identity) string
@@ -1188,7 +1188,7 @@ func WithIdentityLabel(key, value string) IdentityWaitCriterion {
 			return actual.Labels[key] == value
 		},
 		Diff: func(actual *userv1.Identity) string {
-			return fmt.Sprintf("expected Pod label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
+			return fmt.Sprintf("expected Identity label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
 		},
 	}
 }
