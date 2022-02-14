@@ -71,7 +71,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 
 	if tierName != "appstudio" {
 		// Verify provisioned User
-		_, err = memberAwait.WaitForUser(userAccount.Name)
+		_, err = memberAwait.WaitForUser(userAccount.Name, wait.WithUserLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue))
 		assert.NoError(t, err)
 
 		// Verify provisioned Identity
@@ -80,12 +80,12 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 			userID = fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.UserID)))
 		}
 
-		_, err = memberAwait.WaitForIdentity(ToIdentityName(userID))
+		_, err = memberAwait.WaitForIdentity(ToIdentityName(userID), wait.WithIdentityLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue))
 		assert.NoError(t, err)
 
 		// Verify the second identity
 		if encodedName != "" {
-			_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName))
+			_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName), wait.WithIdentityLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue))
 			assert.NoError(t, err)
 		}
 	} else {

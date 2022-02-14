@@ -13,6 +13,8 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const userNSParam = "CURRENT_USER_NAMESPACE"
+
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
 func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Scheme, username string, templatePaths []string) error {
@@ -33,7 +35,9 @@ func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Sc
 			return err
 		}
 		processor := ctemplate.NewProcessor(s)
-		objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{})
+		objsToProcess, err := processor.Process(tmpl.DeepCopy(), map[string]string{
+			userNSParam: userNS,
+		})
 		if err != nil {
 			return err
 		}
@@ -41,7 +45,7 @@ func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Sc
 	}
 
 	if len(combinedObjsToProcess) == 0 {
-		return fmt.Errorf("No objects found in templates %v", templatePaths)
+		return fmt.Errorf("no objects found in templates %v", templatePaths)
 	}
 
 	if err := templates.ApplyObjectsConcurrently(cl, s, combinedObjsToProcess, templates.NamespaceModifier(userNS)); err != nil {
