@@ -130,7 +130,7 @@ func UntilUserAccountHasLabelWithValue(key, value string) UserAccountWaitCriteri
 	}
 }
 
-// UntilUserAccountHasAnnotation checks if the UserAccount has the expected label
+// UntilUserAccountHasAnnotation checks if the UserAccount has the expected annotation
 func UntilUserAccountHasAnnotation(key, value string) UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
