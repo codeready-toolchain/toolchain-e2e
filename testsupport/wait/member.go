@@ -1156,7 +1156,7 @@ func UntilUserHasLabel(key, value string) UserWaitCriterion {
 	}
 }
 
-// UntilUserHasAnnotation checks if the User has the expected label
+// UntilUserHasAnnotation checks if the User has the expected annotation
 func UntilUserHasAnnotation(key, value string) UserWaitCriterion {
 	return UserWaitCriterion{
 		Match: func(actual *userv1.User) bool {
