@@ -130,6 +130,19 @@ func UntilUserAccountHasLabelWithValue(key, value string) UserAccountWaitCriteri
 	}
 }
 
+// UntilUserAccountHasAnnotation checks if the UserAccount has the expected label
+func UntilUserAccountHasAnnotation(key, value string) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			actualValue, exist := actual.Annotations[key]
+			return exist && actualValue == value
+		},
+		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
+			return fmt.Sprintf("expected UserAccount annotation '%s' to be '%s'\nbut it was '%s'", key, value, actual.Annotations[key])
+		},
+	}
+}
+
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
@@ -1131,14 +1144,27 @@ func (a *MemberAwaitility) WaitForUser(name string, criteria ...UserWaitCriterio
 	return user, err
 }
 
-// WithUserLabel checks if the User has the expected label
-func WithUserLabel(key, value string) UserWaitCriterion {
+// UntilUserHasLabel checks if the User has the expected label
+func UntilUserHasLabel(key, value string) UserWaitCriterion {
 	return UserWaitCriterion{
 		Match: func(actual *userv1.User) bool {
 			return actual.Labels[key] == value
 		},
 		Diff: func(actual *userv1.User) string {
 			return fmt.Sprintf("expected User label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
+		},
+	}
+}
+
+// UntilUserHasAnnotation checks if the User has the expected label
+func UntilUserHasAnnotation(key, value string) UserWaitCriterion {
+	return UserWaitCriterion{
+		Match: func(actual *userv1.User) bool {
+			actualValue, exist := actual.Annotations[key]
+			return exist && actualValue == value
+		},
+		Diff: func(actual *userv1.User) string {
+			return fmt.Sprintf("expected User annotation '%s' to be '%s'\nbut it was '%s'", key, value, actual.Annotations[key])
 		},
 	}
 }
@@ -1181,8 +1207,8 @@ func (a *MemberAwaitility) WaitForIdentity(name string, criteria ...IdentityWait
 	return identity, err
 }
 
-// WithIdentityLabel checks if the Identity has the expected label
-func WithIdentityLabel(key, value string) IdentityWaitCriterion {
+// UntilIdentityHasLabel checks if the Identity has the expected label
+func UntilIdentityHasLabel(key, value string) IdentityWaitCriterion {
 	return IdentityWaitCriterion{
 		Match: func(actual *userv1.Identity) bool {
 			return actual.Labels[key] == value
