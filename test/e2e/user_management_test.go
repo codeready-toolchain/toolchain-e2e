@@ -357,8 +357,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				if err != nil {
 					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
 					require.EqualError(t, err, `masteruserrecords.toolchain.dev.openshift.com "fulldeactivationlifecycle" not found`)
-				} else {
-					require.NoError(t, err)
 				}
 
 				// The user should now be set to deactivated
