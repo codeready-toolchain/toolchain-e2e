@@ -125,11 +125,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := murMember1.Spec.UserAccounts[0].SyncIndex
 		MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name)
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
-			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
-			wait.UntilMasterUserRecordHasSyncIndex(murSyncIndex, true))
+			wait.UntilMasterUserRecordHasCondition(Provisioned()),
+			wait.UntilMasterUserRecordHasTierName(baseDeactivationDisabledTier.Name)) // ignore other conditions, such as notification sent, etc.
 		require.NoError(s.T(), err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
