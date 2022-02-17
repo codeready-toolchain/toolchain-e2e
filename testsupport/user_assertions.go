@@ -107,7 +107,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
-	_, err = hostAwait.WaitForSpace(mur.Name,
+	space, err := hostAwait.WaitForSpace(mur.Name,
 		wait.UntilSpaceHasTier(mur.Spec.TierName),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
