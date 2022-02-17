@@ -170,16 +170,16 @@ func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, 
 	provisionedMur, err := hostAwait.WaitForMasterUserRecord(murName, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 	require.NoError(t, err)
 
-	checkMURMigrated(t, hostAwait, provisionedMur)
-
 	signup, err := hostAwait.WaitForUserSignup(provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])
 	require.NoError(t, err)
+
+	checkMURMigrated(t, hostAwait, signup, provisionedMur)
 
 	return signup
 }
 
 // checkMURMigrated ensures that all MURs are correctly migrated
-func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord) {
+func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, signup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
 	// should have tier name set
 	require.NotEmpty(t, mur.Spec.TierName)
 
@@ -199,6 +199,7 @@ func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolcha
 	// space should be assigned and provisioned with correct tier name
 	_, err = hostAwait.WaitForSpace(mur.Name,
 		wait.UntilSpaceHasTier(mur.Spec.TierName),
+		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, signup.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
