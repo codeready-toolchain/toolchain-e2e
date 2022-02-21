@@ -43,6 +43,9 @@ type SignupRequest interface {
 	// the Resources() function to return a non-nil value for its second return parameter.
 	EnsureMUR() SignupRequest
 
+	// WaitForMUR will wait until MasterUserRecord is created
+	WaitForMUR() SignupRequest
+
 	// Execute executes the request against the Registration service REST endpoint.  This function may only be called
 	// once, and must be called after all other functions EXCEPT for Resources()
 	Execute() SignupRequest
@@ -100,6 +103,7 @@ type signupRequest struct {
 	t                    *testing.T
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
+	waitForMUR           bool
 	manuallyApprove      bool
 	verificationRequired bool
 	identityID           *uuid.UUID
@@ -142,6 +146,11 @@ func (r *signupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1
 
 func (r *signupRequest) EnsureMUR() SignupRequest {
 	r.ensureMUR = true
+	return r
+}
+
+func (r *signupRequest) WaitForMUR() SignupRequest {
+	r.waitForMUR = true
 	return r
 }
 
@@ -246,6 +255,12 @@ func (r *signupRequest) Execute() SignupRequest {
 	}
 
 	r.userSignup = userSignup
+
+	if r.waitForMUR {
+		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
+		require.NoError(r.t, err)
+		r.mur = mur
+	}
 
 	if r.ensureMUR {
 		expectedTier := "base"
