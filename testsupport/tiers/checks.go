@@ -852,7 +852,9 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
-			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("100")
+			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("50")
+			require.NoError(t, err)
+			hard[count("servicebindings.servicebinding.io")], err = resource.ParseQuantity("50")
 			require.NoError(t, err)
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
