@@ -863,7 +863,7 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.Resource
 				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
 		Diff: func(actual *quotav1.ClusterResourceQuota) string {
-			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual))
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
 		},
 	}
 }
