@@ -39,6 +39,7 @@ var (
 	defaultTemplateUsers int
 	customTemplateUsers  int
 	skipCSVGen           bool
+	interactive          bool
 	operatorsLimit       int
 	idlerTimeout         string
 	token                string
@@ -73,6 +74,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&defaultTemplateUsers, cfg.DefaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
 	cmd.Flags().IntVarP(&customTemplateUsers, cfg.CustomTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
+	cmd.Flags().BoolVar(&interactive, "interactive", true, "if user is prompted to confirm all actions")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
 	cmd.Flags().StringVarP(&token, "token", "t", "", "Openshift API token")
@@ -161,7 +163,7 @@ func setup(cmd *cobra.Command, args []string) { // nolint:gocyclo
 	}
 
 	term.Infof("📋 template list: %s\n", templateListStr)
-	if !term.PromptBoolf("👤 provision %d users in batches of %d on %s using the templates listed above", numberOfUsers, userBatches, config.Host) {
+	if interactive && !term.PromptBoolf("👤 provision %d users in batches of %d on %s using the templates listed above", numberOfUsers, userBatches, config.Host) {
 		return
 	}
 
