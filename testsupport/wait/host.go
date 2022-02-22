@@ -726,13 +726,21 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, cri
 		return nil, err
 	}
 
-	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
+	// now, check that the `templateRef` field is set for each namespace, space role and clusterResources (if applicable)
 	// and that there's a TierTemplate resource with the same name
-	for i, ns := range tier.Spec.Namespaces {
-		if ns.TemplateRef == "" {
+	for i, tmpl := range tier.Spec.Namespaces {
+		if tmpl.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
 		}
-		if _, err := a.WaitForTierTemplate(ns.TemplateRef); err != nil {
+		if _, err := a.WaitForTierTemplate(tmpl.TemplateRef); err != nil {
+			return nil, err
+		}
+	}
+	for role, tmpl := range tier.Spec.SpaceRoles {
+		if tmpl.TemplateRef == "" {
+			return nil, fmt.Errorf("missing 'templateRef' for role '%s' in NSTemplateTier '%s'", role, tier.Name)
+		}
+		if _, err := a.WaitForTierTemplate(tmpl.TemplateRef); err != nil {
 			return nil, err
 		}
 	}

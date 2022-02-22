@@ -451,8 +451,10 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
-		for _, c := range criteria {
-			a.T.Logf(c.Diff(ns))
+		if ns != nil {
+			for _, c := range criteria {
+				a.T.Logf(c.Diff(ns))
+			}
 		}
 		return nil, err
 	}

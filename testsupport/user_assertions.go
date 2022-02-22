@@ -110,7 +110,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		}
 	}
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tierName)
+	tiers.VerifyNSTemplateSetForUser(t, hostAwait, memberAwait, userAccount, tierName)
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)

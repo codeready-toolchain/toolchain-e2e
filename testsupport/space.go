@@ -115,12 +115,12 @@ func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitili
 
 // Same as VerifyResourcesProvisionedForSpaceWithTiers but reuses the provided tier name for the namespace and cluster resources names
 func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName string) *toolchainv1alpha1.Space {
-	return VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, targetCluster, spaceName, tierName, tierName, tierName)
+	return VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, targetCluster, spaceName, tierName, tierName)
 }
 
 // VerifyResourcesProvisionedForSpaceWithTiers verifies that the Space for the given name is provisioned with all needed labels and conditions.
 // It also checks the NSTemplateSet and that all related namespace-scoped resources are provisoned for the given aliasTierNamespaces, and cluster scoped resources for aliasTierClusterResources.
-func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName, aliasTierNamespaces, aliasTierClusterResources string) *toolchainv1alpha1.Space {
+func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName, tierAlias string) *toolchainv1alpha1.Space {
 	hostAwait := awaitilities.Host()
 
 	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
@@ -150,16 +150,16 @@ func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait
 	}
 
 	// get refs & checks
-	templateRefs, namespacesChecks, clusterResourcesChecks := tiers.GetRefsAndChecksForTiers(t, hostAwait, tierName, aliasTierNamespaces, aliasTierClusterResources)
+	templateRefs, checks := tiers.GetRefsAndChecksForTiers(t, hostAwait, tierName, tierAlias)
 
 	// get NSTemplateSet
 	nsTemplateSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tierName), wait.UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
-	tiers.VerifyGivenNsTemplateSet(t, targetCluster, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
+	tiers.VerifyNSTemplateSet(t, targetCluster, nsTemplateSet, checks, templateRefs)
 
-	if aliasTierNamespaces == "appstudio" {
+	if tierAlias == "appstudio" {
 		// checks that namespace exists and has the expected label(s)
 		ns, err := targetCluster.WaitForNamespace(space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
