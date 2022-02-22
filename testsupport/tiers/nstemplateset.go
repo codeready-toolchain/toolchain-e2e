@@ -41,7 +41,7 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 		require.NoError(t, err)
 		for _, check := range checks.GetNamespaceObjectChecks(nsType) {
 			namespaceObjectChecks.Add(1)
-			go func(checkNamespaceObjects namespaceObjectCheck) {
+			go func(checkNamespaceObjects namespaceObjectsCheck) {
 				defer namespaceObjectChecks.Done()
 				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)
@@ -52,7 +52,7 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 			require.NoError(t, err)
 			for _, check := range checks.GetSpaceRoleObjectChecks(role) {
 				spaceroleObjectChecks.Add(1)
-				go func(check namespaceObjectCheck) {
+				go func(check namespaceObjectsCheck) {
 					defer spaceroleObjectChecks.Done()
 					check(t, ns, memberAwait, nsTmplSet.Name)
 				}(check)
@@ -64,7 +64,7 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 	if expectedRevisions.ClusterResources != nil {
 		for _, check := range checks.GetClusterObjectChecks() {
 			clusterObjectChecks.Add(1)
-			go func(check clusterObjectCheck) {
+			go func(check clusterObjectsCheck) {
 				defer clusterObjectChecks.Done()
 				check(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
 			}(check)
