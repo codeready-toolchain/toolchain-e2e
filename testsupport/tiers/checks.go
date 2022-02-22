@@ -835,7 +835,9 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[v1.ResourceName]resource.Quantity)
-			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("100")
+			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("50")
+			require.NoError(t, err)
+			hard[count("servicebindings.servicebinding.io")], err = resource.ParseQuantity("50")
 			require.NoError(t, err)
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
@@ -863,7 +865,7 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.Resource
 				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
 		Diff: func(actual *quotav1.ClusterResourceQuota) string {
-			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual))
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
 		},
 	}
 }
