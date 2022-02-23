@@ -124,6 +124,8 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
 	require.NoError(t, err)
 
+	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
+
 	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tierName)
 
 	// Get member cluster to verify that it was used to provision user accounts

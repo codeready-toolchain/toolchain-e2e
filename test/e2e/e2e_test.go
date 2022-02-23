@@ -329,6 +329,8 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, space)
 
+		VerifySpaceBinding(t, hostAwait, laraUserName, space.Name, "admin")
+
 		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name, wait.UntilUserSignupIsBeingDeleted())
 		require.NoError(t, err)
 		require.NotEmpty(t, userSignup)

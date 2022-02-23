@@ -1620,3 +1620,107 @@ func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
 		return false, nil
 	})
 }
+
+type SpaceBindingWaitCriterion struct {
+	Match func(*toolchainv1alpha1.SpaceBinding) bool
+	Diff  func(*toolchainv1alpha1.SpaceBinding) string
+}
+
+func matchSpaceBindingWaitCriterion(actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+// WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
+	var spacebinding *toolchainv1alpha1.SpaceBinding
+	labels := map[string]string{
+		toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
+		toolchainv1alpha1.SpaceBindingSpaceLabelKey:            spaceName,
+	}
+
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the SpaceBinding from the host namespace
+		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
+		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+			if len(spaceBindingList.Items) == 0 {
+				return false, nil
+			}
+			return false, err
+		}
+		spacebinding = &spaceBindingList.Items[0]
+		return matchSpaceBindingWaitCriterion(spacebinding, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceBindingWaitCriterionDiffs(spacebinding, criteria...)
+	}
+	return spacebinding, err
+}
+
+func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find SpaceBinding\n")
+	} else {
+		buf.WriteString("failed to find SpaceBinding with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	// also include SpaceBindings resources in the host namespace, to help troubleshooting
+	a.listAndPrint("SpaceBindings", a.Namespace, &toolchainv1alpha1.SpaceBindingList{})
+	a.T.Log(buf.String())
+}
+
+// UntilSpaceBindingHasMurName returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has the expected MUR name set in its Spec
+func UntilSpaceBindingHasMurName(expected string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Spec.MasterUserRecord == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected tier name to match:\n%s", Diff(expected, actual.Spec.MasterUserRecord))
+		},
+	}
+}
+
+// UntilSpaceBindingHasSpaceName returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has the expected MUR name set in its Spec
+func UntilSpaceBindingHasSpaceName(expected string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Spec.Space == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected tier name to match:\n%s", Diff(expected, actual.Spec.Space))
+		},
+	}
+}
+
+// UntilSpaceBindingHasSpaceRole returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has the expected SpaceRole name set in its Spec
+func UntilSpaceBindingHasSpaceRole(expected string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Spec.SpaceRole == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected tier name to match:\n%s", Diff(expected, actual.Spec.SpaceRole))
+		},
+	}
+}
