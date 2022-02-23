@@ -153,6 +153,7 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 
 // WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions
 func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
+	a.T.Logf("waiting for MasterUserRecord '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var mur *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.MasterUserRecord{}
@@ -1478,6 +1479,19 @@ func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected space to contain label %s:%s:\n%s", key, value, spew.Sdump(actual.Labels))
+		},
+	}
+}
+
+// UntilSpaceHasCreationTimestampOlderThan returns a `SpaceWaitCriterion` which checks that the given
+// Space has been created before the given time
+func UntilSpaceHasCreationTimestampOlderThan(t time.Time) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return t.After(actual.CreationTimestamp.Time)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected space to be created after %s; Actual creation timestamp %s", t.String(), actual.CreationTimestamp.String())
 		},
 	}
 }
