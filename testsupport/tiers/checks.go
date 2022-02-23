@@ -994,7 +994,7 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"spiaccesstokenbindings"},
-					Verbs:     []string{"create", "get", "list", "watch"},
+					Verbs:     []string{"create", "get", "list", "watch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
