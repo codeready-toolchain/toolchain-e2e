@@ -45,7 +45,7 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
 		// given & when
-		s := CreateSpace(t, awaitilities, WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
+		s, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
 			space.Spec.TargetCluster = "unknown"
 		})
 
