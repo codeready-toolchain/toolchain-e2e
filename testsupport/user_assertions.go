@@ -71,7 +71,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
 			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
-		assert.NoError(t, err)
+		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
 		// Verify provisioned Identity
 		identityName := identity.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()
@@ -79,14 +79,14 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		_, err = memberAwait.WaitForIdentity(identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-		assert.NoError(t, err)
+		assert.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
 
 		// Verify the second identity
 		if encodedName != "" {
 			_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-			assert.NoError(t, err)
+			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", ToIdentityName(encodedName)))
 		}
 	} else {
 		// we don't expect User nor Identity resources to be present for AppStudio tier
