@@ -33,7 +33,6 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 
 	// Verify all namespaces and objects within
 	namespaceObjectChecks := sync.WaitGroup{}
-	spaceroleObjectChecks := sync.WaitGroup{}
 	for _, templateRef := range expectedRevisions.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)

@@ -15,7 +15,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -165,11 +164,11 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base")
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "base")
 
-	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces)
+	// when updating the "cheesecakeTier" tier with the "advanced" template refs
 	updateTemplateTier(t, hostAwait, "cheesecake", "advanced")
-	// and when updating the "cookie" tier with the "baseextendedidling" template refs (ie, same number of namespaces)
+	// and when updating the "cookie" tier with the "baseextendedidling" template refs
 	updateTemplateTier(t, hostAwait, "cookie", "baseextendedidling")
-	// and when updating the "chocolate" tier to the "advanced" template for Namespace refs
+	// and when updating the "chocolate" tier to the "advanced" template
 	updateTemplateTier(t, hostAwait, "chocolate", "advanced")
 
 	// then
@@ -180,7 +179,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
 	// cheesecake tier
 	// there should be 2 entries in the status.history (1 create + 1 update)
-	verifyStatus(t, hostAwait, "cheesecake", 3)
+	verifyStatus(t, hostAwait, "cheesecake", 2)
 
 	// cookie tier
 	// there should be 2 entries in the status.history (1 create + 1 update)
@@ -287,6 +286,7 @@ func updateTemplateTier(t *testing.T, hostAwait *HostAwaitility, tierName string
 	tier := getTier(t, hostAwait, tierName)
 	if tierAlias != "" {
 		baseTier := getTier(t, hostAwait, tierAlias)
+		SetClusterTierTemplateFromTier(t, hostAwait, tier, baseTier)
 		SetNamespaceTierTemplatesFromTier(t, hostAwait, tier, baseTier)
 	}
 	err := hostAwait.Client.Update(context.TODO(), tier)
