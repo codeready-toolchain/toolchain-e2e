@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"regexp"
 	"testing"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/identity"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -17,12 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const (
-	dns1123Value string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
-)
-
-var dns1123ValueRegexp = regexp.MustCompile("^" + dns1123Value + "$")
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
@@ -79,12 +74,9 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		assert.NoError(t, err)
 
 		// Verify provisioned Identity
-		userID := userAccount.Spec.UserID
-		if !dns1123ValueRegexp.MatchString(userAccount.Spec.UserID) {
-			userID = fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.UserID)))
-		}
+		identityName := identity.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()
 
-		_, err = memberAwait.WaitForIdentity(ToIdentityName(userID),
+		_, err = memberAwait.WaitForIdentity(identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 		assert.NoError(t, err)
