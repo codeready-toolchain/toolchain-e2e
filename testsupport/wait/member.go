@@ -1206,7 +1206,17 @@ func (a *MemberAwaitility) WaitForIdentity(name string, criteria ...IdentityWait
 		}
 		return false, nil
 	})
+	if err != nil {
+		a.printIdentities(name)
+	}
 	return identity, err
+}
+
+func (a *MemberAwaitility) printIdentities(expectedName string) {
+	buf := &strings.Builder{}
+	buf.WriteString(fmt.Sprintf("failed to find Identity '%s'\n", expectedName))
+	buf.WriteString(a.listAndReturnContent("Identity", "", &userv1.IdentityList{}))
+	a.T.Log(buf.String())
 }
 
 // UntilIdentityHasLabel checks if the Identity has the expected label
