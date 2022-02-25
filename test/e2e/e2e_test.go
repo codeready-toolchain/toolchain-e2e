@@ -451,4 +451,8 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
+	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
+		// TODO
+	})
+
 }
