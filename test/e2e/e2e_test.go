@@ -270,8 +270,12 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
 		// given
+		laraUserName := "laracroft"
+		userNamespace := "laracroft-dev"
+		cmName := "test-useraccount-delete-1"
+
 		laraSignUp, _ := NewSignupRequest(t, awaitilities).
-			Username("laracroft").
+			Username(laraUserName).
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
@@ -281,9 +285,9 @@ func TestE2EFlow(t *testing.T) {
 
 		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
 
-		laraUserName := "laracroft"
-		userNamespace := "laracroft-dev"
-		cmName := "test-useraccount-delete-1"
+		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "base")
+
+		spaceBinding := VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
 
 		// Create a configmap with finalizer in user's namespace, which will block the deletion of namespace.
 		cm := &corev1.ConfigMap{
@@ -329,11 +333,24 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, space)
 
-		VerifySpaceBinding(t, hostAwait, laraUserName, space.Name, "admin")
+		t.Run("verify deleted", func(t *testing.T) {
+			// UserAccount should be deleted when MUR is deleted
+			err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+			require.NoError(t, err)
 
-		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name, wait.UntilUserSignupIsBeingDeleted())
-		require.NoError(t, err)
-		require.NotEmpty(t, userSignup)
+			// MUR should be deleted when UserSignup is deleted
+			err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
+			require.NoError(t, err)
+
+			// SpaceBinding should be deleted (by spacebinding cleanup controller) when MUR is deleted
+			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
+			require.NoError(t, err)
+
+			// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
+			// the behaviour is consistent for both AppStudio & DevSandbox
+			err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+			require.NoError(t, err)
+		})
 
 		t.Run("remove finalizer", func(t *testing.T) {
 			// when removing the finalizer from the CM
@@ -342,20 +359,14 @@ func TestE2EFlow(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// then check all are deleted
+			// then check remaining resources are deleted
 			err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
 			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
 
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
 			assert.NoError(t, err, "NSTemplateSet is not deleted")
 
-			err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
-			require.NoError(t, err)
-
-			err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-			require.NoError(t, err)
-
-			err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+			err = hostAwait.WaitUntilSpaceDeleted(laraUserName)
 			require.NoError(t, err)
 		})
 
@@ -429,8 +440,11 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilIdentityDeleted(johnsmithName)
 		assert.NoError(t, err, "Identity is not deleted")
 
+		err = hostAwait.WaitUntilSpaceDeleted(johnsmithName)
+		require.NoError(t, err)
+
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
-		assert.NoError(t, err, "NSTemplateSet id not deleted")
+		assert.NoError(t, err, "NSTemplateSet is not deleted")
 
 		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(johnsmithName)
 		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")

@@ -47,6 +47,10 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	err = hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 	require.NoError(t, err)
 
+	// Wait for the notification to be deleted because it will likely be deleted before the space. The space will only be deleted after 30 seconds.
+	err = awaitilities.Host().WaitUntilSpaceDeleted(userSignup.Status.CompliantUsername)
+	require.NoError(t, err)
+
 	return userSignup
 }
 

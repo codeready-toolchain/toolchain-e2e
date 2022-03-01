@@ -1597,7 +1597,7 @@ func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
 func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
 	var s *toolchainv1alpha1.Space
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
 		if err := a.Client.Get(context.TODO(),
 			types.NamespacedName{
@@ -1661,10 +1661,10 @@ func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria
 		// retrieve the SpaceBinding from the host namespace
 		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
 		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
-			if len(spaceBindingList.Items) == 0 {
-				return false, nil
-			}
 			return false, err
+		}
+		if len(spaceBindingList.Items) == 0 {
+			return false, nil
 		}
 		spacebinding = &spaceBindingList.Items[0]
 		return matchSpaceBindingWaitCriterion(spacebinding, criteria...), nil

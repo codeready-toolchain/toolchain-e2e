@@ -98,7 +98,7 @@ func (r *SetupMigrationRunner) prepareDeactivatedUser() {
 	r.T.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 	// verify that MUR is deleted
-	err = hostAwait.WaitUntilMasterUserRecordDeleted(userSignup.Status.CompliantUsername)
+	err = hostAwait.WaitUntilMasterUserRecordDeleted(userSignup.Status.CompliantUsername) // TODO wait for space deletion too after Space migration is done
 	require.NoError(r.T, err)
 }
 

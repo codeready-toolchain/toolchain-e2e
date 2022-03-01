@@ -150,6 +150,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// The user should not be deactivated so the MUR should not be deleted, expect an error
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
 		require.Error(s.T(), err)
+
+		// The space should not be deleted either, expect an error
+		err = hostAwait.WaitUntilSpaceDeleted(murMember1.Name)
+		require.Error(t, err)
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
@@ -195,6 +199,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// The non-excluded user should be deactivated
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
 		require.NoError(s.T(), err)
+
+		err = hostAwait.WaitUntilSpaceDeleted(murMember1.Name)
+		require.NoError(t, err)
+
 		userSignupMember1, err = hostAwait.WaitForUserSignup(userSignupMember1.Name,
 			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), Deactivated())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
@@ -366,6 +374,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				// The MUR should also be deleted
 				err = hostAwait.WaitUntilMasterUserRecordDeleted(murName)
 				require.NoError(s.T(), err)
+
+				err = hostAwait.WaitUntilSpaceDeleted(murName)
+				require.NoError(t, err)
 			})
 		})
 	})
@@ -433,6 +444,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		err = hostAwait.WaitUntilMasterUserRecordDeleted("testuser" + id)
 		require.NoError(s.T(), err)
 
+		err = hostAwait.WaitUntilSpaceDeleted("testuser" + id)
+		require.NoError(t, err)
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {

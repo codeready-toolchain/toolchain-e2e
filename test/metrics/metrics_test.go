@@ -63,7 +63,11 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 			states.SetDeactivated(usersignup, true)
 		})
 		require.NoError(t, err)
+
 		err = hostAwait.WaitUntilMasterUserRecordDeleted(username)
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilSpaceDeleted(username)
 		require.NoError(t, err)
 	}
 
@@ -113,7 +117,11 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 				states.SetDeactivated(usersignup, true)
 			})
 			require.NoError(t, err)
+
 			err = hostAwait.WaitUntilMasterUserRecordDeleted(username)
+			require.NoError(t, err)
+
+			err = hostAwait.WaitUntilSpaceDeleted(username)
 			require.NoError(t, err)
 
 			// reactivate the user
