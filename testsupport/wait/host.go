@@ -1476,14 +1476,15 @@ func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
 }
 
 // UntilSpaceHasCreationTimestampOlderThan returns a `SpaceWaitCriterion` which checks that the given
-// Space has been created before the given time
-func UntilSpaceHasCreationTimestampOlderThan(t time.Time) SpaceWaitCriterion {
+// Space has a timestamp that has elapsed the provided difference duration
+func UntilSpaceHasCreationTimestampOlderThan(expectedElapsedTime time.Duration) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
+			t := time.Now().Add(expectedElapsedTime)
 			return t.After(actual.CreationTimestamp.Time)
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
-			return fmt.Sprintf("expected space to be created after %s; Actual creation timestamp %s", t.String(), actual.CreationTimestamp.String())
+			return fmt.Sprintf("expected space to be created after %s; Actual creation timestamp %s", expectedElapsedTime.String(), actual.CreationTimestamp.String())
 		},
 	}
 }
