@@ -45,18 +45,7 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)
 		}
-		// space roles apply to all namespaces
-		for _, templateRef := range expectedRevisions.SpaceRoles {
-			_, role, _, err := wait.Split(templateRef)
-			require.NoError(t, err)
-			for _, check := range checks.GetSpaceRoleObjectChecks(role) {
-				spaceroleObjectChecks.Add(1)
-				go func(check namespaceObjectsCheck) {
-					defer spaceroleObjectChecks.Done()
-					check(t, ns, memberAwait, nsTmplSet.Name)
-				}(check)
-			}
-		}
+
 	}
 
 	clusterObjectChecks := sync.WaitGroup{}
@@ -70,7 +59,6 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 		}
 	}
 	namespaceObjectChecks.Wait()
-	spaceroleObjectChecks.Wait()
 	clusterObjectChecks.Wait()
 }
 
