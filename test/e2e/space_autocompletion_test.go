@@ -19,14 +19,15 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	memberAwait1 := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 	// TODO: we need to create some users to be able to limit the capacity of the clusters. The code won't be needed as soon as we start counting Spaces instead of UserAccounts https://issues.redhat.com/browse/CRT-1427
-	NewSignupRequest(t, awaitilities).
+	_, mur := NewSignupRequest(t, awaitilities).
 		Username("for-member1").
 		Email("for-member1@redhat.com").
 		TargetCluster(memberAwait1).
 		ManuallyApprove().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		EnsureMUR().
-		Execute()
+		Execute().
+		Resources()
 	NewSignupRequest(t, awaitilities).
 		Username("for-member2").
 		Email("for-member2@redhat.com").
@@ -43,7 +44,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			testconfig.AutomaticApproval().ResourceCapacityThreshold(1))
 
 		// when
-		space := CreateSpace(t, awaitilities, WithTierName(""))
+		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithTierName(""))
 
 		// then
 		space = waitUntilSpaceIsPendingCluster(t, hostAwait, space.Name)
@@ -66,11 +67,11 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
 
 		// when
-		space1 := CreateSpace(t, awaitilities, WithName("space-waitinglist1"))
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist1"))
 
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		space2 := CreateSpace(t, awaitilities, WithName("space-waitinglist2"))
+		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist2"))
 
 		// then
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
@@ -113,7 +114,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().MaxNumberOfUsers(0, memberLimits...))
 
 		// when
-		space1 := CreateSpace(t, awaitilities, WithName("space-multimember-1"))
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space1, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
@@ -132,14 +133,15 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().MaxNumberOfUsers(0, memberLimits...))
 
 			// when
-			space2 := CreateSpace(t, awaitilities, WithName("space-multimember-2"))
+			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-2"))
 
 			// then
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
-				CreateAndVerifySpace(t, awaitilities, WithName("space-multimember-3"), WithTargetCluster(memberAwait1))
+				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1))
+				VerifyResourcesProvisionedForSpace(t, awaitilities, space3)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			})

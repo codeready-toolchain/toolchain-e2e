@@ -74,17 +74,36 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 }
 
 // CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
-func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
+// It also automatically provisions MasterUserRecord and creates SpaceBinding for it
+func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space := NewSpace(awaitilities, opts...)
 
 	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
-	return space
+
+	// we need to  create the MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
+	signup, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
+
+	return space, signup, spaceBinding
+}
+
+// CreateSpaceWithBinding initializes a new Space object using the NewSpace function, and then creates it in the cluster
+// It also automatically creates SpaceBinding for it and for the given MasterUserRecord
+func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
+	space := NewSpace(awaitilities, opts...)
+
+	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
+	require.NoError(t, err)
+
+	// we need to  create the SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
+	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+
+	return space, spaceBinding
 }
 
 // CreateAndVerifySpace does the same as CreateSpace plus it also verifies the provisioned resources in the cluster using function VerifyResourcesProvisionedForSpace
 func CreateAndVerifySpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
-	space := CreateSpace(t, awaitilities, opts...)
+	space, _, _ := CreateSpace(t, awaitilities, opts...)
 	return VerifyResourcesProvisionedForSpace(t, awaitilities, space)
 }
 
@@ -168,4 +187,27 @@ func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait
 	}
 
 	return space
+}
+
+func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+	username := "for-space-" + space.Name
+	builder := NewSignupRequest(t, awaitilities).
+		Username(username).
+		Email(username + "@acme.com").
+		ManuallyApprove().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		WaitForMUR()
+	if !cleanup {
+		builder.DisableCleanup()
+	}
+	signup, mur := builder.Execute().Resources()
+
+	var binding *toolchainv1alpha1.SpaceBinding
+	if cleanup {
+		binding = CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+	} else {
+		binding = CreateSpaceBindingWithoutCleanup(t, awaitilities.Host(), mur, space, "admin")
+	}
+
+	return signup, binding
 }

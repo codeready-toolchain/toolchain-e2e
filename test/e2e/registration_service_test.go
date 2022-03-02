@@ -376,16 +376,18 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		}
 
 		for i, userID := range userIDs {
-			identity := authsupport.NewIdentity()
-			emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
-			emailClaim := authsupport.WithEmailClaim(emailValue)
-			t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
-			require.NoError(s.T(), err)
+			s.Run(fmt.Sprintf("for User ID = %s", userID), func() {
+				identity := authsupport.NewIdentity()
+				emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
+				emailClaim := authsupport.WithEmailClaim(emailValue)
+				t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
+				require.NoError(s.T(), err)
 
-			// Signup a new user
-			userSignup := signupUser(t, emailValue, encodedUserIDs[i], identity)
+				// Signup a new user
+				userSignup := signupUser(t, emailValue, encodedUserIDs[i], identity)
 
-			require.Equal(s.T(), userID, userSignup.Spec.Userid)
+				require.Equal(s.T(), userID, userSignup.Spec.Userid)
+			})
 		}
 	})
 }

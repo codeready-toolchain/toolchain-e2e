@@ -130,6 +130,19 @@ func UntilUserAccountHasLabelWithValue(key, value string) UserAccountWaitCriteri
 	}
 }
 
+// UntilUserAccountHasAnnotation checks if the UserAccount has the expected annotation
+func UntilUserAccountHasAnnotation(key, value string) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			actualValue, exist := actual.Annotations[key]
+			return exist && actualValue == value
+		},
+		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
+			return fmt.Sprintf("expected UserAccount annotation '%s' to be '%s'\nbut it was '%s'", key, value, actual.Annotations[key])
+		},
+	}
+}
+
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
 // USerAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
@@ -1073,8 +1086,40 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) 
 	})
 }
 
+// UserWaitCriterion a struct to compare with a given User
+type UserWaitCriterion struct {
+	Match func(*userv1.User) bool
+	Diff  func(*userv1.User) string
+}
+
+func matchUserWaitCriterion(actual *userv1.User, criteria ...UserWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *MemberAwaitility) printUserWaitCriterionDiffs(actual *userv1.User, criteria ...UserWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find User\n")
+		buf.WriteString(a.listAndReturnContent("User", actual.Namespace, &userv1.UserList{}))
+	} else {
+		buf.WriteString("failed to find User with matching criteria:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	a.T.Log(buf.String())
+}
+
 // WaitForUser waits until there is a User with the given name available
-func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
+func (a *MemberAwaitility) WaitForUser(name string, criteria ...UserWaitCriterion) (*userv1.User, error) {
 	a.T.Logf("waiting for User '%s'", name)
 	user := &userv1.User{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -1085,16 +1130,62 @@ func (a *MemberAwaitility) WaitForUser(name string) (*userv1.User, error) {
 			}
 			return false, err
 		}
+		if !matchUserWaitCriterion(user, criteria...) {
+			return false, nil
+		}
 		if user.Name != "" && len(user.Identities) > 0 {
 			return true, nil
 		}
 		return false, nil
 	})
+	if err != nil {
+		a.printUserWaitCriterionDiffs(user, criteria...)
+	}
 	return user, err
 }
 
+// UntilUserHasLabel checks if the User has the expected label
+func UntilUserHasLabel(key, value string) UserWaitCriterion {
+	return UserWaitCriterion{
+		Match: func(actual *userv1.User) bool {
+			return actual.Labels[key] == value
+		},
+		Diff: func(actual *userv1.User) string {
+			return fmt.Sprintf("expected User label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
+		},
+	}
+}
+
+// UntilUserHasAnnotation checks if the User has the expected annotation
+func UntilUserHasAnnotation(key, value string) UserWaitCriterion {
+	return UserWaitCriterion{
+		Match: func(actual *userv1.User) bool {
+			actualValue, exist := actual.Annotations[key]
+			return exist && actualValue == value
+		},
+		Diff: func(actual *userv1.User) string {
+			return fmt.Sprintf("expected User annotation '%s' to be '%s'\nbut it was '%s'", key, value, actual.Annotations[key])
+		},
+	}
+}
+
+// IdentityWaitCriterion a struct to compare with a given Identity
+type IdentityWaitCriterion struct {
+	Match func(*userv1.Identity) bool
+	Diff  func(*userv1.Identity) string
+}
+
+func matchIdentityWaitCriterion(actual *userv1.Identity, criteria ...IdentityWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
 // WaitForIdentity waits until there is an Identity with the given name available
-func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error) {
+func (a *MemberAwaitility) WaitForIdentity(name string, criteria ...IdentityWaitCriterion) (*userv1.Identity, error) {
 	a.T.Logf("waiting for Identity '%s'", name)
 	identity := &userv1.Identity{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -1105,12 +1196,37 @@ func (a *MemberAwaitility) WaitForIdentity(name string) (*userv1.Identity, error
 			}
 			return false, err
 		}
+		if !matchIdentityWaitCriterion(identity, criteria...) {
+			return false, nil
+		}
 		if identity.Name != "" && identity.User.Name != "" {
 			return true, nil
 		}
 		return false, nil
 	})
+	if err != nil {
+		a.printIdentities(name)
+	}
 	return identity, err
+}
+
+func (a *MemberAwaitility) printIdentities(expectedName string) {
+	buf := &strings.Builder{}
+	buf.WriteString(fmt.Sprintf("failed to find Identity '%s'\n", expectedName))
+	buf.WriteString(a.listAndReturnContent("Identity", "", &userv1.IdentityList{}))
+	a.T.Log(buf.String())
+}
+
+// UntilIdentityHasLabel checks if the Identity has the expected label
+func UntilIdentityHasLabel(key, value string) IdentityWaitCriterion {
+	return IdentityWaitCriterion{
+		Match: func(actual *userv1.Identity) bool {
+			return actual.Labels[key] == value
+		},
+		Diff: func(actual *userv1.Identity) string {
+			return fmt.Sprintf("expected Identity label '%s' to be '%s'\nbut it was '%s'", key, value, actual.Labels[key])
+		},
+	}
 }
 
 // WaitUntilUserAccountDeleted waits until the UserAccount with the given name is not found
