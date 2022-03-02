@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
@@ -40,23 +41,23 @@ const (
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
-func InitMetricsAssertion(t *testing.T, a metricsProvider, memberClusterNames []string) *MetricsAssertionHelper {
+func InitMetricsAssertion(t *testing.T, awaitilities wait.Awaitilities) *MetricsAssertionHelper {
 	// Wait for pending usersignup deletions before capturing baseline values so that test assertions are stable
-	err := a.WaitForTestResourcesCleanup(5 * time.Second)
+	err := awaitilities.Host().WaitForTestResourcesCleanup(5 * time.Second)
 	require.NoError(t, err)
 
 	// Capture baseline values
 	m := &MetricsAssertionHelper{
-		await:          a,
+		await:          awaitilities.Host(),
 		baselineValues: make(map[string]float64),
 		t:              t,
 	}
-	m.captureBaselineValues(memberClusterNames)
+	m.captureBaselineValues(awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Logf("captured baselines:\n%s", spew.Sdump(m.baselineValues))
 	return m
 }
 
-func (m *MetricsAssertionHelper) captureBaselineValues(memberClusterNames []string) {
+func (m *MetricsAssertionHelper) captureBaselineValues(memberClusterNames ...string) {
 	m.baselineValues[UserSignupsMetric] = m.await.GetMetricValue(UserSignupsMetric)
 	m.baselineValues[UserSignupsApprovedMetric] = m.await.GetMetricValue(UserSignupsApprovedMetric)
 	m.baselineValues[UserSignupsDeactivatedMetric] = m.await.GetMetricValue(UserSignupsDeactivatedMetric)
