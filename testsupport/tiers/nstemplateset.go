@@ -13,33 +13,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, space *toolchainv1alpha1.Space, tier string) {
+func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, space *toolchainv1alpha1.Space, tier *toolchainv1alpha1.NSTemplateTier) {
 	// Verify provisioned NSTemplateSet
-	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier))
+	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier.Name))
 	require.NoError(t, err)
 
 	tierChecks, err := NewChecks(tier)
 	require.NoError(t, err)
 
-	VerifyGivenNsTemplateSet(t, memberAwait, nsTemplateSet, tierChecks, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
+	VerifyNSTemplateSet(t, memberAwait, nsTemplateSet, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
 
 }
 
-func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet,
-	tierChecksNamespaces, tierChecksClusterResources TierChecks, expectedRevisions TemplateRefs) {
+func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet,
+	checks TierChecks, expectedRevisions TemplateRefs) {
 
 	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedRevisions))
 	assert.NoError(t, err)
 
-	namespaceObjectChecks := sync.WaitGroup{}
-	clusterObjectChecks := sync.WaitGroup{}
 	// Verify all namespaces and objects within
+	namespaceObjectChecks := sync.WaitGroup{}
 	for _, templateRef := range expectedRevisions.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
-		for _, check := range tierChecksNamespaces.GetNamespaceObjectChecks(nsType) {
+		for _, check := range checks.GetNamespaceObjectChecks(nsType) {
 			namespaceObjectChecks.Add(1)
 			go func(checkNamespaceObjects namespaceObjectsCheck) {
 				defer namespaceObjectChecks.Done()
@@ -47,12 +46,14 @@ func VerifyGivenNsTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, 
 			}(check)
 		}
 	}
+
+	clusterObjectChecks := sync.WaitGroup{}
 	if expectedRevisions.ClusterResources != nil {
-		for _, check := range tierChecksClusterResources.GetClusterObjectChecks() {
+		for _, check := range checks.GetClusterObjectChecks() {
 			clusterObjectChecks.Add(1)
-			go func(checkClusterObjects clusterObjectsCheck) {
+			go func(check clusterObjectsCheck) {
 				defer clusterObjectChecks.Done()
-				checkClusterObjects(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
+				check(t, memberAwait, nsTmplSet.Name, nsTmplSet.Spec.TierName)
 			}(check)
 		}
 	}

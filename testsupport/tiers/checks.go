@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -47,56 +46,121 @@ var (
 	}
 )
 
-// GetRefsAndChecksForTiers returns refs for the given tierName, namespaceChecks for aliasTierNamespaces and CusterResourcesChecks for aliasTierClusterResources
-func GetRefsAndChecksForTiers(t *testing.T, hostAwait *wait.HostAwaitility, tierName, aliasTierNamespaces, aliasTierClusterResources string) (TemplateRefs, TierChecks, TierChecks) {
-	templateRefs := GetTemplateRefs(hostAwait, tierName)
-	namespacesChecks, err := NewChecks(aliasTierNamespaces)
-	require.NoError(t, err)
-	clusterResourcesChecks, err := NewChecks(aliasTierClusterResources)
-	require.NoError(t, err)
+const (
+	// annotation to indicate which "based" tier was used to create the current tier
+	BaseTierKey = toolchainv1alpha1.LabelKeyPrefix + "base-tier"
+	// annotation to indicate which tier was used to customize the templaterefs for namespace resources
+	NamespaceResourcesBaseTierKey = toolchainv1alpha1.LabelKeyPrefix + "namespace-resources-base-tier"
+	// annotation to indicate which tier was used to customize the templaterefs for cluster resources
+	ClusterResourcesBaseTierKey = toolchainv1alpha1.LabelKeyPrefix + "cluster-resources-base-tier"
+)
 
-	return templateRefs, namespacesChecks, clusterResourcesChecks
+// GetRefsAndChecksForTiers returns refs for the given tierName, namespaceChecks for aliasTierNamespaces and CusterResourcesChecks for aliasTierClusterResources
+func GetRefsAndChecksForTiers(t *testing.T, hostAwait *wait.HostAwaitility, tier *toolchainv1alpha1.NSTemplateTier) (TemplateRefs, TierChecks) {
+	_, templateRefs := GetTemplateRefs(hostAwait, tier.Name)
+	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
+	checks, err := NewChecks(tier)
+	require.NoError(t, err)
+	return templateRefs, checks
 }
 
-func NewChecks(tier string) (TierChecks, error) {
-	switch tier {
+func NewChecks(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
+	switch tier.Name {
+	case base, baselarge, baseextended, baseextendedidling, basedeactivationdisabled, hackathon, advanced, appstudio, test:
+		return newChecks(tier.Name)
+	default:
+		return newCustomChecks(tier)
+	}
+}
+
+func newChecks(tierName string) (TierChecks, error) {
+	switch tierName {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
-
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
-
 	case baseextended:
 		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
-
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-
 	case basedeactivationdisabled:
 		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
-
 	case hackathon:
 		return &hackathonTierChecks{baseTierChecks{tierName: hackathon}}, nil
-
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
-
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
-
 	case test:
 		return &testTierChecks{tierName: test}, nil
-
 	default:
-		return nil, fmt.Errorf("no assertion implementation found for %s", tier)
+		return nil, fmt.Errorf("no assertion implementation found for %s", tierName)
 	}
 }
 
 type TierChecks interface {
-	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetClusterObjectChecks() []clusterObjectsCheck
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
+	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetTierObjectChecks() []tierObjectCheck
+}
+
+type customTierChecks struct {
+	getClusterObjectChecks   func() []clusterObjectsCheck
+	getExpectedTemplateRefs  func(hostAwait *wait.HostAwaitility) TemplateRefs
+	getNamespaceObjectChecks func(nsType string) []namespaceObjectsCheck
+	getTierObjectChecks      func() []tierObjectCheck
+}
+
+var _ TierChecks = &customTierChecks{}
+
+func newCustomChecks(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
+	// look-up annotations on the tier to figure out which "base" checks to use
+	c := &customTierChecks{}
+	baseTier, found := tier.Annotations[BaseTierKey]
+	if !found {
+		return nil, fmt.Errorf("no base assertion implementation found for %s", tier.Name)
+	}
+	baseChecks, err := newChecks(baseTier)
+	if err != nil {
+		return nil, err
+	}
+	c.getClusterObjectChecks = baseChecks.GetClusterObjectChecks
+	c.getExpectedTemplateRefs = baseChecks.GetExpectedTemplateRefs
+	c.getNamespaceObjectChecks = baseChecks.GetNamespaceObjectChecks
+	c.getTierObjectChecks = baseChecks.GetTierObjectChecks
+
+	// deal with replaced templaterefs for namespace and cluster resources
+	if tierName, found := tier.Annotations[ClusterResourcesBaseTierKey]; found {
+		checks, err := newChecks(tierName)
+		if err != nil {
+			return nil, err
+		}
+		c.getClusterObjectChecks = checks.GetClusterObjectChecks
+	}
+	if tierName, found := tier.Annotations[NamespaceResourcesBaseTierKey]; found {
+		checks, err := newChecks(tierName)
+		if err != nil {
+			return nil, err
+		}
+		c.getNamespaceObjectChecks = checks.GetNamespaceObjectChecks
+	}
+	return c, nil
+}
+
+func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return c.getClusterObjectChecks()
+}
+func (c *customTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	return c.getExpectedTemplateRefs(hostAwait)
+}
+
+func (c *customTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	return c.getNamespaceObjectChecks(nsType)
+}
+
+func (c *customTierChecks) GetTierObjectChecks() []tierObjectCheck {
+	return c.getTierObjectChecks()
 }
 
 type baseTierChecks struct {
@@ -130,7 +194,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 }
 
 func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
@@ -250,7 +314,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
@@ -278,7 +342,7 @@ func (a *testTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 }
 
 func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
@@ -316,7 +380,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 }
 
 func (a *appstudioTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "appstudio")
 	return templateRefs
 }
@@ -352,7 +416,7 @@ func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expecte
 	assert.ElementsMatch(t, expectedNSTypes, actualNSTypes)
 }
 
-type namespaceObjectsCheck func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string)
+type namespaceObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string)
 
 type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string)
 
@@ -367,7 +431,7 @@ func nsTemplateTier(tierName string, deactivationDays int) tierObjectCheck {
 }
 
 func userEditRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -382,7 +446,7 @@ func userEditRoleBinding() namespaceObjectsCheck {
 }
 
 func rbacEditRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, "user-rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -397,7 +461,7 @@ func rbacEditRoleBinding() namespaceObjectsCheck {
 }
 
 func crtadminViewRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-view")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -412,7 +476,7 @@ func crtadminViewRoleBinding() namespaceObjectsCheck {
 }
 
 func crtadminPodsRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, "crtadmin-pods")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -427,7 +491,7 @@ func crtadminPodsRoleBinding() namespaceObjectsCheck {
 }
 
 func execPodsRole() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "exec-pods")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 1)
@@ -448,7 +512,7 @@ func execPodsRole() namespaceObjectsCheck {
 }
 
 func rbacEditRole() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 1)
@@ -469,23 +533,23 @@ func rbacEditRole() namespaceObjectsCheck {
 }
 
 func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		lr, err := memberAwait.WaitForLimitRange(ns, "resource-limits")
 		require.NoError(t, err)
-		def := make(map[v1.ResourceName]resource.Quantity)
+		def := make(map[corev1.ResourceName]resource.Quantity)
 		def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
 		require.NoError(t, err)
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
-		defReq := make(map[v1.ResourceName]resource.Quantity)
+		defReq := make(map[corev1.ResourceName]resource.Quantity)
 		defReq[corev1.ResourceCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
 		defReq[corev1.ResourceMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", lr.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		expected := &v1.LimitRange{
-			Spec: v1.LimitRangeSpec{
-				Limits: []v1.LimitRangeItem{
+		expected := &corev1.LimitRange{
+			Spec: corev1.LimitRangeSpec{
+				Limits: []corev1.LimitRangeItem{
 					{
 						Type:           "Container",
 						Default:        def,
@@ -500,7 +564,7 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 }
 
 func networkPolicySameNamespace() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, "allow-same-namespace")
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
@@ -524,7 +588,7 @@ func networkPolicySameNamespace() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromOtherNamespace(otherNamespaceKinds ...string) namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		var networkPolicyPeers []netv1.NetworkPolicyPeer
 		for _, other := range otherNamespaceKinds {
 			networkPolicyPeers = append(networkPolicyPeers, netv1.NetworkPolicyPeer{
@@ -579,7 +643,7 @@ func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsChe
 }
 
 func networkPolicyIngress(name, labelName, labelValue string) namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(ns, name)
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
@@ -644,7 +708,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
 			require.NoError(t, err)
 			hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
@@ -674,7 +738,7 @@ func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("deployments.apps")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
@@ -694,7 +758,7 @@ func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
@@ -712,7 +776,7 @@ func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
 			require.NoError(t, err)
 			hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
@@ -730,7 +794,7 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 			hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
@@ -752,7 +816,7 @@ func clusterResourceQuotaServices() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 
@@ -768,7 +832,7 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 
@@ -784,7 +848,7 @@ func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
 			require.NoError(t, err)
 
@@ -800,7 +864,7 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
 			require.NoError(t, err)
 
@@ -816,7 +880,7 @@ func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("cloudservicesrequests.rhoas.redhat.com")], err = resource.ParseQuantity("2")
 			require.NoError(t, err)
 			hard[count("cloudserviceaccountrequest.rhoas.redhat.com")], err = resource.ParseQuantity("2")
@@ -836,7 +900,7 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
+			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("50")
 			require.NoError(t, err)
 			hard[count("servicebindings.servicebinding.io")], err = resource.ParseQuantity("50")
@@ -850,7 +914,7 @@ func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
 	}
 }
 
-func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
+func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
 	return wait.ClusterResourceQuotaWaitCriterion{
 		Match: func(actual *quotav1.ClusterResourceQuota) bool {
 			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
@@ -859,7 +923,7 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.Resource
 						"openshift.io/requester": userName,
 					},
 				},
-				Quota: v1.ResourceQuotaSpec{
+				Quota: corev1.ResourceQuotaSpec{
 					Hard: hard,
 				},
 			}
@@ -872,12 +936,12 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.Resource
 	}
 }
 
-func count(resource v1.ResourceName) v1.ResourceName {
-	return v1.ResourceName(fmt.Sprintf("count/%s", resource))
+func count(resource corev1.ResourceName) corev1.ResourceName {
+	return corev1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
 
 func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("Roles", number, func() (int, error) {
 			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
@@ -889,7 +953,7 @@ func numberOfToolchainRoles(number int) namespaceObjectsCheck { // nolint:unpara
 }
 
 func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("RoleBindings", number, func() (int, error) {
 			roleBindings := &rbacv1.RoleBindingList{}
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
@@ -901,7 +965,7 @@ func numberOfToolchainRoleBindings(number int) namespaceObjectsCheck { // nolint
 }
 
 func numberOfToolchainServiceAccounts(number int) namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("ServiceAccounts", number, func() (int, error) {
 			serviceAccounts := &corev1.ServiceAccountList{}
 			err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name))
@@ -913,9 +977,9 @@ func numberOfToolchainServiceAccounts(number int) namespaceObjectsCheck { // nol
 }
 
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("LimitRanges", number, func() (int, error) {
-			limitRanges := &v1.LimitRangeList{}
+			limitRanges := &corev1.LimitRangeList{}
 			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
 			return len(limitRanges.Items), err
@@ -925,7 +989,7 @@ func numberOfLimitRanges(number int) namespaceObjectsCheck {
 }
 
 func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicies", number, func() (int, error) {
 			nps := &netv1.NetworkPolicyList{}
 			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
@@ -958,7 +1022,7 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 // Appstudio tier specific objects
 
 func gitOpsServiceLabel() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		// TODO fix for migration/existing namespaces cases
 		labelWaitCriterion := []wait.LabelWaitCriterion{}
 		if !strings.HasPrefix(ns.Name, "migration-") {
@@ -970,14 +1034,14 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 }
 
 func appstudioServiceAccount() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		_, err := memberAwait.WaitForServiceAccount(ns, fmt.Sprintf("appstudio-%s", userName))
 		require.NoError(t, err)
 	}
 }
 
 func appstudioUserActionsRole() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 6)
@@ -1022,7 +1086,7 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 }
 
 func appstudioUserActionsRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", userName))
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -1037,7 +1101,7 @@ func appstudioUserActionsRoleBinding() namespaceObjectsCheck {
 }
 
 func appstudioViewRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", userName))
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -1052,7 +1116,7 @@ func appstudioViewRoleBinding() namespaceObjectsCheck {
 }
 
 func userSaReadRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, userName+"-sa-read")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -1067,7 +1131,7 @@ func userSaReadRoleBinding() namespaceObjectsCheck {
 }
 
 func toolchainSaReadRole() namespaceObjectsCheck {
-	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "toolchain-sa-read")
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 1)

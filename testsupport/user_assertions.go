@@ -118,7 +118,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 
 	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tierName)
+	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tier)
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)

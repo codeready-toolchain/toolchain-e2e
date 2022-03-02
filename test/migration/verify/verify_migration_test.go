@@ -95,12 +95,16 @@ func TestAfterMigration(t *testing.T) {
 }
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
-	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, awaitilities.Member1(), migration.ProvisionedAppStudioSpace, "appstudio")
+	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier("appstudio")
+	require.NoError(t, err)
+	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, awaitilities.Member1(), migration.ProvisionedAppStudioSpace, appstudioTier)
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
 }
 
 func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
-	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, awaitilities.Member2(), migration.SecondMemberProvisionedSpace, "base")
+	baseTier, err := awaitilities.Host().WaitForNSTemplateTier("base")
+	require.NoError(t, err)
+	space := VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, awaitilities.Member2(), migration.SecondMemberProvisionedSpace, baseTier)
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
 }
 
