@@ -32,7 +32,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
@@ -91,7 +91,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 
 	// when
@@ -139,7 +139,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 	t.Run("restart host-operator pod and verify that metrics are still available", func(t *testing.T) {
 		// given
-		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName})
+		metricsAssertion := InitMetricsAssertion(t, awaitilities)
 
 		// when deleting the host-operator pod to emulate an operator restart during redeployment.
 		err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
@@ -169,7 +169,7 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 
 	for i := 1; i <= 2; i++ {
@@ -213,7 +213,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	VerifyMemberMetricsService(t, memberAwait)
 
 	// given
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
 	// Create a new UserSignup and approve it manually
 	userSignup, _ := NewSignupRequest(t, awaitilities).
@@ -244,7 +244,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	t.Run("unban the banned user", func(t *testing.T) {
 		// given
-		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
+		metricsAssertion := InitMetricsAssertion(t, awaitilities)
 
 		// when unbaning the user
 		err = hostAwait.Client.Delete(context.TODO(), bannedUser)
@@ -276,7 +276,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
 
 	// Create UserSignup
 	_, mur := NewSignupRequest(t, awaitilities).
@@ -314,7 +314,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 
 	t.Run("re-enabled mur", func(t *testing.T) {
 		// given
-		metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
+		metricsAssertion := InitMetricsAssertion(t, awaitilities)
 
 		// When re-enabling MUR
 		mur, err = hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
