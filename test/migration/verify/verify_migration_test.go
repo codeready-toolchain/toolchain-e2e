@@ -8,7 +8,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/test/migration"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
@@ -197,23 +196,6 @@ func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, signup *tool
 	require.Len(t, mur.Spec.UserAccounts, 1)
 	require.Empty(t, mur.Spec.UserAccounts[0].Spec.NSLimit)
 	require.Nil(t, mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
-
-	tier, err := hostAwait.WaitForNSTemplateTier(mur.Spec.TierName)
-	require.NoError(t, err)
-	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
-	require.NoError(t, err)
-
-	// space should be assigned and provisioned with correct tier name
-	space, err := hostAwait.WaitForSpace(mur.Name,
-		wait.UntilSpaceHasTier(mur.Spec.TierName),
-		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, signup.Name),
-		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
-		wait.UntilSpaceHasConditions(Provisioned()),
-		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
-		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
-	require.NoError(t, err)
-
-	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 }
 
 func listAndGetSignupWithState(t *testing.T, hostAwait *wait.HostAwaitility, state string) *toolchainv1alpha1.UserSignup {
