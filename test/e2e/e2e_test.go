@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -451,4 +453,65 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
+	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
+
+		// First confirm that there are actually multiple identities for the UserSignup in question, using the
+		// owner label to locate them
+
+		// First, find the MUR
+		mur, err := hostAwait.WaitForMasterUserRecord(originalSubJohnSignup.Status.CompliantUsername)
+		require.NoError(t, err)
+
+		memberAwait := GetMurTargetMember(t, awaitilities, mur)
+
+		// Then locate the UserAccount
+		userAccount, err := memberAwait.WaitForUserAccount(mur.Name)
+		require.NoError(t, err)
+		require.NotNil(t, userAccount)
+
+		// Once we have the UserAccount we can lookup the identities using the owner label
+		identityList := &userv1.IdentityList{}
+		err = memberAwait.Client.List(context.TODO(), identityList, listByOwnerLabel(userAccount.Name))
+		require.NoError(t, err)
+
+		// We should have exactly two identities
+		require.Len(t, identityList.Items, 2)
+
+		// Also lookup the user
+		userList := &userv1.UserList{}
+		err = memberAwait.Client.List(context.TODO(), userList, listByOwnerLabel(userAccount.Name))
+		require.NoError(t, err)
+
+		// We should have exactly one user
+		require.Len(t, userList.Items, 1)
+
+		// Now deactivate the UserSignup
+		userSignup, err := hostAwait.UpdateUserSignup(originalSubJohnSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivated(us, true)
+		})
+		require.NoError(t, err)
+
+		// Wait until the UserSignup is deactivated
+		_, err = hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
+		require.NoError(t, err)
+
+		// Ensure the first identity is deleted
+		err = memberAwait.WaitUntilIdentityDeleted(identityList.Items[0].Name)
+		require.NoError(t, err)
+
+		// Ensure the second identity is deleted
+		err = memberAwait.WaitUntilIdentityDeleted(identityList.Items[1].Name)
+		require.NoError(t, err)
+
+		// Ensure the user is deleted
+		err = memberAwait.WaitUntilUserDeleted(userList.Items[0].Name)
+		require.NoError(t, err)
+	})
+
+}
+
+func listByOwnerLabel(owner string) client.ListOption {
+	labels := map[string]string{toolchainv1alpha1.OwnerLabelKey: owner}
+	return client.MatchingLabels(labels)
 }
