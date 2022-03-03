@@ -20,7 +20,6 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
-	memberAwait2 := awaitilities.Member2()
 	hostAwait.UpdateToolchainConfig(
 		testconfig.AutomaticApproval().Enabled(true),
 		testconfig.Metrics().ForceSynchronization(false))
@@ -37,7 +36,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 	require.NoError(t, err)
 
-	metricsAssertion := InitMetricsAssertion(t, hostAwait, []string{memberAwait.ClusterName, memberAwait2.ClusterName})
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
 
 	t.Run("tampering activation-counter annotations", func(t *testing.T) {
 
