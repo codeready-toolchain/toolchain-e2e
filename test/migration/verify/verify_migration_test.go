@@ -173,7 +173,10 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
-	provisionedMur, err := hostAwait.WaitForMasterUserRecord(murName, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	provisionedMur, err := hostAwait.WaitForMasterUserRecord(murName,
+		wait.UntilMasterUserRecordHasCondition(Provisioned()),
+		wait.UntilMasterUserRecordHasNoTierHashLabel(), // after migration there should be no tier hash label so we should wait for that to confirm migration is completed before proceeding
+	)
 	require.NoError(t, err)
 
 	signup, err := hostAwait.WaitForUserSignup(provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])

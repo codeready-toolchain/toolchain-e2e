@@ -416,6 +416,22 @@ func UntilMasterUserRecordHasTierName(expected string) MasterUserRecordWaitCrite
 	}
 }
 
+func UntilMasterUserRecordHasNoTierHashLabel() MasterUserRecordWaitCriterion {
+	return MasterUserRecordWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
+			if actual.Labels == nil {
+				return true
+			}
+			for key := range actual.Labels {
+				if strings.HasSuffix(key, "-tier-hash") {
+					return false
+				}
+			}
+			return true
+		},
+	}
+}
+
 // UserSignupWaitCriterion a struct to compare with an expected UserSignup
 type UserSignupWaitCriterion struct {
 	Match func(*toolchainv1alpha1.UserSignup) bool
@@ -443,7 +459,7 @@ func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(actual *toolchainv1al
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, c := range criteria {
-			if !c.Match(actual) {
+			if !c.Match(actual) && c.Diff != nil {
 				buf.WriteString(c.Diff(actual))
 				buf.WriteString("\n")
 			}
