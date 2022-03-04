@@ -331,28 +331,27 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
+		// UserAccount should be deleted when MUR is deleted
+		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+		require.NoError(t, err)
+
+		// MUR should be deleted when UserSignup is deleted
+		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
+		require.NoError(t, err)
+
+		// SpaceBinding should be deleted (by spacebinding cleanup controller) when MUR is deleted
+		err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
+		require.NoError(t, err)
+
+		// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
+		// the behaviour is consistent for both AppStudio & DevSandbox
+		err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+		require.NoError(t, err)
+
+		// space should be stuck terminating
 		space, err := hostAwait.WaitForSpace(laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(TerminatingSpace()))
 		require.NoError(t, err)
 		require.NotEmpty(t, space)
-
-		t.Run("verify deleted", func(t *testing.T) {
-			// UserAccount should be deleted when MUR is deleted
-			err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
-			require.NoError(t, err)
-
-			// MUR should be deleted when UserSignup is deleted
-			err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-			require.NoError(t, err)
-
-			// SpaceBinding should be deleted (by spacebinding cleanup controller) when MUR is deleted
-			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
-			require.NoError(t, err)
-
-			// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
-			// the behaviour is consistent for both AppStudio & DevSandbox
-			err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
-			require.NoError(t, err)
-		})
 
 		t.Run("remove finalizer", func(t *testing.T) {
 			// when removing the finalizer from the CM
