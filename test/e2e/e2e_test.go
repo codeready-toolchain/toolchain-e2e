@@ -270,7 +270,7 @@ func TestE2EFlow(t *testing.T) {
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
-	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+	t.Run("verify Space is not deleted if namespace is not deleted", func(t *testing.T) {
 		// given
 		laraUserName := "laracroft"
 		userNamespace := "laracroft-dev"
