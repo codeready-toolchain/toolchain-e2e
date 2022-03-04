@@ -182,13 +182,13 @@ func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, 
 	signup, err := hostAwait.WaitForUserSignup(provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])
 	require.NoError(t, err)
 
-	checkMURMigrated(t, hostAwait, signup, provisionedMur)
+	checkMURMigrated(t, signup, provisionedMur)
 
 	return signup
 }
 
 // checkMURMigrated ensures that all MURs are correctly migrated
-func checkMURMigrated(t *testing.T, hostAwait *wait.HostAwaitility, signup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
+func checkMURMigrated(t *testing.T, signup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord) {
 	// should have tier name set
 	require.NotEmpty(t, mur.Spec.TierName)
 
