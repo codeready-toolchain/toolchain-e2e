@@ -1756,7 +1756,7 @@ func UntilSpaceBindingHasMurName(expected string) SpaceBindingWaitCriterion {
 			return actual.Spec.MasterUserRecord == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
-			return fmt.Sprintf("expected tier name to match:\n%s", Diff(expected, actual.Spec.MasterUserRecord))
+			return fmt.Sprintf("expected MUR name to match:\n%s", Diff(expected, actual.Spec.MasterUserRecord))
 		},
 	}
 }
