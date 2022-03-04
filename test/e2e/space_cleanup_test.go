@@ -83,7 +83,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 				require.NoError(t, err)
 
 				// then
-				err = hostAwait.WaitUntilSpaceDeleted(space.Name)
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space.Name)
 				require.NoError(t, err)
 			})
 		})
@@ -96,7 +96,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// then
 			err = hostAwait.WaitUntilSpaceBindingDeleted(binding2.Name)
 			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceDeleted(space2.Name)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space2.Name)
 			require.NoError(t, err)
 		})
 	})

@@ -130,10 +130,10 @@ func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signu
 	require.NoError(t, err)
 	require.True(t, states.Deactivated(signup), "usersignup should be deactivated")
 
-	err = awaitilities.Host().WaitUntilMasterUserRecordDeleted(migration.DeactivatedUser)
+	err = awaitilities.Host().WaitUntilMasterUserRecordAndSpaceBindingsDeleted(migration.DeactivatedUser)
 	require.NoError(t, err)
 
-	err = awaitilities.Host().WaitUntilSpaceDeleted(migration.DeactivatedUser)
+	err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(migration.DeactivatedUser)
 	require.NoError(t, err)
 
 	ReactivateAndCheckUser(t, awaitilities, signup)
@@ -149,10 +149,10 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 	require.NoError(t, err)
 
-	err = hostAwait.WaitUntilMasterUserRecordDeleted(migration.BannedUser)
+	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(migration.BannedUser)
 	require.NoError(t, err)
 
-	err = awaitilities.Host().WaitUntilSpaceDeleted(migration.BannedUser)
+	err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(migration.BannedUser)
 	require.NoError(t, err)
 
 	// get the BannedUser resource

@@ -662,13 +662,17 @@ func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
 	})
 }
 
-// WaitUntilMasterUserRecordDeleted waits until the MUR with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
+// WaitUntilMasterUserRecordAndSpaceBindingsDeleted waits until the MUR with the given name and its associated SpaceBindings are deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(name string) error {
 	a.T.Logf("waiting until MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
+				// once the MUR is deleted, wait for the associated spacebindings to be deleted as well
+				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey, name); err != nil {
+					return false, err
+				}
 				return true, nil
 			}
 			return false, err
@@ -1610,8 +1614,8 @@ func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
 	}
 }
 
-// WaitUntilSpaceDeleted waits until the Space with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
+// WaitUntilSpaceAndSpaceBindingsDeleted waits until the Space with the given name and its associated SpaceBindings are deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) error {
 	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
 	var s *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
@@ -1622,6 +1626,10 @@ func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 				Name:      name,
 			}, obj); err != nil {
 			if errors.IsNotFound(err) {
+				// once the space is deleted, wait for the associated spacebindings to be deleted as well
+				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(toolchainv1alpha1.SpaceBindingSpaceLabelKey, name); err != nil {
+					return false, err
+				}
 				return true, nil
 			}
 			return false, err
@@ -1639,7 +1647,7 @@ func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 
 // WaitUntilSpaceBindingDeleted waits until the SpaceBinding with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
-	a.T.Logf("waiting until SpaceBinding '%s' in namespace '%s' is deleted", name, a.Namespace)
+
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.SpaceBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
@@ -1650,6 +1658,32 @@ func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
 		}
 		return false, nil
 	})
+}
+
+// WaitUntilSpaceBindingsWithLabelDeleted waits until there are no SpaceBindings listed using the given labels
+func (a *HostAwaitility) WaitUntilSpaceBindingsWithLabelDeleted(key, value string) error {
+	labels := map[string]string{key: value}
+	a.T.Logf("waiting until SpaceBindings with labels '%v' in namespace '%s' are deleted", labels, a.Namespace)
+	var spaceBindingList *toolchainv1alpha1.SpaceBindingList
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the SpaceBinding from the host namespace
+		spaceBindingList = &toolchainv1alpha1.SpaceBindingList{}
+		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		return len(spaceBindingList.Items) == 0, nil
+	})
+	// print the listed spacebindings
+	if err != nil {
+		buf := &strings.Builder{}
+		buf.WriteString(fmt.Sprintf("spacebindings still found with labels %v:\n", labels))
+		for _, sb := range spaceBindingList.Items {
+			y, _ := yaml.Marshal(sb)
+			buf.Write(y)
+			buf.WriteString("\n")
+		}
+	}
+	return err
 }
 
 type SpaceBindingWaitCriterion struct {

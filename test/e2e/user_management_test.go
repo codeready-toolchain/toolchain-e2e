@@ -148,11 +148,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		// The user should not be deactivated so the MUR should not be deleted, expect an error
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
 		require.Error(s.T(), err)
 
 		// The space should not be deleted either, expect an error
-		err = hostAwait.WaitUntilSpaceDeleted(murMember1.Name)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(murMember1.Name)
 		require.Error(t, err)
 	})
 
@@ -197,10 +197,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
 		// The non-excluded user should be deactivated
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
 		require.NoError(s.T(), err)
 
-		err = hostAwait.WaitUntilSpaceDeleted(murMember1.Name)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(murMember1.Name)
 		require.NoError(t, err)
 
 		userSignupMember1, err = hostAwait.WaitForUserSignup(userSignupMember1.Name,
@@ -372,10 +372,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				require.NoError(s.T(), err)
 
 				// The MUR should also be deleted
-				err = hostAwait.WaitUntilMasterUserRecordDeleted(murName)
+				err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murName)
 				require.NoError(s.T(), err)
 
-				err = hostAwait.WaitUntilSpaceDeleted(murName)
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(murName)
 				require.NoError(t, err)
 			})
 		})
@@ -441,10 +441,10 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Confirm that the user is banned
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
-		err = hostAwait.WaitUntilMasterUserRecordDeleted("testuser" + id)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted("testuser" + id)
 		require.NoError(s.T(), err)
 
-		err = hostAwait.WaitUntilSpaceDeleted("testuser" + id)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted("testuser" + id)
 		require.NoError(t, err)
 	})
 

@@ -289,7 +289,7 @@ func TestE2EFlow(t *testing.T) {
 
 		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "base")
 
-		spaceBinding := VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
+		VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
 
 		// Create a configmap with finalizer in user's namespace, which will block the deletion of namespace.
 		cm := &corev1.ConfigMap{
@@ -336,11 +336,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// MUR should be deleted when UserSignup is deleted
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-		require.NoError(t, err)
-
-		// SpaceBinding should be deleted (by spacebinding cleanup controller) when MUR is deleted
-		err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(laraUserName)
 		require.NoError(t, err)
 
 		// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
@@ -367,7 +363,7 @@ func TestE2EFlow(t *testing.T) {
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
 			assert.NoError(t, err, "NSTemplateSet is not deleted")
 
-			err = hostAwait.WaitUntilSpaceDeleted(laraUserName)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(laraUserName)
 			require.NoError(t, err)
 		})
 
@@ -429,7 +425,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("usersignup '%s' deleted (resource name='%s')", johnsmithName, johnSignup.Name)
 
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(johnsmithName)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(johnsmithName)
 		assert.NoError(t, err, "MasterUserRecord is not deleted")
 
 		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
@@ -441,7 +437,7 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilIdentityDeleted(johnsmithName)
 		assert.NoError(t, err, "Identity is not deleted")
 
-		err = hostAwait.WaitUntilSpaceDeleted(johnsmithName)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(johnsmithName)
 		require.NoError(t, err)
 
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
