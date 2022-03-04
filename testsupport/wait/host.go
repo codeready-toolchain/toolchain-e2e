@@ -1782,7 +1782,7 @@ func UntilSpaceBindingHasSpaceRole(expected string) SpaceBindingWaitCriterion {
 			return actual.Spec.SpaceRole == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
-			return fmt.Sprintf("expected tier name to match:\n%s", Diff(expected, actual.Spec.SpaceRole))
+			return fmt.Sprintf("expected Space role to match:\n%s", Diff(expected, actual.Spec.SpaceRole))
 		},
 	}
 }
