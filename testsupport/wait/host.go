@@ -419,9 +419,6 @@ func UntilMasterUserRecordHasTierName(expected string) MasterUserRecordWaitCrite
 func UntilMasterUserRecordHasNoTierHashLabel() MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			if actual.Labels == nil {
-				return true
-			}
 			for key := range actual.Labels {
 				if strings.HasSuffix(key, "-tier-hash") {
 					return false
