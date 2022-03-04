@@ -148,11 +148,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		// The user should not be deactivated so the MUR should not be deleted, expect an error
-		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
+		err = hostAwait.WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
 		require.Error(s.T(), err)
 
 		// The space should not be deleted either, expect an error
-		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(murMember1.Name)
+		err = hostAwait.WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitUntilSpaceAndSpaceBindingsDeleted(murMember1.Name)
 		require.Error(t, err)
 	})
 
