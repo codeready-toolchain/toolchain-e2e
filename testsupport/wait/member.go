@@ -323,6 +323,24 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 	}
 }
 
+// UntilNSTemplateSetHasSpaceRoles returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet the templateRef with the associated users in its `spaceRoles`
+func UntilNSTemplateSetHasSpaceRoles(templateRef string, users ...string) NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			for _, sr := range actual.Spec.SpaceRoles {
+				if sr.TemplateRef == templateRef && reflect.DeepEqual(sr.Usernames, users) {
+					return true
+				}
+			}
+			return false
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected space role with templateRef '%s' and users %v:\n%s", templateRef, users, spew.Sdump(actual.Spec.SpaceRoles))
+		},
+	}
+}
+
 // UntilNSTemplateSetHasTier checks if the NSTemplateTier has the expected tierName
 func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
