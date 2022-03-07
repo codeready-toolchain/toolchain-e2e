@@ -120,8 +120,7 @@ func TestSpaceRoles(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()),
-		)
+		_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
 		require.NoError(t, err)
 		// fetch the namespace check the `last-applied-space-roles` annotation
 		ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
