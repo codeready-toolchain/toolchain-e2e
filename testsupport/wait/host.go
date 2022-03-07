@@ -294,7 +294,7 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, c := range criteria {
-			if !c.Match(actual) {
+			if !c.Match(actual) && c.Diff != nil {
 				buf.WriteString(c.Diff(actual))
 				buf.WriteString("\n")
 			}
