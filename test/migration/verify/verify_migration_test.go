@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -173,7 +174,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
-	provisionedMur, err := hostAwait.WaitForMasterUserRecord(murName,
+	provisionedMur, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*120)).WaitForMasterUserRecord(murName,
 		wait.UntilMasterUserRecordHasCondition(Provisioned()),
 		wait.UntilMasterUserRecordHasNoTierHashLabel(), // after migration there should be no tier hash label so we should wait for that to confirm migration is completed before proceeding
 	)
