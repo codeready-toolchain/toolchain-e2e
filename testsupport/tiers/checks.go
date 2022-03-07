@@ -307,6 +307,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 		numberOfToolchainRoles(2),
 		numberOfToolchainRoleBindings(3),
 		numberOfToolchainServiceAccounts(1),
+		gitOpsServiceLabel(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -954,6 +955,13 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 }
 
 // Appstudio tier specific objects
+
+func gitOpsServiceLabel() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		require.NotNil(t, ns.Labels)
+		assert.Equal(t, "argocd.argoproj.io/managed-by", ns.Labels["gitops-service-argocd"])
+	}
+}
 
 func appstudioServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
