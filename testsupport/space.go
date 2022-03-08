@@ -140,15 +140,13 @@ func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.
 // VerifyResourcesProvisionedForSpaceWithTiers verifies that the Space for the given name is provisioned with all needed labels and conditions.
 // It also checks the NSTemplateSet and that all related namespace-scoped resources are provisoned for the given aliasTierNamespaces, and cluster scoped resources for aliasTierClusterResources.
 func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName, aliasTierNamespaces, aliasTierClusterResources string) *toolchainv1alpha1.Space {
-	hostAwait := awaitilities.Host()
-
-	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
+	tier, err := awaitilities.Host().WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
 	// wait for space to be fully provisioned
-	space, err := hostAwait.WaitForSpace(spaceName,
+	space, err := awaitilities.Host().WaitForSpace(spaceName,
 		wait.UntilSpaceHasTier(tierName),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tierName), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
@@ -169,7 +167,7 @@ func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait
 	}
 
 	// get refs & checks
-	templateRefs, namespacesChecks, clusterResourcesChecks := tiers.GetRefsAndChecksForTiers(t, hostAwait, tierName, aliasTierNamespaces, aliasTierClusterResources)
+	templateRefs, namespacesChecks, clusterResourcesChecks := tiers.GetRefsAndChecksForTiers(t, awaitilities.Host(), tierName, aliasTierNamespaces, aliasTierClusterResources)
 
 	// get NSTemplateSet
 	nsTemplateSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tierName), wait.UntilNSTemplateSetHasConditions(Provisioned()))

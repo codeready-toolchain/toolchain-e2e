@@ -125,10 +125,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		murSyncIndex := MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name).Spec.UserAccounts[0].SyncIndex
+		MoveUserToTier(t, hostAwait, userSignupMember1.Spec.Username, baseDeactivationDisabledTier.Name)
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
-			wait.UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
-			wait.UntilMasterUserRecordHasNotSyncIndex(murSyncIndex))
+			wait.UntilMasterUserRecordHasCondition(Provisioned()),
+			wait.UntilMasterUserRecordHasTierName(baseDeactivationDisabledTier.Name)) // ignore other conditions, such as notification sent, etc.
 		require.NoError(s.T(), err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
@@ -144,8 +144,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
 
 		// The user should not be deactivated so the MUR should not be deleted, expect an error
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
+		err = hostAwait.WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
 		require.Error(s.T(), err)
+
+		// The space should not be deleted either, expect an error
+		err = hostAwait.WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitUntilSpaceAndSpaceBindingsDeleted(murMember1.Name)
+		require.Error(t, err)
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
@@ -189,8 +193,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
 		// The non-excluded user should be deactivated
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(murMember1.Name)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
 		require.NoError(s.T(), err)
+
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(murMember1.Name)
+		require.NoError(t, err)
+
 		userSignupMember1, err = hostAwait.WaitForUserSignup(userSignupMember1.Name,
 			wait.UntilUserSignupHasConditions(ConditionSet(ApprovedByAdmin(), Deactivated())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
@@ -306,6 +314,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				mur, err = hostAwait.UpdateMasterUserRecordStatus(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 					mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
 				})
+				murName := mur.Name
 				require.NoError(s.T(), err)
 				s.T().Logf("masteruserrecord '%s' provisioned time adjusted to %s", mur.Name,
 					mur.Status.ProvisionedTime.String())
@@ -345,10 +354,13 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				// - The SyncIndex property of the UserAccount is intended for the express purpose of triggering
 				//   a reconciliation, so we set it to some new unique value here
 				syncIndex := uuid.Must(uuid.NewV4()).String()
-				mur, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+				_, err := hostAwait.UpdateMasterUserRecordSpec(murName, func(mur *toolchainv1alpha1.MasterUserRecord) {
 					mur.Spec.UserAccounts[0].SyncIndex = syncIndex
 				})
-				require.NoError(t, err)
+				if err != nil {
+					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
+					require.EqualError(t, err, `masteruserrecords.toolchain.dev.openshift.com "fulldeactivationlifecycle" not found`)
+				}
 
 				// The user should now be set to deactivated
 				userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
@@ -356,8 +368,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				require.NoError(s.T(), err)
 
 				// The MUR should also be deleted
-				err = hostAwait.WaitUntilMasterUserRecordDeleted(mur.Name)
+				err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murName)
 				require.NoError(s.T(), err)
+
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(murName)
+				require.NoError(t, err)
 			})
 		})
 	})
@@ -422,9 +437,11 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Confirm that the user is banned
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
-		err = hostAwait.WaitUntilMasterUserRecordDeleted("testuser" + id)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted("testuser" + id)
 		require.NoError(s.T(), err)
 
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted("testuser" + id)
+		require.NoError(t, err)
 	})
 
 	s.T().Run("register new user with preexisting ban", func(t *testing.T) {

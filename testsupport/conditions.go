@@ -338,3 +338,11 @@ func TerminatingNSTemplateSet() toolchainv1alpha1.Condition {
 		Reason: toolchainv1alpha1.NSTemplateSetTerminatingReason,
 	}
 }
+
+func TerminatingSpace() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.ConditionReady,
+		Status: corev1.ConditionFalse,
+		Reason: toolchainv1alpha1.SpaceTerminatingReason,
+	}
+}
