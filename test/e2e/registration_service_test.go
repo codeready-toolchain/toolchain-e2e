@@ -392,6 +392,40 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 	})
 }
 
+func (s *registrationServiceTestSuite) TestUserSignupFoundWhenNamedWithEncodedUsername() {
+	hostAwait := s.Host()
+
+	// Create a token and identity to sign up with, but override the sub claim with "arnold" so that we create a UserSignup
+	// with that name
+	identity0 := authsupport.NewIdentity()
+	emailValue := "arnold@acme.com"
+	emailClaim0 := authsupport.WithEmailClaim(emailValue)
+	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithSubClaim("arnold"))
+	require.NoError(s.T(), err)
+
+	// Call the signup endpoint
+	invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token0, "", http.StatusAccepted)
+
+	// Wait for the UserSignup to be created
+	userSignup, err := hostAwait.WaitForUserSignup("arnold",
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
+	require.NoError(s.T(), err)
+	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
+	assert.Equal(s.T(), emailValue, emailAnnotation)
+
+	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
+	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
+	token0, err = authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithPreferredUsernameClaim("arnold"))
+	require.NoError(s.T(), err)
+	mp, mpStatus := parseResponse(s.T(), invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup", token0, "", http.StatusOK))
+	assert.Equal(s.T(), "", mp["compliantUsername"])
+	assert.Equal(s.T(), identity0.Username, mp["username"])
+	require.IsType(s.T(), false, mpStatus["ready"])
+	assert.False(s.T(), mpStatus["ready"].(bool))
+	assert.Equal(s.T(), "PendingApproval", mpStatus["reason"])
+}
+
 func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	hostAwait := s.Host()
 	// Create a token and identity to sign up with
