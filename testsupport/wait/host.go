@@ -1108,6 +1108,24 @@ func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) 
 	}
 }
 
+// UntilToolchainStatusUpdated returns a `ToolchainStatusWaitCriterion` which checks that the
+// ToolchainStatus ready condition was updated after the given time
+func UntilToolchainStatusUpdatedAfter(t time.Time) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			cond, found := condition.FindConditionByType(actual.Status.Conditions, toolchainv1alpha1.ConditionReady)
+			return found && t.Before(cond.LastUpdatedTime.Time)
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			cond, found := condition.FindConditionByType(actual.Status.Conditions, toolchainv1alpha1.ConditionReady)
+			if !found {
+				return fmt.Sprintf("expected ToolchainStatus ready conditions to updated after %s, but it was not found: %v", t.String(), actual.Status.Conditions)
+			}
+			return fmt.Sprintf("expected ToolchainStatus ready conditions to updated after %s, but is: %v", t.String(), cond.LastUpdatedTime)
+		},
+	}
+}
+
 // UntilAllMembersHaveUsageSet returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has all members with some non-zero resource usage
 func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
