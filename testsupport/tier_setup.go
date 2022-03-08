@@ -98,16 +98,12 @@ func createNewTierTemplate(t *testing.T, hostAwait *HostAwaitility, tierName, or
 	return newTierTemplate.Name
 }
 
-func MoveUserToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) *toolchainv1alpha1.MasterUserRecord {
-	mur, err := hostAwait.WaitForMasterUserRecord(username,
-		UntilMasterUserRecordHasCondition(Provisioned())) // ignore other conditions, such as notification sent, etc.
-	require.NoError(t, err)
+func MoveUserToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
 	changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, username, tierName)
-	err = hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
+	err := hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
 	require.NoError(t, err)
 	_, err = hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
 	require.NoError(t, err)
-	return mur
 }
 
 func NewChangeTierRequest(namespace, murName, tier string) *toolchainv1alpha1.ChangeTierRequest {

@@ -22,7 +22,7 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	require.NoError(t, err)
 	t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
-	err = hostAwait.WaitUntilMasterUserRecordDeleted(userSignup.Status.CompliantUsername)
+	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
 
 	// "deactivated"
@@ -45,6 +45,10 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")
 
 	err = hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
+	require.NoError(t, err)
+
+	// Wait for the notification to be deleted because it will likely be deleted before the space. The space will only be deleted after 30 seconds.
+	err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
 
 	return userSignup
