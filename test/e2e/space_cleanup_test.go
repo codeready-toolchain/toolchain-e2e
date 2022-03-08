@@ -56,7 +56,6 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 	// TODO: move this to separate test as soon as we support test execution in parallel and we don't care when the test waits for 30 seconds
 	t.Run("for Spaces", func(t *testing.T) {
-		t.Skip("it's 2 hours now")
 		// given
 		awaitilities := WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
