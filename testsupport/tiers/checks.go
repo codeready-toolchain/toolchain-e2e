@@ -26,6 +26,7 @@ const (
 	advanced                 = "advanced"
 	appstudio                = "appstudio"
 	base                     = "base"
+	baseSingleNS             = "base-single-ns"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
@@ -61,6 +62,9 @@ func NewChecks(tier string) (TierChecks, error) {
 	switch tier {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
+
+	case baseSingleNS:
+		return &baseSingleNSTierChecks{baseTierChecks{tierName: baseSingleNS}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -149,6 +153,53 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(43200, "dev", "stage"))
+}
+
+type baseSingleNSTierChecks struct {
+	baseTierChecks
+}
+
+func (a *baseSingleNSTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+	checks := append(commonChecks,
+		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+		rbacEditRoleBinding(),
+		rbacEditRole(),
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+		execPodsRole(),
+		numberOfToolchainRoles(2),
+		numberOfToolchainRoleBindings(4))
+
+	checks = append(checks, commonNetworkPolicyChecks()...)
+
+	switch nsType {
+	case "dev":
+		checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
+	}
+	return checks
+}
+
+func (a *baseSingleNSTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
+	return templateRefs
+}
+
+func (a *baseSingleNSTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		clusterResourceQuotaRHOASOperatorCRs(),
+		clusterResourceQuotaSBOCRs(),
+		numberOfClusterResourceQuotas(),
+		idlers(43200, "dev"))
 }
 
 type baselargeTierChecks struct {
