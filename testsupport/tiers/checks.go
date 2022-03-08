@@ -958,8 +958,8 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 
 func gitOpsServiceLabel() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		require.NotNil(t, ns.Labels)
-		assert.Equal(t, "argocd.argoproj.io/managed-by", ns.Labels["gitops-service-argocd"])
+		_, err := memberAwait.WaitForNamespaceWithName(ns.Name, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
+		require.NoError(t, err)
 	}
 }
 
@@ -978,13 +978,13 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
 					Verbs:     []string{"*"},
 				},
 				{
-					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
 					Verbs:     []string{"*"},
 				},
 				{
