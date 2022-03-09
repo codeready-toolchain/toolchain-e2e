@@ -26,7 +26,7 @@ const (
 	advanced                 = "advanced"
 	appstudio                = "appstudio"
 	base                     = "base"
-	baseSingleNS             = "base-single-ns"
+	baseoneNS                = "baseonens"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
@@ -63,8 +63,8 @@ func NewChecks(tier string) (TierChecks, error) {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
 
-	case baseSingleNS:
-		return &baseSingleNSTierChecks{baseTierChecks{tierName: baseSingleNS}}, nil
+	case baseoneNS:
+		return &baseoneNSTierChecks{baseTierChecks{tierName: baseoneNS}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -155,11 +155,11 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		idlers(43200, "dev", "stage"))
 }
 
-type baseSingleNSTierChecks struct {
+type baseoneNSTierChecks struct {
 	baseTierChecks
 }
 
-func (a *baseSingleNSTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+func (a *baseoneNSTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
 		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
@@ -179,13 +179,13 @@ func (a *baseSingleNSTierChecks) GetNamespaceObjectChecks(nsType string) []names
 	return checks
 }
 
-func (a *baseSingleNSTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+func (a *baseoneNSTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
 	return templateRefs
 }
 
-func (a *baseSingleNSTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+func (a *baseoneNSTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
