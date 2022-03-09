@@ -308,21 +308,6 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 	a.T.Log(buf.String())
 }
 
-// UntilMasterUserRecordHasProvisionedTime checks if MasterUserRecord status has the given provisioned time
-func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRecordWaitCriterion {
-	return MasterUserRecordWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			return actual.Status.ProvisionedTime != nil && expectedTime.Time == actual.Status.ProvisionedTime.Time
-		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			if actual.Status.ProvisionedTime == nil {
-				return fmt.Sprintf("expected status provisioned time '%s'.\n\tactual is 'nil'", expectedTime.String())
-			}
-			return fmt.Sprintf("expected status provisioned time '%s'.\n\tactual: '%s'", expectedTime.String(), actual.Status.ProvisionedTime.Time.String())
-		},
-	}
-}
-
 // UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
 func UntilMasterUserRecordIsBeingDeleted() MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
@@ -1104,6 +1089,24 @@ func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) 
 		},
 		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
 			return fmt.Sprintf("expected ToolchainStatus conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
+		},
+	}
+}
+
+// UntilToolchainStatusUpdated returns a `ToolchainStatusWaitCriterion` which checks that the
+// ToolchainStatus ready condition was updated after the given time
+func UntilToolchainStatusUpdatedAfter(t time.Time) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			cond, found := condition.FindConditionByType(actual.Status.Conditions, toolchainv1alpha1.ConditionReady)
+			return found && t.Before(cond.LastUpdatedTime.Time)
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			cond, found := condition.FindConditionByType(actual.Status.Conditions, toolchainv1alpha1.ConditionReady)
+			if !found {
+				return fmt.Sprintf("expected ToolchainStatus ready conditions to updated after %s, but it was not found: %v", t.String(), actual.Status.Conditions)
+			}
+			return fmt.Sprintf("expected ToolchainStatus ready conditions to updated after %s, but is: %v", t.String(), cond.LastUpdatedTime)
 		},
 	}
 }
