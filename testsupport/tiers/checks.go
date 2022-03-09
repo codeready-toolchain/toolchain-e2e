@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -958,7 +959,12 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 
 func gitOpsServiceLabel() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		_, err := memberAwait.WaitForNamespaceWithName(ns.Name, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
+		// TODO fix for migration/existing namespaces cases
+		labelWaitCriterion := []wait.LabelWaitCriterion{}
+		if !strings.HasPrefix(ns.Name, "migration-") {
+			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
+		}
+		_, err := memberAwait.WaitForNamespaceWithName(ns.Name, labelWaitCriterion...)
 		require.NoError(t, err)
 	}
 }
