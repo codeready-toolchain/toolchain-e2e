@@ -61,7 +61,9 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 	t.Run("set low max number of users and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
 		// given
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
@@ -100,7 +102,9 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("mark the first member cluster as full and for the second keep some capacity - expect that the space will be provisioned to the second one", func(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait1.ClusterName == m.ClusterName {
