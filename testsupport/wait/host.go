@@ -308,21 +308,6 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 	a.T.Log(buf.String())
 }
 
-// UntilMasterUserRecordHasProvisionedTime checks if MasterUserRecord status has the given provisioned time
-func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRecordWaitCriterion {
-	return MasterUserRecordWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			return actual.Status.ProvisionedTime != nil && expectedTime.Time == actual.Status.ProvisionedTime.Time
-		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			if actual.Status.ProvisionedTime == nil {
-				return fmt.Sprintf("expected status provisioned time '%s'.\n\tactual is 'nil'", expectedTime.String())
-			}
-			return fmt.Sprintf("expected status provisioned time '%s'.\n\tactual: '%s'", expectedTime.String(), actual.Status.ProvisionedTime.Time.String())
-		},
-	}
-}
-
 // UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
 func UntilMasterUserRecordIsBeingDeleted() MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{

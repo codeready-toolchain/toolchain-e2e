@@ -143,10 +143,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 		s.T().Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
 
-		// Ensure the MUR has the updated ProvisionedTime
-		_, err = hostAwait.WaitForMasterUserRecord(murMember1.Name, wait.UntilMasterUserRecordHasProvisionedTime(updatedProvisionedTime))
-		require.NoError(s.T(), err)
-
 		// The user should not be deactivated so the MUR should not be deleted, expect an error
 		err = hostAwait.WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitUntilMasterUserRecordAndSpaceBindingsDeleted(murMember1.Name)
 		require.Error(s.T(), err)
