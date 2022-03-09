@@ -34,7 +34,7 @@ func TestCreateSpace(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceDeleted(space.Name)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space.Name)
 			require.NoError(t, err)
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(space.Name)
 			require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestCreateSpace(t *testing.T) {
 
 				t.Run("space should be finally deleted", func(t *testing.T) {
 					// when
-					err = hostAwait.WaitUntilSpaceDeleted(s.Name)
+					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(s.Name)
 					// then
 					require.NoError(t, err)
 				})

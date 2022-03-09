@@ -81,7 +81,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 	s.T().Run("set low max number of users and expect that user won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
@@ -141,7 +143,9 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait.ClusterName == m.ClusterName {

@@ -294,7 +294,7 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, c := range criteria {
-			if !c.Match(actual) {
+			if !c.Match(actual) && c.Diff != nil {
 				buf.WriteString(c.Diff(actual))
 				buf.WriteString("\n")
 			}
@@ -303,23 +303,9 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	a.listAndPrint("UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
 	a.listAndPrint("MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
+	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
 
 	a.T.Log(buf.String())
-}
-
-// UntilMasterUserRecordHasProvisionedTime checks if MasterUserRecord status has the given provisioned time
-func UntilMasterUserRecordHasProvisionedTime(expectedTime *v1.Time) MasterUserRecordWaitCriterion {
-	return MasterUserRecordWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			return actual.Status.ProvisionedTime != nil && expectedTime.Time == actual.Status.ProvisionedTime.Time
-		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			if actual.Status.ProvisionedTime == nil {
-				return fmt.Sprintf("expected status provisioned time '%s'.\n\tactual is 'nil'", expectedTime.String())
-			}
-			return fmt.Sprintf("expected status provisioned time '%s'.\n\tactual: '%s'", expectedTime.String(), actual.Status.ProvisionedTime.Time.String())
-		},
-	}
 }
 
 // UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
@@ -357,17 +343,17 @@ func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition)
 	}
 }
 
-// UntilMasterUserRecordHasNotSyncIndex checks if MasterUserRecord has a
-// sync index *different* from the given value for the given target cluster
-func UntilMasterUserRecordHasNotSyncIndex(expected string) MasterUserRecordWaitCriterion {
+// UntilMasterUserRecordHasSyncIndex checks if the MasterUserRecord has a
+// sync index that matches (or does not match) the given value
+func UntilMasterUserRecordHasSyncIndex(previousSyncIndex string, expectedToChange bool) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			// lookup user account with target cluster
 			ua := actual.Spec.UserAccounts[0]
-			return ua.SyncIndex != expected
+			changed := ua.SyncIndex != previousSyncIndex
+			return changed == expectedToChange
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected sync index to match.\n\twanted: '%s'\n\tactual: '%s'", expected, actual.Spec.UserAccounts[0].SyncIndex)
+			return fmt.Sprintf("unexpected sync index value.\n\texpected to change: '%t'\n\tpreviousSyncIndex: '%s'\n\tcurrent: '%s'", expectedToChange, previousSyncIndex, actual.Spec.UserAccounts[0].SyncIndex)
 		},
 	}
 }
@@ -415,6 +401,19 @@ func UntilMasterUserRecordHasTierName(expected string) MasterUserRecordWaitCrite
 	}
 }
 
+func UntilMasterUserRecordHasNoTierHashLabel() MasterUserRecordWaitCriterion {
+	return MasterUserRecordWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
+			for key := range actual.Labels {
+				if strings.HasSuffix(key, "-tier-hash") {
+					return false
+				}
+			}
+			return true
+		},
+	}
+}
+
 // UserSignupWaitCriterion a struct to compare with an expected UserSignup
 type UserSignupWaitCriterion struct {
 	Match func(*toolchainv1alpha1.UserSignup) bool
@@ -442,7 +441,7 @@ func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(actual *toolchainv1al
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, c := range criteria {
-			if !c.Match(actual) {
+			if !c.Match(actual) && c.Diff != nil {
 				buf.WriteString(c.Diff(actual))
 				buf.WriteString("\n")
 			}
@@ -645,13 +644,17 @@ func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
 	})
 }
 
-// WaitUntilMasterUserRecordDeleted waits until the MUR with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilMasterUserRecordDeleted(name string) error {
+// WaitUntilMasterUserRecordAndSpaceBindingsDeleted waits until the MUR with the given name and its associated SpaceBindings are deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(name string) error {
 	a.T.Logf("waiting until MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
+				// once the MUR is deleted, wait for the associated spacebindings to be deleted as well
+				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey, name); err != nil {
+					return false, err
+				}
 				return true, nil
 			}
 			return false, err
@@ -1090,6 +1093,24 @@ func UntilToolchainStatusHasConditions(expected ...toolchainv1alpha1.Condition) 
 	}
 }
 
+// UntilToolchainStatusUpdated returns a `ToolchainStatusWaitCriterion` which checks that the
+// ToolchainStatus ready condition was updated after the given time
+func UntilToolchainStatusUpdatedAfter(t time.Time) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			cond, found := condition.FindConditionByType(actual.Status.Conditions, toolchainv1alpha1.ConditionReady)
+			return found && t.Before(cond.LastUpdatedTime.Time)
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			cond, found := condition.FindConditionByType(actual.Status.Conditions, toolchainv1alpha1.ConditionReady)
+			if !found {
+				return fmt.Sprintf("expected ToolchainStatus ready conditions to updated after %s, but it was not found: %v", t.String(), actual.Status.Conditions)
+			}
+			return fmt.Sprintf("expected ToolchainStatus ready conditions to updated after %s, but is: %v", t.String(), cond.LastUpdatedTime)
+		},
+	}
+}
+
 // UntilAllMembersHaveUsageSet returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has all members with some non-zero resource usage
 func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
@@ -1462,6 +1483,15 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 	a.T.Log(buf.String())
 }
 
+// UntilSpaceIsBeingDeleted checks if Space has Deletion Timestamp
+func UntilSpaceIsBeingDeleted() SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
 // UntilSpaceHasLabelWithValue returns a `SpaceWaitCriterion` which checks that the given
 // Space has the expected label with the given value
 func UntilSpaceHasLabelWithValue(key, value string) SpaceWaitCriterion {
@@ -1584,8 +1614,8 @@ func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
 	}
 }
 
-// WaitUntilSpaceDeleted waits until the Space with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
+// WaitUntilSpaceAndSpaceBindingsDeleted waits until the Space with the given name and its associated SpaceBindings are deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) error {
 	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
 	var s *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -1596,6 +1626,10 @@ func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 				Name:      name,
 			}, obj); err != nil {
 			if errors.IsNotFound(err) {
+				// once the space is deleted, wait for the associated spacebindings to be deleted as well
+				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(toolchainv1alpha1.SpaceBindingSpaceLabelKey, name); err != nil {
+					return false, err
+				}
 				return true, nil
 			}
 			return false, err
@@ -1613,7 +1647,7 @@ func (a *HostAwaitility) WaitUntilSpaceDeleted(name string) error {
 
 // WaitUntilSpaceBindingDeleted waits until the SpaceBinding with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
-	a.T.Logf("waiting until SpaceBinding '%s' in namespace '%s' is deleted", name, a.Namespace)
+
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.SpaceBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
@@ -1624,4 +1658,134 @@ func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
 		}
 		return false, nil
 	})
+}
+
+// WaitUntilSpaceBindingsWithLabelDeleted waits until there are no SpaceBindings listed using the given labels
+func (a *HostAwaitility) WaitUntilSpaceBindingsWithLabelDeleted(key, value string) error {
+	labels := map[string]string{key: value}
+	a.T.Logf("waiting until SpaceBindings with labels '%v' in namespace '%s' are deleted", labels, a.Namespace)
+	var spaceBindingList *toolchainv1alpha1.SpaceBindingList
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the SpaceBinding from the host namespace
+		spaceBindingList = &toolchainv1alpha1.SpaceBindingList{}
+		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		return len(spaceBindingList.Items) == 0, nil
+	})
+	// print the listed spacebindings
+	if err != nil {
+		buf := &strings.Builder{}
+		buf.WriteString(fmt.Sprintf("spacebindings still found with labels %v:\n", labels))
+		for _, sb := range spaceBindingList.Items {
+			y, _ := yaml.Marshal(sb)
+			buf.Write(y)
+			buf.WriteString("\n")
+		}
+	}
+	return err
+}
+
+type SpaceBindingWaitCriterion struct {
+	Match func(*toolchainv1alpha1.SpaceBinding) bool
+	Diff  func(*toolchainv1alpha1.SpaceBinding) string
+}
+
+func matchSpaceBindingWaitCriterion(actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+// WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
+	var spacebinding *toolchainv1alpha1.SpaceBinding
+	labels := map[string]string{
+		toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
+		toolchainv1alpha1.SpaceBindingSpaceLabelKey:            spaceName,
+	}
+
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the SpaceBinding from the host namespace
+		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
+		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		if len(spaceBindingList.Items) == 0 {
+			return false, nil
+		}
+		spacebinding = &spaceBindingList.Items[0]
+		return matchSpaceBindingWaitCriterion(spacebinding, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceBindingWaitCriterionDiffs(spacebinding, criteria...)
+	}
+	return spacebinding, err
+}
+
+func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find SpaceBinding\n")
+	} else {
+		buf.WriteString("failed to find SpaceBinding with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	// also include SpaceBindings resources in the host namespace, to help troubleshooting
+	a.listAndPrint("SpaceBindings", a.Namespace, &toolchainv1alpha1.SpaceBindingList{})
+	a.T.Log(buf.String())
+}
+
+// UntilSpaceBindingHasMurName returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has the expected MUR name set in its Spec
+func UntilSpaceBindingHasMurName(expected string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Spec.MasterUserRecord == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected MUR name to match:\n%s", Diff(expected, actual.Spec.MasterUserRecord))
+		},
+	}
+}
+
+// UntilSpaceBindingHasSpaceName returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has the expected MUR name set in its Spec
+func UntilSpaceBindingHasSpaceName(expected string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Spec.Space == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected Space name to match:\n%s", Diff(expected, actual.Spec.Space))
+		},
+	}
+}
+
+// UntilSpaceBindingHasSpaceRole returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has the expected SpaceRole name set in its Spec
+func UntilSpaceBindingHasSpaceRole(expected string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Spec.SpaceRole == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected Space role to match:\n%s", Diff(expected, actual.Spec.SpaceRole))
+		},
+	}
 }

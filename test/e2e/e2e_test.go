@@ -84,7 +84,8 @@ func TestE2EFlow(t *testing.T) {
 	memberAwait.WaitForAutoscalingBufferApp()
 
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...))
+		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
@@ -239,6 +240,7 @@ func TestE2EFlow(t *testing.T) {
 			// given
 			ua, err := memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername)
 			require.NoError(t, err)
+			originalCreationTimestamp := ua.CreationTimestamp
 
 			// when deleting the user account
 			deletePolicy := metav1.DeletePropagationForeground
@@ -247,10 +249,12 @@ func TestE2EFlow(t *testing.T) {
 			}
 			err = memberAwait.Client.Delete(context.TODO(), ua, deleteOpts)
 			require.NoError(t, err)
-			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsBeingDeleted())
+			// useraccount deletion happens very quickly so instead of waiting for the useraccount to
+			// have a deletion timestamp, ensure the creation timestamp is updated to a newer timestamp
+			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsCreatedAfter(originalCreationTimestamp))
 			require.NoError(t, err)
 
-			// then the user account should be recreated
+			// then verify the recreated user account
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "base")
 		})
 	})
@@ -261,16 +265,21 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9))
+			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
+			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
-	t.Run("verify userAccount is not deleted if namespace is not deleted", func(t *testing.T) {
+	t.Run("verify Space is not deleted if namespace is not deleted", func(t *testing.T) {
 		// given
+		laraUserName := "laracroft"
+		userNamespace := "laracroft-dev"
+		cmName := "test-useraccount-delete-1"
+
 		laraSignUp, _ := NewSignupRequest(t, awaitilities).
-			Username("laracroft").
+			Username(laraUserName).
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
@@ -280,9 +289,9 @@ func TestE2EFlow(t *testing.T) {
 
 		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
 
-		laraUserName := "laracroft"
-		userNamespace := "laracroft-dev"
-		cmName := "test-useraccount-delete-1"
+		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "base")
+
+		VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
 
 		// Create a configmap with finalizer in user's namespace, which will block the deletion of namespace.
 		cm := &corev1.ConfigMap{
@@ -324,17 +333,23 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
-		userAcc, err := memberAwait.WaitForUserAccount(laraUserName, wait.UntilUserAccountIsBeingDeleted(), wait.UntilUserAccountContainsCondition(TerminatingUserAccount()))
+		// UserAccount should be deleted when MUR is deleted
+		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
 		require.NoError(t, err)
-		require.NotEmpty(t, userAcc)
 
-		mur, err := hostAwait.WaitForMasterUserRecord(laraUserName, wait.UntilMasterUserRecordIsBeingDeleted(), wait.UntilMasterUserRecordHasCondition(UnableToDeleteUserAccount()))
+		// MUR should be deleted when UserSignup is deleted
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(laraUserName)
 		require.NoError(t, err)
-		require.NotEmpty(t, mur)
 
-		userSignup, err := hostAwait.WaitForUserSignup(laraSignUp.Name, wait.UntilUserSignupIsBeingDeleted())
+		// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
+		// the behaviour is consistent for both AppStudio & DevSandbox
+		err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
 		require.NoError(t, err)
-		require.NotEmpty(t, userSignup)
+
+		// space should be stuck terminating
+		space, err := hostAwait.WaitForSpace(laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(TerminatingSpace()))
+		require.NoError(t, err)
+		require.NotEmpty(t, space)
 
 		t.Run("remove finalizer", func(t *testing.T) {
 			// when removing the finalizer from the CM
@@ -343,20 +358,14 @@ func TestE2EFlow(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// then check all are deleted
+			// then check remaining resources are deleted
 			err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
 			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
 
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
 			assert.NoError(t, err, "NSTemplateSet is not deleted")
 
-			err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
-			require.NoError(t, err)
-
-			err = hostAwait.WaitUntilMasterUserRecordDeleted(laraUserName)
-			require.NoError(t, err)
-
-			err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(laraUserName)
 			require.NoError(t, err)
 		})
 
@@ -418,7 +427,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("usersignup '%s' deleted (resource name='%s')", johnsmithName, johnSignup.Name)
 
-		err = hostAwait.WaitUntilMasterUserRecordDeleted(johnsmithName)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(johnsmithName)
 		assert.NoError(t, err, "MasterUserRecord is not deleted")
 
 		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
@@ -430,8 +439,11 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilIdentityDeleted(johnsmithName)
 		assert.NoError(t, err, "Identity is not deleted")
 
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(johnsmithName)
+		require.NoError(t, err)
+
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
-		assert.NoError(t, err, "NSTemplateSet id not deleted")
+		assert.NoError(t, err, "NSTemplateSet is not deleted")
 
 		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(johnsmithName)
 		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
@@ -446,8 +458,8 @@ func TestE2EFlow(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "base")
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
+		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)

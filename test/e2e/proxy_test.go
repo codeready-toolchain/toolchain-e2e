@@ -56,7 +56,7 @@ func TestProxyFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultTier("appstudio"))
+	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultTier("appstudio").DefaultSpaceTier("appstudio"))
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)

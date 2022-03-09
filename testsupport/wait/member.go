@@ -28,6 +28,7 @@ import (
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -108,7 +109,7 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, c := range criteria {
-			if !c.Match(actual) {
+			if !c.Match(actual) && c.Diff != nil {
 				buf.WriteString(c.Diff(actual))
 				buf.WriteString("\n")
 			}
@@ -216,11 +217,21 @@ func UntilUserAccountContainsCondition(expected toolchainv1alpha1.Condition) Use
 }
 
 // UntilUserAccountIsBeingDeleted returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has the deletion timestamp set
+// UserAccount has the deletion timestamp set
 func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
+// UntilUserAccountIsCreatedAfter returns a `UserAccountWaitCriterion` which checks that the given
+// UserAccount has a creation timestamp that is after the given timestamp
+func UntilUserAccountIsCreatedAfter(timestamp metav1.Time) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return actual.CreationTimestamp.After(timestamp.Time)
 		},
 	}
 }
@@ -451,6 +462,10 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
+		if ns == nil {
+			a.T.Logf("a namespace with the following labels was not found: %v", labels)
+			return nil, err
+		}
 		for _, c := range criteria {
 			a.T.Logf(c.Diff(ns))
 		}

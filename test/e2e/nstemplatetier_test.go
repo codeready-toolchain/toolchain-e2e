@@ -129,7 +129,7 @@ func TestSetDefaultTier(t *testing.T) {
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced"))
+		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced").DefaultSpaceTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
 		NewSignupRequest(t, awaitilities).
 			Username("defaulttierchanged").
@@ -158,11 +158,11 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// second group of users: the "cookie lovers"
 	cookieSyncIndexes := setupAccounts(t, awaitilities, "cookie", "cookielover%02d", memberAwait, count)
 
-	// setup chocolate tier to be used for creating spaces without
+	// setup chocolate tier to be used for creating spaces without usersignups
 	spaces := setupSpaces(t, awaitilities, "chocolate", "chocolatelover%02d", memberAwait, count)
 
-	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base")
-	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
+	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base", true)
+	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieSyncIndexes, "cookie", "base", "base", true)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "base", "base")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces) but keep the ClusterResources refs
@@ -173,8 +173,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	updateTemplateTier(t, hostAwait, "chocolate", "advanced", "")
 
 	// then
-	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "base")
-	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "baseextendedidling", "baseextendedidling")
+	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "base", false)
+	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieSyncIndexes, "cookie", "baseextendedidling", "baseextendedidling", false)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "advanced", "base")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
@@ -185,8 +185,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	updateTemplateTier(t, hostAwait, "chocolate", "", "advanced")
 
 	// then
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "advanced")
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, "cookie", "base", "base")
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "advanced", false)
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieSyncIndexes, "cookie", "base", "base", false)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "advanced", "advanced")
 
 	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
@@ -224,7 +224,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		require.NoError(t, err)
 
 		// Move the user to the new tier
-		_ = MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+		MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
 
 		// Ensure the deactivating state is reset after promotion
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
@@ -284,7 +284,11 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt st
 	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
 	syncIndexes := make(map[string]string, len(users))
 	for i, user := range users {
-		mur := MoveUserToTier(t, hostAwait, fmt.Sprintf(nameFmt, i), tier.Name)
+		username := fmt.Sprintf(nameFmt, i)
+		mur, err := hostAwait.WaitForMasterUserRecord(username,
+			UntilMasterUserRecordHasCondition(Provisioned())) // ignore other conditions, such as notification sent, etc.
+		require.NoError(t, err)
+		MoveUserToTier(t, hostAwait, username, tier.Name)
 		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
 		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}
@@ -334,11 +338,10 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 	}
 }
 
-func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string) map[string]string {
-
-	templateRefs, namespacesChecks, clusterResourcesChecks := tiers.GetRefsAndChecksForTiers(t, hostAwait, tierName, aliasTierNamespaces, aliasTierClusterResources)
+func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string, tierNameChanged bool) map[string]string {
 
 	// verify that all TemplateUpdateRequests were deleted
+	hostAwait := awaitilities.Host()
 	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
 	require.NoError(t, err)
 
@@ -349,7 +352,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 		require.NoError(t, err)
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(Provisioned()),
-			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, tierName, templateRefs, usersignup.Spec.OriginalSub)),
+			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, usersignup.Spec.OriginalSub)),
 			UntilUserAccountMatchesMur(hostAwait))
 		if err != nil {
 			nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
@@ -358,27 +361,26 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 			}
 			require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", usersignup, userAccount, nsTemplateSet)
 		}
+
+		// the syncIndex should be different if the tier changed. if only the template refs changed then the sync index is expected to be the same because UserAccounts no longer have references to the NSTemplateSet
 		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
-			UntilMasterUserRecordHasNotSyncIndex(syncIndex),
+			UntilMasterUserRecordHasSyncIndex(syncIndex, tierNameChanged),
 		)
 		require.NoError(t, err)
 		updatedSyncIndexes[userID] = mur.Spec.UserAccounts[0].SyncIndex
-
-		require.NoError(t, err)
 		require.NotNil(t, userAccount)
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tierName))
-		require.NoError(t, err)
-		tiers.VerifyGivenNsTemplateSet(t, memberAwaitility, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
+
+		// verify space and tier resources are correctly updated
+		VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, memberAwaitility, mur.Name, tierName, aliasTierNamespaces, aliasTierClusterResources)
 	}
 
 	return updatedSyncIndexes
 }
 
 func verifyResourceUpdatesForSpaces(t *testing.T, awaitilities Awaitilities, targetCluster *MemberAwaitility, spaces []string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
-	hostAwait := awaitilities.Host()
-
 	// verify that all TemplateUpdateRequests were deleted
+	hostAwait := awaitilities.Host()
 	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
 	require.NoError(t, err)
 
