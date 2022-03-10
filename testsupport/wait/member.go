@@ -482,10 +482,9 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 		if ns == nil {
 			a.T.Logf("a namespace with the following labels was not found: %v", labels)
 			return nil, err
-		} else {
-			for _, c := range criteria {
-				a.T.Logf(c.Diff(ns))
-			}
+		}
+		for _, c := range criteria {
+			a.T.Logf(c.Diff(ns))
 		}
 		return nil, err
 	}
