@@ -168,8 +168,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// setup chocolate tier to be used for creating spaces
 	spaces := setupSpaces(t, awaitilities, chocolateTier, "chocolateuser%02d", memberAwait, count)
 
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, cheesecakeTier, false)
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, cookieTier, false)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, cheesecakeTier, true)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, cookieTier, true)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, chocolateTier)
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources
@@ -180,8 +180,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	chocolateTier = updateNSTemplateTier(t, hostAwait, chocolateTier, withNamespaceResources("advanced"))
 
 	// then
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, cheesecakeTier, true)
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, cookieTier, true)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, cheesecakeTier, false)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, cookieTier, false)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, chocolateTier)
 
 	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
