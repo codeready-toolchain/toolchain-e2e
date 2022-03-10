@@ -85,6 +85,10 @@ func TestCreateSpace(t *testing.T) {
 
 func TestSpaceRoles(t *testing.T) {
 
+	// instead of updating the NSTemplateSet, we should create SpaceBindings (with existing templateRefs!)
+	// and verify that the Roles and RoleBindings have been created on behalf of the 2 users
+	t.Skip("skipping until SpaceBindings are in place")
+
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
