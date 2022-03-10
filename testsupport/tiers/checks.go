@@ -980,7 +980,7 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 6)
+		assert.Len(t, role.Rules, 7)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
