@@ -43,7 +43,7 @@ func CreateNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name string, 
 	err := Modify(tier, modifiers...)
 	require.NoError(t, err)
 
-	err = hostAwait.Client.Create(context.TODO(), tier)
+	err = hostAwait.CreateWithCleanup(context.TODO(), tier)
 	require.NoError(t, err)
 
 	return tier
