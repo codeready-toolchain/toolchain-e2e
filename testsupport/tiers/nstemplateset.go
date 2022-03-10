@@ -25,15 +25,14 @@ func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 
 }
 
-func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet,
-	checks TierChecks, expectedRevisions TemplateRefs) {
+func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks, expectedTemplateRefs TemplateRefs) {
 
-	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedRevisions))
+	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	assert.NoError(t, err)
 
 	// Verify all namespaces and objects within
 	namespaceObjectChecks := sync.WaitGroup{}
-	for _, templateRef := range expectedRevisions.Namespaces {
+	for _, templateRef := range expectedTemplateRefs.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
@@ -48,7 +47,7 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 	}
 
 	clusterObjectChecks := sync.WaitGroup{}
-	if expectedRevisions.ClusterResources != nil {
+	if expectedTemplateRefs.ClusterResources != nil {
 		for _, check := range checks.GetClusterObjectChecks() {
 			clusterObjectChecks.Add(1)
 			go func(check clusterObjectsCheck) {
