@@ -531,5 +531,5 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 	require.NoError(s.T(), err)
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "base")
 }
