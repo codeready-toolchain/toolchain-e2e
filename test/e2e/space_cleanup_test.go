@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/api/api/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
@@ -37,11 +38,15 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 		t.Run("when mur is deleted", func(t *testing.T) {
 			// given
-			_, mur, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "lara", "ibm")
+			_, userSignup, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "lara", "ibm")
 
 			// when
-			err := hostAwait.Client.Delete(context.TODO(), mur)
+			// deactivate the UserSignup so that the MUR will be deleted
+			userSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivated(us, true)
+			})
 			require.NoError(t, err)
+			t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 			// then
 			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
@@ -55,7 +60,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		awaitilities := WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 
-		deletionThreshold := time.Now().Add(-30 * time.Second)
+		deletionThreshold := -30 * time.Second // space will only be deleted if at least 30 seconds has elapsed since it was created
 
 		// check that the spaces were provisioned before 30 seconds
 		space1, err := hostAwait.WaitForSpace(space1.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
@@ -78,7 +83,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 				require.NoError(t, err)
 
 				// then
-				err = hostAwait.WaitUntilSpaceDeleted(space.Name)
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space.Name)
 				require.NoError(t, err)
 			})
 		})
@@ -91,16 +96,16 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// then
 			err = hostAwait.WaitUntilSpaceBindingDeleted(binding2.Name)
 			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceDeleted(space2.Name)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space2.Name)
 			require.NoError(t, err)
 		})
 	})
 }
 
-func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*v1alpha1.Space, *v1alpha1.MasterUserRecord, *v1alpha1.SpaceBinding) {
+func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space := CreateAndVerifySpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember), WithName(spaceName))
 
-	_, mur := NewSignupRequest(t, awaitilities).
+	userSignup, mur := NewSignupRequest(t, awaitilities).
 		Username(murName).
 		ManuallyApprove().
 		TargetCluster(targetMember).
@@ -110,5 +115,5 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 
 	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 
-	return space, mur, spaceBinding
+	return space, userSignup, spaceBinding
 }

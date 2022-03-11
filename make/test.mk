@@ -30,6 +30,10 @@ endif
 
 SETUP_E2E_SERVICE_ACCOUNTS ?= true
 
+ifeq ($(IS_OSD),true)
+LETS_ENCRYPT_PARAM := --lets-encrypt
+endif
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
@@ -150,25 +154,49 @@ print-local-debug-info:
 .PHONY: print-operator-logs
 print-operator-logs:
 	@echo "==============================================================================================================="
-	@echo "========================== ${DEPLOYMENT_NAME} deployment YAML- Namespace: ${NAMESPACE} ============================="
+	@echo "============================== CatalogSources  - Namespace: ${NAMESPACE} ======================================"
+	@echo "==============================================================================================================="
+	-oc get catalogsources --namespace ${NAMESPACE} -o yaml
+	@echo ""
+	@echo ""
+	@echo "==============================================================================================================="
+	@echo "============================== Subscriptions  - Namespace: ${NAMESPACE} ======================================="
+	@echo "==============================================================================================================="
+	-oc get subscriptions --namespace ${NAMESPACE} -o yaml
+	@echo ""
+	@echo ""
+	@echo "==============================================================================================================="
+	@echo "============================== InstallPlans  - Namespace: ${NAMESPACE} ========================================"
+	@echo "==============================================================================================================="
+	-oc get installplans --namespace ${NAMESPACE} -o yaml
+	@echo ""
+	@echo ""
+	@echo "==============================================================================================================="
+	@echo "======================= ${DEPLOYMENT_NAME} deployment YAML - Namespace: ${NAMESPACE} =========================="
 	@echo "==============================================================================================================="
 	-oc get deployment.apps/${DEPLOYMENT_NAME} --namespace ${NAMESPACE} -o yaml
+	@echo ""
+	@echo ""
 	@echo "==============================================================================================================="
-	@echo "========================== ${DEPLOYMENT_NAME} pod YAML- Namespace: ${NAMESPACE} ============================="
+	@echo "=========================== ${DEPLOYMENT_NAME} pod YAML - Namespace: ${NAMESPACE} ============================="
 	@echo "==============================================================================================================="
 	-oc get pods -l control-plane=controller-manager --namespace ${NAMESPACE} -o yaml
+	@echo ""
+	@echo ""
 	@echo "==============================================================================================================="
-	@echo "========================== ${DEPLOYMENT_NAME} deployment logs - Namespace: ${NAMESPACE} ============================="
+	@echo "======================= ${DEPLOYMENT_NAME} deployment logs - Namespace: ${NAMESPACE} =========================="
 	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${DEPLOYMENT_NAME} ${ADDITIONAL_PARAMS} --namespace ${NAMESPACE}
 	@echo "==============================================================================================================="
+	@echo ""
+	@echo ""
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
@@ -176,9 +204,9 @@ setup-toolchainclusters:
 .PHONY: e2e-service-account
 e2e-service-account:
 ifeq ($(SETUP_E2E_SERVICE_ACCOUNTS),true)
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2"; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
 endif
 
 ###########################################################

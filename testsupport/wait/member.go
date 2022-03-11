@@ -28,6 +28,7 @@ import (
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -108,7 +109,7 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 		buf.WriteString("\n----\n")
 		buf.WriteString("diffs:\n")
 		for _, c := range criteria {
-			if !c.Match(actual) {
+			if !c.Match(actual) && c.Diff != nil {
 				buf.WriteString(c.Diff(actual))
 				buf.WriteString("\n")
 			}
@@ -216,11 +217,21 @@ func UntilUserAccountContainsCondition(expected toolchainv1alpha1.Condition) Use
 }
 
 // UntilUserAccountIsBeingDeleted returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has the deletion timestamp set
+// UserAccount has the deletion timestamp set
 func UntilUserAccountIsBeingDeleted() UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			return actual.DeletionTimestamp != nil
+		},
+	}
+}
+
+// UntilUserAccountIsCreatedAfter returns a `UserAccountWaitCriterion` which checks that the given
+// UserAccount has a creation timestamp that is after the given timestamp
+func UntilUserAccountIsCreatedAfter(timestamp metav1.Time) UserAccountWaitCriterion {
+	return UserAccountWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
+			return actual.CreationTimestamp.After(timestamp.Time)
 		},
 	}
 }
@@ -377,6 +388,11 @@ type NamespaceWaitCriterion struct {
 	Diff  func(*corev1.Namespace) string
 }
 
+type LabelWaitCriterion struct {
+	Match func(metav1.ObjectMeta) bool
+	Diff  func(metav1.ObjectMeta) string
+}
+
 // UntilNamespaceIsActive returns a `NamespaceWaitCriterion` which checks that the given
 // Namespace is in `Active` phase
 func UntilNamespaceIsActive() NamespaceWaitCriterion {
@@ -386,6 +402,18 @@ func UntilNamespaceIsActive() NamespaceWaitCriterion {
 		},
 		Diff: func(actual *corev1.Namespace) string {
 			return fmt.Sprintf("expected namespace to be active:\n%s", actual.Status.Phase)
+		},
+	}
+}
+
+// UntilObjectHasLabel returns a `LabelWaitCriterion` which checks that the given Object has the expected label
+func UntilObjectHasLabel(labelKey, labelValue string) LabelWaitCriterion {
+	return LabelWaitCriterion{
+		Match: func(actual metav1.ObjectMeta) bool {
+			return actual.Labels[labelKey] == labelValue
+		},
+		Diff: func(actual metav1.ObjectMeta) string {
+			return fmt.Sprintf("expected object to be match label,\nExpected: %s:%s\nActual labels:%v", labelKey, labelValue, actual.Labels)
 		},
 	}
 }
@@ -451,12 +479,70 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
 		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
+		if ns == nil {
+			a.T.Logf("a namespace with the following labels was not found: %v", labels)
+			return nil, err
+		}
 		for _, c := range criteria {
 			a.T.Logf(c.Diff(ns))
 		}
 		return nil, err
 	}
 	return ns, nil
+}
+
+// WaitForNamespaceWithName waits until a namespace with the given name
+func (a *MemberAwaitility) WaitForNamespaceWithName(name string, criteria ...LabelWaitCriterion) (*corev1.Namespace, error) {
+	ns := &corev1.Namespace{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.Namespace{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		ns = obj
+		return matchLabelWaitCriteria(ns.ObjectMeta, criteria...), nil
+	})
+	if err != nil {
+		a.T.Log("failed to wait for namespace")
+		a.printNamespaceLabelCriterionDiffs(ns, criteria...)
+		return nil, err
+	}
+	return ns, nil
+}
+
+func matchLabelWaitCriteria(actual metav1.ObjectMeta, criteria ...LabelWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(actual *corev1.Namespace, criteria ...LabelWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find Namespace\n")
+		buf.WriteString(a.listAndReturnContent("Namespace", "", &corev1.NamespaceList{}))
+	} else {
+		buf.WriteString("failed to find Namespace with matching label criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual.ObjectMeta) {
+				buf.WriteString(c.Diff(actual.ObjectMeta))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	a.T.Log(buf.String())
 }
 
 //WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
@@ -1204,7 +1290,17 @@ func (a *MemberAwaitility) WaitForIdentity(name string, criteria ...IdentityWait
 		}
 		return false, nil
 	})
+	if err != nil {
+		a.printIdentities(name)
+	}
 	return identity, err
+}
+
+func (a *MemberAwaitility) printIdentities(expectedName string) {
+	buf := &strings.Builder{}
+	buf.WriteString(fmt.Sprintf("failed to find Identity '%s'\n", expectedName))
+	buf.WriteString(a.listAndReturnContent("Identity", "", &userv1.IdentityList{}))
+	a.T.Log(buf.String())
 }
 
 // UntilIdentityHasLabel checks if the Identity has the expected label

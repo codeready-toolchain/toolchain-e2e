@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -307,6 +308,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 		numberOfToolchainRoles(2),
 		numberOfToolchainRoleBindings(3),
 		numberOfToolchainServiceAccounts(1),
+		gitOpsServiceLabel(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -955,6 +957,18 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 
 // Appstudio tier specific objects
 
+func gitOpsServiceLabel() namespaceObjectsCheck {
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		// TODO fix for migration/existing namespaces cases
+		labelWaitCriterion := []wait.LabelWaitCriterion{}
+		if !strings.HasPrefix(ns.Name, "migration-") {
+			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
+		}
+		_, err := memberAwait.WaitForNamespaceWithName(ns.Name, labelWaitCriterion...)
+		require.NoError(t, err)
+	}
+}
+
 func appstudioServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		_, err := memberAwait.WaitForServiceAccount(ns, fmt.Sprintf("appstudio-%s", userName))
@@ -966,9 +980,14 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 5)
+		assert.Len(t, role.Rules, 6)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"*"},
+				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"applications", "components", "componentdetectionqueries"},

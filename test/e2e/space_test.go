@@ -34,7 +34,7 @@ func TestCreateSpace(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceDeleted(space.Name)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space.Name)
 			require.NoError(t, err)
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(space.Name)
 			require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestCreateSpace(t *testing.T) {
 
 				t.Run("space should be finally deleted", func(t *testing.T) {
 					// when
-					err = hostAwait.WaitUntilSpaceDeleted(s.Name)
+					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(s.Name)
 					// then
 					require.NoError(t, err)
 				})
@@ -84,6 +84,10 @@ func TestCreateSpace(t *testing.T) {
 }
 
 func TestSpaceRoles(t *testing.T) {
+
+	// instead of updating the NSTemplateSet, we should create SpaceBindings (with existing templateRefs!)
+	// and verify that the Roles and RoleBindings have been created on behalf of the 2 users
+	t.Skip("skipping until SpaceBindings are in place")
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)

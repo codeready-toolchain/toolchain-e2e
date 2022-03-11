@@ -34,6 +34,8 @@ Clone this repository +
 
 This repository provides you multiple Makefile targets that you can use - it depends on which version of Dev Sandbox operators you want to install.
 
+NOTE: If the cluster is an OSD cluster, then set the variable `IS_OSD=true` when running any of the Makefile targets (for example: `make appstudio-dev-deploy-latest IS_OSD=true`).
+
 IMPORTANT: Make note of the Registration Service URL that is printed at the end of the target execution.
 
 ==== Latest greatest Dev Sandbox

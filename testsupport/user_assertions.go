@@ -4,25 +4,21 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"regexp"
 	"testing"
+
+	"github.com/codeready-toolchain/toolchain-common/pkg/identity"
 
 	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const (
-	dns1123Value string = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
-)
-
-var dns1123ValueRegexp = regexp.MustCompile("^" + dns1123Value + "$")
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
@@ -33,7 +29,6 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
 
 	hostAwait := awaitilities.Host()
-	templateRefs := tiers.GetTemplateRefs(hostAwait, tierName)
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
 	userSignup, err := hostAwait.WaitForUserSignup(signup.Name,
@@ -52,7 +47,7 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
 		wait.UntilUserAccountHasConditions(Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, tierName, templateRefs, userSignup.Spec.OriginalSub)),
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
 		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 		wait.UntilUserAccountMatchesMur(hostAwait))
@@ -76,25 +71,22 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
 			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
-		assert.NoError(t, err)
+		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
 		// Verify provisioned Identity
-		userID := userAccount.Spec.UserID
-		if !dns1123ValueRegexp.MatchString(userAccount.Spec.UserID) {
-			userID = fmt.Sprintf("b64:%s", base64.RawStdEncoding.EncodeToString([]byte(userAccount.Spec.UserID)))
-		}
+		identityName := identity.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()
 
-		_, err = memberAwait.WaitForIdentity(ToIdentityName(userID),
+		_, err = memberAwait.WaitForIdentity(identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-		assert.NoError(t, err)
+		assert.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
 
 		// Verify the second identity
 		if encodedName != "" {
 			_, err = memberAwait.WaitForIdentity(ToIdentityName(encodedName),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-			assert.NoError(t, err)
+			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", ToIdentityName(encodedName)))
 		}
 	} else {
 		// we don't expect User nor Identity resources to be present for AppStudio tier
@@ -110,7 +102,23 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		}
 	}
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, userAccount, tierName)
+	tier, err := hostAwait.WaitForNSTemplateTier(mur.Spec.TierName)
+	require.NoError(t, err)
+	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
+	require.NoError(t, err)
+
+	space, err := hostAwait.WaitForSpace(mur.Name,
+		wait.UntilSpaceHasTier(mur.Spec.TierName),
+		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
+		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
+		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
+		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
+	require.NoError(t, err)
+
+	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
+
+	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tierName)
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
@@ -132,30 +140,10 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	assert.NoError(t, err)
 }
 
-func ExpectedUserAccount(userID string, tier string, templateRefs tiers.TemplateRefs, originalSub string) toolchainv1alpha1.UserAccountSpec {
-	namespaces := make([]toolchainv1alpha1.NSTemplateSetNamespace, 0, len(templateRefs.Namespaces))
-	for _, ref := range templateRefs.Namespaces {
-		namespaces = append(namespaces, toolchainv1alpha1.NSTemplateSetNamespace{
-			TemplateRef: ref,
-		})
-	}
-	var clusterResources *toolchainv1alpha1.NSTemplateSetClusterResources
-	if templateRefs.ClusterResources != nil {
-		clusterResources = &toolchainv1alpha1.NSTemplateSetClusterResources{
-			TemplateRef: tier + "-" + "clusterresources" + "-" + *templateRefs.ClusterResources,
-		}
-	}
+func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {
 	return toolchainv1alpha1.UserAccountSpec{
-		UserID:   userID,
-		Disabled: false,
-		UserAccountSpecBase: toolchainv1alpha1.UserAccountSpecBase{
-			NSLimit: "default",
-			NSTemplateSet: &toolchainv1alpha1.NSTemplateSetSpec{
-				TierName:         tier,
-				Namespaces:       namespaces,
-				ClusterResources: clusterResources,
-			},
-		},
+		UserID:      userID,
+		Disabled:    false,
 		OriginalSub: originalSub,
 	}
 }
