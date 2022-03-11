@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/identity"
 
@@ -107,18 +108,24 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
-	space, err := hostAwait.WaitForSpace(mur.Name,
-		wait.UntilSpaceHasTier(mur.Spec.TierName),
-		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
-		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
-		wait.UntilSpaceHasConditions(Provisioned()),
-		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
-		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
-	require.NoError(t, err)
+	if userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true" {
+		space, err := hostAwait.WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitForSpace(mur.Name)
+		require.Error(t, err)
+		require.Nil(t, space)
+	} else {
+		space, err := hostAwait.WaitForSpace(mur.Name,
+			wait.UntilSpaceHasTier(mur.Spec.TierName),
+			wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
+			wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
+			wait.UntilSpaceHasConditions(Provisioned()),
+			wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
+			wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
+		require.NoError(t, err)
 
-	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
+		VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tierName)
+		tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tierName)
+	}
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
