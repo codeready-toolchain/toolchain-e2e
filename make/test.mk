@@ -120,6 +120,7 @@ execute-tests:
 print-logs:
 	@echo "Time: $(shell date)"
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
+	oc adm must-gather --dest-dir=${ARTIFACT_DIR}
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=host-operator-controller-manager NAMESPACE=${HOST_NS} ADDITIONAL_PARAMS="-c manager"
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-controller-manager NAMESPACE=${MEMBER_NS} ADDITIONAL_PARAMS="-c manager"
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-webhook NAMESPACE=${MEMBER_NS}
