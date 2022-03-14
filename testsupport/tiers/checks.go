@@ -31,7 +31,7 @@ const (
 	baseextendedidling       = "baseextendedidling"
 	baselarge                = "baselarge"
 	hackathon                = "hackathon"
-	test                     = "test"
+	testtier                 = "test" // because `test` conflicts with the imported `test` package
 
 	// common CPU limits
 	defaultCPULimit = "1"
@@ -46,30 +46,12 @@ var (
 	}
 )
 
-const (
-	// annotation to indicate which "based" tier was used to create the current tier
-	BaseTierKey = toolchainv1alpha1.LabelKeyPrefix + "base-tier"
-	// annotation to indicate which tier was used to customize the templaterefs for namespace resources
-	NamespaceResourcesBaseTierKey = toolchainv1alpha1.LabelKeyPrefix + "namespace-resources-base-tier"
-	// annotation to indicate which tier was used to customize the templaterefs for cluster resources
-	ClusterResourcesBaseTierKey = toolchainv1alpha1.LabelKeyPrefix + "cluster-resources-base-tier"
-)
-
-// GetRefsAndChecksForTiers returns refs for the given tierName, namespaceChecks for aliasTierNamespaces and CusterResourcesChecks for aliasTierClusterResources
-func GetRefsAndChecksForTiers(t *testing.T, hostAwait *wait.HostAwaitility, tier *toolchainv1alpha1.NSTemplateTier) (TemplateRefs, TierChecks) {
-	_, templateRefs := GetTemplateRefs(hostAwait, tier.Name)
-	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
-	checks, err := NewChecks(tier)
-	require.NoError(t, err)
-	return templateRefs, checks
-}
-
-func NewChecks(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
+func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
 	switch tier.Name {
-	case base, baselarge, baseextended, baseextendedidling, basedeactivationdisabled, hackathon, advanced, appstudio, test:
+	case base, baselarge, baseextended, baseextendedidling, basedeactivationdisabled, hackathon, advanced, appstudio, testtier:
 		return newChecks(tier.Name)
 	default:
-		return newCustomChecks(tier)
+		return nil, fmt.Errorf("unsupported tier: '%s'", tier.Name)
 	}
 }
 
@@ -91,8 +73,8 @@ func newChecks(tierName string) (TierChecks, error) {
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
-	case test:
-		return &testTierChecks{tierName: test}, nil
+	case testtier:
+		return &testTierChecks{tierName: testtier}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tierName)
 	}
@@ -114,37 +96,27 @@ type customTierChecks struct {
 
 var _ TierChecks = &customTierChecks{}
 
-func newCustomChecks(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
-	// look-up annotations on the tier to figure out which "base" checks to use
+func NewChecksForCustomTier(tier *CustomNSTemplateTier) (TierChecks, error) {
 	c := &customTierChecks{}
-	baseTier, found := tier.Annotations[BaseTierKey]
-	if !found {
-		return nil, fmt.Errorf("no base assertion implementation found for %s", tier.Name)
+	c.getExpectedTemplateRefs = func(hostAwait *wait.HostAwaitility) TemplateRefs {
+		templateRefs := GetTemplateRefs(hostAwait, tier.Name)
+		return templateRefs
 	}
-	baseChecks, err := newChecks(baseTier)
+	c.getTierObjectChecks = func() []tierObjectCheck {
+		return []tierObjectCheck{nsTemplateTier(tier.Name, tier.Spec.DeactivationTimeoutDays)}
+	}
+
+	// deal with replaced templaterefs for namespace and cluster resources
+	checks, err := newChecks(tier.ClusterResourcesTierName)
 	if err != nil {
 		return nil, err
 	}
-	c.getClusterObjectChecks = baseChecks.GetClusterObjectChecks
-	c.getExpectedTemplateRefs = baseChecks.GetExpectedTemplateRefs
-	c.getNamespaceObjectChecks = baseChecks.GetNamespaceObjectChecks
-	c.getTierObjectChecks = baseChecks.GetTierObjectChecks
-
-	// deal with replaced templaterefs for namespace and cluster resources
-	if tierName, found := tier.Annotations[ClusterResourcesBaseTierKey]; found {
-		checks, err := newChecks(tierName)
-		if err != nil {
-			return nil, err
-		}
-		c.getClusterObjectChecks = checks.GetClusterObjectChecks
+	c.getClusterObjectChecks = checks.GetClusterObjectChecks
+	checks, err = newChecks(tier.NamespaceResourcesTierName)
+	if err != nil {
+		return nil, err
 	}
-	if tierName, found := tier.Annotations[NamespaceResourcesBaseTierKey]; found {
-		checks, err := newChecks(tierName)
-		if err != nil {
-			return nil, err
-		}
-		c.getNamespaceObjectChecks = checks.GetNamespaceObjectChecks
-	}
+	c.getNamespaceObjectChecks = checks.GetNamespaceObjectChecks
 	return c, nil
 }
 
@@ -194,7 +166,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 }
 
 func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
@@ -314,7 +286,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
@@ -342,7 +314,7 @@ func (a *testTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 }
 
 func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
 }
@@ -380,7 +352,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 }
 
 func (a *appstudioTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	_, templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "appstudio")
 	return templateRefs
 }

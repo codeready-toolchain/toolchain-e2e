@@ -37,6 +37,8 @@ func TestPerformance(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
+	err = hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
+	require.NoError(t, err)
 
 	t.Run(fmt.Sprintf("provision %d users", config.GetUserCount()), func(t *testing.T) {
 		// given
@@ -145,7 +147,7 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 			n := b*config.GetUserBatchSize() + i
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
 			// Create an approved UserSignup resource
-			userSignup := NewUserSignup(t, hostAwait, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
+			userSignup := NewUserSignup(hostAwait.Namespace, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
 			states.SetApproved(userSignup, true)
 			userSignup.Spec.TargetCluster = memberAwait.ClusterName
 			err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)

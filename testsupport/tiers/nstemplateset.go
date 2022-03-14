@@ -2,6 +2,8 @@ package tiers
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
 	"sync"
 	"testing"
 
@@ -9,7 +11,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier.Name))
 	require.NoError(t, err)
 
-	tierChecks, err := NewChecks(tier)
+	tierChecks, err := NewChecksForTier(tier)
 	require.NoError(t, err)
 
 	VerifyNSTemplateSet(t, memberAwait, nsTemplateSet, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
@@ -28,7 +29,7 @@ func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks, expectedTemplateRefs TemplateRefs) {
 
 	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify all namespaces and objects within
 	namespaceObjectChecks := sync.WaitGroup{}
@@ -65,23 +66,18 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 	return wait.NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
 			actualNamespaces := actual.Spec.Namespaces
-			if len(actualNamespaces) != len(expectedRevisions.Namespaces) ||
-				expectedRevisions.ClusterResources == nil ||
+			if expectedRevisions.ClusterResources == nil ||
 				actual.Spec.ClusterResources == nil ||
 				*expectedRevisions.ClusterResources != actual.Spec.ClusterResources.TemplateRef {
 				return false
 			}
-
-		ExpectedNamespaces:
-			for _, expectedNsRef := range expectedRevisions.Namespaces {
-				for _, ns := range actualNamespaces {
-					if expectedNsRef == ns.TemplateRef {
-						continue ExpectedNamespaces
-					}
-				}
-				return false
+			actualNamespaceTmplRefs := make([]string, len(actualNamespaces))
+			for i, r := range actualNamespaces {
+				actualNamespaceTmplRefs[i] = r.TemplateRef
 			}
-			return true
+			sort.Strings(actualNamespaceTmplRefs)
+			sort.Strings(expectedRevisions.Namespaces)
+			return reflect.DeepEqual(actualNamespaceTmplRefs, expectedRevisions.Namespaces)
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
 			return fmt.Sprintf("expected NSTemplateSet '%s' to have the following cluster and namespace revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec.Namespaces))

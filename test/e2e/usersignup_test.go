@@ -28,6 +28,9 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	s.Awaitilities = WaitForDeployments(s.T())
+	err := s.Awaitilities.Host().WaitUntilBaseNSTemplateTierIsUpdated()
+	require.NoError(s.T(), err)
+
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {
@@ -339,8 +342,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	// Create user signup
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
 
-	userSignup := NewUserSignup(s.T(), hostAwait, "reginald@alpha.com", "reginald@alpha.com")
-
+	userSignup := NewUserSignup(hostAwait.Namespace, "reginald@alpha.com", "reginald@alpha.com")
 	err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 	require.NoError(s.T(), err)
 	s.T().Logf("user signup '%s' created", userSignup.Name)
@@ -477,7 +479,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	// Create a new UserSignup
 	username := "testuser" + uuid.Must(uuid.NewV4()).String()
 	email := username + "@test.com"
-	userSignup := NewUserSignup(s.T(), hostAwait, username, email)
+	userSignup := NewUserSignup(hostAwait.Namespace, username, email)
 	userSignup.Spec.TargetCluster = memberAwait.ClusterName
 
 	// Set approved to true

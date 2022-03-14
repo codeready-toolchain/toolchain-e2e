@@ -13,14 +13,14 @@ type TemplateRefs struct {
 }
 
 // GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
-func GetTemplateRefs(hostAwait *wait.HostAwaitility, tierName string) (*toolchainv1alpha1.NSTemplateTier, TemplateRefs) { // nolint:unparam // false positive on unused return param `0`??
+func GetTemplateRefs(hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
 	templateTier, err := hostAwait.WaitForNSTemplateTier(tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
 	require.NoError(hostAwait.T, err)
 	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
 	for _, ns := range templateTier.Spec.Namespaces {
 		nsRefs = append(nsRefs, ns.TemplateRef)
 	}
-	return templateTier, TemplateRefs{
+	return TemplateRefs{
 		Namespaces:       nsRefs,
 		ClusterResources: clusterResourcesRevision(*templateTier),
 	}

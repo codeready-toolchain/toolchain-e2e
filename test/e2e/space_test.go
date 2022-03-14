@@ -6,6 +6,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
@@ -354,7 +355,7 @@ func TestPromoteSpace(t *testing.T) {
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
-		ctr := NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
+		ctr := tiers.NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
 
 		// when
 		err := hostAwait.Client.Create(context.TODO(), ctr)

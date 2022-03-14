@@ -699,6 +699,11 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 	return false
 }
 
+func (a *HostAwaitility) WaitUntilBaseNSTemplateTierIsUpdated() error {
+	_, err := a.WaitForNSTemplateTier("base", UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+	return err
+}
+
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name exists and matches the given conditions
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	a.T.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)

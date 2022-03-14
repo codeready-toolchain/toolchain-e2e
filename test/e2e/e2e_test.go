@@ -214,7 +214,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
 			// given
 			namespaces := make([]*corev1.Namespace, 0, 2)
-			_, templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
+			templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
 			for _, ref := range templateRefs.Namespaces {
 				ns, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
