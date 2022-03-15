@@ -170,11 +170,8 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceO
 		numberOfToolchainRoleBindings(4))
 
 	checks = append(checks, commonNetworkPolicyChecks()...)
+	checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
 
-	switch nsType {
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
-	}
 	return checks
 }
 
@@ -195,8 +192,6 @@ func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		clusterResourceQuotaRHOASOperatorCRs(),
-		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(43200, "dev"))
 }
