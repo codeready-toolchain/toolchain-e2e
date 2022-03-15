@@ -579,12 +579,12 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 }
 
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
-func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userId, username string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
-	a.T.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userId, username, a.Namespace)
+func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	a.T.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userID, username, a.Namespace)
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userId}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userID}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: username}, obj); err != nil {
 					if errors.IsNotFound(err) {
