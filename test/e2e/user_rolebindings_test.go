@@ -73,7 +73,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 	err = awaitilities.Member1().Client.Create(context.TODO(), &nonsandboxRoleBinding)
 	require.NoError(t, err)
 
-	defer deleteUser(awaitilities.Member1().Client, nonsandboxUser, nonsandboxRoleBinding)
+	defer deleteUser(t, awaitilities.Member1().Client, nonsandboxUser, nonsandboxRoleBinding)
 
 	t.Run("sandbox user creating different rolebindings", func(t *testing.T) {
 		config.Impersonate = rest.ImpersonationConfig{
@@ -220,9 +220,11 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 
 }
 
-func deleteUser(cl runtimeclient.Client, user userv1.User, rb rbacv1.RoleBinding) {
-	cl.Delete(context.TODO(), &rb)
-	cl.Delete(context.TODO(), &user)
+func deleteUser(t *testing.T, cl runtimeclient.Client, user userv1.User, rb rbacv1.RoleBinding) {
+	err := cl.Delete(context.TODO(), &rb)
+	require.NoError(t, err)
+	err = cl.Delete(context.TODO(), &user)
+	require.NoError(t, err)
 }
 
 func createRoleBindingsForTest(ns string, createdBy string) []rbacv1.RoleBinding {
