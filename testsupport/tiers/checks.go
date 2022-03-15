@@ -146,8 +146,6 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		clusterResourceQuotaRHOASOperatorCRs(),
-		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(43200, "dev", "stage"))
 }
@@ -167,8 +165,6 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		clusterResourceQuotaRHOASOperatorCRs(),
-		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(43200, "dev", "stage"))
 }
@@ -200,8 +196,6 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		clusterResourceQuotaRHOASOperatorCRs(),
-		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(518400, "dev", "stage"))
 }
@@ -243,8 +237,6 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		clusterResourceQuotaRHOASOperatorCRs(),
-		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(0, "dev", "stage"))
 }
@@ -332,8 +324,6 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		clusterResourceQuotaRHOASOperatorCRs(),
-		clusterResourceQuotaSBOCRs(),
 		numberOfClusterResourceQuotas(),
 		idlers(43200, ""))
 }
@@ -812,44 +802,6 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
 	}
 }
 
-func clusterResourceQuotaRHOASOperatorCRs() clusterObjectsCheckCreator {
-	return func() clusterObjectsCheck {
-		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
-			hard[count("cloudservicesrequests.rhoas.redhat.com")], err = resource.ParseQuantity("2")
-			require.NoError(t, err)
-			hard[count("cloudserviceaccountrequest.rhoas.redhat.com")], err = resource.ParseQuantity("2")
-			require.NoError(t, err)
-			hard[count("kafkaconnections.rhoas.redhat.com")], err = resource.ParseQuantity("5")
-			require.NoError(t, err)
-
-			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
-
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-rhoas", userName), criteria)
-			require.NoError(t, err)
-		}
-	}
-}
-
-func clusterResourceQuotaSBOCRs() clusterObjectsCheckCreator {
-	return func() clusterObjectsCheck {
-		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			var err error
-			hard := make(map[v1.ResourceName]resource.Quantity)
-			hard[count("servicebindings.binding.operators.coreos.com")], err = resource.ParseQuantity("50")
-			require.NoError(t, err)
-			hard[count("servicebindings.servicebinding.io")], err = resource.ParseQuantity("50")
-			require.NoError(t, err)
-
-			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
-
-			_, err = memberAwait.WaitForClusterResourceQuota(fmt.Sprintf("for-%s-sbo", userName), criteria)
-			require.NoError(t, err)
-		}
-	}
-}
-
 func clusterResourceQuotaMatches(userName, tierName string, hard map[v1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
 	return wait.ClusterResourceQuotaWaitCriterion{
 		Match: func(actual *quotav1.ClusterResourceQuota) bool {
@@ -937,7 +889,7 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 }
 
 func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
-	expectedCRQs := 11
+	expectedCRQs := 9
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", expectedCRQs, func() (int, error) {
