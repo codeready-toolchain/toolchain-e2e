@@ -27,7 +27,7 @@ const (
 	advanced                 = "advanced"
 	appstudio                = "appstudio"
 	base                     = "base"
-	baseoneNS                = "baseonens"
+	base1ns                  = "base1ns"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
@@ -64,8 +64,8 @@ func NewChecks(tier string) (TierChecks, error) {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
 
-	case baseoneNS:
-		return &baseoneNSTierChecks{baseTierChecks{tierName: baseoneNS}}, nil
+	case base1ns:
+		return &base1nsTierChecks{baseTierChecks{tierName: base1ns}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -154,11 +154,11 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		idlers(43200, "dev", "stage"))
 }
 
-type baseoneNSTierChecks struct {
+type base1nsTierChecks struct {
 	baseTierChecks
 }
 
-func (a *baseoneNSTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
+func (a *base1nsTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := append(commonChecks,
 		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		rbacEditRoleBinding(),
@@ -178,13 +178,13 @@ func (a *baseoneNSTierChecks) GetNamespaceObjectChecks(nsType string) []namespac
 	return checks
 }
 
-func (a *baseoneNSTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+func (a *base1nsTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
 	return templateRefs
 }
 
-func (a *baseoneNSTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
