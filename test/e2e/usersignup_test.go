@@ -515,7 +515,7 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 		Username("nospace").
 		Email("nospace@redhat.com").
 		NoSpace().
-		WaitForMUR()
+		WaitForMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute().
 		Resources()
