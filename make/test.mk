@@ -254,7 +254,7 @@ ifneq (${HOST_REPO_PATH},"")
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM} ${REG_REPO_PATH_PARAM}"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${REG_REPO_PATH_PARAM}"
 
 ###########################################################
 #
