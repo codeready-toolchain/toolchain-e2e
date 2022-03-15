@@ -218,7 +218,10 @@ func (r *signupRequest) Execute() SignupRequest {
 		token0, "", r.requiredHTTPStatus)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
+	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
+	// TODO remove this after reg service PR #254 is merged
+	userSignup, err := hostAwait.WaitForUserSignupByUserIDAndUsername(userIdentity.ID.String(), userIdentity.Username)
+
 	require.NoError(r.t, err)
 
 	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {

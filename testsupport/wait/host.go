@@ -578,6 +578,33 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 	return userSignup, err
 }
 
+// WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
+func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userId, username string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	a.T.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userId, username, a.Namespace)
+	var userSignup *toolchainv1alpha1.UserSignup
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userId}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: username}, obj); err != nil {
+					if errors.IsNotFound(err) {
+						return false, nil
+					}
+				}
+			} else {
+				return false, err
+			}
+		}
+		userSignup = obj
+		return matchUserSignupWaitCriterion(userSignup, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printUserSignupWaitCriterionDiffs(userSignup, criteria...)
+	}
+	return userSignup, err
+}
+
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.BannedUser, error) {
 	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
