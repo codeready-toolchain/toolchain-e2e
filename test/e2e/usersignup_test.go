@@ -525,11 +525,5 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	// annotation should be set
 	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
 
-	// verify userSignup approved
-	userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-	require.NoError(s.T(), err)
-
 	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "base")
 }
