@@ -218,7 +218,7 @@ func (r *signupRequest) Execute() SignupRequest {
 		token0, "", r.requiredHTTPStatus)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.ID.String())
+	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
 	require.NoError(r.t, err)
 
 	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
