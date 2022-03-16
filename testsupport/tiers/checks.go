@@ -119,7 +119,16 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 		numberOfToolchainRoleBindings(4))
 
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(7))
+
+	var otherNamespaceKind string
+	switch nsType {
+	case "dev":
+		otherNamespaceKind = "stage"
+	case "stage":
+		otherNamespaceKind = "dev"
+	}
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(7))
+
 	return checks
 }
 
