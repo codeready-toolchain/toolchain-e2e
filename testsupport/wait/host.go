@@ -590,6 +590,7 @@ func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username s
 					if errors.IsNotFound(err) {
 						return false, nil
 					}
+					return false, err
 				}
 			} else {
 				return false, err
