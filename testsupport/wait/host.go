@@ -1484,7 +1484,7 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 		}
 	}
 	// also include Spaces resources in the host namespace, to help troubleshooting
-	// a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
+	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
 	a.T.Log(buf.String())
 }
 

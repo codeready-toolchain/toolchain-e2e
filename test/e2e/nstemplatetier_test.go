@@ -155,15 +155,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// we will have a lot of usersignups who are affected by the tier updates, so
 	// we need to increase the timeouts on assertions/awaitilities to allow for all resources to be updated
-	hostAwaitTimeout := hostAwait.Timeout
-	memberAwaitTimeout := memberAwait.Timeout
-	defer func() {
-		// restore original timeouts
-		hostAwait.Timeout = hostAwaitTimeout
-		memberAwait.Timeout = memberAwaitTimeout
-	}()
-	hostAwait.Timeout = hostAwait.Timeout + time.Second*time.Duration(3*count*2)     // 3 batches of `count` accounts, with 2s of interval between each update
-	memberAwait.Timeout = memberAwait.Timeout + time.Second*time.Duration(3*count*2) // 3 batches of `count` accounts, with 2s of interval between each update
+	hostAwait = hostAwait.WithRetryOptions(TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
+	memberAwait = memberAwait.WithRetryOptions(TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
 	require.NoError(t, err)
