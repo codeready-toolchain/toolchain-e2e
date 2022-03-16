@@ -3,8 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"sort"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -153,6 +153,18 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
+	// we will have a lot of usersignups who are affected by the tier updates, so
+	// we need to increase the timeouts on assertions/awaitilities to allow for all resources to be updated
+	hostAwaitTimeout := hostAwait.Timeout
+	memberAwaitTimeout := memberAwait.Timeout
+	defer func() {
+		// restore original timeouts
+		hostAwait.Timeout = hostAwaitTimeout
+		memberAwait.Timeout = memberAwaitTimeout
+	}()
+	hostAwait.Timeout = hostAwait.Timeout + time.Second*time.Duration(3*count*2)     // 3 batches of `count` accounts, with 2s of interval between each update
+	memberAwait.Timeout = memberAwait.Timeout + time.Second*time.Duration(3*count*2) // 3 batches of `count` accounts, with 2s of interval between each update
+
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
 	require.NoError(t, err)
 	baseTier, err := hostAwait.WaitForNSTemplateTier("base")
@@ -174,10 +186,12 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	// setup chocolate tier to be used for creating spaces
 	spaces := setupSpaces(t, awaitilities, chocolateTier, "chocolateuser%02d", memberAwait, count)
 
+	t.Log("verifying new users and spaces")
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, cheesecakeTier, true)
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, cookieTier, true)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, chocolateTier)
 
+	t.Log("updating tiers")
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources
 	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(advancedTier))
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
@@ -186,6 +200,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(advancedTier))
 
 	// then
+	t.Log("verifying users and spaces after tier updates")
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeSyncIndexes, cheesecakeTier, false)
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieSyncIndexes, cookieTier, false)
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, chocolateTier)
@@ -313,42 +328,31 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
 	require.NoError(t, err)
 
-	// verify individual user updates in alphabetical order to reduce risks timeouts
-	// (usersignups are updated with a slight delay between each, so let's check in the same order)
-	userIDs := make([]string, 0, len(syncIndexes))
-	for id := range syncIndexes {
-		userIDs = append(userIDs, id)
-	}
-	sort.Strings(userIDs)
-
-	for _, userID := range userIDs {
+	for userID, syncIndex := range syncIndexes {
 		usersignup, err := hostAwait.WaitForUserSignup(userID)
 		require.NoError(t, err)
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, usersignup.Spec.OriginalSub)),
 			UntilUserAccountMatchesMur(hostAwait))
+		require.NoError(t, err)
+		require.NotNil(t, userAccount)
+
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tier.Name))
 		if err != nil {
-			nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername)
-			if err != nil {
-				t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
-			}
-			require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", usersignup, userAccount, nsTemplateSet)
+			t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
 		}
+		require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", usersignup, userAccount, nsTemplateSet)
+		tiers.VerifyNSTemplateSet(t, memberAwaitility, nsTemplateSet, checks, templateRefs)
 
 		// the syncIndex should be different if the tier changed. if only the template refs changed then the sync index is expected to be the same because UserAccounts no longer have references to the NSTemplateSet
 		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
 			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
-			UntilMasterUserRecordHasSyncIndex(syncIndexes[userID], tierNameChanged),
+			UntilMasterUserRecordHasSyncIndex(syncIndex, tierNameChanged),
 		)
 		require.NoError(t, err)
 		syncIndexes[userID] = mur.Spec.UserAccounts[0].SyncIndex
 
-		require.NoError(t, err)
-		require.NotNil(t, userAccount)
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tier.Name))
-		require.NoError(t, err)
-		tiers.VerifyNSTemplateSet(t, memberAwaitility, nsTemplateSet, checks, templateRefs)
 	}
 
 }

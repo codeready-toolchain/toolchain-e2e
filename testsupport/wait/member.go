@@ -278,7 +278,7 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 		buf.WriteString("failed to find NSTemplateSet\n")
 		buf.WriteString(a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
 	} else {
-		buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
+		buf.WriteString(fmt.Sprintf("failed to find NSTemplateSet with matching criteria after %fs:\n", a.Timeout.Seconds()))
 		buf.WriteString("----\n")
 		buf.WriteString("actual:\n")
 		y, _ := StringifyObject(actual)
