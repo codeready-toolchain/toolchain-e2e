@@ -79,7 +79,3 @@ var HTTPClient = &http.Client{
 		},
 	},
 }
-
-func ToIdentityName(userID string) string {
-	return fmt.Sprintf("%s:%s", "rhd", userID)
-}

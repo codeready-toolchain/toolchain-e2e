@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -102,6 +104,7 @@ func TestE2EFlow(t *testing.T) {
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		DisableCleanup().
 		Execute().Resources()
 
 	extrajohnName := "extrajohn"
@@ -167,7 +170,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete identity and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(johnSignup.Name)}, identity)
+			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(johnSignup.Spec.Userid, "rhd").IdentityName()}, identity)
 			require.NoError(t, err)
 
 			// when
@@ -198,7 +201,7 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(johnSignup.Name)}, identity)
+			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(johnSignup.Spec.Userid, "rhd").IdentityName()}, identity)
 			require.NoError(t, err)
 			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 

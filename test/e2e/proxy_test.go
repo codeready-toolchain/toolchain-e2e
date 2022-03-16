@@ -16,6 +16,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	hasv1alpha1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/has/api/v1alpha1"
@@ -205,14 +206,14 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 			Name: user.username,
 		},
 		Identities: []string{
-			ToIdentityName(user.identityID.String()),
+			identitypkg.NewIdentityNamingStandard(user.identityID.String(), "rhd").IdentityName(),
 		},
 	}
 	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingUser))
 
 	preexistingIdentity := &userv1.Identity{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ToIdentityName(user.identityID.String()),
+			Name: identitypkg.NewIdentityNamingStandard(user.identityID.String(), "rhd").IdentityName(),
 		},
 		ProviderName:     "rhd",
 		ProviderUserName: user.username,
