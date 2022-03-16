@@ -20,6 +20,7 @@ clean-cluster-wide-config:
 	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-service-account | xargs oc delete
 	$(Q)-oc delete PriorityClass -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
 	$(Q)-oc delete MutatingWebhookConfiguration -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
+	$(Q)-oc delete ValidatingWebhookConfiguration -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
 
 .PHONY: clean-toolchain-namespaces-in-e2e
 ## Delete e2e namespaces
