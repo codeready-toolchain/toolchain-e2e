@@ -1581,6 +1581,7 @@ func (a *MemberAwaitility) WaitForMemberWebhooks() {
 	a.waitForWebhookDeployment()
 	ca := a.verifySecret()
 	a.verifyUserPodWebhookConfig(ca)
+	a.verifyUsersRolebindingsWebhookConfig(ca)
 }
 
 func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
@@ -1709,7 +1710,7 @@ func (a *MemberAwaitility) verifyUsersRolebindingsWebhookConfig(ca []byte) {
 	assert.Equal(a.T, []string{"v1"}, webhook.AdmissionReviewVersions)
 	assert.Equal(a.T, admv1.SideEffectClassNone, *webhook.SideEffects)
 	assert.Equal(a.T, int32(5), *webhook.TimeoutSeconds)
-	assert.Equal(a.T, admv1.Fail, *webhook.FailurePolicy)
+	assert.Equal(a.T, admv1.Ignore, *webhook.FailurePolicy)
 	assert.Equal(a.T, admv1.Equivalent, *webhook.MatchPolicy)
 	assert.Equal(a.T, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
 	assert.Equal(a.T, ca, webhook.ClientConfig.CABundle)
