@@ -1575,12 +1575,12 @@ func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 	return pods.Items[0], nil
 }
 
-func (a *MemberAwaitility) WaitForUsersPodsWebhook() {
+func (a *MemberAwaitility) WaitForMemberWebhooks() {
 	a.waitForUsersPodPriorityClass()
 	a.waitForService()
 	a.waitForWebhookDeployment()
 	ca := a.verifySecret()
-	a.verifyWebhookConfig(ca)
+	a.verifyUserPodWebhookConfig(ca)
 }
 
 func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
@@ -1666,7 +1666,7 @@ func (a *MemberAwaitility) verifySecret() []byte {
 	return ca
 }
 
-func (a *MemberAwaitility) verifyWebhookConfig(ca []byte) {
+func (a *MemberAwaitility) verifyUserPodWebhookConfig(ca []byte) {
 	a.T.Logf("checking MutatingWebhookConfiguration '%s'", "sandbox-users-pods")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
 	a.waitForResource("", "member-operator-webhook", actualMutWbhConf)
@@ -1694,6 +1694,36 @@ func (a *MemberAwaitility) verifyWebhookConfig(ca []byte) {
 	assert.Equal(a.T, []string{""}, rule.APIGroups)
 	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
 	assert.Equal(a.T, []string{"pods"}, rule.Resources)
+	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
+}
+
+func (a *MemberAwaitility) verifyUsersRolebindingsWebhookConfig(ca []byte) {
+	a.T.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
+	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
+	a.waitForResource("", "member-operator-validating-webhook", actualValWbhConf)
+	assert.Equal(a.T, bothWebhookLabels, actualValWbhConf.Labels)
+	require.Len(a.T, actualValWbhConf.Webhooks, 1)
+
+	webhook := actualValWbhConf.Webhooks[0]
+	assert.Equal(a.T, "users.rolebindings.webhook.sandbox", webhook.Name)
+	assert.Equal(a.T, []string{"v1"}, webhook.AdmissionReviewVersions)
+	assert.Equal(a.T, admv1.SideEffectClassNone, *webhook.SideEffects)
+	assert.Equal(a.T, int32(5), *webhook.TimeoutSeconds)
+	assert.Equal(a.T, admv1.Fail, *webhook.FailurePolicy)
+	assert.Equal(a.T, admv1.Equivalent, *webhook.MatchPolicy)
+	assert.Equal(a.T, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
+	assert.Equal(a.T, ca, webhook.ClientConfig.CABundle)
+	assert.Equal(a.T, "member-operator-webhook", webhook.ClientConfig.Service.Name)
+	assert.Equal(a.T, a.Namespace, webhook.ClientConfig.Service.Namespace)
+	assert.Equal(a.T, "/validate-users-rolebindings", *webhook.ClientConfig.Service.Path)
+	assert.Equal(a.T, int32(443), *webhook.ClientConfig.Service.Port)
+	require.Len(a.T, webhook.Rules, 1)
+
+	rule := webhook.Rules[0]
+	assert.Equal(a.T, []admv1.OperationType{admv1.Create, admv1.Update}, rule.Operations)
+	assert.Equal(a.T, []string{"rbac.authorization.k8s.io", "authorization.openshift.io"}, rule.APIGroups)
+	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
+	assert.Equal(a.T, []string{"rolebindings"}, rule.Resources)
 	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
 }
 
