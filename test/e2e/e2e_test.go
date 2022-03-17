@@ -80,9 +80,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
-	memberAwait.WaitForUsersPodsWebhook()
-	memberAwait.WaitForAutoscalingBufferApp()
-
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
 		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
