@@ -106,9 +106,10 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		_, err = initMember2Await.WaitForToolchainClusterWithCondition(initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 
-		// Member webhooks and autoscaling buffer
+		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
+		// (we can't deploy the same webhook multiple times on the same cluster)
+		// Also verify the autoscaling buffer in both members
 		initMemberAwait.WaitForMemberWebhooks()
-		initMember2Await.WaitForMemberWebhooks()
 		initMemberAwait.WaitForAutoscalingBufferApp()
 		initMember2Await.WaitForAutoscalingBufferApp()
 
