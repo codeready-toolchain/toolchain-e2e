@@ -144,12 +144,11 @@ func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.
 }
 
 func VerifyResourcesProvisionedForSpaceWithCustomTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName string, tier *tiers.CustomNSTemplateTier) *toolchainv1alpha1.Space {
-	checks, err := tiers.NewChecksForCustomTier(tier)
-	require.NoError(t, err)
+	checks := tiers.NewChecksForCustomTier(tier)
 	return verifyResourcesProvisionedForSpace(t, awaitilities, targetCluster, spaceName, &tier.NSTemplateTier, checks)
 }
 
-func verifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName string, tier *toolchainv1alpha1.NSTemplateTier, checks tiers.TierChecks) *toolchainv1alpha1.Space {
+func verifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName string, tier *toolchainv1alpha1.NSTemplateTier, checks *tiers.TierChecks) *toolchainv1alpha1.Space {
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 

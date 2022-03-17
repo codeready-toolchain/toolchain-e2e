@@ -26,7 +26,7 @@ func VerifyNsTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 
 }
 
-func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks, expectedTemplateRefs TemplateRefs) {
+func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks *TierChecks, expectedTemplateRefs TemplateRefs) {
 
 	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	require.NoError(t, err)

@@ -46,322 +46,202 @@ var (
 	}
 )
 
-func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
+type TierChecks struct {
+	GetClusterObjectChecks   func() []clusterObjectsCheck
+	GetExpectedTemplateRefs  func(hostAwait *wait.HostAwaitility) TemplateRefs
+	GetNamespaceObjectChecks func(nsType string) []namespaceObjectsCheck
+	GetTierObjectChecks      func() []tierObjectCheck
+}
+
+type namespaceObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string)
+
+type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string)
+
+type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
+
+func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (*TierChecks, error) {
 	switch tier.Name {
 	case base, baselarge, baseextended, baseextendedidling, basedeactivationdisabled, hackathon, advanced, appstudio, testtier:
-		return newChecks(tier.Name)
+		return &TierChecks{
+			GetClusterObjectChecks:   getClusterObjectChecks(tier.Name),
+			GetExpectedTemplateRefs:  getExpectedTemplateRefs(tier.Name),
+			GetNamespaceObjectChecks: getNamespaceObjectChecks(tier.Name),
+			GetTierObjectChecks:      getTierObjectChecks(tier.Name),
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported tier: '%s'", tier.Name)
 	}
 }
 
-func newChecks(tierName string) (TierChecks, error) {
-	switch tierName {
-	case base:
-		return &baseTierChecks{tierName: base}, nil
-	case baselarge:
-		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
-	case baseextended:
-		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
-	case baseextendedidling:
-		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-	case basedeactivationdisabled:
-		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
-	case hackathon:
-		return &hackathonTierChecks{baseTierChecks{tierName: hackathon}}, nil
-	case advanced:
-		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
-	case appstudio:
-		return &appstudioTierChecks{tierName: appstudio}, nil
-	case testtier:
-		return &testTierChecks{tierName: testtier}, nil
-	default:
-		return nil, fmt.Errorf("no assertion implementation found for %s", tierName)
+func NewChecksForCustomTier(tier *CustomNSTemplateTier) *TierChecks {
+	return &TierChecks{
+		GetClusterObjectChecks:   getClusterObjectChecks(tier.ClusterResourcesTierName),
+		GetExpectedTemplateRefs:  getExpectedTemplateRefs(tier.Name),
+		GetNamespaceObjectChecks: getNamespaceObjectChecks(tier.NamespaceResourcesTierName),
+		GetTierObjectChecks: func() []tierObjectCheck {
+			return []tierObjectCheck{nsTemplateTier(tier.Name, tier.Spec.DeactivationTimeoutDays)}
+		},
 	}
 }
 
-type TierChecks interface {
-	GetClusterObjectChecks() []clusterObjectsCheck
-	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
-	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
-	GetTierObjectChecks() []tierObjectCheck
-}
-
-type customTierChecks struct {
-	getClusterObjectChecks   func() []clusterObjectsCheck
-	getExpectedTemplateRefs  func(hostAwait *wait.HostAwaitility) TemplateRefs
-	getNamespaceObjectChecks func(nsType string) []namespaceObjectsCheck
-	getTierObjectChecks      func() []tierObjectCheck
-}
-
-var _ TierChecks = &customTierChecks{}
-
-func NewChecksForCustomTier(tier *CustomNSTemplateTier) (TierChecks, error) {
-	c := &customTierChecks{}
-	c.getExpectedTemplateRefs = func(hostAwait *wait.HostAwaitility) TemplateRefs {
-		templateRefs := GetTemplateRefs(hostAwait, tier.Name)
-		return templateRefs
+func getClusterObjectChecks(tierName string) func() []clusterObjectsCheck {
+	return func() []clusterObjectsCheck {
+		switch tierName {
+		case appstudio:
+			return clusterObjectsChecks(
+				clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+				clusterResourceQuotaDeployments(),
+				clusterResourceQuotaReplicas(),
+				clusterResourceQuotaRoutes(),
+				clusterResourceQuotaJobs(),
+				clusterResourceQuotaServices(),
+				clusterResourceQuotaBuildConfig(),
+				clusterResourceQuotaSecrets(),
+				clusterResourceQuotaConfigMap(),
+				numberOfClusterResourceQuotas(),
+				idlers(43200, ""))
+		case baselarge:
+			return clusterObjectsChecks(
+				clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
+				clusterResourceQuotaDeployments(),
+				clusterResourceQuotaReplicas(),
+				clusterResourceQuotaRoutes(),
+				clusterResourceQuotaJobs(),
+				clusterResourceQuotaServices(),
+				clusterResourceQuotaBuildConfig(),
+				clusterResourceQuotaSecrets(),
+				clusterResourceQuotaConfigMap(),
+				numberOfClusterResourceQuotas(),
+				idlers(43200, "dev", "stage"))
+		case baseextendedidling:
+			return clusterObjectsChecks(
+				clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+				clusterResourceQuotaDeployments(),
+				clusterResourceQuotaReplicas(),
+				clusterResourceQuotaRoutes(),
+				clusterResourceQuotaJobs(),
+				clusterResourceQuotaServices(),
+				clusterResourceQuotaBuildConfig(),
+				clusterResourceQuotaSecrets(),
+				clusterResourceQuotaConfigMap(),
+				numberOfClusterResourceQuotas(),
+				idlers(518400, "dev", "stage"))
+		case advanced:
+			return clusterObjectsChecks(
+				clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
+				clusterResourceQuotaDeployments(),
+				clusterResourceQuotaReplicas(),
+				clusterResourceQuotaRoutes(),
+				clusterResourceQuotaJobs(),
+				clusterResourceQuotaServices(),
+				clusterResourceQuotaBuildConfig(),
+				clusterResourceQuotaSecrets(),
+				clusterResourceQuotaConfigMap(),
+				numberOfClusterResourceQuotas(),
+				idlers(0, "dev", "stage"))
+		case testtier:
+			return []clusterObjectsCheck{}
+		default:
+			return clusterObjectsChecks(
+				clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+				clusterResourceQuotaDeployments(),
+				clusterResourceQuotaReplicas(),
+				clusterResourceQuotaRoutes(),
+				clusterResourceQuotaJobs(),
+				clusterResourceQuotaServices(),
+				clusterResourceQuotaBuildConfig(),
+				clusterResourceQuotaSecrets(),
+				clusterResourceQuotaConfigMap(),
+				numberOfClusterResourceQuotas(),
+				idlers(43200, "dev", "stage"))
+		}
 	}
-	c.getTierObjectChecks = func() []tierObjectCheck {
-		return []tierObjectCheck{nsTemplateTier(tier.Name, tier.Spec.DeactivationTimeoutDays)}
-	}
-
-	// deal with replaced templaterefs for namespace and cluster resources
-	checks, err := newChecks(tier.ClusterResourcesTierName)
-	if err != nil {
-		return nil, err
-	}
-	c.getClusterObjectChecks = checks.GetClusterObjectChecks
-	checks, err = newChecks(tier.NamespaceResourcesTierName)
-	if err != nil {
-		return nil, err
-	}
-	c.getNamespaceObjectChecks = checks.GetNamespaceObjectChecks
-	return c, nil
 }
 
-func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return c.getClusterObjectChecks()
-}
-func (c *customTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	return c.getExpectedTemplateRefs(hostAwait)
-}
-
-func (c *customTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return c.getNamespaceObjectChecks(nsType)
-}
-
-func (c *customTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return c.getTierObjectChecks()
-}
-
-type baseTierChecks struct {
-	tierName string
-}
-
-func (a *baseTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
-}
-
-func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := append(commonChecks,
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
-		rbacEditRoleBinding(),
-		rbacEditRole(),
-		crtadminPodsRoleBinding(),
-		crtadminViewRoleBinding(),
-		execPodsRole(),
-		numberOfToolchainRoles(2),
-		numberOfToolchainRoleBindings(4))
-
-	checks = append(checks, commonNetworkPolicyChecks()...)
-
-	switch nsType {
-	case "dev":
-		checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(7))
-	case "stage":
-		checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(6))
-	}
-	return checks
-}
-
-func (a *baseTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
-func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
-		idlers(43200, "dev", "stage"))
-}
-
-type baselargeTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
-		idlers(43200, "dev", "stage"))
-}
-
-func (a *baselargeTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 90)}
-}
-
-type baseextendedTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baseextendedTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 180)}
-}
-
-type baseextendedidlingTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
-		idlers(518400, "dev", "stage"))
-}
-
-type basedeactivationdisabledTierChecks struct {
-	baseTierChecks
-}
-
-func (a *basedeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-func commonNetworkPolicyChecks() []namespaceObjectsCheck {
-	return []namespaceObjectsCheck{
+func getNamespaceObjectChecks(tierName string) func(nsType string) []namespaceObjectsCheck {
+	commonNetworkPolicyChecks := []namespaceObjectsCheck{
 		networkPolicySameNamespace(),
 		networkPolicyAllowFromMonitoring(),
 		networkPolicyAllowFromIngress(),
 		networkPolicyAllowFromOlmNamespaces(),
 		networkPolicyAllowFromConsoleNamespaces(),
 	}
-}
-
-type advancedTierChecks struct {
-	baseTierChecks
-}
-
-func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 0)}
-}
-
-func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
-		idlers(0, "dev", "stage"))
-}
-
-func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
-type hackathonTierChecks struct {
-	baseTierChecks
-}
-
-func (a *hackathonTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 80)}
-}
-
-// testTierChecks checks only that the "test" tier exists and has correct template references.
-// It does not check the test tier resources
-type testTierChecks struct {
-	tierName string
-}
-
-func (a *testTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{}
-}
-
-func (a *testTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return []namespaceObjectsCheck{}
-}
-
-func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
-func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return []clusterObjectsCheck{}
-}
-
-type appstudioTierChecks struct {
-	tierName string
-}
-
-func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{nsTemplateTier(a.tierName, 30)}
-}
-
-func (a *appstudioTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
-		appstudioServiceAccount(),
-		appstudioUserActionsRole(),
-		appstudioUserActionsRoleBinding(),
-		appstudioViewRoleBinding(),
-		toolchainSaReadRole(),
-		userSaReadRoleBinding(),
-		numberOfLimitRanges(1),
-		numberOfToolchainRoles(2),
-		numberOfToolchainRoleBindings(3),
-		numberOfToolchainServiceAccounts(1),
-		gitOpsServiceLabel(),
+	return func(nsType string) []namespaceObjectsCheck {
+		switch tierName {
+		case testtier:
+			return []namespaceObjectsCheck{}
+		case appstudio:
+			checks := []namespaceObjectsCheck{
+				limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+				appstudioServiceAccount(),
+				appstudioUserActionsRole(),
+				appstudioUserActionsRoleBinding(),
+				appstudioViewRoleBinding(),
+				toolchainSaReadRole(),
+				userSaReadRoleBinding(),
+				numberOfLimitRanges(1),
+				numberOfToolchainRoles(2),
+				numberOfToolchainRoleBindings(3),
+				numberOfToolchainServiceAccounts(1),
+				gitOpsServiceLabel(),
+			}
+			checks = append(checks, commonNetworkPolicyChecks...)
+			checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
+			return checks
+		default:
+			checks := append(commonChecks,
+				limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+				rbacEditRoleBinding(),
+				rbacEditRole(),
+				crtadminPodsRoleBinding(),
+				crtadminViewRoleBinding(),
+				execPodsRole(),
+				numberOfToolchainRoles(2),
+				numberOfToolchainRoleBindings(4))
+			checks = append(checks, commonNetworkPolicyChecks...)
+			switch nsType {
+			case "dev":
+				checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace("stage"), numberOfNetworkPolicies(7))
+			case "stage":
+				checks = append(checks, networkPolicyAllowFromOtherNamespace("dev"), numberOfNetworkPolicies(6))
+			}
+			return checks
+		}
 	}
-
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
-	return checks
 }
 
-func (a *appstudioTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "appstudio")
-	return templateRefs
+func getExpectedTemplateRefs(tierName string) func(hostAwait *wait.HostAwaitility) TemplateRefs {
+	return func(hostAwait *wait.HostAwaitility) TemplateRefs {
+		switch tierName {
+		case appstudio:
+			templateRefs := GetTemplateRefs(hostAwait, tierName)
+			verifyNsTypes(hostAwait.T, tierName, templateRefs, "appstudio")
+			return templateRefs
+		default:
+			templateRefs := GetTemplateRefs(hostAwait, tierName)
+			verifyNsTypes(hostAwait.T, tierName, templateRefs, "dev", "stage")
+			return templateRefs
+		}
+	}
 }
 
-func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
-		idlers(43200, ""))
+func getTierObjectChecks(tierName string) func() []tierObjectCheck {
+	return func() []tierObjectCheck {
+		switch tierName {
+		case advanced, basedeactivationdisabled:
+			return []tierObjectCheck{nsTemplateTier(tierName, 0)}
+		case baselarge:
+			return []tierObjectCheck{nsTemplateTier(tierName, 90)}
+		case baseextendedidling:
+			return []tierObjectCheck{nsTemplateTier(tierName, 180)}
+		case hackathon:
+			return []tierObjectCheck{nsTemplateTier(tierName, 80)}
+		case testtier:
+			return []tierObjectCheck{}
+		default:
+			return []tierObjectCheck{nsTemplateTier(tierName, 30)}
+		}
+	}
 }
 
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
@@ -377,12 +257,6 @@ func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expecte
 	// now compare with the given `nsTypes`
 	assert.ElementsMatch(t, expectedNSTypes, actualNSTypes)
 }
-
-type namespaceObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string)
-
-type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string)
-
-type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
 
 func nsTemplateTier(tierName string, deactivationDays int) tierObjectCheck {
 	return func(t *testing.T, hostAwait *wait.HostAwaitility) {
