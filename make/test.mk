@@ -37,7 +37,7 @@ endif
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run
+test-e2e: prepare-e2e e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
