@@ -22,6 +22,7 @@ import (
 func TestUserCreatingRoleBindings(t *testing.T) {
 
 	awaitilities := testsupport.WaitForDeployments(t)
+	memberAwait := awaitilities.Member1()
 
 	config, err := config.GetConfig()
 	require.NoError(t, err)
@@ -34,7 +35,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 	testsupport.NewSignupRequest(t, awaitilities).
 		Username("harleyquinn").
 		ManuallyApprove().
-		TargetCluster(awaitilities.Member1()).
+		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(testsupport.ConditionSet(testsupport.Default(), testsupport.ApprovedByAdmin())...).
 		Execute()
@@ -45,7 +46,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			Name: "joker",
 		},
 	}
-	err = awaitilities.Member1().Client.Create(context.TODO(), &nonsandboxUser)
+	err = memberAwait.Client.Create(context.TODO(), &nonsandboxUser)
 	require.NoError(t, err)
 
 	// Create a rolebinding to let non-sandbox user create rolebinding in another's ns
@@ -70,10 +71,10 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		},
 	}
-	err = awaitilities.Member1().Client.Create(context.TODO(), &nonsandboxRoleBinding)
+	err = memberAwait.Client.Create(context.TODO(), &nonsandboxRoleBinding)
 	require.NoError(t, err)
 
-	defer deleteUser(t, awaitilities.Member1().Client, nonsandboxUser, nonsandboxRoleBinding)
+	defer deleteUser(t, memberAwait.Client, nonsandboxUser, nonsandboxRoleBinding)
 
 	t.Run("sandbox user creating different rolebindings", func(t *testing.T) {
 		config.Impersonate = rest.ImpersonationConfig{
