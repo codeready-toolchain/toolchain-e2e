@@ -118,7 +118,14 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 
 	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tier)
+	// Verify provisioned NSTemplateSet
+	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier.Name))
+	require.NoError(t, err)
+
+	tierChecks, err := tiers.NewChecksForTier(tier)
+	require.NoError(t, err)
+
+	tiers.VerifyNSTemplateSet(t, memberAwait, nsTemplateSet, tierChecks, tierChecks.GetExpectedTemplateRefs(hostAwait))
 
 	// Get member cluster to verify that it was used to provision user accounts
 	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
