@@ -234,7 +234,7 @@ func getTierObjectChecks(tierName string) func() []tierObjectCheck {
 			return []tierObjectCheck{nsTemplateTier(tierName, 0)}
 		case baselarge:
 			return []tierObjectCheck{nsTemplateTier(tierName, 90)}
-		case baseextendedidling:
+		case baseextended:
 			return []tierObjectCheck{nsTemplateTier(tierName, 180)}
 		case hackathon:
 			return []tierObjectCheck{nsTemplateTier(tierName, 80)}
