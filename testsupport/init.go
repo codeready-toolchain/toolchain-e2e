@@ -35,9 +35,9 @@ var (
 )
 
 // WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
-// and corresponding ToolchainCluster CRDs are present, running and ready. Based on the given cluster type
-// that represents the current operator that is the target of the e2e test it retrieves namespace names.
-// Also waits for the registration service to be deployed (with 3 replica)
+// and corresponding ToolchainCluster CRDs are present, running and ready. It also waits for all member Webhooks and
+// autoscaling buffer app. Based on the given cluster type that represents the current operator that is the target of
+// the e2e test it retrieves namespace names. Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
 func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	initOnce.Do(func() {
@@ -105,6 +105,13 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		_, err = initMember2Await.WaitForToolchainClusterWithCondition(initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
+
+		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
+		// (we can't deploy the same webhook multiple times on the same cluster)
+		// Also verify the autoscaling buffer in both members
+		initMemberAwait.WaitForMemberWebhooks()
+		initMemberAwait.WaitForAutoscalingBufferApp()
+		initMember2Await.WaitForAutoscalingBufferApp()
 
 		t.Log("all operators are ready and in running state")
 	})
