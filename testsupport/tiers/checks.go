@@ -26,6 +26,7 @@ const (
 	advanced                 = "advanced"
 	appstudio                = "appstudio"
 	base                     = "base"
+	base1ns                  = "base1ns"
 	basedeactivationdisabled = "basedeactivationdisabled"
 	baseextended             = "baseextended"
 	baseextendedidling       = "baseextendedidling"
@@ -61,7 +62,7 @@ type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
 
 func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (*TierChecks, error) {
 	switch tier.Name {
-	case base, baselarge, baseextended, baseextendedidling, basedeactivationdisabled, hackathon, advanced, appstudio, testtier:
+	case base, baselarge, baseextended, baseextendedidling, basedeactivationdisabled, hackathon, advanced, appstudio, testtier, base1ns:
 		return &TierChecks{
 			GetClusterObjectChecks:   getClusterObjectChecks(tier.Name),
 			GetExpectedTemplateRefs:  getExpectedTemplateRefs(tier.Name),
@@ -126,6 +127,19 @@ func getClusterObjectChecks(tierName string) func() []clusterObjectsCheck {
 				clusterResourceQuotaConfigMap(),
 				numberOfClusterResourceQuotas(),
 				idlers(518400, "dev", "stage"))
+		case base1ns:
+			return clusterObjectsChecks(
+				clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+				clusterResourceQuotaDeployments(),
+				clusterResourceQuotaReplicas(),
+				clusterResourceQuotaRoutes(),
+				clusterResourceQuotaJobs(),
+				clusterResourceQuotaServices(),
+				clusterResourceQuotaBuildConfig(),
+				clusterResourceQuotaSecrets(),
+				clusterResourceQuotaConfigMap(),
+				numberOfClusterResourceQuotas(),
+				idlers(43200, "dev"))
 		case advanced:
 			return clusterObjectsChecks(
 				clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
@@ -188,6 +202,19 @@ func getNamespaceObjectChecks(tierName string) func(nsType string) []namespaceOb
 			checks = append(checks, commonNetworkPolicyChecks...)
 			checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
 			return checks
+		case base1ns:
+			checks := append(commonChecks,
+				limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+				rbacEditRoleBinding(),
+				rbacEditRole(),
+				crtadminPodsRoleBinding(),
+				crtadminViewRoleBinding(),
+				execPodsRole(),
+				numberOfToolchainRoles(2),
+				numberOfToolchainRoleBindings(4))
+			checks = append(checks, commonNetworkPolicyChecks...)
+			checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
+			return checks
 		default:
 			checks := append(commonChecks,
 				limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
@@ -218,6 +245,10 @@ func getExpectedTemplateRefs(tierName string) func(hostAwait *wait.HostAwaitilit
 		case appstudio:
 			templateRefs := GetTemplateRefs(hostAwait, tierName)
 			verifyNsTypes(hostAwait.T, tierName, templateRefs, "appstudio")
+			return templateRefs
+		case base1ns:
+			templateRefs := GetTemplateRefs(hostAwait, tierName)
+			verifyNsTypes(hostAwait.T, tierName, templateRefs, "dev")
 			return templateRefs
 		default:
 			templateRefs := GetTemplateRefs(hostAwait, tierName)
