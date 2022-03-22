@@ -143,6 +143,11 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 	hostAwait := awaitilities.Host()
 
+	userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
+		wait.ContainsCondition(Complete()))
+	require.NoError(t, err)
+
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasTierName(tierName),
 		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
