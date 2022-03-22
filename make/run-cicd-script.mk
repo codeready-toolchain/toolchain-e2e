@@ -1,5 +1,5 @@
 
-OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master
+OWNER_AND_BRANCH_LOCATION=rajivnathan/toolchain-cicd/saveLogsToArtifactsDir
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 USE_LOCAL_SCRIPTS=false
 
