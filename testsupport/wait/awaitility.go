@@ -16,6 +16,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
+	"github.com/redhat-cop/operator-utils/pkg/util"
+	"k8s.io/kubectl/pkg/util/podutils"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/require"
@@ -457,6 +459,19 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 		require.NoError(a.T, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
 		if int(deployment.Status.AvailableReplicas) != replicas {
 			return false, nil
+		}
+		pods := &corev1.PodList{}
+		require.NoError(a.T, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(deployment.Spec.Selector.MatchLabels)))
+		if len(pods.Items) != replicas {
+			return false, nil
+		}
+		for i := range pods.Items {
+			if util.IsBeingDeleted(&pods.Items[i]) {
+				return false, nil
+			}
+			if !podutils.IsPodReady(&pods.Items[i]) {
+				return false, nil
+			}
 		}
 		return true, nil
 	})
