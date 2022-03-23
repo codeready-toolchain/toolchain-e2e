@@ -465,11 +465,8 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 		if len(pods.Items) != replicas {
 			return false, nil
 		}
-		for i := range pods.Items {
-			if util.IsBeingDeleted(&pods.Items[i]) {
-				return false, nil
-			}
-			if !podutils.IsPodReady(&pods.Items[i]) {
+		for _, pod := range pods.Items {
+			if util.IsBeingDeleted(&pod) || !podutils.IsPodReady(&pod) {
 				return false, nil
 			}
 		}
