@@ -76,7 +76,9 @@ func TestNSTemplateTiers(t *testing.T) {
 		t.Run(fmt.Sprintf("tier object check for %s", tierToCheck), func(t *testing.T) {
 			tierChecks, err := tiers.NewChecksForTier(tier)
 			require.NoError(t, err)
-			for _, check := range tierChecks.GetTierObjectChecks() {
+			objectChecks, err := tierChecks.GetTierObjectChecks(hostAwait)
+			require.NoError(t, err)
+			for _, check := range objectChecks {
 				check(t, hostAwait)
 			}
 		})
@@ -312,7 +314,6 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 }
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tier *tiers.CustomNSTemplateTier, tierNameChanged bool) {
-	templateRefs := tiers.GetTemplateRefs(hostAwait, tier.Name)
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
 	checks := tiers.NewChecksForCustomTier(tier)
 
@@ -335,7 +336,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 			t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
 		}
 		require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", usersignup, userAccount, nsTemplateSet)
-		tiers.VerifyNSTemplateSet(t, memberAwaitility, nsTemplateSet, checks, templateRefs)
+		tiers.VerifyNSTemplateSet(t, hostAwait, memberAwaitility, nsTemplateSet, checks)
 
 		// the syncIndex should be different if the tier changed. if only the template refs changed then the sync index is expected to be the same because UserAccounts no longer have references to the NSTemplateSet
 		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,

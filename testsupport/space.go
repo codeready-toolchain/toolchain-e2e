@@ -174,15 +174,12 @@ func verifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitili
 		}
 	}
 
-	// get refs & checks
-	templateRefs := tiers.GetTemplateRefs(hostAwait, tier.Name)
-
 	// get NSTemplateSet
 	nsTemplateSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
-	tiers.VerifyNSTemplateSet(t, targetCluster, nsTemplateSet, checks, templateRefs)
+	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTemplateSet, checks)
 
 	if tier.Name == "appstudio" {
 		// checks that namespace exists and has the expected label(s)

@@ -14,7 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks *TierChecks, expectedTemplateRefs TemplateRefs) {
+func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks *TierChecks) {
+	expectedTemplateRefs := checks.GetExpectedTemplateRefs(hostAwait)
 
 	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	require.NoError(t, err)
@@ -26,7 +27,9 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
-		for _, check := range checks.GetNamespaceObjectChecks(nsType) {
+		namespaceChecks, err := checks.GetNamespaceObjectChecks(nsType)
+		require.NoError(t, err)
+		for _, check := range namespaceChecks {
 			namespaceObjectChecks.Add(1)
 			go func(checkNamespaceObjects namespaceObjectsCheck) {
 				defer namespaceObjectChecks.Done()
@@ -37,7 +40,9 @@ func VerifyNSTemplateSet(t *testing.T, memberAwait *wait.MemberAwaitility, nsTmp
 
 	clusterObjectChecks := sync.WaitGroup{}
 	if expectedTemplateRefs.ClusterResources != nil {
-		for _, check := range checks.GetClusterObjectChecks() {
+		clusterChecks, err := checks.GetClusterObjectChecks()
+		require.NoError(t, err)
+		for _, check := range clusterChecks {
 			clusterObjectChecks.Add(1)
 			go func(check clusterObjectsCheck) {
 				defer clusterObjectChecks.Done()
