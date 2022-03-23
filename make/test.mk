@@ -304,7 +304,7 @@ create-host-resources:
 		oc patch toolchainconfig config -n $(HOST_NS) --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 ifneq ($(E2E_TEST_EXECUTION),true)
-	# if it's not part of e2e test execution, then delete registration-service pods in case they already exist
+	# if it's not part of e2e test execution, then delete registration-service pods in case they already exist so that the ToolchainConfig will be reloaded
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 endif
 
