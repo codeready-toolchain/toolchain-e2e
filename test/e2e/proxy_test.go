@@ -60,7 +60,8 @@ func TestProxyFlow(t *testing.T) {
 
 	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
+	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
+	require.NoError(t, err)
 
 	users := []proxyUser{
 		{
@@ -191,7 +192,7 @@ func TestProxyFlow(t *testing.T) {
 
 	// preexisting user & identity are still there
 	// Verify provisioned User
-	_, err := memberAwait.WaitForUser(preexistingUser.Name)
+	_, err = memberAwait.WaitForUser(preexistingUser.Name)
 	assert.NoError(t, err)
 
 	// Verify provisioned Identity
