@@ -26,7 +26,7 @@ var Templates = []string{
 	"rhoda.yaml",
 	"devworkspace-operator.yaml",
 	"rhoas.yaml",
-	"sbo.yaml",
+	// "sbo.yaml", // included when rhoda is installed
 	"serverless-operator.yaml",
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
