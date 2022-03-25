@@ -340,10 +340,7 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string, tierNameChanged bool) map[string]string {
 
-	// verify that all TemplateUpdateRequests were deleted
 	hostAwait := awaitilities.Host()
-	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
-	require.NoError(t, err)
 
 	// verify individual user updates
 	updatedSyncIndexes := make(map[string]string, len(syncIndexes))
@@ -379,11 +376,6 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities
 }
 
 func verifyResourceUpdatesForSpaces(t *testing.T, awaitilities Awaitilities, targetCluster *MemberAwaitility, spaces []string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
-	// verify that all TemplateUpdateRequests were deleted
-	hostAwait := awaitilities.Host()
-	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
-	require.NoError(t, err)
-
 	// verify individual space updates
 	for _, spaceName := range spaces {
 		VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, targetCluster, spaceName, tierName, aliasTierNamespaces, aliasTierClusterResources)
