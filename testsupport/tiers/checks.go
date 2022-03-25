@@ -1043,14 +1043,14 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokendataupdates"},
+					Verbs:     []string{"create"},
+				},
+				{
 					APIGroups: []string{"tekton.dev"},
 					Resources: []string{"pipelineruns"},
 					Verbs:     []string{"*"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"secrets"},
-					Verbs:     []string{"create", "delete"},
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
