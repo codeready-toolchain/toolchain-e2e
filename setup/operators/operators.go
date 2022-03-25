@@ -23,6 +23,7 @@ const (
 )
 
 var Templates = []string{
+	"rhoda.yaml",
 	"devworkspace-operator.yaml",
 	"rhoas.yaml",
 	"sbo.yaml",
@@ -32,7 +33,7 @@ var Templates = []string{
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
-var csvTimeout = 20 * time.Second
+var csvTimeout = 60 * time.Second
 
 func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	subs := &v1alpha1.SubscriptionList{}
