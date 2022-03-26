@@ -1,0 +1,38 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-dbaas-operator
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${DBAAS_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: CatalogSource
+    metadata:
+      name: dbaas-operator-catalog
+      namespace: ${DBAAS_NAMESPACE}
+    spec:
+      sourceType: grpc
+      image: quay.io/osd-addons/dbaas-operator-index@sha256:6325f547b394b1d6f7a528ab3c01bb8f9052762acc245fd453378f5a47830923
+      displayName: DBaaS Operator
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: dbaas-sub
+      namespace: ${DBAAS_NAMESPACE}
+    spec:
+      channel: alpha
+      installPlanApproval: Automatic
+      name: dbaas-operator
+      source: dbaas-operator-catalog
+      sourceNamespace: ${DBAAS_NAMESPACE}
+      startingCSV: dbaas-operator.v0.1.4
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: dbaas-operator
+      namespace: ${DBAAS_NAMESPACE}
+parameters:
+  - name: DBAAS_NAMESPACE
+    value: rhoda-operator
