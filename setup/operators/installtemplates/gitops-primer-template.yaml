@@ -23,7 +23,7 @@ objects:
       name: gitops-primer
       source: community-operators
       sourceNamespace: openshift-marketplace
-      startingCSV: gitops-primer.v0.0.5
+      startingCSV: gitops-primer.v0.0.6
 parameters:
   - name: GITOPS_PRIMER_OPERATOR_NAMESPACE
     value: gitops-primer-system
