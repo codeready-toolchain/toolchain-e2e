@@ -23,7 +23,7 @@ objects:
     name: rhoas-operator
     source: community-operators
     sourceNamespace: openshift-marketplace
-    startingCSV: rhoas-operator.0.7.10
+    startingCSV: rhoas-operator.0.9.6
 parameters:
 - name: RHOAS_NAMESPACE
   value: rhoas-operator
