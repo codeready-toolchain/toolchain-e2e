@@ -4,7 +4,7 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
 
 == Prereqs
 
-. Provision the *latest available* GA version of OCP on AWS with sufficient resources: 3 `m5.4xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
+. Provision the *latest available* GA version of *OCP 4.10.x* on AWS with sufficient resources: 3 `m5.8xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
 +
 The latest version of openshift-install can be downloaded from https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
 +
