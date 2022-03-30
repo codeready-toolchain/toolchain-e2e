@@ -86,6 +86,9 @@ type SignupRequest interface {
 
 	// Disables automatic cleanup of the UserSignup resource after the test has completed
 	DisableCleanup() SignupRequest
+
+	// NoSpace creates only a UserSignup and MasterUserRecord, Space creation will be skipped
+	NoSpace() SignupRequest
 }
 
 func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
@@ -117,6 +120,7 @@ type signupRequest struct {
 	token                string
 	originalSub          string
 	cleanupDisabled      bool
+	noSpace              bool
 }
 
 func (r *signupRequest) IdentityID(id uuid.UUID) SignupRequest {
@@ -188,6 +192,11 @@ func (r *signupRequest) DisableCleanup() SignupRequest {
 	return r
 }
 
+func (r *signupRequest) NoSpace() SignupRequest {
+	r.noSpace = true
+	return r
+}
+
 func (r *signupRequest) Execute() SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.awaitilities.Host())
@@ -213,9 +222,14 @@ func (r *signupRequest) Execute() SignupRequest {
 	require.NoError(r.t, err)
 	r.token = token0
 
+	queryParams := map[string]string{}
+	if r.noSpace {
+		queryParams["no-space"] = "true"
+	}
+
 	// Call the signup endpoint
 	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		token0, "", r.requiredHTTPStatus)
+		token0, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.ID.String())
@@ -282,7 +296,7 @@ func (r *signupRequest) Execute() SignupRequest {
 	return r
 }
 
-func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) map[string]interface{} {
+func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int, queryParams map[string]string) map[string]interface{} {
 	var reqBody io.Reader
 	if requestBody != "" {
 		reqBody = strings.NewReader(requestBody)
@@ -291,6 +305,15 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
+
+	if len(queryParams) > 0 {
+		q := req.URL.Query()
+		for key, val := range queryParams {
+			q.Add(key, val)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
 	req.Close = true
 	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
 	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/identity"
 
@@ -27,6 +28,20 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 }
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
+	VerifyUserRelatedResources(t, awaitilities, signup, tierName)
+	VerifySpaceRelatedResources(t, awaitilities, signup, tierName)
+}
+
+func VerifyResourcesProvisionedForSignupWithoutSpace(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
+	VerifyUserRelatedResources(t, awaitilities, signup, tierName)
+
+	// verify space does not exist
+	space, err := awaitilities.Host().WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitForSpace(signup.Status.CompliantUsername)
+	require.Error(t, err)
+	require.Nil(t, space)
+}
+
+func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 
 	hostAwait := awaitilities.Host()
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
@@ -102,6 +117,42 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 		}
 	}
 
+	// Get member cluster to verify that it was used to provision user accounts
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
+	expectedEmbeddedUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
+		Cluster: toolchainv1alpha1.Cluster{
+			Name:        mur.Spec.UserAccounts[0].TargetCluster,
+			APIEndpoint: memberCluster.Spec.APIEndpoint,
+			ConsoleURL:  memberAwait.GetConsoleURL(),
+		},
+		UserAccountStatus: userAccount.Status,
+	}
+	mur, err = hostAwait.WaitForMasterUserRecord(mur.Name,
+		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()),
+		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
+	assert.NoError(t, err)
+
+	return userSignup, mur
+}
+
+func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, tierName string) {
+
+	hostAwait := awaitilities.Host()
+
+	userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
+		wait.ContainsCondition(Complete()))
+	require.NoError(t, err)
+
+	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
+		wait.UntilMasterUserRecordHasTierName(tierName),
+		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+	require.NoError(t, err)
+
 	tier, err := hostAwait.WaitForNSTemplateTier(mur.Spec.TierName)
 	require.NoError(t, err)
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
@@ -118,26 +169,8 @@ func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitil
 
 	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, tierName)
-
-	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
-	require.NoError(t, err)
-	require.True(t, ok)
-
-	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
-	expectedEmbeddedUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
-		Cluster: toolchainv1alpha1.Cluster{
-			Name:        mur.Spec.UserAccounts[0].TargetCluster,
-			APIEndpoint: memberCluster.Spec.APIEndpoint,
-			ConsoleURL:  memberAwait.GetConsoleURL(),
-		},
-		UserAccountStatus: userAccount.Status,
-	}
-	_, err = hostAwait.WaitForMasterUserRecord(mur.Name,
-		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()),
-		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
-	assert.NoError(t, err)
+	memberAwait := GetMurTargetMember(t, awaitilities, mur)
+	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, mur.Spec.TierName)
 }
 
 func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {
