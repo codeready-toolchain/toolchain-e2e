@@ -350,12 +350,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				// Save the updated UserSignup's Status
 				require.NoError(t, hostAwait.Client.Status().Update(context.TODO(), userSignup))
 
-				// Trigger a reconciliation of the deactivation controller by updating the MUR
-				// - The SyncIndex property of the UserAccount is intended for the express purpose of triggering
-				//   a reconciliation, so we set it to some new unique value here
-				syncIndex := uuid.Must(uuid.NewV4()).String()
+				// Trigger a reconciliation of the deactivation controller by updating the MUR annotation
 				_, err := hostAwait.UpdateMasterUserRecordSpec(murName, func(mur *toolchainv1alpha1.MasterUserRecord) {
-					mur.Spec.UserAccounts[0].SyncIndex = syncIndex
+					if mur.Annotations == nil {
+						mur.Annotations = map[string]string{}
+					}
+					mur.Annotations["update-from-e2e-tests"] = "trigger"
 				})
 				if err != nil {
 					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
