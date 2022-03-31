@@ -19,11 +19,11 @@ dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-s
 
 .PHONY: deploy-e2e-to-dev-namespaces
 deploy-e2e-to-dev-namespaces:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 
 .PHONY: deploy-e2e-to-dev-namespaces-two-members
 deploy-e2e-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 
 .PHONY: dev-deploy-e2e-local
 dev-deploy-e2e-local: deploy-e2e-local-to-dev-namespaces print-reg-service-link
@@ -33,11 +33,11 @@ dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members
 
 .PHONY: deploy-e2e-local-to-dev-namespaces
 deploy-e2e-local-to-dev-namespaces:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 
 .PHONY: deploy-e2e-local-to-dev-namespaces-two-members
 deploy-e2e-local-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 
 .PHONY: print-reg-service-link
 print-reg-service-link:
@@ -79,14 +79,14 @@ print-reg-service-link:
 .PHONY: dev-deploy-e2e-member-local
 ## Deploy the e2e resources with the local 'member-operator' repository only
 dev-deploy-e2e-member-local:
-	$(MAKE) dev-deploy-e2e MEMBER_REPO_PATH=${PWD}/../member-operator ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) dev-deploy-e2e MEMBER_REPO_PATH=${PWD}/../member-operator ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 
 .PHONY: dev-deploy-e2e-host-local
 ## Deploy the e2e resource with the local 'host-operator' repository only
 dev-deploy-e2e-host-local:
-	$(MAKE) dev-deploy-e2e HOST_REPO_PATH=${PWD}/../host-operator ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) dev-deploy-e2e HOST_REPO_PATH=${PWD}/../host-operator ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 
 .PHONY: dev-deploy-e2e-registration-local
 ## Deploy the e2e resources with the local 'registration-service' repository only
 dev-deploy-e2e-registration-local:
-	$(MAKE) dev-deploy-e2e REG_REPO_PATH=${PWD}/../registration-service ENVIRONMENT=${DEV_ENVIRONMENT} SETUP_E2E_SERVICE_ACCOUNTS=false IS_OSD=${IS_OSD}
+	$(MAKE) dev-deploy-e2e REG_REPO_PATH=${PWD}/../registration-service ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
