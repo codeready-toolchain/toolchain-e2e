@@ -23,7 +23,7 @@ objects:
       name: rh-service-binding-operator
       source: redhat-operators
       sourceNamespace: openshift-marketplace
-      startingCSV: service-binding-operator.v1.0.0
+      startingCSV: service-binding-operator.v1.0.1
       config:
         resources:
           requests:
