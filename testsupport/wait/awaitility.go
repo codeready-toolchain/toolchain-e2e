@@ -56,6 +56,14 @@ type Awaitility struct {
 	MetricsURL    string
 }
 
+func (a *Awaitility) GetClient() client.Client {
+	return a.Client
+}
+
+func (a *Awaitility) GetT() *testing.T {
+	return a.T
+}
+
 func (a *Awaitility) ForTest(t *testing.T) *Awaitility {
 	await := a.copy()
 	await.T = t
@@ -500,13 +508,13 @@ func (a *Awaitility) CreateWithCleanup(ctx context.Context, obj client.Object, o
 	if err := a.Client.Create(ctx, obj, opts...); err != nil {
 		return err
 	}
-	cleanup.AddCleanTasks(a.T, a.Client, obj)
+	cleanup.AddCleanTasks(a, obj)
 	return nil
 }
 
 // Clean triggers cleanup of all resources that were marked to be cleaned before that
 func (a *Awaitility) Clean() {
-	cleanup.ExecuteAllCleanTasks()
+	cleanup.ExecuteAllCleanTasks(a)
 }
 
 func (a *Awaitility) listAndPrint(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) {
