@@ -154,15 +154,15 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// first group of users: the "cheesecake lovers"
-	cheesecakeSyncIndexes := setupAccounts(t, awaitilities, "cheesecake", "cheesecakelover%02d", memberAwait, count)
+	cheesecakeUsers := setupAccounts(t, awaitilities, "cheesecake", "cheesecakelover%02d", memberAwait, count)
 	// second group of users: the "cookie lovers"
-	cookieSyncIndexes := setupAccounts(t, awaitilities, "cookie", "cookielover%02d", memberAwait, count)
+	cookieUsers := setupAccounts(t, awaitilities, "cookie", "cookielover%02d", memberAwait, count)
 
 	// setup chocolate tier to be used for creating spaces without usersignups
 	spaces := setupSpaces(t, awaitilities, "chocolate", "chocolatelover%02d", memberAwait, count)
 
-	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeSyncIndexes, "cheesecake", "base", "base", true)
-	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieSyncIndexes, "cookie", "base", "base", true)
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeUsers, "cheesecake", "base", "base")
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieUsers, "cookie", "base", "base")
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "base", "base")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespaces (ie, same number of namespaces) but keep the ClusterResources refs
@@ -173,8 +173,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	updateTemplateTier(t, hostAwait, "chocolate", "advanced", "")
 
 	// then
-	cheesecakeSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "base", false)
-	cookieSyncIndexes = verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieSyncIndexes, "cookie", "baseextendedidling", "baseextendedidling", false)
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeUsers, "cheesecake", "advanced", "base")
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieUsers, "cookie", "baseextendedidling", "baseextendedidling")
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "advanced", "base")
 
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for ClusterResources but keep the Namespaces refs
@@ -185,8 +185,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	updateTemplateTier(t, hostAwait, "chocolate", "", "advanced")
 
 	// then
-	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeSyncIndexes, "cheesecake", "advanced", "advanced", false)
-	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieSyncIndexes, "cookie", "base", "base", false)
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cheesecakeUsers, "cheesecake", "advanced", "advanced")
+	verifyResourceUpdatesForUserSignups(t, awaitilities, memberAwait, cookieUsers, "cookie", "base", "base")
 	verifyResourceUpdatesForSpaces(t, awaitilities, memberAwait, spaces, "chocolate", "advanced", "advanced")
 
 	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
@@ -261,38 +261,33 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tierName, nameFmt stri
 // 1. creating a new tier with the TemplateRefs of the "base" tier.
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
-// returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) map[string]string {
+// returns the usersignups
+func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt string, targetCluster *MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
 	hostAwait := awaitilities.Host()
 	tier := CreateNSTemplateTier(t, hostAwait, tierName)
 
 	// let's create a few users (more than `maxPoolSize`)
 	// and wait until they are all provisioned by calling EnsureMUR()
-	users := make([]*toolchainv1alpha1.UserSignup, count)
+	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		users[i], _ = NewSignupRequest(t, awaitilities).
+		userSignups[i], _ = NewSignupRequest(t, awaitilities).
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
-			EnsureMUR().
+			WaitForMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
 			Execute().
 			Resources()
 	}
 
-	// let's promote to users the new tier and retain the SyncIndexes (indexes by usersignup.Name)
-	syncIndexes := make(map[string]string, len(users))
-	for i, user := range users {
+	// let's promote to users the new tier
+	for i := range userSignups {
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i], "base")
 		username := fmt.Sprintf(nameFmt, i)
-		mur, err := hostAwait.WaitForMasterUserRecord(username,
-			UntilMasterUserRecordHasCondition(Provisioned())) // ignore other conditions, such as notification sent, etc.
-		require.NoError(t, err)
 		MoveUserToTier(t, hostAwait, username, tier.Name)
-		syncIndexes[user.Name] = mur.Spec.UserAccounts[0].SyncIndex
-		t.Logf("initial syncIndex for %s: '%s'", mur.Name, syncIndexes[user.Name])
 	}
-	return syncIndexes
+	return userSignups
 }
 
 // updateTemplateTier updates the given "tier" using the templateRefs of the "aliasTierNamespaces"
@@ -338,15 +333,12 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 	}
 }
 
-func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities, memberAwaitility *MemberAwaitility, syncIndexes map[string]string, tierName, aliasTierNamespaces, aliasTierClusterResources string, tierNameChanged bool) map[string]string {
+func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
 
 	hostAwait := awaitilities.Host()
 
 	// verify individual user updates
-	updatedSyncIndexes := make(map[string]string, len(syncIndexes))
-	for userID, syncIndex := range syncIndexes {
-		usersignup, err := hostAwait.WaitForUserSignup(userID)
-		require.NoError(t, err)
+	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, usersignup.Spec.OriginalSub)),
@@ -359,20 +351,9 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities
 			require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", usersignup, userAccount, nsTemplateSet)
 		}
 
-		// the syncIndex should be different if the tier changed. if only the template refs changed then the sync index is expected to be the same because UserAccounts no longer have references to the NSTemplateSet
-		mur, err := hostAwait.WaitForMasterUserRecord(usersignup.Status.CompliantUsername,
-			UntilMasterUserRecordHasCondition(Provisioned()), // ignore other conditions, such as notification sent, etc.
-			UntilMasterUserRecordHasSyncIndex(syncIndex, tierNameChanged),
-		)
-		require.NoError(t, err)
-		updatedSyncIndexes[userID] = mur.Spec.UserAccounts[0].SyncIndex
-		require.NotNil(t, userAccount)
-
 		// verify space and tier resources are correctly updated
-		VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, memberAwaitility, mur.Name, tierName, aliasTierNamespaces, aliasTierClusterResources)
+		VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, memberAwaitility, usersignup.Status.CompliantUsername, tierName, aliasTierNamespaces, aliasTierClusterResources)
 	}
-
-	return updatedSyncIndexes
 }
 
 func verifyResourceUpdatesForSpaces(t *testing.T, awaitilities Awaitilities, targetCluster *MemberAwaitility, spaces []string, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
