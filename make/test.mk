@@ -316,7 +316,6 @@ create-has-application-crd:
 create-project:
 	@-oc new-project ${PROJECT_NAME} 1>/dev/null
 	@-oc project ${PROJECT_NAME}
-	@-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
 	@echo "adding network policies in $(PROJECT_NAME) namespace"
 	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
 	
