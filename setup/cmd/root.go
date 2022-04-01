@@ -39,6 +39,7 @@ var (
 	defaultTemplateUsers int
 	customTemplateUsers  int
 	skipCSVGen           bool
+	skipIdlerSetup       bool
 	interactive          bool
 	operatorsLimit       int
 	idlerTimeout         string
@@ -74,6 +75,7 @@ func Execute() {
 	cmd.Flags().IntVarP(&defaultTemplateUsers, cfg.DefaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
 	cmd.Flags().IntVarP(&customTemplateUsers, cfg.CustomTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
 	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
+	cmd.Flags().BoolVar(&skipIdlerSetup, "skip-idler", false, "if the idler timeout should be modified for each user")
 	cmd.Flags().BoolVar(&interactive, "interactive", true, "if user is prompted to confirm all actions")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
@@ -239,25 +241,27 @@ func setup(cmd *cobra.Command, args []string) { // nolint:gocyclo
 		}
 	}()
 
-	idlerBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
-		return strutil.PadLeft(fmt.Sprintf("idler setup (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
-	})
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for idlerBar.Incr() {
-			username := fmt.Sprintf("%s-%04d", usernamePrefix, idlerBar.Current())
+	if !skipIdlerSetup {
+		idlerBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
+			return strutil.PadLeft(fmt.Sprintf("idler setup (%d/%d)", b.Current(), numberOfUsers), 25, ' ')
+		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idlerBar.Incr() {
+				username := fmt.Sprintf("%s-%04d", usernamePrefix, idlerBar.Current())
 
-			startTime := time.Now()
-			// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
-			if err := idlers.UpdateTimeout(cl, username, idlerDuration); err != nil {
-				term.Fatalf(err, "failed to update idlers for user '%s'", username)
+				startTime := time.Now()
+				// update Idlers timeout to kill workloads faster to reduce impact of memory/cpu usage during testing
+				if err := idlers.UpdateTimeout(cl, username, idlerDuration); err != nil {
+					term.Fatalf(err, "failed to update idlers for user '%s'", username)
+				}
+
+				idlerTime := time.Since(startTime)
+				AverageIdlerUpdateTime += idlerTime
 			}
-
-			idlerTime := time.Since(startTime)
-			AverageIdlerUpdateTime += idlerTime
-		}
-	}()
+		}()
+	}
 
 	if defaultTemplateUsers > 0 {
 		defaultUserSetupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
