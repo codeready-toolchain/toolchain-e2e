@@ -343,21 +343,6 @@ func UntilMasterUserRecordHasConditions(expected ...toolchainv1alpha1.Condition)
 	}
 }
 
-// UntilMasterUserRecordHasSyncIndex checks if the MasterUserRecord has a
-// sync index that matches (or does not match) the given value
-func UntilMasterUserRecordHasSyncIndex(previousSyncIndex string, expectedToChange bool) MasterUserRecordWaitCriterion {
-	return MasterUserRecordWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
-			ua := actual.Spec.UserAccounts[0]
-			changed := ua.SyncIndex != previousSyncIndex
-			return changed == expectedToChange
-		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("unexpected sync index value.\n\texpected to change: '%t'\n\tpreviousSyncIndex: '%s'\n\tcurrent: '%s'", expectedToChange, previousSyncIndex, actual.Spec.UserAccounts[0].SyncIndex)
-		},
-	}
-}
-
 func WithMurName(name string) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
@@ -377,7 +362,6 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 				return false
 			}
 			for _, expUaStatus := range expected {
-				expUaStatus.SyncIndex = getUaSpecSyncIndex(actual, expUaStatus.Cluster.Name)
 				if !containsUserAccountStatus(actual.Status.UserAccounts, expUaStatus) {
 					return false
 				}
@@ -707,19 +691,9 @@ func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
 	require.Equal(a.T, wait.ErrWaitTimeout, err)
 }
 
-func getUaSpecSyncIndex(mur *toolchainv1alpha1.MasterUserRecord, cluster string) string {
-	for _, ua := range mur.Spec.UserAccounts {
-		if ua.TargetCluster == cluster {
-			return ua.SyncIndex
-		}
-	}
-	return ""
-}
-
 func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
 	for _, status := range uaStatuses {
 		if reflect.DeepEqual(uaStatus.Cluster, status.Cluster) &&
-			uaStatus.SyncIndex == status.SyncIndex &&
 			test.ConditionsMatch(uaStatus.Conditions, status.Conditions...) {
 			return true
 		}
