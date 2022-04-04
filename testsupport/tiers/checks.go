@@ -104,7 +104,7 @@ func NewChecksForCustomTier(tier *CustomNSTemplateTier) (TierChecks, error) {
 	c.getClusterObjectChecks = clusterChecks.GetClusterObjectChecks
 
 	// using the checks of the "namespace resources" NSTemplateTier
-	namespaceChecks, err := NewChecksForTier(tier.ClusterResourcesTier)
+	namespaceChecks, err := NewChecksForTier(tier.NamespaceResourcesTier)
 	if err != nil {
 		return nil, err
 	}
