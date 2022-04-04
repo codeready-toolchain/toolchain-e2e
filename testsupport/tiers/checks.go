@@ -117,11 +117,18 @@ func NewChecksForCustomTier(tier *CustomNSTemplateTier) (TierChecks, error) {
 		}
 	}
 
-	c.getExpectedTemplateRefs = func(hostAwait *wait.HostAwaitility) TemplateRefs {
-		clusterTemplateRefs := GetTemplateRefs(hostAwait, tier.ClusterResourcesTier.Name)
+	var clusterResourcesTmplRef *string
+	if tier.NSTemplateTier.Spec.ClusterResources != nil {
+		clusterResourcesTmplRef = &tier.NSTemplateTier.Spec.ClusterResources.TemplateRef
+	}
+	namespaceTmplRefs := make([]string, len(tier.NSTemplateTier.Spec.Namespaces))
+	for i, ns := range tier.NSTemplateTier.Spec.Namespaces {
+		namespaceTmplRefs[i] = ns.TemplateRef
+	}
+	c.getExpectedTemplateRefs = func(_ *wait.HostAwaitility) TemplateRefs {
 		return TemplateRefs{
-			ClusterResources: clusterTemplateRefs.ClusterResources,
-			Namespaces:       namespaceChecks.GetExpectedTemplateRefs(hostAwait).Namespaces,
+			ClusterResources: clusterResourcesTmplRef,
+			Namespaces:       namespaceTmplRefs,
 		}
 	}
 	return c, nil
