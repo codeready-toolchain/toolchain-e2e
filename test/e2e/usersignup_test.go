@@ -503,3 +503,26 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	require.Error(s.T(), err)
 	return userSignup
 }
+
+func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
+	// given
+	hostAwait := s.Host()
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.T(), s.Awaitilities).
+		Username("nospace").
+		Email("nospace@redhat.com").
+		NoSpace().
+		WaitForMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute().
+		Resources()
+
+	// then
+
+	// annotation should be set
+	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
+
+	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "base")
+}

@@ -28,7 +28,7 @@ else
 PUBLISH_OPERATOR := true
 endif
 
-SETUP_E2E_SERVICE_ACCOUNTS ?= true
+E2E_TEST_EXECUTION ?= true
 
 ifeq ($(IS_OSD),true)
 LETS_ENCRYPT_PARAM := --lets-encrypt
@@ -204,7 +204,7 @@ setup-toolchainclusters:
 
 .PHONY: e2e-service-account
 e2e-service-account:
-ifeq ($(SETUP_E2E_SERVICE_ACCOUNTS),true)
+ifeq ($(E2E_TEST_EXECUTION),true)
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
@@ -303,8 +303,10 @@ create-host-resources:
 		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"member-$${TOOLCHAIN_CLUSTER_NAME}2\":{\"webhook\":{\"deploy\":false}}}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n $(HOST_NS) --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
-	# delete registration-service pods in case they already exist
+ifneq ($(E2E_TEST_EXECUTION),true)
+	# if it's not part of e2e test execution, then delete registration-service pods in case they already exist so that the ToolchainConfig will be reloaded
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
+endif
 
 .PHONY: create-has-application-crd
 create-has-application-crd:
@@ -314,7 +316,6 @@ create-has-application-crd:
 create-project:
 	@-oc new-project ${PROJECT_NAME} 1>/dev/null
 	@-oc project ${PROJECT_NAME}
-	@-oc label ns --overwrite=true ${PROJECT_NAME} toolchain.dev.openshift.com/provider=codeready-toolchain
 	@echo "adding network policies in $(PROJECT_NAME) namespace"
 	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
 	
