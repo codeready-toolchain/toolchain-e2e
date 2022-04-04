@@ -187,7 +187,7 @@ func TestProxyFlow(t *testing.T) {
 
 	// preexisting user & identity are still there
 	// Verify provisioned User
-	_, err = memberAwait.WaitForUser(preexistingUser.Name)
+	_, err := memberAwait.WaitForUser(preexistingUser.Name)
 	assert.NoError(t, err)
 
 	// Verify provisioned Identity
