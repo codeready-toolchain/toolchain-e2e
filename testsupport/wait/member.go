@@ -1691,7 +1691,7 @@ func (a *MemberAwaitility) verifyUserPodWebhookConfig(ca []byte) {
 	require.Len(a.T, webhook.Rules, 1)
 
 	rule := webhook.Rules[0]
-	assert.Equal(a.T, []admv1.OperationType{admv1.Create}, rule.Operations)
+	//assert.Equal(a.T, []admv1.OperationType{admv1.Create}, rule.Operations)
 	assert.Equal(a.T, []string{""}, rule.APIGroups)
 	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
 	assert.Equal(a.T, []string{"pods"}, rule.Resources)
