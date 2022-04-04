@@ -1575,10 +1575,10 @@ func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 	return pods.Items[0], nil
 }
 
-func (a *MemberAwaitility) WaitForMemberWebhooks() {
+func (a *MemberAwaitility) WaitForMemberWebhooks(image string) {
 	a.waitForUsersPodPriorityClass()
 	a.waitForService()
-	a.waitForWebhookDeployment()
+	a.waitForWebhookDeployment(image)
 	ca := a.verifySecret()
 	a.verifyUserPodWebhookConfig(ca)
 	a.verifyUsersRolebindingsWebhookConfig(ca)
@@ -1624,10 +1624,10 @@ func (a *MemberAwaitility) waitForService() {
 	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualService.Spec.Selector)
 }
 
-func (a *MemberAwaitility) waitForWebhookDeployment() {
+func (a *MemberAwaitility) waitForWebhookDeployment(image string) {
 	a.T.Logf("checking Deployment '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
-	actualDeployment := &appsv1.Deployment{}
-	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
+	actualDeployment := a.WaitForDeploymentToGetReady("member-operator-webhook", 1,
+		DeploymentHasContainerWithImage("mutator", image))
 
 	assert.Equal(a.T, bothWebhookLabels, actualDeployment.Labels)
 	assert.Equal(a.T, int32(1), *actualDeployment.Spec.Replicas)
