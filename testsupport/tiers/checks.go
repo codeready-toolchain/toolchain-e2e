@@ -110,12 +110,11 @@ func NewChecksForCustomTier(tier *CustomNSTemplateTier) (TierChecks, error) {
 	}
 	c.getNamespaceObjectChecks = namespaceChecks.GetNamespaceObjectChecks
 
-	// using default/wrapped tier for the deactivation timeout
-	c.getTierObjectChecks = func() []tierObjectCheck {
-		return []tierObjectCheck{
-			nsTemplateTier(tier.Name, tier.Spec.DeactivationTimeoutDays),
-		}
+	tierChecks, err := NewChecksForTier(tier.NSTemplateTier)
+	if err != nil {
+		return nil, err
 	}
+	c.getTierObjectChecks = tierChecks.GetTierObjectChecks
 
 	var clusterResourcesTmplRef *string
 	if tier.NSTemplateTier.Spec.ClusterResources != nil {
