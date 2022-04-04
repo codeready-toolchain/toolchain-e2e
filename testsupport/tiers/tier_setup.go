@@ -100,17 +100,14 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 			},
 		},
 	}
-	// default values
-	for _, modify := range []CustomNSTemplateTierModifier{
+	// add default values before custom values...
+	modifiers = append([]CustomNSTemplateTierModifier{
 		WithClusterResources(baseTier),
 		WithNamespaceResources(baseTier),
 		WithSpaceRoles(baseTier),
-	} {
-		err := modify(hostAwait, tier)
-		require.NoError(t, err)
-	}
+	}, modifiers...)
 
-	// custom values
+	// ... and apply
 	for _, modify := range modifiers {
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
