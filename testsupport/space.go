@@ -121,22 +121,21 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
 // then it gets the target member cluster specified for the space and verifies all resources provisioned for the Space
 func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, additionalCriteria ...wait.SpaceWaitCriterion) *toolchainv1alpha1.Space {
-	hostAwait := awaitilities.Host()
 	space, err := awaitilities.Host().WaitForSpace(space.Name,
 		append(additionalCriteria,
 			wait.UntilSpaceHasAnyTargetClusterSet(),
 			wait.UntilSpaceHasAnyTierNameSet())...)
 	require.NoError(t, err)
 	targetCluster := getSpaceTargetMember(t, awaitilities, space)
-	tier, err := hostAwait.WaitForNSTemplateTier(space.Spec.TierName)
-	require.NoError(t, err)
 
-	return VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetCluster, space.Name, tier)
+	return VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetCluster, space.Name, space.Spec.TierName)
 }
 
 // VerifyResourcesProvisionedForSpaceWithTier verifies that the Space for the given name is provisioned with all needed labels and conditions.
 // It also checks the NSTemplateSet and that all related namespace-scoped resources are provisoned for the given aliasTierNamespaces, and cluster scoped resources for aliasTierClusterResources.
-func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName string, tier *toolchainv1alpha1.NSTemplateTier) *toolchainv1alpha1.Space {
+func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName string, tierName string) *toolchainv1alpha1.Space {
+	tier, err := awaitilities.Host().WaitForNSTemplateTier(tierName)
+	require.NoError(t, err)
 	checks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
 	return verifyResourcesProvisionedForSpace(t, awaitilities, targetCluster, spaceName, tier, checks)
