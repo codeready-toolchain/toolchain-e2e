@@ -112,11 +112,6 @@ func TestSetDefaultTier(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
-	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(t, err)
-
 	t.Run("original default tier", func(t *testing.T) {
 		// Create and approve a new user that should be provisioned to the base tier
 		NewSignupRequest(t, awaitilities).
@@ -159,8 +154,6 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	hostAwait = hostAwait.WithRetryOptions(TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
 	memberAwait = memberAwait.WithRetryOptions(TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
-	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(t, err)
 	baseTier, err := hostAwait.WaitForNSTemplateTier("base")
 	require.NoError(t, err)
 	advancedTier, err := hostAwait.WaitForNSTemplateTier("advanced")

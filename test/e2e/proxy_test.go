@@ -58,11 +58,6 @@ func TestProxyFlow(t *testing.T) {
 	memberAwait2 := awaitilities.Member2()
 	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultTier("appstudio").DefaultSpaceTier("appstudio"))
 
-	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
-	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(t, err)
-
 	users := []proxyUser{
 		{
 			expectedMemberCluster: memberAwait,

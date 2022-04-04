@@ -113,6 +113,11 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		initMemberAwait.WaitForAutoscalingBufferApp()
 		initMember2Await.WaitForAutoscalingBufferApp()
 
+		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
+		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
+		err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
+		require.NoError(t, err)
+
 		t.Log("all operators are ready and in running state")
 	})
 

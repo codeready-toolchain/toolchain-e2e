@@ -37,8 +37,6 @@ func TestPerformance(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	hostAwait.Timeout = 5 * time.Minute
 	memberAwait.Timeout = 5 * time.Minute
-	err = hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(t, err)
 
 	t.Run(fmt.Sprintf("provision %d users", config.GetUserCount()), func(t *testing.T) {
 		// given

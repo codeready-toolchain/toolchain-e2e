@@ -28,9 +28,6 @@ func TestRunUserSignupIntegrationTest(t *testing.T) {
 
 func (s *userSignupIntegrationTest) SetupSuite() {
 	s.Awaitilities = WaitForDeployments(s.T())
-	err := s.Awaitilities.Host().WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(s.T(), err)
-
 }
 
 func (s *userSignupIntegrationTest) TearDownTest() {

@@ -41,8 +41,6 @@ type userManagementTestSuite struct {
 
 func (s *userManagementTestSuite) SetupSuite() {
 	s.Awaitilities = WaitForDeployments(s.T())
-	err := s.Awaitilities.Host().WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(s.T(), err)
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
