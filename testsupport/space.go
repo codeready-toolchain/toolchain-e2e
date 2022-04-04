@@ -194,18 +194,19 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		NoSpace().
 		WaitForMUR()
 	if !cleanup {
 		builder.DisableCleanup()
 	}
 	signup, mur := builder.Execute().Resources()
-
+	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 	var binding *toolchainv1alpha1.SpaceBinding
 	if cleanup {
 		binding = CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 	} else {
 		binding = CreateSpaceBindingWithoutCleanup(t, awaitilities.Host(), mur, space, "admin")
 	}
-
+	t.Logf("The SpaceBinding %s was created", binding.Name)
 	return signup, binding
 }
