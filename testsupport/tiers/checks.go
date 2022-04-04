@@ -1115,7 +1115,7 @@ func appstudioViewRoleBinding() namespaceObjectsCheck {
 
 func userSaReadRoleBinding() namespaceObjectsCheck {
 	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, "sa-read")
+		rb, err := memberAwait.WaitForRoleBinding(ns, "appstudio-sa-read")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "Group", rb.Subjects[0].Kind)

@@ -77,11 +77,10 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
 func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space := NewSpace(awaitilities, opts...)
-
 	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
 
-	// we need to  create the MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
+	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	signup, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
 
 	return space, signup, spaceBinding
@@ -128,6 +127,7 @@ func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitili
 	require.NoError(t, err)
 	targetCluster := getSpaceTargetMember(t, awaitilities, space)
 
+	t.Logf("verifying resources provisioned for space '%s' with tier '%s'", space.Name, space.Spec.TierName)
 	return VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities.Host(), targetCluster, space.Name, space.Spec.TierName)
 }
 
@@ -191,8 +191,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 }
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
-	// username := "for-space-" + space.Name
-	username := space.Name // TODO: keep the "for-space-" prefix?
+	username := "for-space-" + space.Name
 	builder := NewSignupRequest(t, awaitilities).
 		Username(username).
 		Email(username + "@acme.com").

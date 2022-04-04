@@ -45,6 +45,10 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		memberNs2 := os.Getenv(wait.MemberNsVar2)
 		hostNs := os.Getenv(wait.HostNsVar)
 		registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
+		t.Logf("Host Operator namespace: %s", hostNs)
+		t.Logf("Member1 Operator namespace: %s", memberNs)
+		t.Logf("Member2 Operator namespace: %s", memberNs2)
+		t.Logf("Registration Service namespace: %s", registrationServiceNs)
 
 		apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 		require.NoError(t, err)
