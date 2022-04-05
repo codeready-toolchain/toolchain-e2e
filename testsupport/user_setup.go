@@ -48,15 +48,12 @@ type IdentityOption func(*authsupport.Identity) error
 // username defines the required username set in the spec
 // email is set in "user-email" annotation
 // setTargetCluster defines if the UserSignup will be created with Spec.TargetCluster set to the first found member cluster name
-func NewUserSignup(t *testing.T, hostAwait *wait.HostAwaitility, username string, email string) *toolchainv1alpha1.UserSignup {
-	WaitUntilBaseNSTemplateTierIsUpdated(t, hostAwait)
-
+func NewUserSignup(namespace, username string, email string) *toolchainv1alpha1.UserSignup {
 	name := uuid.Must(uuid.NewV4()).String()
-
 	return &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
 			Name:      name,
-			Namespace: hostAwait.Namespace,
 			Annotations: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},

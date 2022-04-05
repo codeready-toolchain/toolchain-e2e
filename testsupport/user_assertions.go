@@ -8,8 +8,6 @@ import (
 
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 
-	corev1 "k8s.io/api/core/v1"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
@@ -18,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
@@ -169,7 +168,12 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
 	memberAwait := GetMurTargetMember(t, awaitilities, mur)
-	tiers.VerifyNsTemplateSet(t, hostAwait, memberAwait, space, mur.Spec.TierName)
+	// Verify provisioned NSTemplateSet
+	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier.Name))
+	require.NoError(t, err)
+	tierChecks, err := tiers.NewChecksForTier(tier)
+	require.NoError(t, err)
+	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
 }
 
 func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {

@@ -199,7 +199,8 @@ func (r *signupRequest) NoSpace() SignupRequest {
 
 func (r *signupRequest) Execute() SignupRequest {
 	hostAwait := r.awaitilities.Host()
-	WaitUntilBaseNSTemplateTierIsUpdated(r.t, r.awaitilities.Host())
+	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
+	require.NoError(r.t, err)
 
 	var identityID uuid.UUID
 	if r.identityID != nil {

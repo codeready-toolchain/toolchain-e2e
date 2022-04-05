@@ -27,7 +27,7 @@ func VerifySpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, murName, s
 
 // CreateSpaceBinding creates SpaceBinding resource for the given MUR & Space with the given space role
 func CreateSpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
-	spaceBinding := NewSpaceBinding(hostAwait.Namespace, mur.Name, space.Name, spaceRole)
+	spaceBinding := NewSpaceBinding(mur, space, spaceRole)
 	err := hostAwait.CreateWithCleanup(context.TODO(), spaceBinding)
 	require.NoError(t, err)
 
@@ -36,7 +36,7 @@ func CreateSpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolc
 
 // CreateSpaceBindingWithoutCleanup creates SpaceBinding resource for the given MUR & Space with the given space role; and doesn't mark the resource to be ready for cleanup
 func CreateSpaceBindingWithoutCleanup(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
-	spaceBinding := NewSpaceBinding(hostAwait.Namespace, mur.Name, space.Name, spaceRole)
+	spaceBinding := NewSpaceBinding(mur, space, spaceRole)
 	err := hostAwait.Client.Create(context.TODO(), spaceBinding)
 	require.NoError(t, err)
 
@@ -44,19 +44,19 @@ func CreateSpaceBindingWithoutCleanup(t *testing.T, hostAwait *wait.HostAwaitili
 }
 
 // NewSpaceBinding create an object SpaceBinding with the given values
-func NewSpaceBinding(namespace, mur, space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
+func NewSpaceBinding(mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
 	return &toolchainv1alpha1.SpaceBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", mur, space),
-			Namespace: namespace,
+			Name:      fmt.Sprintf("%s-%s", mur.Name, space.Name),
+			Namespace: space.Namespace,
 			Labels: map[string]string{
-				toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: mur,
-				toolchainv1alpha1.SpaceBindingSpaceLabelKey:            space,
+				toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: mur.Name,
+				toolchainv1alpha1.SpaceBindingSpaceLabelKey:            space.Name,
 			},
 		},
 		Spec: toolchainv1alpha1.SpaceBindingSpec{
-			MasterUserRecord: mur,
-			Space:            space,
+			MasterUserRecord: mur.Name,
+			Space:            space.Name,
 			SpaceRole:        spaceRole,
 		},
 	}

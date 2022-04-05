@@ -35,7 +35,6 @@ controller_runtime_reconcile_total{controller="masteruserrecord-controller",resu
 controller_runtime_reconcile_total{controller="notification-controller",result="success"} 18
 controller_runtime_reconcile_total{controller="nstemplatetier-controller",result="success"} 3
 controller_runtime_reconcile_total{controller="registrationservice-controller",result="success"} 2
-controller_runtime_reconcile_total{controller="templateupdaterequest-controller",result="success"} 30
 controller_runtime_reconcile_total{controller="toolchaincluster-controller",result="success"} 16
 controller_runtime_reconcile_total{controller="toolchainstatus-controller",result="requeue_after"} 30
 controller_runtime_reconcile_total{controller="usersignup-controller",result="success"} 40
