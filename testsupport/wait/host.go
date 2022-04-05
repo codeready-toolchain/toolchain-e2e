@@ -896,30 +896,6 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	return err
 }
 
-// WaitForTemplateUpdateRequests waits until there is exactly `count` number of TemplateUpdateRequests
-func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count int) error {
-	templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		templateUpdateRequests = &toolchainv1alpha1.TemplateUpdateRequestList{}
-		if err := a.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(namespace)); err != nil {
-			return false, err
-		}
-		return len(templateUpdateRequests.Items) == count, nil
-	})
-	// log message if an error occurred
-	if err != nil {
-		requests, _ := yaml.Marshal(templateUpdateRequests)
-
-		a.T.Logf("the actual number '%d' of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.",
-			len(templateUpdateRequests.Items), namespace, count)
-		a.T.Logf("TemplateUpdateRequests present in the namespace:\n%s", requests)
-		a.listAndPrint("MasterUserRecords", namespace, &toolchainv1alpha1.MasterUserRecordList{})
-		a.listAndPrint("Spaces", namespace, &toolchainv1alpha1.SpaceList{})
-		a.listAndPrint("NSTemplateTiers", namespace, &toolchainv1alpha1.NSTemplateTierList{})
-	}
-	return err
-}
-
 // NotificationWaitCriterion a struct to compare with an expected Notification
 type NotificationWaitCriterion struct {
 	Match func(toolchainv1alpha1.Notification) bool
