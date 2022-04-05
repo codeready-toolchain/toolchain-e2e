@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -444,8 +445,8 @@ func nsTemplateTier(tierName string, deactivationDays int) tierObjectCheck {
 }
 
 func userEditRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-edit")
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, userName+"-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
@@ -459,8 +460,8 @@ func userEditRoleBinding() namespaceObjectsCheck {
 }
 
 func rbacEditRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, "user-rbac-edit")
+	return func(t *testing.T, ns *v1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		rb, err := memberAwait.WaitForRoleBinding(ns, userName+"-rbac-edit")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
