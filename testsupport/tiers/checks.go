@@ -32,7 +32,7 @@ const (
 	baseextendedidling       = "baseextendedidling"
 	baselarge                = "baselarge"
 	hackathon                = "hackathon"
-	testtier                 = "test"
+	testTier                 = "test"
 
 	// common CPU limits
 	defaultCPULimit = "1"
