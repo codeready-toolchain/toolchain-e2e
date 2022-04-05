@@ -287,27 +287,13 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 }
 
 func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expectedCount int) {
-	var tier *toolchainv1alpha1.NSTemplateTier
-	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
-	// first update: creation -> 0 MasterUserRecords affected
-	assert.Equal(t, 0, tier.Status.Updates[0].Failures)
-	assert.NotNil(t, tier.Status.Updates[0].CompletionTime)
-	// other updates
-	for i := range tier.Status.Updates[1:] {
-		assert.Equal(t, 0, tier.Status.Updates[i+1].Failures)
-		assert.NotNil(t, tier.Status.Updates[i+1].CompletionTime)
-	}
 }
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
 	checks := tiers.NewChecksForCustomTier(t, tier)
-
-	// verify that all TemplateUpdateRequests were deleted
-	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
-	require.NoError(t, err)
-
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(Provisioned()),
@@ -329,10 +315,6 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 }
 
 func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *HostAwaitility, targetCluster *MemberAwaitility, spaces []string, tier *tiers.CustomNSTemplateTier) {
-	// verify that all TemplateUpdateRequests were deleted
-	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
-	require.NoError(t, err)
-
 	// verify individual space updates
 	for _, spaceName := range spaces {
 		VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, targetCluster, spaceName, tier)
