@@ -320,17 +320,8 @@ func getTier(t *testing.T, hostAwait *HostAwaitility, tierName string) *toolchai
 }
 
 func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expectedCount int) {
-	var tier *toolchainv1alpha1.NSTemplateTier
-	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
-	// first update: creation -> 0 MasterUserRecords affected
-	assert.Equal(t, 0, tier.Status.Updates[0].Failures)
-	assert.NotNil(t, tier.Status.Updates[0].CompletionTime)
-	// other updates
-	for i := range tier.Status.Updates[1:] {
-		assert.Equal(t, 0, tier.Status.Updates[i+1].Failures)
-		assert.NotNil(t, tier.Status.Updates[i+1].CompletionTime)
-	}
 }
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, awaitilities Awaitilities, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tierName, aliasTierNamespaces, aliasTierClusterResources string) {
