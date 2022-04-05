@@ -177,10 +177,3 @@ func NewChangeTierRequest(namespace, murName, tier string) *toolchainv1alpha1.Ch
 		},
 	}
 }
-
-func DeactivationTimeoutDays(timeoutDurationDays int) TierModifier {
-	return func(tier *toolchainv1alpha1.NSTemplateTier) error {
-		tier.Spec.DeactivationTimeoutDays = timeoutDurationDays
-		return nil
-	}
-}
