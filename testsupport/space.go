@@ -77,11 +77,10 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
 func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space := NewSpace(awaitilities, opts...)
-
 	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
 
-	// we need to  create the MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
+	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	signup, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
 
 	return space, signup, spaceBinding
@@ -121,34 +120,40 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
 // then it gets the target member cluster specified for the space and verifies all resources provisioned for the Space
 func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, additionalCriteria ...wait.SpaceWaitCriterion) *toolchainv1alpha1.Space {
-
 	space, err := awaitilities.Host().WaitForSpace(space.Name,
 		append(additionalCriteria,
 			wait.UntilSpaceHasAnyTargetClusterSet(),
 			wait.UntilSpaceHasAnyTierNameSet())...)
 	require.NoError(t, err)
-	targetMember := getSpaceTargetMember(t, awaitilities, space)
+	targetCluster := getSpaceTargetMember(t, awaitilities, space)
 
-	return VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, targetMember, space.Name, space.Spec.TierName)
+	t.Logf("verifying resources provisioned for space '%s' with tier '%s'", space.Name, space.Spec.TierName)
+	return VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities.Host(), targetCluster, space.Name, space.Spec.TierName)
 }
 
-// Same as VerifyResourcesProvisionedForSpaceWithTiers but reuses the provided tier name for the namespace and cluster resources names
-func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName string) *toolchainv1alpha1.Space {
-	return VerifyResourcesProvisionedForSpaceWithTiers(t, awaitilities, targetCluster, spaceName, tierName, tierName, tierName)
-}
-
-// VerifyResourcesProvisionedForSpaceWithTiers verifies that the Space for the given name is provisioned with all needed labels and conditions.
+// VerifyResourcesProvisionedForSpaceWithTier verifies that the Space for the given name is provisioned with all needed labels and conditions.
 // It also checks the NSTemplateSet and that all related namespace-scoped resources are provisoned for the given aliasTierNamespaces, and cluster scoped resources for aliasTierClusterResources.
-func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, spaceName, tierName, aliasTierNamespaces, aliasTierClusterResources string) *toolchainv1alpha1.Space {
-	tier, err := awaitilities.Host().WaitForNSTemplateTier(tierName)
+func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tierName string) *toolchainv1alpha1.Space {
+	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
 	require.NoError(t, err)
+	checks, err := tiers.NewChecksForTier(tier)
+	require.NoError(t, err)
+	return verifyResourcesProvisionedForSpace(t, hostAwait, targetCluster, spaceName, tier, checks)
+}
+
+func VerifyResourcesProvisionedForSpaceWithCustomTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *tiers.CustomNSTemplateTier) *toolchainv1alpha1.Space {
+	checks := tiers.NewChecksForCustomTier(t, tier)
+	return verifyResourcesProvisionedForSpace(t, hostAwait, targetCluster, spaceName, tier.NSTemplateTier, checks)
+}
+
+func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *toolchainv1alpha1.NSTemplateTier, checks tiers.TierChecks) *toolchainv1alpha1.Space {
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
 	// wait for space to be fully provisioned
-	space, err := awaitilities.Host().WaitForSpace(spaceName,
-		wait.UntilSpaceHasTier(tierName),
-		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tierName), hash),
+	space, err := hostAwait.WaitForSpace(spaceName,
+		wait.UntilSpaceHasTier(tier.Name),
+		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tier.Name), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
@@ -166,17 +171,14 @@ func VerifyResourcesProvisionedForSpaceWithTiers(t *testing.T, awaitilities wait
 		}
 	}
 
-	// get refs & checks
-	templateRefs, namespacesChecks, clusterResourcesChecks := tiers.GetRefsAndChecksForTiers(t, awaitilities.Host(), tierName, aliasTierNamespaces, aliasTierClusterResources)
-
 	// get NSTemplateSet
-	nsTemplateSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tierName), wait.UntilNSTemplateSetHasConditions(Provisioned()))
+	nsTemplateSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
-	tiers.VerifyGivenNsTemplateSet(t, targetCluster, nsTemplateSet, namespacesChecks, clusterResourcesChecks, templateRefs)
+	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTemplateSet, checks)
 
-	if aliasTierNamespaces == "appstudio" {
+	if tier.Name == "appstudio" {
 		// checks that namespace exists and has the expected label(s)
 		ns, err := targetCluster.WaitForNamespace(space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)

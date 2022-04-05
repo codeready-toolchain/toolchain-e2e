@@ -10,6 +10,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	test "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 )
@@ -124,7 +125,7 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser() {
 	hostAwait := r.Awaitilities.Host()
 
 	// promote to appstudio
-	changeTierRequest := test.NewChangeTierRequest(hostAwait.Namespace, AppStudioProvisionedUser, "appstudio")
+	changeTierRequest := tiers.NewChangeTierRequest(hostAwait.Namespace, AppStudioProvisionedUser, "appstudio")
 	err := hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
 	require.NoError(r.T, err)
 
