@@ -277,6 +277,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tierName, nameFmt st
 			WaitForMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
+			DisableCleanup().
 			Execute().
 			Resources()
 	}
