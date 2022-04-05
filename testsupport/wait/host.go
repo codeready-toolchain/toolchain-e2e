@@ -673,6 +673,11 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 	return false
 }
 
+func (a *HostAwaitility) WaitUntilBaseNSTemplateTierIsUpdated() error {
+	_, err := a.WaitForNSTemplateTier("base", UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+	return err
+}
+
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name exists and matches the given conditions
 func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	a.T.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
@@ -892,30 +897,6 @@ func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
 	// log message if an error occurred
 	if err != nil {
 		a.T.Logf("failed to wait until ChangeTierRequest '%s' was deleted: %v\n", name, err)
-	}
-	return err
-}
-
-// WaitForTemplateUpdateRequests waits until there is exactly `count` number of TemplateUpdateRequests
-func (a *HostAwaitility) WaitForTemplateUpdateRequests(namespace string, count int) error {
-	templateUpdateRequests := &toolchainv1alpha1.TemplateUpdateRequestList{}
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		templateUpdateRequests = &toolchainv1alpha1.TemplateUpdateRequestList{}
-		if err := a.Client.List(context.TODO(), templateUpdateRequests, client.InNamespace(namespace)); err != nil {
-			return false, err
-		}
-		return len(templateUpdateRequests.Items) == count, nil
-	})
-	// log message if an error occurred
-	if err != nil {
-		requests, _ := yaml.Marshal(templateUpdateRequests)
-
-		a.T.Logf("the actual number '%d' of TemplateUpdateRequests in namespace '%s' doesn't match the expected one '%d'.",
-			len(templateUpdateRequests.Items), namespace, count)
-		a.T.Logf("TemplateUpdateRequests present in the namespace:\n%s", requests)
-		a.listAndPrint("MasterUserRecords", namespace, &toolchainv1alpha1.MasterUserRecordList{})
-		a.listAndPrint("Spaces", namespace, &toolchainv1alpha1.SpaceList{})
-		a.listAndPrint("NSTemplateTiers", namespace, &toolchainv1alpha1.NSTemplateTierList{})
 	}
 	return err
 }

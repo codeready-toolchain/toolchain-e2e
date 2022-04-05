@@ -275,10 +275,10 @@ func matchNSTemplateSetWaitCriterion(actual *toolchainv1alpha1.NSTemplateSet, cr
 func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
-		buf.WriteString("failed to find NSTemplateSet\n")
+		buf.WriteString("failed to find NSTemplateSet at all\n")
 		buf.WriteString(a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
 	} else {
-		buf.WriteString("failed to find NSTemplateSet with matching criteria:\n")
+		buf.WriteString(fmt.Sprintf("failed to find NSTemplateSet with matching criteria after %fs:\n", a.Timeout.Seconds()))
 		buf.WriteString("----\n")
 		buf.WriteString("actual:\n")
 		y, _ := StringifyObject(actual)
@@ -459,7 +459,7 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 		"toolchain.dev.openshift.com/type":        kind,
 		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 	}
-	a.T.Logf("waiting for namespace with labels %v", labels)
+	a.T.Logf("waiting for namespace with custom criteria and labels %v", labels)
 	var ns *corev1.Namespace
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		nss := &corev1.NamespaceList{}
