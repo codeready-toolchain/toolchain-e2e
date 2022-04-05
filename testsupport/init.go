@@ -113,11 +113,13 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// Also verify the autoscaling buffer in both members
 
 		var webhookImage string
+	containers:
 		for _, container := range memberDeployment.Spec.Template.Spec.Containers {
 			if container.Name == "manager" {
 				for _, env := range container.Env {
 					if env.Name == "MEMBER_OPERATOR_WEBHOOK_IMAGE" {
 						webhookImage = env.Value
+						break containers
 					}
 				}
 			}
