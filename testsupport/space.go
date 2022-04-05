@@ -142,8 +142,7 @@ func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, hostAwait *wait.Ho
 }
 
 func VerifyResourcesProvisionedForSpaceWithCustomTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *tiers.CustomNSTemplateTier) *toolchainv1alpha1.Space {
-	checks, err := tiers.NewChecksForCustomTier(tier)
-	require.NoError(t, err)
+	checks := tiers.NewChecksForCustomTier(t, tier)
 	return verifyResourcesProvisionedForSpace(t, hostAwait, targetCluster, spaceName, tier.NSTemplateTier, checks)
 }
 

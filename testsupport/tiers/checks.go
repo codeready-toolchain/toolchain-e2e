@@ -83,8 +83,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
 
-	case testtier:
-		return &testTierChecks{tierName: testtier}, nil
+	case testTier:
+		return &testTierChecks{tierName: testTier}, nil
 
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
@@ -92,70 +92,53 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 }
 
 // NewChecksForCustomTier returns a `TierChecks` initialized with the tiers used in the CustomNSTemplateTier
-func NewChecksForCustomTier(tier *CustomNSTemplateTier) (TierChecks, error) {
-	c := &customTierChecks{}
-
-	// using the checks of the "cluster resources" NSTemplateTier
-	clusterChecks, err := NewChecksForTier(tier.ClusterResourcesTier)
-	if err != nil {
-		return nil, err
+func NewChecksForCustomTier(t *testing.T, tier *CustomNSTemplateTier) TierChecks {
+	c := &customTierChecks{
+		t:    t,
+		tier: tier,
 	}
-	c.getClusterObjectChecks = clusterChecks.GetClusterObjectChecks
-
-	// using the checks of the "namespace resources" NSTemplateTier
-	namespaceChecks, err := NewChecksForTier(tier.NamespaceResourcesTier)
-	if err != nil {
-		return nil, err
-	}
-	c.getNamespaceObjectChecks = namespaceChecks.GetNamespaceObjectChecks
-
-	// using default/wrapped tier for the deactivation timeout
-	c.getTierObjectChecks = func() []tierObjectCheck {
-		return []tierObjectCheck{
-			nsTemplateTier(tier.Name, tier.Spec.DeactivationTimeoutDays),
-		}
-	}
-
-	var clusterResourcesTmplRef *string
-	if tier.NSTemplateTier.Spec.ClusterResources != nil {
-		clusterResourcesTmplRef = &tier.NSTemplateTier.Spec.ClusterResources.TemplateRef
-	}
-	namespaceTmplRefs := make([]string, len(tier.NSTemplateTier.Spec.Namespaces))
-	for i, ns := range tier.NSTemplateTier.Spec.Namespaces {
-		namespaceTmplRefs[i] = ns.TemplateRef
-	}
-	c.getExpectedTemplateRefs = func(_ *wait.HostAwaitility) TemplateRefs {
-		return TemplateRefs{
-			ClusterResources: clusterResourcesTmplRef,
-			Namespaces:       namespaceTmplRefs,
-		}
-	}
-	return c, nil
+	return c
 }
 
 var _ TierChecks = &customTierChecks{}
 
 type customTierChecks struct {
-	getClusterObjectChecks   func() []clusterObjectsCheck
-	getExpectedTemplateRefs  func(hostAwait *wait.HostAwaitility) TemplateRefs
-	getNamespaceObjectChecks func(nsType string) []namespaceObjectsCheck
-	getTierObjectChecks      func() []tierObjectCheck
+	t    *testing.T
+	tier *CustomNSTemplateTier
 }
 
 func (c *customTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
-	return c.getNamespaceObjectChecks(nsType)
+	namespaceChecks, err := NewChecksForTier(c.tier.NamespaceResourcesTier)
+	require.NoError(c.t, err)
+	return namespaceChecks.GetNamespaceObjectChecks(nsType)
 }
 
 func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return c.getClusterObjectChecks()
+	clusterChecks, err := NewChecksForTier(c.tier.ClusterResourcesTier)
+	require.NoError(c.t, err)
+	return clusterChecks.GetClusterObjectChecks()
 }
 
 func (c *customTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	return c.getExpectedTemplateRefs(hostAwait)
+	var clusterResourcesTmplRef *string
+	if c.tier.NSTemplateTier.Spec.ClusterResources != nil {
+		clusterResourcesTmplRef = &c.tier.NSTemplateTier.Spec.ClusterResources.TemplateRef
+	}
+	namespaceTmplRefs := make([]string, len(c.tier.NSTemplateTier.Spec.Namespaces))
+	for i, ns := range c.tier.NSTemplateTier.Spec.Namespaces {
+		namespaceTmplRefs[i] = ns.TemplateRef
+	}
+
+	return TemplateRefs{
+		ClusterResources: clusterResourcesTmplRef,
+		Namespaces:       namespaceTmplRefs,
+	}
 }
 
 func (c *customTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return c.getTierObjectChecks()
+	return []tierObjectCheck{
+		nsTemplateTier(c.tier.Name, c.tier.Spec.DeactivationTimeoutDays),
+	}
 }
 
 type baseTierChecks struct {

@@ -302,11 +302,10 @@ func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expe
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
-	checks, err := tiers.NewChecksForCustomTier(tier)
-	require.NoError(t, err)
+	checks := tiers.NewChecksForCustomTier(t, tier)
 
 	// verify that all TemplateUpdateRequests were deleted
-	err = hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
+	err := hostAwait.WaitForTemplateUpdateRequests(hostAwait.Namespace, 0)
 	require.NoError(t, err)
 
 	for _, usersignup := range userSignups {
