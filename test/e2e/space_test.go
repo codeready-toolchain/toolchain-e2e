@@ -6,6 +6,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
@@ -354,7 +355,7 @@ func TestPromoteSpace(t *testing.T) {
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
-		ctr := NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
+		ctr := tiers.NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
 
 		// when
 		err := hostAwait.Client.Create(context.TODO(), ctr)
@@ -363,7 +364,7 @@ func TestPromoteSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, memberAwait, space.Name, "advanced")
+		VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "advanced")
 	})
 }
 
@@ -386,7 +387,7 @@ func TestRetargetSpace(t *testing.T) {
 
 	// then
 	// wait until Space has been provisioned on member-1
-	space = VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities, member2Await, space.Name, "base")
+	space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member2Await, space.Name, "base")
 	err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 	require.NoError(t, err)
 }
