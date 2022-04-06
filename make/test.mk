@@ -223,10 +223,10 @@ publish-current-bundles-for-e2e: get-and-publish-operators
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
 get-and-publish-operators: INSTALL_OPERATOR=false
-get-and-publish-operators: clean-e2e-files get-and-publish-member-operator get-and-publish-host-operator
+get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and-publish-member-operator
 
 .PHONY: get-publish-and-install-operators
-get-publish-and-install-operators: get-and-publish-member-operator get-and-publish-host-operator create-host-resources
+get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
 
 .PHONY: get-and-publish-member-operator
 get-and-publish-member-operator:
