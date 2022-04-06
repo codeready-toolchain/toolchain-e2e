@@ -92,7 +92,7 @@ func TestSpaceRoles(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// given
-	appstudioTier, err := hostAwait.WaitForNSTemplateTier("appstudio", UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+	appstudioTier, err := hostAwait.WaitForNSTemplateTier("appstudio")
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
