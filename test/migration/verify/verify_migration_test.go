@@ -196,10 +196,7 @@ func checkMURMigrated(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord) {
 	// should not have tier hash label
 	require.Empty(t, mur.Labels[fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName)])
 
-	// useraccounts should not have NSLimit nor NSTemplateSet
 	require.Len(t, mur.Spec.UserAccounts, 1)
-	require.Empty(t, mur.Spec.UserAccounts[0].Spec.NSLimit)
-	require.Nil(t, mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
 }
 
 func listAndGetSignupWithState(t *testing.T, hostAwait *wait.HostAwaitility, state string) *toolchainv1alpha1.UserSignup {
