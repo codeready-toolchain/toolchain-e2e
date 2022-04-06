@@ -120,16 +120,6 @@ func TestSpaceRoles(t *testing.T) {
 		}),
 	)
 	require.NoError(t, err)
-	nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
-		UntilNSTemplateSetHasConditions(Provisioned()),
-		UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
-			{
-				TemplateRef: appstudioTier.Spec.SpaceRoles["admin"].TemplateRef,
-				Usernames:   []string{ownerMUR.Name},
-			},
-		}),
-	)
-	require.NoError(t, err)
 	// fetch the namespace check the `last-applied-space-roles` annotation
 	ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 		UntilNamespaceIsActive(),
