@@ -311,7 +311,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		// Attempt to create same usersignup by calling post signup with same token should return an error
 		mp := invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token, "", http.StatusConflict)
 		assert.Equal(s.T(), fmt.Sprintf("Operation cannot be fulfilled on  \"\": UserSignup [id: %s; username: %s]. Unable to create UserSignup because there is already an active UserSignup with such ID",
-			userSignupName, identity.Username), mp["message"])
+			identity.ID, identity.Username), mp["message"])
 		assert.Equal(s.T(), "error creating UserSignup resource", mp["details"])
 
 		// Approve usersignup.
@@ -339,7 +339,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		require.NoError(s.T(), err)
 
 		// Signup a new user
-		userSignup := signupUser(t, emailValue, identity.ID.String(), identity)
+		userSignup := signupUser(t, emailValue, identity.Username, identity)
 
 		// Deactivate the usersignup
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
@@ -355,40 +355,7 @@ func (s *registrationServiceTestSuite) TestSignupOK() {
 		s.assertGetSignupReturnsNotFound(t)
 
 		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
-		signupUser(t, emailValue, identity.ID.String(), identity)
-	})
-
-	s.Run("test User ID encodings", func() {
-		userIDs := []string{
-			"f:528d76ea-a208-43ed-4cd5-ee76f4cebce8:johnsmith",
-			"abcde-12345",
-			"abcde\\*-12345",
-			"-1234567",
-			"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-01234567890123456789",
-		}
-
-		encodedUserIDs := []string{
-			"5c9ea4b1-f528d76ea-a208-43ed-4cd5-ee76f4cebce8johnsmith",
-			"abcde-12345",
-			"c0177ca4-abcde-12345",
-			"ca3e1e0f-1234567",
-			"e3632025-0123456789abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr",
-		}
-
-		for i, userID := range userIDs {
-			s.Run(fmt.Sprintf("for User ID = %s", userID), func() {
-				identity := authsupport.NewIdentity()
-				emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
-				emailClaim := authsupport.WithEmailClaim(emailValue)
-				t, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, authsupport.WithSubClaim(userID))
-				require.NoError(s.T(), err)
-
-				// Signup a new user
-				userSignup := signupUser(t, emailValue, encodedUserIDs[i], identity)
-
-				require.Equal(s.T(), userID, userSignup.Spec.Userid)
-			})
-		}
+		signupUser(t, emailValue, identity.Username, identity)
 	})
 }
 
@@ -439,7 +406,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", token0, "", http.StatusAccepted)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := hostAwait.WaitForUserSignup(identity0.ID.String(),
+	userSignup, err := hostAwait.WaitForUserSignup(identity0.Username,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
@@ -456,7 +423,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.True(s.T(), mpStatus["verificationRequired"].(bool))
 
 	// Confirm the status of the UserSignup is correct
-	_, err = hostAwait.WaitForUserSignup(identity0.ID.String(),
+	_, err = hostAwait.WaitForUserSignup(identity0.Username,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
@@ -472,7 +439,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
 	// Retrieve the updated UserSignup
-	userSignup, err = hostAwait.WaitForUserSignup(identity0.ID.String())
+	userSignup, err = hostAwait.WaitForUserSignup(identity0.Username)
 	require.NoError(s.T(), err)
 
 	// Confirm there is a verification code annotation value, and store it in a variable
@@ -486,7 +453,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	invokeEndpoint(s.T(), "GET", s.route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
 
 	// Retrieve the updated UserSignup
-	userSignup, err = hostAwait.WaitForUserSignup(identity0.ID.String())
+	userSignup, err = hostAwait.WaitForUserSignup(identity0.Username)
 	require.NoError(s.T(), err)
 
 	// Check attempts has been incremented
@@ -500,7 +467,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 		userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
 
 	// Retrieve the updated UserSignup
-	userSignup, err = hostAwait.WaitForUserSignup(identity0.ID.String(),
+	userSignup, err = hostAwait.WaitForUserSignup(identity0.Username,
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(s.T(), err)
 
@@ -548,7 +515,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	invokeEndpoint(s.T(), "POST", s.route+"/api/v1/signup", otherToken, "", http.StatusAccepted)
 
 	// Wait for the UserSignup to be created
-	otherUserSignup, err := hostAwait.WaitForUserSignup(otherIdentity.ID.String(),
+	otherUserSignup, err := hostAwait.WaitForUserSignup(otherIdentity.Username,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(s.T(), err)
@@ -567,7 +534,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 	require.Equal(s.T(), "phone number already in use", responseMap["details"])
 
 	// Retrieve the updated UserSignup
-	otherUserSignup, err = hostAwait.WaitForUserSignup(otherIdentity.ID.String())
+	otherUserSignup, err = hostAwait.WaitForUserSignup(otherIdentity.Username)
 	require.NoError(s.T(), err)
 
 	// Confirm there is no verification code annotation value
@@ -593,7 +560,7 @@ func (s *registrationServiceTestSuite) TestPhoneVerification() {
 		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
 	// Retrieve the updated UserSignup again
-	otherUserSignup, err = hostAwait.WaitForUserSignup(otherIdentity.ID.String())
+	otherUserSignup, err = hostAwait.WaitForUserSignup(otherIdentity.Username)
 	require.NoError(s.T(), err)
 
 	// Confirm there is now a verification code annotation value

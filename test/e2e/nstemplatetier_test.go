@@ -273,7 +273,6 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 			WaitForMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
-			DisableCleanup().
 			Execute().
 			Resources()
 	}
@@ -298,7 +297,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(Provisioned()),
-			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Name, usersignup.Spec.OriginalSub)),
+			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.Userid, usersignup.Spec.OriginalSub)),
 			UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
