@@ -175,15 +175,14 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 				return false
 			}
 			return actual.Spec.UserID == mur.Spec.UserID &&
-				actual.Spec.Disabled == mur.Spec.Disabled &&
-				reflect.DeepEqual(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
+				actual.Spec.Disabled == mur.Spec.Disabled
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
 			mur, err := hostAwaitility.GetMasterUserRecord(actual.Name)
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase, actual.Spec.UserAccountSpecBase))
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled)
 		},
 	}
 }
