@@ -226,6 +226,10 @@ get-and-publish-operators: INSTALL_OPERATOR=false
 get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and-publish-member-operator
 
 .PHONY: get-publish-and-install-operators
+# IMPORTANT: The host operator needs to be installed first.
+#			 The reason is that when the host operator is installed, then the logic creates ToolchainConfig CR which
+#			 defines that the webhook should be deployed from the first member instance (and not from the second one).
+#			 This is important to set before the member operators are installed, otherwise, it can lead to flaky e2e tests.
 get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
 
 .PHONY: get-and-publish-member-operator
