@@ -55,7 +55,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().ResourceCapacityThreshold(80))
 
 			// then
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space)
+			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 		})
 	})
 
@@ -84,8 +84,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"] + 1))
 
 			// then
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space1)
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space2)
+			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
+			VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
 			// TODO: when we count the number of provisioned spaces, then the second space won't be provisioned immediately https://issues.redhat.com/browse/CRT-1427
 			// waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			//
@@ -121,7 +121,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space1, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
 
 		t.Run("after both members marking as full then the new space won't be provisioned", func(t *testing.T) {
 			// given
@@ -145,7 +145,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
 				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1))
-				VerifyResourcesProvisionedForSpace(t, awaitilities, space3)
+				VerifyResourcesProvisionedForSpace(t, awaitilities, space3.Name)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			})
