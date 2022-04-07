@@ -75,7 +75,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			require.NoError(t, err)
 
 			// then
-			space = VerifyResourcesProvisionedForSpace(t, awaitilities, space)
+			space = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 
 			t.Run("when SpaceBinding is deleted, then Space should be automatically deleted as well", func(t *testing.T) {
 				// when

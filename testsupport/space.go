@@ -103,7 +103,7 @@ func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *t
 // CreateAndVerifySpace does the same as CreateSpace plus it also verifies the provisioned resources in the cluster using function VerifyResourcesProvisionedForSpace
 func CreateAndVerifySpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
 	space, _, _ := CreateSpace(t, awaitilities, opts...)
-	return VerifyResourcesProvisionedForSpace(t, awaitilities, space)
+	return VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 }
 
 func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space) *wait.MemberAwaitility {
@@ -119,26 +119,20 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
 // then it gets the target member cluster specified for the space and verifies all resources provisioned for the Space
-func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, additionalCriteria ...wait.SpaceWaitCriterion) *toolchainv1alpha1.Space {
-	space, err := awaitilities.Host().WaitForSpace(space.Name,
+func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, spaceName string, additionalCriteria ...wait.SpaceWaitCriterion) *toolchainv1alpha1.Space {
+	space, err := awaitilities.Host().WaitForSpace(spaceName,
 		append(additionalCriteria,
 			wait.UntilSpaceHasAnyTargetClusterSet(),
 			wait.UntilSpaceHasAnyTierNameSet())...)
 	require.NoError(t, err)
 	targetCluster := getSpaceTargetMember(t, awaitilities, space)
-
-	t.Logf("verifying resources provisioned for space '%s' with tier '%s'", space.Name, space.Spec.TierName)
-	return VerifyResourcesProvisionedForSpaceWithTier(t, awaitilities.Host(), targetCluster, space.Name, space.Spec.TierName)
-}
-
-// VerifyResourcesProvisionedForSpaceWithTier verifies that the Space for the given name is provisioned with all needed labels and conditions.
-// It also checks the NSTemplateSet and that all related namespace-scoped resources are provisoned for the given aliasTierNamespaces, and cluster scoped resources for aliasTierClusterResources.
-func VerifyResourcesProvisionedForSpaceWithTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tierName string) *toolchainv1alpha1.Space {
-	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
+	tier, err := awaitilities.Host().WaitForNSTemplateTier(space.Spec.TierName)
 	require.NoError(t, err)
 	checks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
-	return verifyResourcesProvisionedForSpace(t, hostAwait, targetCluster, spaceName, tier, checks)
+
+	t.Logf("verifying resources provisioned for space '%s' with tier '%s'", space.Name, space.Spec.TierName)
+	return verifyResourcesProvisionedForSpace(t, awaitilities.Host(), targetCluster, spaceName, tier, checks)
 }
 
 func VerifyResourcesProvisionedForSpaceWithCustomTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *tiers.CustomNSTemplateTier) *toolchainv1alpha1.Space {
