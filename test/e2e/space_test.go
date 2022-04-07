@@ -426,7 +426,7 @@ func TestPromoteSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, memberAwait, space.Name, "advanced")
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	})
 }
 
@@ -449,7 +449,7 @@ func TestRetargetSpace(t *testing.T) {
 
 	// then
 	// wait until Space has been provisioned on member-1
-	space = VerifyResourcesProvisionedForSpaceWithTier(t, hostAwait, member2Await, space.Name, "base")
+	space = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 	require.NoError(t, err)
 }
