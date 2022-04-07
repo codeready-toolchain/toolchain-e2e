@@ -1,7 +1,6 @@
 package testsupport
 
 import (
-	"strings"
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -18,6 +17,7 @@ func NewSocialEvent(name, tierName string) *toolchainv1alpha1.SocialEvent {
 	se := &toolchainv1alpha1.SocialEvent{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: test.HostOperatorNs,
+			Name:      name,
 		},
 		Spec: toolchainv1alpha1.SocialEventSpec{
 			Tier:         tierName,
@@ -25,11 +25,6 @@ func NewSocialEvent(name, tierName string) *toolchainv1alpha1.SocialEvent {
 			EndTime:      metav1.NewTime(time.Now().Add(1 * time.Hour)),
 			MaxAttendees: 10,
 		},
-	}
-	if strings.HasSuffix(name, "-") {
-		se.GenerateName = name
-	} else {
-		se.Name = name
 	}
 	return se
 }

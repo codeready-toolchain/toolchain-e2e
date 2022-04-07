@@ -1602,7 +1602,6 @@ func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) erro
 
 // WaitUntilSpaceBindingDeleted waits until the SpaceBinding with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
-
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.SpaceBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
@@ -1761,25 +1760,30 @@ func matchSocialEventWaitCriterion(actual *toolchainv1alpha1.SocialEvent, criter
 
 // WaitForSocialEvent waits until the SocialEvent is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForSocialEvent(name string, criteria ...SocialEventWaitCriterion) (*toolchainv1alpha1.SocialEvent, error) {
-	var se *toolchainv1alpha1.SocialEvent
-
+	var event *toolchainv1alpha1.SocialEvent
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		// retrieve the SocialEvent from the host namespace
-		seList := &toolchainv1alpha1.SocialEventList{}
-		if err = a.Client.List(context.TODO(), seList, client.InNamespace(a.Namespace)); err != nil {
+		events := &toolchainv1alpha1.SocialEventList{}
+		if err = a.Client.List(context.TODO(), events, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
-		if len(seList.Items) == 0 {
+		if len(events.Items) == 0 {
 			return false, nil
 		}
-		se = &seList.Items[0]
-		return matchSocialEventWaitCriterion(se, criteria...), nil
+		for i := range events.Items {
+			e := events.Items[i]
+			if e.Name == name {
+				event = &e
+				return matchSocialEventWaitCriterion(&e, criteria...), nil
+			}
+		}
+		return false, nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printSocialEventWaitCriterionDiffs(se, criteria...)
+		a.printSocialEventWaitCriterionDiffs(event, criteria...)
 	}
-	return se, err
+	return event, err
 }
 
 func (a *HostAwaitility) printSocialEventWaitCriterionDiffs(actual *toolchainv1alpha1.SocialEvent, criteria ...SocialEventWaitCriterion) {

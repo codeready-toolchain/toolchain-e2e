@@ -22,14 +22,15 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with valid tiername", func(t *testing.T) {
 		// given
-		se := testsupport.NewSocialEvent("lab-", "base")
+		name := testsupport.GenerateName("lab")
+		se := testsupport.NewSocialEvent(name, "base")
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), se)
 
 		// then
 		require.NoError(t, err)
-		_, err = hostAwait.WaitForSocialEvent("lab", UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		_, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:   toolchainv1alpha1.ConditionReady,
 			Status: corev1.ConditionTrue,
 		}))
@@ -38,14 +39,15 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with invalid tiername", func(t *testing.T) {
 		// given
-		se := testsupport.NewSocialEvent("lab-", "invalid")
+		name := testsupport.GenerateName("lab")
+		se := testsupport.NewSocialEvent(name, "invalid")
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), se)
 
 		// then
 		require.NoError(t, err)
-		se, err = hostAwait.WaitForSocialEvent("lab", UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		se, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidTierReason,
@@ -62,7 +64,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent("lab", UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			_, err = hostAwait.WaitForSocialEvent(se.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
