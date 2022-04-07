@@ -144,27 +144,6 @@ func UntilUserAccountHasAnnotation(key, value string) UserAccountWaitCriterion {
 	}
 }
 
-// UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has the expected spec
-func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
-	return UserAccountWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
-			userAccount := actual.DeepCopy()
-			userAccount.Spec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
-			expectedSpec := expected.DeepCopy()
-			expectedSpec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
-			return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
-		},
-		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
-			userAccount := actual.DeepCopy()
-			userAccount.Spec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
-			expectedSpec := expected.DeepCopy()
-			expectedSpec.NSTemplateSet = &toolchainv1alpha1.NSTemplateSetSpec{}
-			return fmt.Sprintf("expected specs to match: %s", Diff(expectedSpec, userAccount.Spec))
-		},
-	}
-}
-
 // UntilUserAccountMatchesMur returns a `UserAccountWaitCriterion` which loads the existing MUR
 // and compares the first UserAccountSpecEmbedded in the MUR with the actual UserAccount spec
 func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitCriterion {
