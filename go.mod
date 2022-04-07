@@ -36,6 +36,4 @@ require (
 
 replace github.com/codeready-toolchain/api => github.com/rajivnathan/api v0.0.0-20220407221403-ec7a7eeb4b56
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/rajivnathan/toolchain-common v0.0.0-20220407222511-2fedeb773fe6
-
 go 1.16
