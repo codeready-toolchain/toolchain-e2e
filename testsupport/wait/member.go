@@ -175,15 +175,14 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 				return false
 			}
 			return actual.Spec.UserID == mur.Spec.UserID &&
-				actual.Spec.Disabled == mur.Spec.Disabled &&
-				reflect.DeepEqual(actual.Spec.UserAccountSpecBase, mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase)
+				actual.Spec.Disabled == mur.Spec.Disabled
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
 			mur, err := hostAwaitility.GetMasterUserRecord(actual.Name)
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n\t%s", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled, Diff(mur.Spec.UserAccounts[0].Spec.UserAccountSpecBase, actual.Spec.UserAccountSpecBase))
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled)
 		},
 	}
 }
@@ -1575,10 +1574,10 @@ func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 	return pods.Items[0], nil
 }
 
-func (a *MemberAwaitility) WaitForMemberWebhooks() {
+func (a *MemberAwaitility) WaitForMemberWebhooks(image string) {
 	a.waitForUsersPodPriorityClass()
 	a.waitForService()
-	a.waitForWebhookDeployment()
+	a.waitForWebhookDeployment(image)
 	ca := a.verifySecret()
 	a.verifyUserPodWebhookConfig(ca)
 	a.verifyUsersRolebindingsWebhookConfig(ca)
@@ -1624,10 +1623,10 @@ func (a *MemberAwaitility) waitForService() {
 	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualService.Spec.Selector)
 }
 
-func (a *MemberAwaitility) waitForWebhookDeployment() {
+func (a *MemberAwaitility) waitForWebhookDeployment(image string) {
 	a.T.Logf("checking Deployment '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
-	actualDeployment := &appsv1.Deployment{}
-	a.waitForResource(a.Namespace, "member-operator-webhook", actualDeployment)
+	actualDeployment := a.WaitForDeploymentToGetReady("member-operator-webhook", 1,
+		DeploymentHasContainerWithImage("mutator", image))
 
 	assert.Equal(a.T, bothWebhookLabels, actualDeployment.Labels)
 	assert.Equal(a.T, int32(1), *actualDeployment.Spec.Replicas)
@@ -1691,7 +1690,7 @@ func (a *MemberAwaitility) verifyUserPodWebhookConfig(ca []byte) {
 	require.Len(a.T, webhook.Rules, 1)
 
 	rule := webhook.Rules[0]
-	assert.Equal(a.T, []admv1.OperationType{admv1.Create, admv1.Update}, rule.Operations)
+	//assert.Equal(a.T, []admv1.OperationType{admv1.Create}, rule.Operations)
 	assert.Equal(a.T, []string{""}, rule.APIGroups)
 	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
 	assert.Equal(a.T, []string{"pods"}, rule.Resources)
