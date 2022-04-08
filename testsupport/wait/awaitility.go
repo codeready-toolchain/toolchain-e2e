@@ -448,14 +448,15 @@ func (a *Awaitility) CreateNamespace(name string) {
 }
 
 // WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
-func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
+func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int, criteria ...DeploymentCriteria) *appsv1.Deployment {
 	a.T.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
+	deployment := &appsv1.Deployment{}
 	err := wait.Poll(a.RetryInterval, 6*a.Timeout, func() (done bool, err error) {
 		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			return false, nil // nolint:nilerr
 		}
-		deployment := &appsv1.Deployment{}
+		deployment = &appsv1.Deployment{}
 		require.NoError(a.T, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
 		if int(deployment.Status.AvailableReplicas) != replicas {
 			return false, nil
@@ -470,9 +471,28 @@ func (a *Awaitility) WaitForDeploymentToGetReady(name string, replicas int) {
 				return false, nil
 			}
 		}
+		for _, criteriaMatch := range criteria {
+			if !criteriaMatch(deployment) {
+				return false, nil
+			}
+		}
 		return true, nil
 	})
 	require.NoError(a.T, err)
+	return deployment
+}
+
+type DeploymentCriteria func(*appsv1.Deployment) bool
+
+func DeploymentHasContainerWithImage(containerName, image string) DeploymentCriteria {
+	return func(deployment *appsv1.Deployment) bool {
+		for _, container := range deployment.Spec.Template.Spec.Containers {
+			if container.Name == containerName && container.Image == image {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
