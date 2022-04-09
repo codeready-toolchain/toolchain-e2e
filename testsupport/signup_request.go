@@ -91,6 +91,7 @@ type SignupRequest interface {
 	NoSpace() SignupRequest
 }
 
+// NewSignupRequest creates a new signup request for the registration service
 func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
 	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &signupRequest{
