@@ -386,17 +386,6 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 
 	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
 
-	// Create another UserSignup with the same original username but different user ID
-	userSignup, _ = NewSignupRequest(s.T(), s.Awaitilities).
-		Username("paul@hotel.com").
-		Email("paul@hotel.com").
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().Resources()
-
-	require.Equal(s.T(), "paul-3", userSignup.Status.CompliantUsername)
-
 	// Create another UserSignups with a forbidden prefix
 	for _, prefix := range []string{"kube", "openshift", "default", "redhat", "sandbox"} {
 		// prefix with hyphen

@@ -3,7 +3,9 @@ package wait
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -551,6 +553,35 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 				return false, nil
 			}
 			return false, err
+		}
+		userSignup = obj
+		return matchUserSignupWaitCriterion(userSignup, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printUserSignupWaitCriterionDiffs(userSignup, criteria...)
+	}
+	return userSignup, err
+}
+
+// WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
+func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	a.T.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userID, username, a.Namespace)
+	encodedUsername := EncodeUserIdentifier(username)
+	var userSignup *toolchainv1alpha1.UserSignup
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userID}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: encodedUsername}, obj); err != nil {
+					if errors.IsNotFound(err) {
+						return false, nil
+					}
+					return false, err
+				}
+			} else {
+				return false, err
+			}
 		}
 		userSignup = obj
 		return matchUserSignupWaitCriterion(userSignup, criteria...), nil
@@ -1743,4 +1774,35 @@ func UntilSpaceBindingHasSpaceRole(expected string) SpaceBindingWaitCriterion {
 			return fmt.Sprintf("expected Space role to match:\n%s", Diff(expected, actual.Spec.SpaceRole))
 		},
 	}
+}
+
+const (
+	DNS1123NameMaximumLength         = 63
+	DNS1123NotAllowedCharacters      = "[^-a-z0-9]"
+	DNS1123NotAllowedStartCharacters = "^[^a-z0-9]+"
+)
+
+func EncodeUserIdentifier(subject string) string {
+	// Convert to lower case
+	encoded := strings.ToLower(subject)
+
+	// Remove all invalid characters
+	nameNotAllowedChars := regexp.MustCompile(DNS1123NotAllowedCharacters)
+	encoded = nameNotAllowedChars.ReplaceAllString(encoded, "")
+
+	// Remove invalid start characters
+	nameNotAllowedStartChars := regexp.MustCompile(DNS1123NotAllowedStartCharacters)
+	encoded = nameNotAllowedStartChars.ReplaceAllString(encoded, "")
+
+	// Add a checksum prefix if the encoded value is different to the original subject value
+	if encoded != subject {
+		encoded = fmt.Sprintf("%x-%s", crc32.Checksum([]byte(subject), crc32.IEEETable), encoded)
+	}
+
+	// Trim if the length exceeds the maximum
+	if len(encoded) > DNS1123NameMaximumLength {
+		encoded = encoded[0:DNS1123NameMaximumLength]
+	}
+
+	return encoded
 }
