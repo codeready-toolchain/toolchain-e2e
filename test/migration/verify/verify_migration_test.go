@@ -96,12 +96,16 @@ func TestAfterMigration(t *testing.T) {
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	space := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.ProvisionedAppStudioSpace)
+	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), fmt.Sprintf("for-space-%s", migration.ProvisionedAppStudioSpace))
 	cleanup.AddCleanTasks(awaitilities.Host(), space)
+	cleanup.AddCleanTasks(awaitilities.Host(), userSignupForSpace)
 }
 
 func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	space := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.SecondMemberProvisionedSpace)
+	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), fmt.Sprintf("for-space-%s", migration.SecondMemberProvisionedSpace))
 	cleanup.AddCleanTasks(awaitilities.Host(), space)
+	cleanup.AddCleanTasks(awaitilities.Host(), userSignupForSpace)
 }
 
 func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
