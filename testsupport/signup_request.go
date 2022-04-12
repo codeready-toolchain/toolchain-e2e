@@ -91,6 +91,7 @@ type SignupRequest interface {
 	NoSpace() SignupRequest
 }
 
+// NewSignupRequest creates a new signup request for the registration service
 func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
 	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &signupRequest{
@@ -233,7 +234,10 @@ func (r *signupRequest) Execute() SignupRequest {
 		token0, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := hostAwait.WaitForUserSignup(userIdentity.ID.String())
+	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
+	// TODO remove this after reg service PR #254 is merged
+	userSignup, err := hostAwait.WaitForUserSignupByUserIDAndUsername(userIdentity.ID.String(), userIdentity.Username)
+
 	require.NoError(r.t, err)
 
 	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
