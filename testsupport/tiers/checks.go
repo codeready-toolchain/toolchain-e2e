@@ -1062,7 +1062,6 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 					Resources: []string{"results", "records"},
 					Verbs:     []string{"get", "list"},
 				},
-                           },
 			},
 		}
 
