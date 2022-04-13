@@ -1053,10 +1053,16 @@ func appstudioUserActionsRole() namespaceObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"create", "delete"},
+				},
+				{
 					APIGroups: []string{"results.tekton.dev"},
 					Resources: []string{"results", "records"},
 					Verbs:     []string{"get", "list"},
 				},
+                           },
 			},
 		}
 
