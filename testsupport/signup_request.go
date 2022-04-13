@@ -6,7 +6,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -198,6 +200,26 @@ func (r *signupRequest) NoSpace() SignupRequest {
 	return r
 }
 
+var usernamesInParallel = &namesRegistry{usernames: map[string]string{}}
+
+type namesRegistry struct {
+	sync.RWMutex
+	usernames map[string]string
+}
+
+func (r *namesRegistry) add(t *testing.T, name string) {
+	r.Lock()
+	defer r.Unlock()
+	pwd := os.Getenv("PWD")
+	if !strings.HasSuffix(pwd, "parallel") {
+		return
+	}
+	if testName, exist := r.usernames[name]; exist {
+		require.Fail(t, fmt.Sprintf("The username '%s' was already used in the test '%s'", name, testName))
+	}
+	r.usernames[name] = t.Name()
+}
+
 func (r *signupRequest) Execute() SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
@@ -215,6 +237,8 @@ func (r *signupRequest) Execute() SignupRequest {
 		ID:       identityID,
 		Username: r.username,
 	}
+
+	usernamesInParallel.add(r.t, r.username)
 
 	claims := []authsupport.ExtraClaim{authsupport.WithEmailClaim(r.email)}
 	if r.originalSub != "" {
