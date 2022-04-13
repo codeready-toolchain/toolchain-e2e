@@ -295,7 +295,7 @@ func (r *signupRequest) Execute() SignupRequest {
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
 	// and if cleanup hasn't been disabled
 	if !r.cleanupDisabled {
-		cleanup.AddCleanTasks(hostAwait.T, hostAwait.Client, r.userSignup)
+		cleanup.AddCleanTasks(hostAwait, r.userSignup)
 	}
 
 	return r

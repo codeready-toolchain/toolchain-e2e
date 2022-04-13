@@ -30,38 +30,45 @@ var (
 
 type cleanManager struct {
 	sync.RWMutex
-	cleanTasks []*cleanTask
+	cleanTasks map[*testing.T][]*cleanTask
 }
 
-var cleaning = &cleanManager{}
+var cleaning = &cleanManager{
+	cleanTasks: map[*testing.T][]*cleanTask{},
+}
+
+type AwaitilityInt interface {
+	GetClient() client.Client
+	GetT() *testing.T
+}
 
 // AddCleanTasks adds cleaning tasks for the given objects that will be automatically performed at the end of the test execution
-func AddCleanTasks(t *testing.T, cl client.Client, objects ...client.Object) {
-	cleaning.addCleanTasks(t, cl, objects...)
+func AddCleanTasks(a AwaitilityInt, objects ...client.Object) {
+	cleaning.addCleanTasks(a.GetT(), a.GetClient(), objects...)
 }
 
 func (c *cleanManager) addCleanTasks(t *testing.T, cl client.Client, objects ...client.Object) {
 	c.Lock()
 	defer c.Unlock()
 	for _, obj := range objects {
-		if len(c.cleanTasks) == 0 {
-			t.Cleanup(c.clean())
+		if len(c.cleanTasks[t]) == 0 {
+			t.Cleanup(c.clean(t))
 		}
-		c.cleanTasks = append(c.cleanTasks, newCleanTask(t, cl, obj))
+		c.cleanTasks[t] = append(c.cleanTasks[t], newCleanTask(t, cl, obj))
 	}
 }
 
 // ExecuteAllCleanTasks triggers cleanup of all resources that were marked to be cleaned before that
-func ExecuteAllCleanTasks() {
-	cleaning.clean()()
+func ExecuteAllCleanTasks(a AwaitilityInt) {
+	cleaning.clean(a.GetT())()
 }
 
-func (c *cleanManager) clean() func() {
+func (c *cleanManager) clean(t *testing.T) func() {
 	return func() {
 		c.Lock()
 		defer c.Unlock()
 		var wg sync.WaitGroup
-		for _, task := range c.cleanTasks {
+		for _, task := range c.cleanTasks[t] {
 			wg.Add(1)
 			go func(cleanTask *cleanTask) {
 				defer wg.Done()
@@ -69,7 +76,7 @@ func (c *cleanManager) clean() func() {
 			}(task)
 		}
 		wg.Wait()
-		c.cleanTasks = nil
+		c.cleanTasks[t] = nil
 	}
 }
 
