@@ -6,17 +6,17 @@ import (
 	"testing"
 	"time"
 
-	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
