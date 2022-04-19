@@ -75,7 +75,7 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(name, tierName string, targ
 		wait.UntilSpaceHasConditions(test.Provisioned()))
 	require.NoError(r.T, err)
 	if r.WithCleanup {
-		cleanup.AddCleanTasks(r.T, r.Awaitilities.Host().Client, space)
+		cleanup.AddCleanTasks(r.Awaitilities.Host(), space)
 	}
 }
 

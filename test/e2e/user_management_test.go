@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -581,7 +583,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Check the Identity is deleted
 	identity := &userv1.Identity{}
-	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: ToIdentityName(userAccount.Spec.UserID)}, identity)
+	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()}, identity)
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierrors.IsNotFound(err))
 

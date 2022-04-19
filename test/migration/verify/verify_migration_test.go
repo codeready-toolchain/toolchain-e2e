@@ -63,7 +63,7 @@ func TestAfterMigration(t *testing.T) {
 
 	wg.Wait()
 
-	cleanup.ExecuteAllCleanTasks()
+	cleanup.ExecuteAllCleanTasks(awaitilities.Host())
 
 	t.Run("run migration setup with new operator versions for compatibility", func(t *testing.T) {
 		// We need to run the migration setup part to ensure the compatibility with both versions of the sandbox (the old one as well as the new one)
@@ -96,34 +96,38 @@ func TestAfterMigration(t *testing.T) {
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	space := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.ProvisionedAppStudioSpace)
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
+	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), fmt.Sprintf("for-space-%s", migration.ProvisionedAppStudioSpace))
+	cleanup.AddCleanTasks(awaitilities.Host(), space)
+	cleanup.AddCleanTasks(awaitilities.Host(), userSignupForSpace)
 }
 
 func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	space := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.SecondMemberProvisionedSpace)
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
+	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), fmt.Sprintf("for-space-%s", migration.SecondMemberProvisionedSpace))
+	cleanup.AddCleanTasks(awaitilities.Host(), space)
+	cleanup.AddCleanTasks(awaitilities.Host(), userSignupForSpace)
 }
 
 func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
+	cleanup.AddCleanTasks(awaitilities.Host(), signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base")
 	DeactivateAndCheckUser(t, awaitilities, signup)
 	ReactivateAndCheckUser(t, awaitilities, signup)
 }
 
 func verifySecondMemberProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
+	cleanup.AddCleanTasks(awaitilities.Host(), signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base")
 	CreateBannedUser(t, awaitilities.Host(), signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 }
 
 func verifyAppStudioProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
+	cleanup.AddCleanTasks(awaitilities.Host(), signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "appstudio")
 }
 
 func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
+	cleanup.AddCleanTasks(awaitilities.Host(), signup)
 
 	_, err := awaitilities.Host().WaitForUserSignup(signup.Name,
 		wait.UntilUserSignupContainsConditions(ConditionSet(Default(), DeactivatedWithoutPreDeactivation())...),
@@ -142,7 +146,7 @@ func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signu
 
 func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	hostAwait := awaitilities.Host()
-	cleanup.AddCleanTasks(t, hostAwait.Client, signup)
+	cleanup.AddCleanTasks(hostAwait, signup)
 
 	// verify that it's still banned
 	_, err := hostAwait.WaitForUserSignup(signup.Name,
@@ -196,10 +200,7 @@ func checkMURMigrated(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord) {
 	// should not have tier hash label
 	require.Empty(t, mur.Labels[fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName)])
 
-	// useraccounts should not have NSLimit nor NSTemplateSet
 	require.Len(t, mur.Spec.UserAccounts, 1)
-	require.Empty(t, mur.Spec.UserAccounts[0].Spec.NSLimit)
-	require.Nil(t, mur.Spec.UserAccounts[0].Spec.NSTemplateSet)
 }
 
 func listAndGetSignupWithState(t *testing.T, hostAwait *wait.HostAwaitility, state string) *toolchainv1alpha1.UserSignup {
