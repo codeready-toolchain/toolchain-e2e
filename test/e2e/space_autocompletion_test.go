@@ -10,6 +10,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestAutomaticClusterAssignment(t *testing.T) {
@@ -160,4 +161,13 @@ func waitUntilSpaceIsPendingCluster(t *testing.T, hostAwait *wait.HostAwaitility
 		wait.UntilSpaceHasConditionForTime(ProvisioningPending("unspecified target member cluster"), time.Second))
 	require.NoError(t, err)
 	return space
+}
+
+func ProvisioningPending(msg string) toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:    toolchainv1alpha1.ConditionReady,
+		Status:  corev1.ConditionFalse,
+		Reason:  toolchainv1alpha1.SpaceProvisioningPendingReason,
+		Message: msg,
+	}
 }

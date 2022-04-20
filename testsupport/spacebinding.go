@@ -45,10 +45,14 @@ func CreateSpaceBindingWithoutCleanup(t *testing.T, hostAwait *wait.HostAwaitili
 
 // NewSpaceBinding create an object SpaceBinding with the given values
 func NewSpaceBinding(mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
+	namePrefix := fmt.Sprintf("%s-%s", mur.Name, space.Name)
+	if len(namePrefix) > 50 {
+		namePrefix = namePrefix[0:50]
+	}
 	return &toolchainv1alpha1.SpaceBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", mur.Name, space.Name),
-			Namespace: space.Namespace,
+			GenerateName: namePrefix + "-",
+			Namespace:    space.Namespace,
 			Labels: map[string]string{
 				toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: mur.Name,
 				toolchainv1alpha1.SpaceBindingSpaceLabelKey:            space.Name,
