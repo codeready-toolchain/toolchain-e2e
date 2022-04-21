@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 func TestCreateSpace(t *testing.T) {
 	// given
-
+	t.Parallel()
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -85,7 +85,7 @@ func TestCreateSpace(t *testing.T) {
 }
 
 func TestSpaceRoles(t *testing.T) {
-
+	t.Parallel()
 	// instead of updating the NSTemplateSet, we should create SpaceBindings (with existing templateRefs!)
 	// and verify that the Roles and RoleBindings have been created on behalf of the 2 users
 	t.Skip("skipping until SpaceBindings are in place")
@@ -343,7 +343,7 @@ func TestSpaceRoles(t *testing.T) {
 }
 
 func TestPromoteSpace(t *testing.T) {
-
+	t.Parallel()
 	// given
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
@@ -368,8 +368,15 @@ func TestPromoteSpace(t *testing.T) {
 	})
 }
 
+var toBeComplete = toolchainv1alpha1.Condition{
+	Type:   toolchainv1alpha1.ChangeTierRequestComplete,
+	Status: corev1.ConditionTrue,
+	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
+}
+
 func TestRetargetSpace(t *testing.T) {
 	// given
+	t.Parallel()
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -390,15 +397,6 @@ func TestRetargetSpace(t *testing.T) {
 	space = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 	require.NoError(t, err)
-}
-
-func ProvisioningPending(msg string) toolchainv1alpha1.Condition {
-	return toolchainv1alpha1.Condition{
-		Type:    toolchainv1alpha1.ConditionReady,
-		Status:  corev1.ConditionFalse,
-		Reason:  toolchainv1alpha1.SpaceProvisioningPendingReason,
-		Message: msg,
-	}
 }
 
 func ProvisioningFailed(msg string) toolchainv1alpha1.Condition {
