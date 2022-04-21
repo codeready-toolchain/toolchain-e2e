@@ -371,7 +371,7 @@ func TestE2EFlow(t *testing.T) {
 
 	})
 
-	t.Run("Try to delete namespaced scoped resources of users, and expect recreation", func(t *testing.T) {
+	t.Run("delete namespaced scoped resources of users and expect recreation", func(t *testing.T) {
 		userSignup, _ := NewSignupRequest(t, awaitilities).
 			Username("wonderwoman").
 			Email("wonderwoman@redhat.com").
@@ -401,7 +401,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
-
 			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "user-rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")

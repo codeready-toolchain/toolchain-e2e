@@ -24,7 +24,7 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 }
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
-	_, mur := VerifyUserRelatedResources(t, awaitilities, signup, tierName)
+	signup, mur := VerifyUserRelatedResources(t, awaitilities, signup, tierName)
 	space := VerifySpaceRelatedResources(t, awaitilities, signup.Status.CompliantUsername, tierName, signup.Name)
 	VerifySpaceBinding(t, awaitilities.Host(), mur.Name, space.Name, "admin")
 
