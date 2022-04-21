@@ -9,12 +9,16 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/davecgh/go-spew/spew"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 
+	"github.com/davecgh/go-spew/spew"
+	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/stretchr/testify/require"
 )
 
 func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) {
+	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
 	expectedTemplateRefs := checks.GetExpectedTemplateRefs(hostAwait)
 
 	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
@@ -31,6 +35,30 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 		for _, check := range namespaceChecks {
 			namespaceObjectChecks.Add(1)
 			go func(checkNamespaceObjects namespaceObjectsCheck) {
+				defer namespaceObjectChecks.Done()
+				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
+			}(check)
+		}
+		spaceRoles := map[*templatev1.Template][]string{}
+		decoder := serializer.NewCodecFactory(hostAwait.Client.Scheme()).UniversalDeserializer()
+		for _, r := range nsTmplSet.Spec.SpaceRoles {
+			tmpl, err := hostAwait.WaitForTierTemplate(r.TemplateRef)
+			require.NoError(t, err)
+			t.Logf("space role template: %s / %s", tmpl.GetName(), tmpl.Spec.Template.GetName())
+			for i, rawObj := range tmpl.Spec.Template.Objects {
+				var obj unstructured.Unstructured
+				_, _, err := decoder.Decode(rawObj.Raw, nil, &obj)
+				require.NoError(t, err)
+				tmpl.Spec.Template.Objects[i].Object = &obj
+			}
+
+			spaceRoles[&tmpl.Spec.Template] = r.Usernames
+		}
+		spaceRoleChecks, err := checks.GetSpaceRoleChecks(spaceRoles)
+		require.NoError(t, err)
+		for _, check := range spaceRoleChecks {
+			namespaceObjectChecks.Add(1)
+			go func(checkNamespaceObjects spaceRoleObjectsCheck) {
 				defer namespaceObjectChecks.Done()
 				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)

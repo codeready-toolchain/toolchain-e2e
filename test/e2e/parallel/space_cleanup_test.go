@@ -104,7 +104,8 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 }
 
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
-	space := CreateAndVerifySpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember), WithName(spaceName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember), WithName(spaceName), WithCreatorName(murName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasCreatorLabel(murName), wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))
 
 	userSignup, mur := NewSignupRequest(t, awaitilities).
 		Username(murName).

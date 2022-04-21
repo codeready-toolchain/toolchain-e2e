@@ -24,8 +24,10 @@ func TestCreateSpace(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	t.Run("create space", func(t *testing.T) {
-		// given & when & then
-		space := CreateAndVerifySpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
+		// when
+		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait), WithCreatorName(t.Name()))
+		// then
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(t.Name()), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
@@ -105,13 +107,19 @@ func TestSpaceRoles(t *testing.T) {
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		// NoSpace().
 		Execute().
 		Resources()
 
 	// when a space owned by the user above is created (and user is an admin of this space)
-	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR, WithTargetCluster(awaitilities.Member1()), WithTierName("appstudio"))
+	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
+		WithCreatorName("spaceowner"),
+		WithTargetCluster(awaitilities.Member1()),
+		WithTierName("appstudio"),
+	)
 
 	// then
+	VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
 	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name,
 		UntilNSTemplateSetHasConditions(Provisioned()),
 		UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
@@ -159,11 +167,12 @@ func TestSpaceRoles(t *testing.T) {
 			UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
 				{
 					TemplateRef: appstudioTier.Spec.SpaceRoles["admin"].TemplateRef,
-					Usernames:   []string{"spaceowner", "spaceguest"},
+					Usernames:   []string{"spaceguest", "spaceowner"}, // sorted
 				},
 			}),
 		)
 		require.NoError(t, err)
+		VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
 		// fetch the namespace check the `last-applied-space-roles` annotation
 		ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 			UntilNamespaceIsActive(),
@@ -414,8 +423,10 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	//  when & then
-	space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait))
+	// when
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait), WithCreatorName(t.Name()))
+	// then
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(t.Name()), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
@@ -428,7 +439,7 @@ func TestPromoteSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel("TestPromoteSpace"))
 	})
 }
 
@@ -447,8 +458,11 @@ func TestRetargetSpace(t *testing.T) {
 	member1Await := awaitilities.Member1()
 	member2Await := awaitilities.Member2()
 
+	// when
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await), WithCreatorName(t.Name()))
+	// then
 	// wait until Space has been provisioned on member-1
-	space := CreateAndVerifySpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(t.Name()), UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
 
 	// when
 	space, err := hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {

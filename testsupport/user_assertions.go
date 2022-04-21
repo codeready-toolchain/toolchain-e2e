@@ -11,8 +11,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
-	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
@@ -26,8 +24,10 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 }
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
-	VerifyUserRelatedResources(t, awaitilities, signup, tierName)
-	VerifySpaceRelatedResources(t, awaitilities, signup, tierName)
+	_, mur := VerifyUserRelatedResources(t, awaitilities, signup, tierName)
+	space := VerifySpaceRelatedResources(t, awaitilities, signup.Status.CompliantUsername, tierName, signup.Name)
+	VerifySpaceBinding(t, awaitilities.Host(), mur.Name, space.Name, "admin")
+
 }
 
 func VerifyResourcesProvisionedForSignupWithoutSpace(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
@@ -135,45 +135,6 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	assert.NoError(t, err)
 
 	return userSignup, mur
-}
-
-func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, tierName string) {
-
-	hostAwait := awaitilities.Host()
-
-	userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
-		wait.ContainsCondition(Complete()))
-	require.NoError(t, err)
-
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasTierName(tierName),
-		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
-	require.NoError(t, err)
-
-	tier, err := hostAwait.WaitForNSTemplateTier(mur.Spec.TierName)
-	require.NoError(t, err)
-	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
-	require.NoError(t, err)
-
-	space, err := hostAwait.WaitForSpace(mur.Name,
-		wait.UntilSpaceHasTier(mur.Spec.TierName),
-		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
-		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", mur.Spec.TierName), hash),
-		wait.UntilSpaceHasConditions(Provisioned()),
-		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
-		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
-	require.NoError(t, err)
-
-	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
-
-	memberAwait := GetMurTargetMember(t, awaitilities, mur)
-	// Verify provisioned NSTemplateSet
-	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier.Name))
-	require.NoError(t, err)
-	tierChecks, err := tiers.NewChecksForTier(tier)
-	require.NoError(t, err)
-	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
 }
 
 func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {

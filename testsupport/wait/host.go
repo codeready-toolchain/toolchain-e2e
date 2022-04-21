@@ -1420,6 +1420,7 @@ func matchSpaceWaitCriterion(actual *toolchainv1alpha1.Space, criteria ...SpaceW
 
 // WaitForSpace waits until the Space with the given name is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+	a.T.Logf("waiting for Space '%s' with matching criteria", name)
 	var space *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
@@ -1540,6 +1541,19 @@ func UntilSpaceHasStateLabel(expected string) SpaceWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected Space to match the state label value: %s \nactual labels: %s", expected, actual.Labels)
+		},
+	}
+}
+
+// UntilSpaceHasCreatorLabel returns a `SpaceWaitCriterion` which checks that the
+// Space has the expected value of the creator label
+func UntilSpaceHasCreatorLabel(expected string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Labels != nil && actual.Labels[toolchainv1alpha1.SpaceCreatorLabelKey] == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected Space to match the creator label value: %s \nactual labels: %s", expected, actual.Labels)
 		},
 	}
 }

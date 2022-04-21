@@ -56,7 +56,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().ResourceCapacityThreshold(80))
 
 			// then
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, )
 		})
 	})
 

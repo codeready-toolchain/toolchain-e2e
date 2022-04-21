@@ -34,6 +34,9 @@ func NewSpace(awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1a
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:    awaitilities.Host().Namespace,
 			GenerateName: namePrefix + "-",
+			Labels: map[string]string{
+				toolchainv1alpha1.SpaceCreatorLabelKey: awaitilities.Host().T.Name(), // default creator is the e2e test itself ¯\_(ツ)_/¯
+			},
 		},
 	}
 	for _, apply := range opts {
@@ -53,6 +56,12 @@ func WithTargetCluster(memberCluster *wait.MemberAwaitility) SpaceOption {
 func WithTierName(tierName string) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
 		s.Spec.TierName = tierName
+	}
+}
+
+func WithCreatorName(creatorName string) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.Labels[toolchainv1alpha1.SpaceCreatorLabelKey] = creatorName
 	}
 }
 
@@ -100,12 +109,6 @@ func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *t
 	return space, spaceBinding
 }
 
-// CreateAndVerifySpace does the same as CreateSpace plus it also verifies the provisioned resources in the cluster using function VerifyResourcesProvisionedForSpace
-func CreateAndVerifySpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
-	space, _, _ := CreateSpace(t, awaitilities, opts...)
-	return VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
-}
-
 func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space) *wait.MemberAwaitility {
 	for _, member := range awaitilities.AllMembers() {
 		if space.Spec.TargetCluster == member.ClusterName {
@@ -115,6 +118,38 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 
 	require.FailNowf(t, "Unable to find a target member cluster", "Space: %+v", space)
 	return nil
+}
+
+// func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, tierName string) {
+// TODO: merge with `VerifyResourcesProvisionedForSpace()` func below?
+func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, spaceName, tierName, creatorName string) *toolchainv1alpha1.Space {
+	hostAwait := awaitilities.Host()
+
+	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
+	require.NoError(t, err)
+	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
+	require.NoError(t, err)
+
+	space, err := hostAwait.WaitForSpace(spaceName,
+		wait.UntilSpaceHasTier(tierName),
+		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, creatorName),
+		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tierName), hash),
+		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
+		wait.UntilSpaceHasConditions(Provisioned()),
+		// wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster),
+	)
+	require.NoError(t, err)
+
+	memberAwait, err := awaitilities.Member(space.Spec.TargetCluster)
+	require.NoError(t, err)
+
+	// Verify provisioned NSTemplateSet
+	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tierName))
+	require.NoError(t, err)
+	tierChecks, err := tiers.NewChecksForTier(tier)
+	require.NoError(t, err)
+	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
+	return space
 }
 
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
