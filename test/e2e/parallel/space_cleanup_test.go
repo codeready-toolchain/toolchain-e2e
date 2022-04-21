@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 
 func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	// given
+	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
