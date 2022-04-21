@@ -1,0 +1,7 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: UserTier
+metadata:
+  name: deactivate30
+spec:
+  deactivationTimeoutDays: 1
+  
