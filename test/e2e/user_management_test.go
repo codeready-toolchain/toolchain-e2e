@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+var httpClient = HTTPClient
+
 func TestUserManagement(t *testing.T) {
 	suite.Run(t, &userManagementTestSuite{})
 }
