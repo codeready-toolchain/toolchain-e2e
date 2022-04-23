@@ -2,7 +2,7 @@ package e2e
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" // nolint:gosec
 	"encoding/hex"
 	"fmt"
 	"testing"
