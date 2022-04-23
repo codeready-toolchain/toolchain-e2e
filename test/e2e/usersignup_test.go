@@ -2,9 +2,15 @@ package e2e
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -514,4 +520,56 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
 
 	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "base")
+}
+
+func (s *userSignupIntegrationTest) TestUserSignupMigration() {
+	// Manually create a UserSignup that has a name that is not the encoded username
+
+	md5hash := md5.New() // nolint:gosec
+	// Ignore the error, as this implementation cannot return one
+	_, _ = md5hash.Write([]byte("foo@bar.com"))
+	emailHash := hex.EncodeToString(md5hash.Sum(nil))
+
+	userSignup := &toolchainv1alpha1.UserSignup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: s.Host().Namespace,
+			Labels: map[string]string{
+				toolchainv1alpha1.UserSignupStateLabelKey:         toolchainv1alpha1.UserSignupStateLabelValueApproved,
+				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: emailHash,
+			},
+			Annotations: map[string]string{toolchainv1alpha1.UserSignupUserEmailAnnotationKey: "foo@bar.com"},
+		},
+		Spec: toolchainv1alpha1.UserSignupSpec{
+			Userid:   "foo",
+			Username: "bar",
+		},
+		Status: toolchainv1alpha1.UserSignupStatus{
+			CompliantUsername: "foo",
+			Conditions: []toolchainv1alpha1.Condition{
+				{
+					Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+					Status: v1.ConditionTrue,
+				},
+			},
+		},
+	}
+
+	states.SetApproved(userSignup, true)
+
+	require.NoError(s.T(), s.Awaitilities.Host().Client.Create(context.TODO(), userSignup))
+
+	// Let the UserSignup provision
+	userSignup, err := s.Awaitilities.Host().WaitForUserSignup("foo")
+	require.NoError(s.T(), err)
+
+	// Deactivate
+	states.SetDeactivated(userSignup, true)
+	require.NoError(s.T(), s.Awaitilities.Host().Client.Update(context.TODO(), userSignup))
+
+	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
+	_, err = s.Awaitilities.Host().WaitForUserSignup("bar")
+	require.NoError(s.T(), err)
+
+	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted("foo"))
 }
