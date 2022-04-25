@@ -287,7 +287,7 @@ func TestSignupFails(t *testing.T) {
 		require.Equal(t, float64(403), response["code"])
 
 		hostAwait := await.Host()
-		hostAwait.WaitAndVerifyThatUserSignupIsNotCreated(identity.ID.String())
+		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(identity.ID.String())
 	})
 }
 
