@@ -771,8 +771,6 @@ func (a *HostAwaitility) printUserTierWaitCriterionDiffs(actual *toolchainv1alph
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
 
 	a.T.Log(buf.String())
 }
