@@ -807,20 +807,8 @@ func UntilUserTierHasDeactivationTimeoutDays(expected int) UserTierWaitCriterion
 	}
 }
 
-// UntilUserTierHasGeneration verify that the UserTier status.Updates has the specified number of entries
-func UntilUserTierHasGeneration(expected int64) UserTierWaitCriterion {
-	return UserTierWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.UserTier) bool {
-			return actual.Generation == expected
-		},
-		Diff: func(actual *toolchainv1alpha1.UserTier) string {
-			return fmt.Sprintf("expected generation value %d. Actual: %d", expected, actual.Generation)
-		},
-	}
-}
-
 func (a *HostAwaitility) WaitUntilBaseUserTierIsUpdated() error {
-	_, err := a.WaitForUserTier("deactivate30", UntilUserTierHasDeactivationTimeoutDays(30), UntilUserTierHasGeneration(2))
+	_, err := a.WaitForUserTier("deactivate30", UntilUserTierHasDeactivationTimeoutDays(30))
 	return err
 }
 
