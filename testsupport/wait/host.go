@@ -132,6 +132,15 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		copy := i
 		all = append(all, &copy)
 	}
+	// usertiers
+	usertiers := &toolchainv1alpha1.UserTierList{}
+	if err := a.Client.List(context.TODO(), usertiers, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range usertiers.Items {
+		copy := i
+		all = append(all, &copy)
+	}
 	// toolchainconfig
 	toolchainconfigs := &toolchainv1alpha1.ToolchainConfigList{}
 	if err := a.Client.List(context.TODO(), toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
@@ -722,6 +731,85 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 		}
 	}
 	return false
+}
+
+// WaitForUserTier waits until an UserTier with the given name exists and matches any given criteria
+func (a *HostAwaitility) WaitForUserTier(name string, criteria ...UserTierWaitCriterion) (*toolchainv1alpha1.UserTier, error) {
+	a.T.Logf("waiting until UserTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
+	tier := &toolchainv1alpha1.UserTier{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.UserTier{}
+		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
+		if err != nil && !errors.IsNotFound(err) {
+			// return the error
+			return false, err
+		} else if errors.IsNotFound(err) {
+			// keep waiting
+			return false, nil
+		}
+		tier = obj
+		return matchUserTierWaitCriterion(obj, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printUserTierWaitCriterionDiffs(tier, criteria...)
+	}
+	return tier, err
+}
+
+// UserTierWaitCriterion a struct to compare with an expected UserTier
+type UserTierWaitCriterion struct {
+	Match func(*toolchainv1alpha1.UserTier) bool
+	Diff  func(*toolchainv1alpha1.UserTier) string
+}
+
+func matchUserTierWaitCriterion(actual *toolchainv1alpha1.UserTier, criteria ...UserTierWaitCriterion) bool {
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *HostAwaitility) printUserTierWaitCriterionDiffs(actual *toolchainv1alpha1.UserTier, criteria ...UserTierWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find UserTier\n")
+	} else {
+		buf.WriteString("failed to find UserTier with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+
+	a.T.Log(buf.String())
+}
+
+// UntilUserTierHasDeactivationTimeoutDays verify that the UserTier status.Updates has the specified number of entries
+func UntilUserTierHasDeactivationTimeoutDays(expected int) UserTierWaitCriterion {
+	return UserTierWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserTier) bool {
+			return actual.Spec.DeactivationTimeoutDays == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.UserTier) string {
+			return fmt.Sprintf("expected deactivationTimeoutDay value %d. Actual: %d", expected, actual.Spec.DeactivationTimeoutDays)
+		},
+	}
+}
+
+func (a *HostAwaitility) WaitUntilBaseUserTierIsUpdated() error {
+	_, err := a.WaitForUserTier("deactivate30", UntilUserTierHasDeactivationTimeoutDays(30))
+	return err
 }
 
 func (a *HostAwaitility) WaitUntilBaseNSTemplateTierIsUpdated() error {
