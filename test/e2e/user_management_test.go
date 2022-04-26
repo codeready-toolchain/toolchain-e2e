@@ -33,6 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var httpClient = HTTPClient
+
 func TestUserManagement(t *testing.T) {
 	suite.Run(t, &userManagementTestSuite{})
 }
