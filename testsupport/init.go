@@ -138,6 +138,11 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
 		require.NoError(t, err)
 
+		// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
+		// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
+		err = initHostAwait.WaitUntilBaseUserTierIsUpdated()
+		require.NoError(t, err)
+
 		t.Log("all operators are ready and in running state")
 	})
 

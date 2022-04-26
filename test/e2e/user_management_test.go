@@ -31,6 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var httpClient = HTTPClient
@@ -44,8 +45,52 @@ type userManagementTestSuite struct {
 	wait.Awaitilities
 }
 
+type userTierTestData struct {
+	name                    string
+	deactivationTimeoutDays int
+}
+
 func (s *userManagementTestSuite) SetupSuite() {
 	s.Awaitilities = WaitForDeployments(s.T())
+}
+
+func (s *userManagementTestSuite) TestVerifyUserTiers() {
+	hostAwait := s.Host()
+
+	userTiers := &toolchainv1alpha1.UserTierList{}
+	err := hostAwait.Client.List(context.TODO(), userTiers, client.InNamespace(hostAwait.Namespace))
+	require.NoError(s.T(), err)
+	require.Len(s.T(), userTiers.Items, 5)
+
+	expectedTiers := []userTierTestData{
+		{
+			name:                    "nodeactivation",
+			deactivationTimeoutDays: 0,
+		},
+		{
+			name:                    "deactivate30",
+			deactivationTimeoutDays: 30,
+		},
+		{
+			name:                    "deactivate80",
+			deactivationTimeoutDays: 80,
+		},
+		{
+			name:                    "deactivate90",
+			deactivationTimeoutDays: 90,
+		},
+		{
+			name:                    "deactivate180",
+			deactivationTimeoutDays: 180,
+		},
+	}
+	for _, expectedTier := range expectedTiers {
+		s.T().Run(fmt.Sprintf("verify UserTier '%s'", expectedTier.name), func(t *testing.T) {
+			userTier, err := hostAwait.WaitForUserTier(expectedTier.name)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedTier.deactivationTimeoutDays, userTier.Spec.DeactivationTimeoutDays)
+		})
+	}
 }
 
 func (s *userManagementTestSuite) TestUserDeactivation() {
