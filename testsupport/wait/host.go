@@ -593,6 +593,26 @@ func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username s
 	return userSignup, err
 }
 
+// WaitAndVerifyThatUserSignupIsNotCreated waits and checks that the UserSignup is not created
+func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(name string) {
+	a.T.Logf("waiting and verifying that UserSignup '%s' in namespace '%s' is not created", name, a.Namespace)
+	var userSignup *toolchainv1alpha1.UserSignup
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.UserSignup{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		userSignup = obj
+		return true, nil
+	})
+	if err == nil {
+		require.Fail(a.T, fmt.Sprintf("UserSignup '%s' should not be created, but it was found: %v", name, userSignup))
+	}
+}
+
 // WaitForBannedUser waits until there is a BannedUser available with the given email
 func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.BannedUser, error) {
 	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
