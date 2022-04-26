@@ -156,12 +156,25 @@ func duplicateTierTemplate(hostAwait *HostAwaitility, namespace, tierName, origT
 	return newTierTemplate.Name, nil
 }
 
-func MoveUserToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
-	t.Logf("moving user '%s' to tier '%s'", username, tierName)
-	changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, username, tierName)
-	err := hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
+func MoveSpaceToTier(t *testing.T, hostAwait *HostAwaitility, spacename, tierName string) {
+	t.Logf("moving space '%s' to space tier '%s'", spacename, tierName)
+	space, err := hostAwait.WaitForSpace(spacename)
 	require.NoError(t, err)
-	_, err = hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
+
+	space.Spec.TierName = tierName
+
+	err = hostAwait.Client.Update(context.TODO(), space)
+	require.NoError(t, err)
+}
+
+func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
+	t.Logf("moving masteruserrecord '%s' to user tier '%s'", username, tierName)
+	mur, err := hostAwait.WaitForMasterUserRecord(username)
+	require.NoError(t, err)
+
+	mur.Spec.TierName = tierName
+
+	err = hostAwait.Client.Update(context.TODO(), mur)
 	require.NoError(t, err)
 }
 

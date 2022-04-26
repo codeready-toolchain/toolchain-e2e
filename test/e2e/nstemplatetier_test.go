@@ -226,8 +226,8 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Move the user to the new tier
-		tiers.MoveUserToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+		// Move the space to the new tier
+		tiers.MoveSpaceToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
 
 		// Ensure the deactivating state is reset after promotion
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
@@ -281,7 +281,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 	for i := range userSignups {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i], "base")
 		username := fmt.Sprintf(nameFmt, i)
-		tiers.MoveUserToTier(t, hostAwait, username, tier.Name)
+		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
 	}
 	return userSignups
 }
