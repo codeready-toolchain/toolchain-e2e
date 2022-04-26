@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -532,19 +530,18 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 
 	userSignup := &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
+			Name:      "userid-we-migrate-from",
 			Namespace: s.Host().Namespace,
 			Labels: map[string]string{
-				toolchainv1alpha1.UserSignupStateLabelKey:         toolchainv1alpha1.UserSignupStateLabelValueApproved,
 				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: emailHash,
 			},
 			Annotations: map[string]string{toolchainv1alpha1.UserSignupUserEmailAnnotationKey: "foo@bar.com"},
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
-			Userid:   "foo",
-			Username: "bar",
+			Userid:   "userid-we-migrate-from",
+			Username: "username-we-migrate-to",
 		},
-		Status: toolchainv1alpha1.UserSignupStatus{
+		/*Status: toolchainv1alpha1.UserSignupStatus{
 			CompliantUsername: "foo",
 			Conditions: []toolchainv1alpha1.Condition{
 				{
@@ -552,7 +549,7 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 					Status: v1.ConditionTrue,
 				},
 			},
-		},
+		},*/
 	}
 
 	states.SetApproved(userSignup, true)
@@ -560,16 +557,20 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	require.NoError(s.T(), s.Awaitilities.Host().Client.Create(context.TODO(), userSignup))
 
 	// Let the UserSignup provision
-	userSignup, err := s.Awaitilities.Host().WaitForUserSignup("foo")
+	userSignup, err := s.Awaitilities.Host().WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupContainsConditions(ApprovedByAdmin()...))
 	require.NoError(s.T(), err)
 
 	// Deactivate
 	states.SetDeactivated(userSignup, true)
-	require.NoError(s.T(), s.Awaitilities.Host().Client.Update(context.TODO(), userSignup))
-
-	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
-	_, err = s.Awaitilities.Host().WaitForUserSignup("bar")
+	userSignup, err = s.Awaitilities.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		states.SetDeactivated(us, true)
+	})
 	require.NoError(s.T(), err)
 
-	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted("foo"))
+	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
+	_, err = s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to")
+	require.NoError(s.T(), err)
+
+	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted(userSignup.Name))
 }
