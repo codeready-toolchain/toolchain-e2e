@@ -541,15 +541,6 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 			Userid:   "userid-we-migrate-from",
 			Username: "username-we-migrate-to",
 		},
-		/*Status: toolchainv1alpha1.UserSignupStatus{
-			CompliantUsername: "foo",
-			Conditions: []toolchainv1alpha1.Condition{
-				{
-					Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
-					Status: v1.ConditionTrue,
-				},
-			},
-		},*/
 	}
 
 	states.SetApproved(userSignup, true)
