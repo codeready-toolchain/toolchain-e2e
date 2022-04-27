@@ -560,8 +560,24 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	require.NoError(s.T(), err)
 
 	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
-	_, err = s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to")
+	migrated, err := s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to")
 	require.NoError(s.T(), err)
 
 	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted(userSignup.Name))
+
+	// Now try to reactivate the migrated UserSignup again
+	s.Awaitilities.Host().UpdateUserSignup(migrated.Name, func(us *toolchainv1alpha1.UserSignup) {
+		states.SetApproved(migrated, true)
+		states.SetDeactivated(migrated, false)
+	})
+
+	// Confirm that the migrated UserSignup is provisioned ok
+	migrated, err = s.Awaitilities.Host().WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(migrated.Name,
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+	require.NoError(s.T(), err)
+
+	// Confirm that the MasterUserRecord is created
+	_, err = s.Awaitilities.Host().WaitForMasterUserRecord(migrated.Status.CompliantUsername)
+	require.NoError(s.T(), err)
 }
