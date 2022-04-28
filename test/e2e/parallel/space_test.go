@@ -137,14 +137,6 @@ func TestSpaceRoles(t *testing.T) {
 		UntilNamespaceIsActive(),
 		UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
 	require.NoError(t, err)
-	// check that the `appstudio-user-actions` role and `appstudio-${USERNAME}-user-actions` rolebinding for `spaceowner` were created
-	_, err = memberAwait.WaitForRole(ns, "appstudio-user-actions")
-	assert.NoError(t, err)
-	_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", ownerMUR.Name))
-	assert.NoError(t, err)
-	// also, check that the `appstudio-${USERNAME}-view` rolebinding (associated with the buit-in `view` clusterrole) for `spaceowner` was created
-	_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", ownerMUR.Name))
-	assert.NoError(t, err)
 
 	t.Run("and with guest admin binding", func(t *testing.T) {
 		// given a `spaceguest` user (with her own space, but we'll ignore it in this test)
@@ -176,46 +168,18 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
 		// fetch the namespace check the `last-applied-space-roles` annotation
-		ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
+		_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 			UntilNamespaceIsActive(),
 			UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
 		require.NoError(t, err)
-		// check that the `appstudio-user-actions` role and `appstudio-${USERNAME}-user-actions` rolebinding for `spaceowner` still exist
-		_, err = memberAwait.WaitForRole(ns, "appstudio-user-actions")
-		assert.NoError(t, err)
-		_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", ownerMUR.Name))
-		assert.NoError(t, err)
-		// also, check that the `appstudio-${USERNAME}-view` rolebinding (associated with the buit-in `view` clusterrole) for `spaceowner` still exist
-		_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", ownerMUR.Name))
-		assert.NoError(t, err)
-		// also, check that the `appstudio-${USERNAME}-user-actions` rolebinding for `spaceguest` was created
-		_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", guestMUR.Name))
-		assert.NoError(t, err)
-		// also, check that the `appstudio-${USERNAME}-view` rolebinding (associated with the buit-in `view` clusterrole) for `spaceguest` was created
-		_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", guestMUR.Name))
-		assert.NoError(t, err)
 
 		t.Run("remove admin binding", func(t *testing.T) {
 			// when
 			err := hostAwait.Client.Delete(context.TODO(), guestBinding)
 
 			// then
-			assert.NoError(t, err)
-			// check that the `appstudio-user-actions` role and `appstudio-${USERNAME}-user-actions` rolebinding for `spaceowner` still exist
-			_, err = memberAwait.WaitForRole(ns, "appstudio-user-actions")
-			assert.NoError(t, err)
-			_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", ownerMUR.Name))
-			assert.NoError(t, err)
-			// also, check that the `appstudio-${USERNAME}-view` rolebinding (associated with the buit-in `view` clusterrole) for `spaceowner` still exist
-			_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", ownerMUR.Name))
-			assert.NoError(t, err)
-			// also, check that the `appstudio-${USERNAME}-user-actions` rolebinding for `spaceguest` was deleted
-			err = memberAwait.WaitUntilRoleBindingDeleted(ns, fmt.Sprintf("appstudio-%s-user-actions", guestMUR.Name))
-			assert.NoError(t, err)
-			// also, check that the `appstudio-${USERNAME}-view` rolebinding (associated with the buit-in `view` clusterrole) for `spaceguest` was deleted
-			err = memberAwait.WaitUntilRoleBindingDeleted(ns, fmt.Sprintf("appstudio-%s-view", guestMUR.Name))
-			assert.NoError(t, err)
-
+			require.NoError(t, err)
+			VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
 		})
 	})
 
