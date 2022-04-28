@@ -566,10 +566,11 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted(userSignup.Name))
 
 	// Now try to reactivate the migrated UserSignup again
-	s.Awaitilities.Host().UpdateUserSignup(migrated.Name, func(us *toolchainv1alpha1.UserSignup) {
+	_, err = s.Awaitilities.Host().UpdateUserSignup(migrated.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetApproved(migrated, true)
 		states.SetDeactivated(migrated, false)
 	})
+	require.NoError(s.T(), err)
 
 	// Confirm that the migrated UserSignup is provisioned ok
 	migrated, err = s.Awaitilities.Host().WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(migrated.Name,
