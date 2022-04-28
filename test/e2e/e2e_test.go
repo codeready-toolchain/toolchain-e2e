@@ -388,27 +388,54 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-stage"}, &stageNs)
 		require.NoError(t, err)
 
-		t.Run("role accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+		// roles and role bindings defined in the namespace templates
+		t.Run("namespace role accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+			DeletedRoleAndAwaitRecreation(t, memberAwait, devNs, "exec-pods")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("namespace rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "crtadmin-pods ")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("namespace role accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
+			DeletedRoleAndAwaitRecreation(t, memberAwait, stageNs, "exec-pods")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("namespace rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
+
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "crtadmin-pods ")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		// roles and role bindings defined in the spacerole templates
+		t.Run("space role accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
 			DeletedRoleAndAwaitRecreation(t, memberAwait, devNs, "rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})
 
-		t.Run("role accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
+		t.Run("space rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "wonderwoman-rbac-edit")
+			// then the user account should be recreated
+			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
+		})
+
+		t.Run("space role accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
 			DeletedRoleAndAwaitRecreation(t, memberAwait, stageNs, "rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})
 
-		t.Run("rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
-			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "user-rbac-edit")
-			// then the user account should be recreated
-			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
-		})
+		t.Run("space rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
 
-		t.Run("rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
-
-			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "user-rbac-edit")
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "wonderwoman-rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})

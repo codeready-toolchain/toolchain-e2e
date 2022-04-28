@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -25,9 +26,10 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("create space", func(t *testing.T) {
 		// when
-		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait), WithCreatorName(t.Name()))
+		creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
+		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait), WithCreatorName(creatorName))
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(t.Name()), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
@@ -249,172 +251,6 @@ func TestSpaceRoles(t *testing.T) {
 	})
 }
 
-func TestUpdateSpaceRoleTemplates(t *testing.T) {
-
-	// make sure everything is ready before running the actual tests
-	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member1()
-
-	// given
-	appstudioTier, err := hostAwait.WaitForNSTemplateTier("appstudio", UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
-	require.NoError(t, err)
-	adminRole, found := appstudioTier.Spec.SpaceRoles["admin"]
-	require.True(t, found)
-	_, ownerAdmin := NewSignupRequest(t, awaitilities).
-		Username("guestadmin").
-		Email("owneradmin@redhat.com").
-		ManuallyApprove().
-		TargetCluster(awaitilities.Member1()).
-		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().
-		Resources()
-	s, _ := CreateSpaceWithBinding(t, awaitilities, ownerAdmin, WithTierName("appstudio"))
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name,
-		UntilNSTemplateSetHasConditions(Provisioned()),
-		UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
-			{
-				TemplateRef: appstudioTier.Spec.SpaceRoles["admin"].TemplateRef,
-				Usernames:   []string{"user1"},
-			},
-		}),
-	)
-
-	t.Run("with other content", func(t *testing.T) {
-
-		// when
-		nsTmplSet, err := memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
-			nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-				{
-					TemplateRef: adminRole.TemplateRef,
-					Usernames:   []string{"user1", "user2"},
-				},
-			}
-		})
-
-		// then
-		require.NoError(t, err)
-		_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
-		require.NoError(t, err)
-		// fetch the namespace check the `last-applied-space-roles` annotation
-		ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
-			UntilNamespaceIsActive(),
-			UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
-		require.NoError(t, err)
-		// check that the `admin` role and role bindings were created
-		_, err = memberAwait.WaitForRole(ns, "space-admin")
-		assert.NoError(t, err)
-		_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
-		assert.NoError(t, err)
-		_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
-		assert.NoError(t, err)
-
-		t.Run("update templateref", func(t *testing.T) {
-			// given
-			adminTierTmpl2 := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-2-123456", "space-role-admin-2", "appstudio", "123456", []byte(spaceAdminTmpl2))
-			err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl2)
-			require.NoError(t, err)
-			// when
-			nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
-				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-					{
-						TemplateRef: adminTierTmpl2.Name,
-						Usernames:   []string{"user1", "user2"},
-					},
-				}
-			})
-			// then
-			require.NoError(t, err)
-			_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
-			require.NoError(t, err)
-			// fetch the namespace check the `last-applied-space-roles` annotation
-			ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
-				UntilNamespaceIsActive(),
-				UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
-			require.NoError(t, err)
-			// check that the new `admin 2` role and role bindings were created
-			_, err = memberAwait.WaitForRole(ns, "space-admin-2")
-			assert.NoError(t, err)
-			_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin-2")
-			assert.NoError(t, err)
-			_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin-2")
-			assert.NoError(t, err)
-			// also, check that the old `admin` role and role bindings were deleted
-			err = memberAwait.WaitUntilRoleDeleted(ns, "space-admin")
-			assert.NoError(t, err)
-			err = memberAwait.WaitUntilRoleBindingDeleted(ns, "user1-space-admin")
-			assert.NoError(t, err)
-			err = memberAwait.WaitUntilRoleBindingDeleted(ns, "user2-space-admin")
-			assert.NoError(t, err)
-
-		})
-	})
-
-	t.Run("with same content", func(t *testing.T) {
-
-		// when
-		nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
-			nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-				{
-					TemplateRef: adminRole.TemplateRef,
-					Usernames:   []string{"user1", "user2"},
-				},
-			}
-		})
-
-		// then
-		require.NoError(t, err)
-		_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
-		require.NoError(t, err)
-		// fetch the namespace check the `last-applied-space-roles` annotation
-		ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
-			UntilNamespaceIsActive(),
-			UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
-		require.NoError(t, err)
-		// check that the `admin` role and role bindings were created
-		_, err = memberAwait.WaitForRole(ns, "space-admin")
-		assert.NoError(t, err)
-		_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
-		assert.NoError(t, err)
-		_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
-		assert.NoError(t, err)
-
-		t.Run("update templateref", func(t *testing.T) {
-			// given `adminTierTmpl3` has the same content (role & rolebindings) as `adminTierTmpl`, but the templateref is different
-			adminTierTmpl3 := NewTierTemplate(t, hostAwait.Namespace, "space-role-admin-3-123456", "space-role-admin-3", "appstudio", "123456", []byte(spaceAdminTmpl))
-			err := hostAwait.CreateWithCleanup(context.TODO(), adminTierTmpl3)
-			require.NoError(t, err)
-			// when
-			nsTmplSet, err = memberAwait.UpdateNSTemplateSet(nsTmplSet.Name, func(nsTmplSet *toolchainv1alpha1.NSTemplateSet) {
-				nsTmplSet.Spec.SpaceRoles = []toolchainv1alpha1.NSTemplateSetSpaceRole{
-					{
-						TemplateRef: adminTierTmpl3.Name,
-						Usernames:   []string{"user1", "user2"},
-					},
-				}
-			})
-			// then
-			require.NoError(t, err)
-			_, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasConditions(Provisioned()))
-			require.NoError(t, err)
-			// fetch the namespace check the `last-applied-space-roles` annotation
-			ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
-				UntilNamespaceIsActive(),
-				UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
-			require.NoError(t, err)
-			// check that the existing `admin` role and role bindings still exist
-			_, err = memberAwait.WaitForRole(ns, "space-admin")
-			assert.NoError(t, err)
-			_, err = memberAwait.WaitForRoleBinding(ns, "user1-space-admin")
-			assert.NoError(t, err)
-			_, err = memberAwait.WaitForRoleBinding(ns, "user2-space-admin")
-			assert.NoError(t, err)
-
-		})
-	})
-}
-
 func TestPromoteSpace(t *testing.T) {
 	t.Parallel()
 	// given
@@ -424,9 +260,10 @@ func TestPromoteSpace(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// when
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait), WithCreatorName(t.Name()))
+	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait), WithCreatorName(creatorName))
 	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(t.Name()), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
@@ -439,7 +276,7 @@ func TestPromoteSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel("TestPromoteSpace"))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName))
 	})
 }
 
@@ -459,10 +296,11 @@ func TestRetargetSpace(t *testing.T) {
 	member2Await := awaitilities.Member2()
 
 	// when
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await), WithCreatorName(t.Name()))
+	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await), WithCreatorName(creatorName))
 	// then
 	// wait until Space has been provisioned on member-1
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(t.Name()), UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
 
 	// when
 	space, err := hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {
