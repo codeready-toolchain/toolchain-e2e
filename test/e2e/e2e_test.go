@@ -396,7 +396,7 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("namespace rolebinding accidentally deleted by user in dev namespace is recreated", func(t *testing.T) {
-			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "crtadmin-pods ")
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, devNs, "crtadmin-pods")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})
@@ -409,7 +409,7 @@ func TestE2EFlow(t *testing.T) {
 
 		t.Run("namespace rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
 
-			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "crtadmin-pods ")
+			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "crtadmin-pods")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base")
 		})
