@@ -567,6 +567,7 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 
 	// Now try to reactivate the migrated UserSignup again
 	_, err = s.Awaitilities.Host().UpdateUserSignup(migrated.Name, func(us *toolchainv1alpha1.UserSignup) {
+		us.Labels[toolchainv1alpha1.StateLabelKey] = "approved"
 		states.SetApproved(us, true)
 		states.SetDeactivated(us, false)
 	})
