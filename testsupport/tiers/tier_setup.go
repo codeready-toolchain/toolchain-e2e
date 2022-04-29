@@ -10,19 +10,12 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint:revive
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/require"
 )
 
 type TierModifier func(tier *toolchainv1alpha1.NSTemplateTier) error
-
-var toBeComplete = toolchainv1alpha1.Condition{
-	Type:   toolchainv1alpha1.ChangeTierRequestComplete,
-	Status: corev1.ConditionTrue,
-	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
-}
 
 type CustomNSTemplateTier struct {
 	// the "base" NSTemplateTier
