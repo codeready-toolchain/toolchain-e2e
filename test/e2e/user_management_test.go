@@ -31,7 +31,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var httpClient = HTTPClient
@@ -327,7 +326,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(s.T(), err)
 
 		// Verify resources still exist
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "deactivate30", "base")
 	})
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
@@ -381,7 +380,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			require.NoError(s.T(), err)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 
 			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
@@ -468,8 +467,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 
 		// User on member cluster 1
 		userSignupMember1, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("usertodeactivate").
-			Email("usertodeactivate@redhat.com").
+			Username("usertodeactivatex").
+			Email("usertodeactivatex@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
@@ -478,8 +477,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 
 		// User on member cluster 2
 		userSignupMember2, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("usertodeactivate2").
-			Email("usertodeactivate2@example.com").
+			Username("usertodeactivate2x").
+			Email("usertodeactivate2x@example.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait2).
@@ -499,8 +498,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 
 		// User on member cluster 1
 		userNoEmail, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("usernoemail").
-			Email("usernoemail@redhat.com").
+			Username("usernoemailx").
+			Email("usernoemailx@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
@@ -523,8 +522,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
 
 		userSignupMember1, murMember1 := NewSignupRequest(t, s.Awaitilities).
-			Username("usernodeactivate").
-			Email("usernodeactivate@redhat.com").
+			Username("usernodeactivatex").
+			Email("usernodeactivatex@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
@@ -536,7 +535,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		tiers.MoveSpaceToTier(t, hostAwait, userSignupMember1.Status.CompliantUsername, baseDeactivationDisabledTier.Name)
+		tiers.MoveMURToTier(t, hostAwait, userSignupMember1.Status.CompliantUsername, baseDeactivationDisabledTier.Name)
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()),
 			wait.UntilMasterUserRecordHasTierName(baseDeactivationDisabledTier.Name)) // ignore other conditions, such as notification sent, etc.
@@ -565,8 +564,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
 		userSignupMember1, murMember1 := NewSignupRequest(t, s.Awaitilities).
-			Username("usertoautodeactivate").
-			Email("usertoautodeactivate@redhat.com").
+			Username("usertoautodeactivatex").
+			Email("usertoautodeactivatex@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
@@ -574,8 +573,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 			Execute().Resources()
 
 		deactivationExcludedUserSignupMember1, excludedMurMember1 := NewSignupRequest(t, s.Awaitilities).
-			Username("userdeactivationexcluded").
-			Email("userdeactivationexcluded@excluded.com").
+			Username("userdeactivationexcludedx").
+			Email("userdeactivationexcludedx@excluded.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
@@ -636,8 +635,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 		require.Equal(s.T(), 3, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 		userSignupMember1, murMember1 := NewSignupRequest(t, s.Awaitilities).
-			Username("usertostartdeactivating").
-			Email("usertostartdeactivating@redhat.com").
+			Username("usertostartdeactivatingx").
+			Email("usertostartdeactivatingx@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
@@ -666,7 +665,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 		require.NoError(s.T(), err)
 
 		// Verify resources have been provisioned
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "base", "base")
 	})
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
@@ -680,8 +679,8 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 
 		// Create a new UserSignup
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("fulldeactivationlifecycle").
-			Email("fulldeactivationlifecycle@redhat.com").
+			Username("fulldeactivationlifecyclex").
+			Email("fulldeactivationlifecyclex@redhat.com").
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute().Resources()
@@ -717,7 +716,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 			require.NoError(s.T(), err)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base", "base")
 
 			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
@@ -770,7 +769,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 				})
 				if err != nil {
 					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
-					require.EqualError(t, err, `masteruserrecords.toolchain.dev.openshift.com "fulldeactivationlifecycle" not found`)
+					require.EqualError(t, err, `masteruserrecords.toolchain.dev.openshift.com "fulldeactivationlifecyclex" not found`)
 				}
 
 				// The user should now be set to deactivated
@@ -962,7 +961,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 
 	// Disable MUR
 	mur, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -1002,7 +1001,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 	})
 }
 
