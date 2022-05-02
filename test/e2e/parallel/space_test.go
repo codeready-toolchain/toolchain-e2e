@@ -26,7 +26,7 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("create space", func(t *testing.T) {
 		// when
-		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
+		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
@@ -114,21 +114,19 @@ func TestSpaceRoles(t *testing.T) {
 
 	// when a space owned by the user above is created (and user is an admin of this space)
 	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
-		WithCreatorName("spaceowner"),
-		WithTargetCluster(awaitilities.Member1()),
+		WithTargetCluster(awaitilities.Member1().ClusterName),
 		WithTierName("appstudio"),
 	)
 
 	// then
-	VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
+	VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
+		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
+		UntilSpaceHasTier("appstudio"))
 	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name,
 		UntilNSTemplateSetHasConditions(Provisioned()),
-		UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
-			{
-				TemplateRef: appstudioTier.Spec.SpaceRoles["admin"].TemplateRef,
-				Usernames:   []string{"spaceowner"},
-			},
-		}),
+		UntilNSTemplateSetHasSpaceRoles(
+			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"),
+		),
 	)
 	require.NoError(t, err)
 	// fetch the namespace check the `last-applied-space-roles` annotation
@@ -157,15 +155,11 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
-				{
-					TemplateRef: appstudioTier.Spec.SpaceRoles["admin"].TemplateRef,
-					Usernames:   []string{"spaceguest", "spaceowner"}, // sorted
-				},
-			}),
+			UntilNSTemplateSetHasSpaceRoles(
+				SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceguest", "spaceowner"), // sorted usernames
+			),
 		)
 		require.NoError(t, err)
-		VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
 		// fetch the namespace check the `last-applied-space-roles` annotation
 		_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 			UntilNamespaceIsActive(),
@@ -178,7 +172,13 @@ func TestSpaceRoles(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			VerifySpaceRelatedResources(t, awaitilities, s.Name, "appstudio", "spaceowner")
+			nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
+				UntilNSTemplateSetHasConditions(Provisioned()),
+				UntilNSTemplateSetHasSpaceRoles(
+					SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"), // "spaceguest" was removed
+				),
+			)
+			require.NoError(t, err)
 		})
 	})
 
@@ -193,12 +193,9 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasSpaceRoles([]toolchainv1alpha1.NSTemplateSetSpaceRole{
-				{
-					TemplateRef: appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef,
-					Usernames:   []string{ownerMUR.Name},
-				},
-			}),
+			UntilNSTemplateSetHasSpaceRoles(
+				SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, ownerMUR.Name),
+			),
 		)
 		require.NoError(t, err)
 		// check that the `appstudio-user-actions` role and `appstudio-${USERNAME}-user-actions` rolebinding for `spaceowner` were deleted
@@ -224,7 +221,7 @@ func TestPromoteSpace(t *testing.T) {
 
 	// when
 	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait), WithCreatorName(creatorName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait.ClusterName), WithCreatorName(creatorName))
 	// then
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
@@ -260,7 +257,7 @@ func TestRetargetSpace(t *testing.T) {
 
 	// when
 	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await), WithCreatorName(creatorName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await.ClusterName), WithCreatorName(creatorName))
 	// then
 	// wait until Space has been provisioned on member-1
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))

@@ -44,9 +44,9 @@ func NewSpace(awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1a
 
 type SpaceOption func(*toolchainv1alpha1.Space)
 
-func WithTargetCluster(memberCluster *wait.MemberAwaitility) SpaceOption {
+func WithTargetCluster(clusterName string) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = memberCluster.ClusterName
+		s.Spec.TargetCluster = clusterName
 	}
 }
 
