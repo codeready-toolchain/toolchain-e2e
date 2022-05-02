@@ -27,7 +27,7 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) {
 	signup, mur := VerifyUserRelatedResources(t, awaitilities, signup, tierName)
-	space := VerifySpaceRelatedResources(t, awaitilities, signup.Status.CompliantUsername, tierName, signup.Name)
+	space := VerifySpaceRelatedResources(t, awaitilities, signup, tierName)
 	VerifySpaceBinding(t, awaitilities.Host(), mur.Name, space.Name, "admin")
 
 }
@@ -139,7 +139,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	return userSignup, mur
 }
 
-func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, tierName string) {
+func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, tierName string) *toolchainv1alpha1.Space {
 
 	hostAwait := awaitilities.Host()
 
@@ -176,6 +176,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	tierChecks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
 	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
+	return space
 }
 
 func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {
