@@ -34,20 +34,22 @@ ifeq ($(IS_OSD),true)
 LETS_ENCRYPT_PARAM := --lets-encrypt
 endif
 
+E2E_PARALLELISM=1
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run
+test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: test-e2e-without-migration
 ## Run the e2e tests without migration tests
-test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run
+test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: verify-migration-and-deploy-e2e
-verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account setup-toolchainclusters e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
 .PHONY: e2e-migration-setup
 e2e-migration-setup:
@@ -63,14 +65,14 @@ e2e-migration-verify:
 
 .PHONY: e2e-deploy-latest
 e2e-deploy-latest:
-	$(MAKE) get-publish-and-install-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true
+	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true LETS_ENCRYPT_PARAM=${LETS_ENCRYPT_PARAM}
 
 .PHONY: prepare-e2e
 prepare-e2e: build clean-e2e-files create-has-application-crd
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: prepare-projects get-publish-and-install-operators e2e-service-account setup-toolchainclusters
+deploy-e2e: prepare-projects get-publish-install-and-register-operators e2e-service-account
 	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
@@ -104,6 +106,12 @@ test-e2e-host-local:
 test-e2e-registration-local:
 	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
 
+.PHONY: e2e-run-parallel
+e2e-run-parallel:
+	@echo "Running e2e tests in parallel..."
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
+	@echo "The parallel e2e tests successfully finished"
+
 .PHONY: e2e-run
 e2e-run:
 	@echo "Running e2e tests..."
@@ -113,7 +121,7 @@ e2e-run:
 .PHONY: execute-tests
 execute-tests:
 	@echo "Starting test $(shell date)"
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -p 1 -v -timeout=90m -failfast || \
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -224,6 +232,13 @@ publish-current-bundles-for-e2e: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
 get-and-publish-operators: INSTALL_OPERATOR=false
 get-and-publish-operators: clean-e2e-files get-and-publish-host-operator get-and-publish-member-operator
+
+.PHONY: get-publish-install-and-register-operators
+# IMPORTANT: The host operator needs to be installed first.
+#			 The reason is that when the host operator is installed, then the logic creates ToolchainConfig CR which
+#			 defines that the webhook should be deployed from the first member instance (and not from the second one).
+#			 This is important to set before the member operators are installed, otherwise, it can lead to flaky e2e tests.
+get-publish-install-and-register-operators: get-and-publish-host-operator create-host-resources setup-toolchainclusters get-and-publish-member-operator
 
 .PHONY: get-publish-and-install-operators
 # IMPORTANT: The host operator needs to be installed first.
