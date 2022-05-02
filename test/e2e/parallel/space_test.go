@@ -116,15 +116,9 @@ func TestSpaceRoles(t *testing.T) {
 	)
 
 	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
+	_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
 		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 		UntilSpaceHasTier("appstudio"))
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(s.Name,
-		UntilNSTemplateSetHasConditions(Provisioned()),
-		UntilNSTemplateSetHasSpaceRoles(
-			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"),
-		),
-	)
 	require.NoError(t, err)
 	// fetch the namespace check the `last-applied-space-roles` annotation
 	_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
@@ -256,7 +250,7 @@ func TestRetargetSpace(t *testing.T) {
 
 	// then
 	// wait until Space has been provisioned on member-1
-	space = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+	space, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	err = member1Await.WaitUntilNSTemplateSetDeleted(space.Name) // expect NSTemplateSet to be delete on member-1 cluster
 	require.NoError(t, err)
 }

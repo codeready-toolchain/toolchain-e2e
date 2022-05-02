@@ -113,7 +113,7 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
 // then it gets the target member cluster specified for the space and verifies all resources provisioned for the Space
-func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, spaceName string, additionalCriteria ...wait.SpaceWaitCriterion) *toolchainv1alpha1.Space {
+func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, spaceName string, additionalCriteria ...wait.SpaceWaitCriterion) (*toolchainv1alpha1.Space, *toolchainv1alpha1.NSTemplateSet) {
 	space, err := awaitilities.Host().WaitForSpace(spaceName,
 		append(additionalCriteria,
 			wait.UntilSpaceHasAnyTargetClusterSet(),
@@ -129,12 +129,12 @@ func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitili
 	return verifyResourcesProvisionedForSpace(t, awaitilities.Host(), targetCluster, spaceName, tier, checks)
 }
 
-func VerifyResourcesProvisionedForSpaceWithCustomTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *tiers.CustomNSTemplateTier) *toolchainv1alpha1.Space {
+func VerifyResourcesProvisionedForSpaceWithCustomTier(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *tiers.CustomNSTemplateTier) (*toolchainv1alpha1.Space, *toolchainv1alpha1.NSTemplateSet) {
 	checks := tiers.NewChecksForCustomTier(t, tier)
 	return verifyResourcesProvisionedForSpace(t, hostAwait, targetCluster, spaceName, tier.NSTemplateTier, checks)
 }
 
-func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *toolchainv1alpha1.NSTemplateTier, checks tiers.TierChecks) *toolchainv1alpha1.Space {
+func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaceName string, tier *toolchainv1alpha1.NSTemplateTier, checks tiers.TierChecks) (*toolchainv1alpha1.Space, *toolchainv1alpha1.NSTemplateSet) {
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
@@ -160,11 +160,11 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	}
 
 	// get NSTemplateSet
-	nsTemplateSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
+	nsTmplSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
-	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTemplateSet, checks)
+	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
 
 	if tier.Name == "appstudio" {
 		// checks that namespace exists and has the expected label(s)
@@ -174,7 +174,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
 	}
 
-	return space
+	return space, nsTmplSet
 }
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
