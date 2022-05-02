@@ -26,10 +26,9 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("create space", func(t *testing.T) {
 		// when
-		creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
-		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait), WithCreatorName(creatorName))
+		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait))
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
