@@ -108,6 +108,7 @@ func TestSpaceRoles(t *testing.T) {
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		NoSpace().
 		Execute().
 		Resources()
 
