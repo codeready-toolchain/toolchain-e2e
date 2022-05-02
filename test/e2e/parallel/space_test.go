@@ -148,8 +148,7 @@ func TestSpaceRoles(t *testing.T) {
 			Resources()
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := NewSpaceBinding(guestMUR, s, "admin")
-		err := hostAwait.CreateWithCleanup(context.TODO(), guestBinding)
+		guestBinding := CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
 
 		// then
 		require.NoError(t, err)
