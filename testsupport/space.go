@@ -34,9 +34,6 @@ func NewSpace(awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1a
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:    awaitilities.Host().Namespace,
 			GenerateName: namePrefix + "-",
-			Labels: map[string]string{
-				toolchainv1alpha1.SpaceCreatorLabelKey: awaitilities.Host().T.Name(), // default creator is the e2e test itself ¯\_(ツ)_/¯
-			},
 		},
 	}
 	for _, apply := range opts {
