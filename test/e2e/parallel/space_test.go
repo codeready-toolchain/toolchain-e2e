@@ -90,7 +90,7 @@ func TestCreateSpace(t *testing.T) {
 
 func TestSpaceRoles(t *testing.T) {
 
-	// t.Parallel()
+	t.Parallel()
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
