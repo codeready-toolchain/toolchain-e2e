@@ -2,7 +2,6 @@ package parallel
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -129,7 +127,7 @@ func TestSpaceRoles(t *testing.T) {
 	)
 	require.NoError(t, err)
 	// fetch the namespace check the `last-applied-space-roles` annotation
-	ns, err := memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
+	_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 		UntilNamespaceIsActive(),
 		UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
 	require.NoError(t, err)
@@ -196,16 +194,7 @@ func TestSpaceRoles(t *testing.T) {
 			),
 		)
 		require.NoError(t, err)
-		// check that the `appstudio-user-actions` role and `appstudio-${USERNAME}-user-actions` rolebinding for `spaceowner` were deleted
-		// (role should be removed since no user is associated with it)
-		err = memberAwait.WaitUntilRoleDeleted(ns, "appstudio-user-actions")
-		assert.NoError(t, err)
-		err = memberAwait.WaitUntilRoleBindingDeleted(ns, fmt.Sprintf("appstudio-%s-user-actions", ownerMUR.Name))
-		assert.NoError(t, err)
-		// also, check that the `appstudio-${USERNAME}-view` rolebinding (associated with the buit-in `view` clusterrole) for `spaceowner` still exist
-		_, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", ownerMUR.Name))
-		assert.NoError(t, err)
-
+		VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name)
 	})
 }
 
@@ -219,9 +208,9 @@ func TestPromoteSpace(t *testing.T) {
 
 	// when
 	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait.ClusterName), WithCreatorName(creatorName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait.ClusterName))
 	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// given
@@ -254,11 +243,10 @@ func TestRetargetSpace(t *testing.T) {
 	member2Await := awaitilities.Member2()
 
 	// when
-	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await.ClusterName), WithCreatorName(creatorName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await.ClusterName))
 	// then
 	// wait until Space has been provisioned on member-1
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName), UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
 
 	// when
 	space, err := hostAwait.UpdateSpace(space.Name, func(s *toolchainv1alpha1.Space) {

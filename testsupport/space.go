@@ -56,12 +56,6 @@ func WithTierName(tierName string) SpaceOption {
 	}
 }
 
-func WithCreatorName(creatorName string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Labels[toolchainv1alpha1.SpaceCreatorLabelKey] = creatorName
-	}
-}
-
 func WithName(name string) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
 		s.Name = name
