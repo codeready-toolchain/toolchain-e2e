@@ -117,38 +117,6 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 	return nil
 }
 
-// func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, tierName string) {
-// TODO: merge with `VerifyResourcesProvisionedForSpace()` func below?
-func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, spaceName, tierName, creatorName string) *toolchainv1alpha1.Space {
-	hostAwait := awaitilities.Host()
-
-	tier, err := hostAwait.WaitForNSTemplateTier(tierName)
-	require.NoError(t, err)
-	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
-	require.NoError(t, err)
-
-	space, err := hostAwait.WaitForSpace(spaceName,
-		wait.UntilSpaceHasTier(tierName),
-		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, creatorName),
-		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tierName), hash),
-		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
-		wait.UntilSpaceHasConditions(Provisioned()),
-		// wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster),
-	)
-	require.NoError(t, err)
-
-	memberAwait, err := awaitilities.Member(space.Spec.TargetCluster)
-	require.NoError(t, err)
-
-	// Verify provisioned NSTemplateSet
-	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tierName))
-	require.NoError(t, err)
-	tierChecks, err := tiers.NewChecksForTier(tier)
-	require.NoError(t, err)
-	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
-	return space
-}
-
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
 // then it gets the target member cluster specified for the space and verifies all resources provisioned for the Space
 func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, spaceName string, additionalCriteria ...wait.SpaceWaitCriterion) *toolchainv1alpha1.Space {
