@@ -106,7 +106,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 
 		// User on member cluster 1
-		userSignupMember1, mur1 := NewSignupRequest(t, s.Awaitilities).
+		userSignupMember1, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("usertodeactivate").
 			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
@@ -115,11 +115,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
-		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, mur1)
-
 		// User on member cluster 2
-		userSignupMember2, mur2 := NewSignupRequest(t, s.Awaitilities).
+		userSignupMember2, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("usertodeactivate2").
 			Email("usertodeactivate2@example.com").
 			ManuallyApprove().
@@ -127,9 +124,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			TargetCluster(memberAwait2).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
-
-		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, mur2)
 
 		DeactivateAndCheckUser(s.T(), s.Awaitilities, userSignupMember1)
 		DeactivateAndCheckUser(s.T(), s.Awaitilities, userSignupMember2)
@@ -143,7 +137,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	s.T().Run("verify notification fails on user deactivation with no usersignup email", func(t *testing.T) {
 
 		// User on member cluster 1
-		userNoEmail, mur := NewSignupRequest(t, s.Awaitilities).
+		userNoEmail, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("usernoemail").
 			Email("usernoemail@redhat.com").
 			ManuallyApprove().
@@ -151,9 +145,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
-
-		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, mur)
 
 		// Delete the user's email and set them to deactivated
 		userSignup, err := hostAwait.UpdateUserSignup(userNoEmail.Name, func(us *toolchainv1alpha1.UserSignup) {
