@@ -164,9 +164,9 @@ func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName s
 	mur, err := hostAwait.WaitForMasterUserRecord(username)
 	require.NoError(t, err)
 
-	mur.Spec.TierName = tierName
-
-	err = hostAwait.Client.Update(context.TODO(), mur)
+	_, err = hostAwait.UpdateMasterUserRecord(false, mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+		mur.Spec.TierName = tierName
+	})
 	require.NoError(t, err)
 }
 
