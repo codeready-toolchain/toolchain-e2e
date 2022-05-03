@@ -151,12 +151,13 @@ func duplicateTierTemplate(hostAwait *HostAwaitility, namespace, tierName, origT
 
 func MoveSpaceToTier(t *testing.T, hostAwait *HostAwaitility, spacename, tierName string) {
 	t.Logf("moving space '%s' to space tier '%s'", spacename, tierName)
-	space, err := hostAwait.WaitForSpace(spacename)
+	_, err := hostAwait.WaitForSpace(spacename)
 	require.NoError(t, err)
 
-	_, err = hostAwait.UpdateSpace(space, func(s *toolchainv1alpha1.Space) {
+	_, err = hostAwait.UpdateSpace(spacename, func(s *toolchainv1alpha1.Space) {
 		s.Spec.TierName = tierName
 	})
+	require.NoError(t, err)
 }
 
 func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
