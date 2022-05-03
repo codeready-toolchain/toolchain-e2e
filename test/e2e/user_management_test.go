@@ -170,9 +170,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
-		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, murMember1)
-
 		// Get the tier that has deactivation disabled
 		deactivationDisabledTier, err := hostAwait.WaitForUserTier("nodeactivation")
 		require.NoError(t, err)
