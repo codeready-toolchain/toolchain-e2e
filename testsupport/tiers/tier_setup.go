@@ -154,10 +154,9 @@ func MoveSpaceToTier(t *testing.T, hostAwait *HostAwaitility, spacename, tierNam
 	space, err := hostAwait.WaitForSpace(spacename)
 	require.NoError(t, err)
 
-	space.Spec.TierName = tierName
-
-	err = hostAwait.Client.Update(context.TODO(), space)
-	require.NoError(t, err)
+	_, err = hostAwait.UpdateSpace(space, func(s *toolchainv1alpha1.Space) {
+		s.Spec.TierName = tierName
+	})
 }
 
 func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
