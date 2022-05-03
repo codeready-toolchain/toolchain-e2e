@@ -2,7 +2,6 @@ package parallel
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -201,7 +200,6 @@ func TestPromoteSpace(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// when
-	creatorName := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "_"))
 	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait.ClusterName))
 	// then
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
@@ -217,7 +215,7 @@ func TestPromoteSpace(t *testing.T) {
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
 		require.NoError(t, err)
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasCreatorLabel(creatorName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	})
 }
 

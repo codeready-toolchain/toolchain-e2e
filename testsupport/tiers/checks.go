@@ -179,7 +179,7 @@ func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles []toolchainv1alpha1.NSTem
 	rolebindings := 0
 	for _, spaceRole := range spaceRoles {
 		switch {
-		case strings.HasPrefix(spaceRole.TemplateRef, "base-admin"):
+		case strings.HasPrefix(spaceRole.TemplateRef, a.tierName+"-admin"): // also support checks inherited from `base`
 			checks = append(checks, rbacEditRole())
 			roles++
 			for _, userName := range spaceRole.Usernames {
@@ -190,7 +190,7 @@ func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles []toolchainv1alpha1.NSTem
 				rolebindings += 2
 			}
 		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", spaceRole.TemplateRef)
+			return nil, fmt.Errorf("unexpected template name while checking space roles with '%s' tier: '%s'", a.tierName, spaceRole.TemplateRef)
 		}
 	}
 	// also count the roles, rolebindings
@@ -256,7 +256,7 @@ func (a *base1nsTierChecks) GetSpaceRoleChecks(spaceRoles []toolchainv1alpha1.NS
 				rolebindings += 2
 			}
 		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", spaceRole.TemplateRef)
+			return nil, fmt.Errorf("unexpected template name while checking space roles with '%s' tier: '%s'", a.tierName, spaceRole.TemplateRef)
 		}
 	}
 	// also count the roles, rolebindings
@@ -471,7 +471,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles []toolchainv1alpha1.
 				rolebindings++
 			}
 		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", spaceRole.TemplateRef)
+			return nil, fmt.Errorf("unexpected template name while checking space roles with '%s' tier: '%s'", a.tierName, spaceRole.TemplateRef)
 		}
 	}
 	// also count the roles, rolebindings and service accounts
