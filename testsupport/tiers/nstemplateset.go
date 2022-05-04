@@ -11,7 +11,10 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/davecgh/go-spew/spew"
+	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
 
 func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) {
@@ -36,7 +39,22 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)
 		}
-		spaceRoleChecks, err := checks.GetSpaceRoleChecks(nsTmplSet.Spec.SpaceRoles)
+		spaceRoles := map[*templatev1.Template][]string{}
+		decoder := serializer.NewCodecFactory(hostAwait.Client.Scheme()).UniversalDeserializer()
+		for _, r := range nsTmplSet.Spec.SpaceRoles {
+			tmpl, err := hostAwait.WaitForTierTemplate(r.TemplateRef)
+			require.NoError(t, err)
+			t.Logf("space role template: %s / %s", tmpl.GetName(), tmpl.Spec.Template.GetName())
+			for i, rawObj := range tmpl.Spec.Template.Objects {
+				var obj unstructured.Unstructured
+				_, _, err := decoder.Decode(rawObj.Raw, nil, &obj)
+				require.NoError(t, err)
+				tmpl.Spec.Template.Objects[i].Object = &obj
+			}
+
+			spaceRoles[&tmpl.Spec.Template] = r.Usernames
+		}
+		spaceRoleChecks, err := checks.GetSpaceRoleChecks(spaceRoles)
 		require.NoError(t, err)
 		for _, check := range spaceRoleChecks {
 			namespaceObjectChecks.Add(1)
