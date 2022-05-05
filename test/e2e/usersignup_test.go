@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -560,24 +562,40 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	require.NoError(s.T(), err)
 
 	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
-	migrated, err := s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to")
+	migrated, err := s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to",
+		wait.UntilUserSignupHasConditions(ConditionSet(
+			ApprovedByAdmin(),
+			DeactivatedWithoutPreDeactivation(),
+			[]toolchainv1alpha1.Condition{
+				{
+					Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+					Status: corev1.ConditionFalse,
+					Reason: toolchainv1alpha1.UserSignupDeactivatingNotificationUserNotInPreDeactivationReason,
+				}, {
+					Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+					Status: corev1.ConditionTrue,
+					Reason: "UserSignupMigrated",
+				}, {
+					Type:   toolchainv1alpha1.UserSignupComplete,
+					Status: corev1.ConditionTrue,
+					Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+				}})...,
+		))
 	require.NoError(s.T(), err)
-
 	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted(userSignup.Name))
 
 	// Now try to reactivate the migrated UserSignup again
 	_, err = s.Awaitilities.Host().UpdateUserSignup(migrated.Name, func(us *toolchainv1alpha1.UserSignup) {
-		us.Labels[toolchainv1alpha1.StateLabelKey] = "approved"
 		states.SetApproved(us, true)
-		states.SetDeactivated(us, false)
 	})
 	require.NoError(s.T(), err)
 
 	// Confirm that the migrated UserSignup is provisioned ok
-	migrated, err = s.Awaitilities.Host().WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(migrated.Name,
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, migrated, "base")
+	/*migrated, err = s.Awaitilities.Host().WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(migrated.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-	require.NoError(s.T(), err)
+	require.NoError(s.T(), err)*/
 
 	// Confirm that the MasterUserRecord is created
 	_, err = s.Awaitilities.Host().WaitForMasterUserRecord(migrated.Status.CompliantUsername)
