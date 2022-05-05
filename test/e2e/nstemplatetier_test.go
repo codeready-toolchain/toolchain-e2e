@@ -226,14 +226,14 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Move the space to the new tier
-		tiers.MoveSpaceToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+		// Move the MUR to the user tier with longer deactivation time
+		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
 
 		// Ensure the deactivating state is reset after promotion
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
 		require.NoError(t, err)
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
-		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced", "advanced")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced", "base")
 	})
 }
 
