@@ -561,6 +561,10 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	})
 	require.NoError(s.T(), err)
 
+	// Wait until the space resources are cleaned up
+	err = s.Awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername)
+	require.NoError(s.T(), err)
+
 	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
 	migrated, err := s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to",
 		wait.UntilUserSignupHasConditions(ConditionSet(
