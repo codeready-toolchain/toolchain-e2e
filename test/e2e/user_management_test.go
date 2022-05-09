@@ -59,7 +59,7 @@ func (s *userManagementTestSuite) TestVerifyUserTiers() {
 	userTiers := &toolchainv1alpha1.UserTierList{}
 	err := hostAwait.Client.List(context.TODO(), userTiers, client.InNamespace(hostAwait.Namespace))
 	require.NoError(s.T(), err)
-	require.Len(s.T(), userTiers.Items, 5)
+	require.Len(s.T(), userTiers.Items, 6)
 
 	expectedTiers := []userTierTestData{
 		{
@@ -81,6 +81,10 @@ func (s *userManagementTestSuite) TestVerifyUserTiers() {
 		{
 			name:                    "deactivate180",
 			deactivationTimeoutDays: 180,
+		},
+		{
+			name:                    "deactivate365",
+			deactivationTimeoutDays: 365,
 		},
 	}
 	for _, expectedTier := range expectedTiers {
