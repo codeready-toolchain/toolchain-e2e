@@ -22,6 +22,18 @@ import (
 
 var httpClient = HTTPClient
 
+// NewSignupRequest creates a new signup request for the registration service
+func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupRequest {
+	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
+	return &SignupRequest{
+		t:                  t,
+		awaitilities:       awaitilities,
+		requiredHTTPStatus: http.StatusAccepted,
+		username:           defaultUsername,
+		email:              fmt.Sprintf("%s@test.com", defaultUsername),
+	}
+}
+
 // SignupRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
 // with a set of sensible default values which can be overridden via its various functions.  Function chaining may
 // be used to achieve an efficient "single-statement" UserSignup creation, for example:
@@ -34,78 +46,7 @@ var httpClient = HTTPClient
 //			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 //			Execute().Resources()
 //
-type SignupRequest interface {
-	// Email specifies the email address to use for the new UserSignup
-	Email(email string) SignupRequest
-
-	// OriginalSub specifies the original sub value which will be used for migrating the user to a new IdP client
-	OriginalSub(originalSub string) SignupRequest
-
-	// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
-	// the Resources() function to return a non-nil value for its second return parameter.
-	EnsureMUR() SignupRequest
-
-	// WaitForMUR will wait until MasterUserRecord is created
-	WaitForMUR() SignupRequest
-
-	// Execute executes the request against the Registration service REST endpoint.  This function may only be called
-	// once, and must be called after all other functions EXCEPT for Resources()
-	Execute() SignupRequest
-
-	// GetToken may be called only after a call to Execute(). It returns the token that was generated for the request
-	GetToken() string
-
-	// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
-	ManuallyApprove() SignupRequest
-
-	// RequireConditions specifies the condition values that the new UserSignup is required to have in order for
-	// the signup to be considered successful
-	RequireConditions(conditions ...toolchainv1alpha1.Condition) SignupRequest
-
-	// RequireHTTPStatus may be used to override the expected HTTP response code received from the Registration Service.
-	// If not specified, here, the default expected value is StatusAccepted
-	RequireHTTPStatus(httpStatus int) SignupRequest
-
-	// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
-	// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
-	// here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-	Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord)
-
-	// TargetCluster may be provided in order to specify the user's target cluster
-	TargetCluster(targetCluster *wait.MemberAwaitility) SignupRequest
-
-	// IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
-	// "Subject" and "IdentityID" claims in the user's auth token.  If not set, a new UUID value will be used
-	IdentityID(id uuid.UUID) SignupRequest
-
-	// Username specifies the username of the user
-	Username(username string) SignupRequest
-
-	// VerificationRequired specifies that the "verification-required" state will be set for the new UserSignup, however
-	// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
-	// required state.
-	VerificationRequired() SignupRequest
-
-	// Disables automatic cleanup of the UserSignup resource after the test has completed
-	DisableCleanup() SignupRequest
-
-	// NoSpace creates only a UserSignup and MasterUserRecord, Space creation will be skipped
-	NoSpace() SignupRequest
-}
-
-// NewSignupRequest creates a new signup request for the registration service
-func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) SignupRequest {
-	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
-	return &signupRequest{
-		t:                  t,
-		awaitilities:       awaitilities,
-		requiredHTTPStatus: http.StatusAccepted,
-		username:           defaultUsername,
-		email:              fmt.Sprintf("%s@test.com", defaultUsername),
-	}
-}
-
-type signupRequest struct {
+type SignupRequest struct {
 	t                    *testing.T
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
@@ -126,76 +67,76 @@ type signupRequest struct {
 	noSpace              bool
 }
 
-func (r *signupRequest) IdentityID(id uuid.UUID) SignupRequest {
+func (r *SignupRequest) IdentityID(id uuid.UUID) *SignupRequest {
 	value := id
 	r.identityID = &value
 	return r
 }
 
-func (r *signupRequest) Username(username string) SignupRequest {
+func (r *SignupRequest) Username(username string) *SignupRequest {
 	r.username = username
 	return r
 }
 
-func (r *signupRequest) Email(email string) SignupRequest {
+func (r *SignupRequest) Email(email string) *SignupRequest {
 	r.email = email
 	return r
 }
 
-func (r *signupRequest) OriginalSub(originalSub string) SignupRequest {
+func (r *SignupRequest) OriginalSub(originalSub string) *SignupRequest {
 	r.originalSub = originalSub
 	return r
 }
 
-func (r *signupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	return r.userSignup, r.mur
 }
 
-func (r *signupRequest) EnsureMUR() SignupRequest {
+func (r *SignupRequest) EnsureMUR() *SignupRequest {
 	r.ensureMUR = true
 	return r
 }
 
-func (r *signupRequest) WaitForMUR() SignupRequest {
+func (r *SignupRequest) WaitForMUR() *SignupRequest {
 	r.waitForMUR = true
 	return r
 }
 
-func (r *signupRequest) GetToken() string {
+func (r *SignupRequest) GetToken() string {
 	return r.token
 }
 
-func (r *signupRequest) ManuallyApprove() SignupRequest {
+func (r *SignupRequest) ManuallyApprove() *SignupRequest {
 	r.manuallyApprove = true
 	return r
 }
 
-func (r *signupRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) SignupRequest {
+func (r *SignupRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) *SignupRequest {
 	r.conditions = conditions
 	return r
 }
 
-func (r *signupRequest) VerificationRequired() SignupRequest {
+func (r *SignupRequest) VerificationRequired() *SignupRequest {
 	r.verificationRequired = true
 	return r
 }
 
-func (r *signupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) SignupRequest {
+func (r *SignupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) *SignupRequest {
 	r.targetCluster = targetCluster
 	return r
 }
 
-func (r *signupRequest) RequireHTTPStatus(httpStatus int) SignupRequest {
+func (r *SignupRequest) RequireHTTPStatus(httpStatus int) *SignupRequest {
 	r.requiredHTTPStatus = httpStatus
 	return r
 }
 
-func (r *signupRequest) DisableCleanup() SignupRequest {
+func (r *SignupRequest) DisableCleanup() *SignupRequest {
 	r.cleanupDisabled = true
 	return r
 }
 
-func (r *signupRequest) NoSpace() SignupRequest {
+func (r *SignupRequest) NoSpace() *SignupRequest {
 	r.noSpace = true
 	return r
 }
@@ -220,7 +161,7 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 	r.usernames[name] = t.Name()
 }
 
-func (r *signupRequest) Execute() SignupRequest {
+func (r *SignupRequest) Execute() *SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
 	require.NoError(r.t, err)
