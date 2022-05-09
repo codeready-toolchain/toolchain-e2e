@@ -19,7 +19,7 @@ dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-s
 
 .PHONY: deploy-e2e-to-dev-namespaces
 deploy-e2e-to-dev-namespaces:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD} DEPLOY_LATEST=${DEPLOY_LATEST}
 
 .PHONY: deploy-e2e-to-dev-namespaces-two-members
 deploy-e2e-to-dev-namespaces-two-members:

@@ -43,6 +43,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(
 			testconfig.AutomaticApproval().ResourceCapacityThreshold(1))
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
 
 		// when
 		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithTierName(""))
