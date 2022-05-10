@@ -572,13 +572,17 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 			DeactivatedWithoutPreDeactivation(),
 			[]toolchainv1alpha1.Condition{
 				{
+					Type:   "UserMigrated",
+					Status: corev1.ConditionFalse,
+					Reason: "MigrationStarted",
+				}, {
 					Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 					Status: corev1.ConditionFalse,
 					Reason: toolchainv1alpha1.UserSignupDeactivatingNotificationUserNotInPreDeactivationReason,
 				}, {
 					Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
 					Status: corev1.ConditionTrue,
-					Reason: "UserSignupMigrated",
+					Reason: toolchainv1alpha1.UserSignupDeactivatedNotificationCRCreatedReason,
 				}, {
 					Type:   toolchainv1alpha1.UserSignupComplete,
 					Status: corev1.ConditionTrue,
@@ -596,12 +600,4 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 
 	// Confirm that the migrated UserSignup is provisioned ok
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, migrated, "base")
-	/*migrated, err = s.Awaitilities.Host().WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForUserSignup(migrated.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
-		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-	require.NoError(s.T(), err)*/
-
-	// Confirm that the MasterUserRecord is created
-	_, err = s.Awaitilities.Host().WaitForMasterUserRecord(migrated.Status.CompliantUsername)
-	require.NoError(s.T(), err)
 }
