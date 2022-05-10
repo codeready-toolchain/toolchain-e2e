@@ -11,7 +11,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	quotav1 "github.com/openshift/api/quota/v1"
-	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +47,7 @@ type TierChecks interface {
 	GetClusterObjectChecks() []clusterObjectsCheck
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
 	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
-	GetSpaceRoleChecks(spaceRoles map[*templatev1.Template][]string) ([]spaceRoleObjectsCheck, error)
+	GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error)
 	GetTierObjectChecks() []tierObjectCheck
 }
 
@@ -111,7 +110,7 @@ func (c *customTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceOb
 	return checks.GetNamespaceObjectChecks(nsType)
 }
 
-func (c *customTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Template][]string) ([]spaceRoleObjectsCheck, error) {
+func (c *customTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
 	checks, err := NewChecksForTier(c.tier.SpaceRolesTier)
 	require.NoError(c.t, err)
 	return checks.GetSpaceRoleChecks(spaceRoles)
@@ -174,13 +173,13 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	return checks
 }
 
-func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Template][]string) ([]spaceRoleObjectsCheck, error) {
+func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
 	checks := []spaceRoleObjectsCheck{}
 	roles := 0
 	rolebindings := 0
-	for tmpl, usernames := range spaceRoles {
-		switch tmpl.Name {
-		case "base-spacerole-admin":
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
 			checks = append(checks, rbacEditRole())
 			roles++
 			for _, userName := range usernames {
@@ -191,7 +190,7 @@ func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Template]
 				rolebindings += 2
 			}
 		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", tmpl.Name)
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
 		}
 	}
 	// also count the roles, rolebindings
@@ -240,13 +239,13 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 	return checks
 }
 
-func (a *base1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Template][]string) ([]spaceRoleObjectsCheck, error) {
+func (a *base1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
 	checks := []spaceRoleObjectsCheck{}
 	roles := 0
 	rolebindings := 0
-	for tmpl, usernames := range spaceRoles {
-		switch tmpl.Name {
-		case "base1ns-spacerole-admin":
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
 			checks = append(checks, rbacEditRole())
 			roles++
 			for _, userName := range usernames {
@@ -257,7 +256,7 @@ func (a *base1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Templa
 				rolebindings += 2
 			}
 		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", tmpl.Name)
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
 		}
 	}
 	// also count the roles, rolebindings
@@ -408,7 +407,7 @@ func (a *testTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCh
 	return []namespaceObjectsCheck{}
 }
 
-func (a *testTierChecks) GetSpaceRoleChecks(_ map[*templatev1.Template][]string) ([]spaceRoleObjectsCheck, error) {
+func (a *testTierChecks) GetSpaceRoleChecks(_ map[string][]string) ([]spaceRoleObjectsCheck, error) {
 	return []spaceRoleObjectsCheck{}, nil
 }
 
@@ -443,14 +442,14 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	return checks
 }
 
-func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Template][]string) ([]spaceRoleObjectsCheck, error) {
+func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
 	checks := []spaceRoleObjectsCheck{}
 	roles := 0
 	rolebindings := 0
 	serviceAccounts := 0
-	for tmpl, usernames := range spaceRoles {
-		switch tmpl.Name {
-		case "appstudio-spacerole-admin":
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
 			checks = append(checks, appstudioUserActionsRole())
 			roles++
 			for _, userName := range usernames {
@@ -462,7 +461,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Temp
 				serviceAccounts++
 				rolebindings += 2
 			}
-		case "appstudio-spacerole-viewer":
+		case "viewer":
 			for _, userName := range usernames {
 				checks = append(checks,
 					appstudioServiceAccount(userName),
@@ -472,7 +471,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[*templatev1.Temp
 				rolebindings++
 			}
 		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", tmpl.Name)
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
 		}
 	}
 	// also count the roles, rolebindings and service accounts

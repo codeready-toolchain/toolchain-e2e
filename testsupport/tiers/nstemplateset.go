@@ -11,7 +11,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/davecgh/go-spew/spew"
-	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,12 +36,12 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)
 		}
-		spaceRoles := map[*templatev1.Template][]string{}
+		spaceRoles := map[string][]string{}
 		for _, r := range nsTmplSet.Spec.SpaceRoles {
 			tmpl, err := hostAwait.WaitForTierTemplate(r.TemplateRef)
 			require.NoError(t, err)
 			t.Logf("space role template: %s / %s", tmpl.GetName(), tmpl.Spec.Template.GetName())
-			spaceRoles[&tmpl.Spec.Template] = r.Usernames
+			spaceRoles[tmpl.Spec.Type] = r.Usernames
 		}
 		spaceRoleChecks, err := checks.GetSpaceRoleChecks(spaceRoles)
 		require.NoError(t, err)
