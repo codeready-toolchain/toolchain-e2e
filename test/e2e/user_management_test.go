@@ -657,7 +657,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 		require.NoError(s.T(), err)
 
 		// Verify resources have been provisioned
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "base", "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "deactivate30", "base")
 	})
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
@@ -708,7 +708,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 			require.NoError(s.T(), err)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 
 			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
@@ -953,7 +953,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 
 	// Disable MUR
 	mur, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -993,7 +993,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 	})
 }
 

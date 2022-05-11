@@ -75,7 +75,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
 
@@ -117,7 +117,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 			s.userIsNotProvisioned(t, userSignup2)
 
 			t.Run("reset the max number and expect the second user will be provisioned as well", func(t *testing.T) {
@@ -130,7 +130,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(s.T(), err)
 
-				VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+				VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 			})
 		})
 	})
@@ -270,7 +270,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
 
@@ -298,7 +298,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
 
@@ -349,7 +349,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
@@ -513,5 +513,5 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	// annotation should be set
 	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
 
-	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "base")
+	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "deactivate30")
 }

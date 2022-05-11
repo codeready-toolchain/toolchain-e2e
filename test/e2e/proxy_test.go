@@ -90,7 +90,7 @@ func TestProxyFlow(t *testing.T) {
 			user.signup, _ = req.Resources()
 			user.token = req.GetToken()
 
-			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "appstudio", "appstudio")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 			_, err := hostAwait.GetMasterUserRecord(user.username)
 			require.NoError(t, err)
 

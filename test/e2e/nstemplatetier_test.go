@@ -16,17 +16,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var toBeComplete = toolchainv1alpha1.Condition{
-	Type:   toolchainv1alpha1.ChangeTierRequestComplete,
-	Status: corev1.ConditionTrue,
-	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
-}
 
 const (
 	MaxPoolSize = 5 // same as hard-coded value in host operator
@@ -60,10 +53,9 @@ func TestNSTemplateTiers(t *testing.T) {
 	for _, tier := range allTiers.Items {
 		assert.Contains(t, tiersToCheck, tier.Name)
 	}
-	var changeTierRequestNames []string
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "base", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", "base")
 	for _, tierToCheck := range tiersToCheck {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -82,27 +74,13 @@ func TestNSTemplateTiers(t *testing.T) {
 			}
 		})
 
-		t.Run(fmt.Sprintf("promote to %s tier", tierToCheck), func(t *testing.T) {
-			// given
-			t.Logf("promoting %s user to %s tier", testingTiersName, tierToCheck)
-			changeTierRequest := tiers.NewChangeTierRequest(hostAwait.Namespace, testingTiersName, tierToCheck)
-
+		t.Run(fmt.Sprintf("promote %s user to %s tier", testingTiersName, tierToCheck), func(t *testing.T) {
 			// when
-			err = hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
+			tiers.MoveSpaceToTier(t, hostAwait, testingTiersName, tierToCheck)
 
 			// then
-			require.NoError(t, err)
-			_, err := hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
-			require.NoError(t, err)
 			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, tierToCheck, tierToCheck)
-			changeTierRequestNames = append(changeTierRequestNames, changeTierRequest.Name)
 		})
-	}
-
-	// then - wait until all ChangeTierRequests are deleted by our automatic GC
-	for _, name := range changeTierRequestNames {
-		err := hostAwait.WaitUntilChangeTierRequestDeleted(name)
-		assert.NoError(t, err)
 	}
 }
 
@@ -279,7 +257,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 
 	// let's promote to users the new tier
 	for i := range userSignups {
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i], "base", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i], "deactivate30", "base")
 		username := fmt.Sprintf(nameFmt, i)
 		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
 	}
