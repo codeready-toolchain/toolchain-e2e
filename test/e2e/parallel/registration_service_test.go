@@ -326,7 +326,7 @@ func TestSignupOK(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait the Master User Record to be provisioned
-		VerifyResourcesProvisionedForSignup(t, await, userSignup, "base")
+		VerifyResourcesProvisionedForSignup(t, await, userSignup, "base", "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		assertGetSignupStatusProvisioned(t, await, identity.Username, token)
