@@ -79,7 +79,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			tiers.MoveSpaceToTier(t, hostAwait, testingTiersName, tierToCheck)
 
 			// then
-			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, tierToCheck, tierToCheck)
+			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", tierToCheck)
 		})
 	}
 }

@@ -110,20 +110,20 @@ func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitili
 
 func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(awaitilities.Host(), signup)
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base", "base")
 	DeactivateAndCheckUser(t, awaitilities, signup)
 	ReactivateAndCheckUser(t, awaitilities, signup)
 }
 
 func verifySecondMemberProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(awaitilities.Host(), signup)
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base", "base")
 	CreateBannedUser(t, awaitilities.Host(), signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 }
 
 func verifyAppStudioProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(awaitilities.Host(), signup)
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "appstudio")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "appstudio", "appstudio")
 }
 
 func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {

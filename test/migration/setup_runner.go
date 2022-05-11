@@ -151,7 +151,6 @@ func (r *SetupMigrationRunner) prepareUser(name string, targetCluster *wait.Memb
 		Execute().
 		Resources()
 	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(signup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasTierName("base"),
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
 	require.NoError(r.T, err)
 	return signup
