@@ -81,7 +81,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 		})
 	})
 
@@ -123,7 +123,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 			s.userIsNotProvisioned(t, userSignup2)
 
 			t.Run("reset the max number and expect the second user will be provisioned as well", func(t *testing.T) {
@@ -136,7 +136,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(s.T(), err)
 
-				VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+				VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 			})
 		})
 	})
@@ -276,7 +276,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 		})
 	})
 
@@ -304,7 +304,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 		})
 	})
 
@@ -355,7 +355,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {
