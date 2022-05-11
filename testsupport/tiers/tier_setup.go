@@ -10,19 +10,12 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint:revive
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/require"
 )
 
 type TierModifier func(tier *toolchainv1alpha1.NSTemplateTier) error
-
-var toBeComplete = toolchainv1alpha1.Condition{
-	Type:   toolchainv1alpha1.ChangeTierRequestComplete,
-	Status: corev1.ConditionTrue,
-	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
-}
 
 type CustomNSTemplateTier struct {
 	// the "base" NSTemplateTier
@@ -156,12 +149,25 @@ func duplicateTierTemplate(hostAwait *HostAwaitility, namespace, tierName, origT
 	return newTierTemplate.Name, nil
 }
 
-func MoveUserToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
-	t.Logf("moving user '%s' to tier '%s'", username, tierName)
-	changeTierRequest := NewChangeTierRequest(hostAwait.Namespace, username, tierName)
-	err := hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
+func MoveSpaceToTier(t *testing.T, hostAwait *HostAwaitility, spacename, tierName string) {
+	t.Logf("moving space '%s' to space tier '%s'", spacename, tierName)
+	_, err := hostAwait.WaitForSpace(spacename)
 	require.NoError(t, err)
-	_, err = hostAwait.WaitForChangeTierRequest(changeTierRequest.Name, toBeComplete)
+
+	_, err = hostAwait.UpdateSpace(spacename, func(s *toolchainv1alpha1.Space) {
+		s.Spec.TierName = tierName
+	})
+	require.NoError(t, err)
+}
+
+func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
+	t.Logf("moving masteruserrecord '%s' to user tier '%s'", username, tierName)
+	mur, err := hostAwait.WaitForMasterUserRecord(username)
+	require.NoError(t, err)
+
+	_, err = hostAwait.UpdateMasterUserRecord(false, mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+		mur.Spec.TierName = tierName
+	})
 	require.NoError(t, err)
 }
 
