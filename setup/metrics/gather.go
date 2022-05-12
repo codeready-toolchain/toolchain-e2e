@@ -73,6 +73,7 @@ func New(t terminal.Terminal, cl client.Client, token string, interval time.Dura
 	return g
 }
 
+//nolint:golint,unused
 func NewEmpty(t terminal.Terminal, cl client.Client, token string, interval time.Duration) *Gatherer {
 	g := &Gatherer{
 		k8sClient:     cl,
