@@ -328,7 +328,7 @@ func TestSignupOK(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait the Master User Record to be provisioned
-		VerifyResourcesProvisionedForSignup(t, await, userSignup, "base")
+		VerifyResourcesProvisionedForSignup(t, await, userSignup, "base", "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		assertGetSignupStatusProvisioned(t, await, identity.Username, token)
@@ -550,7 +550,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.Equal(t, float64(http.StatusForbidden), responseMap["code"], "code not found in response body map %s", responseMap)
 
 	require.Equal(t, "Forbidden", responseMap["status"])
-	require.Equal(t, "phone number already in use:cannot register using phone number: +61408999999", responseMap["message"])
+	require.Equal(t, "phone number already in use: cannot register using phone number: +61408999999", responseMap["message"])
 	require.Equal(t, "phone number already in use", responseMap["details"])
 
 	// Retrieve the updated UserSignup
