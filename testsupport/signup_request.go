@@ -13,9 +13,11 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +33,7 @@ func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupReque
 		requiredHTTPStatus: http.StatusAccepted,
 		username:           defaultUsername,
 		email:              fmt.Sprintf("%s@test.com", defaultUsername),
+		identityID:         uuid.Must(uuid.NewV4()),
 	}
 }
 
@@ -53,7 +56,7 @@ type SignupRequest struct {
 	waitForMUR           bool
 	manuallyApprove      bool
 	verificationRequired bool
-	identityID           *uuid.UUID
+	identityID           uuid.UUID
 	username             string
 	email                string
 	requiredHTTPStatus   int
@@ -69,7 +72,7 @@ type SignupRequest struct {
 
 func (r *SignupRequest) IdentityID(id uuid.UUID) *SignupRequest {
 	value := id
-	r.identityID = &value
+	r.identityID = value
 	return r
 }
 
@@ -166,28 +169,19 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
 	require.NoError(r.t, err)
 
-	var identityID uuid.UUID
-	if r.identityID != nil {
-		identityID = *r.identityID
-	} else {
-		identityID = uuid.Must(uuid.NewV4())
-	}
-
 	// Create a token and identity to sign up with
-	userIdentity := &authsupport.Identity{
-		ID:       identityID,
-		Username: r.username,
-	}
-
 	usernamesInParallel.add(r.t, r.username)
 
-	claims := []authsupport.ExtraClaim{authsupport.WithEmailClaim(r.email)}
-	if r.originalSub != "" {
-		claims = append(claims, authsupport.WithOriginalSubClaim(r.originalSub))
+	userIdentity := &commonauth.Identity{
+		ID:       r.identityID,
+		Username: r.username,
 	}
-	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, claims...)
+	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim(r.email)}
+	if r.originalSub != "" {
+		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
+	}
+	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(r.t, err)
-	r.token = token0
 
 	queryParams := map[string]string{}
 	if r.noSpace {
@@ -196,7 +190,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 
 	// Call the signup endpoint
 	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		token0, "", r.requiredHTTPStatus, queryParams)
+		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
 	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
@@ -251,7 +245,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier != nil {
 			expectedTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier
 		}
-		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, expectedTier)
+		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, expectedTier, expectedTier)
 		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasTierName(expectedTier))
 		require.NoError(r.t, err)
 		r.mur = mur
