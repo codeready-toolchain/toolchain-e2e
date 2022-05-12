@@ -74,7 +74,7 @@ func New(t terminal.Terminal, cl client.Client, token string, interval time.Dura
 }
 
 //nolint
-func NewEmpty(t terminal.Terminal, cl client.Client, token string, interval time.Duration) *Gatherer {
+func NewEmpty(t terminal.Terminal, cl client.Client, interval time.Duration) *Gatherer {
 	g := &Gatherer{
 		k8sClient:     cl,
 		queryInterval: interval,
