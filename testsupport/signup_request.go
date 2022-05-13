@@ -155,7 +155,7 @@ func (r *SignupRequest) RequireHTTPStatus(httpStatus int) *SignupRequest {
 	return r
 }
 
-// Disables automatic cleanup of the UserSignup resource after the test has completed
+// DisableCleanup disables automatic cleanup of the UserSignup resource after the test has completed
 func (r *SignupRequest) DisableCleanup() *SignupRequest {
 	r.cleanupDisabled = true
 	return r
