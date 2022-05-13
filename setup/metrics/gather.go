@@ -73,6 +73,17 @@ func New(t terminal.Terminal, cl client.Client, token string, interval time.Dura
 	return g
 }
 
+//nolint
+func NewEmpty(t terminal.Terminal, cl client.Client, interval time.Duration) *Gatherer {
+	g := &Gatherer{
+		k8sClient:     cl,
+		queryInterval: interval,
+		term:          t,
+	}
+	g.results = make(map[string]aggregateResult, len(g.mqueries))
+	return g
+}
+
 func (g *Gatherer) AddQueries(queries ...queries.Query) {
 	g.mqueries = append(g.mqueries, queries...)
 }
