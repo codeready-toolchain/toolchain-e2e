@@ -9,17 +9,13 @@ import (
 	"testing"
 	"time"
 
-	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
-
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
+	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -31,6 +27,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var httpClient = HTTPClient
@@ -860,9 +857,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
-		identity0 := authsupport.NewIdentity()
-		emailClaim0 := authsupport.WithEmailClaim(email)
-		token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
+		_, token0, err := authsupport.NewToken(authsupport.WithEmail(email))
 		require.NoError(s.T(), err)
 
 		route := hostAwait.RegistrationServiceURL
