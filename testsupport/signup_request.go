@@ -70,75 +70,98 @@ type SignupRequest struct {
 	noSpace              bool
 }
 
+// IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
+// "Subject" and "IdentityID" claims in the user's auth token.  If not set, a new UUID value will be used
 func (r *SignupRequest) IdentityID(id uuid.UUID) *SignupRequest {
 	value := id
 	r.identityID = value
 	return r
 }
 
+// Username specifies the username of the user
 func (r *SignupRequest) Username(username string) *SignupRequest {
 	r.username = username
 	return r
 }
 
+// Email specifies the email address to use for the new UserSignup
 func (r *SignupRequest) Email(email string) *SignupRequest {
 	r.email = email
 	return r
 }
 
+// OriginalSub specifies the original sub value which will be used for migrating the user to a new IdP client
 func (r *SignupRequest) OriginalSub(originalSub string) *SignupRequest {
 	r.originalSub = originalSub
 	return r
 }
 
+// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
+// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
+// here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	return r.userSignup, r.mur
 }
 
+// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
+// the Resources() function to return a non-nil value for its second return parameter.
 func (r *SignupRequest) EnsureMUR() *SignupRequest {
 	r.ensureMUR = true
 	return r
 }
 
+// WaitForMUR will wait until MasterUserRecord is created
 func (r *SignupRequest) WaitForMUR() *SignupRequest {
 	r.waitForMUR = true
 	return r
 }
 
+// GetToken may be called only after a call to Execute(). It returns the token that was generated for the request
 func (r *SignupRequest) GetToken() string {
 	return r.token
 }
 
+// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
 func (r *SignupRequest) ManuallyApprove() *SignupRequest {
 	r.manuallyApprove = true
 	return r
 }
 
+// RequireConditions specifies the condition values that the new UserSignup is required to have in order for
+// the signup to be considered successful
 func (r *SignupRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) *SignupRequest {
 	r.conditions = conditions
 	return r
 }
 
+// VerificationRequired specifies that the "verification-required" state will be set for the new UserSignup, however
+// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
+// required state.
 func (r *SignupRequest) VerificationRequired() *SignupRequest {
 	r.verificationRequired = true
 	return r
 }
 
+// TargetCluster may be provided in order to specify the user's target cluster
 func (r *SignupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) *SignupRequest {
 	r.targetCluster = targetCluster
 	return r
 }
 
+// RequireHTTPStatus may be used to override the expected HTTP response code received from the Registration Service.
+// If not specified, here, the default expected value is StatusAccepted
 func (r *SignupRequest) RequireHTTPStatus(httpStatus int) *SignupRequest {
 	r.requiredHTTPStatus = httpStatus
 	return r
 }
 
+// DisableCleanup disables automatic cleanup of the UserSignup resource after the test has completed
 func (r *SignupRequest) DisableCleanup() *SignupRequest {
 	r.cleanupDisabled = true
 	return r
 }
 
+// NoSpace creates only a UserSignup and MasterUserRecord, Space creation will be skipped
 func (r *SignupRequest) NoSpace() *SignupRequest {
 	r.noSpace = true
 	return r
@@ -164,6 +187,8 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 	r.usernames[name] = t.Name()
 }
 
+// Execute executes the request against the Registration service REST endpoint.  This function may only be called
+// once, and must be called after all other functions EXCEPT for Resources()
 func (r *SignupRequest) Execute() *SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
