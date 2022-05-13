@@ -53,6 +53,10 @@ func (s *userManagementTestSuite) SetupSuite() {
 	s.Awaitilities = WaitForDeployments(s.T())
 }
 
+// TestVerifyUserTiers lists all UserTiers and validates each one
+// Functional testing is covered by the deactivation tests below, it's not necessary to test each
+// UserTier with deactivation since it's only the deactivationTimeoutDays value that changes and the deactivation
+// logic handles them in the same way
 func (s *userManagementTestSuite) TestVerifyUserTiers() {
 	hostAwait := s.Host()
 
