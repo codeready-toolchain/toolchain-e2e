@@ -71,7 +71,10 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		err := memberAwait.WaitUntilPodsDeleted(p.Namespace, wait.WithPodName(p.Name))
 		require.NoError(s.T(), err)
 	}
-
+	// check notification was created and Idler condition was updated
+	_, err = memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running(), IdledNotificationCreated()))
+	require.NoError(s.T(), err)
+	hostAwait.WaitForNotifications("test-idler", "idled", 1, wait.UntilNotificationHasConditions(Sent()))
 	// make sure that "noise" pods are still there
 	_, err = memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
 	require.NoError(s.T(), err)
@@ -81,6 +84,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
+	// Notification should not be created this time
 	pod := s.createStandalonePod(idler.Name, "idler-test-pod-2")    // create just one standalone pod. No need to create all possible pod controllers which may own pods.
 	_, err = memberAwait.WaitForPod(idler.Name, "idler-test-pod-2") // pod was created
 	require.NoError(s.T(), err)
