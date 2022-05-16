@@ -2,9 +2,15 @@ package e2e
 
 import (
 	"context"
+	"crypto/md5" // nolint:gosec
+	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -514,4 +520,84 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
 
 	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "deactivate30")
+}
+
+func (s *userSignupIntegrationTest) TestUserSignupMigration() {
+	// Manually create a UserSignup that has a name that is not the encoded username
+
+	md5hash := md5.New() // nolint:gosec
+	// Ignore the error, as this implementation cannot return one
+	_, _ = md5hash.Write([]byte("foo@bar.com"))
+	emailHash := hex.EncodeToString(md5hash.Sum(nil))
+
+	userSignup := &toolchainv1alpha1.UserSignup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "userid-we-migrate-from",
+			Namespace: s.Host().Namespace,
+			Labels: map[string]string{
+				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: emailHash,
+			},
+			Annotations: map[string]string{toolchainv1alpha1.UserSignupUserEmailAnnotationKey: "foo@bar.com"},
+		},
+		Spec: toolchainv1alpha1.UserSignupSpec{
+			Userid:   "userid-we-migrate-from",
+			Username: "username-we-migrate-to",
+		},
+	}
+
+	states.SetApproved(userSignup, true)
+
+	require.NoError(s.T(), s.Awaitilities.Host().Client.Create(context.TODO(), userSignup))
+
+	// Let the UserSignup provision
+	userSignup, err := s.Awaitilities.Host().WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupContainsConditions(ApprovedByAdmin()...))
+	require.NoError(s.T(), err)
+
+	// Deactivate
+	states.SetDeactivated(userSignup, true)
+	userSignup, err = s.Awaitilities.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		states.SetDeactivated(us, true)
+	})
+	require.NoError(s.T(), err)
+
+	// Wait until the space resources are cleaned up
+	err = s.Awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername)
+	require.NoError(s.T(), err)
+
+	// The UserSignup should be migrated, so it is expected that a new UserSignup will be created
+	migrated, err := s.Awaitilities.Host().WaitForUserSignup("username-we-migrate-to",
+		wait.UntilUserSignupHasConditions(ConditionSet(
+			ApprovedByAdmin(),
+			DeactivatedWithoutPreDeactivation(),
+			[]toolchainv1alpha1.Condition{
+				{
+					Type:   "UserMigrated",
+					Status: corev1.ConditionFalse,
+					Reason: "MigrationStarted",
+				}, {
+					Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+					Status: corev1.ConditionFalse,
+					Reason: toolchainv1alpha1.UserSignupDeactivatingNotificationUserNotInPreDeactivationReason,
+				}, {
+					Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+					Status: corev1.ConditionTrue,
+					Reason: toolchainv1alpha1.UserSignupDeactivatedNotificationCRCreatedReason,
+				}, {
+					Type:   toolchainv1alpha1.UserSignupComplete,
+					Status: corev1.ConditionTrue,
+					Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+				}})...,
+		))
+	require.NoError(s.T(), err)
+	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted(userSignup.Name))
+
+	// Now try to reactivate the migrated UserSignup again
+	_, err = s.Awaitilities.Host().UpdateUserSignup(migrated.Name, func(us *toolchainv1alpha1.UserSignup) {
+		states.SetApproved(us, true)
+	})
+	require.NoError(s.T(), err)
+
+	// Confirm that the migrated UserSignup is provisioned ok
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, migrated, "base", "base")
 }
