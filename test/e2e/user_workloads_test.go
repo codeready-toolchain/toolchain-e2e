@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -44,10 +46,13 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute()
+		Execute().Resources()
 
 	idler, err := memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
+	owner, found := idler.GetLabels()[toolchainv1alpha1.OwnerLabelKey]
+	require.True(s.T(), found)
+	require.Equal(s.T(), "test-idler", owner)
 
 	// Noise
 	idlerNoise, err := memberAwait.WaitForIdler("test-idler-stage", wait.IdlerConditions(Running()))
