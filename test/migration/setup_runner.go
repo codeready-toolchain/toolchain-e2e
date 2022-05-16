@@ -126,13 +126,11 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser() {
 
 	// promote to appstudio
 	tiers.MoveSpaceToTier(r.T, hostAwait, AppStudioProvisionedUser, "appstudio")
-	tiers.MoveMURToTier(r.T, hostAwait, AppStudioProvisionedUser, "appstudio")
 
 	r.T.Logf("user %s was promoted to appstudio tier", AppStudioProvisionedUser)
 
 	// verify that it's promoted
 	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(AppStudioProvisionedUser,
-		wait.UntilMasterUserRecordHasTierName("appstudio"),
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
 	require.NoError(r.T, err)
 }

@@ -211,7 +211,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
 		require.NoError(t, err)
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
-		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "advanced", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "nodeactivation", "base")
 	})
 }
 
