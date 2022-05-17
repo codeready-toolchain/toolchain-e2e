@@ -39,7 +39,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	memberAwait := s.Member1()
 	// Provision a user to idle with a short idling timeout
 	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false))
-	NewSignupRequest(s.T(), s.Awaitilities).
+	idlerSignup, idlerMur := NewSignupRequest(s.T(), s.Awaitilities).
 		Username("test-idler").
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
@@ -50,9 +50,15 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 
 	idler, err := memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running()))
 	require.NoError(s.T(), err)
+	// to remove
 	owner, found := idler.GetLabels()[toolchainv1alpha1.OwnerLabelKey]
 	require.True(s.T(), found)
 	require.Equal(s.T(), "test-idler", owner)
+	require.Equal(s.T(), idlerMur.Name, owner)
+	require.Equal(s.T(), idlerSignup.Status.CompliantUsername, owner)
+	nstemplateset, err := memberAwait.WaitForNSTmplSet("test-idler")
+	require.NoError(s.T(), err)
+	require.NotEmpty(s.T(), nstemplateset.Spec.SpaceRoles)
 
 	// Noise
 	idlerNoise, err := memberAwait.WaitForIdler("test-idler-stage", wait.IdlerConditions(Running()))
