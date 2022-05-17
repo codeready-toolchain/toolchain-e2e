@@ -58,7 +58,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	require.Equal(s.T(), idlerSignup.Status.CompliantUsername, owner)
 	nstemplateset, err := memberAwait.WaitForNSTmplSet("test-idler")
 	require.NoError(s.T(), err)
-	require.NotEmpty(s.T(), nstemplateset.Spec.SpaceRoles)
+	require.NotEmpty(s.T(), nstemplateset)
 
 	// Noise
 	idlerNoise, err := memberAwait.WaitForIdler("test-idler-stage", wait.IdlerConditions(Running()))
