@@ -30,7 +30,6 @@ func CreateSpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolc
 	spaceBinding := NewSpaceBinding(mur, space, spaceRole)
 	err := hostAwait.CreateWithCleanup(context.TODO(), spaceBinding)
 	require.NoError(t, err)
-
 	return spaceBinding
 }
 

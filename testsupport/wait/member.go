@@ -1800,11 +1800,7 @@ func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expecte
 			return false, err
 		}
 		actual = a
-		if actual == expected {
-			return true, nil
-		}
-
-		return false, nil
+		return actual == expected, nil
 	})
 	if err != nil {
 		a.T.Logf("expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)

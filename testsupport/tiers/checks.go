@@ -1012,6 +1012,9 @@ func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
 			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
+			for _, r := range roles.Items {
+				t.Logf("found role '%s/%s'", r.Namespace, r.Name)
+			}
 			return len(roles.Items), err
 		})
 		require.NoError(t, err)

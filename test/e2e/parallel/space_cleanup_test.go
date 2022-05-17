@@ -104,9 +104,8 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 }
 
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember.ClusterName), WithName(spaceName))
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))
-
+	space, owner, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember.ClusterName), WithName(spaceName))
+	// at this point, just make sure the space exists so we can bind it to our user
 	userSignup, mur := NewSignupRequest(t, awaitilities).
 		Username(murName).
 		ManuallyApprove().
@@ -114,8 +113,16 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
-
 	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
-
+	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier("appstudio")
+	require.NoError(t, err)
+	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
+	// before we can check the resources (roles and rolebindings)
+	_, err = targetMember.WaitForNSTmplSet(spaceName,
+		wait.UntilNSTemplateSetHasSpaceRoles(
+			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Name, murName)))
+	require.NoError(t, err)
+	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))
 	return space, userSignup, spaceBinding
 }

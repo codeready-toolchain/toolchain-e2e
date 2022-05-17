@@ -74,22 +74,35 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
 	return wait.NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
-			actualNamespaces := actual.Spec.Namespaces
 			if expectedRevisions.ClusterResources == nil ||
 				actual.Spec.ClusterResources == nil ||
 				*expectedRevisions.ClusterResources != actual.Spec.ClusterResources.TemplateRef {
 				return false
 			}
-			actualNamespaceTmplRefs := make([]string, len(actualNamespaces))
-			for i, r := range actualNamespaces {
+			actualNamespaceTmplRefs := make([]string, len(actual.Spec.Namespaces))
+			for i, r := range actual.Spec.Namespaces {
 				actualNamespaceTmplRefs[i] = r.TemplateRef
 			}
 			sort.Strings(actualNamespaceTmplRefs)
 			sort.Strings(expectedRevisions.Namespaces)
-			return reflect.DeepEqual(actualNamespaceTmplRefs, expectedRevisions.Namespaces)
+			if !reflect.DeepEqual(actualNamespaceTmplRefs, expectedRevisions.Namespaces) {
+				return false
+			}
+			// checks that the actual SpaceRole templates match (ie, they are present in `expectedRevisions.SpaceRoles`)
+		spaceroles:
+			for _, r := range actual.Spec.SpaceRoles {
+				// look-up the templateRef
+				for _, ref := range expectedRevisions.SpaceRoles {
+					if r.TemplateRef == ref {
+						continue spaceroles
+					}
+					return false
+				}
+			}
+			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected NSTemplateSet '%s' to have the following cluster and namespace revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec.Namespaces))
+			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec))
 		},
 	}
 }
