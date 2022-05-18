@@ -79,9 +79,21 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 	space := NewSpace(awaitilities, opts...)
 	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
 	require.NoError(t, err)
-
+	space, err = awaitilities.Host().WaitForSpace(space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+	require.NoError(t, err)
 	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
-	signup, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
+	signup, mur, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
+	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
+	// before we can check the resources (roles and rolebindings)
+	tier, err := awaitilities.Host().WaitForNSTemplateTier(space.Spec.TierName)
+	require.NoError(t, err)
+	if memberAwait, err := awaitilities.Member(space.Status.TargetCluster); err == nil {
+		// if member is `unknown` or invalid (depending on the test case), then don't try to check the associated NSTemplateSet
+		_, err = memberAwait.WaitForNSTmplSet(space.Name,
+			wait.UntilNSTemplateSetHasSpaceRoles(
+				wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, mur.Name)))
+		require.NoError(t, err)
+	}
 
 	return space, signup, spaceBinding
 }
@@ -177,7 +189,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	return space, nsTmplSet
 }
 
-func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.SpaceBinding) {
 	username := "for-space-" + space.Name
 	builder := NewSignupRequest(t, awaitilities).
 		Username(username).
@@ -198,5 +210,5 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 		binding = CreateSpaceBindingWithoutCleanup(t, awaitilities.Host(), mur, space, "admin")
 	}
 	t.Logf("The SpaceBinding %s was created", binding.Name)
-	return signup, binding
+	return signup, mur, binding
 }
