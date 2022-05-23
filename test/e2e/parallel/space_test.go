@@ -132,7 +132,8 @@ func TestSpaceRoles(t *testing.T) {
 			Email("spaceguest@redhat.com").
 			ManuallyApprove().
 			TargetCluster(awaitilities.Member1()).
-			EnsureMUR().
+			WaitForMUR().
+			NoSpace().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().
 			Resources()
