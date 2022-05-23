@@ -154,6 +154,7 @@ func TestSpaceRoles(t *testing.T) {
 			UntilNamespaceIsActive(),
 			UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
 		require.NoError(t, err)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name)
 
 		t.Run("remove admin binding", func(t *testing.T) {
 			// when
