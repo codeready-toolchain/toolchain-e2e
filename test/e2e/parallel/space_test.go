@@ -168,6 +168,7 @@ func TestSpaceRoles(t *testing.T) {
 				),
 			)
 			require.NoError(t, err)
+			VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name)
 		})
 	})
 
