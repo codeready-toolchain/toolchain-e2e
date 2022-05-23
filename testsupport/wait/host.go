@@ -1653,19 +1653,6 @@ func UntilSpaceHasStateLabel(expected string) SpaceWaitCriterion {
 	}
 }
 
-// UntilSpaceHasCreatorLabel returns a `SpaceWaitCriterion` which checks that the
-// Space has the expected value of the creator label
-func UntilSpaceHasCreatorLabel(expected string) SpaceWaitCriterion {
-	return SpaceWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.Space) bool {
-			return actual.Labels != nil && actual.Labels[toolchainv1alpha1.SpaceCreatorLabelKey] == expected
-		},
-		Diff: func(actual *toolchainv1alpha1.Space) string {
-			return fmt.Sprintf("expected Space to match the creator label value: %s \nactual labels: %s", expected, actual.Labels)
-		},
-	}
-}
-
 // UntilSpaceHasConditionForTime returns a `SpaceWaitCriterion` which checks that the given
 // Space has the condition set at least for the given amount of time
 func UntilSpaceHasConditionForTime(expected toolchainv1alpha1.Condition, duration time.Duration) SpaceWaitCriterion {
