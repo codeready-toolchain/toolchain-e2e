@@ -9,6 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/davecgh/go-spew/spew"
 
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
@@ -1019,13 +1020,23 @@ func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
 }
 
 func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		roleBindings := &rbacv1.RoleBindingList{}
 		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "RoleBindings", number, func() (int, error) {
-			roleBindings := &rbacv1.RoleBindingList{}
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
 			return len(roleBindings.Items), err
 		})
+		if err != nil {
+			rbs := make([]string, len(roleBindings.Items))
+			for i, rb := range roleBindings.Items {
+				rbs[i] = rb.Name
+			}
+			t.Logf("found %d role bindings: %v", len(roleBindings.Items), rbs)
+			if nsTmplSet, err := memberAwait.WaitForNSTmplSet(owner); err != nil {
+				t.Logf("associated NSTemplateSet: %s", spew.Sdump(nsTmplSet))
+			}
+		}
 		require.NoError(t, err)
 	}
 }
