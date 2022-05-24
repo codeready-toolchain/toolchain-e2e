@@ -1008,13 +1008,23 @@ func count(resource corev1.ResourceName) corev1.ResourceName {
 }
 
 func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		roles := &rbacv1.RoleList{}
 		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "Roles", number, func() (int, error) {
-			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
 			return len(roles.Items), err
 		})
+		if err != nil {
+			rs := make([]string, len(roles.Items))
+			for i, r := range roles.Items {
+				rs[i] = r.Name
+			}
+			t.Logf("found %d roles: %s", len(roles.Items), spew.Sdump(rs))
+			if nsTmplSet, err := memberAwait.WaitForNSTmplSet(owner); err == nil {
+				t.Logf("associated NSTemplateSet: %s", spew.Sdump(nsTmplSet))
+			}
+		}
 		require.NoError(t, err)
 	}
 }
@@ -1032,8 +1042,8 @@ func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 			for i, rb := range roleBindings.Items {
 				rbs[i] = rb.Name
 			}
-			t.Logf("found %d role bindings: %v", len(roleBindings.Items), rbs)
-			if nsTmplSet, err := memberAwait.WaitForNSTmplSet(owner); err != nil {
+			t.Logf("found %d role bindings: %s", len(roleBindings.Items), spew.Sdump(rbs))
+			if nsTmplSet, err := memberAwait.WaitForNSTmplSet(owner); err == nil {
 				t.Logf("associated NSTemplateSet: %s", spew.Sdump(nsTmplSet))
 			}
 		}
