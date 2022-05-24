@@ -1008,7 +1008,7 @@ func count(resource corev1.ResourceName) corev1.ResourceName {
 
 func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("Roles", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "Roles", number, func() (int, error) {
 			roles := &rbacv1.RoleList{}
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -1020,7 +1020,7 @@ func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
 
 func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("RoleBindings", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "RoleBindings", number, func() (int, error) {
 			roleBindings := &rbacv1.RoleBindingList{}
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -1032,7 +1032,7 @@ func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 
 func numberOfToolchainServiceAccounts(number int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("ServiceAccounts", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "ServiceAccounts", number, func() (int, error) {
 			serviceAccounts := &corev1.ServiceAccountList{}
 			err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -1044,7 +1044,7 @@ func numberOfToolchainServiceAccounts(number int) spaceRoleObjectsCheck {
 
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("LimitRanges", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "LimitRanges", number, func() (int, error) {
 			limitRanges := &corev1.LimitRangeList{}
 			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -1056,7 +1056,7 @@ func numberOfLimitRanges(number int) namespaceObjectsCheck {
 
 func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		err := memberAwait.WaitForExpectedNumberOfResources("NetworkPolicies", number, func() (int, error) {
+		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "NetworkPolicies", number, func() (int, error) {
 			nps := &netv1.NetworkPolicyList{}
 			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
@@ -1070,7 +1070,7 @@ func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
 	expectedCRQs := 9
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			err := memberAwait.WaitForExpectedNumberOfResources("ClusterResourceQuotas", expectedCRQs, func() (int, error) {
+			err := memberAwait.WaitForExpectedNumberOfClusterResources("ClusterResourceQuotas", expectedCRQs, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",

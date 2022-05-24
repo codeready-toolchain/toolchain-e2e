@@ -40,16 +40,16 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 		for _, r := range nsTmplSet.Spec.SpaceRoles {
 			tmpl, err := hostAwait.WaitForTierTemplate(r.TemplateRef)
 			require.NoError(t, err)
-			t.Logf("space role template: %s / %s", tmpl.GetName(), tmpl.Spec.Template.GetName())
+			t.Logf("space role template: %s", tmpl.GetName())
 			spaceRoles[tmpl.Spec.Type] = r.Usernames
 		}
 		spaceRoleChecks, err := checks.GetSpaceRoleChecks(spaceRoles)
 		require.NoError(t, err)
 		for _, check := range spaceRoleChecks {
 			namespaceObjectChecks.Add(1)
-			go func(checkNamespaceObjects spaceRoleObjectsCheck) {
+			go func(checkSpaceRoleObjects spaceRoleObjectsCheck) {
 				defer namespaceObjectChecks.Done()
-				checkNamespaceObjects(t, ns, memberAwait, nsTmplSet.Name)
+				checkSpaceRoleObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)
 		}
 	}

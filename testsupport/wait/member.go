@@ -1792,7 +1792,24 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment() {
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expected int, list func() (int, error)) error {
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(namespace, kind string, expected int, list func() (int, error)) error {
+	if actual, err := a.waitForExpectedNumberOfResources(expected, list); err != nil {
+		a.T.Logf("expected number of resources of kind '%s' in namespace '%s' to be %d but it was %d", kind, namespace, expected, actual)
+		return err
+	}
+	return nil
+}
+
+// WaitForExpectedNumberOfClusterResources waits until the number of resources matches the expected count
+func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(kind string, expected int, list func() (int, error)) error {
+	if actual, err := a.waitForExpectedNumberOfResources(expected, list); err != nil {
+		a.T.Logf("expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)
+		return err
+	}
+	return nil
+}
+
+func (a *MemberAwaitility) waitForExpectedNumberOfResources(expected int, list func() (int, error)) (int, error) {
 	var actual int
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		a, err := list()
@@ -1802,10 +1819,7 @@ func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expecte
 		actual = a
 		return actual == expected, nil
 	})
-	if err != nil {
-		a.T.Logf("expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)
-	}
-	return err
+	return actual, err
 }
 
 func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
