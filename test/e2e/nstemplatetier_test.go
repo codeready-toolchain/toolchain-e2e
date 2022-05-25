@@ -103,7 +103,7 @@ func TestSetDefaultTier(t *testing.T) {
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultTier("advanced").DefaultSpaceTier("advanced"))
+		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
 		NewSignupRequest(t, awaitilities).
 			Username("defaulttierchanged").
