@@ -74,7 +74,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			}
 		})
 
-		t.Run(fmt.Sprintf("promote %s user to %s tier", testingTiersName, tierToCheck), func(t *testing.T) {
+		t.Run(fmt.Sprintf("promote %s space to %s tier", testingTiersName, tierToCheck), func(t *testing.T) {
 			// when
 			tiers.MoveSpaceToTier(t, hostAwait, testingTiersName, tierToCheck)
 
