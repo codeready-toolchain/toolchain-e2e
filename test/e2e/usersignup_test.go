@@ -599,5 +599,5 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	require.NoError(s.T(), err)
 
 	// Confirm that the migrated UserSignup is provisioned ok
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, migrated, "base", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, migrated, "deactivate30", "base")
 }
