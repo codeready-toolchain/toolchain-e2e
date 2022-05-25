@@ -10,6 +10,7 @@ import (
 type TemplateRefs struct {
 	Namespaces       []string
 	ClusterResources *string
+	SpaceRoles       map[string]string
 }
 
 // GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
@@ -20,9 +21,15 @@ func GetTemplateRefs(hostAwait *wait.HostAwaitility, tierName string) TemplateRe
 	for _, ns := range templateTier.Spec.Namespaces {
 		nsRefs = append(nsRefs, ns.TemplateRef)
 	}
+	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
+	for role, ns := range templateTier.Spec.SpaceRoles {
+		spaceRoleRefs[role] = ns.TemplateRef
+	}
+
 	return TemplateRefs{
 		Namespaces:       nsRefs,
 		ClusterResources: clusterResourcesRevision(*templateTier),
+		SpaceRoles:       spaceRoleRefs,
 	}
 }
 

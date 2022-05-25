@@ -329,6 +329,54 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 	}
 }
 
+// UntilNSTemplateSetHasSpaceRoles returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet has the expected roles for the given users
+func UntilNSTemplateSetHasSpaceRoles(expected ...toolchainv1alpha1.NSTemplateSetSpaceRole) NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return reflect.DeepEqual(expected, actual.Spec.SpaceRoles)
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected space roles to match:\n%s", Diff(expected, actual.Spec.SpaceRoles))
+		},
+	}
+}
+
+// UntilNSTemplateSetHasSpaceRolesFromBindings returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet has the expected roles for the given users
+func UntilNSTemplateSetHasSpaceRolesFromBindings(tier *toolchainv1alpha1.NSTemplateTier, bindings []toolchainv1alpha1.SpaceBinding) NSTemplateSetWaitCriterion {
+	expected := []toolchainv1alpha1.NSTemplateSetSpaceRole{}
+	for role, tmpl := range tier.Spec.SpaceRoles {
+		spaceRole := toolchainv1alpha1.NSTemplateSetSpaceRole{
+			TemplateRef: tmpl.TemplateRef,
+			Usernames:   []string{},
+		}
+		for _, b := range bindings {
+			if b.Spec.SpaceRole == role {
+				spaceRole.Usernames = append(spaceRole.Usernames, b.Spec.MasterUserRecord)
+			}
+		}
+		if len(spaceRole.Usernames) > 0 {
+			expected = append(expected, spaceRole)
+		}
+	}
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return reflect.DeepEqual(expected, actual.Spec.SpaceRoles)
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected space roles to match:\n%s", Diff(expected, actual.Spec.SpaceRoles))
+		},
+	}
+}
+
+func SpaceRole(templateRef string, usernames ...string) toolchainv1alpha1.NSTemplateSetSpaceRole {
+	return toolchainv1alpha1.NSTemplateSetSpaceRole{
+		TemplateRef: templateRef,
+		Usernames:   usernames,
+	}
+}
+
 // UntilNSTemplateSetHasTier checks if the NSTemplateTier has the expected tierName
 func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
@@ -1772,7 +1820,24 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment() {
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expected int, list func() (int, error)) error {
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(namespace, kind string, expected int, list func() (int, error)) error {
+	if actual, err := a.waitForExpectedNumberOfResources(expected, list); err != nil {
+		a.T.Logf("expected number of resources of kind '%s' in namespace '%s' to be %d but it was %d", kind, namespace, expected, actual)
+		return err
+	}
+	return nil
+}
+
+// WaitForExpectedNumberOfClusterResources waits until the number of resources matches the expected count
+func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(kind string, expected int, list func() (int, error)) error {
+	if actual, err := a.waitForExpectedNumberOfResources(expected, list); err != nil {
+		a.T.Logf("expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)
+		return err
+	}
+	return nil
+}
+
+func (a *MemberAwaitility) waitForExpectedNumberOfResources(expected int, list func() (int, error)) (int, error) {
 	var actual int
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		a, err := list()
@@ -1780,16 +1845,9 @@ func (a *MemberAwaitility) WaitForExpectedNumberOfResources(kind string, expecte
 			return false, err
 		}
 		actual = a
-		if actual == expected {
-			return true, nil
-		}
-
-		return false, nil
+		return actual == expected, nil
 	})
-	if err != nil {
-		a.T.Logf("expected number of resources of kind '%s' to match: %s", kind, Diff(expected, actual))
-	}
-	return err
+	return actual, err
 }
 
 func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
