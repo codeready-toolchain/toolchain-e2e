@@ -1846,6 +1846,16 @@ func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(actual *toolchainv1
 	a.T.Log(buf.String())
 }
 
+func (a *HostAwaitility) ListSpaceBindings(spaceName string) ([]toolchainv1alpha1.SpaceBinding, error) {
+	bindings := &toolchainv1alpha1.SpaceBindingList{}
+	if err := a.Client.List(context.TODO(), bindings, client.InNamespace(a.Namespace), client.MatchingLabels{
+		toolchainv1alpha1.SpaceBindingSpaceLabelKey: spaceName,
+	}); err != nil {
+		return nil, err
+	}
+	return bindings.Items, nil
+}
+
 // UntilSpaceBindingHasMurName returns a `SpaceBindingWaitCriterion` which checks that the given
 // SpaceBinding has the expected MUR name set in its Spec
 func UntilSpaceBindingHasMurName(expected string) SpaceBindingWaitCriterion {
