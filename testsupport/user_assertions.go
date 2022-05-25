@@ -166,9 +166,14 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
+	bindings, err := hostAwait.ListSpaceBindings(space.Name)
+	require.NoError(t, err)
 	memberAwait := GetMurTargetMember(t, awaitilities, mur)
 	// Verify provisioned NSTemplateSet
-	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name, wait.UntilNSTemplateSetHasTier(tier.Name))
+	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name,
+		wait.UntilNSTemplateSetHasTier(tier.Name),
+		wait.UntilNSTemplateSetHasSpaceRolesFromBindings(tier, bindings),
+	)
 	require.NoError(t, err)
 	tierChecks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
