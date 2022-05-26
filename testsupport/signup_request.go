@@ -267,7 +267,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 
 	if r.ensureMUR {
 		expectedSpaceTier := "base"
-		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier != nil {
+		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier != nil {
 			expectedSpaceTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier
 		}
 		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, "deactivate30", expectedSpaceTier)

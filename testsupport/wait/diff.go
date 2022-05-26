@@ -1,9 +1,15 @@
 package wait
 
 import (
+	"strings"
+
 	"github.com/google/go-cmp/cmp"
 )
 
 func Diff(expected, actual interface{}) string {
-	return cmp.Diff(expected, actual)
+	msg := &strings.Builder{}
+	msg.WriteString("-expected\n")
+	msg.WriteString("+actual\n")
+	msg.WriteString(cmp.Diff(expected, actual))
+	return msg.String()
 }
