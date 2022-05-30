@@ -12,19 +12,20 @@ import (
 	"testing"
 	"time"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var httpClient = HTTPClient
@@ -159,9 +160,6 @@ func TestSignupFails(t *testing.T) {
 	await := WaitForDeployments(t)
 	route := await.Host().RegistrationServiceURL
 
-	identity0 := authsupport.NewIdentity()
-	emailClaim0 := authsupport.WithEmailClaim(uuid.Must(uuid.NewV4()).String() + "@acme.com")
-
 	t.Run("post signup error no token 401 Unauthorized", func(t *testing.T) {
 		// Call signup endpoint without a token.
 		requestBody, err := json.Marshal(map[string]string{})
@@ -198,10 +196,11 @@ func TestSignupFails(t *testing.T) {
 		require.Equal(t, "token contains an invalid number of segments", tokenErr.(string))
 	})
 	t.Run("post signup exp token 401 Unauthorized", func(t *testing.T) {
-		expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
-
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		// Not identical to the token used in POST signup - should return resource not found.
-		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, expClaim1)
+		_, token1, err := authsupport.NewToken(
+			authsupport.WithEmail(emailAddress),
+			authsupport.WithExp(time.Now().Add(-60*time.Second)))
 		require.NoError(t, err)
 		mp := invokeEndpoint(t, "POST", route+"/api/v1/signup", token1, "", http.StatusUnauthorized)
 
@@ -243,10 +242,11 @@ func TestSignupFails(t *testing.T) {
 		require.Equal(t, "token contains an invalid number of segments", tokenErr.(string))
 	})
 	t.Run("get signup exp token 401 Unauthorized", func(t *testing.T) {
-		expClaim1 := authsupport.WithExpClaim(time.Now().Add(-60 * time.Second))
-
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		// Not identical to the token used in POST signup - should return resource not found.
-		token1, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, expClaim1)
+		_, token1, err := authsupport.NewToken(
+			authsupport.WithEmail(emailAddress),
+			authsupport.WithExp(time.Now().Add(-60*time.Second)))
 		require.NoError(t, err)
 		mp := invokeEndpoint(t, "GET", route+"/api/v1/signup", token1, "", http.StatusUnauthorized)
 
@@ -257,12 +257,11 @@ func TestSignupFails(t *testing.T) {
 	t.Run("get signup 404 NotFound", func(t *testing.T) {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
-		identity1 := authsupport.NewIdentity()
-		emailClaim1 := authsupport.WithEmailClaim(uuid.Must(uuid.NewV4()).String() + "@acme.com")
-		iatClaim1 := authsupport.WithIATClaim(time.Now().Add(-60 * time.Second))
-
 		// Not identical to the token used in POST signup - should return resource not found.
-		token1, err := authsupport.GenerateSignedE2ETestToken(*identity1, emailClaim1, iatClaim1)
+		_, token1, err := authsupport.NewToken(
+			authsupport.WithEmail(uuid.Must(uuid.NewV4()).String()+"@acme.com"),
+			authsupport.WithIAT(time.Now().Add(-60*time.Second)))
+
 		require.NoError(t, err)
 
 		// Call signup endpoint with a valid token.
@@ -273,11 +272,10 @@ func TestSignupFails(t *testing.T) {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error. Username claim is also
 		// overridden to trigger error and ensure that usersignup is not created.
-		identity := authsupport.NewIdentity()
-		emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
-		emailClaim := authsupport.WithEmailClaim(emailValue)
-		usernameClaim := authsupport.WithPreferredUsernameClaim("test-crtadmin")
-		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim, usernameClaim)
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
+		identity, token, err := authsupport.NewToken(
+			authsupport.WithEmail(emailAddress),
+			authsupport.WithPreferredUsername("test-crtadmin"))
 		require.NoError(t, err)
 
 		// Call signup endpoint with a valid token to initiate a signup process
@@ -299,7 +297,7 @@ func TestSignupOK(t *testing.T) {
 
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
-	signupUser := func(token, email, userSignupName string, identity *authsupport.Identity) *toolchainv1alpha1.UserSignup {
+	signupUser := func(token, email, userSignupName string, identity *commonauth.Identity) *toolchainv1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
 		invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusAccepted)
 
@@ -327,7 +325,7 @@ func TestSignupOK(t *testing.T) {
 		err = hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(t, err)
 
-		// Wait the Master User Record to be provisioned
+		// Wait the resources to be provisioned
 		VerifyResourcesProvisionedForSignup(t, await, userSignup, "base", "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
@@ -339,14 +337,12 @@ func TestSignupOK(t *testing.T) {
 	t.Run("test activation-deactivation workflow", func(t *testing.T) {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
-		identity := authsupport.NewIdentity()
-		emailValue := uuid.Must(uuid.NewV4()).String() + "@acme.com"
-		emailClaim := authsupport.WithEmailClaim(emailValue)
-		token, err := authsupport.GenerateSignedE2ETestToken(*identity, emailClaim)
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
+		identity, token, err := authsupport.NewToken(authsupport.WithEmail(emailAddress))
 		require.NoError(t, err)
 
 		// Signup a new user
-		userSignup := signupUser(token, emailValue, identity.Username, identity)
+		userSignup := signupUser(token, emailAddress, identity.Username, identity)
 
 		// Deactivate the usersignup
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
@@ -362,7 +358,7 @@ func TestSignupOK(t *testing.T) {
 		assertGetSignupReturnsNotFound(t, await, token)
 
 		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
-		signupUser(token, emailValue, identity.Username, identity)
+		signupUser(token, emailAddress, identity.Username, identity)
 	})
 }
 func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
@@ -375,11 +371,11 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 
 	// Create a token and identity to sign up with, but override the username with "arnold" so that we create a UserSignup
 	// with that name
-	identity0 := authsupport.NewIdentity()
-	emailValue := "arnold@acme.com"
-	emailClaim0 := authsupport.WithEmailClaim(emailValue)
-	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithSubClaim(identity0.ID.String()),
-		authsupport.WithPreferredUsernameClaim("arnold"))
+	emailAddress := "arnold@acme.com"
+	_, token0, err := authsupport.NewToken(
+		authsupport.WithEmail(emailAddress),
+		// authsupport.WithSub(identity0.ID.String()),
+		authsupport.WithPreferredUsername("arnold"))
 	require.NoError(t, err)
 
 	// Call the signup endpoint
@@ -392,11 +388,13 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(hostAwait, userSignup)
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
-	assert.Equal(t, emailValue, emailAnnotation)
+	assert.Equal(t, emailAddress, emailAnnotation)
 
 	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
 	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
-	token0, err = authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0, authsupport.WithPreferredUsernameClaim("arnold"))
+	_, token0, err = authsupport.NewToken(
+		authsupport.WithEmail(emailAddress),
+		authsupport.WithPreferredUsername("arnold"))
 	require.NoError(t, err)
 	mp, mpStatus := parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
 	assert.Equal(t, "", mp["compliantUsername"])
@@ -414,10 +412,8 @@ func TestPhoneVerification(t *testing.T) {
 
 	hostAwait := await.Host()
 	// Create a token and identity to sign up with
-	identity0 := authsupport.NewIdentity()
-	emailValue := uuid.Must(uuid.NewV4()).String() + "@some.domain"
-	emailClaim0 := authsupport.WithEmailClaim(emailValue)
-	token0, err := authsupport.GenerateSignedE2ETestToken(*identity0, emailClaim0)
+	emailAddress := uuid.Must(uuid.NewV4()).String() + "@some.domain"
+	identity0, token0, err := authsupport.NewToken(authsupport.WithEmail(emailAddress))
 	require.NoError(t, err)
 
 	// Call the signup endpoint
@@ -430,7 +426,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(hostAwait, userSignup)
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
-	assert.Equal(t, emailValue, emailAnnotation)
+	assert.Equal(t, emailAddress, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure verificationRequired is true
 	mp, mpStatus := parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
@@ -524,10 +520,8 @@ func TestPhoneVerification(t *testing.T) {
 	require.False(t, mpStatus["verificationRequired"].(bool))
 
 	// Create another token and identity to sign up with
-	otherIdentity := authsupport.NewIdentity()
 	otherEmailValue := uuid.Must(uuid.NewV4()).String() + "@other.domain"
-	otherEmailClaim := authsupport.WithEmailClaim(otherEmailValue)
-	otherToken, err := authsupport.GenerateSignedE2ETestToken(*otherIdentity, otherEmailClaim)
+	otherIdentity, otherToken, err := authsupport.NewToken(authsupport.WithEmail(otherEmailValue))
 	require.NoError(t, err)
 
 	// Call the signup endpoint

@@ -13,9 +13,11 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +33,7 @@ func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupReque
 		requiredHTTPStatus: http.StatusAccepted,
 		username:           defaultUsername,
 		email:              fmt.Sprintf("%s@test.com", defaultUsername),
+		identityID:         uuid.Must(uuid.NewV4()),
 	}
 }
 
@@ -53,7 +56,7 @@ type SignupRequest struct {
 	waitForMUR           bool
 	manuallyApprove      bool
 	verificationRequired bool
-	identityID           *uuid.UUID
+	identityID           uuid.UUID
 	username             string
 	email                string
 	requiredHTTPStatus   int
@@ -67,75 +70,98 @@ type SignupRequest struct {
 	noSpace              bool
 }
 
+// IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
+// "Subject" and "IdentityID" claims in the user's auth token.  If not set, a new UUID value will be used
 func (r *SignupRequest) IdentityID(id uuid.UUID) *SignupRequest {
 	value := id
-	r.identityID = &value
+	r.identityID = value
 	return r
 }
 
+// Username specifies the username of the user
 func (r *SignupRequest) Username(username string) *SignupRequest {
 	r.username = username
 	return r
 }
 
+// Email specifies the email address to use for the new UserSignup
 func (r *SignupRequest) Email(email string) *SignupRequest {
 	r.email = email
 	return r
 }
 
+// OriginalSub specifies the original sub value which will be used for migrating the user to a new IdP client
 func (r *SignupRequest) OriginalSub(originalSub string) *SignupRequest {
 	r.originalSub = originalSub
 	return r
 }
 
+// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
+// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
+// here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	return r.userSignup, r.mur
 }
 
+// EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
+// the Resources() function to return a non-nil value for its second return parameter.
 func (r *SignupRequest) EnsureMUR() *SignupRequest {
 	r.ensureMUR = true
 	return r
 }
 
+// WaitForMUR will wait until MasterUserRecord is created
 func (r *SignupRequest) WaitForMUR() *SignupRequest {
 	r.waitForMUR = true
 	return r
 }
 
+// GetToken may be called only after a call to Execute(). It returns the token that was generated for the request
 func (r *SignupRequest) GetToken() string {
 	return r.token
 }
 
+// ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
 func (r *SignupRequest) ManuallyApprove() *SignupRequest {
 	r.manuallyApprove = true
 	return r
 }
 
+// RequireConditions specifies the condition values that the new UserSignup is required to have in order for
+// the signup to be considered successful
 func (r *SignupRequest) RequireConditions(conditions ...toolchainv1alpha1.Condition) *SignupRequest {
 	r.conditions = conditions
 	return r
 }
 
+// VerificationRequired specifies that the "verification-required" state will be set for the new UserSignup, however
+// if ManuallyApprove() is also called then this will have no effect as user approval overrides the verification
+// required state.
 func (r *SignupRequest) VerificationRequired() *SignupRequest {
 	r.verificationRequired = true
 	return r
 }
 
+// TargetCluster may be provided in order to specify the user's target cluster
 func (r *SignupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) *SignupRequest {
 	r.targetCluster = targetCluster
 	return r
 }
 
+// RequireHTTPStatus may be used to override the expected HTTP response code received from the Registration Service.
+// If not specified, here, the default expected value is StatusAccepted
 func (r *SignupRequest) RequireHTTPStatus(httpStatus int) *SignupRequest {
 	r.requiredHTTPStatus = httpStatus
 	return r
 }
 
+// DisableCleanup disables automatic cleanup of the UserSignup resource after the test has completed
 func (r *SignupRequest) DisableCleanup() *SignupRequest {
 	r.cleanupDisabled = true
 	return r
 }
 
+// NoSpace creates only a UserSignup and MasterUserRecord, Space creation will be skipped
 func (r *SignupRequest) NoSpace() *SignupRequest {
 	r.noSpace = true
 	return r
@@ -161,33 +187,26 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 	r.usernames[name] = t.Name()
 }
 
+// Execute executes the request against the Registration service REST endpoint.  This function may only be called
+// once, and must be called after all other functions EXCEPT for Resources()
 func (r *SignupRequest) Execute() *SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
 	require.NoError(r.t, err)
 
-	var identityID uuid.UUID
-	if r.identityID != nil {
-		identityID = *r.identityID
-	} else {
-		identityID = uuid.Must(uuid.NewV4())
-	}
-
 	// Create a token and identity to sign up with
-	userIdentity := &authsupport.Identity{
-		ID:       identityID,
-		Username: r.username,
-	}
-
 	usernamesInParallel.add(r.t, r.username)
 
-	claims := []authsupport.ExtraClaim{authsupport.WithEmailClaim(r.email)}
-	if r.originalSub != "" {
-		claims = append(claims, authsupport.WithOriginalSubClaim(r.originalSub))
+	userIdentity := &commonauth.Identity{
+		ID:       r.identityID,
+		Username: r.username,
 	}
-	token0, err := authsupport.GenerateSignedE2ETestToken(*userIdentity, claims...)
+	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim(r.email)}
+	if r.originalSub != "" {
+		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
+	}
+	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(r.t, err)
-	r.token = token0
 
 	queryParams := map[string]string{}
 	if r.noSpace {
@@ -196,7 +215,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 
 	// Call the signup endpoint
 	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		token0, "", r.requiredHTTPStatus, queryParams)
+		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
 	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)

@@ -1528,6 +1528,7 @@ func matchSpaceWaitCriterion(actual *toolchainv1alpha1.Space, criteria ...SpaceW
 
 // WaitForSpace waits until the Space with the given name is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+	a.T.Logf("waiting for Space '%s' with matching criteria", name)
 	var space *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
@@ -1842,6 +1843,16 @@ func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(actual *toolchainv1
 	// also include SpaceBindings resources in the host namespace, to help troubleshooting
 	a.listAndPrint("SpaceBindings", a.Namespace, &toolchainv1alpha1.SpaceBindingList{})
 	a.T.Log(buf.String())
+}
+
+func (a *HostAwaitility) ListSpaceBindings(spaceName string) ([]toolchainv1alpha1.SpaceBinding, error) {
+	bindings := &toolchainv1alpha1.SpaceBindingList{}
+	if err := a.Client.List(context.TODO(), bindings, client.InNamespace(a.Namespace), client.MatchingLabels{
+		toolchainv1alpha1.SpaceBindingSpaceLabelKey: spaceName,
+	}); err != nil {
+		return nil, err
+	}
+	return bindings.Items, nil
 }
 
 // UntilSpaceBindingHasMurName returns a `SpaceBindingWaitCriterion` which checks that the given
