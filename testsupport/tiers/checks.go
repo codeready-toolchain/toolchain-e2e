@@ -502,7 +502,7 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(),
-		idlers(43200, ""))
+		idlers(0, ""))
 }
 
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
