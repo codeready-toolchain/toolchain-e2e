@@ -74,9 +74,9 @@ Note #2: Only resources that a user has permissions to create will be successful
 == Dev Sandbox Setup
 
 . Clone this repository +
-```
-git clone git@github.com:codeready-toolchain/toolchain-e2e.git
-```
++```
++git clone git@github.com:codeready-toolchain/toolchain-e2e.git
++```
 . Run the following to install the Dev Sandbox operators +
 ```
 make dev-deploy-e2e
@@ -85,7 +85,7 @@ make dev-deploy-e2e
 ```
 oc get toolchainstatus -n toolchain-host-operator
 ```
-+
+
 ```
 NAME               MURS   READY   LAST UPDATED
 toolchain-status   0      True    2021-03-24T22:39:36Z
