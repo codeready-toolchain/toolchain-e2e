@@ -1172,6 +1172,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"create", "delete"},
 				},
 				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"create", "delete", "get", "list", "watch"},
+				},
+				{
 					APIGroups: []string{"results.tekton.dev"},
 					Resources: []string{"results", "records"},
 					Verbs:     []string{"get", "list"},
@@ -1180,11 +1185,6 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					APIGroups: []string{"singapore.open-cluster-management.io"},
 					Resources: []string{"registeredclusters"},
 					Verbs:     []string{"create", "get", "list", "watch", "delete"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"configmaps"},
-					Verbs:     []string{"create", "delete", "get", "list", "watch"},
 				},
 			},
 		}
