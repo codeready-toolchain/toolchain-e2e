@@ -74,10 +74,17 @@ Note #2: Only resources that a user has permissions to create will be successful
 == Dev Sandbox Setup
 
 . Clone this repository +
-`+git clone git@github.com:codeready-toolchain/toolchain-e2e.git+`
+```
+git clone git@github.com:codeready-toolchain/toolchain-e2e.git
+```
 . Run the following to install the Dev Sandbox operators +
-`make dev-deploy-e2e`
-. Run `oc get toolchainstatus -n toolchain-host-operator` and ensure the Ready status is `True`
+```
+make dev-deploy-e2e
+```
+. Run the following command and ensure the Ready status is `True`
+```
+oc get toolchainstatus -n toolchain-host-operator
+```
 +
 ```
 NAME               MURS   READY   LAST UPDATED
@@ -92,11 +99,15 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 +
 Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 2 separate terminals using a unique username prefix in each terminal.
 +
-Terminal 1: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cupcake --workloads namespace:deploymentName`
+Terminal 1:
+```
+go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cupcake --workloads namespace:deploymentName
+```
 +
 Terminal 2: +
-`go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cheesecake --workloads namespace:deploymentName`
+```
+go run setup/main.go --template=<path_to_onboarding_template_from_prereq_step> --users 1000 --default 1000 --custom 1000 --username cheesecake --workloads namespace:deploymentName
+```
 +
 Note 1: You do not need to add the default template (https://raw.githubusercontent.com/codeready-toolchain/toolchain-e2e/master/setup/resources/user-workloads.yaml[setup/resources/user-workloads.yaml]), it is automatically added when you run the setup. You can control how many users will have the default template applied using the `--default` flag.
 +
@@ -123,9 +134,13 @@ With the cluster now under load, it's time to evaluate the environment.
 
 === Remove Only Users and Their Namespaces
 
-Run `make clean-users`
+```
+make clean-users
+```
 
 *Note: If rerunning the tool for performance comparison purposes a fresh cluster should be used to maintain accuracy.*
 
 === Remove All Sandbox-related Resources
-Run `make clean-e2e-resources`
+```
+make clean-e2e-resources
+```
