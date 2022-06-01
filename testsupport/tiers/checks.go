@@ -1181,6 +1181,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"registeredclusters"},
 					Verbs:     []string{"create", "get", "list", "watch", "delete"},
 				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"create", "delete", "get", "list", "watch"},
+				},
 			},
 		}
 
