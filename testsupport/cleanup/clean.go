@@ -138,7 +138,7 @@ func (c *cleanTask) cleanObject() {
 			return false, err
 		}
 		return false, nil
-	}), "The object still exists after the time out expired", "Kind", kind, "Name", objToClean.GetName())
+	}), "The object still exists after the time out expired: %s/%s", kind, objToClean.GetName())
 }
 
 func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {

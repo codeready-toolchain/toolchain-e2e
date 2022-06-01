@@ -147,7 +147,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
-				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1))
+				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1.ClusterName))
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space3.Name)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)

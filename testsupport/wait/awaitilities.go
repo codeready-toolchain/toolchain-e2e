@@ -1,5 +1,7 @@
 package wait
 
+import "fmt"
+
 func NewAwaitilities(hostAwait *HostAwaitility, memberAwaitilities ...*MemberAwaitility) Awaitilities {
 	return Awaitilities{
 		hostAwaitility:     hostAwait,
@@ -22,6 +24,15 @@ func (a Awaitilities) Member1() *MemberAwaitility {
 
 func (a Awaitilities) Member2() *MemberAwaitility {
 	return a.memberAwaitilities[1]
+}
+
+func (a Awaitilities) Member(name string) (*MemberAwaitility, error) {
+	for _, m := range a.memberAwaitilities {
+		if m.ClusterName == name {
+			return m, nil
+		}
+	}
+	return nil, fmt.Errorf("could not find awaitility for member '%s'", name)
 }
 
 func (a Awaitilities) AllMembers() []*MemberAwaitility {
