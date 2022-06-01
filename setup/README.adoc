@@ -18,7 +18,7 @@ controlPlane:
   name: master
   platform:
     aws:
-      type: "m5.4xlarge"
+      type: "m5.8xlarge"
   replicas: 3
 compute:
 - hyperthreading: Enabled
