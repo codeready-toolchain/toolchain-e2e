@@ -1266,7 +1266,7 @@ func appstudioQuotaComputeBuild() namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		var err error
 		spec := corev1.ResourceQuotaSpec{
-			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
+			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
 		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20000m")
