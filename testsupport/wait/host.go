@@ -1767,6 +1767,9 @@ func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria
 		if len(spaceBindingList.Items) == 0 {
 			return false, nil
 		}
+		if len(spaceBindingList.Items) > 1 {
+			return false, fmt.Errorf("more than 1 binding for MasterUserRecord '%s' to Space '%s'", murName, spaceName)
+		}
 		spacebinding = &spaceBindingList.Items[0]
 		return matchSpaceBindingWaitCriterion(spacebinding, criteria...), nil
 	})
