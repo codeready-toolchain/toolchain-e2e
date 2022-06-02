@@ -57,7 +57,7 @@ func TestProxyFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultTier("appstudio").DefaultSpaceTier("appstudio"))
+	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"))
 
 	users := []proxyUser{
 		{
@@ -90,7 +90,7 @@ func TestProxyFlow(t *testing.T) {
 			user.signup, _ = req.Resources()
 			user.token = req.GetToken()
 
-			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "appstudio", "appstudio")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 			_, err := hostAwait.GetMasterUserRecord(user.username)
 			require.NoError(t, err)
 

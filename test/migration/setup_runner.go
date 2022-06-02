@@ -125,15 +125,12 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser() {
 	hostAwait := r.Awaitilities.Host()
 
 	// promote to appstudio
-	changeTierRequest := tiers.NewChangeTierRequest(hostAwait.Namespace, AppStudioProvisionedUser, "appstudio")
-	err := hostAwait.CreateWithCleanup(context.TODO(), changeTierRequest)
-	require.NoError(r.T, err)
+	tiers.MoveSpaceToTier(r.T, hostAwait, AppStudioProvisionedUser, "appstudio")
 
 	r.T.Logf("user %s was promoted to appstudio tier", AppStudioProvisionedUser)
 
 	// verify that it's promoted
-	_, err = r.Awaitilities.Host().WaitForMasterUserRecord(AppStudioProvisionedUser,
-		wait.UntilMasterUserRecordHasTierName("appstudio"),
+	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(AppStudioProvisionedUser,
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
 	require.NoError(r.T, err)
 }
@@ -152,7 +149,6 @@ func (r *SetupMigrationRunner) prepareUser(name string, targetCluster *wait.Memb
 		Execute().
 		Resources()
 	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(signup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasTierName("base"),
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
 	require.NoError(r.T, err)
 	return signup

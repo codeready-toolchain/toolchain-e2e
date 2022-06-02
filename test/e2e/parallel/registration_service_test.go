@@ -325,8 +325,8 @@ func TestSignupOK(t *testing.T) {
 		err = hostAwait.Client.Update(context.TODO(), userSignup)
 		require.NoError(t, err)
 
-		// Wait the resources to be provisioned
-		VerifyResourcesProvisionedForSignup(t, await, userSignup, "base", "base")
+		// Wait for the resources to be provisioned
+		VerifyResourcesProvisionedForSignup(t, await, userSignup, "deactivate30", "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		assertGetSignupStatusProvisioned(t, await, identity.Username, token)
