@@ -80,7 +80,12 @@ label-olm-ns:
 # adds a label on the oc label ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
 # so that deployment also works when network policies were configured with `sandbox-cli`
 	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
-	
+
+.PHONY: test-e2e-local-without-migration
+## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration tests
+test-e2e-local-without-migration:
+	$(MAKE) test-e2e-without-migration HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
+
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
 test-e2e-local:
