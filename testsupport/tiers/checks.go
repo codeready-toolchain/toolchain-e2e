@@ -434,6 +434,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		appstudioQuotaComputeDeploy(),
 		appstudioQuotaComputeBuild(),
+		appstudioQuotaStorage(),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
@@ -1250,17 +1251,9 @@ func appstudioQuotaComputeDeploy() namespaceObjectsCheck { // nolint:unparam
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
-		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("1750m")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("7Gi")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
-		require.NoError(t, err)
-		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
@@ -1295,6 +1288,27 @@ func appstudioQuotaComputeBuild() namespaceObjectsCheck { // nolint:unparam
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
 		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-build", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func appstudioQuotaStorage() namespaceObjectsCheck { // nolint:unparam
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		require.NoError(t, err)
+		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "storage", criteria)
 		require.NoError(t, err)
 	}
 }
