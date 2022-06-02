@@ -6,7 +6,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/require"
@@ -18,13 +17,13 @@ func TestCreateSocialEvent(t *testing.T) {
 	t.Parallel()
 
 	// make sure everything is ready before running the actual tests
-	awaitilities := WaitForDeployments(t)
+	awaitilities := testsupport.WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
 	t.Run("create socialevent with valid tiername", func(t *testing.T) {
 		// given
 		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(name, "base")
+		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "base")
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), se)
@@ -41,7 +40,7 @@ func TestCreateSocialEvent(t *testing.T) {
 	t.Run("create socialevent with invalid tiername", func(t *testing.T) {
 		// given
 		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(name, "invalid")
+		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "invalid")
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), se)

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,10 +12,10 @@ import (
 // starting: now
 // ending: 1hr later
 // max attendees: 10
-func NewSocialEvent(name, tierName string) *toolchainv1alpha1.SocialEvent {
+func NewSocialEvent(namespace, name, tierName string) *toolchainv1alpha1.SocialEvent {
 	se := &toolchainv1alpha1.SocialEvent{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: test.HostOperatorNs,
+			Namespace: namespace,
 			Name:      name,
 		},
 		Spec: toolchainv1alpha1.SocialEventSpec{
