@@ -7,7 +7,7 @@ DEV_ENVIRONMENT := dev
 SHOW_CLEAN_COMMAND="make clean-dev-resources"
 
 .PHONY: dev-deploy-latest
-## Deploy the resources with one member operator instance using the latest greatest images of Toolchain operators
+## Deploy the resources with one member operator instance using the latest and greatest images of Toolchain operators
 dev-deploy-latest: DEPLOY_LATEST=true
 dev-deploy-latest: dev-deploy-e2e
 
