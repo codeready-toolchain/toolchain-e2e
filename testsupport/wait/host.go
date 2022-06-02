@@ -1947,21 +1947,15 @@ func (a *HostAwaitility) WaitForSocialEvent(name string, criteria ...SocialEvent
 	var event *toolchainv1alpha1.SocialEvent
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		// retrieve the SocialEvent from the host namespace
-		events := &toolchainv1alpha1.SocialEventList{}
-		if err = a.Client.List(context.TODO(), events, client.InNamespace(a.Namespace)); err != nil {
+		obj := &toolchainv1alpha1.SocialEvent{}
+		if err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
-		if len(events.Items) == 0 {
-			return false, nil
-		}
-		for i := range events.Items {
-			e := events.Items[i]
-			if e.Name == name {
-				event = &e
-				return matchSocialEventWaitCriterion(&e, criteria...), nil
-			}
-		}
-		return false, nil
+		event = obj
+		return matchSocialEventWaitCriterion(event, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
