@@ -1,4 +1,4 @@
-package e2e_test
+package parallel
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 
 func TestCreateSocialEvent(t *testing.T) {
 	// given
+	t.Parallel()
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
