@@ -266,12 +266,12 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	}
 
 	if r.ensureMUR {
-		expectedTier := "base"
-		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier != nil {
-			expectedTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultTier
+		expectedSpaceTier := "base"
+		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier != nil {
+			expectedSpaceTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier
 		}
-		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, expectedTier, expectedTier)
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasTierName(expectedTier))
+		VerifyResourcesProvisionedForSignup(r.t, r.awaitilities, userSignup, "deactivate30", expectedSpaceTier)
+		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
 		require.NoError(r.t, err)
 		r.mur = mur
 	}

@@ -170,16 +170,3 @@ func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName s
 	})
 	require.NoError(t, err)
 }
-
-func NewChangeTierRequest(namespace, murName, tier string) *toolchainv1alpha1.ChangeTierRequest {
-	return &toolchainv1alpha1.ChangeTierRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    namespace,
-			GenerateName: "changetierrequest-",
-		},
-		Spec: toolchainv1alpha1.ChangeTierRequestSpec{
-			MurName:  murName,
-			TierName: tier,
-		},
-	}
-}
