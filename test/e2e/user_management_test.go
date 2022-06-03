@@ -50,6 +50,77 @@ func (s *userManagementTestSuite) SetupSuite() {
 	s.Awaitilities = WaitForDeployments(s.T())
 }
 
+// TODO remove once user tier migration is complete
+func TestUserTierMigration(t *testing.T) {
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+
+	// Create and approve "testingtiers" signups
+	testingTiersName := "testingtiers"
+	testingtiers, _ := NewSignupRequest(t, awaitilities).
+		Username(testingTiersName).
+		ManuallyApprove().
+		TargetCluster(awaitilities.Member1()).
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute().
+		Resources()
+
+	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
+	tiersToCheck := []string{"advanced", "basedeactivationdisabled", "baseextended", "baseextendedidling", "baselarge", "hackathon", "test", "appstudio", "base1ns", "base"}
+
+	// when the tiers are created during the startup then we can verify them
+	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
+	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
+	require.NoError(t, err)
+	assert.Len(t, allTiers.Items, len(tiersToCheck))
+
+	for _, tier := range allTiers.Items {
+		assert.Contains(t, tiersToCheck, tier.Name)
+	}
+
+	// wait for the user to be provisioned for the first time
+	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", "base") // deactivate30 is the default UserTier and base is the default SpaceTier
+	for _, tierToCheck := range tiersToCheck {
+
+		t.Run(fmt.Sprintf("change %s user tier to %s tier to test migration", testingTiersName, tierToCheck), func(t *testing.T) {
+			// when
+			// set MUR TierName to an NSTemplateTier name
+			tiers.MoveMURToTier(t, hostAwait, testingTiersName, tierToCheck)
+
+			// then
+			expectedUserTier := getUserTierForNSTemplateTier(tierToCheck)
+			require.NotEqual(t, "invalid", expectedUserTier, fmt.Sprintf("NSTemplateTier '%s' does not map to a UserTier", tierToCheck))
+
+			// the MUR TierName should be automatically updated to a UserTier
+			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, expectedUserTier, "base") // base is the default SpaceTier
+		})
+	}
+}
+
+// TODO remove once user tier migration is complete
+func getUserTierForNSTemplateTier(nsTemplateTier string) string {
+	switch nsTemplateTier {
+	case "appstudio", "base", "base1ns", "baseextendedidling", "test":
+		return "deactivate30"
+	case "hackathon":
+		return "deactivate80"
+	case "baselarge":
+		return "deactivate90"
+	case "baseextended":
+		return "deactivate180"
+	case "advanced", "basedeactivationdisabled":
+		return "nodeactivation"
+	default:
+		return "invalid"
+	}
+}
+
+// TestVerifyUserTiers lists all UserTiers and validates each one
+// Functional testing is covered by the deactivation tests below, it's not necessary to test each
+// UserTier with deactivation since it's only the deactivationTimeoutDays value that changes and the deactivation
+// logic handles them in the same way
 func (s *userManagementTestSuite) TestVerifyUserTiers() {
 	hostAwait := s.Host()
 
@@ -519,15 +590,15 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
-		// Get the base tier that has deactivation disabled
-		baseDeactivationDisabledTier, err := hostAwait.WaitForNSTemplateTier("basedeactivationdisabled")
+		// Get the user tier that has deactivation disabled
+		deactivationDisabledUserTier, err := hostAwait.WaitForUserTier("nodeactivation")
 		require.NoError(t, err)
 
 		// Move the user to the new tier without deactivation enabled
-		tiers.MoveMURToTier(t, hostAwait, userSignupMember1.Status.CompliantUsername, baseDeactivationDisabledTier.Name)
+		tiers.MoveMURToTier(t, hostAwait, userSignupMember1.Status.CompliantUsername, deactivationDisabledUserTier.Name)
 		murMember1, err = hostAwait.WaitForMasterUserRecord(murMember1.Name,
 			wait.UntilMasterUserRecordHasCondition(Provisioned()),
-			wait.UntilMasterUserRecordHasTierName(baseDeactivationDisabledTier.Name)) // ignore other conditions, such as notification sent, etc.
+			wait.UntilMasterUserRecordHasTierName(deactivationDisabledUserTier.Name)) // ignore other conditions, such as notification sent, etc.
 		require.NoError(s.T(), err)
 
 		// We cannot wait days for testing deactivation so for the purposes of the e2e tests we use a hack to change the provisioned time
@@ -654,7 +725,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 		require.NoError(s.T(), err)
 
 		// Verify resources have been provisioned
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "base", "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "deactivate30", "base")
 	})
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
@@ -705,7 +776,7 @@ func (s *userManagementTestSuite) TestUserDeactivationNSTemplateTier() {
 			require.NoError(s.T(), err)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "base", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 
 			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
@@ -948,7 +1019,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute().Resources()
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 
 	// Disable MUR
 	mur, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -988,7 +1059,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "base", "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 	})
 }
 
