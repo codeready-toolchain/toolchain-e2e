@@ -1247,7 +1247,7 @@ func appstudioQuotaComputeDeploy() namespaceObjectsCheck { // nolint:unparam
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20000m")
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
@@ -1269,11 +1269,11 @@ func appstudioQuotaComputeBuild() namespaceObjectsCheck { // nolint:unparam
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20000m")
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("64Gi")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("2000m")
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("2")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("32Gi")
 		require.NoError(t, err)
