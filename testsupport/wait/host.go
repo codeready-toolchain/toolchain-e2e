@@ -995,51 +995,6 @@ func HasClusterResourcesTemplateRef(expected string) NSTemplateTierSpecMatcher {
 	}
 }
 
-// WaitForChangeTierRequest waits until there a ChangeTierRequest is available with the given status conditions
-func (a *HostAwaitility) WaitForChangeTierRequest(name string, expected toolchainv1alpha1.Condition) (*toolchainv1alpha1.ChangeTierRequest, error) {
-	var changeTierRequest *toolchainv1alpha1.ChangeTierRequest
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.ChangeTierRequest{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		changeTierRequest = obj
-		return test.ConditionsMatch(obj.Status.Conditions, expected), nil
-	})
-	// log message if an error occurred
-	if err != nil {
-		if changeTierRequest == nil {
-			e, _ := yaml.Marshal(expected)
-			a.T.Logf("failed to find ChangeTierRequest '%s' with condition\n%s. Actual: nil", name, e)
-		} else {
-			a.T.Logf("expected conditions to match: '%s'", Diff(expected, changeTierRequest.Status.Conditions))
-		}
-	}
-	return changeTierRequest, err
-}
-
-// WaitUntilChangeTierRequestDeleted waits until the ChangeTierRequest with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilChangeTierRequestDeleted(name string) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		changeTierRequest := &toolchainv1alpha1.ChangeTierRequest{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, changeTierRequest); err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, err
-		}
-		return false, nil
-	})
-	// log message if an error occurred
-	if err != nil {
-		a.T.Logf("failed to wait until ChangeTierRequest '%s' was deleted: %v\n", name, err)
-	}
-	return err
-}
-
 // NotificationWaitCriterion a struct to compare with an expected Notification
 type NotificationWaitCriterion struct {
 	Match func(toolchainv1alpha1.Notification) bool
@@ -1811,6 +1766,9 @@ func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria
 		}
 		if len(spaceBindingList.Items) == 0 {
 			return false, nil
+		}
+		if len(spaceBindingList.Items) > 1 {
+			return false, fmt.Errorf("more than 1 binding for MasterUserRecord '%s' to Space '%s'", murName, spaceName)
 		}
 		spacebinding = &spaceBindingList.Items[0]
 		return matchSpaceBindingWaitCriterion(spacebinding, criteria...), nil
