@@ -1012,7 +1012,7 @@ func resourceQuotaMatches(namespace, name string, spec corev1.ResourceQuotaSpec)
 			return reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 		},
 		Diff: func(actual *corev1.ResourceQuota) string {
-			return fmt.Sprintf("expected ResourceQuota to match (namespace=%s, name=%s): %s", namespace, name, wait.Diff(spec, actual.Spec))
+			return fmt.Sprintf("expected ResourceQuota to match (namespace=%s, name=%s):\n%s", namespace, name, wait.Diff(spec, actual.Spec))
 		},
 	}
 }
@@ -1247,7 +1247,7 @@ func appstudioQuotaComputeDeploy() namespaceObjectsCheck { // nolint:unparam
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20000m")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("7Gi")
 		require.NoError(t, err)
@@ -1269,11 +1269,11 @@ func appstudioQuotaComputeBuild() namespaceObjectsCheck { // nolint:unparam
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20000m")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("64Gi")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("2")
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("2000m")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("32Gi")
 		require.NoError(t, err)
