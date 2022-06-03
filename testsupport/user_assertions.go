@@ -21,13 +21,13 @@ import (
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
-		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "base", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
 	}
 }
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, userTierName, spaceTierName string) {
 	VerifyUserRelatedResources(t, awaitilities, signup, userTierName)
-	VerifySpaceRelatedResources(t, awaitilities, signup, userTierName, spaceTierName)
+	VerifySpaceRelatedResources(t, awaitilities, signup, spaceTierName)
 }
 
 func VerifyResourcesProvisionedForSignupWithoutSpace(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, userTierName string) {
@@ -137,7 +137,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	return userSignup, mur
 }
 
-func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, userTierName, spaceTierName string) {
+func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, spaceTierName string) {
 
 	hostAwait := awaitilities.Host()
 
@@ -147,7 +147,6 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	require.NoError(t, err)
 
 	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasTierName(userTierName),
 		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 

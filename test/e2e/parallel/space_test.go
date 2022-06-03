@@ -208,24 +208,12 @@ func TestPromoteSpace(t *testing.T) {
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 	t.Run("to advanced tier", func(t *testing.T) {
-		// given
-		ctr := tiers.NewChangeTierRequest(hostAwait.Namespace, space.Name, "advanced")
-
 		// when
-		err := hostAwait.Client.Create(context.TODO(), ctr)
+		tiers.MoveSpaceToTier(t, hostAwait, space.Name, "advanced")
 
 		// then
-		require.NoError(t, err)
-		_, err = hostAwait.WaitForChangeTierRequest(ctr.Name, toBeComplete)
-		require.NoError(t, err)
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	})
-}
-
-var toBeComplete = toolchainv1alpha1.Condition{
-	Type:   toolchainv1alpha1.ChangeTierRequestComplete,
-	Status: corev1.ConditionTrue,
-	Reason: toolchainv1alpha1.ChangeTierRequestChangedReason,
 }
 
 func TestRetargetSpace(t *testing.T) {

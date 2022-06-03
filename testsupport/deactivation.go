@@ -77,7 +77,7 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	require.NoError(t, err)
 	require.False(t, states.Deactivated(userSignup), "usersignup should not be deactivated")
 
-	VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "base", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")
 
 	return userSignup
 }
