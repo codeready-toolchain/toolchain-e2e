@@ -555,7 +555,7 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	require.NoError(s.T(), err)
 
 	// Deactivate
-	states.SetDeactivated(userSignup, true)
+	// states.SetDeactivated(userSignup, true)
 	userSignup, err = s.Awaitilities.Host().UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivated(us, true)
 	})
@@ -590,6 +590,7 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 				}})...,
 		))
 	require.NoError(s.T(), err)
+	// and the "old" UserSignup resource should be deleted
 	require.NoError(s.T(), s.Awaitilities.Host().WaitUntilUserSignupDeleted(userSignup.Name))
 
 	// Now try to reactivate the migrated UserSignup again
