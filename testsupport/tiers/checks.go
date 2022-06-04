@@ -9,8 +9,8 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/davecgh/go-spew/spew"
 
+	"github.com/davecgh/go-spew/spew"
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -219,7 +219,7 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
+		numberOfClusterResourceQuotas(9),
 		idlers(43200, "dev", "stage"))
 }
 
@@ -285,7 +285,7 @@ func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
+		numberOfClusterResourceQuotas(9),
 		idlers(43200, "dev"))
 }
 
@@ -304,7 +304,7 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
+		numberOfClusterResourceQuotas(9),
 		idlers(43200, "dev", "stage"))
 }
 
@@ -335,7 +335,7 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
+		numberOfClusterResourceQuotas(9),
 		idlers(518400, "dev", "stage"))
 }
 
@@ -376,7 +376,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
+		numberOfClusterResourceQuotas(9),
 		idlers(0, "dev", "stage"))
 }
 
@@ -432,7 +432,10 @@ func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+		appstudioQuotaComputeDeploy(),
+		appstudioQuotaComputeBuild(),
+		appstudioQuotaStorage(),
+		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
 		memberOperatorSaReadRoleBinding(),
@@ -492,7 +495,6 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaiti
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -501,7 +503,7 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(),
+		numberOfClusterResourceQuotas(8),
 		idlers(0, ""))
 }
 
@@ -1003,6 +1005,18 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.Reso
 	}
 }
 
+func resourceQuotaMatches(namespace, name string, spec corev1.ResourceQuotaSpec) wait.ResourceQuotaWaitCriterion {
+	return wait.ResourceQuotaWaitCriterion{
+		Match: func(actual *corev1.ResourceQuota) bool {
+			expectedQuotaSpec := spec
+			return reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
+		},
+		Diff: func(actual *corev1.ResourceQuota) string {
+			return fmt.Sprintf("expected ResourceQuota to match (namespace=%s, name=%s):\n%s", namespace, name, wait.Diff(spec, actual.Spec))
+		},
+	}
+}
+
 func count(resource corev1.ResourceName) corev1.ResourceName {
 	return corev1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
@@ -1087,11 +1101,10 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	}
 }
 
-func numberOfClusterResourceQuotas() clusterObjectsCheckCreator {
-	expectedCRQs := 9
+func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			err := memberAwait.WaitForExpectedNumberOfClusterResources("ClusterResourceQuotas", expectedCRQs, func() (int, error) {
+			err := memberAwait.WaitForExpectedNumberOfClusterResources("ClusterResourceQuotas", number, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
@@ -1224,6 +1237,71 @@ func appstudioViewRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+	}
+}
+
+func appstudioQuotaComputeDeploy() namespaceObjectsCheck { // nolint:unparam
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
+			Hard:   make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("7Gi")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("1750m")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("7Gi")
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-deploy", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func appstudioQuotaComputeBuild() namespaceObjectsCheck { // nolint:unparam
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
+			Hard:   make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("64Gi")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("2")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("32Gi")
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-build", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func appstudioQuotaStorage() namespaceObjectsCheck { // nolint:unparam
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		require.NoError(t, err)
+		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "storage", criteria)
+		require.NoError(t, err)
 	}
 }
 

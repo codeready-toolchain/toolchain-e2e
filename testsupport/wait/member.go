@@ -826,6 +826,66 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 	return quota, err
 }
 
+// ResourceQuotaWaitCriterion a struct to compare with a given ResourceQuota
+type ResourceQuotaWaitCriterion struct {
+	Match func(*corev1.ResourceQuota) bool
+	Diff  func(*corev1.ResourceQuota) string
+}
+
+func matchResourceQuotaWaitCriteria(actual *corev1.ResourceQuota, criteria ...ResourceQuotaWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *MemberAwaitility) printResourceQuotaWaitCriterionDiffs(actual *corev1.ResourceQuota, criteria ...ResourceQuotaWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find ResourceQuota\n")
+		buf.WriteString(a.listAndReturnContent("ResourceQuota", "", &corev1.ResourceQuotaList{}))
+	} else {
+		buf.WriteString("failed to find ResourceQuota with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	a.T.Log(buf.String())
+}
+
+// WaitForResourceQuota waits until a ResourceQuota with the given name exists
+func (a *MemberAwaitility) WaitForResourceQuota(namespace, name string, criteria ...ResourceQuotaWaitCriterion) (*corev1.ResourceQuota, error) {
+	a.T.Logf("waiting for ResourceQuota '%s' in %s to match criteria", name, namespace)
+	quota := &corev1.ResourceQuota{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.ResourceQuota{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		quota = obj
+		return matchResourceQuotaWaitCriteria(obj, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printResourceQuotaWaitCriterionDiffs(quota, criteria...)
+	}
+	return quota, err
+}
+
 // IdlerWaitCriterion a struct to compare with a given Idler
 type IdlerWaitCriterion struct {
 	Match func(*toolchainv1alpha1.Idler) bool
