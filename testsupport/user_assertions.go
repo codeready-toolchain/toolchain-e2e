@@ -78,7 +78,13 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.OriginalSub, "rhd").IdentityName()
 	}
 
-	if tierName != "appstudio" {
+	// get the associated NSTemplateSet so we can handle the appstudio-specific case
+	nsTmplSet, err := memberAwait.WaitForNSTmplSet(userAccount.Name)
+	require.NoError(t, err)
+	require.NotNil(t, nsTmplSet)
+
+	// verify User and Identity resources
+	if nsTmplSet.Spec.TierName != "appstudio" {
 		// Verify provisioned User
 		_, err = memberAwait.WaitForUser(userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
@@ -102,6 +108,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
 		}
 	} else {
+		t.Log("Verifying User and Identity resources do not exist for appstudio user")
 		// we don't expect User nor Identity resources to be present for AppStudio tier
 		// This can be removed as soon as we don't create UserAccounts in AppStudio environment.
 		err := memberAwait.WaitUntilUserDeleted(userAccount.Name)
