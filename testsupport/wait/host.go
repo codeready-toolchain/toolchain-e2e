@@ -1064,6 +1064,30 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 	return notifications, err
 }
 
+// WaitForNotificationWithName waits until there is an expected Notifications available for the provided user and with the notification type and which match the conditions (if provided).
+func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificationType string, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
+	a.T.Logf("waiting for notification with name '%s'", notificationName)
+	var notifications []toolchainv1alpha1.Notification
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		notification := &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			return false, err
+		}
+		if typeFound, found := notification.GetLabels()[toolchainv1alpha1.NotificationTypeLabelKey]; !found {
+			return false, fmt.Errorf("notification found with name does not have type label")
+		} else if typeFound != notificationType {
+			return false, fmt.Errorf("notification found with name does not have the expected type")
+		}
+		notifications = append(notifications, *notification)
+		return matchNotificationWaitCriterion(notifications, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printNotificationWaitCriterionDiffs(notifications, criteria...)
+	}
+	return notifications, err
+}
+
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationType string) error {
 	a.T.Logf("waiting until notifications have been deleted for user '%s'", username)
