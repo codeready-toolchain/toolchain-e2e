@@ -1135,7 +1135,7 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 
 func appstudioServiceAccount(userName string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		sa, err := memberAwait.WaitForServiceAccount(ns, fmt.Sprintf("appstudio-%s", userName))
+		sa, err := memberAwait.WaitForServiceAccount(ns.Name, fmt.Sprintf("appstudio-%s", userName))
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", sa.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		assert.Equal(t, owner, sa.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])

@@ -475,7 +475,7 @@ func UntilHasLastAppliedSpaceRoles(expected []toolchainv1alpha1.NSTemplateSetSpa
 			return string(expectedLastAppliedSpaceRoles) == lastAppliedSpaceRoles
 		},
 		Diff: func(actual *corev1.Namespace) string {
-			return fmt.Sprintf("expected namespace to be match annotation,\nExpected: %s\nActual annotations:%v", expectedLastAppliedSpaceRoles, actual.Annotations)
+			return fmt.Sprintf("expected namespace to match annotation,\nExpected: %s\nActual annotations:%v", expectedLastAppliedSpaceRoles, actual.Annotations)
 		},
 	}
 }
@@ -650,12 +650,12 @@ func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(namespace *corev1.Namespa
 	})
 }
 
-func (a *MemberAwaitility) WaitForServiceAccount(namespace *corev1.Namespace, name string) (*corev1.ServiceAccount, error) {
-	a.T.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace.Name)
+func (a *MemberAwaitility) WaitForServiceAccount(namespace string, name string) (*corev1.ServiceAccount, error) {
+	a.T.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace)
 	serviceAccount := &corev1.ServiceAccount{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.ServiceAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
@@ -665,7 +665,7 @@ func (a *MemberAwaitility) WaitForServiceAccount(namespace *corev1.Namespace, na
 		return true, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for ServiceAccount '%s' in namespace '%s'.", name, namespace.Name)
+		a.T.Logf("failed to wait for ServiceAccount '%s' in namespace '%s'.", name, namespace)
 		return nil, err
 	}
 	return serviceAccount, err
