@@ -42,7 +42,7 @@ func TestNSTemplateTiers(t *testing.T) {
 		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "basedeactivationdisabled", "baseextended", "baseextendedidling", "baselarge", "hackathon", "test", "appstudio", "base1ns", "base"}
+	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "base1ns", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -205,13 +205,13 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		require.NoError(t, err)
 
 		// Move the MUR to the user tier with longer deactivation time
-		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.Username, "advanced")
+		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.Username, "deactivate90")
 
 		// Ensure the deactivating state is reset after promotion
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
 		require.NoError(t, err)
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
-		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "nodeactivation", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "deactivate90", "base")
 	})
 }
 
