@@ -98,7 +98,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	ownerSignup, ownerMUR := NewSignupRequest(t, awaitilities).
+	_, ownerMUR := NewSignupRequest(t, awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
@@ -122,7 +122,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 	nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
 		UntilNSTemplateSetHasSpaceRoles(
-			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, ownerSignup.Name, ownerMUR.Name)),
+			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, ownerMUR.Name)),
 	)
 	require.NoError(t, err)
 
