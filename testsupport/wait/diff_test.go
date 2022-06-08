@@ -1,7 +1,6 @@
 package wait_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -31,7 +30,7 @@ func TestDiff(t *testing.T) {
 			LastTransitionTime: now,
 			LastUpdatedTime:    &now,
 		}
-		t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(expected, actual)))
+		t.Logf("expected conditions to match:\n%s", wait.Diff(expected, actual))
 	})
 
 	t.Run("on multiple conditions", func(t *testing.T) {
@@ -56,6 +55,6 @@ func TestDiff(t *testing.T) {
 				Reason: toolchainv1alpha1.MasterUserRecordNotificationCRCreatedReason,
 			},
 		}
-		t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(expected, actual)))
+		t.Logf("expected conditions to match:\n%s", wait.Diff(expected, actual))
 	})
 }

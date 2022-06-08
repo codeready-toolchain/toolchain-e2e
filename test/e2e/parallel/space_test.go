@@ -124,7 +124,8 @@ func TestSpaceRoles(t *testing.T) {
 		UntilNSTemplateSetHasSpaceRoles(
 			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, ownerSignup.Name, ownerMUR.Name)),
 	)
-	// UntilNSTemplateSetHasSpaceRoles({"templateRef":"appstudio-admin-a30ac1d-a30ac1d","usernames":["spaceowner"]})
+	require.NoError(t, err)
+
 	// fetch the namespace check the `last-applied-space-roles` annotation
 	_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 		UntilNamespaceIsActive(),
