@@ -475,7 +475,7 @@ func UntilHasLastAppliedSpaceRoles(expected []toolchainv1alpha1.NSTemplateSetSpa
 			return string(expectedLastAppliedSpaceRoles) == lastAppliedSpaceRoles
 		},
 		Diff: func(actual *corev1.Namespace) string {
-			return fmt.Sprintf("expected namespace to be match annotation,\nExpected: %s\nActual annotations:%v", expectedLastAppliedSpaceRoles, actual.Annotations)
+			return fmt.Sprintf("expected namespace to match annotation,\nExpected: %s\nActual annotations:%v", expectedLastAppliedSpaceRoles, actual.Annotations)
 		},
 	}
 }

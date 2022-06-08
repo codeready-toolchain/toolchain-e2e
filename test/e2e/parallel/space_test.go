@@ -98,7 +98,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	_, ownerMUR := NewSignupRequest(t, awaitilities).
+	ownerSignup, ownerMUR := NewSignupRequest(t, awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
@@ -117,8 +117,14 @@ func TestSpaceRoles(t *testing.T) {
 	// then
 	_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
 		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
-		UntilSpaceHasTier("appstudio"))
+		UntilSpaceHasTier("appstudio"),
+	)
 	require.NoError(t, err)
+	nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
+		UntilNSTemplateSetHasSpaceRoles(
+			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, ownerSignup.Name, ownerMUR.Name)),
+	)
+	// UntilNSTemplateSetHasSpaceRoles({"templateRef":"appstudio-admin-a30ac1d-a30ac1d","usernames":["spaceowner"]})
 	// fetch the namespace check the `last-applied-space-roles` annotation
 	_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 		UntilNamespaceIsActive(),
