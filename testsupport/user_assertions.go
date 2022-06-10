@@ -78,7 +78,10 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.OriginalSub, "rhd").IdentityName()
 	}
 
-	if tierName != "appstudio" {
+	memberConfiguration := memberAwait.GetMemberOperatorConfig()
+
+	// Verify User and Identity if SkipUserCreation is not set or it is set to false
+	if memberConfiguration.Spec.SkipUserCreation == nil || !*memberConfiguration.Spec.SkipUserCreation {
 		// Verify provisioned User
 		_, err = memberAwait.WaitForUser(userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),

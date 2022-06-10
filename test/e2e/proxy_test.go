@@ -17,7 +17,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	hasv1alpha1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/has/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -57,7 +57,8 @@ func TestProxyFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	hostAwait.UpdateToolchainConfig(config.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"))
+	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(), testconfig.SkipUserCreation(true))
+	hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 
 	users := []proxyUser{
 		{
