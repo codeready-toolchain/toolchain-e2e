@@ -42,7 +42,7 @@ func TestNSTemplateTiers(t *testing.T) {
 		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "base1ns", "base"}
+	tiersToCheck := []string{"advanced", "basedeactivationdisabled", "baseextended", "baseextendedidling", "baselarge", "hackathon", "test", "appstudio", "base1ns", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
