@@ -23,7 +23,7 @@ func TestCreateSocialEvent(t *testing.T) {
 	t.Run("create socialevent with valid tiername", func(t *testing.T) {
 		// given
 		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "base", "base")
+		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "deactivate30", "base")
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), se)
@@ -51,13 +51,13 @@ func TestCreateSocialEvent(t *testing.T) {
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidUserTierReason,
-			Message: "NSTemplateTier 'invalid' not found",
+			Message: "UserTier 'invalid' not found",
 		}))
 		require.NoError(t, err)
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
-			se.Spec.UserTier = "base"
+			se.Spec.UserTier = "deactivate30"
 
 			// when
 			err := hostAwait.Client.Update(context.TODO(), se)
@@ -75,7 +75,7 @@ func TestCreateSocialEvent(t *testing.T) {
 	t.Run("create socialevent with invalid space tier name", func(t *testing.T) {
 		// given
 		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "base", "invalid")
+		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "deactivate30", "invalid")
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), se)
