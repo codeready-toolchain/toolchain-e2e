@@ -15,7 +15,7 @@ func TestDiff(t *testing.T) {
 	t.Run("on single condition", func(t *testing.T) {
 		now := metav1.NewTime(time.Now())
 		actual := toolchainv1alpha1.Condition{
-			Type:               toolchainv1alpha1.ChangeTierRequestComplete,
+			Type:               toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status:             v1.ConditionTrue,
 			Reason:             "a reason",
 			Message:            "a message",
@@ -23,7 +23,7 @@ func TestDiff(t *testing.T) {
 			LastUpdatedTime:    &now,
 		}
 		expected := toolchainv1alpha1.Condition{
-			Type:               toolchainv1alpha1.ChangeTierRequestComplete,
+			Type:               toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status:             v1.ConditionTrue,
 			Reason:             "another reason",
 			Message:            "another message",
