@@ -1001,12 +1001,21 @@ type NotificationWaitCriterion struct {
 	Diff  func(toolchainv1alpha1.Notification) string
 }
 
-func matchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
+func matchNotificationsWaitCriterion(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
 	for _, n := range actual {
 		for _, c := range criteria {
 			if !c.Match(n) {
 				return false
 			}
+		}
+	}
+	return true
+}
+
+func matchNotificationWaitCriterion(notification toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(notification) {
+			return false
 		}
 	}
 	return true
@@ -1055,7 +1064,7 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		if numberOfNotifications != len(notificationList.Items) {
 			return false, nil
 		}
-		return matchNotificationWaitCriterion(notificationList.Items, criteria...), nil
+		return matchNotificationsWaitCriterion(notificationList.Items, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
@@ -1064,10 +1073,10 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 	return notifications, err
 }
 
-// WaitForNotificationWithName waits until there is an expected Notifications available for the provided user and with the notification type and which match the conditions (if provided).
-func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificationType string, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
+// WaitForNotificationWithName waits until there is an expected Notifications available with the provided name and with the notification type and which match the conditions (if provided).
+func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
 	a.T.Logf("waiting for notification with name '%s'", notificationName)
-	var notifications []toolchainv1alpha1.Notification
+	var notification toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		notification := &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
@@ -1078,14 +1087,14 @@ func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificat
 		} else if typeFound != notificationType {
 			return false, fmt.Errorf("notification found with name does not have the expected type")
 		}
-		notifications = append(notifications, *notification)
-		return matchNotificationWaitCriterion(notifications, criteria...), nil
+
+		return matchNotificationWaitCriterion(*notification, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNotificationWaitCriterionDiffs(notifications, criteria...)
+		a.printNotificationWaitCriterionDiffs([]toolchainv1alpha1.Notification{notification}, criteria...)
 	}
-	return notifications, err
+	return notification, err
 }
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)

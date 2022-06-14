@@ -75,8 +75,9 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// check notification was created and Idler condition was updated
 	_, err = memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running(), IdledNotificationCreated()))
 	require.NoError(s.T(), err)
-	_, err = hostAwait.WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	notification, err := hostAwait.WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
 	require.NoError(s.T(), err)
+	notificationCreationTime := notification.CreationTimestamp
 
 	// make sure that "noise" pods are still there
 	_, err = memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
@@ -87,12 +88,16 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
+	// Notification shouldn't be created again.
 	pod := s.createStandalonePod(idler.Name, "idler-test-pod-2")    // create just one standalone pod. No need to create all possible pod controllers which may own pods.
 	_, err = memberAwait.WaitForPod(idler.Name, "idler-test-pod-2") // pod was created
 	require.NoError(s.T(), err)
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = memberAwait.WaitUntilPodDeleted(pod.Namespace, pod.Name)
 	require.NoError(s.T(), err)
+	notification, err = hostAwait.WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), notificationCreationTime, notification.CreationTimestamp)
 
 	// There should not be any pods left in the namespace
 	err = memberAwait.WaitUntilPodsDeleted(idler.Name, wait.WithPodLabel("idler", "idler"))
