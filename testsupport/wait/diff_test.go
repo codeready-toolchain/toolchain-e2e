@@ -1,7 +1,6 @@
 package wait_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -16,7 +15,7 @@ func TestDiff(t *testing.T) {
 	t.Run("on single condition", func(t *testing.T) {
 		now := metav1.NewTime(time.Now())
 		actual := toolchainv1alpha1.Condition{
-			Type:               toolchainv1alpha1.ChangeTierRequestComplete,
+			Type:               toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status:             v1.ConditionTrue,
 			Reason:             "a reason",
 			Message:            "a message",
@@ -24,14 +23,14 @@ func TestDiff(t *testing.T) {
 			LastUpdatedTime:    &now,
 		}
 		expected := toolchainv1alpha1.Condition{
-			Type:               toolchainv1alpha1.ChangeTierRequestComplete,
+			Type:               toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
 			Status:             v1.ConditionTrue,
 			Reason:             "another reason",
 			Message:            "another message",
 			LastTransitionTime: now,
 			LastUpdatedTime:    &now,
 		}
-		t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(expected, actual)))
+		t.Logf("expected conditions to match:\n%s", wait.Diff(expected, actual))
 	})
 
 	t.Run("on multiple conditions", func(t *testing.T) {
@@ -56,6 +55,6 @@ func TestDiff(t *testing.T) {
 				Reason: toolchainv1alpha1.MasterUserRecordNotificationCRCreatedReason,
 			},
 		}
-		t.Log(fmt.Sprintf("expected conditions to match:\n%s", wait.Diff(expected, actual)))
+		t.Logf("expected conditions to match:\n%s", wait.Diff(expected, actual))
 	})
 }

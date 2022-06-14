@@ -105,6 +105,7 @@ func TestSpaceRoles(t *testing.T) {
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		NoSpace().
 		Execute().
 		Resources()
 
@@ -117,8 +118,15 @@ func TestSpaceRoles(t *testing.T) {
 	// then
 	_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
 		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
-		UntilSpaceHasTier("appstudio"))
+		UntilSpaceHasTier("appstudio"),
+	)
 	require.NoError(t, err)
+	nsTmplSet, err = memberAwait.WaitForNSTmplSet(nsTmplSet.Name,
+		UntilNSTemplateSetHasSpaceRoles(
+			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, ownerMUR.Name)),
+	)
+	require.NoError(t, err)
+
 	// fetch the namespace check the `last-applied-space-roles` annotation
 	_, err = memberAwait.WaitForNamespace(s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 		UntilNamespaceIsActive(),
