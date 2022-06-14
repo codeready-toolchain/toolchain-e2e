@@ -1720,7 +1720,6 @@ func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) erro
 
 // WaitUntilSpaceBindingDeleted waits until the SpaceBinding with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
-
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.SpaceBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
@@ -1905,4 +1904,77 @@ func EncodeUserIdentifier(subject string) string {
 	}
 
 	return encoded
+}
+
+type SocialEventWaitCriterion struct {
+	Match func(*toolchainv1alpha1.SocialEvent) bool
+	Diff  func(*toolchainv1alpha1.SocialEvent) string
+}
+
+func matchSocialEventWaitCriterion(actual *toolchainv1alpha1.SocialEvent, criteria ...SocialEventWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+// WaitForSocialEvent waits until the SocialEvent is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForSocialEvent(name string, criteria ...SocialEventWaitCriterion) (*toolchainv1alpha1.SocialEvent, error) {
+	var event *toolchainv1alpha1.SocialEvent
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the SocialEvent from the host namespace
+		obj := &toolchainv1alpha1.SocialEvent{}
+		if err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		event = obj
+		return matchSocialEventWaitCriterion(event, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSocialEventWaitCriterionDiffs(event, criteria...)
+	}
+	return event, err
+}
+
+func (a *HostAwaitility) printSocialEventWaitCriterionDiffs(actual *toolchainv1alpha1.SocialEvent, criteria ...SocialEventWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find SocialEvent\n")
+	} else {
+		buf.WriteString("failed to find SocialEvent with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	// also include SocialEvents resources in the host namespace, to help troubleshooting
+	a.listAndPrint("SocialEvents", a.Namespace, &toolchainv1alpha1.SocialEventList{})
+	a.T.Log(buf.String())
+}
+
+// UntilSocialEventHasConditions returns a `SocialEventWaitCriterion` which checks that the given
+// SocialEvent has exactly all the given status conditions
+func UntilSocialEventHasConditions(expected ...toolchainv1alpha1.Condition) SocialEventWaitCriterion {
+	return SocialEventWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SocialEvent) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.SocialEvent) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
+		},
+	}
 }
