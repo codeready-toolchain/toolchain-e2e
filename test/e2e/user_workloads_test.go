@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -79,12 +81,13 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	require.NoError(s.T(), err)
 	notificationCreationTime := notification.CreationTimestamp
 
-	// make sure that "noise" pods are still there
+	// make sure that "noise" pods are still there, and notification is not created for stage namespace
 	_, err = memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
 	require.NoError(s.T(), err)
 	_, err = memberAwait.WaitForPods("workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
 	require.NoError(s.T(), err)
-
+	_, err = hostAwait.WaitForNotificationWithName("test-idler-stage-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	require.True(s.T(), errors.IsNotFound(err))
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.

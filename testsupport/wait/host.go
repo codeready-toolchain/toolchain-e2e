@@ -1001,21 +1001,12 @@ type NotificationWaitCriterion struct {
 	Diff  func(toolchainv1alpha1.Notification) string
 }
 
-func matchNotificationsWaitCriterion(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
+func matchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
 	for _, n := range actual {
 		for _, c := range criteria {
 			if !c.Match(n) {
 				return false
 			}
-		}
-	}
-	return true
-}
-
-func matchNotificationWaitCriterion(notification toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) bool {
-	for _, c := range criteria {
-		if !c.Match(notification) {
-			return false
 		}
 	}
 	return true
@@ -1064,7 +1055,7 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 		if numberOfNotifications != len(notificationList.Items) {
 			return false, nil
 		}
-		return matchNotificationsWaitCriterion(notificationList.Items, criteria...), nil
+		return matchNotificationWaitCriterion(notificationList.Items, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
@@ -1078,8 +1069,7 @@ func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificat
 	a.T.Logf("waiting for notification with name '%s'", notificationName)
 	var notification toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		notification := &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, &notification); err != nil {
 			return false, err
 		}
 		if typeFound, found := notification.GetLabels()[toolchainv1alpha1.NotificationTypeLabelKey]; !found {
@@ -1088,7 +1078,7 @@ func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificat
 			return false, fmt.Errorf("notification found with name does not have the expected type")
 		}
 
-		return matchNotificationWaitCriterion(*notification, criteria...), nil
+		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{notification}, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
