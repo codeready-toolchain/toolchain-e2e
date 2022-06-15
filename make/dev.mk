@@ -6,6 +6,11 @@ DEV_ENVIRONMENT := dev
 
 SHOW_CLEAN_COMMAND="make clean-dev-resources"
 
+.PHONY: dev-deploy-latest
+## Deploy the resources with one member operator instance using the latest and greatest images of Toolchain operators
+dev-deploy-latest: DEPLOY_LATEST=true
+dev-deploy-latest: dev-deploy-e2e
+
 .PHONY: dev-deploy-e2e
 ## Deploy the resources with one member operator instance
 dev-deploy-e2e: deploy-e2e-to-dev-namespaces print-reg-service-link
