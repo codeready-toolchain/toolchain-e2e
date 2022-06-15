@@ -16,6 +16,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
@@ -581,6 +582,136 @@ func TestPhoneVerification(t *testing.T) {
 	require.NotEmpty(t, otherUserSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 }
 
+func TestActivationCodeVerification(t *testing.T) {
+	// given
+	t.Parallel()
+	await := WaitForDeployments(t)
+	hostAwait := await.Host()
+	route := hostAwait.RegistrationServiceURL
+	// hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true)) // user is automatically approved if the activation code is valid (ie, `verification-required` state is removed)
+
+	t.Run("verification successful", func(t *testing.T) {
+		// given
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String())
+		err := hostAwait.CreateWithCleanup(context.TODO(), event)
+		require.NoError(t, err)
+		userSignup, token := signup(t, hostAwait)
+
+		// when call verification endpoint with a valid activation code
+		invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusOK)
+
+		// then
+		// ensure the UserSignup is in "pending approval" condition,
+		// because in these series of parallel tests, automatic approval is disabled ¯\_(ツ)_/¯
+		_, err = hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...))
+		require.NoError(t, err)
+	})
+
+	t.Run("verification failed", func(t *testing.T) {
+
+		t.Run("invalid code", func(t *testing.T) {
+			// given
+			userSignup, token := signup(t, hostAwait)
+
+			// when call verification endpoint with a valid activation code
+			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, "invalid"), http.StatusForbidden)
+
+			// then
+			// ensure the UserSignup is not approved yet
+			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			require.NoError(t, err)
+		})
+
+		t.Run("over capacity", func(t *testing.T) {
+			// given
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String())
+			err := hostAwait.CreateWithCleanup(context.TODO(), event)
+			require.NoError(t, err)
+			event, err = hostAwait.WaitForSocialEvent(event.Name) // need to reload event
+			require.NoError(t, err)
+			event.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
+			err = hostAwait.Client.Status().Update(context.TODO(), event)
+			require.NoError(t, err)
+
+			userSignup, token := signup(t, hostAwait)
+
+			// when call verification endpoint with a valid activation code
+			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusForbidden)
+
+			// then
+			// ensure the UserSignup is not approved yet
+			userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			require.NoError(t, err)
+		})
+
+		t.Run("not opened yet", func(t *testing.T) {
+			// given
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String(), testsocialevent.WithStartTime(time.Now().Add(time.Hour))) // not open yet
+			err := hostAwait.CreateWithCleanup(context.TODO(), event)
+			require.NoError(t, err)
+			userSignup, token := signup(t, hostAwait)
+
+			// when call verification endpoint with a valid activation code
+			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusForbidden)
+
+			// then
+			// ensure the UserSignup is not approved yet
+			userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			require.NoError(t, err)
+		})
+
+		t.Run("already closed", func(t *testing.T) {
+			// given
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String(), testsocialevent.WithEndTime(time.Now().Add(-time.Hour))) // already closd
+			err := hostAwait.CreateWithCleanup(context.TODO(), event)
+			require.NoError(t, err)
+			userSignup, token := signup(t, hostAwait)
+
+			// when call verification endpoint with a valid activation code
+			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusForbidden)
+
+			// then
+			// ensure the UserSignup is approved
+			userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			require.NoError(t, err)
+		})
+	})
+}
+
+func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.UserSignup, string) {
+	route := hostAwait.RegistrationServiceURL
+
+	// Create a token and identity to sign up with
+	identity := commonauth.NewIdentity()
+	emailValue := identity.Username + "@some.domain"
+	emailClaim := commonauth.WithEmailClaim(emailValue)
+	token, err := commonauth.GenerateSignedE2ETestToken(*identity, emailClaim)
+	require.NoError(t, err)
+
+	// Call the signup endpoint
+	invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusAccepted)
+
+	// Wait for the UserSignup to be created
+	userSignup, err := hostAwait.WaitForUserSignup(identity.Username,
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+	require.NoError(t, err)
+	cleanup.AddCleanTasks(hostAwait, userSignup)
+	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
+	assert.Equal(t, emailValue, emailAnnotation)
+	return userSignup, token
+}
+
 func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	hostAwait := await.Host()
 	route := await.Host().RegistrationServiceURL
@@ -626,7 +757,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.NoError(t, err)
 	defer Close(t, resp)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)

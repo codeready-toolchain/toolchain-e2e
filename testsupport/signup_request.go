@@ -68,6 +68,7 @@ type SignupRequest struct {
 	originalSub          string
 	cleanupDisabled      bool
 	noSpace              bool
+	activationCode       string
 }
 
 // IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
@@ -119,6 +120,11 @@ func (r *SignupRequest) WaitForMUR() *SignupRequest {
 // GetToken may be called only after a call to Execute(). It returns the token that was generated for the request
 func (r *SignupRequest) GetToken() string {
 	return r.token
+}
+
+func (r *SignupRequest) ActivationCode(code string) *SignupRequest {
+	r.activationCode = code
+	return r
 }
 
 // ManuallyApprove if called will set the "approved" state to true after the UserSignup has been created
