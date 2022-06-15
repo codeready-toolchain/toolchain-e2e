@@ -57,20 +57,6 @@ The setup tool will automatically create resources on behalf of the users in the
 Note #1: All resources will be created in the user's `-stage` namespace regardless of whether resources in the template have a namespace set.
 Note #2: Only resources that a user has permissions to create will be successfully created, these are typically namespace-scoped resources limited to only the user's namespaces. If the tool fails to create any resources an error will occur. If these resources are required by the onboarding operator then this should be brought to the attention of the Dev Sandbox team.
 
-. Complete the following steps:
-* Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
-* Log in to the quay.io using `docker login quay.io`
-* Make sure that these repositories exist on quay.io and the visibility is set to `public` for all of them:
- ** https://quay.io/repository/<quay-username>/host-operator?tab=settings
- ** https://quay.io/repository/<quay-username>/host-operator-bundle?tab=settings
- ** https://quay.io/repository/<quay-username>/host-operator-index?tab=settings
- ** https://quay.io/repository/<quay-username>/member-operator?tab=settings
- ** https://quay.io/repository/<quay-username>/member-operator-webhook?tab=settings
- ** https://quay.io/repository/<quay-username>/member-operator-bundle?tab=settings
- ** https://quay.io/repository/<quay-username>/member-operator-index?tab=settings
- ** https://quay.io/repository/<quay-username>/registration-service?tab=settings
-* Log in to the target OpenShift cluster with cluster admin privileges using `oc login`
-
 == Dev Sandbox Setup
 
 . Clone this repository
@@ -81,7 +67,7 @@ git clone git@github.com:codeready-toolchain/toolchain-e2e.git
 . Run the following to install the Dev Sandbox operators
 +
 ```
-make dev-deploy-e2e
+make dev-deploy-latest
 ```
 . Run the following command and ensure the Ready status is `True`
 +
