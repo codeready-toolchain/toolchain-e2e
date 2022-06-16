@@ -588,7 +588,6 @@ func TestActivationCodeVerification(t *testing.T) {
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
 	route := hostAwait.RegistrationServiceURL
-	// hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true)) // user is automatically approved if the activation code is valid (ie, `verification-required` state is removed)
 
 	t.Run("verification successful", func(t *testing.T) {
 		// given
