@@ -1101,6 +1101,21 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationTyp
 	})
 }
 
+// WaitUntilNotificationWithNameDeleted waits until the Notification with the given name is deleted (ie, not found)
+func (a *HostAwaitility) WaitUntilNotificationWithNameDeleted(notificationName string) error {
+	a.T.Logf("waiting for notification with name '%s' to get deleted", notificationName)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		notification := &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
 // UntilNotificationHasConditions checks if Notification status has the given set of conditions
 func UntilNotificationHasConditions(expected ...toolchainv1alpha1.Condition) NotificationWaitCriterion {
 	return NotificationWaitCriterion{
