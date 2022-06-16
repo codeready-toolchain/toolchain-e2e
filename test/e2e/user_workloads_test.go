@@ -87,6 +87,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	require.NoError(s.T(), err)
 	_, err = hostAwait.WaitForNotificationWithName("test-idler-stage-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
 	require.True(s.T(), errors.IsNotFound(err))
+	
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
