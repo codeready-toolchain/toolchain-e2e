@@ -663,8 +663,8 @@ func TestActivationCodeVerification(t *testing.T) {
 			// ensure the UserSignup is not approved yet
 			userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
-			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
 			require.NoError(t, err)
+			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
 		})
 
 		t.Run("already closed", func(t *testing.T) {
