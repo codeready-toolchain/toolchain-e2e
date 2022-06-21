@@ -73,9 +73,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		err := memberAwait.WaitUntilPodsDeleted(p.Namespace, wait.WithPodName(p.Name))
 		require.NoError(s.T(), err)
 	}
-	// check notification was created and Idler condition was updated
-	_, err = memberAwait.WaitForIdler("test-idler-dev", wait.IdlerConditions(Running(), IdledNotificationCreated()))
-	require.NoError(s.T(), err)
+	// check notification was created
 	_, err = hostAwait.WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
 	require.NoError(s.T(), err)
 
@@ -101,7 +99,7 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = memberAwait.WaitUntilPodDeleted(pod.Namespace, pod.Name)
 	require.NoError(s.T(), err)
-	_, err = hostAwait.WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
 	require.True(s.T(), errors.IsNotFound(err))
 
 	// There should not be any pods left in the namespace
