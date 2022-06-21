@@ -461,8 +461,8 @@ func UntilUserSignupIsBeingDeleted() UserSignupWaitCriterion {
 	}
 }
 
-// UntilUserSignupHasConditions returns a `UserAccountWaitCriterion` which checks that the given
-// UserAccount has exactly all the given status conditions
+// UntilUserSignupHasConditions returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has exactly all the given status conditions
 func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
@@ -474,8 +474,8 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 	}
 }
 
-// UntilUserSignupContainsConditions returns a `UserAccountWaitCriterion` which checks that the given
-// UserAccount contains all the given status conditions
+// UntilUserSignupContainsConditions returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup contains all the given status conditions
 func UntilUserSignupContainsConditions(shouldContain ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
@@ -492,8 +492,8 @@ func UntilUserSignupContainsConditions(shouldContain ...toolchainv1alpha1.Condit
 	}
 }
 
-// ContainsCondition returns a `UserAccountWaitCriterion` which checks that the given
-// UserAccount contains the given status condition
+// ContainsCondition returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup contains the given status condition
 func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
@@ -507,8 +507,24 @@ func ContainsCondition(expected toolchainv1alpha1.Condition) UserSignupWaitCrite
 	}
 }
 
-// UntilUserSignupHasStateLabel returns a `UserAccountWaitCriterion` which checks that the given
-// UserAccount has toolchain.dev.openshift.com/state equal to the given value
+// UntilUserSignupHasLabel returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has a `key` equal to the given `value`
+func UntilUserSignupHasLabel(key, value string) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Labels != nil && actual.Labels[key] == value
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			if len(actual.Labels) == 0 {
+				return fmt.Sprintf("expected to have a label with key '%s' and value '%s'", key, value)
+			}
+			return fmt.Sprintf("expected value of label '%s' to equal '%s'. Actual: '%s'", key, value, actual.Labels[key])
+		},
+	}
+}
+
+// UntilUserSignupHasStateLabel returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has toolchain.dev.openshift.com/state equal to the given value
 func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
@@ -516,7 +532,7 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
 			if len(actual.Labels) == 0 {
-				return fmt.Sprintf("expected to have a label with key '%s' (and value", toolchainv1alpha1.UserSignupStateLabelKey)
+				return fmt.Sprintf("expected to have a label with key '%s' and value '%s'", toolchainv1alpha1.UserSignupStateLabelKey, expected)
 			}
 			return fmt.Sprintf("expected value of label '%s' to equal '%s'. Actual: '%s'", toolchainv1alpha1.UserSignupStateLabelKey, expected, actual.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 		},
