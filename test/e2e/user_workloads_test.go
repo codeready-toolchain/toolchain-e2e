@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -14,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -71,22 +73,34 @@ func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
 		err := memberAwait.WaitUntilPodsDeleted(p.Namespace, wait.WithPodName(p.Name))
 		require.NoError(s.T(), err)
 	}
+	// check notification was created
+	_, err = hostAwait.WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	require.NoError(s.T(), err)
 
-	// make sure that "noise" pods are still there
+	// make sure that "noise" pods are still there, and notification is not created for stage namespace
 	_, err = memberAwait.WaitForPods(idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
 	require.NoError(s.T(), err)
 	_, err = memberAwait.WaitForPods("workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
+	require.NoError(s.T(), err)
+	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName("test-idler-stage-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	require.True(s.T(), errors.IsNotFound(err))
+
+	// Check if notification has been deleted before creating another pod
+	err = hostAwait.WaitUntilNotificationWithNameDeleted("test-idler-dev-idled")
 	require.NoError(s.T(), err)
 
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
+	// Notification shouldn't be created again.
 	pod := s.createStandalonePod(idler.Name, "idler-test-pod-2")    // create just one standalone pod. No need to create all possible pod controllers which may own pods.
 	_, err = memberAwait.WaitForPod(idler.Name, "idler-test-pod-2") // pod was created
 	require.NoError(s.T(), err)
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = memberAwait.WaitUntilPodDeleted(pod.Namespace, pod.Name)
 	require.NoError(s.T(), err)
+	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName("test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(Sent()))
+	require.True(s.T(), errors.IsNotFound(err))
 
 	// There should not be any pods left in the namespace
 	err = memberAwait.WaitUntilPodsDeleted(idler.Name, wait.WithPodLabel("idler", "idler"))
