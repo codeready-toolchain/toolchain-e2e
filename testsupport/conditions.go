@@ -298,6 +298,14 @@ func Running() toolchainv1alpha1.Condition {
 	}
 }
 
+func IdledNotificationCreated() toolchainv1alpha1.Condition {
+	return toolchainv1alpha1.Condition{
+		Type:   toolchainv1alpha1.IdlerTriggeredNotificationCreated,
+		Status: corev1.ConditionTrue,
+		Reason: toolchainv1alpha1.IdlerTriggeredReason,
+	}
+}
+
 func Complete() toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:   toolchainv1alpha1.UserSignupComplete,
