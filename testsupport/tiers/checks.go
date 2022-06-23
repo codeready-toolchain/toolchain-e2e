@@ -1156,7 +1156,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "componentdetectionqueries", "environments"},
 					Verbs:     []string{"*"},
 				},
 				{
