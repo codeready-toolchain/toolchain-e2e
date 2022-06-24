@@ -1254,11 +1254,11 @@ func appstudioQuotaComputeDeploy() namespaceObjectsCheck { // nolint:unparam
 		}
 		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("7Gi")
+		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("32Gi")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("1750m")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("7Gi")
+		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("32Gi")
 		require.NoError(t, err)
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
