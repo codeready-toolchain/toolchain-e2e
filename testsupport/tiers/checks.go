@@ -24,16 +24,13 @@ import (
 
 const (
 	// tier names
-	advanced                 = "advanced"
-	appstudio                = "appstudio"
-	base                     = "base"
-	base1ns                  = "base1ns"
-	basedeactivationdisabled = "basedeactivationdisabled"
-	baseextended             = "baseextended"
-	baseextendedidling       = "baseextendedidling"
-	baselarge                = "baselarge"
-	hackathon                = "hackathon"
-	testTier                 = "test"
+	advanced           = "advanced"
+	appstudio          = "appstudio"
+	base               = "base"
+	base1ns            = "base1ns"
+	baseextendedidling = "baseextendedidling"
+	baselarge          = "baselarge"
+	testTier           = "test"
 
 	// common CPU limits
 	defaultCPULimit = "1"
@@ -63,17 +60,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
 
-	case baseextended:
-		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
-
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-
-	case basedeactivationdisabled:
-		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
-
-	case hackathon:
-		return &hackathonTierChecks{baseTierChecks{tierName: hackathon}}, nil
 
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
@@ -312,14 +300,6 @@ func (a *baselargeTierChecks) GetTierObjectChecks() []tierObjectCheck {
 	return []tierObjectCheck{deactivationDays(a.tierName, 90)}
 }
 
-type baseextendedTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baseextendedTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 180)}
-}
-
 type baseextendedidlingTierChecks struct {
 	baseTierChecks
 }
@@ -337,14 +317,6 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(9),
 		idlers(518400, "dev", "stage"))
-}
-
-type basedeactivationdisabledTierChecks struct {
-	baseTierChecks
-}
-
-func (a *basedeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 0)}
 }
 
 func commonNetworkPolicyChecks() []namespaceObjectsCheck {
@@ -384,14 +356,6 @@ func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitil
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
 	return templateRefs
-}
-
-type hackathonTierChecks struct {
-	baseTierChecks
-}
-
-func (a *hackathonTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 80)}
 }
 
 // testTierChecks checks only that the "test" tier exists and has correct template references.
