@@ -11,6 +11,7 @@ spec:
     registrationService:
       environment: 'dev'
       verification:
+        enabled: true
         secret:
           ref: 'host-operator-secret'
           twilioAccountSID: 'twilio.account.sid'
