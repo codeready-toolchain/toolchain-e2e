@@ -14,6 +14,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	commonsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
@@ -591,7 +592,7 @@ func TestActivationCodeVerification(t *testing.T) {
 
 	t.Run("verification successful", func(t *testing.T) {
 		// given
-		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String())
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName())
 		err := hostAwait.CreateWithCleanup(context.TODO(), event)
 		require.NoError(t, err)
 		userSignup, token := signup(t, hostAwait)
@@ -606,16 +607,25 @@ func TestActivationCodeVerification(t *testing.T) {
 			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
 			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...))
 		require.NoError(t, err)
+		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
+		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetApproved(us, true)
+		})
+		require.NoError(t, err)
+		t.Logf("user signup '%s' reactivated", userSignup.Name)
+		// also check that the SocialEvent status was updated accordingly
+		_, err = hostAwait.WaitForSocialEvent(event.Name, wait.UntilSocialEventHasActivationCount(1))
+		require.NoError(t, err)
 	})
 
 	t.Run("verification failed", func(t *testing.T) {
 
-		t.Run("invalid code", func(t *testing.T) {
+		t.Run("unknown code", func(t *testing.T) {
 			// given
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, "invalid"), http.StatusForbidden)
+			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, "unknown"), http.StatusForbidden)
 
 			// then
 			// ensure the UserSignup is not approved yet
@@ -627,7 +637,7 @@ func TestActivationCodeVerification(t *testing.T) {
 
 		t.Run("over capacity", func(t *testing.T) {
 			// given
-			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String())
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName())
 			err := hostAwait.CreateWithCleanup(context.TODO(), event)
 			require.NoError(t, err)
 			event, err = hostAwait.WaitForSocialEvent(event.Name) // need to reload event
@@ -651,7 +661,7 @@ func TestActivationCodeVerification(t *testing.T) {
 
 		t.Run("not opened yet", func(t *testing.T) {
 			// given
-			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String(), testsocialevent.WithStartTime(time.Now().Add(time.Hour))) // not open yet
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(), testsocialevent.WithStartTime(time.Now().Add(time.Hour))) // not open yet
 			err := hostAwait.CreateWithCleanup(context.TODO(), event)
 			require.NoError(t, err)
 			userSignup, token := signup(t, hostAwait)
@@ -669,7 +679,7 @@ func TestActivationCodeVerification(t *testing.T) {
 
 		t.Run("already closed", func(t *testing.T) {
 			// given
-			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, "event-"+uuid.Must(uuid.NewV4()).String(), testsocialevent.WithEndTime(time.Now().Add(-time.Hour))) // already closd
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(), testsocialevent.WithEndTime(time.Now().Add(-time.Hour))) // already closd
 			err := hostAwait.CreateWithCleanup(context.TODO(), event)
 			require.NoError(t, err)
 			userSignup, token := signup(t, hostAwait)
@@ -683,6 +693,10 @@ func TestActivationCodeVerification(t *testing.T) {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
 			require.NoError(t, err)
 			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+		})
+
+		t.Run("invalid code", func(t *testing.T) {
+
 		})
 	})
 }
