@@ -464,8 +464,6 @@ type spaceRoleObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait 
 
 type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string)
 
-type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
-
 func userEditRoleBinding(userName string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		rb, err := memberAwait.WaitForRoleBinding(ns, userName+"-edit")
