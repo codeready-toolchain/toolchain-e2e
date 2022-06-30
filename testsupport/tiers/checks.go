@@ -46,7 +46,6 @@ type TierChecks interface {
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
 	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error)
-	GetTierObjectChecks() []tierObjectCheck
 }
 
 func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
@@ -127,18 +126,8 @@ func (c *customTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitilit
 	}
 }
 
-func (c *customTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{
-		deactivationDays(c.tier.Name, c.tier.Spec.DeactivationTimeoutDays),
-	}
-}
-
 type baseTierChecks struct {
 	tierName string
-}
-
-func (a *baseTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 30)}
 }
 
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
@@ -296,10 +285,6 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		idlers(43200, "dev", "stage"))
 }
 
-func (a *baselargeTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 90)}
-}
-
 type baseextendedidlingTierChecks struct {
 	baseTierChecks
 }
@@ -333,10 +318,6 @@ type advancedTierChecks struct {
 	baseTierChecks
 }
 
-func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 0)}
-}
-
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
@@ -364,10 +345,6 @@ type testTierChecks struct {
 	tierName string
 }
 
-func (a *testTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{}
-}
-
 func (a *testTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{}
 }
@@ -388,10 +365,6 @@ func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 
 type appstudioTierChecks struct {
 	tierName string
-}
-
-func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 30)}
 }
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
@@ -492,14 +465,6 @@ type spaceRoleObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait 
 type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string)
 
 type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
-
-func deactivationDays(tierName string, deactivationDays int) tierObjectCheck {
-	return func(t *testing.T, hostAwait *wait.HostAwaitility) {
-		tier, err := hostAwait.WaitForNSTemplateTier(tierName)
-		require.NoError(t, err)
-		require.Equal(t, deactivationDays, tier.Spec.DeactivationTimeoutDays)
-	}
-}
 
 func userEditRoleBinding(userName string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {

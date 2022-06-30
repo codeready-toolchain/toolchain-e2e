@@ -60,19 +60,9 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierToCheck,
+		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierToCheck,
 			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
-
-		// verify each tier's tier object values, this corresponds to the NSTemplateTier resource that each tier has
-		t.Run(fmt.Sprintf("tier object check for %s", tierToCheck), func(t *testing.T) {
-			tierChecks, err := tiers.NewChecksForTier(tier)
-			require.NoError(t, err)
-			objectChecks := tierChecks.GetTierObjectChecks()
-			for _, check := range objectChecks {
-				check(t, hostAwait)
-			}
-		})
 
 		t.Run(fmt.Sprintf("promote %s space to %s tier", testingTiersName, tierToCheck), func(t *testing.T) {
 			// when
