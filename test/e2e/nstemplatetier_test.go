@@ -48,15 +48,10 @@ func TestNSTemplateTiers(t *testing.T) {
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
 	require.NoError(t, err)
-	// assert.Len(t, allTiers.Items, len(tiersToCheck)) // temporarily remove this check because migration tests create basedeactivationdisabled, baseextended and hackathon tiers
+	assert.Len(t, allTiers.Items, len(tiersToCheck)) // temporarily remove this check because migration tests create basedeactivationdisabled, baseextended and hackathon tiers
 
 	for _, tier := range allTiers.Items {
-		switch tier.Name {
-		case "basedeactivationdisabled", "baseextended", "hackathon":
-			// skipped temporarily because migration tests create these tiers
-		default:
-			assert.Contains(t, tiersToCheck, tier.Name)
-		}
+		assert.Contains(t, tiersToCheck, tier.Name)
 	}
 
 	// wait for the user to be provisioned for the first time
