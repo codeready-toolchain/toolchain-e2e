@@ -1227,11 +1227,11 @@ func appstudioQuotaStorage() namespaceObjectsCheck { // nolint:unparam
 		spec := corev1.ResourceQuotaSpec{
 			Hard: make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
 		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
