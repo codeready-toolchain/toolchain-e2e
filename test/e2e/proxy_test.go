@@ -47,9 +47,9 @@ type proxyUser struct {
 // The test uses a dummy HAS API type called Application. The reason is that the regular
 // user doesn't have full permission for the standard types like ConfigMap. This means
 // that we could do create/read operations on that resource from this test.
-// To workaround this limitation, we created a dummy HAS API type that has the same name
+// To work around this limitation, we created a dummy HAS API type that has the same name
 // and the same group as the actual one. The CRD is created as part of the test setup
-// and since the CRD name & group name matches, then RBAC allow us execute create/read
+// and since the CRD name & group name matches, then RBAC allow us to execute create/read
 // operations on that resource using the user permissions.
 func TestProxyFlow(t *testing.T) {
 	// given
@@ -96,44 +96,39 @@ func TestProxyFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
-				// given
-				applicationName := fmt.Sprintf("%s-test-app", user.username)
-				appDisplayName := fmt.Sprintf("Proxy test for user %s", user.username)
-				expectedApp := &hasv1alpha1.Application{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      applicationName,
-						Namespace: user.username,
-					},
-					Spec: hasv1alpha1.ApplicationSpec{
-						DisplayName: appDisplayName,
-					},
-				}
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				w := newWsWatcher(t, user, hostAwait.APIProxyURL)
 				closeConnection := w.Start()
 				defer closeConnection()
-
-				// when
 				proxyCl := hostAwait.CreateAPIProxyClient(user.token)
-				err := proxyCl.Create(context.TODO(), expectedApp)
-				require.NoError(t, err)
 
-				// then
-				// wait for the websocket watcher which uses the proxy to receive the Application CR
-				found, err := w.WaitForApplication(
-					user.expectedMemberCluster.RetryInterval,
-					user.expectedMemberCluster.Timeout,
-					expectedApp.Name,
-				)
-				require.NoError(t, err)
-				assert.NotEmpty(t, found)
+				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
+				for i := 0; i < 2; i++ {
+					// given
+					applicationName := fmt.Sprintf("%s-test-app-%d", user.username, i)
+					expectedApp := newApplication(applicationName, user.username)
 
-				// Double check that the Application does exist using a regular client (non-proxy)
-				createdApp := &hasv1alpha1.Application{}
-				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: applicationName}, createdApp)
-				require.NoError(t, err)
-				require.NotEmpty(t, createdApp)
-				require.Equal(t, appDisplayName, createdApp.Spec.DisplayName)
+					// when
+					err := proxyCl.Create(context.TODO(), expectedApp)
+					require.NoError(t, err)
+
+					// then
+					// wait for the websocket watcher which uses the proxy to receive the Application CR
+					found, err := w.WaitForApplication(
+						user.expectedMemberCluster.RetryInterval,
+						user.expectedMemberCluster.Timeout,
+						expectedApp.Name,
+					)
+					require.NoError(t, err)
+					assert.NotEmpty(t, found)
+
+					// Double check that the Application does exist using a regular client (non-proxy)
+					createdApp := &hasv1alpha1.Application{}
+					err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: applicationName}, createdApp)
+					require.NoError(t, err)
+					require.NotEmpty(t, createdApp)
+					assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+				}
 			})
 
 			t.Run("try to create a resource in an unauthorized namespace", func(t *testing.T) {
@@ -351,4 +346,16 @@ func (w *wsWatcher) WaitForApplication(retryInterval, timeout time.Duration, exp
 		return foundApp != nil, nil
 	})
 	return foundApp, err
+}
+
+func newApplication(applicationName, namespace string) *hasv1alpha1.Application {
+	return &hasv1alpha1.Application{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      applicationName,
+			Namespace: namespace,
+		},
+		Spec: hasv1alpha1.ApplicationSpec{
+			DisplayName: fmt.Sprintf("Proxy test for user %s", namespace),
+		},
+	}
 }
