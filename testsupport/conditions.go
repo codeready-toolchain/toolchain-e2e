@@ -234,6 +234,21 @@ func DeactivatedWithoutPreDeactivation() []toolchainv1alpha1.Condition {
 	}
 }
 
+func DeactivatedWithoutNotification() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: "UserIsActive",
+		},
+	}
+}
+
 func ManuallyDeactivated() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
