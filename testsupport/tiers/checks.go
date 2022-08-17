@@ -1073,7 +1073,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 12)
+		assert.Len(t, role.Rules, 11)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1098,13 +1098,8 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks"},
-					Verbs:     []string{"create", "get", "list", "watch", "delete"},
-				},
-				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokens"},
-					Verbs:     []string{"get", "list", "watch"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens"},
+					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
