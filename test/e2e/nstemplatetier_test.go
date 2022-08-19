@@ -42,13 +42,13 @@ func TestNSTemplateTiers(t *testing.T) {
 		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "basedeactivationdisabled", "baseextended", "baseextendedidling", "baselarge", "hackathon", "test", "appstudio", "base1ns", "base"}
+	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "base1ns", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, len(tiersToCheck))
+	assert.Len(t, allTiers.Items, len(tiersToCheck)) // temporarily remove this check because migration tests create basedeactivationdisabled, baseextended and hackathon tiers
 
 	for _, tier := range allTiers.Items {
 		assert.Contains(t, tiersToCheck, tier.Name)
@@ -60,19 +60,9 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierToCheck,
+		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierToCheck,
 			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
-
-		// verify each tier's tier object values, this corresponds to the NSTemplateTier resource that each tier has
-		t.Run(fmt.Sprintf("tier object check for %s", tierToCheck), func(t *testing.T) {
-			tierChecks, err := tiers.NewChecksForTier(tier)
-			require.NoError(t, err)
-			objectChecks := tierChecks.GetTierObjectChecks()
-			for _, check := range objectChecks {
-				check(t, hostAwait)
-			}
-		})
 
 		t.Run(fmt.Sprintf("promote %s space to %s tier", testingTiersName, tierToCheck), func(t *testing.T) {
 			// when
@@ -311,8 +301,8 @@ func TestTierTemplates(t *testing.T) {
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
-	// verify that we have 28 tier templates (base: 3, base1ns: 2, baselarge: 3, baseextended: 3, baseextendedidling: 3, basedeactivationdisabled: 3, advanced: 3, test: 3, hackathon: 3, appstudio: 2)
+	// verify that we have 19 tier templates (base: 3, base1ns: 2, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 2)
 	require.NoError(t, err)
 	// we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
-	assert.True(t, len(allTiers.Items) >= 28)
+	assert.True(t, len(allTiers.Items) >= 19)
 }

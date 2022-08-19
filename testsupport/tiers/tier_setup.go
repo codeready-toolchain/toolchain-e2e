@@ -89,7 +89,6 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 			},
 			Spec: toolchainv1alpha1.NSTemplateTierSpec{
 				// default values
-				DeactivationTimeoutDays: baseTier.Spec.DeactivationTimeoutDays,
 			},
 		},
 	}

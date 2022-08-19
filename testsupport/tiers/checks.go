@@ -24,16 +24,13 @@ import (
 
 const (
 	// tier names
-	advanced                 = "advanced"
-	appstudio                = "appstudio"
-	base                     = "base"
-	base1ns                  = "base1ns"
-	basedeactivationdisabled = "basedeactivationdisabled"
-	baseextended             = "baseextended"
-	baseextendedidling       = "baseextendedidling"
-	baselarge                = "baselarge"
-	hackathon                = "hackathon"
-	testTier                 = "test"
+	advanced           = "advanced"
+	appstudio          = "appstudio"
+	base               = "base"
+	base1ns            = "base1ns"
+	baseextendedidling = "baseextendedidling"
+	baselarge          = "baselarge"
+	testTier           = "test"
 
 	// common CPU limits
 	defaultCPULimit = "1"
@@ -49,7 +46,6 @@ type TierChecks interface {
 	GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs
 	GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck
 	GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error)
-	GetTierObjectChecks() []tierObjectCheck
 }
 
 func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error) {
@@ -63,17 +59,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
 
-	case baseextended:
-		return &baseextendedTierChecks{baseTierChecks{tierName: baseextended}}, nil
-
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-
-	case basedeactivationdisabled:
-		return &basedeactivationdisabledTierChecks{baseTierChecks{tierName: basedeactivationdisabled}}, nil
-
-	case hackathon:
-		return &hackathonTierChecks{baseTierChecks{tierName: hackathon}}, nil
 
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
@@ -139,18 +126,8 @@ func (c *customTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitilit
 	}
 }
 
-func (c *customTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{
-		deactivationDays(c.tier.Name, c.tier.Spec.DeactivationTimeoutDays),
-	}
-}
-
 type baseTierChecks struct {
 	tierName string
-}
-
-func (a *baseTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 30)}
 }
 
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
@@ -308,18 +285,6 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		idlers(43200, "dev", "stage"))
 }
 
-func (a *baselargeTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 90)}
-}
-
-type baseextendedTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baseextendedTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 180)}
-}
-
 type baseextendedidlingTierChecks struct {
 	baseTierChecks
 }
@@ -339,14 +304,6 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		idlers(518400, "dev", "stage"))
 }
 
-type basedeactivationdisabledTierChecks struct {
-	baseTierChecks
-}
-
-func (a *basedeactivationdisabledTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 0)}
-}
-
 func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{
 		networkPolicySameNamespace(),
@@ -359,10 +316,6 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 
 type advancedTierChecks struct {
 	baseTierChecks
-}
-
-func (a *advancedTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 0)}
 }
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -386,22 +339,10 @@ func (a *advancedTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitil
 	return templateRefs
 }
 
-type hackathonTierChecks struct {
-	baseTierChecks
-}
-
-func (a *hackathonTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 80)}
-}
-
 // testTierChecks checks only that the "test" tier exists and has correct template references.
 // It does not check the test tier resources
 type testTierChecks struct {
 	tierName string
-}
-
-func (a *testTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{}
 }
 
 func (a *testTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
@@ -424,10 +365,6 @@ func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 
 type appstudioTierChecks struct {
 	tierName string
-}
-
-func (a *appstudioTierChecks) GetTierObjectChecks() []tierObjectCheck {
-	return []tierObjectCheck{deactivationDays(a.tierName, 30)}
 }
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
@@ -526,16 +463,6 @@ type namespaceObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait 
 type spaceRoleObjectsCheck func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string)
 
 type clusterObjectsCheck func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string)
-
-type tierObjectCheck func(t *testing.T, hostAwait *wait.HostAwaitility)
-
-func deactivationDays(tierName string, deactivationDays int) tierObjectCheck {
-	return func(t *testing.T, hostAwait *wait.HostAwaitility) {
-		tier, err := hostAwait.WaitForNSTemplateTier(tierName)
-		require.NoError(t, err)
-		require.Equal(t, deactivationDays, tier.Spec.DeactivationTimeoutDays)
-	}
-}
 
 func userEditRoleBinding(userName string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
@@ -1166,13 +1093,13 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks"},
-					Verbs:     []string{"create", "get", "list", "watch", "delete"},
+					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaselinks"},
+					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokens"},
-					Verbs:     []string{"get", "list", "watch"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens"},
+					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
@@ -1295,11 +1222,11 @@ func appstudioQuotaStorage() namespaceObjectsCheck { // nolint:unparam
 		spec := corev1.ResourceQuotaSpec{
 			Hard: make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 		require.NoError(t, err)
 		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 		require.NoError(t, err)
