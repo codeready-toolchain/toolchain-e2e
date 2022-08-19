@@ -83,7 +83,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			return fmt.Errorf("a subscription was not found in template file '%s'", templatePath)
 		}
 
-		if err := templates.ApplyObjects(cl, s, objsToProcess); err != nil {
+		if err := templates.ApplyObjects(cl, objsToProcess); err != nil {
 			return err
 		}
 

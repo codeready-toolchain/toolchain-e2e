@@ -12,11 +12,9 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubectl/pkg/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,8 +40,8 @@ func GetTemplateFromContent(content []byte) (*templatev1.Template, error) {
 }
 
 // ApplyObjects applies the given objects in order
-func ApplyObjects(cl client.Client, s *runtime.Scheme, objsToApply []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
-	applycl := applyclientlib.NewApplyClient(cl, s)
+func ApplyObjects(cl runtimeclient.Client, objsToApply []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+	applycl := applyclientlib.NewApplyClient(cl)
 	for _, obj := range objsToApply {
 		fmt.Printf("Applying %s object with name '%s' in namespace '%s'\n", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), obj.GetNamespace())
 		if err := applyObject(applycl, obj, modifiers...); err != nil {
@@ -54,11 +52,11 @@ func ApplyObjects(cl client.Client, s *runtime.Scheme, objsToApply []runtimeclie
 }
 
 // ApplyObjectsConcurrently applies multiple objects concurrently
-func ApplyObjectsConcurrently(cl client.Client, s *runtime.Scheme, combinedObjsToProcess []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+func ApplyObjectsConcurrently(cl runtimeclient.Client, combinedObjsToProcess []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
 	var objProcessors []<-chan error
 	objChannel := distribute(combinedObjsToProcess)
 	for i := 0; i < len(combinedObjsToProcess); i++ {
-		objProcessors = append(objProcessors, startObjectProcessor(cl, s, objChannel, modifiers...))
+		objProcessors = append(objProcessors, startObjectProcessor(cl, objChannel, modifiers...))
 		time.Sleep(100 * time.Millisecond) // wait for a short time before starting each object processor to avoid hitting rate limits
 	}
 
@@ -108,10 +106,10 @@ func combineResults(results ...<-chan error) <-chan error {
 	return out
 }
 
-func startObjectProcessor(cl client.Client, s *runtime.Scheme, objSource <-chan runtimeclient.Object, modifiers ...ClientObjectModifier) <-chan error {
+func startObjectProcessor(cl runtimeclient.Client, objSource <-chan runtimeclient.Object, modifiers ...ClientObjectModifier) <-chan error {
 	out := make(chan error)
 	go func() {
-		applycl := applyclientlib.NewApplyClient(cl, s)
+		applycl := applyclientlib.NewApplyClient(cl)
 		for obj := range objSource {
 			out <- applyObject(applycl, obj, modifiers...)
 			time.Sleep(100 * time.Millisecond)
