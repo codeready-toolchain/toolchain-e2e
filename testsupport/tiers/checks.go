@@ -1073,7 +1073,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 12)
+		assert.Len(t, role.Rules, 11)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
