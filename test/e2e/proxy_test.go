@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -253,6 +254,7 @@ func (w *wsWatcher) Start() func() {
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
 	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.username)
+	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
 		//HandshakeTimeout: 45 * time.Second,
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
@@ -265,6 +267,13 @@ func (w *wsWatcher) Start() func() {
 	extraHeaders.Add("Origin", "http://localhost")
 
 	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
+	if err == websocket.ErrBadHandshake {
+		r, _ := ioutil.ReadAll(resp.Body)
+		defer func() {
+			resp.Body.Close()
+		}()
+		w.t.Logf("handshake failed with status %d / response %s", resp.StatusCode, string(r))
+	}
 	require.NoError(w.t, err)
 	w.connection = conn
 	w.receivedApps = make(map[string]*hasv1alpha1.Application)
