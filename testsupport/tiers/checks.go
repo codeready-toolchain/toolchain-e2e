@@ -1256,13 +1256,17 @@ func toolchainSaReadRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		role, err := memberAwait.WaitForRole(ns, "toolchain-sa-read")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 1)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{""},
 					Resources: []string{"secrets", "serviceaccounts"},
 					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"serviceaccounts/token"},
+					Verbs:     []string{"create"},
 				},
 			},
 		}
