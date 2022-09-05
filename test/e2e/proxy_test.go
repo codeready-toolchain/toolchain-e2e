@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -267,7 +268,7 @@ func (w *wsWatcher) Start() func() {
 	extraHeaders.Add("Origin", "http://localhost")
 
 	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
-	if err == websocket.ErrBadHandshake {
+	if errors.Is(err, websocket.ErrBadHandshake) {
 		r, _ := ioutil.ReadAll(resp.Body)
 		defer func() {
 			resp.Body.Close()
