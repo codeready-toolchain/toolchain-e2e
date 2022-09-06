@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -256,7 +257,6 @@ func (w *wsWatcher) Start() func() {
 	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.username)
 	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
-		//HandshakeTimeout: 45 * time.Second,
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, // nolint:gosec
@@ -267,7 +267,7 @@ func (w *wsWatcher) Start() func() {
 	extraHeaders.Add("Origin", "http://localhost")
 
 	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
-	if err == websocket.ErrBadHandshake {
+	if errors.Is(err, websocket.ErrBadHandshake) {
 		r, _ := ioutil.ReadAll(resp.Body)
 		defer func() {
 			resp.Body.Close()
