@@ -257,7 +257,6 @@ func (w *wsWatcher) Start() func() {
 	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.username)
 	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
-		//HandshakeTimeout: 45 * time.Second,
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, // nolint:gosec
