@@ -1,5 +1,7 @@
 = CodeReady Toolchain E2E Tests
 
+TEST
+
 image:https://goreportcard.com/badge/github.com/codeready-toolchain/toolchain-e2e[Go Report Card, link="https://goreportcard.com/report/github.com/codeready-toolchain/toolchain-e2e"]
 image:https://godoc.org/github.com/codeready-toolchain/toolchain-e2e?status.png[GoDoc,link="https://godoc.org/github.com/codeready-toolchain/toolchain-e2e"]
 
