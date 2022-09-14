@@ -24,6 +24,7 @@ const (
 
 var Templates = []string{
 	"rhoda.yaml",
+	"rhods.yaml",
 	"aikit.yaml",
 	"openvino.yaml",
 	"devworkspace-operator.yaml",
