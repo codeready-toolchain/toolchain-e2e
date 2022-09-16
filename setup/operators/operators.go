@@ -24,6 +24,8 @@ const (
 
 var Templates = []string{
 	"rhoda.yaml",
+	"aikit.yaml",
+	"openvino.yaml",
 	"devworkspace-operator.yaml",
 	"rhoas.yaml",
 	// "sbo.yaml", // included when rhoda is installed
