@@ -28,6 +28,7 @@ const (
 	appstudio          = "appstudio"
 	base               = "base"
 	base1ns            = "base1ns"
+	basenoidling       = "basenoidling"
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
 	testTier           = "test"
@@ -55,6 +56,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case base1ns:
 		return &base1nsTierChecks{baseTierChecks{tierName: base1ns}}, nil
+
+	case basenoidling:
+		return &basenoidlingTierChecks{baseTierChecks{tierName: basenoidling}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -249,6 +253,25 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitili
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
 	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
 	return templateRefs
+}
+
+type basenoidlingTierChecks struct {
+	baseTierChecks
+}
+
+func (a *basenoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
+		idlers(0, "dev"))
 }
 
 func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
