@@ -255,6 +255,21 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitili
 	return templateRefs
 }
 
+func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
+		idlers(43200, "dev"))
+}
+
 type basenoidlingTierChecks struct {
 	baseTierChecks
 }
@@ -274,19 +289,10 @@ func (a *basenoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck 
 		idlers(0, "dev"))
 }
 
-func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
-		idlers(43200, "dev"))
+func (a *basenoidlingTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
+	return templateRefs
 }
 
 type baselargeTierChecks struct {
