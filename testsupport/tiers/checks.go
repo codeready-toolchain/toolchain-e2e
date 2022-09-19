@@ -55,10 +55,10 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &baseTierChecks{tierName: base}, nil
 
 	case base1ns:
-		return &base1nsTierChecks{baseTierChecks{tierName: base1ns}}, nil
+		return &base1nsTierChecks{tierName: base1ns}, nil
 
 	case basenoidling:
-		return &basenoidlingTierChecks{baseTierChecks{tierName: basenoidling}}, nil
+		return &basenoidlingTierChecks{base1nsTierChecks{tierName: basenoidling}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -205,7 +205,7 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 type base1nsTierChecks struct {
-	baseTierChecks
+	tierName string
 }
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
@@ -271,7 +271,7 @@ func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 type basenoidlingTierChecks struct {
-	baseTierChecks
+	base1nsTierChecks
 }
 
 func (a *basenoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
@@ -287,12 +287,6 @@ func (a *basenoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck 
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(9),
 		idlers(0, "dev"))
-}
-
-func (a *basenoidlingTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
-	return templateRefs
 }
 
 type baselargeTierChecks struct {
