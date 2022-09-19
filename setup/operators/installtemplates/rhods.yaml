@@ -1,0 +1,94 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-rhods
+objects:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ${RHODS_OPERATOR_NAMESPACE}
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ${RHODS_APPLICATION_NAMESPACE}
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ${RHODS_MONITORING_NAMESPACE}
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: redhat-rhods-deadmanssnitch
+    namespace: ${RHODS_MONITORING_NAMESPACE}
+  stringData:
+    SNITCH_URL: https://nosnch.in/2c3c0b6662
+  type: Opaque
+- apiVersion: v1
+  kind: Secret
+  type: Opaque
+  metadata:
+    name: redhat-rhods-pagerduty
+    namespace: ${RHODS_MONITORING_NAMESPACE}
+    label:
+      app: jupyterhub
+      hive.openshift.io/managed: 'true'
+  stringData:
+    PAGERDUTY_KEY: 'dummyToken'
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: addon-managed-odh-parameters
+    namespace: ${RHODS_OPERATOR_NAMESPACE}
+  stringData:
+    notification-email: 'dummyEmail@redhat.com'
+  type: Opaque
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: redhat-rhods-smtp
+    namespace: ${RHODS_MONITORING_NAMESPACE}
+  stringData:
+    host: "smtp.corp.redhat.com"
+    username: "alertmanager"
+    password: "password"
+    port: "25"
+    tls: "false"
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: self-managed-odh-catalog
+    namespace: ${CATALOG_SOURCE_NAMESPACE}
+  spec:
+    displayName: Self Managed Open Data Hub Operator
+    image: quay.io/modh/self-managed-rhods-index:beta
+    publisher: Red Hat Open Data Hub Team
+    sourceType: grpc
+    updateStrategy:
+      registryPoll:
+        interval: 10m
+- apiVersion: operators.coreos.com/v1alpha2
+  kind: OperatorGroup
+  metadata:
+    name: self-managed-redhat-product-og
+    namespace: ${RHODS_OPERATOR_NAMESPACE}
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: self-managed-odh
+    namespace: ${RHODS_OPERATOR_NAMESPACE}
+  spec:
+    channel: beta
+    name: rhods-operator
+    source: self-managed-odh-catalog
+    sourceNamespace: ${CATALOG_SOURCE_NAMESPACE}
+parameters:
+- name: RHODS_OPERATOR_NAMESPACE
+  value: redhat-ods-operator
+- name: RHODS_APPLICATION_NAMESPACE
+  value: redhat-ods-applications
+- name: RHODS_MONITORING_NAMESPACE
+  value: redhat-ods-monitoring
+- name: CATALOG_SOURCE_NAMESPACE
+  value: openshift-marketplace
+- name: CATALOG_SOURCE_IMAGE
+  value: quay.io/modh/self-managed-rhods-index:beta
