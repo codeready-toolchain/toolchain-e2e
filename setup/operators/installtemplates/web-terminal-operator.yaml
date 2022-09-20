@@ -14,7 +14,7 @@ objects:
       name: web-terminal
       source: redhat-operators
       sourceNamespace: openshift-marketplace
-      startingCSV: web-terminal.v1.4.0
+      startingCSV: web-terminal.v1.5.1-0.1661829403.p
 parameters:
   - name: WTO_NAMESPACE
     value: openshift-operators
