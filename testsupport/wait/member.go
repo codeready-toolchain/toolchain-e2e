@@ -1806,29 +1806,54 @@ func (a *MemberAwaitility) verifyUsersRolebindingsWebhookConfig(ca []byte) {
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
 	a.waitForResource("", "member-operator-validating-webhook", actualValWbhConf)
 	assert.Equal(a.T, bothWebhookLabels, actualValWbhConf.Labels)
-	require.Len(a.T, actualValWbhConf.Webhooks, 1)
+	// require.Len(a.T, actualValWbhConf.Webhooks, 2)
 
-	webhook := actualValWbhConf.Webhooks[0]
-	assert.Equal(a.T, "users.rolebindings.webhook.sandbox", webhook.Name)
-	assert.Equal(a.T, []string{"v1"}, webhook.AdmissionReviewVersions)
-	assert.Equal(a.T, admv1.SideEffectClassNone, *webhook.SideEffects)
-	assert.Equal(a.T, int32(5), *webhook.TimeoutSeconds)
-	assert.Equal(a.T, admv1.Ignore, *webhook.FailurePolicy)
-	assert.Equal(a.T, admv1.Equivalent, *webhook.MatchPolicy)
-	assert.Equal(a.T, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
-	assert.Equal(a.T, ca, webhook.ClientConfig.CABundle)
-	assert.Equal(a.T, "member-operator-webhook", webhook.ClientConfig.Service.Name)
-	assert.Equal(a.T, a.Namespace, webhook.ClientConfig.Service.Namespace)
-	assert.Equal(a.T, "/validate-users-rolebindings", *webhook.ClientConfig.Service.Path)
-	assert.Equal(a.T, int32(443), *webhook.ClientConfig.Service.Port)
-	require.Len(a.T, webhook.Rules, 1)
+	rolebindingWebhook := actualValWbhConf.Webhooks[0]
+	assert.Equal(a.T, "users.rolebindings.webhook.sandbox", rolebindingWebhook.Name)
+	assert.Equal(a.T, []string{"v1"}, rolebindingWebhook.AdmissionReviewVersions)
+	assert.Equal(a.T, admv1.SideEffectClassNone, *rolebindingWebhook.SideEffects)
+	assert.Equal(a.T, int32(5), *rolebindingWebhook.TimeoutSeconds)
+	assert.Equal(a.T, admv1.Ignore, *rolebindingWebhook.FailurePolicy)
+	assert.Equal(a.T, admv1.Equivalent, *rolebindingWebhook.MatchPolicy)
+	assert.Equal(a.T, codereadyToolchainProviderLabel, rolebindingWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(a.T, ca, rolebindingWebhook.ClientConfig.CABundle)
+	assert.Equal(a.T, "member-operator-webhook", rolebindingWebhook.ClientConfig.Service.Name)
+	assert.Equal(a.T, a.Namespace, rolebindingWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(a.T, "/validate-users-rolebindings", *rolebindingWebhook.ClientConfig.Service.Path)
+	assert.Equal(a.T, int32(443), *rolebindingWebhook.ClientConfig.Service.Port)
+	require.Len(a.T, rolebindingWebhook.Rules, 1)
 
-	rule := webhook.Rules[0]
-	assert.Equal(a.T, []admv1.OperationType{admv1.Create, admv1.Update}, rule.Operations)
-	assert.Equal(a.T, []string{"rbac.authorization.k8s.io", "authorization.openshift.io"}, rule.APIGroups)
-	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
-	assert.Equal(a.T, []string{"rolebindings"}, rule.Resources)
-	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
+	rolebindingRule := rolebindingWebhook.Rules[0]
+	assert.Equal(a.T, []admv1.OperationType{admv1.Create, admv1.Update}, rolebindingRule.Operations)
+	assert.Equal(a.T, []string{"rbac.authorization.k8s.io", "authorization.openshift.io"}, rolebindingRule.APIGroups)
+	assert.Equal(a.T, []string{"v1"}, rolebindingRule.APIVersions)
+	assert.Equal(a.T, []string{"rolebindings"}, rolebindingRule.Resources)
+	assert.Equal(a.T, admv1.NamespacedScope, *rolebindingRule.Scope)
+
+	if len(actualValWbhConf.Webhooks) > 1 {
+		checlusterWebhook := actualValWbhConf.Webhooks[1]
+		assert.Equal(a.T, "users.checlusters.webhook.sandbox", checlusterWebhook.Name)
+		assert.Equal(a.T, []string{"v1"}, checlusterWebhook.AdmissionReviewVersions)
+		assert.Equal(a.T, admv1.SideEffectClassNone, *checlusterWebhook.SideEffects)
+		assert.Equal(a.T, int32(5), *checlusterWebhook.TimeoutSeconds)
+		assert.Equal(a.T, admv1.Ignore, *checlusterWebhook.FailurePolicy)
+		assert.Equal(a.T, admv1.Equivalent, *checlusterWebhook.MatchPolicy)
+		assert.Equal(a.T, codereadyToolchainProviderLabel, checlusterWebhook.NamespaceSelector.MatchLabels)
+		assert.Equal(a.T, ca, checlusterWebhook.ClientConfig.CABundle)
+		assert.Equal(a.T, "member-operator-webhook", checlusterWebhook.ClientConfig.Service.Name)
+		assert.Equal(a.T, a.Namespace, checlusterWebhook.ClientConfig.Service.Namespace)
+		assert.Equal(a.T, "/validate-users-checlusters", *checlusterWebhook.ClientConfig.Service.Path)
+		assert.Equal(a.T, int32(443), *checlusterWebhook.ClientConfig.Service.Port)
+		require.Len(a.T, checlusterWebhook.Rules, 1)
+
+		checlusterRule := checlusterWebhook.Rules[0]
+		assert.Equal(a.T, []admv1.OperationType{admv1.Create}, checlusterRule.Operations)
+		assert.Equal(a.T, []string{"org.eclipse.che"}, checlusterRule.APIGroups)
+		assert.Equal(a.T, []string{"v2"}, checlusterRule.APIVersions)
+		assert.Equal(a.T, []string{"checlusters"}, checlusterRule.Resources)
+		assert.Equal(a.T, admv1.NamespacedScope, *checlusterRule.Scope)
+	}
+
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp() {
