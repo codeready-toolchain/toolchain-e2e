@@ -1,0 +1,29 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-devspaces-operator
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${DEVSPACES_OPERATOR_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: devspaces-operator
+      namespace: ${DEVSPACES_OPERATOR_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: devspaces-operator-subscription
+      namespace: ${DEVSPACES_OPERATOR_NAMESPACE}
+    spec:
+      channel: stable
+      installPlanApproval: Automatic
+      name: devspaces
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+      startingCSV: devspacesoperator.v3.1.0
+parameters:
+  - name: DEVSPACES_OPERATOR_NAMESPACE
+    value: crw
