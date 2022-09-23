@@ -2,25 +2,23 @@ package e2e
 
 import (
 	"context"
-	"crypto/md5" // nolint:gosec
-	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type userSignupIntegrationTest struct {
@@ -524,11 +522,7 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 
 func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	// Manually create a UserSignup that has a name that is not the encoded username
-
-	md5hash := md5.New() // nolint:gosec
-	// Ignore the error, as this implementation cannot return one
-	_, _ = md5hash.Write([]byte("foo@bar.com"))
-	emailHash := hex.EncodeToString(md5hash.Sum(nil))
+	emailHash := hash.EncodeString("foo@bar.com")
 
 	userSignup := &toolchainv1alpha1.UserSignup{
 		ObjectMeta: metav1.ObjectMeta{
