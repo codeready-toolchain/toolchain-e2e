@@ -28,7 +28,7 @@ var Templates = []string{
 	"rhods.yaml",
 	"aikit.yaml",
 	"openvino.yaml",
-	"devworkspace-operator.yaml",
+	// "devworkspace-operator.yaml", // included with DevSpaces install
 	"rhoas.yaml",
 	// "sbo.yaml", // included when rhoda is installed
 	"serverless-operator.yaml",
@@ -91,13 +91,20 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			return err
 		}
 
+		startTime := time.Now()
+
 		// wait for operator installation to succeed
 		var csverr error
 		var currentCSV string
+		var lastCSVs []string
 		err = wait.ForSubscriptionWithCriteria(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
 			currentCSV = subscription.Status.CurrentCSV
 			if currentCSV == "" {
 				return false
+			}
+			if len(lastCSVs) == 0 || currentCSV != lastCSVs[len(lastCSVs)-1] {
+				lastCSVs = append(lastCSVs, currentCSV)
+				fmt.Printf("CurrentCSV of subscription: '%s'\n", currentCSV)
 			}
 			// waiting for csv should fail quickly so that the currentCSV can be reloaded in case it was changed
 			csverr = wait.ForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), csvTimeout, func(csv *v1alpha1.ClusterServiceVersion) bool {
@@ -105,14 +112,18 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			})
 			return csverr == nil
 		})
+		installDuration := time.Since(startTime)
 		if csverr != nil {
 			return errors.Wrapf(csverr, "failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)
 		}
 		if err != nil {
-			return errors.Wrapf(err, "failed to verify installation of operator with subscription '%s'", subscriptionResource.GetName())
+			return errors.Wrapf(err, "failed to verify installation of operator with subscription '%s' after %s", subscriptionResource.GetName(), installDuration.String())
 		}
 
-		fmt.Printf("Verified installation of operator with subscription '%s'\n", subscriptionResource.GetName())
+		fmt.Printf("Verified installation of operator with subscription '%s' completed in %s\n\n", subscriptionResource.GetName(), installDuration.String())
+		if len(lastCSVs) > 1 {
+			fmt.Printf("\n[ATTENTION!] Update subscription '%s' StartingCSV to %s to speed up future installations\n\n", subscriptionResource.GetName(), lastCSVs[len(lastCSVs)-1])
+		}
 	}
 
 	return nil
