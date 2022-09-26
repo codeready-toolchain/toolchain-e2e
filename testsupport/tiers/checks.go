@@ -28,6 +28,7 @@ const (
 	appstudio          = "appstudio"
 	base               = "base"
 	base1ns            = "base1ns"
+	base1nsnoidling    = "base1nsnoidling"
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
 	testTier           = "test"
@@ -54,7 +55,10 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &baseTierChecks{tierName: base}, nil
 
 	case base1ns:
-		return &base1nsTierChecks{baseTierChecks{tierName: base1ns}}, nil
+		return &base1nsTierChecks{tierName: base1ns}, nil
+
+	case base1nsnoidling:
+		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -201,7 +205,7 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 type base1nsTierChecks struct {
-	baseTierChecks
+	tierName string
 }
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
@@ -264,6 +268,25 @@ func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(9),
 		idlers(43200, "dev"))
+}
+
+type base1nsnoidlingTierChecks struct {
+	base1nsTierChecks
+}
+
+func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(9),
+		idlers(0, "dev"))
 }
 
 type baselargeTierChecks struct {
