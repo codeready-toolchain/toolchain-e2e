@@ -116,7 +116,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 				return false
 			}
 
-			time.Sleep(10 * time.Second) // wait a few seconds and then check if there's another CSV to wait for
+			time.Sleep(5 * time.Second) // wait a few seconds and then check if there's another CSV to wait for
 			currentCSV = subscription.Status.CurrentCSV
 			return currentCSV == lastCSVs[len(lastCSVs)-1] // return true only if the CurrentCSV has not changed. ie. no upgrade needed
 		})
