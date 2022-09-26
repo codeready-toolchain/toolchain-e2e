@@ -37,7 +37,7 @@ var Templates = []string{
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
-var csvTimeout = 60 * time.Second
+var csvTimeout = 10 * time.Second
 
 func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	subs := &v1alpha1.SubscriptionList{}
@@ -102,16 +102,27 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			if currentCSV == "" {
 				return false
 			}
-			if len(lastCSVs) == 0 || currentCSV != lastCSVs[len(lastCSVs)-1] {
+
+			if len(lastCSVs) == 0 || currentCSV != lastCSVs[len(lastCSVs)-1] { // subscription's current CSV has changed
 				lastCSVs = append(lastCSVs, currentCSV)
 				fmt.Printf("CurrentCSV of subscription: '%s'\n", currentCSV)
 			}
-			// waiting for csv should fail quickly so that the currentCSV can be reloaded in case it was changed
+
+			// wait for the CurrentCSV to reach Succeeded status
 			csverr = wait.ForCSVWithCriteria(cl, currentCSV, subscriptionResource.GetNamespace(), csvTimeout, func(csv *v1alpha1.ClusterServiceVersion) bool {
 				return csv.Status.Phase == "Succeeded"
 			})
-			return csverr == nil
+			if csverr != nil {
+				return false
+			}
+
+			time.Sleep(10 * time.Second) // wait a few seconds and then check if there's another CSV to wait for
+			currentCSV = subscription.Status.CurrentCSV
+			return currentCSV == lastCSVs[len(lastCSVs)-1] // return true only if the CurrentCSV has not changed. ie. no upgrade needed
 		})
+		if len(lastCSVs) > 1 {
+			fmt.Printf("\nATTENTION! Update subscription '%s' StartingCSV to %s to speed up future installations\n\n", subscriptionResource.GetName(), lastCSVs[len(lastCSVs)-1])
+		}
 		installDuration := time.Since(startTime)
 		if csverr != nil {
 			return errors.Wrapf(csverr, "failed to find CSV '%s' with Phase 'Succeeded'", currentCSV)
@@ -121,9 +132,6 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		}
 
 		fmt.Printf("Verified installation of operator with subscription '%s' completed in %s\n\n", subscriptionResource.GetName(), installDuration.String())
-		if len(lastCSVs) > 1 {
-			fmt.Printf("\n[ATTENTION!] Update subscription '%s' StartingCSV to %s to speed up future installations\n\n", subscriptionResource.GetName(), lastCSVs[len(lastCSVs)-1])
-		}
 	}
 
 	return nil
