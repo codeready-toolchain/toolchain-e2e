@@ -18,7 +18,7 @@ const userNSParam = "CURRENT_USER_NAMESPACE"
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
 func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Scheme, username string, templatePaths []string) error {
-	userNS := fmt.Sprintf("%s-stage", username)
+	userNS := fmt.Sprintf("%s-dev", username)
 	combinedObjsToProcess := []runtimeclient.Object{}
 	for _, templatePath := range templatePaths {
 		// get the template from the file if it hasn't been processed already
