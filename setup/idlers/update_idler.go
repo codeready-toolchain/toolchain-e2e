@@ -17,7 +17,7 @@ import (
 )
 
 func UpdateTimeout(cl client.Client, username string, timeout time.Duration) error {
-	for _, suffix := range []string{"dev", "stage"} { // TODO: hard coded suffixes, we could probably get them from the tier instead
+	for _, suffix := range []string{"dev"} { // TODO: hard coded suffixes, we could probably get them from the tier instead
 		idlerName := fmt.Sprintf("%s-%s", username, suffix)
 		idler, err := getIdler(cl, idlerName)
 		if err != nil {
