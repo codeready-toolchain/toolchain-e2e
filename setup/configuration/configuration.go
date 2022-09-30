@@ -1,6 +1,7 @@
 package configuration
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +17,7 @@ import (
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +43,8 @@ var (
 
 	DefaultRetryInterval = time.Millisecond * 200
 	DefaultTimeout       = time.Minute * 5
+
+	UserSpaceTier = "base1ns"
 )
 
 // NewClient returns a new client to the cluster defined by the current context in
@@ -84,6 +88,21 @@ func NewScheme() (*runtime.Scheme, error) {
 	)
 	err := builder.AddToScheme(s)
 	return s, err
+}
+
+func ConfigureDefaultSpaceTier(cl client.Client) error {
+	// ensure the NSTemplateTier (SpaceTier) exists
+	if err := cl.Get(context.TODO(), types.NamespacedName{Name: UserSpaceTier, Namespace: HostOperatorNamespace}, &toolchainv1alpha1.NSTemplateTier{}); err != nil {
+		return err
+	}
+
+	toolchainCfg := &toolchainv1alpha1.ToolchainConfig{}
+	if err := cl.Get(context.TODO(), types.NamespacedName{Name: "config", Namespace: HostOperatorNamespace}, toolchainCfg); err != nil {
+		return err
+	}
+
+	toolchainCfg.Spec.Host.Tiers.DefaultSpaceTier = &UserSpaceTier
+	return cl.Update(context.TODO(), toolchainCfg)
 }
 
 // GetKubeconfigFile returns a file reader on (by order of match):
