@@ -210,8 +210,11 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("20", "14Gi", "1750m", "14Gi"),
+		resourceQuotaComputeBuild("20", "10Gi", "2", "10Gi"),
+		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		limitRange("defaultCPULimit", " 1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
@@ -257,7 +260,6 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitili
 
 func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -392,9 +394,9 @@ type appstudioTierChecks struct {
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		appstudioQuotaComputeDeploy(),
-		appstudioQuotaComputeBuild(),
-		appstudioQuotaStorage(),
+		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("20", "64Gi", "2", "32Gi"),
+		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
@@ -586,6 +588,71 @@ func rbacEditRole() spaceRoleObjectsCheck {
 		assert.Equal(t, expected.Rules, role.Rules)
 		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+	}
+}
+
+func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
+			Hard:   make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryRequest)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-deploy", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
+			Hard:   make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryRequest)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-build", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity(ephemeralLimit)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity(storageRequest)
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity(ephemeralRequest)
+		require.NoError(t, err)
+		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity(pvcs)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
+		_, err = memberAwait.WaitForResourceQuota(ns.Name, "storage", criteria)
+		require.NoError(t, err)
 	}
 }
 
@@ -1192,71 +1259,6 @@ func appstudioViewRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-	}
-}
-
-func appstudioQuotaComputeDeploy() namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		var err error
-		spec := corev1.ResourceQuotaSpec{
-			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
-			Hard:   make(map[corev1.ResourceName]resource.Quantity),
-		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("32Gi")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("1750m")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("32Gi")
-		require.NoError(t, err)
-
-		criteria := resourceQuotaMatches(ns.Name, "compute-deploy", spec)
-		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-deploy", criteria)
-		require.NoError(t, err)
-	}
-}
-
-func appstudioQuotaComputeBuild() namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		var err error
-		spec := corev1.ResourceQuotaSpec{
-			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
-			Hard:   make(map[corev1.ResourceName]resource.Quantity),
-		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity("20")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity("64Gi")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity("2")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity("32Gi")
-		require.NoError(t, err)
-
-		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
-		_, err = memberAwait.WaitForResourceQuota(ns.Name, "compute-build", criteria)
-		require.NoError(t, err)
-	}
-}
-
-func appstudioQuotaStorage() namespaceObjectsCheck { // nolint:unparam
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		var err error
-		spec := corev1.ResourceQuotaSpec{
-			Hard: make(map[corev1.ResourceName]resource.Quantity),
-		}
-		spec.Hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("15Gi")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity("15Gi")
-		require.NoError(t, err)
-		spec.Hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("15Gi")
-		require.NoError(t, err)
-		spec.Hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
-		require.NoError(t, err)
-
-		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
-		_, err = memberAwait.WaitForResourceQuota(ns.Name, "storage", criteria)
-		require.NoError(t, err)
 	}
 }
 
