@@ -378,7 +378,7 @@ func (a *testTierChecks) GetSpaceRoleChecks(_ map[string][]string) ([]spaceRoleO
 
 func (a *testTierChecks) GetExpectedTemplateRefs(hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(hostAwait, a.tierName)
-	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev", "stage")
+	verifyNsTypes(hostAwait.T, a.tierName, templateRefs, "dev")
 	return templateRefs
 }
 
