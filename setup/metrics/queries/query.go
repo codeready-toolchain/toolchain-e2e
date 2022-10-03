@@ -46,7 +46,7 @@ func QueryOpenshiftKubeAPIMemoryUtilisation(apiClient prometheus.API) *BaseQuery
 	return &BaseQuery{
 		apiClient:  apiClient,
 		name:       "openshift-kube-apiserver",
-		query:      `sum(container_memory_usage_bytes{namespace="openshift-kube-apiserver", pod=~"kube-apiserver-.*"})`,
+		query:      `sum(container_memory_working_set_bytes{job="kubelet", metrics_path="/metrics/cadvisor", cluster="", namespace="openshift-kube-apiserver", container!="", image!=""})`,
 		resultType: Memory,
 	}
 }
