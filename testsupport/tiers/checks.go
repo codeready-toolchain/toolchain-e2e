@@ -213,7 +213,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		resourceQuotaComputeDeploy("20", "14Gi", "1750m", "14Gi"),
 		resourceQuotaComputeBuild("20", "10Gi", "2", "10Gi"),
 		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
-		limitRange(defaultCPULimit, " 1000Mi", "10m", "64Mi"),
+		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
