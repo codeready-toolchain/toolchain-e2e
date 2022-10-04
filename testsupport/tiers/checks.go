@@ -268,7 +268,7 @@ func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
+		numberOfClusterResourceQuotas(8),
 		idlers(43200, "dev"))
 }
 
@@ -278,7 +278,6 @@ type base1nsnoidlingTierChecks struct {
 
 func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -287,7 +286,7 @@ func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsChe
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
+		numberOfClusterResourceQuotas(8),
 		idlers(0, "dev"))
 }
 
