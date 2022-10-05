@@ -1,5 +1,5 @@
 
-OWNER_AND_BRANCH_LOCATION=xcoulon/toolchain-cicd/23921c
+OWNER_AND_BRANCH_LOCATION=xcoulon/toolchain-cicd/d426c7b
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 USE_LOCAL_SCRIPTS=false
 
