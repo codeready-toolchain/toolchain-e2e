@@ -1,7 +1,7 @@
 == Required Pre-installed Tools
-* go 1.16 or later
+* go 1.17.x (1.17.9 or higher)
 * git
-* operator-sdk 1.16.0
+* operator-sdk 1.21.0
 * sed
 * yamllint
 * jq
