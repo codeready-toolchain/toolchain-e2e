@@ -28,6 +28,7 @@ const (
 	appstudio          = "appstudio"
 	base               = "base"
 	base1ns            = "base1ns"
+	base1ns6didler     = "base1ns6didler"
 	base1nsnoidling    = "base1nsnoidling"
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
@@ -59,6 +60,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
+
+	case base1ns6didler:
+		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -288,6 +292,24 @@ func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsChe
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, "dev"))
+}
+
+type base1ns6didlerTierChecks struct {
+	base1nsTierChecks
+}
+
+func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(518400, "dev"))
 }
 
 type baselargeTierChecks struct {
