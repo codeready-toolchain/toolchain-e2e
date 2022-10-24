@@ -173,6 +173,10 @@ func setup(cmd *cobra.Command, args []string) { // nolint:gocyclo
 		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
 	}
 
+	if err := cfg.ConfigureDefaultSpaceTier(cl); err != nil {
+		term.Fatalf(err, "unable to set default space tier")
+	}
+
 	if !skipCSVGen {
 		term.Infof("⏳ preparing cluster for setup...")
 		// install operators for member clusters
@@ -232,7 +236,7 @@ func setup(cmd *cobra.Command, args []string) { // nolint:gocyclo
 			if usersignupBar.Current()%userBatches == 0 {
 				for i := usersignupBar.Current() - userBatches + 1; i < usersignupBar.Current(); i++ {
 					userToCheck := fmt.Sprintf("%s-%04d", usernamePrefix, i)
-					userNS := fmt.Sprintf("%s-stage", userToCheck)
+					userNS := fmt.Sprintf("%s-dev", userToCheck)
 					if err := wait.ForNamespace(cl, userNS); err != nil {
 						term.Fatalf(err, "failed to find namespace '%s'", userNS)
 					}
@@ -314,7 +318,14 @@ func setup(cmd *cobra.Command, args []string) { // nolint:gocyclo
 	defer close(stopMetrics)
 	wg.Wait()
 	uip.Stop()
+
 	term.Infof("🏁 done provisioning users")
+
+	// continue gathering metrics for some time after creating all users and resources since memory usage was observed to continue changing
+	additionalMetricsDuration := 15 * time.Minute
+	term.Infof("Continuing to gather metrics for %s...", additionalMetricsDuration)
+	time.Sleep(additionalMetricsDuration)
+
 	term.Infof("\n📈 Results 📉")
 	term.Infof("Average Idler Update Time: %.2f s", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
 	term.Infof("Average Time Per User: %.2f s", AverageTimePerUser.Seconds()/float64(numberOfUsers))

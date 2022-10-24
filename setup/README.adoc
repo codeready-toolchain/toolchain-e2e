@@ -108,7 +108,7 @@ Note 3: CSV resources are automatically created for each default user as well. A
 +
 Use `go run setup/main.go --help` to see the full set of options. +
 . Grab some coffee ☕️, populating the cluster with 2000 users can take over 4 hours depending on network latency +
-Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <number_of_users_left_to_create> --custom <number_of_users_left_to_create>`
+Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <num_users_default_user_workloads_template> --custom <num_users_custom_user_workloads_template>`
 +
 . After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.
 

@@ -321,10 +321,11 @@ func TestSignupOK(t *testing.T) {
 			identity.ID, identity.Username), mp["message"])
 		assert.Equal(t, "error creating UserSignup resource", mp["details"])
 
-		// Approve usersignup.
-		states.SetApproved(userSignup, true)
-		userSignup.Spec.TargetCluster = memberAwait.ClusterName
-		err = hostAwait.Client.Update(context.TODO(), userSignup)
+		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
+			// Approve usersignup.
+			states.SetApproved(instance, true)
+			instance.Spec.TargetCluster = memberAwait.ClusterName
+		})
 		require.NoError(t, err)
 
 		// Wait for the resources to be provisioned
@@ -505,10 +506,10 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
 	require.False(t, mpStatus["verificationRequired"].(bool))
 
-	// Now approve the usersignup.
-	states.SetApproved(userSignup, true)
-
-	err = hostAwait.Client.Update(context.TODO(), userSignup)
+	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
+		// Now approve the usersignup.
+		states.SetApproved(instance, true)
+	})
 	require.NoError(t, err)
 
 	// Confirm the MasterUserRecord is provisioned
@@ -560,10 +561,10 @@ func TestPhoneVerification(t *testing.T) {
 	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name)
 	require.NoError(t, err)
 
-	// Now mark the original UserSignup as deactivated
-	states.SetDeactivated(userSignup, true)
-
-	err = hostAwait.Client.Update(context.TODO(), userSignup)
+	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
+		// Now mark the original UserSignup as deactivated
+		states.SetDeactivated(instance, true)
+	})
 	require.NoError(t, err)
 
 	// Ensure the UserSignup is deactivated
