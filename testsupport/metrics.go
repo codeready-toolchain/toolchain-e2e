@@ -37,6 +37,8 @@ const (
 
 	UserAccountsMetric = "sandbox_user_accounts_current"
 
+	SpacesMetric = "sandbox_spaces_current"
+
 	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
 )
 
