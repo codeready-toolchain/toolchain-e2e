@@ -244,7 +244,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 			}
 
 			if r.manuallyApprove {
-				states.SetApproved(instance, r.manuallyApprove)
+				states.SetApprovedManually(instance, r.manuallyApprove)
 			}
 			if r.targetCluster != nil {
 				instance.Spec.TargetCluster = r.targetCluster.ClusterName

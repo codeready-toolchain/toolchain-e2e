@@ -469,7 +469,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	userSignup.Spec.TargetCluster = memberAwait.ClusterName
 
 	// Set approved to true
-	states.SetApproved(userSignup, true)
+	states.SetApprovedManually(userSignup, true)
 
 	// Set verification required
 	states.SetVerificationRequired(userSignup, true)
