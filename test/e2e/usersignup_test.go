@@ -136,6 +136,33 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	})
 }
 
+func (s *userSignupIntegrationTest) TestNotificationCreatedOKWhenUserProvisioned() {
+	// given
+	s.Host().UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.T(), s.Awaitilities).
+		Username("bartsimpson").
+		Email("bartsimpson@redhat.com").
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute().Resources()
+
+	// then
+	userSignup, err := s.Host().WaitForUserSignup(userSignup.Name,
+		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
+		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+	require.NoError(s.T(), err)
+
+	notifications, err := s.Host().WaitForNotifications(userSignup.Name, toolchainv1alpha1.NotificationTypeProvisioned, 1)
+	require.NoError(s.T(), err)
+
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+
+	require.NotEmpty(s.T(), notifications)
+	require.Len(s.T(), notifications, 1)
+	require.Equal(s.T(), "bartsimpson@redhat.com", notifications[0].Spec.Recipient)
+}
+
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()

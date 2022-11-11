@@ -164,6 +164,37 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 	})
 
+	s.T().Run("verify notification created and has correct usersignup email on user deactivation", func(t *testing.T) {
+
+		// User on member cluster 1
+		userToDeactivate, _ := NewSignupRequest(t, s.Awaitilities).
+			Username("usertodeactivate3").
+			Email("usertodeactivate3@redhat.com").
+			ManuallyApprove().
+			EnsureMUR().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
+
+		// Set the user to deactivated
+		userSignup, err := hostAwait.UpdateUserSignup(userToDeactivate.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivated(us, true)
+		})
+		require.NoError(s.T(), err)
+		s.T().Logf("user signup '%s' set to deactivated", userSignup.Name)
+
+		_, err = hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...))
+		require.NoError(t, err)
+
+		notifications, err := hostAwait.WaitForNotifications(userSignup.Name, toolchainv1alpha1.NotificationTypeDeactivated, 1)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, notifications)
+		require.Len(t, notifications, 1)
+		require.Equal(t, "usertodeactivate3@redhat.com", notifications[0].Spec.Recipient)
+	})
+
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
 
 		_, murMember1 := NewSignupRequest(t, s.Awaitilities).
@@ -276,7 +307,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.False(t, states.Deactivated(deactivationExcludedUserSignupMember1), "deactivationExcludedUserSignup should not be deactivated")
 	})
 
-	s.T().Run("test deactivating state set OK", func(t *testing.T) {
+	s.T().Run("test deactivating state set OK and notification created correctly", func(t *testing.T) {
 		// Reset configuration back to 3 days
 		hostAwait.UpdateToolchainConfig(
 			testconfig.AutomaticApproval().Enabled(false),
@@ -314,9 +345,18 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			murMember1.Status.ProvisionedTime.String())
 
 		// The user should be set to deactivating, but not deactivated
-		_, err = hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(
+		userSignupMember1, err = hostAwait.WaitForUserSignup(userSignupMember1.Name, wait.UntilUserSignupHasConditions(
 			ConditionSet(Default(), ApprovedByAdmin(), Deactivating())...))
 		require.NoError(s.T(), err)
+
+		// Verify that the deactivating notification was created
+		notifications, err := hostAwait.WaitForNotifications(userSignupMember1.Name, toolchainv1alpha1.NotificationTypeDeactivating, 1)
+		require.NoError(t, err)
+
+		// Verify that the email address is correctly set in the notification
+		require.NotEmpty(t, notifications)
+		require.Len(t, notifications, 1)
+		require.Equal(t, "usertostartdeactivating@redhat.com", notifications[0].Spec.Recipient)
 
 		// Verify resources still exist
 		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "deactivate30", "base")
