@@ -197,9 +197,15 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 	// when deleting user "user-0001"
 	err := hostAwait.Client.Delete(context.TODO(), usersignups["user-0001"])
-
 	// then
 	require.NoError(t, err)
+
+	// wait for space to be deleted
+	err = hostAwait.WaitUntilUserSignupDeleted(usersignups["user-0001"].GetName())
+	require.NoError(t, err)
+	err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(usersignups["user-0001"].GetName())
+	require.NoError(t, err)
+
 	// and verify that the values of the `sandbox_users_per_activations` metric
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "external") // user-0001 and user-0002 have been provisioned
 
@@ -208,6 +214,13 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
+
+	// wait for space to be deleted
+	err = hostAwait.WaitUntilUserSignupDeleted(usersignups["user-0002"].GetName())
+	require.NoError(t, err)
+	err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(usersignups["user-0002"].GetName())
+	require.NoError(t, err)
+
 	// and verify that the values of the `sandbox_users_per_activations` metric
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "external") // same offset as above: users has been deleted but metric remains unchanged
 }

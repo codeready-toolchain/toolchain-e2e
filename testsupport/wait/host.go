@@ -539,7 +539,7 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
-// WaitForTestResourcesCleanup waits for all UserSignup and MasterUserRecord deletions to complete
+// WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space(biding), NStemplateSet and Namespace deletions to complete
 func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	a.T.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
@@ -560,6 +560,46 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration)
 		}
 		for _, mur := range murList.Items {
 			if mur.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		spaceBindingsList := &toolchainv1alpha1.SpaceBindingList{}
+		if err := a.Client.List(context.TODO(), spaceBindingsList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, spaceBinding := range spaceBindingsList.Items {
+			if spaceBinding.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		spaceList := &toolchainv1alpha1.SpaceList{}
+		if err := a.Client.List(context.TODO(), spaceList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, space := range spaceList.Items {
+			if space.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		nsTemplateSetList := &toolchainv1alpha1.NSTemplateSetList{}
+		if err := a.Client.List(context.TODO(), nsTemplateSetList); err != nil {
+			return false, err
+		}
+		for _, nsTemplateSet := range nsTemplateSetList.Items {
+			if nsTemplateSet.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		namespaceList := &corev1.NamespaceList{}
+		if err := a.Client.List(context.TODO(), namespaceList); err != nil {
+			return false, err
+		}
+		for _, namespace := range namespaceList.Items {
+			if namespace.DeletionTimestamp != nil {
 				return false, nil
 			}
 		}
