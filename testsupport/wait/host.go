@@ -539,7 +539,7 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
-// WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space(biding), NStemplateSet and Namespace deletions to complete
+// WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space(binding), NStemplateSet and Namespace deletions to complete
 func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	a.T.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
@@ -564,11 +564,11 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration)
 			}
 		}
 
-		spaceBindingsList := &toolchainv1alpha1.SpaceBindingList{}
-		if err := a.Client.List(context.TODO(), spaceBindingsList, client.InNamespace(a.Namespace)); err != nil {
+		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
+		if err := a.Client.List(context.TODO(), spaceBindingList, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
-		for _, spaceBinding := range spaceBindingsList.Items {
+		for _, spaceBinding := range spaceBindingList.Items {
 			if spaceBinding.DeletionTimestamp != nil {
 				return false, nil
 			}
