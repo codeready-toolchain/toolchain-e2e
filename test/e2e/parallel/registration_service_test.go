@@ -323,7 +323,7 @@ func TestSignupOK(t *testing.T) {
 
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
 			// Approve usersignup.
-			states.SetApproved(instance, true)
+			states.SetApprovedManually(instance, true)
 			instance.Spec.TargetCluster = memberAwait.ClusterName
 		})
 		require.NoError(t, err)
@@ -508,7 +508,7 @@ func TestPhoneVerification(t *testing.T) {
 
 	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
 		// Now approve the usersignup.
-		states.SetApproved(instance, true)
+		states.SetApprovedManually(instance, true)
 	})
 	require.NoError(t, err)
 
@@ -610,7 +610,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetApproved(us, true)
+			states.SetApprovedManually(us, true)
 		})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' reactivated", userSignup.Name)
