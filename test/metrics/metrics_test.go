@@ -57,7 +57,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // none activated on member-1
 	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 2, "cluster_name", memberAwait2.ClusterName)                 // all activated on member-2
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
-	metricsAssertion.WaitForMetricDelta(SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName)
+	metricsAssertion.WaitForMetricDelta(SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName) // 2 spaces created on member-2
 
 	// when deactivating the users
 	for username, usersignup := range usersignups {
@@ -82,7 +82,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // all deactivated on member-1
 	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName)                 // all deactivated on member-2
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
-	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
+	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // 2 spaces deleted from member-2
 
 }
 

@@ -539,7 +539,7 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
-// WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space(binding), NStemplateSet and Namespace deletions to complete
+// WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space, SpaceBinding, NSTemplateSet and Namespace deletions to complete
 func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	a.T.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
