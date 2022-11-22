@@ -257,7 +257,7 @@ func (a *Awaitility) SetupRouteForService(serviceName, endpoint string) (routev1
 	return a.WaitForRouteToBeAvailable(route.Namespace, route.Name, endpoint)
 }
 
-// WaitForRouteToBeAvailable wais until the given route is available, ie, it has an Ingress with a host configured
+// WaitForRouteToBeAvailable waits until the given route is available, ie, it has an Ingress with a host configured
 // and the endpoint is reachable (with a `200 OK` status response)
 func (a *Awaitility) WaitForRouteToBeAvailable(ns, name, endpoint string) (routev1.Route, error) {
 	a.T.Logf("waiting for route '%s' in namespace '%s'", name, ns)

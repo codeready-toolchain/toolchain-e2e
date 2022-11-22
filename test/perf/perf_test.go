@@ -146,7 +146,7 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
 			// Create an approved UserSignup resource
 			userSignup := NewUserSignup(hostAwait.Namespace, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
-			states.SetApproved(userSignup, true)
+			states.SetApprovedManually(userSignup, true)
 			userSignup.Spec.TargetCluster = memberAwait.ClusterName
 			err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 			hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)

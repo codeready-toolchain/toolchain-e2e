@@ -22,7 +22,7 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 	var metrics []byte
 
 	client := http.Client{
-		Timeout: time.Duration(10 * time.Second),
+		Timeout: time.Duration(30 * time.Second),
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		},
