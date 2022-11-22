@@ -539,6 +539,19 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
+// UntilUserSignupHasCompliantUsername returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has a `.status.compliantUsername` value
+func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.CompliantUsername != ""
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected to have a value for '.status.complicantUsername'"
+		},
+	}
+}
+
 // WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space, SpaceBinding, NSTemplateSet and Namespace deletions to complete
 func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	a.T.Logf("waiting for resource cleanup")

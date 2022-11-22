@@ -33,6 +33,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.12.0
 )
 
+replace github.com/codeready-toolchain/toolchain-common => github.com/xcoulon/toolchain-common v0.0.0-20221121110655-5c127da69828
+
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
