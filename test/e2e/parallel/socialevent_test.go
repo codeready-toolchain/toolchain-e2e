@@ -24,7 +24,6 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with default tiername", func(t *testing.T) {
 		// given
-		name := commonsocialevent.NewName()
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate30"),
 			testsocialevent.WithSpaceTier("base1ns"))
@@ -34,7 +33,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		_, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		_, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:   toolchainv1alpha1.ConditionReady,
 			Status: corev1.ConditionTrue,
 		}))
@@ -43,7 +42,6 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with invalid user tier name", func(t *testing.T) {
 		// given
-		name := commonsocialevent.NewName()
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("invalid"),
 			testsocialevent.WithSpaceTier("base1ns"))
@@ -53,7 +51,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidUserTierReason,
@@ -80,7 +78,6 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with invalid space tier name", func(t *testing.T) {
 		// given
-		name := commonsocialevent.NewName()
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate30"),
 			testsocialevent.WithSpaceTier("invalid"))
@@ -90,7 +87,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidSpaceTierReason,
