@@ -44,7 +44,7 @@ type AwaitilityInt interface {
 
 // AddCleanTasks adds cleaning tasks for the given objects that will be automatically performed at the end of the test execution
 func AddCleanTasks(a AwaitilityInt, objects ...client.Object) {
-	// cleaning.addCleanTasks(a.GetT(), a.GetClient(), objects...)
+	cleaning.addCleanTasks(a.GetT(), a.GetClient(), objects...)
 }
 
 func (c *cleanManager) addCleanTasks(t *testing.T, cl client.Client, objects ...client.Object) {
