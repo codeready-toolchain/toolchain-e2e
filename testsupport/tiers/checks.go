@@ -446,7 +446,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 					appstudioViewRoleBinding(userName),
 				)
 				serviceAccounts++
-				rolebindings += 2
+				rolebindings += 4
 			}
 		case "viewer":
 			for _, userName := range usernames {
@@ -455,7 +455,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 					appstudioViewRoleBinding(userName),
 				)
 				serviceAccounts++
-				rolebindings++
+				rolebindings += 2
 			}
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
