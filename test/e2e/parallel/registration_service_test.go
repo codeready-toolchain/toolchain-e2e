@@ -616,6 +616,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' approved", userSignup.Name)
+
 		// check that the MUR and Space are configured as expected
 		// Wait for the UserSignup to have the desired state
 		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
@@ -624,6 +625,11 @@ func TestActivationCodeVerification(t *testing.T) {
 		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 		require.NoError(t, err)
 		assert.Equal(t, event.Spec.UserTier, mur.Spec.TierName)
+		_, err = hostAwait.WaitForSpace(userSignup.Status.CompliantUsername,
+			wait.UntilSpaceHasTier(event.Spec.SpaceTier),
+			wait.UntilSpaceHasConditions(Provisioned()),
+		)
+		require.NoError(t, err)
 
 		// also check that the SocialEvent status was updated accordingly
 		_, err = hostAwait.WaitForSocialEvent(event.Name, wait.UntilSocialEventHasActivationCount(1))

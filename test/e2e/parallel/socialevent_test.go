@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
@@ -10,6 +11,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -22,22 +24,33 @@ func TestCreateSocialEvent(t *testing.T) {
 	awaitilities := testsupport.WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	t.Run("create socialevent with default tiername", func(t *testing.T) {
+	t.Run("create socialevent with custom settings", func(t *testing.T) {
 		// given
+		start := time.Now().Add(time.Hour).Round(time.Second)
+		end := time.Now().Add(24 * time.Hour).Round(time.Second)
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate30"),
-			testsocialevent.WithSpaceTier("base1ns"))
+			testsocialevent.WithSpaceTier("base1ns"),
+			testsocialevent.WithStartTime(start),
+			testsocialevent.WithEndTime(end),
+			testsocialevent.WithMaxAttendees(5),
+		)
 
 		// when
 		err := hostAwait.CreateWithCleanup(context.TODO(), event)
 
 		// then
 		require.NoError(t, err)
-		_, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:   toolchainv1alpha1.ConditionReady,
 			Status: corev1.ConditionTrue,
 		}))
 		require.NoError(t, err)
+		assert.Equal(t, "deactivate30", event.Spec.UserTier)
+		assert.Equal(t, "base1ns", event.Spec.SpaceTier)
+		assert.Equal(t, start, event.Spec.StartTime.Time)
+		assert.Equal(t, end, event.Spec.EndTime.Time)
+		assert.Equal(t, 5, event.Spec.MaxAttendees)
 	})
 
 	t.Run("create socialevent with invalid user tier name", func(t *testing.T) {
