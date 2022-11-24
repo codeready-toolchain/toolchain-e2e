@@ -547,7 +547,7 @@ func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
 			return actual.Status.CompliantUsername != ""
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return "expected to have a value for '.status.complicantUsername'"
+			return "expected to have a value for '.Status.CompliantUsername'"
 		},
 	}
 }
