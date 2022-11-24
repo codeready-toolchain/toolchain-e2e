@@ -540,7 +540,7 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 }
 
 // UntilUserSignupHasCompliantUsername returns a `UserSignupWaitCriterion` which checks that the given
-// UserSignup has a `.status.compliantUsername` value
+// UserSignup has a `.Status.CompliantUsername` value
 func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
