@@ -79,14 +79,19 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		})
 	})
 
-	s.T().Run("set low max number of users and expect that user won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
+	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"]))
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
+			testconfig.CapacityThresholds().
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster("member1", originalMursPerDomainCount["internal"]+originalMursPerDomainCount["external"]),
+				),
+		)
 
 		// when
 		userSignup1, _ := NewSignupRequest(t, s.Awaitilities).
@@ -107,9 +112,14 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		s.userIsNotProvisioned(t, userSignup1)
 		s.userIsNotProvisioned(t, userSignup2)
 
-		t.Run("increment the max number of users and expect the first unapproved user will be provisioned", func(t *testing.T) {
+		t.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(originalMursPerDomainCount["internal"] + originalMursPerDomainCount["external"] + 1))
+			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
+				testconfig.CapacityThresholds().
+					MaxNumberOfSpaces(
+						testconfig.PerMemberCluster("member1", originalMursPerDomainCount["internal"]+originalMursPerDomainCount["external"]+1),
+					),
+			)
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(userSignup1.Name,
@@ -122,7 +132,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			t.Run("reset the max number and expect the second user will be provisioned as well", func(t *testing.T) {
 				// when
-				hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(1000))
+				hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
+					testconfig.CapacityThresholds().
+						MaxNumberOfSpaces(
+							testconfig.PerMemberCluster("member1", 1000),
+						),
+				)
 
 				// then
 				userSignup, err := hostAwait.WaitForUserSignup(userSignup2.Name,
@@ -156,7 +171,8 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 		}
 		require.Len(s.T(), memberLimits, 2)
 
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(0, memberLimits...))
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
+			testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 		// when
 		_, mur1 := NewSignupRequest(t, s.Awaitilities).
@@ -202,7 +218,13 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 	hostAwait := s.Host()
 	s.T().Run("default approval config - manual", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
+			testconfig.
+				CapacityThresholds().
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster("member1", 1000),
+				).
+				ResourceCapacityThreshold(80))
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
@@ -235,7 +257,12 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
 	// given
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
+	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
+		testconfig.CapacityThresholds().
+			MaxNumberOfSpaces(
+				testconfig.PerMemberCluster(memberAwait.ClusterName, 1000),
+			).
+			ResourceCapacityThreshold(80))
 
 	// when & then
 	NewSignupRequest(s.T(), s.Awaitilities).
@@ -276,7 +303,12 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("set low max number of users and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1))
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
+			testconfig.CapacityThresholds().
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster(memberAwait.ClusterName, 1),
+				),
+		)
 
 		// when
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
@@ -291,7 +323,12 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000))
+			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
+				testconfig.CapacityThresholds().
+					MaxNumberOfSpaces(
+						testconfig.PerMemberCluster(memberAwait.ClusterName, 1000),
+					),
+			)
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
@@ -305,9 +342,13 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	s.T().Run("when approved and set target cluster manually, then the limits will be ignored", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(
-			testconfig.AutomaticApproval().Enabled(false).
+			testconfig.AutomaticApproval().Enabled(false),
+			testconfig.CapacityThresholds().
 				ResourceCapacityThreshold(1).
-				MaxNumberOfUsers(1))
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster(memberAwait.ClusterName, 1),
+				),
+		)
 
 		// when & then
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
@@ -326,7 +367,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 	hostAwait := s.Host()
 	s.T().Run("automatic approval with verification required", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
+			testconfig.CapacityThresholds().MaxNumberOfSpaces(testconfig.PerMemberCluster("member1", 1000)).
+				ResourceCapacityThreshold(80))
 
 		t.Run("verification required set to true", func(t *testing.T) {
 			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
@@ -337,7 +380,13 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	hostAwait := s.Host()
 	// Create user signup
-	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true).MaxNumberOfUsers(1000).ResourceCapacityThreshold(80))
+	hostAwait.UpdateToolchainConfig(
+		testconfig.AutomaticApproval().Enabled(true),
+		testconfig.CapacityThresholds().
+			MaxNumberOfSpaces(
+				testconfig.PerMemberCluster("member1", 1000),
+			).
+			ResourceCapacityThreshold(80))
 
 	userSignup := NewUserSignup(hostAwait.Namespace, "reginald@alpha.com", "reginald@alpha.com")
 	err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
