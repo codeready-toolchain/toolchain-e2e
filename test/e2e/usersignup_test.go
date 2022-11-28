@@ -96,6 +96,13 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
 				),
 		)
+		// create other usersignup that will be provisioned on member1
+		NewSignupRequest(s.T(), s.Awaitilities).
+			Username("automatic2").
+			Email("automatic2@redhat.com").
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute()
 
 		// when
 		userSignup1, _ := NewSignupRequest(t, s.Awaitilities).
@@ -122,7 +129,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				testconfig.CapacityThresholds().
 					MaxNumberOfSpaces(
 						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
-						testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
+						testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
 					),
 			)
 
@@ -135,7 +142,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 			s.userIsNotProvisioned(t, userSignup2)
 
-			t.Run("reset the max number and expect the second user will be provisioned as well", func(t *testing.T) {
+			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
 				// when
 				hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
 					testconfig.CapacityThresholds().
