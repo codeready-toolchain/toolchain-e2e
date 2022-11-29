@@ -6,18 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TestMetricsWhenUsersDeactivated verifies that `UserSignupsDeactivatedMetric` counter is increased when users are deactivated
@@ -279,7 +277,12 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 		// then
 		// confirm the BannedUser resource is deleted
-		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
+		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.GetName())
+		require.NoError(t, err)
+		// wait for space to be deleted
+		err = hostAwait.WaitUntilUserSignupDeleted(bannedUser.GetName())
+		require.NoError(t, err)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(bannedUser.GetName())
 		require.NoError(t, err)
 		// verify the metrics
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)         // unchanged: user signup already existed
@@ -291,6 +294,20 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no user on member2
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)        // space provisioned on member1
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)       // no spaces on member2
+
+		// deleting the original usersignup to cleanup the metrics for next tests
+		err = hostAwait.Client.Delete(context.TODO(), userSignup)
+		require.NoError(t, err)
+		// wait for original usersignup to be deleted
+		err = hostAwait.WaitUntilUserSignupDeleted(userSignup.GetName())
+		require.NoError(t, err)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
+		require.NoError(t, err)
+		// and verify metrics reset
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)
+		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName)
+		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
+		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
 	})
 }
 
