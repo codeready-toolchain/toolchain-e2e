@@ -47,6 +47,11 @@ func InitMetricsAssertion(t *testing.T, awaitilities wait.Awaitilities) *Metrics
 	// Wait for pending usersignup deletions before capturing baseline values so that test assertions are stable
 	err := awaitilities.Host().WaitForTestResourcesCleanup(5 * time.Second)
 	require.NoError(t, err)
+	// wait for toolchainstatus metrics to be updated
+	_, err = awaitilities.Host().WaitForToolchainStatus(
+		wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
 
 	// Capture baseline values
 	m := &MetricsAssertionHelper{
