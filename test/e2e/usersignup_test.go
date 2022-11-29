@@ -94,25 +94,20 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
+		// update max number of spaces to current number of spaces provisioned
+		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
+			testconfig.CapacityThresholds().
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
+					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
+				),
+		)
 		// create second user to reach max space limits
 		NewSignupRequest(t, s.Awaitilities).
 			Username("automatic2").
 			Email("automatic2@redhat.com").
 			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 			Execute()
-		// wait for toolchain status to update
-		_, err := hostAwait.WaitForToolchainStatus(
-			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-		require.NoError(t, err)
-		// update max number of spaces to current number of spaces provisioned
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().
-				MaxNumberOfSpaces(
-					s.WithMemberLimits(t, 0)..., // set current number of spaces as max limit
-				),
-		)
-		wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete())
 
 		// when
 		waitingList1, _ := NewSignupRequest(t, s.Awaitilities).
