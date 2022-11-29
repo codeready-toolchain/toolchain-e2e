@@ -84,28 +84,38 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			// delete the userSignup
+			err = hostAwait.Client.Delete(context.TODO(), userSignup)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
+			require.NoError(t, err)
 		})
 	})
 
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
+		// create second user to reach max space limits
+		NewSignupRequest(t, s.Awaitilities).
+			Username("automatic2").
+			Email("automatic2@redhat.com").
+			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			Execute()
+		// wait for toolchain status to update
+		_, err := hostAwait.WaitForToolchainStatus(
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+		require.NoError(t, err)
+		// update max number of spaces to current number of spaces provisioned
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
 			testconfig.CapacityThresholds().
 				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
+					s.WithMemberLimits(t, 0)..., // set current number of spaces as max limit
 				),
 		)
-		// create other usersignup that will be provisioned on member1
-		NewSignupRequest(s.T(), s.Awaitilities).
-			Username("automatic2").
-			Email("automatic2@redhat.com").
-			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
-			Execute()
+		wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete())
 
 		// when
-		userSignup1, _ := NewSignupRequest(t, s.Awaitilities).
+		waitingList1, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("waitinglist1").
 			Email("waitinglist1@redhat.com").
 			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
@@ -113,15 +123,15 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		userSignup2, _ := NewSignupRequest(t, s.Awaitilities).
+		waitlinglist2, _ := NewSignupRequest(t, s.Awaitilities).
 			Username("waitinglist2").
 			Email("waitinglist2@redhat.com").
 			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
 			Execute().Resources()
 
 		// then
-		s.userIsNotProvisioned(t, userSignup1)
-		s.userIsNotProvisioned(t, userSignup2)
+		s.userIsNotProvisioned(t, waitingList1)
+		s.userIsNotProvisioned(t, waitlinglist2)
 
 		t.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
@@ -134,13 +144,13 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			)
 
 			// then
-			userSignup, err := hostAwait.WaitForUserSignup(userSignup1.Name,
+			userSignup, err := hostAwait.WaitForUserSignup(waitingList1.Name,
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-			s.userIsNotProvisioned(t, userSignup2)
+			s.userIsNotProvisioned(t, waitlinglist2)
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
 				// when
@@ -153,7 +163,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				)
 
 				// then
-				userSignup, err := hostAwait.WaitForUserSignup(userSignup2.Name,
+				userSignup, err := hostAwait.WaitForUserSignup(waitlinglist2.Name,
 					wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(s.T(), err)
@@ -166,26 +176,13 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	hostAwait := s.Host()
-	memberAwait := s.Member1()
-	memberAwait2 := s.Member2()
 	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
-		var memberLimits []testconfig.PerMemberClusterOptionInt
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
-			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-		require.NoError(t, err)
-		for _, m := range toolchainStatus.Status.Members {
-			if memberAwait.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait.ClusterName, m.UserAccountCount+1))
-			} else if memberAwait2.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.UserAccountCount+1))
-			}
-		}
-		require.Len(s.T(), memberLimits, 2)
+		memeberLimits := s.WithMemberLimits(t, 1) // add one additional space per member as threshold
+		require.Len(s.T(), memeberLimits, 2)
 
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
+			testconfig.CapacityThresholds().MaxNumberOfSpaces(memeberLimits...))
 
 		// when
 		_, mur1 := NewSignupRequest(t, s.Awaitilities).
@@ -217,6 +214,25 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			s.userIsNotProvisioned(t, userSignupPending)
 		})
 	})
+}
+
+func (s *userSignupIntegrationTest) WithMemberLimits(t *testing.T, delta int) []testconfig.PerMemberClusterOptionInt {
+	hostAwait := s.Host()
+	memberAwait1 := s.Member1()
+	memberAwait2 := s.Member2()
+	var memberLimits []testconfig.PerMemberClusterOptionInt
+	toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+		wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
+	for _, m := range toolchainStatus.Status.Members {
+		if memberAwait1.ClusterName == m.ClusterName {
+			memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.SpaceCount+delta))
+		} else if memberAwait2.ClusterName == m.ClusterName {
+			memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.SpaceCount+delta))
+		}
+	}
+	return memberLimits
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
