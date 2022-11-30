@@ -171,13 +171,15 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	hostAwait := s.Host()
+	memberAwait1 := s.Member1()
+	memberAwait2 := s.Member2()
 	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
-		memeberLimits := s.WithMemberLimits(t, 1) // add one additional space per member as threshold
-		require.Len(s.T(), memeberLimits, 2)
-
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().MaxNumberOfSpaces(memeberLimits...))
+			testconfig.CapacityThresholds().MaxNumberOfSpaces(
+				testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
+				testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
+			))
 
 		// when
 		_, mur1 := NewSignupRequest(t, s.Awaitilities).
@@ -209,25 +211,6 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			s.userIsNotProvisioned(t, userSignupPending)
 		})
 	})
-}
-
-func (s *userSignupIntegrationTest) WithMemberLimits(t *testing.T, delta int) []testconfig.PerMemberClusterOptionInt {
-	hostAwait := s.Host()
-	memberAwait1 := s.Member1()
-	memberAwait2 := s.Member2()
-	var memberLimits []testconfig.PerMemberClusterOptionInt
-	toolchainStatus, err := hostAwait.WaitForToolchainStatus(
-		wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-	require.NoError(t, err)
-	for _, m := range toolchainStatus.Status.Members {
-		if memberAwait1.ClusterName == m.ClusterName {
-			memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.SpaceCount+delta))
-		} else if memberAwait2.ClusterName == m.ClusterName {
-			memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.SpaceCount+delta))
-		}
-	}
-	return memberLimits
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
@@ -331,10 +314,15 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			// delete the userSignup
+			err = hostAwait.Client.Delete(context.TODO(), userSignup)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
+			require.NoError(t, err)
 		})
 	})
 
-	s.T().Run("set low max number of users and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
+	s.T().Run("set low max number of spaces and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
 			testconfig.CapacityThresholds().
@@ -343,6 +331,13 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
 				),
 		)
+		// create usersignup to reach max number of spaces on both members
+		NewSignupRequest(t, s.Awaitilities).
+			Username("manualwithcapacity2").
+			Email("manualwithcapacity2@redhat.com").
+			ManuallyApprove().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute().Resources()
 
 		// when
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
@@ -371,6 +366,11 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			// delete the userSignup
+			err = hostAwait.Client.Delete(context.TODO(), userSignup)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
+			require.NoError(t, err)
 		})
 	})
 
