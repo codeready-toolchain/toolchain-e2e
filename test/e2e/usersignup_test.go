@@ -302,7 +302,10 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).ResourceCapacityThreshold(1))
+		hostAwait.UpdateToolchainConfig(
+			testconfig.AutomaticApproval().Enabled(false),
+			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
+		)
 
 		// when
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
@@ -317,7 +320,10 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false).ResourceCapacityThreshold(80))
+			hostAwait.UpdateToolchainConfig(
+				testconfig.AutomaticApproval().Enabled(false),
+				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
+			)
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
