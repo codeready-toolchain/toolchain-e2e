@@ -622,7 +622,9 @@ func TestActivationCodeVerification(t *testing.T) {
 		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
 			wait.UntilUserSignupHasCompliantUsername())
 		require.NoError(t, err)
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
+			wait.UntilMasterUserRecordHasTierName(event.Spec.UserTier),
+			wait.UntilMasterUserRecordHasCondition(Provisioned()))
 		require.NoError(t, err)
 		assert.Equal(t, event.Spec.UserTier, mur.Spec.TierName)
 		_, err = hostAwait.WaitForSpace(userSignup.Status.CompliantUsername,
