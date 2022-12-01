@@ -3,11 +3,15 @@ package parallel
 import (
 	"context"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	commonsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
+	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -20,34 +24,47 @@ func TestCreateSocialEvent(t *testing.T) {
 	awaitilities := testsupport.WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	t.Run("create socialevent with valid tiername", func(t *testing.T) {
+	t.Run("create socialevent with custom settings", func(t *testing.T) {
 		// given
-		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "deactivate30", "base")
+		start := time.Now().Add(time.Hour).Round(time.Second)
+		end := time.Now().Add(24 * time.Hour).Round(time.Second)
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+			testsocialevent.WithUserTier("deactivate30"),
+			testsocialevent.WithSpaceTier("base1ns"),
+			testsocialevent.WithStartTime(start),
+			testsocialevent.WithEndTime(end),
+			testsocialevent.WithMaxAttendees(5),
+		)
 
 		// when
-		err := hostAwait.CreateWithCleanup(context.TODO(), se)
+		err := hostAwait.CreateWithCleanup(context.TODO(), event)
 
 		// then
 		require.NoError(t, err)
-		_, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:   toolchainv1alpha1.ConditionReady,
 			Status: corev1.ConditionTrue,
 		}))
 		require.NoError(t, err)
+		assert.Equal(t, "deactivate30", event.Spec.UserTier)
+		assert.Equal(t, "base1ns", event.Spec.SpaceTier)
+		assert.Equal(t, start, event.Spec.StartTime.Time)
+		assert.Equal(t, end, event.Spec.EndTime.Time)
+		assert.Equal(t, 5, event.Spec.MaxAttendees)
 	})
 
 	t.Run("create socialevent with invalid user tier name", func(t *testing.T) {
 		// given
-		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "invalid", "base")
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+			testsocialevent.WithUserTier("invalid"),
+			testsocialevent.WithSpaceTier("base1ns"))
 
 		// when
-		err := hostAwait.CreateWithCleanup(context.TODO(), se)
+		err := hostAwait.CreateWithCleanup(context.TODO(), event)
 
 		// then
 		require.NoError(t, err)
-		se, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidUserTierReason,
@@ -57,14 +74,14 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
-			se.Spec.UserTier = "deactivate30"
+			event.Spec.UserTier = "deactivate30"
 
 			// when
-			err := hostAwait.Client.Update(context.TODO(), se)
+			err := hostAwait.Client.Update(context.TODO(), event)
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent(se.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			_, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
@@ -74,15 +91,16 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with invalid space tier name", func(t *testing.T) {
 		// given
-		name := testsupport.GenerateName("lab")
-		se := testsupport.NewSocialEvent(hostAwait.Namespace, name, "deactivate30", "invalid")
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+			testsocialevent.WithUserTier("deactivate30"),
+			testsocialevent.WithSpaceTier("invalid"))
 
 		// when
-		err := hostAwait.CreateWithCleanup(context.TODO(), se)
+		err := hostAwait.CreateWithCleanup(context.TODO(), event)
 
 		// then
 		require.NoError(t, err)
-		se, err = hostAwait.WaitForSocialEvent(name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidSpaceTierReason,
@@ -92,14 +110,14 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
-			se.Spec.SpaceTier = "base"
+			event.Spec.SpaceTier = "base"
 
 			// when
-			err := hostAwait.Client.Update(context.TODO(), se)
+			err := hostAwait.Client.Update(context.TODO(), event)
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent(se.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			_, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
