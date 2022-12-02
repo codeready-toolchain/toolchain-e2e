@@ -15,17 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
         
     - name: Checkout code
       uses: actions/checkout@v2
     
     - name: Lint
-      uses: golangci/golangci-lint-action@v2
+      uses: golangci/golangci-lint-action@v3
       with:
-        version: v1.43.0
+        version: v1.45.0
         skip-go-installation: true # we already installed Go with `actions/setup-go@v2` above
         skip-pkg-cache: true
         skip-build-cache: true
@@ -36,9 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
         
     - name: Checkout code
       uses: actions/checkout@v2
