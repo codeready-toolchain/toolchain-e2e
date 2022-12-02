@@ -113,10 +113,15 @@ func (c *cleanTask) cleanObject() {
 	if err := c.client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
 		if errors.IsNotFound(err) {
 			// if the object was UserSignup, then let's check that the MUR was deleted as well
-			deleted, err := c.verifyMurDeleted(isUserSignup, userSignup, true)
+			murDeleted, err := c.verifyMurDeleted(isUserSignup, userSignup, true)
 			require.NoError(c.t, err)
+
+			// if the object was UserSignup, then let's check that the Space was deleted as well
+			spaceDeleted, err := c.verifySpaceDeleted(isUserSignup, userSignup, true)
+			require.NoError(c.t, err)
+
 			// either if it was deleted or if it wasn't UserSignup, then return here
-			if deleted {
+			if spaceDeleted && murDeleted {
 				c.t.Logf("%s: %s was already deleted", kind, objToClean.GetName())
 				return
 			}
@@ -130,6 +135,10 @@ func (c *cleanTask) cleanObject() {
 			if errors.IsNotFound(err) {
 				// if the object was UserSignup, then let's check that the MUR is deleted as well
 				if deleted, err := c.verifyMurDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
+					return false, err
+				}
+				// if the object was UserSignup, then let's check that the Space is deleted as well
+				if deleted, err := c.verifySpaceDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
 					return false, err
 				}
 				return true, nil
@@ -173,4 +182,35 @@ func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1a
 		return true, nil
 	}
 	return true, nil
+}
+
+func (c *cleanTask) verifySpaceDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
+	// only applicable for UserSignups
+	if !isUserSignup {
+		return true, nil
+	}
+
+	space := &toolchainv1alpha1.Space{}
+	if err := c.client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.GetName()), space); err != nil {
+		// if Space is not found then we are good
+		if errors.IsNotFound(err) {
+			c.t.Logf("the related Space: %s is deleted as well", userSignup.GetName())
+			return true, nil
+		}
+		c.t.Logf("problem with getting the related Space %s: %s", userSignup.GetName(), err)
+		return false, err
+	}
+	if delete {
+		c.t.Logf("deleting also the related Space: %s", userSignup.GetName())
+		if err := c.client.Delete(context.TODO(), space, propagationPolicyOpts); err != nil {
+			if errors.IsNotFound(err) {
+				c.t.Logf("the related Space: %s is deleted as well", userSignup.GetName())
+				return true, nil
+			}
+			c.t.Logf("problem with deleting the related Space %s: %s", userSignup.GetName(), err)
+			return false, err
+		}
+	}
+	c.t.Logf("waiting until Space: %s is completely deleted", userSignup.GetName())
+	return false, nil
 }

@@ -294,20 +294,6 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no user on member2
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)        // space provisioned on member1
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)       // no spaces on member2
-
-		// deleting the original usersignup to cleanup the metrics for next tests
-		err = hostAwait.Client.Delete(context.TODO(), userSignup)
-		require.NoError(t, err)
-		// wait for original usersignup to be deleted
-		err = hostAwait.WaitUntilUserSignupDeleted(userSignup.GetName())
-		require.NoError(t, err)
-		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
-		require.NoError(t, err)
-		// and verify metrics reset
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName)
-		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
-		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
 	})
 }
 
