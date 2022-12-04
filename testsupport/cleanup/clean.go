@@ -117,7 +117,7 @@ func (c *cleanTask) cleanObject() {
 			require.NoError(c.t, err)
 
 			// if the object was UserSignup, then let's check that the Space was deleted as well
-			spaceDeleted, err := c.verifySpaceDeleted(isUserSignup, userSignup, true)
+			spaceDeleted, err := c.verifySpacesDeleted(isUserSignup, userSignup, true)
 			require.NoError(c.t, err)
 
 			// either if it was deleted or if it wasn't UserSignup, then return here
@@ -138,7 +138,7 @@ func (c *cleanTask) cleanObject() {
 					return false, err
 				}
 				// if the object was UserSignup, then let's check that the Space is deleted as well
-				if deleted, err := c.verifySpaceDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
+				if deleted, err := c.verifySpacesDeleted(isUserSignup, userSignup, false); !deleted || err != nil {
 					return false, err
 				}
 				return true, nil
@@ -184,33 +184,50 @@ func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1a
 	return true, nil
 }
 
-func (c *cleanTask) verifySpaceDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
+func (c *cleanTask) verifySpacesDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
 	// only applicable for UserSignups
 	if !isUserSignup {
 		return true, nil
 	}
 
-	space := &toolchainv1alpha1.Space{}
-	if err := c.client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.GetName()), space); err != nil {
-		// if Space is not found then we are good
-		if errors.IsNotFound(err) {
-			c.t.Logf("the related Space: %s is deleted as well", userSignup.GetName())
-			return true, nil
-		}
-		c.t.Logf("problem with getting the related Space %s: %s", userSignup.GetName(), err)
+	spaces := &toolchainv1alpha1.SpaceList{}
+	if err := c.client.List(context.TODO(), spaces, client.InNamespace(userSignup.GetNamespace()), client.MatchingLabels{
+		toolchainv1alpha1.SpaceCreatorLabelKey: userSignup.GetName(),
+	}); err != nil {
+		c.t.Logf("problem with getting the related Space by label %s:%s %s", toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.GetName(), err)
 		return false, err
 	}
+
+	if len(spaces.Items) == 0 {
+		// if Spaces not found then we are good
+		c.t.Logf("spaces with label %s:%s were deleted as well", toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.GetName())
+		return true, nil
+	}
+
 	if delete {
-		c.t.Logf("deleting also the related Space: %s", userSignup.GetName())
-		if err := c.client.Delete(context.TODO(), space, propagationPolicyOpts); err != nil {
-			if errors.IsNotFound(err) {
-				c.t.Logf("the related Space: %s is deleted as well", userSignup.GetName())
-				return true, nil
+		var foundError bool
+		var err error
+		for _, space := range spaces.Items {
+			c.t.Logf("deleting also the related Space: %s", space.GetName())
+			if err = c.client.Delete(context.TODO(), &space, propagationPolicyOpts); err != nil {
+				if errors.IsNotFound(err) {
+					c.t.Logf("the related Space: %s is deleted as well", space.GetName())
+					// go to next space
+					continue
+				}
+
+				// error that is different from IsNotFound return it
+				c.t.Logf("problem with deleting the related Space %s: %s", space.GetName(), err)
+				foundError = true
+				break
 			}
-			c.t.Logf("problem with deleting the related Space %s: %s", userSignup.GetName(), err)
+		}
+		// return error found during space deletion loop
+		if foundError {
 			return false, err
 		}
 	}
-	c.t.Logf("waiting until Space: %s is completely deleted", userSignup.GetName())
+
+	c.t.Logf("waiting until spaces with label %s:%s are completely deleted", toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.GetName())
 	return false, nil
 }
