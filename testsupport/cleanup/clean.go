@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultRetryInterval = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
-	defaultTimeout       = time.Second * 60
+	defaultTimeout       = time.Second * 90
 )
 
 var (
@@ -230,6 +230,8 @@ func (c *cleanTask) verifySpacesDeleted(isUserSignup bool, userSignup *toolchain
 	}
 
 	c.t.Logf("waiting until spaces with label %s:%s are completely deleted", toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.GetName())
-	c.t.Logf("spaces still present: %v", spaces)
+	for _, spacePresent := range spaces.Items {
+		c.t.Logf("space still present: %s", spacePresent.GetName())
+	}
 	return false, nil
 }

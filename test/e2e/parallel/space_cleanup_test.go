@@ -61,7 +61,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		awaitilities := WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 
-		deletionThreshold := -30 * time.Second // space will only be deleted if at least 30 seconds has elapsed since it was created
+		deletionThreshold := -90 * time.Second // space will only be deleted if at least 90 seconds has elapsed since it was created
 
 		// check that the spaces were provisioned before 30 seconds
 		space1, err := hostAwait.WaitForSpace(space1.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
