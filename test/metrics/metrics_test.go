@@ -279,7 +279,12 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 		// then
 		// confirm the BannedUser resource is deleted
-		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
+		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.GetName())
+		require.NoError(t, err)
+		// wait for space to be deleted
+		err = hostAwait.WaitUntilUserSignupDeleted(bannedUser.GetName())
+		require.NoError(t, err)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(bannedUser.GetName())
 		require.NoError(t, err)
 		// verify the metrics
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)         // unchanged: user signup already existed
