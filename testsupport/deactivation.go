@@ -64,9 +64,7 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	require.NoError(t, err)
 
 	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-		states.SetDeactivating(us, false)
-		states.SetDeactivated(us, false)
-		states.SetApproved(us, true)
+		states.SetApprovedManually(us, true)
 	})
 	require.NoError(t, err)
 	t.Logf("user signup '%s' reactivated", userSignup.Name)

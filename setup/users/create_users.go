@@ -39,7 +39,7 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 			TargetCluster: memberClusterName,
 		},
 	}
-	states.SetApproved(usersignup, true)
+	states.SetApprovedManually(usersignup, true)
 
 	return cl.Create(context.TODO(), usersignup)
 }

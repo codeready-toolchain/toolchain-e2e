@@ -483,7 +483,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivating(us, false)
 			states.SetDeactivated(us, false)
-			states.SetApproved(us, true)
+			states.SetApprovedManually(us, true)
 			states.SetVerificationRequired(us, true)
 		})
 		require.NoError(t, err)

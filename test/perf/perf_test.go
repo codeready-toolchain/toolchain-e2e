@@ -108,19 +108,19 @@ func initLogger() (logr.Logger, *os.File, error) {
 	if artifactDir = os.Getenv("ARTIFACT_DIR"); artifactDir == "" {
 		pwd, err := os.Getwd()
 		if err != nil {
-			return nil, nil, err
+			return logr.Logger{}, nil, err
 		}
 		artifactDir = filepath.Join(pwd, "tmp")
 	}
 	if _, err := os.Open(artifactDir); os.IsNotExist(err) {
 		// make sure that `./tmp` exists
 		if err = os.MkdirAll(artifactDir, os.ModeDir+os.ModePerm); err != nil {
-			return nil, nil, err
+			return logr.Logger{}, nil, err
 		}
 	}
 	out, err := os.Create(path.Join(artifactDir, fmt.Sprintf("perf-%s.log", time.Now().Format("20060102-030405"))))
 	if err != nil {
-		return nil, nil, err
+		return logr.Logger{}, nil, err
 	}
 	logger := zap.New(zap.WriteTo(out))
 	fmt.Printf("configured logger to write messages in '%s'\n", out.Name())
@@ -146,7 +146,7 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 			name := fmt.Sprintf("multiple-signup-testuser-%d", n)
 			// Create an approved UserSignup resource
 			userSignup := NewUserSignup(hostAwait.Namespace, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
-			states.SetApproved(userSignup, true)
+			states.SetApprovedManually(userSignup, true)
 			userSignup.Spec.TargetCluster = memberAwait.ClusterName
 			err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
 			hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)

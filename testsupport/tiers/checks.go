@@ -28,6 +28,7 @@ const (
 	appstudio          = "appstudio"
 	base               = "base"
 	base1ns            = "base1ns"
+	base1ns6didler     = "base1ns6didler"
 	base1nsnoidling    = "base1nsnoidling"
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
@@ -59,6 +60,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
+
+	case base1ns6didler:
+		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
 
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
@@ -290,6 +294,24 @@ func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsChe
 		idlers(0, "dev"))
 }
 
+type base1ns6didlerTierChecks struct {
+	base1nsTierChecks
+}
+
+func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(518400, "dev"))
+}
+
 type baselargeTierChecks struct {
 	baseTierChecks
 }
@@ -424,7 +446,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 					appstudioViewRoleBinding(userName),
 				)
 				serviceAccounts++
-				rolebindings += 2
+				rolebindings += 4
 			}
 		case "viewer":
 			for _, userName := range usernames {
@@ -433,7 +455,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 					appstudioViewRoleBinding(userName),
 				)
 				serviceAccounts++
-				rolebindings++
+				rolebindings += 2
 			}
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
@@ -1177,7 +1199,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applicationpromotionruns", "applicationsnapshotenvironmentbindings", "applicationsnapshots", "environments"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
 					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
 				},
 				{
@@ -1242,6 +1264,17 @@ func appstudioUserActionsRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+
+		rb, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-actions-user", userName))
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
+		assert.Equal(t, "appstudio-user-actions", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
 	}
 }
 
@@ -1253,6 +1286,17 @@ func appstudioViewRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
 		assert.Equal(t, "appstudio-"+userName, rb.Subjects[0].Name)
 		assert.Equal(t, "", rb.Subjects[0].APIGroup)
+		assert.Equal(t, "view", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+
+		rb, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view-user", userName))
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
 		assert.Equal(t, "view", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
