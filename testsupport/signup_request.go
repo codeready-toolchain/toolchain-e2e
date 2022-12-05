@@ -42,13 +42,12 @@ func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupReque
 // be used to achieve an efficient "single-statement" UserSignup creation, for example:
 //
 // userSignupMember1, murMember1 := s.newUserRequest().
-//			Username("sample-username").
-//			Email("sample-user@redhat.com").
-//			ManuallyApprove().
-//			EnsureMUR().
-//			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-//			Execute().Resources()
-//
+// Username("sample-username").
+// Email("sample-user@redhat.com").
+// ManuallyApprove().
+// EnsureMUR().
+// RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+// Execute().Resources()
 type SignupRequest struct {
 	t                    *testing.T
 	awaitilities         wait.Awaitilities

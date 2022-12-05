@@ -16,10 +16,9 @@ import (
 // Usage example:
 //
 // ConditionSet(Default(), Provisioned()) - returns an array of conditions that contains the condition types:
-//		ConditionReady										true		"Provisioned"
-//    	UserSignupUserDeactivatedNotificationCreated		false		"UserIsActive"
-//    	UserSignupUserDeactivatingNotificationCreated		false		"UserNotInPreDeactivation"
-//
+// ConditionReady										true		"Provisioned"
+// UserSignupUserDeactivatedNotificationCreated		false		"UserIsActive"
+// UserSignupUserDeactivatingNotificationCreated		false		"UserNotInPreDeactivation"
 func ConditionSet(conditions ...[]toolchainv1alpha1.Condition) []toolchainv1alpha1.Condition {
 	conditionSet := make(map[toolchainv1alpha1.ConditionType]toolchainv1alpha1.Condition)
 
