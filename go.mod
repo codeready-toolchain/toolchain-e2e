@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20221205081558-245f157cb403
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20221205093525-1312cc1c02fe
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20221205082814-2dbd788a5e87
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
@@ -28,8 +28,8 @@ require (
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
 	k8s.io/client-go v0.24.2
-	k8s.io/kubectl v0.24.0
-	k8s.io/metrics v0.24.0
+	k8s.io/kubectl v0.24.2
+	k8s.io/metrics v0.24.2
 	sigs.k8s.io/controller-runtime v0.12.2
 )
 
@@ -119,4 +119,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-go 1.17
+go 1.18
