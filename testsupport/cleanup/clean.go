@@ -207,7 +207,8 @@ func (c *cleanTask) verifySpacesDeleted(isUserSignup bool, userSignup *toolchain
 	if delete {
 		var foundError bool
 		var err error
-		for _, space := range spaces.Items {
+		for i := range spaces.Items {
+			space := spaces.Items[i]
 			c.t.Logf("deleting also the related Space: %s", space.GetName())
 			if err = c.client.Delete(context.TODO(), &space, propagationPolicyOpts); err != nil {
 				if errors.IsNotFound(err) {
@@ -229,5 +230,6 @@ func (c *cleanTask) verifySpacesDeleted(isUserSignup bool, userSignup *toolchain
 	}
 
 	c.t.Logf("waiting until spaces with label %s:%s are completely deleted", toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.GetName())
+	c.t.Logf("spaces still present: %v", spaces)
 	return false, nil
 }
