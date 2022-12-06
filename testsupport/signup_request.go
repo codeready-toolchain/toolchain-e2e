@@ -42,13 +42,12 @@ func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupReque
 // be used to achieve an efficient "single-statement" UserSignup creation, for example:
 //
 // userSignupMember1, murMember1 := s.newUserRequest().
-//			Username("sample-username").
-//			Email("sample-user@redhat.com").
-//			ManuallyApprove().
-//			EnsureMUR().
-//			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-//			Execute().Resources()
-//
+// Username("sample-username").
+// Email("sample-user@redhat.com").
+// ManuallyApprove().
+// EnsureMUR().
+// RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+// Execute().Resources()
 type SignupRequest struct {
 	t                    *testing.T
 	awaitilities         wait.Awaitilities
@@ -244,7 +243,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 			}
 
 			if r.manuallyApprove {
-				states.SetApproved(instance, r.manuallyApprove)
+				states.SetApprovedManually(instance, r.manuallyApprove)
 			}
 			if r.targetCluster != nil {
 				instance.Spec.TargetCluster = r.targetCluster.ClusterName

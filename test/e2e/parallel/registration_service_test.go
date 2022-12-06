@@ -323,7 +323,7 @@ func TestSignupOK(t *testing.T) {
 
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
 			// Approve usersignup.
-			states.SetApproved(instance, true)
+			states.SetApprovedManually(instance, true)
 			instance.Spec.TargetCluster = memberAwait.ClusterName
 		})
 		require.NoError(t, err)
@@ -508,7 +508,7 @@ func TestPhoneVerification(t *testing.T) {
 
 	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(instance *toolchainv1alpha1.UserSignup) {
 		// Now approve the usersignup.
-		states.SetApproved(instance, true)
+		states.SetApprovedManually(instance, true)
 	})
 	require.NoError(t, err)
 
@@ -593,7 +593,9 @@ func TestActivationCodeVerification(t *testing.T) {
 
 	t.Run("verification successful", func(t *testing.T) {
 		// given
-		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName())
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+			testsocialevent.WithUserTier("deactivate80"),
+			testsocialevent.WithSpaceTier("base1ns6didler"))
 		err := hostAwait.CreateWithCleanup(context.TODO(), event)
 		require.NoError(t, err)
 		userSignup, token := signup(t, hostAwait)
@@ -610,10 +612,27 @@ func TestActivationCodeVerification(t *testing.T) {
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
 		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetApproved(us, true)
+			states.SetApprovedManually(us, true)
 		})
 		require.NoError(t, err)
-		t.Logf("user signup '%s' reactivated", userSignup.Name)
+		t.Logf("user signup '%s' approved", userSignup.Name)
+
+		// check that the MUR and Space are configured as expected
+		// Wait for the UserSignup to have the desired state
+		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+			wait.UntilUserSignupHasCompliantUsername())
+		require.NoError(t, err)
+		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
+			wait.UntilMasterUserRecordHasTierName(event.Spec.UserTier),
+			wait.UntilMasterUserRecordHasCondition(Provisioned()))
+		require.NoError(t, err)
+		assert.Equal(t, event.Spec.UserTier, mur.Spec.TierName)
+		_, err = hostAwait.WaitForSpace(userSignup.Status.CompliantUsername,
+			wait.UntilSpaceHasTier(event.Spec.SpaceTier),
+			wait.UntilSpaceHasConditions(Provisioned()),
+		)
+		require.NoError(t, err)
+
 		// also check that the SocialEvent status was updated accordingly
 		_, err = hostAwait.WaitForSocialEvent(event.Name, wait.UntilSocialEventHasActivationCount(1))
 		require.NoError(t, err)
@@ -638,7 +657,9 @@ func TestActivationCodeVerification(t *testing.T) {
 
 		t.Run("over capacity", func(t *testing.T) {
 			// given
-			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName())
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+				testsocialevent.WithUserTier("deactivate80"),
+				testsocialevent.WithSpaceTier("base1ns6didler"))
 			err := hostAwait.CreateWithCleanup(context.TODO(), event)
 			require.NoError(t, err)
 			event, err = hostAwait.WaitForSocialEvent(event.Name) // need to reload event

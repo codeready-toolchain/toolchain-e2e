@@ -13,16 +13,16 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/davecgh/go-spew/spew"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -539,7 +539,20 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
-// WaitForTestResourcesCleanup waits for all UserSignup and MasterUserRecord deletions to complete
+// UntilUserSignupHasCompliantUsername returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has a `.Status.CompliantUsername` value
+func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.CompliantUsername != ""
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected to have a value for '.Status.CompliantUsername'"
+		},
+	}
+}
+
+// WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space, SpaceBinding, NSTemplateSet and Namespace deletions to complete
 func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
 	a.T.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
@@ -560,6 +573,46 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration)
 		}
 		for _, mur := range murList.Items {
 			if mur.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
+		if err := a.Client.List(context.TODO(), spaceBindingList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, spaceBinding := range spaceBindingList.Items {
+			if spaceBinding.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		spaceList := &toolchainv1alpha1.SpaceList{}
+		if err := a.Client.List(context.TODO(), spaceList, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, space := range spaceList.Items {
+			if space.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		nsTemplateSetList := &toolchainv1alpha1.NSTemplateSetList{}
+		if err := a.Client.List(context.TODO(), nsTemplateSetList); err != nil {
+			return false, err
+		}
+		for _, nsTemplateSet := range nsTemplateSetList.Items {
+			if nsTemplateSet.DeletionTimestamp != nil {
+				return false, nil
+			}
+		}
+
+		namespaceList := &corev1.NamespaceList{}
+		if err := a.Client.List(context.TODO(), namespaceList); err != nil {
+			return false, err
+		}
+		for _, namespace := range namespaceList.Items {
+			if namespace.DeletionTimestamp != nil {
 				return false, nil
 			}
 		}
@@ -642,7 +695,7 @@ func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(name string) {
 func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.BannedUser, error) {
 	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
-	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email)}
+	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email)}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
 		if err = a.Client.List(context.TODO(), bannedUserList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
@@ -1417,7 +1470,7 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 	if config == nil {
 		// if it doesn't exist, then create a new one
 		config = &toolchainv1alpha1.ToolchainConfig{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Namespace: a.Namespace,
 				Name:      "config",
 			},
