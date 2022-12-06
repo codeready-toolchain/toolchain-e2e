@@ -7,11 +7,12 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -295,19 +296,11 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)        // space provisioned on member1
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)       // no spaces on member2
 
-		// deleting the original usersignup to cleanup the metrics for next tests
-		err = hostAwait.Client.Delete(context.TODO(), userSignup)
-		require.NoError(t, err)
 		// wait for original usersignup to be deleted
 		err = hostAwait.WaitUntilUserSignupDeleted(userSignup.GetName())
 		require.NoError(t, err)
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
 		require.NoError(t, err)
-		// and verify metrics reset
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName)
-		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
-		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
 	})
 }
 
@@ -393,7 +386,7 @@ func banUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolch
 			Name:      uuid.Must(uuid.NewV4()).String(),
 			Namespace: hostAwait.Namespace,
 			Labels: map[string]string{
-				toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
+				toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email),
 			},
 		},
 		Spec: toolchainv1alpha1.BannedUserSpec{
