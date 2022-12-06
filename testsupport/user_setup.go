@@ -9,9 +9,10 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -58,7 +59,7 @@ func NewUserSignup(namespace, username string, email string) *toolchainv1alpha1.
 				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
 			},
 			Labels: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: md5.CalcMd5(email),
+				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: hash.EncodeString(email),
 			},
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
