@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CreateBannedUser creates the BannedUser resource
@@ -25,11 +26,11 @@ func CreateBannedUser(t *testing.T, hostAwait *wait.HostAwaitility, email string
 // NewBannedUser initializes a new BannedUser object
 func NewBannedUser(host *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
 	return &toolchainv1alpha1.BannedUser{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      uuid.Must(uuid.NewV4()).String(),
 			Namespace: host.Namespace,
 			Labels: map[string]string{
-				toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
+				toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email),
 			},
 		},
 		Spec: toolchainv1alpha1.BannedUserSpec{
