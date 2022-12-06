@@ -8,12 +8,13 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-e2e/test/migration"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -162,7 +163,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 
 	// get the BannedUser resource
 	matchEmailHash := client.MatchingLabels{
-		toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
+		toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 	}
 	bannedUsers := &toolchainv1alpha1.BannedUserList{}
 	err = hostAwait.Client.List(context.TODO(), bannedUsers, client.InNamespace(hostAwait.Namespace), matchEmailHash)
