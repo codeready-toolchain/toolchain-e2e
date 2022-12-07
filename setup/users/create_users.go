@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +30,7 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: fmt.Sprintf("%s@test.com", username),
 			},
 			Labels: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: md5.CalcMd5(fmt.Sprintf("%s@test.com", username)),
+				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: hash.EncodeString(fmt.Sprintf("%s@test.com", username)),
 			},
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{

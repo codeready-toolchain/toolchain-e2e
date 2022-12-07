@@ -6,18 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TestMetricsWhenUsersDeactivated verifies that `UserSignupsDeactivatedMetric` counter is increased when users are deactivated
@@ -279,7 +278,12 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 		// then
 		// confirm the BannedUser resource is deleted
-		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.Name)
+		err = hostAwait.WaitUntilBannedUserDeleted(bannedUser.GetName())
+		require.NoError(t, err)
+		// wait for space to be deleted
+		err = hostAwait.WaitUntilUserSignupDeleted(bannedUser.GetName())
+		require.NoError(t, err)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(bannedUser.GetName())
 		require.NoError(t, err)
 		// verify the metrics
 		metricsAssertion.WaitForMetricDelta(UserSignupsMetric, 0)         // unchanged: user signup already existed
@@ -376,7 +380,7 @@ func banUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolch
 			Name:      uuid.Must(uuid.NewV4()).String(),
 			Namespace: hostAwait.Namespace,
 			Labels: map[string]string{
-				toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email),
+				toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email),
 			},
 		},
 		Spec: toolchainv1alpha1.BannedUserSpec{
