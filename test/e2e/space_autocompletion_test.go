@@ -108,7 +108,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
-			// when we count the number of provisioned spaces, then the second space won't be provisioned immediately
+			// the second space won't be provisioned immediately
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			//
 			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
