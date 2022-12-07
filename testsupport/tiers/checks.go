@@ -18,6 +18,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -1057,10 +1058,14 @@ func count(resource corev1.ResourceName) corev1.ResourceName {
 func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		roles := &rbacv1.RoleList{}
-		memberAwait.WaitForExpectedNumberOfResources(t, "Roles", number, func() (int, error) {
+		memberAwait.WaitForExpectedNumberOfResources(t, "Roles", number, func(t *testing.T) []runtime.Object {
 			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			return len(roles.Items), err
+			objs := make([]runtime.Object, len(roles.Items))
+			for i := range roles.Items {
+				objs[i] = &roles.Items[i]
+			}
+			return objs
 		})
 	}
 }
@@ -1068,43 +1073,59 @@ func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
 func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		roleBindings := &rbacv1.RoleBindingList{}
-		memberAwait.WaitForExpectedNumberOfResources(t, "RoleBindings", number, func() (int, error) {
+		memberAwait.WaitForExpectedNumberOfResources(t, "RoleBindings", number, func(t *testing.T) []runtime.Object {
 			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			return len(roleBindings.Items), err
+			objs := make([]runtime.Object, len(roleBindings.Items))
+			for i := range roleBindings.Items {
+				objs[i] = &roleBindings.Items[i]
+			}
+			return objs
 		})
 	}
 }
 
 func numberOfToolchainServiceAccounts(number int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		memberAwait.WaitForExpectedNumberOfResources(t, "ServiceAccounts", number, func() (int, error) {
+		memberAwait.WaitForExpectedNumberOfResources(t, "ServiceAccounts", number, func(t *testing.T) []runtime.Object {
 			serviceAccounts := &corev1.ServiceAccountList{}
 			err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			return len(serviceAccounts.Items), err
+			objs := make([]runtime.Object, len(serviceAccounts.Items))
+			for i := range serviceAccounts.Items {
+				objs[i] = &serviceAccounts.Items[i]
+			}
+			return objs
 		})
 	}
 }
 
 func numberOfLimitRanges(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		memberAwait.WaitForExpectedNumberOfResources(t, "LimitRanges", number, func() (int, error) {
+		memberAwait.WaitForExpectedNumberOfResources(t, "LimitRanges", number, func(t *testing.T) []runtime.Object {
 			limitRanges := &corev1.LimitRangeList{}
 			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			return len(limitRanges.Items), err
+			objs := make([]runtime.Object, len(limitRanges.Items))
+			for i := range limitRanges.Items {
+				objs[i] = &limitRanges.Items[i]
+			}
+			return objs
 		})
 	}
 }
 
 func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		memberAwait.WaitForExpectedNumberOfResources(t, "NetworkPolicies", number, func() (int, error) {
+		memberAwait.WaitForExpectedNumberOfResources(t, "NetworkPolicies", number, func(t *testing.T) []runtime.Object {
 			nps := &netv1.NetworkPolicyList{}
 			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
 			require.NoError(t, err)
-			return len(nps.Items), err
+			objs := make([]runtime.Object, len(nps.Items))
+			for i := range nps.Items {
+				objs[i] = &nps.Items[i]
+			}
+			return objs
 		})
 	}
 }
@@ -1112,7 +1133,7 @@ func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
 func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			memberAwait.WaitForExpectedNumberOfClusterResources(t, "ClusterResourceQuotas", number, func() (int, error) {
+			memberAwait.WaitForExpectedNumberOfClusterResources(t, "ClusterResourceQuotas", number, func(t *testing.T) []runtime.Object {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
@@ -1120,7 +1141,11 @@ func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 				})
 				err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
 				require.NoError(t, err)
-				return len(quotas.Items), err
+				objs := make([]runtime.Object, len(quotas.Items))
+				for i := range quotas.Items {
+					objs[i] = &quotas.Items[i]
+				}
+				return objs
 			})
 		}
 	}

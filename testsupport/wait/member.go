@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -1905,26 +1906,24 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfResources(t *testing.T, kind string, expected int, list func() (int, error)) {
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(t *testing.T, kind string, expected int, list listObjects) {
 	a.waitForExpectedNumberOfResources(t, kind, expected, list)
 }
 
 // WaitForExpectedNumberOfClusterResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(t *testing.T, kind string, expected int, list func() (int, error)) {
+func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(t *testing.T, kind string, expected int, list listObjects) {
 	a.waitForExpectedNumberOfResources(t, kind, expected, list)
 }
 
-func (a *MemberAwaitility) waitForExpectedNumberOfResources(t *testing.T, kind string, expected int, list func() (int, error)) {
-	var actual int
+type listObjects func(t *testing.T) []runtime.Object
+
+func (a *MemberAwaitility) waitForExpectedNumberOfResources(t *testing.T, kind string, expected int, list listObjects) {
+	var objs []runtime.Object
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		a, err := list()
-		if err != nil {
-			return false, err
-		}
-		actual = a
-		return actual == expected, nil
+		objs = list(t)
+		return len(objs) == expected, nil
 	})
-	require.NoError(t, err, "expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)
+	require.NoError(t, err, "expected number of resources of kind '%s' to be %d but it was %d: %s", kind, expected, len(objs), spew.Sdump(objs))
 }
 
 func (a *MemberAwaitility) UpdatePod(t *testing.T, namespace, podName string, modifyPod func(pod *corev1.Pod)) *corev1.Pod {
