@@ -86,7 +86,6 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
 			// when
 			toolchainStatus, err := hostAwait.WaitForToolchainStatus(
-				wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 				wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 			require.NoError(t, err)
 			spaceLimitsM1, spaceLimitsM2 := 0, 0
