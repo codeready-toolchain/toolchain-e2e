@@ -9,6 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -138,7 +139,7 @@ func (c *cleanTask) cleanObject() {
 			return false, err
 		}
 		return false, nil
-	}), "The object still exists after the time out expired: %s/%s", kind, objToClean.GetName())
+	}), "The object still exists after the time out expired: %s", spew.Sdump(objToClean))
 }
 
 func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {

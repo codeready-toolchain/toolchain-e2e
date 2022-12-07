@@ -1184,7 +1184,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 11)
+		assert.Len(t, role.Rules, 12)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1241,6 +1241,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					APIGroups: []string{"singapore.open-cluster-management.io"},
 					Resources: []string{"registeredclusters"},
 					Verbs:     []string{"create", "get", "list", "watch", "delete"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"},
 				},
 			},
 		}
