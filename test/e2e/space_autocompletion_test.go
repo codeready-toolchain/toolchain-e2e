@@ -110,7 +110,6 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
 			// the second space won't be provisioned immediately
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
-			//
 			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
 				// when
 				hostAwait.UpdateToolchainConfig(
