@@ -31,12 +31,12 @@ func CreateMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetC
 			continue
 		}
 		// Create an approved UserSignup resource
-		signups[i], _ = NewSignupRequest(t, awaitilities).
+		signups[i], _ = NewSignupRequest(awaitilities).
 			Username(name).
 			Email(fmt.Sprintf("multiple-signup-testuser-%d@test.com", i)).
 			ManuallyApprove().
-			TargetCluster(targetCluster).
-			Execute().
+			TargetCluster(targetCluster.ClusterName).
+			Execute(t).
 			Resources()
 	}
 	return signups

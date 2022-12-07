@@ -13,22 +13,20 @@ import (
 )
 
 func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expectedURL string) {
-	err := memberAwait.WaitForMemberStatus(
+	memberAwait.WaitForMemberStatus(t,
 		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
 		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
-	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
 func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
-	memberCluster, found, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
-	require.NoError(t, err)
+	memberCluster, found := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.True(t, found)
-	_, err = hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+	hostAwait.WaitForToolchainStatus(t,
+		wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilAllMembersHaveUsageSet(),
 		wait.UntilAllMembersHaveAPIEndpoint(memberCluster.Spec.APIEndpoint),
 		wait.UntilProxyURLIsPresent(hostAwait.APIProxyURL))
-	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 }
 
 func VerifyIncreaseOfUserAccountCount(t *testing.T, previous, current *toolchainv1alpha1.ToolchainStatus, memberClusterName string, increase int) {

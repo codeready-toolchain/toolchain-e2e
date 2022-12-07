@@ -59,8 +59,10 @@ func TestProxyFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(), testconfig.SkipUserCreation(true))
-	hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
+	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
+	hostAwait.UpdateToolchainConfig(t,
+		testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"),
+		testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 
 	users := []proxyUser{
 		{
@@ -81,28 +83,27 @@ func TestProxyFlow(t *testing.T) {
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
 			// Create and approve signup
-			req := NewSignupRequest(t, awaitilities).
+			req := NewSignupRequest(awaitilities).
 				Username(user.username).
 				IdentityID(user.identityID).
 				ManuallyApprove().
-				TargetCluster(user.expectedMemberCluster).
+				TargetCluster(user.expectedMemberCluster.ClusterName).
 				EnsureMUR().
 				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-				Execute()
+				Execute(t)
 
 			user.signup, _ = req.Resources()
 			user.token = req.GetToken()
 
 			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
-			_, err := hostAwait.GetMasterUserRecord(user.username)
-			require.NoError(t, err)
+			hostAwait.GetMasterUserRecord(t, user.username)
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				w := newWsWatcher(t, user, hostAwait.APIProxyURL)
 				closeConnection := w.Start()
 				defer closeConnection()
-				proxyCl := hostAwait.CreateAPIProxyClient(user.token)
+				proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
 
 				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
@@ -147,7 +148,7 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				// when
-				proxyCl := hostAwait.CreateAPIProxyClient(user.token)
+				proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
 
 				// then
 				err := proxyCl.Create(context.TODO(), expectedApp)
@@ -174,7 +175,7 @@ func TestProxyFlow(t *testing.T) {
 					}
 
 					// when
-					proxyCl := hostAwait.CreateAPIProxyClient(user.token)
+					proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
 					err = proxyCl.Create(context.TODO(), appToCreate)
 
 					// then
@@ -186,12 +187,9 @@ func TestProxyFlow(t *testing.T) {
 
 	// preexisting user & identity are still there
 	// Verify provisioned User
-	_, err := memberAwait.WaitForUser(preexistingUser.Name)
-	assert.NoError(t, err)
-
+	memberAwait.WaitForUser(t, preexistingUser.Name)
 	// Verify provisioned Identity
-	_, err = memberAwait.WaitForIdentity(preexistingIdentity.Name)
-	assert.NoError(t, err)
+	memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
 }
 
 func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
@@ -203,7 +201,7 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 			identitypkg.NewIdentityNamingStandard(user.identityID.String(), "rhd").IdentityName(),
 		},
 	}
-	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingUser))
+	user.expectedMemberCluster.CreateWithCleanup(t, preexistingUser)
 
 	preexistingIdentity := &userv1.Identity{
 		ObjectMeta: metav1.ObjectMeta{
@@ -216,7 +214,7 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 			UID:  preexistingUser.UID,
 		},
 	}
-	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(context.TODO(), preexistingIdentity))
+	user.expectedMemberCluster.CreateWithCleanup(t, preexistingIdentity)
 	return preexistingUser, preexistingIdentity
 }
 

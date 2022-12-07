@@ -25,10 +25,9 @@ import (
 var httpClient = HTTPClient
 
 // NewSignupRequest creates a new signup request for the registration service
-func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupRequest {
+func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
 	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &SignupRequest{
-		t:                  t,
 		awaitilities:       awaitilities,
 		requiredHTTPStatus: http.StatusAccepted,
 		username:           defaultUsername,
@@ -49,7 +48,6 @@ func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupReque
 // RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 // Execute().Resources()
 type SignupRequest struct {
-	t                    *testing.T
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
 	waitForMUR           bool
@@ -59,7 +57,7 @@ type SignupRequest struct {
 	username             string
 	email                string
 	requiredHTTPStatus   int
-	targetCluster        *wait.MemberAwaitility
+	targetCluster        string
 	conditions           []toolchainv1alpha1.Condition
 	userSignup           *toolchainv1alpha1.UserSignup
 	mur                  *toolchainv1alpha1.MasterUserRecord
@@ -148,7 +146,7 @@ func (r *SignupRequest) VerificationRequired() *SignupRequest {
 }
 
 // TargetCluster may be provided in order to specify the user's target cluster
-func (r *SignupRequest) TargetCluster(targetCluster *wait.MemberAwaitility) *SignupRequest {
+func (r *SignupRequest) TargetCluster(targetCluster string) *SignupRequest {
 	r.targetCluster = targetCluster
 	return r
 }
@@ -194,13 +192,12 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 
 // Execute executes the request against the Registration service REST endpoint.  This function may only be called
 // once, and must be called after all other functions EXCEPT for Resources()
-func (r *SignupRequest) Execute() *SignupRequest {
+func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 	hostAwait := r.awaitilities.Host()
-	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(r.t, err)
+	hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
 
 	// Create a token and identity to sign up with
-	usernamesInParallel.add(r.t, r.username)
+	usernamesInParallel.add(t, r.username)
 
 	userIdentity := &commonauth.Identity{
 		ID:       r.identityID,
@@ -210,8 +207,9 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	if r.originalSub != "" {
 		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
 	}
+	var err error
 	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
-	require.NoError(r.t, err)
+	require.NoError(t, err)
 
 	queryParams := map[string]string{}
 	if r.noSpace {
@@ -219,22 +217,20 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	}
 
 	// Call the signup endpoint
-	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
+	invokeEndpoint(t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
 		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
 	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
 	// TODO remove this after reg service PR #254 is merged
-	userSignup, err := hostAwait.WaitForUserSignupByUserIDAndUsername(userIdentity.ID.String(), userIdentity.Username)
+	userSignup := hostAwait.WaitForUserSignupByUserIDAndUsername(t, userIdentity.ID.String(), userIdentity.Username)
 
-	require.NoError(r.t, err)
-
-	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
-		require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
+	if r.targetCluster != "" && hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled != nil {
+		require.False(t, *hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled,
 			"cannot specify a target cluster for new signup requests while automatic approval is enabled")
 	}
 
-	if r.manuallyApprove || r.targetCluster != nil || (r.verificationRequired != states.VerificationRequired(userSignup)) {
+	if r.manuallyApprove || r.targetCluster != "" || (r.verificationRequired != states.VerificationRequired(userSignup)) {
 		doUpdate := func(instance *toolchainv1alpha1.UserSignup) {
 			// We set the VerificationRequired state first, because if manuallyApprove is also set then it will
 			// reset the VerificationRequired state to false.
@@ -245,49 +241,45 @@ func (r *SignupRequest) Execute() *SignupRequest {
 			if r.manuallyApprove {
 				states.SetApprovedManually(instance, r.manuallyApprove)
 			}
-			if r.targetCluster != nil {
-				instance.Spec.TargetCluster = r.targetCluster.ClusterName
+			if r.targetCluster != "" {
+				instance.Spec.TargetCluster = r.targetCluster
 			}
 		}
 
-		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
-		require.NoError(r.t, err)
+		userSignup = hostAwait.UpdateUserSignup(t, userSignup.Name, doUpdate)
 	}
 
-	r.t.Logf("user signup '%s' created", userSignup.Name)
+	t.Logf("user signup '%s' created", userSignup.Name)
 
 	// If any required conditions have been specified, confirm the UserSignup has them
 	if len(r.conditions) > 0 {
-		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(r.conditions...))
-		require.NoError(r.t, err)
+		userSignup = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasConditions(r.conditions...))
 	}
 
 	r.userSignup = userSignup
 
 	if r.waitForMUR {
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-		require.NoError(r.t, err)
+		mur := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername)
 		r.mur = mur
 	}
 
 	if r.ensureMUR {
 		expectedSpaceTier := "base"
-		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier != nil {
-			expectedSpaceTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier
+		if hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier != nil {
+			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}
-		VerifyUserRelatedResources(r.t, r.awaitilities, userSignup, "deactivate30")
+		VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30")
 		if !r.noSpace {
-			VerifySpaceRelatedResources(r.t, r.awaitilities, userSignup, expectedSpaceTier)
+			VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
 		}
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-		require.NoError(r.t, err)
+		mur := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername)
 		r.mur = mur
 	}
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
 	// and if cleanup hasn't been disabled
 	if !r.cleanupDisabled {
-		cleanup.AddCleanTasks(hostAwait, r.userSignup)
+		cleanup.AddCleanTasks(t, hostAwait, r.userSignup)
 	}
 
 	return r

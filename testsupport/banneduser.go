@@ -1,14 +1,12 @@
 package testsupport
 
 import (
-	"context"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
-	"github.com/stretchr/testify/require"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -16,8 +14,7 @@ import (
 // CreateBannedUser creates the BannedUser resource
 func CreateBannedUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
 	bannedUser := NewBannedUser(hostAwait, email)
-	err := hostAwait.CreateWithCleanup(context.TODO(), bannedUser)
-	require.NoError(t, err)
+	hostAwait.CreateWithCleanup(t, bannedUser)
 
 	t.Logf("BannedUser '%s' created", bannedUser.Spec.Email)
 	return bannedUser

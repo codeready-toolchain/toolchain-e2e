@@ -13,20 +13,17 @@ import (
 
 // VerifySpaceBinding waits until a spacebinding with the given mur and space name exists and then verifies the contents are correct
 func VerifySpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, murName, spaceName, spaceRole string) *toolchainv1alpha1.SpaceBinding {
-	spaceBinding, err := hostAwait.WaitForSpaceBinding(murName, spaceName,
+	return hostAwait.WaitForSpaceBinding(t, murName, spaceName,
 		wait.UntilSpaceBindingHasMurName(murName),
 		wait.UntilSpaceBindingHasSpaceName(spaceName),
 		wait.UntilSpaceBindingHasSpaceRole(spaceRole),
 	)
-	require.NoError(t, err)
-	return spaceBinding
 }
 
 // CreateSpaceBinding creates SpaceBinding resource for the given MUR & Space with the given space role
 func CreateSpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
 	spaceBinding := NewSpaceBinding(mur, space, spaceRole)
-	err := hostAwait.CreateWithCleanup(context.TODO(), spaceBinding)
-	require.NoError(t, err)
+	hostAwait.CreateWithCleanup(t, spaceBinding)
 	return spaceBinding
 }
 

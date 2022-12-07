@@ -16,16 +16,14 @@ import (
 
 func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) {
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
-	expectedTemplateRefs := checks.GetExpectedTemplateRefs(hostAwait)
+	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
-	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
-	require.NoError(t, err)
+	memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 
 	// Verify all namespaces and objects within
 	namespaceObjectChecks := sync.WaitGroup{}
 	for _, templateRef := range expectedTemplateRefs.Namespaces {
-		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
-		require.NoError(t, err)
+		ns := memberAwait.WaitForNamespace(t, nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
 		namespaceChecks := checks.GetNamespaceObjectChecks(nsType)
@@ -38,8 +36,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 		}
 		spaceRoles := map[string][]string{}
 		for _, r := range nsTmplSet.Spec.SpaceRoles {
-			tmpl, err := hostAwait.WaitForTierTemplate(r.TemplateRef)
-			require.NoError(t, err)
+			tmpl := hostAwait.WaitForTierTemplate(t, r.TemplateRef)
 			t.Logf("space role template: %s", tmpl.GetName())
 			spaceRoles[tmpl.Spec.Type] = r.Usernames
 		}

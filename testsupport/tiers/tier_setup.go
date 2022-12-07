@@ -8,7 +8,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint:revive
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -30,11 +29,11 @@ type CustomNSTemplateTier struct {
 
 type CustomNSTemplateTierModifier func(*HostAwaitility, *CustomNSTemplateTier) error
 
-func WithClusterResources(otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
 	return func(hostAwait *HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.ClusterResourcesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
-		tmplRef, err := duplicateTierTemplate(hostAwait, otherTier.Namespace, tier.Name, otherTier.Spec.ClusterResources.TemplateRef)
+		tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, otherTier.Spec.ClusterResources.TemplateRef)
 		if err != nil {
 			return err
 		}
@@ -45,13 +44,13 @@ func WithClusterResources(otherTier *toolchainv1alpha1.NSTemplateTier) CustomNST
 	}
 }
 
-func WithNamespaceResources(otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
 	return func(hostAwait *HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.NamespaceResourcesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
 		tier.Spec.Namespaces = make([]toolchainv1alpha1.NSTemplateTierNamespace, len(otherTier.Spec.Namespaces))
 		for i, def := range otherTier.Spec.Namespaces {
-			tmplRef, err := duplicateTierTemplate(hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
+			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
 			if err != nil {
 				return err
 			}
@@ -61,13 +60,13 @@ func WithNamespaceResources(otherTier *toolchainv1alpha1.NSTemplateTier) CustomN
 	}
 }
 
-func WithSpaceRoles(otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
 	return func(hostAwait *HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.SpaceRolesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
 		tier.Spec.SpaceRoles = make(map[string]toolchainv1alpha1.NSTemplateTierSpaceRole, len(otherTier.Spec.SpaceRoles))
 		for name, def := range otherTier.Spec.SpaceRoles {
-			tmplRef, err := duplicateTierTemplate(hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
+			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
 			if err != nil {
 				return err
 			}
@@ -94,9 +93,9 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 	}
 	// add default values before custom values...
 	modifiers = append([]CustomNSTemplateTierModifier{
-		WithClusterResources(baseTier),
-		WithNamespaceResources(baseTier),
-		WithSpaceRoles(baseTier),
+		WithClusterResources(t, baseTier),
+		WithNamespaceResources(t, baseTier),
+		WithSpaceRoles(t, baseTier),
 	}, modifiers...)
 
 	// ... and apply
@@ -104,8 +103,7 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
 	}
-	err := hostAwait.CreateWithCleanup(context.TODO(), tier.NSTemplateTier)
-	require.NoError(t, err)
+	hostAwait.CreateWithCleanup(t, tier.NSTemplateTier)
 	return tier
 }
 
@@ -113,20 +111,19 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 // returns the latest version of the NSTemplateTier
 func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tier *CustomNSTemplateTier, modifiers ...CustomNSTemplateTierModifier) *CustomNSTemplateTier {
 	// reload the underlying NSTemplateTier resource before modifying it
-	tmplTier, err := hostAwait.WaitForNSTemplateTier(tier.Name)
-	require.NoError(t, err)
+	tmplTier := hostAwait.WaitForNSTemplateTier(t, tier.Name)
 	tier.NSTemplateTier = tmplTier
 	// make sure we have the very latest version of the given tier (to avoid the update conflict on the server-side)
 	for _, modify := range modifiers {
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
 	}
-	err = hostAwait.Client.Update(context.TODO(), tier.NSTemplateTier)
+	err := hostAwait.Client.Update(context.TODO(), tier.NSTemplateTier)
 	require.NoError(t, err)
 	return tier
 }
 
-func duplicateTierTemplate(hostAwait *HostAwaitility, namespace, tierName, origTemplateRef string) (string, error) {
+func duplicateTierTemplate(t *testing.T, hostAwait *HostAwaitility, namespace, tierName, origTemplateRef string) (string, error) {
 	origTierTemplate := &toolchainv1alpha1.TierTemplate{}
 	if err := hostAwait.Client.Get(context.TODO(), test.NamespacedName(hostAwait.Namespace, origTemplateRef), origTierTemplate); err != nil {
 		return "", err
@@ -140,32 +137,26 @@ func duplicateTierTemplate(hostAwait *HostAwaitility, namespace, tierName, origT
 		Spec: origTierTemplate.Spec,
 	}
 	newTierTemplate.Spec.TierName = tierName
-	if err := hostAwait.CreateWithCleanup(context.TODO(), newTierTemplate); err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return "", err
-		}
-	}
+	hostAwait.CreateWithCleanup(t, newTierTemplate)
 	return newTierTemplate.Name, nil
 }
 
 func MoveSpaceToTier(t *testing.T, hostAwait *HostAwaitility, spacename, tierName string) {
 	t.Logf("moving space '%s' to space tier '%s'", spacename, tierName)
-	_, err := hostAwait.WaitForSpace(spacename)
-	require.NoError(t, err)
+	hostAwait.WaitForSpace(t, spacename)
 
-	_, err = hostAwait.UpdateSpace(spacename, func(s *toolchainv1alpha1.Space) {
-		s.Spec.TierName = tierName
-	})
-	require.NoError(t, err)
+	hostAwait.UpdateSpace(t, spacename,
+		func(s *toolchainv1alpha1.Space) {
+			s.Spec.TierName = tierName
+		})
 }
 
 func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName string) {
 	t.Logf("moving masteruserrecord '%s' to user tier '%s'", username, tierName)
-	mur, err := hostAwait.WaitForMasterUserRecord(username)
-	require.NoError(t, err)
+	mur := hostAwait.WaitForMasterUserRecord(t, username)
 
-	_, err = hostAwait.UpdateMasterUserRecord(false, mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
-		mur.Spec.TierName = tierName
-	})
-	require.NoError(t, err)
+	hostAwait.UpdateMasterUserRecord(t, false, mur.Name,
+		func(mur *toolchainv1alpha1.MasterUserRecord) {
+			mur.Spec.TierName = tierName
+		})
 }

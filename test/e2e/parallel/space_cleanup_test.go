@@ -33,8 +33,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			require.NoError(t, err)
 
 			// then
-			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
-			require.NoError(t, err)
+			hostAwait.WaitUntilSpaceBindingDeleted(t, spaceBinding.Name)
 		})
 
 		t.Run("when mur is deleted", func(t *testing.T) {
@@ -43,15 +42,14 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 			// when
 			// deactivate the UserSignup so that the MUR will be deleted
-			userSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(us, true)
-			})
-			require.NoError(t, err)
+			userSignup = hostAwait.UpdateUserSignup(t, userSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
 			t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 			// then
-			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
-			require.NoError(t, err)
+			hostAwait.WaitUntilSpaceBindingDeleted(t, spaceBinding.Name)
 		})
 	})
 
@@ -64,16 +62,13 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		deletionThreshold := -30 * time.Second // space will only be deleted if at least 30 seconds has elapsed since it was created
 
 		// check that the spaces were provisioned before 30 seconds
-		space1, err := hostAwait.WaitForSpace(space1.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
-		require.NoError(t, err)
-		space2, err := hostAwait.WaitForSpace(space2.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
-		require.NoError(t, err)
+		space1 := hostAwait.WaitForSpace(t, space1.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
+		space2 := hostAwait.WaitForSpace(t, space2.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
 
 		t.Run("when space is provisioned for more than 30 seconds, then it should not delete the Space when SpaceBinding still exists", func(t *testing.T) {
 
 			// when
-			space, err := hostAwait.WaitForSpace(space1.Name)
-			require.NoError(t, err)
+			space := hostAwait.WaitForSpace(t, space1.Name)
 
 			// then
 			space, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
@@ -84,8 +79,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 				require.NoError(t, err)
 
 				// then
-				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space.Name)
-				require.NoError(t, err)
+				hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, space.Name)
 			})
 		})
 
@@ -95,10 +89,8 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			require.NoError(t, err)
 
 			// then
-			err = hostAwait.WaitUntilSpaceBindingDeleted(binding2.Name)
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(space2.Name)
-			require.NoError(t, err)
+			hostAwait.WaitUntilSpaceBindingDeleted(t, binding2.Name)
+			hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, space2.Name)
 		})
 	})
 }
@@ -106,22 +98,19 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space, owner, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember.ClusterName), WithName(spaceName))
 	// at this point, just make sure the space exists so we can bind it to our user
-	userSignup, mur := NewSignupRequest(t, awaitilities).
+	userSignup, mur := NewSignupRequest(awaitilities).
 		Username(murName).
 		ManuallyApprove().
-		TargetCluster(targetMember).
+		TargetCluster(targetMember.ClusterName).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().Resources()
+		Execute(t).Resources()
 	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
-	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier("appstudio")
-	require.NoError(t, err)
+	appstudioTier := awaitilities.Host().WaitForNSTemplateTier(t, "appstudio")
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
 	// before we can check the resources (roles and rolebindings)
-	_, err = targetMember.WaitForNSTmplSet(spaceName,
-		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Name, murName)))
-	require.NoError(t, err)
+	targetMember.WaitForNSTmplSet(t, spaceName,
+		wait.UntilNSTemplateSetHasSpaceRoles(wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Name, murName)))
 	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))
 	return space, userSignup, spaceBinding

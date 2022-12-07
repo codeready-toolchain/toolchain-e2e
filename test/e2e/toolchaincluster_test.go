@@ -28,8 +28,7 @@ func TestToolchainClusterE2E(t *testing.T) {
 // in the target cluster type operator
 func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
-	current, ok, err := await.GetToolchainCluster(otherAwait.Type, otherAwait.Namespace, nil)
-	require.NoError(t, err)
+	current, ok := await.GetToolchainCluster(t, otherAwait.Type, otherAwait.Namespace, nil)
 	require.True(t, ok, "ToolchainCluster should exist")
 
 	t.Run("create new ToolchainCluster with correct data and expect to be ready for cluster type "+string(await.Type), func(t *testing.T) {
@@ -55,12 +54,12 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// then the ToolchainCluster should be ready
 		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
+		_, err = await.WaitForNamedToolchainClusterWithCondition(t, toolchainCluster.Name, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainClusterWithCondition(t, otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainClusterWithCondition(t, await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 	})
 
@@ -86,15 +85,15 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		err := await.Client.Create(context.TODO(), toolchainCluster)
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
+		_, err = await.WaitForNamedToolchainClusterWithCondition(t, toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
 			Type:   toolchainv1alpha1.ToolchainClusterOffline,
 			Status: corev1.ConditionTrue,
 		})
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainClusterWithCondition(t, otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainClusterWithCondition(t, await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 	})
 }

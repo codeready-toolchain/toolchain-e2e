@@ -51,20 +51,18 @@ func TestPerformance(t *testing.T) {
 			require.NoError(t, err)
 
 			// host metrics should become available again at this point
-			_, err = hostAwait.WaitForRouteToBeAvailable(hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
+			_, err = hostAwait.WaitForRouteToBeAvailable(t, hostAwait.Namespace, "host-operator-metrics-service", "/metrics")
 			require.NoError(t, err, "failed while setting up or waiting for the route to the 'host-operator-metrics' service to be available")
 
 			start := time.Now()
 			// measure time it takes to have an empty queue on the master-user-records
-			err = hostAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(config.GetUserCount()), "controller", "usersignup", "result", "success")
+			err = hostAwait.WaitUntilMetricHasValueOrMore(t, "controller_runtime_reconcile_total", float64(config.GetUserCount()), "controller", "usersignup", "result", "success")
 			assert.NoError(t, err, "failed to reach the expected number of reconcile loops")
-			err = hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "usersignup")
+			err = hostAwait.WaitUntilMetricHasValueOrLess(t, "workqueue_depth", 0, "name", "usersignup")
 			assert.NoError(t, err, "failed to reach the expected queue depth")
 			end := time.Now()
-			hostOperatorPod, err := hostAwait.GetHostOperatorPod()
-			require.NoError(t, err)
-			hostOperatorPodMemory, err := hostAwait.GetMemoryUsage(hostOperatorPod.Name, hostAwait.Namespace)
-			require.NoError(t, err)
+			hostOperatorPod := hostAwait.GetHostOperatorPod(t)
+			hostOperatorPodMemory := hostAwait.GetMemoryUsage(t, hostOperatorPod.Name, hostAwait.Namespace)
 			logger.Info("done processing resources",
 				"host_operator_pod_restart_duration_ms", end.Sub(start).Milliseconds(),
 				"host_operator_pod_memory_usage_kb", hostOperatorPodMemory)
@@ -80,16 +78,13 @@ func TestPerformance(t *testing.T) {
 
 			start := time.Now()
 			// measure time it takes to have an empty queue on the master-user-records
-			err = memberAwait.WaitUntilMetricHasValueOrMore("controller_runtime_reconcile_total", float64(2*config.GetUserCount()), "controller", "useraccount", "result", "success")
+			err = memberAwait.WaitUntilMetricHasValueOrMore(t, "controller_runtime_reconcile_total", float64(2*config.GetUserCount()), "controller", "useraccount", "result", "success")
 			assert.NoError(t, err, "failed to reach the expected number of reconcile loops")
-			err = memberAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "useraccount")
+			err = memberAwait.WaitUntilMetricHasValueOrLess(t, "workqueue_depth", 0, "name", "useraccount")
 			assert.NoError(t, err, "failed to reach the expected queue depth")
 			end := time.Now()
-			memberOperatorPod, err := memberAwait.GetMemberOperatorPod()
-			require.NoError(t, err)
-			memberOperatorPodMemory, err := memberAwait.GetMemoryUsage(memberOperatorPod.Name, memberAwait.Namespace)
-			require.NoError(t, err)
-
+			memberOperatorPod := memberAwait.GetMemberOperatorPod(t)
+			memberOperatorPodMemory := memberAwait.GetMemoryUsage(t, memberOperatorPod.Name, memberAwait.Namespace)
 			logger.Info("done processing resources",
 				"member_operator_pod_restart_duration_ms", end.Sub(start).Milliseconds(),
 				"member_operator_pod_memory_usage_kb", memberOperatorPodMemory)
@@ -148,34 +143,26 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 			userSignup := NewUserSignup(hostAwait.Namespace, name, fmt.Sprintf("multiple-signup-testuser-%d@test.com", n))
 			states.SetApprovedManually(userSignup, true)
 			userSignup.Spec.TargetCluster = memberAwait.ClusterName
-			err := hostAwait.CreateWithCleanup(context.TODO(), userSignup)
-			hostAwait.T.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
-			require.NoError(t, err)
+			hostAwait.CreateWithCleanup(t, userSignup)
+			t.Logf("created usersignup with username: '%s' and resource name: '%s'", userSignup.Spec.Username, userSignup.Name)
 			signups[i] = *userSignup
 		}
 
 		t.Logf("Waiting for all users to be processed")
-		err := hostAwait.WaitUntilMetricHasValueOrLess("workqueue_depth", 0, "name", "masteruserrecord")
+		err := hostAwait.WaitUntilMetricHasValueOrLess(t, "workqueue_depth", 0, "name", "masteruserrecord")
 		require.NoError(t, err)
 
 		for _, signup := range signups {
-			hostAwait.T.Logf("waiting for user %s ('%s') to be ready", signup.Name, signup.Spec.Username)
-			mur, err := hostAwait.WaitForMasterUserRecord(signup.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
-			require.NoError(t, err)
+			t.Logf("waiting for user %s ('%s') to be ready", signup.Name, signup.Spec.Username)
+			mur := hostAwait.WaitForMasterUserRecord(t, signup.Spec.Username, UntilMasterUserRecordHasCondition(Provisioned()))
 			// now, run a pod (with the `sleep 28800` command in each namespace)
-			userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
+			memberAwait.WaitForUserAccount(t, mur.Name,
 				UntilUserAccountHasConditions(Provisioned()))
-			require.NoError(t, err)
 
-			nsTemplateSet, err := memberAwait.WaitForNSTmplSet(signup.Status.CompliantUsername, UntilNSTemplateSetHasTier(mur.Spec.TierName))
-			if err != nil {
-				t.Logf("getting NSTemplateSet '%s' failed with: %s", signup.Status.CompliantUsername, err)
-			}
-			require.NoError(t, err, "Failing \nUserSignup: %+v \nUserAccount: %+v \nNSTemplateSet: %+v", signup, userAccount, nsTemplateSet)
+			nsTemplateSet := memberAwait.WaitForNSTmplSet(t, signup.Status.CompliantUsername, UntilNSTemplateSetHasTier(mur.Spec.TierName))
 
 			for _, templateRef := range nsTemplateSet.Spec.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(mur.Name, templateRef.TemplateRef, nsTemplateSet.Spec.TierName, UntilNamespaceIsActive())
-				require.NoError(t, err)
+				ns := memberAwait.WaitForNamespace(t, mur.Name, templateRef.TemplateRef, nsTemplateSet.Spec.TierName, UntilNamespaceIsActive())
 				if ns.Labels["toolchain.dev.openshift.com/type"] != "stage" {
 					// skip pod creation if the namespace is not "stage", otherwise, we may run out of capacity of pods on the nodes
 					continue
@@ -213,15 +200,10 @@ func createSignupsByBatch(t *testing.T, hostAwait *HostAwaitility, config Config
 		t.Logf("sleeping for %ds...", int(config.GetUserBatchPause().Seconds()))
 		time.Sleep(config.GetUserBatchPause())
 
-		hostOperatorPod, err := hostAwait.GetHostOperatorPod()
-		require.NoError(t, err)
-		hostOperatorPodMemory, err := hostAwait.GetMemoryUsage(hostOperatorPod.Name, hostAwait.Namespace)
-		require.NoError(t, err)
-
-		memberOperatorPod, err := memberAwait.GetMemberOperatorPod()
-		require.NoError(t, err)
-		memberOperatorPodMemory, err := memberAwait.GetMemoryUsage(memberOperatorPod.Name, memberAwait.Namespace)
-		require.NoError(t, err)
+		hostOperatorPod := hostAwait.GetHostOperatorPod(t)
+		hostOperatorPodMemory := hostAwait.GetMemoryUsage(t, hostOperatorPod.Name, hostAwait.Namespace)
+		memberOperatorPod := memberAwait.GetMemberOperatorPod(t)
+		memberOperatorPodMemory := memberAwait.GetMemoryUsage(t, memberOperatorPod.Name, memberAwait.Namespace)
 
 		logger.Info("done provisioning resources",
 			"user_count", config.GetUserBatchSize(),

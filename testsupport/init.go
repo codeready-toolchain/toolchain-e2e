@@ -61,16 +61,16 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		})
 		require.NoError(t, err)
 
-		initHostAwait = wait.NewHostAwaitility(t, kubeconfig, cl, hostNs, registrationServiceNs)
+		initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 		// wait for host operator to be ready
-		initHostAwait.WaitForDeploymentToGetReady("host-operator-controller-manager", 1)
+		initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
 
 		// wait for registration service to be ready
-		initHostAwait.WaitForDeploymentToGetReady("registration-service", 2)
+		initHostAwait.WaitForDeploymentToGetReady(t, "registration-service", 2)
 
 		// set registration service values
-		registrationServiceRoute, err := initHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "registration-service", "/")
+		registrationServiceRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "registration-service", "/")
 		require.NoError(t, err, "failed while waiting for registration service route")
 
 		registrationServiceURL := "http://" + registrationServiceRoute.Spec.Host
@@ -80,7 +80,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		initHostAwait.RegistrationServiceURL = registrationServiceURL
 
 		// set api proxy values
-		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(registrationServiceNs, "api", "/proxyhealth")
+		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "api", "/proxyhealth")
 		require.NoError(t, err)
 		initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
 
@@ -90,26 +90,26 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		initMember2Await, _ = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
 
-		hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition("e2e", hostNs, wait.ReadyToolchainCluster)
+		hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 		hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
 		require.NoError(t, err)
 		initHostAwait.RestConfig = hostConfig.RestConfig
 
 		// setup host metrics route for metrics verification in tests
-		hostMetricsRoute, err := initHostAwait.SetupRouteForService("host-operator-metrics-service", "/metrics")
+		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
 		require.NoError(t, err)
 		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
 		// setup member metrics route for metrics verification in tests
-		memberMetricsRoute, err := initMemberAwait.SetupRouteForService("member-operator-metrics-service", "/metrics")
+		memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
 		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
 		initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
-		_, err = initMemberAwait.WaitForToolchainClusterWithCondition(initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 
-		_, err = initMember2Await.WaitForToolchainClusterWithCondition(initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 
 		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
@@ -129,28 +129,26 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 			}
 		}
 		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
-		initMemberAwait.WaitForMemberWebhooks(webhookImage)
-		initMemberAwait.WaitForAutoscalingBufferApp()
-		initMember2Await.WaitForAutoscalingBufferApp()
+		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
+		initMemberAwait.WaitForAutoscalingBufferApp(t)
+		initMember2Await.WaitForAutoscalingBufferApp(t)
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-		require.NoError(t, err)
+		initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
 
 		// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
 		// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
-		err = initHostAwait.WaitUntilBaseUserTierIsUpdated()
-		require.NoError(t, err)
+		initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
 
 		t.Log("all operators are ready and in running state")
 	})
 
-	return wait.NewAwaitilities(initHostAwait.ForTest(t), initMemberAwait.ForTest(t), initMember2Await.ForTest(t))
+	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) (*wait.MemberAwaitility, *appsv1.Deployment) {
-	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition("e2e", namespace, wait.ReadyToolchainCluster)
+	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition(t, "e2e", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
 	require.NoError(t, err)
@@ -160,12 +158,12 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	})
 	require.NoError(t, err)
 
-	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition("member", namespace, wait.ReadyToolchainCluster)
+	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, "member", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
-	memberAwait := wait.NewMemberAwaitility(t, memberConfig.RestConfig, memberClient, namespace, clusterName)
+	memberAwait := wait.NewMemberAwaitility(memberConfig.RestConfig, memberClient, namespace, clusterName)
 
-	deployment := memberAwait.WaitForDeploymentToGetReady("member-operator-controller-manager", 1)
+	deployment := memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
 
 	return memberAwait, deployment
 }

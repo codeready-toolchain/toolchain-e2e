@@ -32,13 +32,13 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create and approve a sandbox user
-	testsupport.NewSignupRequest(t, awaitilities).
+	testsupport.NewSignupRequest(awaitilities).
 		Username("harleyquinn").
 		ManuallyApprove().
-		TargetCluster(memberAwait).
+		TargetCluster(memberAwait.ClusterName).
 		EnsureMUR().
 		RequireConditions(testsupport.ConditionSet(testsupport.Default(), testsupport.ApprovedByAdmin())...).
-		Execute()
+		Execute(t)
 
 	//create a non-sandbox user
 	nonsandboxUser := userv1.User{

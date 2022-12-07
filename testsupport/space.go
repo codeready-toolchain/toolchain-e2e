@@ -1,7 +1,6 @@
 package testsupport
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -20,19 +19,19 @@ import (
 var notAllowedChars = regexp.MustCompile("[^-a-z0-9]")
 
 // NewSpace initializes a new Space object with the given options. By default, it doesn't set anything in the spec.
-func NewSpace(awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
-	namePrefix := strings.ToLower(awaitilities.Host().T.Name())
+func NewSpace(t *testing.T, namespace string, opts ...SpaceOption) *toolchainv1alpha1.Space {
+	namePrefix := strings.ToLower(t.Name())
 	// Remove all invalid characters
 	namePrefix = notAllowedChars.ReplaceAllString(namePrefix, "")
 
-	// Trim if the length exceeds 50 chars (63 is the max)
-	if len(namePrefix) > 50 {
-		namePrefix = namePrefix[0:50]
+	// Trim if the length exceeds 40 chars (63 is the max)
+	if len(namePrefix) > 40 {
+		namePrefix = namePrefix[0:40]
 	}
 
 	space := &toolchainv1alpha1.Space{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    awaitilities.Host().Namespace,
+			Namespace:    namespace,
 			GenerateName: namePrefix + "-",
 		},
 	}
@@ -76,23 +75,19 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 // CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
 func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
-	space := NewSpace(awaitilities, opts...)
-	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
-	require.NoError(t, err)
-	space, err = awaitilities.Host().WaitForSpace(space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
-	require.NoError(t, err)
+	space := NewSpace(t, awaitilities.Host().Namespace, opts...)
+	awaitilities.Host().CreateWithCleanup(t, space)
+	space = awaitilities.Host().WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
 	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	signup, mur, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
 	// before we can check the resources (roles and rolebindings)
-	tier, err := awaitilities.Host().WaitForNSTemplateTier(space.Spec.TierName)
-	require.NoError(t, err)
+	tier := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
 	if memberAwait, err := awaitilities.Member(space.Status.TargetCluster); err == nil {
 		// if member is `unknown` or invalid (depending on the test case), then don't try to check the associated NSTemplateSet
-		_, err = memberAwait.WaitForNSTmplSet(space.Name,
+		memberAwait.WaitForNSTmplSet(t, space.Name,
 			wait.UntilNSTemplateSetHasSpaceRoles(
 				wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, mur.Name)))
-		require.NoError(t, err)
 	}
 
 	return space, signup, spaceBinding
@@ -101,10 +96,9 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 // CreateSpaceWithBinding initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically creates SpaceBinding for it and for the given MasterUserRecord
 func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
-	space := NewSpace(awaitilities, opts...)
+	space := NewSpace(t, awaitilities.Host().Namespace, opts...)
 
-	err := awaitilities.Host().CreateWithCleanup(context.TODO(), space)
-	require.NoError(t, err)
+	awaitilities.Host().CreateWithCleanup(t, space)
 
 	// we need to  create the SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
@@ -126,14 +120,12 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 // VerifyResourcesProvisionedForSpace waits until the space has some target cluster and a tier name set together with the additional criteria (if provided)
 // then it gets the target member cluster specified for the space and verifies all resources provisioned for the Space
 func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, spaceName string, additionalCriteria ...wait.SpaceWaitCriterion) (*toolchainv1alpha1.Space, *toolchainv1alpha1.NSTemplateSet) {
-	space, err := awaitilities.Host().WaitForSpace(spaceName,
+	space := awaitilities.Host().WaitForSpace(t, spaceName,
 		append(additionalCriteria,
 			wait.UntilSpaceHasAnyTargetClusterSet(),
 			wait.UntilSpaceHasAnyTierNameSet())...)
-	require.NoError(t, err)
 	targetCluster := getSpaceTargetMember(t, awaitilities, space)
-	tier, err := awaitilities.Host().WaitForNSTemplateTier(space.Spec.TierName)
-	require.NoError(t, err)
+	tier := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
 	checks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
 
@@ -151,13 +143,12 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	require.NoError(t, err)
 
 	// wait for space to be fully provisioned
-	space, err := hostAwait.WaitForSpace(spaceName,
+	space := hostAwait.WaitForSpace(t, spaceName,
 		wait.UntilSpaceHasTier(tier.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tier.Name), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
-	require.NoError(t, err)
 
 	// verify that there is only one toolchain.dev.openshift.com/<>-tier-hash label
 	found := false
@@ -172,16 +163,14 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	}
 
 	// get NSTemplateSet
-	nsTmplSet, err := targetCluster.WaitForNSTmplSet(spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
-	require.NoError(t, err)
+	nsTmplSet := targetCluster.WaitForNSTmplSet(t, spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
 	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
 
 	if tier.Name == "appstudio" {
 		// checks that namespace exists and has the expected label(s)
-		ns, err := targetCluster.WaitForNamespace(space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
-		require.NoError(t, err)
+		ns := targetCluster.WaitForNamespace(t, space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
 		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
 	}
@@ -191,7 +180,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.SpaceBinding) {
 	username := "for-space-" + space.Name
-	builder := NewSignupRequest(t, awaitilities).
+	builder := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
@@ -201,7 +190,7 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 	if !cleanup {
 		builder.DisableCleanup()
 	}
-	signup, mur := builder.Execute().Resources()
+	signup, mur := builder.Execute(t).Resources()
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 	var binding *toolchainv1alpha1.SpaceBinding
 	if cleanup {

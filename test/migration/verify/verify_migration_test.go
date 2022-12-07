@@ -64,7 +64,7 @@ func TestAfterMigration(t *testing.T) {
 
 	wg.Wait()
 
-	cleanup.ExecuteAllCleanTasks(awaitilities.Host())
+	cleanup.ExecuteAllCleanTasks(t)
 
 	t.Run("run migration setup with new operator versions for compatibility", func(t *testing.T) {
 		// We need to run the migration setup part to ensure the compatibility with both versions of the sandbox (the old one as well as the new one)
@@ -86,87 +86,80 @@ func TestAfterMigration(t *testing.T) {
 		// content of the resources, nor labels, etc... because it was already verified when the PR that was merged. If we agree on such a generic setup logic,
 		// then we can easily make sure that it's fully compatible with both versions of Dev Sandbox.
 		runner := migration.SetupMigrationRunner{
-			T:            t,
 			Awaitilities: awaitilities,
 			WithCleanup:  true,
 		}
 
-		runner.Run()
+		runner.Run(t)
 	})
 }
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	space, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.ProvisionedAppStudioSpace)
 	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), fmt.Sprintf("for-space-%s", migration.ProvisionedAppStudioSpace))
-	cleanup.AddCleanTasks(awaitilities.Host(), space)
-	cleanup.AddCleanTasks(awaitilities.Host(), userSignupForSpace)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), space)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), userSignupForSpace)
 }
 
 func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	space, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.SecondMemberProvisionedSpace)
 	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), fmt.Sprintf("for-space-%s", migration.SecondMemberProvisionedSpace))
-	cleanup.AddCleanTasks(awaitilities.Host(), space)
-	cleanup.AddCleanTasks(awaitilities.Host(), userSignupForSpace)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), space)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), userSignupForSpace)
 }
 
 func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(awaitilities.Host(), signup)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
 	DeactivateAndCheckUser(t, awaitilities, signup)
 	ReactivateAndCheckUser(t, awaitilities, signup)
 }
 
 func verifySecondMemberProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(awaitilities.Host(), signup)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
 	CreateBannedUser(t, awaitilities.Host(), signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 }
 
 func verifyAppStudioProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(awaitilities.Host(), signup)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "appstudio")
 }
 
 func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
-	cleanup.AddCleanTasks(awaitilities.Host(), signup)
+	cleanup.AddCleanTasks(t, awaitilities.Host(), signup)
 
-	_, err := awaitilities.Host().WaitForUserSignup(signup.Name,
+	awaitilities.Host().WaitForUserSignup(t, signup.Name,
 		wait.UntilUserSignupContainsConditions(ConditionSet(Default(), DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
-	require.NoError(t, err)
 	require.True(t, states.Deactivated(signup), "usersignup should be deactivated")
 
-	err = awaitilities.Host().WaitUntilMasterUserRecordAndSpaceBindingsDeleted(migration.DeactivatedUser)
-	require.NoError(t, err)
+	awaitilities.Host().WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, migration.DeactivatedUser)
 
-	err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(migration.DeactivatedUser)
-	require.NoError(t, err)
+	awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(t, migration.DeactivatedUser)
 
 	ReactivateAndCheckUser(t, awaitilities, signup)
 }
 
 func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	hostAwait := awaitilities.Host()
-	cleanup.AddCleanTasks(hostAwait, signup)
+	cleanup.AddCleanTasks(t, hostAwait, signup)
 
 	// verify that it's still banned
-	_, err := hostAwait.WaitForUserSignup(signup.Name,
+	hostAwait.WaitForUserSignup(t, signup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
-	require.NoError(t, err)
 
-	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(migration.BannedUser)
-	require.NoError(t, err)
+	hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, migration.BannedUser)
 
-	err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(migration.BannedUser)
-	require.NoError(t, err)
+	awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(t, migration.BannedUser)
 
 	// get the BannedUser resource
 	matchEmailHash := client.MatchingLabels{
 		toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 	}
 	bannedUsers := &toolchainv1alpha1.BannedUserList{}
-	err = hostAwait.Client.List(context.TODO(), bannedUsers, client.InNamespace(hostAwait.Namespace), matchEmailHash)
+	err := hostAwait.Client.List(context.TODO(), bannedUsers, client.InNamespace(hostAwait.Namespace), matchEmailHash)
 	require.NoError(t, err)
 	require.Len(t, bannedUsers.Items, 1)
 
@@ -179,14 +172,12 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
-	provisionedMur, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*120)).WaitForMasterUserRecord(murName,
+	provisionedMur := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*120)).WaitForMasterUserRecord(t, murName,
 		wait.UntilMasterUserRecordHasCondition(Provisioned()),
 		wait.UntilMasterUserRecordHasNoTierHashLabel(), // after migration there should be no tier hash label so we should wait for that to confirm migration is completed before proceeding
 	)
-	require.NoError(t, err)
 
-	signup, err := hostAwait.WaitForUserSignup(provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])
-	require.NoError(t, err)
+	signup := hostAwait.WaitForUserSignup(t, provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])
 
 	checkMURMigrated(t, provisionedMur)
 

@@ -40,12 +40,11 @@ var cleaning = &cleanManager{
 
 type AwaitilityInt interface {
 	GetClient() client.Client
-	GetT() *testing.T
 }
 
 // AddCleanTasks adds cleaning tasks for the given objects that will be automatically performed at the end of the test execution
-func AddCleanTasks(a AwaitilityInt, objects ...client.Object) {
-	cleaning.addCleanTasks(a.GetT(), a.GetClient(), objects...)
+func AddCleanTasks(t *testing.T, a AwaitilityInt, objects ...client.Object) {
+	cleaning.addCleanTasks(t, a.GetClient(), objects...)
 }
 
 func (c *cleanManager) addCleanTasks(t *testing.T, cl client.Client, objects ...client.Object) {
@@ -60,12 +59,12 @@ func (c *cleanManager) addCleanTasks(t *testing.T, cl client.Client, objects ...
 }
 
 // ExecuteAllCleanTasks triggers cleanup of all resources that were marked to be cleaned before that
-func ExecuteAllCleanTasks(a AwaitilityInt) {
-	cleaning.clean(a.GetT())()
+func ExecuteAllCleanTasks(t *testing.T) {
+	cleaning.clean(t)()
 }
 
 func (c *cleanManager) clean(t *testing.T) func() {
-	return func() {
+	return func() { // TODO: why do we need to wrap into a func?
 		c.Lock()
 		defer c.Unlock()
 		var wg sync.WaitGroup

@@ -37,15 +37,13 @@ func TestCreateSocialEvent(t *testing.T) {
 		)
 
 		// when
-		err := hostAwait.CreateWithCleanup(context.TODO(), event)
+		hostAwait.CreateWithCleanup(t, event)
 
 		// then
-		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:   toolchainv1alpha1.ConditionReady,
 			Status: corev1.ConditionTrue,
 		}))
-		require.NoError(t, err)
 		assert.Equal(t, "deactivate30", event.Spec.UserTier)
 		assert.Equal(t, "base1ns", event.Spec.SpaceTier)
 		assert.Equal(t, start, event.Spec.StartTime.Time)
@@ -60,17 +58,15 @@ func TestCreateSocialEvent(t *testing.T) {
 			testsocialevent.WithSpaceTier("base1ns"))
 
 		// when
-		err := hostAwait.CreateWithCleanup(context.TODO(), event)
+		hostAwait.CreateWithCleanup(t, event)
 
 		// then
-		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidUserTierReason,
 			Message: "UserTier 'invalid' not found",
 		}))
-		require.NoError(t, err)
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
@@ -81,11 +77,10 @@ func TestCreateSocialEvent(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
-			require.NoError(t, err)
 		})
 	})
 
@@ -96,17 +91,15 @@ func TestCreateSocialEvent(t *testing.T) {
 			testsocialevent.WithSpaceTier("invalid"))
 
 		// when
-		err := hostAwait.CreateWithCleanup(context.TODO(), event)
+		hostAwait.CreateWithCleanup(t, event)
 
 		// then
-		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidSpaceTierReason,
 			Message: "NSTemplateTier 'invalid' not found",
 		}))
-		require.NoError(t, err)
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
@@ -117,11 +110,10 @@ func TestCreateSocialEvent(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent(event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
-			require.NoError(t, err)
 		})
 	})
 }

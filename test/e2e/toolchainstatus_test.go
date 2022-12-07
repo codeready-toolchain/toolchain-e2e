@@ -20,7 +20,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
-	hostAwait.UpdateToolchainConfig(
+	hostAwait.UpdateToolchainConfig(t,
 		testconfig.AutomaticApproval().Enabled(true),
 		testconfig.Metrics().ForceSynchronization(false))
 
@@ -30,10 +30,9 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	// so we can start with accurate counters/metrics and not get flaky because of previous tests,
 	// in particular w.r.t the `userSignupsPerActivationAndDomain` counter which is not decremented when a user
 	// is deleted
-	err := hostAwait.DeleteToolchainStatus("toolchain-status")
-	require.NoError(t, err)
+	hostAwait.DeleteToolchainStatus(t, "toolchain-status")
 	// restarting the pod after the `toolchain-status` resource was deleted will trigger a recount based on resources
-	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
+	err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 	require.NoError(t, err)
 
 	metricsAssertion := InitMetricsAssertion(t, awaitilities)
@@ -59,7 +58,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 
 		t.Run("verify metrics did not change after restarting pod without forcing recount", func(t *testing.T) {
 			// given
-			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(false))
+			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(false))
 
 			// when restarting the pod
 			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
@@ -67,13 +66,13 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			// metrics have not changed yet
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
+			metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
+			metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
 		})
 
 		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
 			// given
-			hostAwait.UpdateToolchainConfig(testconfig.Metrics().ForceSynchronization(true))
+			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(true))
 
 			// when restarting the pod
 			// TODO: unneeded once the ToolchainConfig controller will be in place ?
@@ -82,8 +81,8 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			// metrics have been updated
-			metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
-			metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
+			metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
+			metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
 
 		})
 	})

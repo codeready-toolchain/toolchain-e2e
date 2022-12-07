@@ -23,13 +23,13 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	member := awaitilities.Member1()
 
 	// let's provision user
-	_, mur := NewSignupRequest(t, awaitilities).
+	_, mur := NewSignupRequest(awaitilities).
 		Username("do-not-override-sa").
 		ManuallyApprove().
-		TargetCluster(member).
+		TargetCluster(member.ClusterName).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().
+		Execute(t).
 		Resources()
 
 	// and move the user to appstudio tier
@@ -37,8 +37,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)
 
 	// get the SA that is provisioned for the user in the ns
-	sa, err := member.WaitForServiceAccount(mur.Name, fmt.Sprintf("appstudio-%s", mur.Name))
-	require.NoError(t, err)
+	sa := member.WaitForServiceAccount(t, mur.Name, fmt.Sprintf("appstudio-%s", mur.Name))
 	expectedSecrets := getSASecrets(t, member, mur.Name, sa.Name)
 
 	// when we add an annotation to the SA resource then it should stay there
@@ -48,16 +47,14 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	require.NoError(t, member.Client.Update(context.TODO(), sa))
 
 	// drop the SpaceRoles annotation from the namespace to trigger the reconciliation
-	require.NoError(t, err)
-	_, err = member.UpdateNSTemplateSet(mur.Name, func(nsTmplSet *v1alpha1.NSTemplateSet) {
-		delete(nsTmplSet.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
-	})
-	require.NoError(t, err)
+	member.UpdateNSTemplateSet(t, mur.Name,
+		func(nsTmplSet *v1alpha1.NSTemplateSet) {
+			delete(nsTmplSet.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
+		})
 
 	// then
 	VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)
-	sa, err = member.WaitForServiceAccount(mur.Name, fmt.Sprintf("appstudio-%s", mur.Name))
-	require.NoError(t, err)
+	sa = member.WaitForServiceAccount(t, mur.Name, fmt.Sprintf("appstudio-%s", mur.Name))
 	assert.Equal(t, "stay", sa.Annotations["should"])
 
 	// verify that the secrets created for SA is the same

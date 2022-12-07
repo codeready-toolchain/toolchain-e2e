@@ -16,18 +16,16 @@ import (
 // DeactivateAndCheckUser deactivates the given UserSignups and checks that the MUR is deprovisioned
 func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup) *toolchainv1alpha1.UserSignup {
 	hostAwait := awaitilities.Host()
-	userSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-		states.SetDeactivated(us, true)
-	})
-	require.NoError(t, err)
+	userSignup = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivated(us, true)
+		})
 	t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
-	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername)
-	require.NoError(t, err)
+	hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
 
 	// "deactivated"
-	notifications, err := hostAwait.WaitForNotifications(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
-	require.NoError(t, err)
+	notifications := hostAwait.WaitForNotifications(t, userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated, 1, wait.UntilNotificationHasConditions(Sent()))
 	require.NotEmpty(t, notifications)
 	require.Len(t, notifications, 1)
 	notification := notifications[0]
@@ -38,18 +36,15 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 
 	// We wait for the "Approved()" condition status here because it doesn't specify a reason for the approval,
 	// and the reason should not be necessary for the purpose of this test.
-	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+	userSignup = hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
-	require.NoError(t, err)
 	require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")
 
-	err = hostAwait.WaitUntilNotificationsDeleted(userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
-	require.NoError(t, err)
+	hostAwait.WaitUntilNotificationsDeleted(t, userSignup.Status.CompliantUsername, toolchainv1alpha1.NotificationTypeDeactivated)
 
 	// Wait for the notification to be deleted because it will likely be deleted before the space. The space will only be deleted after 30 seconds.
-	err = awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername)
-	require.NoError(t, err)
+	awaitilities.Host().WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername)
 
 	return userSignup
 }
@@ -63,16 +58,15 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	}, userSignup)
 	require.NoError(t, err)
 
-	userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-		states.SetApprovedManually(us, true)
-	})
-	require.NoError(t, err)
+	userSignup = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		func(us *toolchainv1alpha1.UserSignup) {
+			states.SetApprovedManually(us, true)
+		})
 	t.Logf("user signup '%s' reactivated", userSignup.Name)
 
-	userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name,
+	userSignup = hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-	require.NoError(t, err)
 	require.False(t, states.Deactivated(userSignup), "usersignup should not be deactivated")
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")

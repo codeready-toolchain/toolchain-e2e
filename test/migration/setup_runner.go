@@ -27,15 +27,14 @@ const (
 )
 
 type SetupMigrationRunner struct {
-	T            *testing.T
 	Awaitilities wait.Awaitilities
 	WithCleanup  bool
 }
 
-func (r *SetupMigrationRunner) Run() {
+func (r *SetupMigrationRunner) Run(t *testing.T) {
 	var wg sync.WaitGroup
 
-	toRun := []func(){
+	toRun := []func(t *testing.T){
 		r.prepareAppStudioProvisionedSpace,
 		r.prepareSecondMemberProvisionedSpace,
 		r.prepareProvisionedUser,
@@ -46,97 +45,92 @@ func (r *SetupMigrationRunner) Run() {
 
 	for _, funcToRun := range toRun {
 		wg.Add(1)
-		go func(run func()) {
+		go func(t *testing.T, run func(t *testing.T)) {
 			defer wg.Done()
-			run()
-		}(funcToRun)
+			run(t)
+		}(t, funcToRun)
 	}
 
 	wg.Wait()
 }
 
-func (r *SetupMigrationRunner) prepareAppStudioProvisionedSpace() {
-	r.createAndWaitForSpace(ProvisionedAppStudioSpace, "appstudio", r.Awaitilities.Member1())
+func (r *SetupMigrationRunner) prepareAppStudioProvisionedSpace(t *testing.T) {
+	r.createAndWaitForSpace(t, ProvisionedAppStudioSpace, "appstudio", r.Awaitilities.Member1().ClusterName)
 }
 
-func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace() {
-	r.createAndWaitForSpace(SecondMemberProvisionedSpace, "base", r.Awaitilities.Member2())
+func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace(t *testing.T) {
+	r.createAndWaitForSpace(t, SecondMemberProvisionedSpace, "base", r.Awaitilities.Member2().ClusterName)
 }
 
-func (r *SetupMigrationRunner) createAndWaitForSpace(name, tierName string, targetCluster *wait.MemberAwaitility) {
+func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierName string, targetCluster string) {
 	hostAwait := r.Awaitilities.Host()
-	space := test.NewSpace(r.Awaitilities, test.WithName(name), test.WithTierName(tierName), test.WithTargetCluster(targetCluster.ClusterName))
+	space := test.NewSpace(t, r.Awaitilities.Host().Namespace, test.WithName(name), test.WithTierName(tierName), test.WithTargetCluster(targetCluster))
 	err := hostAwait.Client.Create(context.TODO(), space)
-	require.NoError(r.T, err)
+	require.NoError(t, err)
 
-	test.CreateMurWithAdminSpaceBindingForSpace(r.T, r.Awaitilities, space, false)
+	test.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, false)
 
-	_, err = hostAwait.WaitForSpace(space.Name,
+	hostAwait.WaitForSpace(t, space.Name,
 		wait.UntilSpaceHasConditions(test.Provisioned()))
-	require.NoError(r.T, err)
 	if r.WithCleanup {
-		cleanup.AddCleanTasks(r.Awaitilities.Host(), space)
+		cleanup.AddCleanTasks(t, r.Awaitilities.Host(), space)
 	}
 }
 
-func (r *SetupMigrationRunner) prepareProvisionedUser() {
-	r.prepareUser(ProvisionedUser, r.Awaitilities.Member1())
+func (r *SetupMigrationRunner) prepareProvisionedUser(t *testing.T) {
+	r.prepareUser(t, ProvisionedUser, r.Awaitilities.Member1().ClusterName)
 }
 
-func (r *SetupMigrationRunner) prepareSecondMemberProvisionedUser() {
-	r.prepareUser(SecondMemberProvisionedUser, r.Awaitilities.Member2())
+func (r *SetupMigrationRunner) prepareSecondMemberProvisionedUser(t *testing.T) {
+	r.prepareUser(t, SecondMemberProvisionedUser, r.Awaitilities.Member2().ClusterName)
 }
 
-func (r *SetupMigrationRunner) prepareDeactivatedUser() {
-	userSignup := r.prepareUser(DeactivatedUser, r.Awaitilities.Member1())
+func (r *SetupMigrationRunner) prepareDeactivatedUser(t *testing.T) {
+	userSignup := r.prepareUser(t, DeactivatedUser, r.Awaitilities.Member1().ClusterName)
 	hostAwait := r.Awaitilities.Host()
 
 	// deactivate the UserSignup
-	userSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+	userSignup = hostAwait.UpdateUserSignup(t, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		states.SetDeactivated(us, true)
 	})
-	require.NoError(r.T, err)
-	r.T.Logf("user signup '%s' set to deactivated", userSignup.Name)
+	t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 	// verify that MUR is deleted
-	err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(userSignup.Status.CompliantUsername) // TODO wait for space deletion too after Space migration is done
-	require.NoError(r.T, err)
+	hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername) // TODO wait for space deletion too after Space migration is done
 }
 
-func (r *SetupMigrationRunner) prepareBannedUser() {
-	userSignup := r.prepareUser(BannedUser, r.Awaitilities.Member1())
+func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
+	userSignup := r.prepareUser(t, BannedUser, r.Awaitilities.Member1().ClusterName)
 	hostAwait := r.Awaitilities.Host()
 
 	// Create the BannedUser
 	bannedUser := test.NewBannedUser(hostAwait, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 	err := hostAwait.Client.Create(context.TODO(), bannedUser)
-	require.NoError(r.T, err)
+	require.NoError(t, err)
 
-	r.T.Logf("BannedUser '%s' created", bannedUser.Spec.Email)
+	t.Logf("BannedUser '%s' created", bannedUser.Spec.Email)
 
 	// Confirm the user is banned
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(userSignup.Name,
+	hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(t, userSignup.Name,
 		wait.ContainsCondition(test.Banned()[0]))
-	require.NoError(r.T, err)
 }
 
-func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser() {
-	r.prepareUser(AppStudioProvisionedUser, r.Awaitilities.Member1())
+func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser(t *testing.T) {
+	r.prepareUser(t, AppStudioProvisionedUser, r.Awaitilities.Member1().ClusterName)
 	hostAwait := r.Awaitilities.Host()
 
 	// promote to appstudio
-	tiers.MoveSpaceToTier(r.T, hostAwait, AppStudioProvisionedUser, "appstudio")
+	tiers.MoveSpaceToTier(t, hostAwait, AppStudioProvisionedUser, "appstudio")
 
-	r.T.Logf("user %s was promoted to appstudio tier", AppStudioProvisionedUser)
+	t.Logf("user %s was promoted to appstudio tier", AppStudioProvisionedUser)
 
 	// verify that it's promoted
-	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(AppStudioProvisionedUser,
+	r.Awaitilities.Host().WaitForMasterUserRecord(t, AppStudioProvisionedUser,
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
-	require.NoError(r.T, err)
 }
 
-func (r *SetupMigrationRunner) prepareUser(name string, targetCluster *wait.MemberAwaitility) *toolchainv1alpha1.UserSignup {
-	requestBuilder := test.NewSignupRequest(r.T, r.Awaitilities).
+func (r *SetupMigrationRunner) prepareUser(t *testing.T, name string, targetCluster string) *toolchainv1alpha1.UserSignup {
+	requestBuilder := test.NewSignupRequest(r.Awaitilities).
 		Username(name).
 		ManuallyApprove().
 		TargetCluster(targetCluster)
@@ -146,10 +140,9 @@ func (r *SetupMigrationRunner) prepareUser(name string, targetCluster *wait.Memb
 
 	signup, _ := requestBuilder.
 		RequireConditions(test.ConditionSet(test.Default(), test.ApprovedByAdmin())...).
-		Execute().
+		Execute(t).
 		Resources()
-	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(signup.Status.CompliantUsername,
+	r.Awaitilities.Host().WaitForMasterUserRecord(t, signup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
-	require.NoError(r.T, err)
 	return signup
 }
