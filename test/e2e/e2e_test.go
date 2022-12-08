@@ -253,12 +253,17 @@ func TestE2EFlow(t *testing.T) {
 		VerifyMultipleSignups(t, awaitilities, signups)
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus := hostAwait.WaitForToolchainStatus(t,
+		originalUserAccountCounts := make(map[string]int, len(originalToolchainStatus.Status.Members))
+		for _, m := range originalToolchainStatus.Status.Members {
+			originalUserAccountCounts[m.ClusterName] = m.UserAccountCount
+		}
+		hostAwait.WaitForToolchainStatus(t,
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9))
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
+			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+9),
+			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
+			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
+		)
 	})
 
 	t.Run("verify Space is not deleted if namespace is not deleted", func(t *testing.T) {
@@ -441,12 +446,17 @@ func TestE2EFlow(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus := hostAwait.WaitForToolchainStatus(t,
+		originalUserAccountCounts := make(map[string]int, len(originalToolchainStatus.Status.Members))
+		for _, m := range originalToolchainStatus.Status.Members {
+			originalUserAccountCounts[m.ClusterName] = m.UserAccountCount
+		}
+		hostAwait.WaitForToolchainStatus(t,
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
+			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+8),
+			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
+			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
+		)
 	})
 
 	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {

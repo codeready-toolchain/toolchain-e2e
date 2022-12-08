@@ -145,7 +145,7 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 	if err := a.Client.List(context.TODO(), toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
 		return nil, err
 	}
-	for _, i := range usersignups.Items {
+	for _, i := range toolchainstatuses.Items {
 		copy := i
 		all = append(all, &copy)
 	}
@@ -1308,9 +1308,9 @@ func UntilProxyURLIsPresent(proxyURL string) ToolchainStatusWaitCriterion {
 	}
 }
 
-// UntilHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
+// UntilToolchainStatusHasMurCount returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has the given count of MasterUserRecords
-func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
+func UntilToolchainStatusHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
 			murs, ok := actual.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
@@ -1325,6 +1325,29 @@ func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCrite
 				return "MasterUserRecordPerDomain metric not found"
 			}
 			return fmt.Sprintf("expected MasterUserRecordPerDomain metric to be %d. Actual: %d", expectedCount, murs[domain])
+		},
+	}
+}
+
+// UntilToolchainStatusHasUserAccountCount returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has the given count of UserAccounts for the given clusterName
+func UntilToolchainStatusHasUserAccountCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			for _, m := range actual.Status.Members {
+				if m.ClusterName == clusterName {
+					return m.UserAccountCount == expectedCount
+				}
+			}
+			return false
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			for _, m := range actual.Status.Members {
+				if m.ClusterName == clusterName {
+					return fmt.Sprintf("expected UserAccount count for '%s' member to be %d. Actual: %d", clusterName, expectedCount, m.UserAccountCount)
+				}
+			}
+			return fmt.Sprintf("status for member '%s' not found", clusterName)
 		},
 	}
 }
