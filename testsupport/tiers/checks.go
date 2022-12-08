@@ -9,6 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/davecgh/go-spew/spew"
 
 	quotav1 "github.com/openshift/api/quota/v1"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	k8swait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -1055,98 +1056,91 @@ func count(resource corev1.ResourceName) corev1.ResourceName {
 	return corev1.ResourceName(fmt.Sprintf("count/%s", resource))
 }
 
-func numberOfToolchainRoles(number int) spaceRoleObjectsCheck {
+func numberOfToolchainRoles(expected int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		roles := &rbacv1.RoleList{}
-		memberAwait.WaitForExpectedNumberOfResources(t, "Roles", number, func(t *testing.T) []runtime.Object {
-			err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
-			require.NoError(t, err)
-			objs := make([]runtime.Object, len(roles.Items))
-			for i := range roles.Items {
-				objs[i] = &roles.Items[i]
+		err := k8swait.Poll(memberAwait.RetryInterval, memberAwait.Timeout, func() (done bool, err error) {
+			if err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name)); err != nil {
+				return false, err
 			}
-			return objs
+			return len(roles.Items) == expected, nil
 		})
+		require.NoError(t, err, "expected number of Roles to be %d but it was %d: %s", expected, len(roles.Items))
 	}
 }
 
-func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
+func numberOfToolchainRoleBindings(expected int) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		roleBindings := &rbacv1.RoleBindingList{}
-		memberAwait.WaitForExpectedNumberOfResources(t, "RoleBindings", number, func(t *testing.T) []runtime.Object {
-			err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
-			require.NoError(t, err)
-			objs := make([]runtime.Object, len(roleBindings.Items))
-			for i := range roleBindings.Items {
-				objs[i] = &roleBindings.Items[i]
+		rbs := &rbacv1.RoleBindingList{}
+		err := k8swait.Poll(memberAwait.RetryInterval, memberAwait.Timeout, func() (done bool, err error) {
+			if err := memberAwait.Client.List(context.TODO(), rbs, providerMatchingLabels, client.InNamespace(ns.Name)); err != nil {
+				return false, err
 			}
-			return objs
+			return len(rbs.Items) == expected, nil
 		})
+		if err != nil {
+			t.Logf("found %d role bindings: %s", len(rbs.Items), spew.Sdump(rbs))
+			nsTmplSet := memberAwait.WaitForNSTmplSet(t, owner)
+			t.Logf("associated NSTemplateSet: %s", spew.Sdump(nsTmplSet))
+		}
+		require.NoError(t, err, "expected number of RoleBindings to be %d but it was %d: %s", expected, len(rbs.Items))
 	}
 }
 
-func numberOfToolchainServiceAccounts(number int) spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		memberAwait.WaitForExpectedNumberOfResources(t, "ServiceAccounts", number, func(t *testing.T) []runtime.Object {
-			serviceAccounts := &corev1.ServiceAccountList{}
-			err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name))
-			require.NoError(t, err)
-			objs := make([]runtime.Object, len(serviceAccounts.Items))
-			for i := range serviceAccounts.Items {
-				objs[i] = &serviceAccounts.Items[i]
+func numberOfToolchainServiceAccounts(expected int) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		serviceAccounts := &corev1.ServiceAccountList{}
+		err := k8swait.Poll(memberAwait.RetryInterval, memberAwait.Timeout, func() (done bool, err error) {
+			if err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name)); err != nil {
+				return false, err
 			}
-			return objs
+			return len(serviceAccounts.Items) == expected, nil
 		})
+		require.NoError(t, err, "expected number of ServiceAccounts to be %d but it was %d: %s", expected, len(serviceAccounts.Items))
 	}
 }
 
-func numberOfLimitRanges(number int) namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		memberAwait.WaitForExpectedNumberOfResources(t, "LimitRanges", number, func(t *testing.T) []runtime.Object {
-			limitRanges := &corev1.LimitRangeList{}
-			err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name))
-			require.NoError(t, err)
-			objs := make([]runtime.Object, len(limitRanges.Items))
-			for i := range limitRanges.Items {
-				objs[i] = &limitRanges.Items[i]
+func numberOfLimitRanges(expected int) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		limitRanges := &corev1.LimitRangeList{}
+		err := k8swait.Poll(memberAwait.RetryInterval, memberAwait.Timeout, func() (done bool, err error) {
+			if err := memberAwait.Client.List(context.TODO(), limitRanges, providerMatchingLabels, client.InNamespace(ns.Name)); err != nil {
+				return false, err
 			}
-			return objs
+			return len(limitRanges.Items) == expected, nil
 		})
+		require.NoError(t, err, "expected number of ServiceAccounts to be %d but it was %d: %s", expected, len(limitRanges.Items))
 	}
 }
 
-func numberOfNetworkPolicies(number int) namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		memberAwait.WaitForExpectedNumberOfResources(t, "NetworkPolicies", number, func(t *testing.T) []runtime.Object {
-			nps := &netv1.NetworkPolicyList{}
-			err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name))
-			require.NoError(t, err)
-			objs := make([]runtime.Object, len(nps.Items))
-			for i := range nps.Items {
-				objs[i] = &nps.Items[i]
+func numberOfNetworkPolicies(expected int) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		nps := &netv1.NetworkPolicyList{}
+		err := k8swait.Poll(memberAwait.RetryInterval, memberAwait.Timeout, func() (done bool, err error) {
+			if err := memberAwait.Client.List(context.TODO(), nps, providerMatchingLabels, client.InNamespace(ns.Name)); err != nil {
+				return false, err
 			}
-			return objs
+			return len(nps.Items) == expected, nil
 		})
+		require.NoError(t, err, "expected number of NetworkPolicies to be %d but it was %d: %s", expected, len(nps.Items))
 	}
 }
 
-func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
+func numberOfClusterResourceQuotas(expected int) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			memberAwait.WaitForExpectedNumberOfClusterResources(t, "ClusterResourceQuotas", number, func(t *testing.T) []runtime.Object {
-				quotas := &quotav1.ClusterResourceQuotaList{}
-				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
-					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
-					"toolchain.dev.openshift.com/owner":    userName,
-				})
-				err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
-				require.NoError(t, err)
-				objs := make([]runtime.Object, len(quotas.Items))
-				for i := range quotas.Items {
-					objs[i] = &quotas.Items[i]
-				}
-				return objs
+			quotas := &quotav1.ClusterResourceQuotaList{}
+			matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
+				"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+				"toolchain.dev.openshift.com/owner":    userName,
 			})
+			err := k8swait.Poll(memberAwait.RetryInterval, memberAwait.Timeout, func() (done bool, err error) {
+				if err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels); err != nil {
+					return false, err
+				}
+				return len(quotas.Items) == expected, nil
+			})
+			require.NoError(t, err, "expected number of ClusterResourceQuotas to be %d but it was %d: %s", expected, len(quotas.Items))
 		}
 	}
 }
