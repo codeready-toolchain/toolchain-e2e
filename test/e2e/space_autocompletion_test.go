@@ -86,7 +86,6 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
 			// when
 			toolchainStatus, err := hostAwait.WaitForToolchainStatus(
-				wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 				wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 			require.NoError(t, err)
 			spaceLimitsM1, spaceLimitsM2 := 0, 0
@@ -108,9 +107,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
-			// when we count the number of provisioned spaces, then the second space won't be provisioned immediately
+			// the second space won't be provisioned immediately
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
-			//
 			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
 				// when
 				hostAwait.UpdateToolchainConfig(

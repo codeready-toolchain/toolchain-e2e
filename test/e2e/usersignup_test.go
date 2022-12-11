@@ -11,6 +11,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,44 +55,6 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute()
 
-	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
-		// given
-		hostAwait.UpdateToolchainConfig(
-			testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
-		)
-
-		// when
-		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("automatic2").
-			Email("automatic2@redhat.com").
-			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
-			Execute().Resources()
-
-		// then
-		s.userIsNotProvisioned(t, userSignup)
-
-		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
-			// when
-			hostAwait.UpdateToolchainConfig(
-				testconfig.AutomaticApproval().Enabled(true),
-				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
-			)
-
-			// then
-			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
-				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-			// delete the userSignup
-			err = hostAwait.Client.Delete(context.TODO(), userSignup)
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
-			require.NoError(t, err)
-		})
-	})
-
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		// update max number of spaces to current number of spaces provisioned
@@ -102,7 +65,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
 				),
 		)
-		// create second user to reach max space limits
+		// create additional user to reach max space limits on both members
 		NewSignupRequest(t, s.Awaitilities).
 			Username("automatic2").
 			Email("automatic2@redhat.com").
@@ -167,6 +130,40 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			})
 		})
 	})
+
+	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(
+			testconfig.AutomaticApproval().Enabled(true),
+			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
+		)
+
+		// when
+		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
+			Username("automatic3").
+			Email("automatic3@redhat.com").
+			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
+			Execute().Resources()
+
+		// then
+		s.userIsNotProvisioned(t, userSignup)
+
+		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
+			// when
+			hostAwait.UpdateToolchainConfig(
+				testconfig.AutomaticApproval().Enabled(true),
+				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
+			)
+
+			// then
+			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
+				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+			require.NoError(s.T(), err)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+		})
+	})
+
 }
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
@@ -314,11 +311,6 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-			// delete the userSignup
-			err = hostAwait.Client.Delete(context.TODO(), userSignup)
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
-			require.NoError(t, err)
 		})
 	})
 
@@ -333,16 +325,16 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		)
 		// create usersignup to reach max number of spaces on both members
 		NewSignupRequest(t, s.Awaitilities).
-			Username("manualwithcapacity2").
-			Email("manualwithcapacity2@redhat.com").
+			Username("manualwithcapacity3").
+			Email("manualwithcapacity3@redhat.com").
 			ManuallyApprove().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		// when
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("manualwithcapacity3").
-			Email("manualwithcapacity3@redhat.com").
+			Username("manualwithcapacity4").
+			Email("manualwithcapacity4@redhat.com").
 			ManuallyApprove().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
 			Execute().Resources()
@@ -366,11 +358,6 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(s.T(), err)
 			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-			// delete the userSignup
-			err = hostAwait.Client.Delete(context.TODO(), userSignup)
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(userSignup.GetName())
-			require.NoError(t, err)
 		})
 	})
 

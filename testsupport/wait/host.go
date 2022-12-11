@@ -13,16 +13,16 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/md5"
-	"github.com/davecgh/go-spew/spew"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -695,7 +695,7 @@ func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(name string) {
 func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.BannedUser, error) {
 	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
-	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: md5.CalcMd5(email)}
+	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email)}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
 		if err = a.Client.List(context.TODO(), bannedUserList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
@@ -1470,7 +1470,7 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 	if config == nil {
 		// if it doesn't exist, then create a new one
 		config = &toolchainv1alpha1.ToolchainConfig{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Namespace: a.Namespace,
 				Name:      "config",
 			},

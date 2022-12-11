@@ -7,7 +7,7 @@ on:
 
 env:
   GOPATH: /tmp/go
-  GO_VERSION: 1.17.x
+  GO_VERSION: 1.18.x
 
 jobs:
   binary:
@@ -47,12 +47,12 @@ jobs:
         fetch-depth: 0
 
     - name: Install Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache dependencies
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles ('**/go.sum') }}

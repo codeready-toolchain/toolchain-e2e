@@ -588,7 +588,7 @@ func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(actual *corev1.Name
 	a.T.Log(buf.String())
 }
 
-//WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
+// WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
 func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
