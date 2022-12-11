@@ -201,7 +201,7 @@ print-operator-logs:
 	@echo "======================= ${DEPLOYMENT_NAME} deployment logs - Namespace: ${NAMESPACE} =========================="
 	@echo "==============================================================================================================="
 	-oc logs deployment.apps/${DEPLOYMENT_NAME} ${ADDITIONAL_PARAMS} --namespace ${NAMESPACE}
-	-oc logs deployment.apps/${DEPLOYMENT_NAME} ${ADDITIONAL_PARAMS} --namespace ${NAMESPACE} > ${DEPLOYMENT_NAME}.log
+	-oc logs deployment.apps/${DEPLOYMENT_NAME} ${ADDITIONAL_PARAMS} --namespace ${NAMESPACE} > ${ARTIFACT_DIR}/${DEPLOYMENT_NAME}.log
 	@echo "==============================================================================================================="
 	@echo ""
 	@echo ""
