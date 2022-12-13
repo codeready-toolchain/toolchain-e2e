@@ -780,7 +780,7 @@ func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, beare
 func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServiceURL, name, bearerToken string) map[string]interface{} {
 	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
 	var mp, mpStatus map[string]interface{}
-	err := k8swait.Poll(time.Second*5, time.Second*60, func() (done bool, err error) {
+	err := k8swait.Poll(time.Second, time.Second*60, func() (done bool, err error) {
 		mp, mpStatus = parseResponse(t, invokeEndpoint(t, "GET", registrationServiceURL+"/api/v1/signup", bearerToken, "", http.StatusOK))
 		// check if `ready` field is set
 		if _, ok := mpStatus["ready"]; !ok {
@@ -790,7 +790,7 @@ func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServi
 		}
 		// check if `ready` field is true,
 		// means that user signup is "ready"
-		if mpStatus["ready"].(bool) != true {
+		if mpStatus["ready"].(bool) {
 			t.Logf("usersignup %s is not ready yet according to registration service", name)
 			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
 			return false, nil
