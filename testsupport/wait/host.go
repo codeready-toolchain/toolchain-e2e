@@ -1352,6 +1352,29 @@ func UntilToolchainStatusHasUserAccountCount(clusterName string, expectedCount i
 	}
 }
 
+// UntilToolchainStatusHasSpaceCount returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has the given count of Spaces for the given clusterName
+func UntilToolchainStatusHasSpaceCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			for _, m := range actual.Status.Members {
+				if m.ClusterName == clusterName {
+					return m.SpaceCount == expectedCount
+				}
+			}
+			return false
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			for _, m := range actual.Status.Members {
+				if m.ClusterName == clusterName {
+					return fmt.Sprintf("expected Space count for '%s' member to be %d. Actual: %d", clusterName, expectedCount, m.SpaceCount)
+				}
+			}
+			return fmt.Sprintf("status for member '%s' not found", clusterName)
+		},
+	}
+}
+
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...ToolchainStatusWaitCriterion) *toolchainv1alpha1.ToolchainStatus {
 	// there should only be one toolchain status with the name toolchain-status

@@ -42,7 +42,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("set low capacity threshold and expect that space will have default tier, but won't have target cluster so it won't be provisioned", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(t,
-			testconfig.AutomaticApproval().ResourceCapacityThreshold(1))
+			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
+		)
 		// some short time to get the cache populated with the change
 		time.Sleep(1 * time.Second)
 
@@ -55,20 +56,22 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 		t.Run("reset the threshold and expect the space will be have the targetCluster set and will be also provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().ResourceCapacityThreshold(80))
+			hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().ResourceCapacityThreshold(80))
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 		})
 	})
 
-	t.Run("set low max number of users and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
+	t.Run("set low max number of spaces and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
 		// given
-		toolchainStatus := hostAwait.WaitForToolchainStatus(t,
-			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-		originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().MaxNumberOfUsers(originalMursPerDomainCount["internal"]+originalMursPerDomainCount["external"]))
+		hostAwait.UpdateToolchainConfig(t,
+			testconfig.CapacityThresholds().
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
+					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
+				),
+		)
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist1"))
@@ -81,23 +84,43 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
-		t.Run("increment the max number of users and expect the both of the spaces will be provisioned. When we count the spaces, then this test will change", func(t *testing.T) {
+		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().MaxNumberOfUsers(originalMursPerDomainCount["internal"]+originalMursPerDomainCount["external"]+1))
+			toolchainStatus := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+			spaceLimitsM1, spaceLimitsM2 := 0, 0
+			for _, m := range toolchainStatus.Status.Members {
+				if memberAwait1.ClusterName == m.ClusterName {
+					spaceLimitsM1 = m.SpaceCount
+				} else if memberAwait2.ClusterName == m.ClusterName {
+					spaceLimitsM2 = m.SpaceCount
+				}
+			}
+			hostAwait.UpdateToolchainConfig(t,
+				testconfig.CapacityThresholds().
+					MaxNumberOfSpaces(
+						// increment max spaces only on member1
+						testconfig.PerMemberCluster(memberAwait1.ClusterName, spaceLimitsM1+1),
+						testconfig.PerMemberCluster(memberAwait2.ClusterName, spaceLimitsM2),
+					),
+			)
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
-			// TODO: when we count the number of provisioned spaces, then the second space won't be provisioned immediately https://issues.redhat.com/browse/CRT-1427
-			// waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
-			//
-			//t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
-			//	// when
-			//	hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().MaxNumberOfUsers(1000))
-			//
-			//	// then
-			//	VerifyResourcesProvisionedForSpace(t, awaitilities, space2)
-			//})
+			// the second space won't be provisioned immediately
+			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
+			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
+				// when
+				hostAwait.UpdateToolchainConfig(t,
+					testconfig.CapacityThresholds().
+						MaxNumberOfSpaces(
+							testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
+							testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
+						),
+				)
+
+				// then
+				VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
+			})
 		})
 	})
 
@@ -109,14 +132,14 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait1.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.UserAccountCount))
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.SpaceCount))
 			} else if memberAwait2.ClusterName == m.ClusterName {
-				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.UserAccountCount+1))
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.SpaceCount+1))
 			}
 		}
 		require.Len(t, memberLimits, 2)
 
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().MaxNumberOfUsers(0, memberLimits...))
+		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
@@ -135,7 +158,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 				}
 			}
 			require.Len(t, memberLimits, 2)
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().MaxNumberOfUsers(0, memberLimits...))
+			hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 			// when
 			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-2"))

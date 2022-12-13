@@ -5,11 +5,9 @@ import (
 	"testing"
 	"time"
 
-	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
-
-	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -261,8 +259,10 @@ func TestE2EFlow(t *testing.T) {
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+9),
-			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
+			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
+			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
+			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 		)
 	})
 
@@ -456,6 +456,8 @@ func TestE2EFlow(t *testing.T) {
 			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+8),
 			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
+			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
+			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 		)
 	})
 
