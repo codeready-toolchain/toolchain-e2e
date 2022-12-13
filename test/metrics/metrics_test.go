@@ -53,8 +53,6 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)                                                    // all activated
 	metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // none activated on member-1
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 2, "cluster_name", memberAwait2.ClusterName)                 // all activated on member-2
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName) // 2 spaces created on member-2
 
@@ -78,8 +76,6 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	metricsAssertion.WaitForMetricDelta(UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
 	metricsAssertion.WaitForMetricDelta(UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)                  // all deactivated on member-1
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName)                 // all deactivated on member-2
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // 2 spaces deleted from member-2
 
@@ -263,8 +259,6 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 1)
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external")
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName)  // no user on member1
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no user on member2
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
 
@@ -291,10 +285,8 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)   // unchanged: banneduser already existed
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user provisioned on member1
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no user on member2
-		metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)        // space provisioned on member1
-		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)       // no spaces on member2
+		metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space provisioned on member1
+		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no spaces on member2
 	})
 }
 
@@ -326,10 +318,8 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user is on member1
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no user on member2
-	metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)        // space present on member1
-	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)       // no space on member2
+	metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space present on member1
+	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no space on member2
 
 	// when disabling MUR
 	_, err := hostAwait.UpdateMasterUserRecordSpec(mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
@@ -344,10 +334,8 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 1, "domain", "external")
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 1, "cluster_name", memberAwait.ClusterName)  // user is on member1
-	metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName) // no user on member2
-	metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)        // space is on member1
-	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)       // no space on member2
+	metricsAssertion.WaitForMetricDelta(SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space is on member1
+	metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no space on member2
 
 	t.Run("re-enabled mur", func(t *testing.T) {
 		// given
@@ -366,8 +354,6 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		metricsAssertion.WaitForMetricDelta(UserSignupsBannedMetric, 0)
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "external") // unchanged, user was already provisioned
 		metricsAssertion.WaitForMetricDelta(MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait.ClusterName) // unchanged, user was already provisioned
-		metricsAssertion.WaitForMetricDelta(UserAccountsMetric, 0, "cluster_name", memberAwait2.ClusterName)
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 		metricsAssertion.WaitForMetricDelta(SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
 
