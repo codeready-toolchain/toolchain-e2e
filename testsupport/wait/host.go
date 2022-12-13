@@ -915,7 +915,7 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 	// now, check that the `templateRef` field is set for each namespace and clusterResources (if applicable)
 	// and that there's a TierTemplate resource with the same name
 	for i, ns := range tier.Spec.Namespaces {
-		require.NotEmpty(t, ns.TemplateRef == "", "missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
+		require.NotEmpty(t, ns.TemplateRef, "missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
 		a.WaitForTierTemplate(t, ns.TemplateRef)
 	}
 	if tier.Spec.ClusterResources != nil {

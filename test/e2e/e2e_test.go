@@ -259,9 +259,9 @@ func TestE2EFlow(t *testing.T) {
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+9),
-			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
+			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
-			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
+			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
 			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 		)
 	})
