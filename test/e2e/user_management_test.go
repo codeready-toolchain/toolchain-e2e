@@ -2,9 +2,7 @@ package e2e
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
@@ -29,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var httpClient = HTTPClient
 
 func TestUserManagement(t *testing.T) {
 	suite.Run(t, &userManagementTestSuite{})
@@ -584,24 +580,16 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		route := hostAwait.RegistrationServiceURL
 
 		// Call signup endpoint with a valid token to initiate a signup process
+		statusErr, _ := wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			Token(token0).
+			RequireStatusCode(http.StatusForbidden).
+			Execute(t)
 		req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
 		require.NoError(s.T(), err)
 		req.Header.Set("Authorization", "Bearer "+token0)
 		req.Header.Set("content-type", "application/json")
-
-		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
-		require.NoError(s.T(), err)
-		defer Close(s.T(), resp)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-		assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
-
-		// Check the error.
-		statusErr := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &statusErr)
-		require.NoError(s.T(), err)
 		require.Equal(s.T(), "forbidden: user has been banned", statusErr["message"])
 	})
 

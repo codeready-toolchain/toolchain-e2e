@@ -2,11 +2,8 @@ package testsupport
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net/http"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
@@ -67,13 +64,4 @@ func NewUserSignup(namespace, username string, email string) *toolchainv1alpha1.
 			Userid:   name,
 		},
 	}
-}
-
-var HTTPClient = &http.Client{
-	Timeout: time.Second * 10,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // nolint:gosec
-		},
-	},
 }

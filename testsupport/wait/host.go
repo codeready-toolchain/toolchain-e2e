@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/crc32"
+	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
@@ -669,6 +670,42 @@ func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username s
 		a.printUserSignupWaitCriterionDiffs(userSignup, criteria...)
 	}
 	return userSignup, err
+}
+
+// WaitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
+func (a *HostAwaitility) WaitForUserSignupReadyInRegistrationService(t *testing.T, name, bearerToken string) map[string]interface{} {
+	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
+	var mp, mpStatus map[string]interface{}
+	err := wait.Poll(time.Second*5, time.Second*60, func() (done bool, err error) {
+		mp, mpStatus = NewHTTPRequest().Method("GET").
+			URL(a.RegistrationServiceURL + "/api/v1/signup").
+			Token(bearerToken).
+			RequireStatusCode(http.StatusOK).
+			Execute(t)
+		// check if `ready` field is set
+		if _, ok := mpStatus["ready"]; !ok {
+			t.Logf("usersignup response for %s is missing `ready` field ", name)
+			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
+			return false, nil
+		}
+		// check if `ready` field is true,
+		// means that user signup is "ready"
+		if !mpStatus["ready"].(bool) {
+			t.Logf("usersignup %s is not ready yet according to registration service", name)
+			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
+			return false, nil
+		}
+		// check signup status reason
+		if mpStatus["reason"] != toolchainv1alpha1.MasterUserRecordProvisionedReason {
+			t.Logf("usersignup %s is not Provisioned yet according to registration service", name)
+			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
+			return false, nil
+		}
+
+		return true, nil
+	})
+	require.NoError(t, err)
+	return mp
 }
 
 // WaitAndVerifyThatUserSignupIsNotCreated waits and checks that the UserSignup is not created

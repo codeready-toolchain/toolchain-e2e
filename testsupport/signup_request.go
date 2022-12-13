@@ -1,10 +1,7 @@
 package testsupport
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -21,8 +18,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
 )
-
-var httpClient = HTTPClient
 
 // NewSignupRequest creates a new signup request for the registration service
 func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupRequest {
@@ -219,8 +214,12 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	}
 
 	// Call the signup endpoint
-	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		r.token, "", r.requiredHTTPStatus, queryParams)
+	wait.NewHTTPRequest().Method("POST").
+		URL(hostAwait.RegistrationServiceURL + "/api/v1/signup").
+		Token(r.token).
+		RequireStatusCode(r.requiredHTTPStatus).
+		QueryParams(queryParams).
+		Execute(r.t)
 
 	// Wait for the UserSignup to be created
 	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
@@ -291,50 +290,4 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	}
 
 	return r
-}
-
-func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int, queryParams map[string]string) map[string]interface{} {
-	var reqBody io.Reader
-	if requestBody != "" {
-		reqBody = strings.NewReader(requestBody)
-	}
-	req, err := http.NewRequest(method, path, reqBody)
-	require.NoError(t, err)
-	req.Header.Set("Authorization", "Bearer "+authToken)
-	req.Header.Set("content-type", "application/json")
-
-	if len(queryParams) > 0 {
-		q := req.URL.Query()
-		for key, val := range queryParams {
-			q.Add(key, val)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	req.Close = true
-	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
-	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)
-	defer Close(t, resp)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NotNil(t, body)
-	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)
-
-	mp := make(map[string]interface{})
-	if len(body) > 0 {
-		err = json.Unmarshal(body, &mp)
-		require.NoError(t, err)
-	}
-	return mp
-}
-
-func Close(t *testing.T, resp *http.Response) {
-	if resp == nil {
-		return
-	}
-	_, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	err = resp.Body.Close()
-	require.NoError(t, err)
 }

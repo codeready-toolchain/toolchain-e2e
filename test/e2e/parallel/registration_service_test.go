@@ -1,14 +1,9 @@
 package parallel
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -22,16 +17,12 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	k8swait "k8s.io/apimachinery/pkg/util/wait"
 )
-
-var httpClient = HTTPClient
 
 func TestLandingPageReachable(t *testing.T) {
 	// given
@@ -39,15 +30,12 @@ func TestLandingPageReachable(t *testing.T) {
 	await := WaitForDeployments(t)
 	route := await.Host().RegistrationServiceURL
 
+	// when & then
 	// just make sure that the landing page is reachable
-	req, err := http.NewRequest("GET", route, nil)
-	require.NoError(t, err)
-
-	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
-	require.NoError(t, err)
-	defer Close(t, resp)
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	wait.NewHTTPRequest().Method("GET").
+		URL(route).
+		RequireStatusCode(http.StatusOK).
+		Execute(t)
 }
 
 func TestHealth(t *testing.T) {
@@ -57,24 +45,16 @@ func TestHealth(t *testing.T) {
 	route := await.Host().RegistrationServiceURL
 
 	t.Run("get healthcheck 200 OK", func(t *testing.T) {
+
+		// when
 		// Call health endpoint.
-		req, err := http.NewRequest("GET", route+"/api/v1/health", nil)
-		require.NoError(t, err)
+		mp, _ := wait.NewHTTPRequest().
+			Method("GET").
+			URL(route + "/api/v1/health").
+			RequireStatusCode(http.StatusOK).
+			Execute(t)
 
-		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
-		require.NoError(t, err)
-		defer Close(t, resp)
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NotNil(t, body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(t, err)
-
+		// then
 		// Verify JSON response.
 		alive := mp["alive"]
 		require.IsType(t, true, alive)
@@ -102,25 +82,14 @@ func TestWoopra(t *testing.T) {
 	route := await.Host().RegistrationServiceURL
 
 	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseValue string) {
+		// when & then
 		// Call woopra domain endpoint.
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", route, endPointPath), nil)
-		require.NoError(t, err)
-
-		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
-		require.NoError(t, err)
-		defer Close(t, resp)
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NotNil(t, body)
-
-		value := string(body)
-		require.NoError(t, err)
-
-		// Verify JSON response.
-		require.Equal(t, expectedResponseValue, value)
+		wait.NewHTTPRequest().
+			Method("GET").
+			URL(fmt.Sprintf("%s/api/v1/%s", route, endPointPath)).
+			RequireStatusCode(http.StatusOK).
+			RequireResponseBody(expectedResponseValue).
+			Execute(t)
 	}
 
 	t.Run("get woopra domain 200 OK", func(t *testing.T) {
@@ -141,19 +110,12 @@ func TestAuthConfig(t *testing.T) {
 	route := await.Host().RegistrationServiceURL
 
 	t.Run("get authconfig 200 OK", func(t *testing.T) {
+		// when & then
 		// Call authconfig endpoint.
-		req, err := http.NewRequest("GET", route+"/api/v1/authconfig", nil)
-		require.NoError(t, err)
-
-		resp, err := httpClient.Do(req) //nolint:bodyclose // see `defer Close(...)`
-		require.NoError(t, err)
-		defer Close(t, resp)
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NotNil(t, body)
+		wait.NewHTTPRequest().Method("GET").
+			URL(route + "/api/v1/authconfig").
+			RequireStatusCode(http.StatusOK).
+			Execute(t)
 	})
 }
 
@@ -164,114 +126,119 @@ func TestSignupFails(t *testing.T) {
 	route := await.Host().RegistrationServiceURL
 
 	t.Run("post signup error no token 401 Unauthorized", func(t *testing.T) {
+		// when
 		// Call signup endpoint without a token.
-		requestBody, err := json.Marshal(map[string]string{})
-		require.NoError(t, err)
-		req, err := http.NewRequest("POST", route+"/api/v1/signup", bytes.NewBuffer(requestBody))
-		require.NoError(t, err)
-		req.Header.Set("content-type", "application/json")
+		mp, _ := wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			RequireStatusCode(http.StatusUnauthorized).
+			Execute(t)
 
-		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
-		defer Close(t, resp)
-		require.NoError(t, err)
-
-		// Retrieve unauthorized http status code.
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NotNil(t, body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(t, err)
-
+		// then
 		// Check token error.
 		tokenErr := mp["error"]
 		require.Equal(t, "no token found", tokenErr.(string))
 	})
 	t.Run("post signup error invalid token 401 Unauthorized", func(t *testing.T) {
+		// when
 		// Call signup endpoint with an invalid token.
-		mp := invokeEndpoint(t, "POST", route+"/api/v1/signup", "1223123123", "", http.StatusUnauthorized)
+		mp, _ := wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			Token("1223123123").
+			RequireStatusCode(http.StatusUnauthorized).
+			Execute(t)
 
+		// then
 		// Check token error.
 		tokenErr := mp["error"]
 		require.Equal(t, "token contains an invalid number of segments", tokenErr.(string))
 	})
 	t.Run("post signup exp token 401 Unauthorized", func(t *testing.T) {
+		// when
 		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		// Not identical to the token used in POST signup - should return resource not found.
 		_, token1, err := authsupport.NewToken(
 			authsupport.WithEmail(emailAddress),
 			authsupport.WithExp(time.Now().Add(-60*time.Second)))
 		require.NoError(t, err)
-		mp := invokeEndpoint(t, "POST", route+"/api/v1/signup", token1, "", http.StatusUnauthorized)
+		mp, _ := wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			Token(token1).
+			RequireStatusCode(http.StatusUnauthorized).
+			Execute(t)
 
+		// then
 		// Check token error.
 		tokenErr := mp["error"]
 		require.Contains(t, tokenErr.(string), "token is expired by ")
 	})
 	t.Run("get signup error no token 401 Unauthorized", func(t *testing.T) {
+		// when
 		// Call signup endpoint without a token.
-		req, err := http.NewRequest("GET", route+"/api/v1/signup", nil)
-		require.NoError(t, err)
-		req.Header.Set("content-type", "application/json")
+		mp, _ := wait.NewHTTPRequest().
+			Method("GET").
+			URL(route + "/api/v1/signup").
+			RequireStatusCode(http.StatusUnauthorized).
+			Execute(t)
 
-		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
-		require.NoError(t, err)
-		defer Close(t, resp)
-
-		// Retrieve unauthorized http status code.
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-		require.NotNil(t, body)
-
-		mp := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &mp)
-		require.NoError(t, err)
-
+		// then
 		// Check token error.
 		tokenErr := mp["error"]
 		require.Equal(t, "no token found", tokenErr.(string))
 	})
 	t.Run("get signup error invalid token 401 Unauthorized", func(t *testing.T) {
+		// when
 		// Call signup endpoint with an invalid token.
-		mp := invokeEndpoint(t, "GET", route+"/api/v1/signup", "1223123123", "", http.StatusUnauthorized)
+		mp, _ := wait.NewHTTPRequest().Method("GET").
+			URL(route + "/api/v1/signup").
+			Token("1223123123").
+			RequireStatusCode(http.StatusUnauthorized).
+			Execute(t)
 
+		// then
 		// Check token error.
 		tokenErr := mp["error"]
 		require.Equal(t, "token contains an invalid number of segments", tokenErr.(string))
 	})
 	t.Run("get signup exp token 401 Unauthorized", func(t *testing.T) {
+		// when
 		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
 		// Not identical to the token used in POST signup - should return resource not found.
 		_, token1, err := authsupport.NewToken(
 			authsupport.WithEmail(emailAddress),
 			authsupport.WithExp(time.Now().Add(-60*time.Second)))
 		require.NoError(t, err)
-		mp := invokeEndpoint(t, "GET", route+"/api/v1/signup", token1, "", http.StatusUnauthorized)
+		mp, _ := wait.NewHTTPRequest().
+			Method("GET").
+			URL(route + "/api/v1/signup").
+			Token(token1).
+			RequireStatusCode(http.StatusUnauthorized).
+			Execute(t)
 
+		// then
 		// Check token error.
 		tokenErr := mp["error"]
 		require.Contains(t, tokenErr.(string), "token is expired by ")
 	})
 	t.Run("get signup 404 NotFound", func(t *testing.T) {
+		// when
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error.
 		// Not identical to the token used in POST signup - should return resource not found.
 		_, token1, err := authsupport.NewToken(
 			authsupport.WithEmail(uuid.Must(uuid.NewV4()).String()+"@acme.com"),
 			authsupport.WithIAT(time.Now().Add(-60*time.Second)))
-
 		require.NoError(t, err)
 
+		// then
 		// Call signup endpoint with a valid token.
 		assertGetSignupReturnsNotFound(t, await, token1)
 	})
 
 	t.Run("get signup for crtadmin fails", func(t *testing.T) {
+		// when
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error. Username claim is also
 		// overridden to trigger error and ensure that usersignup is not created.
@@ -282,11 +249,17 @@ func TestSignupFails(t *testing.T) {
 		require.NoError(t, err)
 
 		// Call signup endpoint with a valid token to initiate a signup process
-		response := invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusForbidden)
+		response, _ := wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			Token(token).
+			RequireStatusCode(http.StatusForbidden).
+			Execute(t)
 		require.Equal(t, "forbidden: failed to create usersignup for test-crtadmin", response["message"])
 		require.Equal(t, "error creating UserSignup resource", response["details"])
 		require.Equal(t, float64(403), response["code"])
 
+		// then
 		hostAwait := await.Host()
 		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 15)).WaitAndVerifyThatUserSignupIsNotCreated(identity.ID.String())
 	})
@@ -302,7 +275,12 @@ func TestSignupOK(t *testing.T) {
 	memberAwait := await.Member1()
 	signupUser := func(token, email, userSignupName string, identity *commonauth.Identity) *toolchainv1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
-		invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusAccepted)
+		wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			Token(token).
+			RequireStatusCode(http.StatusAccepted).
+			Execute(t)
 
 		// Wait for the UserSignup to be created
 		userSignup, err := hostAwait.WaitForUserSignup(userSignupName,
@@ -317,7 +295,12 @@ func TestSignupOK(t *testing.T) {
 		assertGetSignupStatusPendingApproval(t, await, identity.Username, token)
 
 		// Attempt to create same usersignup by calling post signup with same token should return an error
-		mp := invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusConflict)
+		mp, _ := wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup").
+			Token(token).
+			RequireStatusCode(http.StatusConflict).
+			Execute(t)
 		assert.Equal(t, fmt.Sprintf("Operation cannot be fulfilled on  \"\": UserSignup [id: %s; username: %s]. Unable to create UserSignup because there is already an active UserSignup with such ID",
 			identity.ID, identity.Username), mp["message"])
 		assert.Equal(t, "error creating UserSignup resource", mp["details"])
@@ -382,8 +365,14 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 		authsupport.WithPreferredUsername("arnold"))
 	require.NoError(t, err)
 
+	// when
 	// Call the signup endpoint
-	invokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+	wait.NewHTTPRequest().
+		Method("POST").
+		URL(route + "/api/v1/signup").
+		Token(token0).
+		RequireStatusCode(http.StatusAccepted).
+		Execute(t)
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup("arnold",
@@ -394,13 +383,21 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
 	assert.Equal(t, emailAddress, emailAnnotation)
 
+	// then
 	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
 	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
 	_, token0, err = authsupport.NewToken(
 		authsupport.WithEmail(emailAddress),
 		authsupport.WithPreferredUsername("arnold"))
 	require.NoError(t, err)
-	mp, mpStatus := parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
+
+	mp, mpStatus := wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup").
+		Token(token0).
+		RequireStatusCode(http.StatusOK).
+		ParseResponse().
+		Execute(t)
 	assert.Equal(t, "", mp["compliantUsername"])
 	assert.Equal(t, "arnold", mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
@@ -421,7 +418,12 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Call the signup endpoint
-	invokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+	wait.NewHTTPRequest().
+		Method("POST").
+		URL(route + "/api/v1/signup").
+		Token(token0).
+		RequireStatusCode(http.StatusAccepted).
+		Execute(t)
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(identity0.Username,
@@ -433,7 +435,12 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, emailAddress, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure verificationRequired is true
-	mp, mpStatus := parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
+	mp, mpStatus := wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup").
+		Token(token0).
+		RequireStatusCode(http.StatusOK).
+		Execute(t)
 	assert.Equal(t, "", mp["compliantUsername"])
 	assert.Equal(t, identity0.Username, mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
@@ -454,8 +461,13 @@ func TestPhoneVerification(t *testing.T) {
 	require.True(t, errors.IsNotFound(err))
 
 	// Initiate the verification process
-	invokeEndpoint(t, "PUT", route+"/api/v1/signup/verification", token0,
-		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
+	wait.NewHTTPRequest().
+		Method("PUT").
+		URL(route + "/api/v1/signup/verification").
+		Token(token0).
+		Body(`{ "country_code":"+61", "phone_number":"408999999" }`).
+		RequireStatusCode(http.StatusNoContent).
+		Execute(t)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = hostAwait.WaitForUserSignup(identity0.Username)
@@ -469,7 +481,12 @@ func TestPhoneVerification(t *testing.T) {
 	require.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationExpiryAnnotationKey])
 
 	// Attempt to verify with an incorrect verification code
-	invokeEndpoint(t, "GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+	wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup/verification/invalid").
+		Token(token0).
+		RequireStatusCode(http.StatusForbidden).
+		Execute(t)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = hostAwait.WaitForUserSignup(identity0.Username)
@@ -482,8 +499,13 @@ func TestPhoneVerification(t *testing.T) {
 	require.Equal(t, verificationCode, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Verify with the correct code
-	invokeEndpoint(t, "GET", route+fmt.Sprintf("/api/v1/signup/verification/%s",
-		userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]), token0, "", http.StatusOK)
+	wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + fmt.Sprintf("/api/v1/signup/verification/%s",
+			userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])).
+		Token(token0).
+		RequireStatusCode(http.StatusOK).
+		Execute(t)
 
 	// Retrieve the updated UserSignup
 	userSignup, err = hostAwait.WaitForUserSignup(identity0.Username,
@@ -499,7 +521,13 @@ func TestPhoneVerification(t *testing.T) {
 	require.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
 
 	// Call get signup endpoint with a valid token and make sure it's pending approval
-	mp, mpStatus = parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
+	mp, mpStatus = wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup").
+		Token(token0).
+		RequireStatusCode(http.StatusOK).
+		ParseResponse().
+		Execute(t)
 	assert.Equal(t, "", mp["compliantUsername"])
 	assert.Equal(t, identity0.Username, mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
@@ -518,7 +546,13 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve the UserSignup from the GET endpoint
-	_, mpStatus = parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
+	_, mpStatus = wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup").
+		Token(token0).
+		RequireStatusCode(http.StatusOK).
+		ParseResponse().
+		Execute(t)
 
 	// Confirm that VerificationRequired is no longer true
 	require.False(t, mpStatus["verificationRequired"].(bool))
@@ -529,7 +563,12 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Call the signup endpoint
-	invokeEndpoint(t, "POST", route+"/api/v1/signup", otherToken, "", http.StatusAccepted)
+	wait.NewHTTPRequest().
+		Method("POST").
+		URL(route + "/api/v1/signup").
+		Token(otherToken).
+		RequireStatusCode(http.StatusAccepted).
+		Execute(t)
 
 	// Wait for the UserSignup to be created
 	otherUserSignup, err := hostAwait.WaitForUserSignup(otherIdentity.Username,
@@ -541,8 +580,13 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, otherEmailValue, otherEmailAnnotation)
 
 	// Initiate the verification process using the same phone number as previously
-	responseMap := invokeEndpoint(t, "PUT", route+"/api/v1/signup/verification", otherToken,
-		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden)
+	responseMap, _ := wait.NewHTTPRequest().
+		Method("PUT").
+		URL(route + "/api/v1/signup/verification").
+		Token(otherToken).
+		Body(`{ "country_code":"+61", "phone_number":"408999999" }`).
+		RequireStatusCode(http.StatusForbidden).
+		Execute(t)
 
 	require.NotEmpty(t, responseMap)
 	require.Equal(t, float64(http.StatusForbidden), responseMap["code"], "code not found in response body map %s", responseMap)
@@ -574,8 +618,13 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now attempt the verification again
-	invokeEndpoint(t, "PUT", route+"/api/v1/signup/verification", otherToken,
-		`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
+	wait.NewHTTPRequest().
+		Method("PUT").
+		URL(route + "/api/v1/signup/verification").
+		Token(otherToken).
+		Body(`{ "country_code":"+61", "phone_number":"408999999" }`).
+		RequireStatusCode(http.StatusNoContent).
+		Execute(t)
 
 	// Retrieve the updated UserSignup again
 	otherUserSignup, err = hostAwait.WaitForUserSignup(otherIdentity.Username)
@@ -602,7 +651,13 @@ func TestActivationCodeVerification(t *testing.T) {
 		userSignup, token := signup(t, hostAwait)
 
 		// when call verification endpoint with a valid activation code
-		invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusOK)
+		wait.NewHTTPRequest().
+			Method("POST").
+			URL(route + "/api/v1/signup/verification/activation-code").
+			Token(token).
+			Body(fmt.Sprintf(`{"code":"%s"}`, event.Name)).
+			RequireStatusCode(http.StatusOK).
+			Execute(t)
 
 		// then
 		// ensure the UserSignup is in "pending approval" condition,
@@ -646,7 +701,13 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, "unknown"), http.StatusForbidden)
+			wait.NewHTTPRequest().
+				Method("POST").
+				URL(route + "/api/v1/signup/verification/activation-code").
+				Token(token).
+				Body(fmt.Sprintf(`{"code":"%s"}`, "unknown")).
+				RequireStatusCode(http.StatusForbidden).
+				Execute(t)
 
 			// then
 			// ensure the UserSignup is not approved yet
@@ -672,7 +733,13 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusForbidden)
+			wait.NewHTTPRequest().
+				Method("POST").
+				URL(route + "/api/v1/signup/verification/activation-code").
+				Token(token).
+				Body(fmt.Sprintf(`{"code":"%s"}`, event.Name)).
+				RequireStatusCode(http.StatusForbidden).
+				Execute(t)
 
 			// then
 			// ensure the UserSignup is not approved yet
@@ -690,7 +757,13 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusForbidden)
+			wait.NewHTTPRequest().
+				Method("POST").
+				URL(route + "/api/v1/signup/verification/activation-code").
+				Token(token).
+				Body(fmt.Sprintf(`{"code":"%s"}`, event.Name)).
+				RequireStatusCode(http.StatusForbidden).
+				Execute(t)
 
 			// then
 			// ensure the UserSignup is not approved yet
@@ -708,7 +781,13 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			invokeEndpoint(t, "POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusForbidden)
+			wait.NewHTTPRequest().
+				Method("POST").
+				URL(route + "/api/v1/signup/verification/activation-code").
+				Token(token).
+				Body(fmt.Sprintf(`{"code":"%s"}`, event.Name)).
+				RequireStatusCode(http.StatusForbidden).
+				Execute(t)
 
 			// then
 			// ensure the UserSignup is approved
@@ -716,10 +795,6 @@ func TestActivationCodeVerification(t *testing.T) {
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
 			require.NoError(t, err)
 			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
-		})
-
-		t.Run("invalid code", func(t *testing.T) {
-
 		})
 	})
 }
@@ -735,7 +810,12 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	require.NoError(t, err)
 
 	// Call the signup endpoint
-	invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusAccepted)
+	wait.NewHTTPRequest().
+		Method("POST").
+		URL(route + "/api/v1/signup").
+		Token(token).
+		RequireStatusCode(http.StatusAccepted).
+		Execute(t)
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(identity.Username,
@@ -751,7 +831,7 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
-	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
+	mp := hostAwait.WaitForUserSignupReadyInRegistrationService(t, username, bearerToken)
 	assert.Equal(t, username, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(), mp["consoleURL"])
@@ -764,7 +844,13 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
-	mp, mpStatus := parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", bearerToken, "", http.StatusOK))
+	mp, mpStatus := wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup").
+		Token(bearerToken).
+		RequireStatusCode(http.StatusOK).
+		ParseResponse().
+		Execute(t)
 	assert.Equal(t, username, mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
@@ -773,75 +859,9 @@ func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities,
 
 func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
-	invokeEndpoint(t, "GET", route+"/api/v1/signup", bearerToken, "", http.StatusNotFound)
-}
-
-// waitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
-func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServiceURL, name, bearerToken string) map[string]interface{} {
-	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
-	var mp, mpStatus map[string]interface{}
-	err := k8swait.Poll(time.Second*5, time.Second*60, func() (done bool, err error) {
-		mp, mpStatus = parseResponse(t, invokeEndpoint(t, "GET", registrationServiceURL+"/api/v1/signup", bearerToken, "", http.StatusOK))
-		// check if `ready` field is set
-		if _, ok := mpStatus["ready"]; !ok {
-			t.Logf("usersignup response for %s is missing `ready` field ", name)
-			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
-			return false, nil
-		}
-		// check if `ready` field is true,
-		// means that user signup is "ready"
-		if mpStatus["ready"].(bool) != true {
-			t.Logf("usersignup %s is not ready yet according to registration service", name)
-			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
-			return false, nil
-		}
-		// check signup status reason
-		if mpStatus["reason"] != toolchainv1alpha1.MasterUserRecordProvisionedReason {
-			t.Logf("usersignup %s is not Provisioned yet according to registration service", name)
-			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
-			return false, nil
-		}
-
-		return true, nil
-	})
-	require.NoError(t, err)
-	return mp
-}
-
-// invokeEndpoint invokes given http URL and returns the json body response
-func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) map[string]interface{} {
-	var reqBody io.Reader
-	t.Logf("invoking http request: %s %s", method, path)
-	if requestBody != "" {
-		t.Logf("request body: %s", requestBody)
-		reqBody = strings.NewReader(requestBody)
-	}
-	req, err := http.NewRequest(method, path, reqBody)
-	require.NoError(t, err)
-	req.Header.Set("Authorization", "Bearer "+authToken)
-	req.Header.Set("content-type", "application/json")
-	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
-	t.Logf("response status code: %d", resp.StatusCode)
-	require.NoError(t, err)
-	defer Close(t, resp)
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.NotNil(t, body)
-	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)
-
-	mp := make(map[string]interface{})
-	if len(body) > 0 {
-		err = json.Unmarshal(body, &mp)
-		require.NoError(t, err)
-	}
-	return mp
-}
-
-// parseResponse parses a given http response body
-func parseResponse(t *testing.T, responseBody map[string]interface{}) (map[string]interface{}, map[string]interface{}) {
-	// Check that the response looks fine
-	status, ok := responseBody["status"].(map[string]interface{})
-	require.True(t, ok)
-	return responseBody, status
+	wait.NewHTTPRequest().
+		Method("GET").
+		URL(route + "/api/v1/signup").
+		Token(bearerToken).
+		RequireStatusCode(http.StatusNotFound).Execute(t)
 }
