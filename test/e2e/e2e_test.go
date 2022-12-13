@@ -270,6 +270,8 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
+		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
+		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
 	t.Run("verify Space is not deleted if namespace is not deleted", func(t *testing.T) {
@@ -489,6 +491,8 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
+		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
+		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
 	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
