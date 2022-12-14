@@ -280,40 +280,6 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute()
 
-	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
-		// given
-		hostAwait.UpdateToolchainConfig(
-			testconfig.AutomaticApproval().Enabled(false),
-			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
-		)
-
-		// when
-		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("manualwithcapacity2").
-			Email("manualwithcapacity2@redhat.com").
-			ManuallyApprove().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
-			Execute().Resources()
-
-		// then
-		s.userIsNotProvisioned(t, userSignup)
-
-		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
-			// when
-			hostAwait.UpdateToolchainConfig(
-				testconfig.AutomaticApproval().Enabled(false),
-				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
-			)
-
-			// then
-			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
-				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-		})
-	})
-
 	s.T().Run("set low max number of spaces and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(testconfig.AutomaticApproval().Enabled(false),
@@ -325,16 +291,16 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		)
 		// create usersignup to reach max number of spaces on both members
 		NewSignupRequest(t, s.Awaitilities).
-			Username("manualwithcapacity3").
-			Email("manualwithcapacity3@redhat.com").
+			Username("manualwithcapacity2").
+			Email("manualwithcapacity2@redhat.com").
 			ManuallyApprove().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute().Resources()
 
 		// when
 		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
-			Username("manualwithcapacity4").
-			Email("manualwithcapacity4@redhat.com").
+			Username("manualwithcapacity3").
+			Email("manualwithcapacity3@redhat.com").
 			ManuallyApprove().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
 			Execute().Resources()
@@ -350,6 +316,40 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 						testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
 						testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
 					),
+			)
+
+			// then
+			userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
+				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+			require.NoError(s.T(), err)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+		})
+	})
+
+	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(
+			testconfig.AutomaticApproval().Enabled(false),
+			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
+		)
+
+		// when
+		userSignup, _ := NewSignupRequest(t, s.Awaitilities).
+			Username("manualwithcapacity4").
+			Email("manualwithcapacity4@redhat.com").
+			ManuallyApprove().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin(), ApprovedByAdminNoCluster())...).
+			Execute().Resources()
+
+		// then
+		s.userIsNotProvisioned(t, userSignup)
+
+		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
+			// when
+			hostAwait.UpdateToolchainConfig(
+				testconfig.AutomaticApproval().Enabled(false),
+				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
 			)
 
 			// then
