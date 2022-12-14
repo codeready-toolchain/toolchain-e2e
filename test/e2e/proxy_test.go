@@ -151,7 +151,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// then
 				err := proxyCl.Create(context.TODO(), expectedApp)
-				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "system:serviceaccount:%[1]s:appstudio-%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.username, hostAwait.Namespace))
+				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.username, hostAwait.Namespace))
 			})
 
 			if index == 1 { // only for the second user
@@ -178,7 +178,7 @@ func TestProxyFlow(t *testing.T) {
 					err = proxyCl.Create(context.TODO(), appToCreate)
 
 					// then
-					require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "system:serviceaccount:%[1]s:appstudio-%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.username, users[0].expectedMemberCluster.Namespace))
+					require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.username, users[0].expectedMemberCluster.Namespace))
 				})
 			}
 		})
