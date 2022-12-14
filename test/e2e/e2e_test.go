@@ -28,8 +28,8 @@ func TestE2EFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-
 	consoleURL := memberAwait.GetConsoleURL(t)
+
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
 		t.Run("verify member cluster status", func(t *testing.T) {
@@ -77,6 +77,7 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
+	// capture "original" counters in toolchain status before creating new Users/Spaces
 	originalToolchainStatus := hostAwait.WaitForToolchainStatus(t,
 		wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
@@ -86,6 +87,11 @@ func TestE2EFlow(t *testing.T) {
 	for _, m := range originalToolchainStatus.Status.Members {
 		originalUserAccountCounts[m.ClusterName] = m.UserAccountCount
 	}
+	originalSpaceCounts := make(map[string]int, len(originalToolchainStatus.Status.Members))
+	for _, m := range originalToolchainStatus.Status.Members {
+		originalSpaceCounts[m.ClusterName] = m.SpaceCount
+	}
+
 	t.Logf("the original UserAccount counts: %v", originalUserAccountCounts)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
@@ -256,18 +262,14 @@ func TestE2EFlow(t *testing.T) {
 		VerifyMultipleSignups(t, awaitilities, signups)
 
 		// check if the MUR and UA counts match
-		originalUserAccountCounts := make(map[string]int, len(originalToolchainStatus.Status.Members))
-		for _, m := range originalToolchainStatus.Status.Members {
-			originalUserAccountCounts[m.ClusterName] = m.UserAccountCount
-		}
 		hostAwait.WaitForToolchainStatus(t,
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 "multiple-signup-testuser" + "john" + "extrajohn" + "targetedjohn + originalsubjohn
 			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
-			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
-			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
+			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalSpaceCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
+			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalSpaceCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 		)
 	})
 
@@ -457,8 +459,8 @@ func TestE2EFlow(t *testing.T) {
 			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+8), // 5 "multiple-signup-testuser" + "extrajohn" + "targetedjohn + originalsubjohn
 			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
-			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
-			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
+			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalSpaceCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
+			wait.UntilToolchainStatusHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalSpaceCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 		)
 	})
 
