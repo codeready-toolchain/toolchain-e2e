@@ -82,6 +82,11 @@ func TestE2EFlow(t *testing.T) {
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
+	originalUserAccountCounts := make(map[string]int, len(originalToolchainStatus.Status.Members))
+	for _, m := range originalToolchainStatus.Status.Members {
+		originalUserAccountCounts[m.ClusterName] = m.UserAccountCount
+	}
+	t.Logf("the original UserAccount counts: %v", originalUserAccountCounts)
 
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
@@ -95,7 +100,7 @@ func TestE2EFlow(t *testing.T) {
 		TargetCluster(memberAwait.ClusterName).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		DisableCleanup().
+		// DisableCleanup().
 		Execute(t).Resources()
 
 	extrajohnName := "extrajohn"
@@ -258,7 +263,7 @@ func TestE2EFlow(t *testing.T) {
 		hostAwait.WaitForToolchainStatus(t,
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+9),
+			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 "multiple-signup-testuser" + "john" + "extrajohn" + "targetedjohn + originalsubjohn
 			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+8),
@@ -446,14 +451,10 @@ func TestE2EFlow(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
 
 		// check if the MUR and UA counts match
-		originalUserAccountCounts := make(map[string]int, len(originalToolchainStatus.Status.Members))
-		for _, m := range originalToolchainStatus.Status.Members {
-			originalUserAccountCounts[m.ClusterName] = m.UserAccountCount
-		}
 		hostAwait.WaitForToolchainStatus(t,
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+8),
+			wait.UntilToolchainStatusHasMurCount("external", originalMursPerDomainCount["external"]+8), // 5 "multiple-signup-testuser" + "extrajohn" + "targetedjohn + originalsubjohn
 			wait.UntilToolchainStatusHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
 			wait.UntilToolchainStatusHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[targetedJohnMur.Spec.UserAccounts[0].TargetCluster]+1),
 			wait.UntilToolchainStatusHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalUserAccountCounts[johnsmithMur.Spec.UserAccounts[0].TargetCluster]+7),
