@@ -22,12 +22,13 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	k8swait "k8s.io/apimachinery/pkg/util/wait"
 )
 
 var httpClient = HTTPClient
@@ -720,14 +721,10 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 
 func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	hostAwait := await.Host()
-	route := await.Host().RegistrationServiceURL
 	memberAwait := await.Member1()
-	mp, mpStatus := parseResponse(t, invokeEndpoint(t, "GET", route+"/api/v1/signup", bearerToken, "", http.StatusOK))
+	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
 	assert.Equal(t, username, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
-	require.IsType(t, false, mpStatus["ready"])
-	assert.True(t, mpStatus["ready"].(bool))
-	assert.Equal(t, "Provisioned", mpStatus["reason"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
 	memberCluster, found := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.True(t, found)
@@ -749,9 +746,44 @@ func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, beare
 	invokeEndpoint(t, "GET", route+"/api/v1/signup", bearerToken, "", http.StatusNotFound)
 }
 
+// waitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
+func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServiceURL, name, bearerToken string) map[string]interface{} {
+	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
+	var mp, mpStatus map[string]interface{}
+	err := k8swait.Poll(time.Second, time.Second*60, func() (done bool, err error) {
+		mp, mpStatus = parseResponse(t, invokeEndpoint(t, "GET", registrationServiceURL+"/api/v1/signup", bearerToken, "", http.StatusOK))
+		// check if `ready` field is set
+		if _, ok := mpStatus["ready"]; !ok {
+			t.Logf("usersignup response for %s is missing `ready` field ", name)
+			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
+			return false, nil
+		}
+		// if `ready` field is not true,
+		// means that user signup is not "ready"
+		if !mpStatus["ready"].(bool) {
+			t.Logf("usersignup %s is not ready yet according to registration service", name)
+			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
+			return false, nil
+		}
+		// check signup status reason
+		if mpStatus["reason"] != toolchainv1alpha1.MasterUserRecordProvisionedReason {
+			t.Logf("usersignup %s is not Provisioned yet according to registration service", name)
+			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
+			return false, nil
+		}
+
+		return true, nil
+	})
+	require.NoError(t, err)
+	return mp
+}
+
+// invokeEndpoint invokes given http URL and returns the json body response
 func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int) map[string]interface{} {
 	var reqBody io.Reader
+	t.Logf("invoking http request: %s %s", method, path)
 	if requestBody != "" {
+		t.Logf("request body: %s", requestBody)
 		reqBody = strings.NewReader(requestBody)
 	}
 	req, err := http.NewRequest(method, path, reqBody)
@@ -759,6 +791,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
 	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
+	t.Logf("response status code: %d", resp.StatusCode)
 	require.NoError(t, err)
 	defer Close(t, resp)
 
@@ -775,6 +808,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	return mp
 }
 
+// parseResponse parses a given http response body
 func parseResponse(t *testing.T, responseBody map[string]interface{}) (map[string]interface{}, map[string]interface{}) {
 	// Check that the response looks fine
 	status, ok := responseBody["status"].(map[string]interface{})
