@@ -790,7 +790,7 @@ func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServi
 		}
 		// check if `ready` field is true,
 		// means that user signup is "ready"
-		if mpStatus["ready"].(bool) {
+		if !mpStatus["ready"].(bool) {
 			t.Logf("usersignup %s is not ready yet according to registration service", name)
 			t.Logf("registration service status response: %s", spew.Sdump(mpStatus))
 			return false, nil
