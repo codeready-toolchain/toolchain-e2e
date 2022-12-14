@@ -17,7 +17,7 @@ import (
 const ContentTypeApplicationJSON = "application/json"
 
 // NewRequest creates a new http client configuration
-func NewRequest() *HTTPRequest {
+func NewRequest() *Request {
 	cl := &http.Client{
 		Timeout: time.Second * 10,
 		Transport: &http.Transport{
@@ -27,12 +27,12 @@ func NewRequest() *HTTPRequest {
 		},
 	}
 
-	return &HTTPRequest{
+	return &Request{
 		client: cl,
 	}
 }
 
-// HTTPRequest provides an API for creating a new HTTP request.
+// Request provides an API for creating a new HTTP request.
 // Function chaining may be used to achieve an efficient "single-statement" HTTP requests creation, for example:
 //
 // body, status := NewRequest().
@@ -42,7 +42,7 @@ func NewRequest() *HTTPRequest {
 // RequireStatusCode(http.StatusOK).
 // ParseResponse().
 // Execute(t)
-type HTTPRequest struct {
+type Request struct {
 	client              *http.Client
 	method              string
 	url                 string
@@ -57,54 +57,54 @@ type HTTPRequest struct {
 
 // Method specifies the HTTP method to be used (GET/POST/PUT/DELETE ...)
 // This is a mandatory field and should be set before invoking Execute.
-func (c *HTTPRequest) Method(method string) *HTTPRequest {
+func (c *Request) Method(method string) *Request {
 	c.method = method
 	return c
 }
 
 // URL specifies the URL where the request will be invoked.
 // This is a mandatory field and should be set before invoking Execute.
-func (c *HTTPRequest) URL(URL string) *HTTPRequest {
+func (c *Request) URL(URL string) *Request {
 	c.url = URL
 	return c
 }
 
 // Token specifies the auth token to be used as bear token for the HTTP request.
 // This is an optional field and should be set if the endpoint is authenticated.
-func (c *HTTPRequest) Token(token string) *HTTPRequest {
+func (c *Request) Token(token string) *Request {
 	c.token = token
 	return c
 }
 
 // RequireStatusCode specifies which HTTP status code should be returned by the endpoint.
 // This is an optional field, if set the response status code will be compared against this value.
-func (c *HTTPRequest) RequireStatusCode(statusCode int) *HTTPRequest {
+func (c *Request) RequireStatusCode(statusCode int) *Request {
 	c.requireStatusCode = statusCode
 	return c
 }
 
 // RequireResponseBody pecifies which HTTP response body should be returned by the endpoint.
 // This is an optional field, if set the response body will be compared against this value.
-func (c *HTTPRequest) RequireResponseBody(responseBody string) *HTTPRequest {
+func (c *Request) RequireResponseBody(responseBody string) *Request {
 	c.requireResponseBody = responseBody
 	return c
 }
 
 // QueryParams specifies which the query parameters to be used during the HTTP call.
 // This is an optional field.
-func (c *HTTPRequest) QueryParams(queryParams map[string]string) *HTTPRequest {
+func (c *Request) QueryParams(queryParams map[string]string) *Request {
 	c.queryParams = queryParams
 	return c
 }
 
 // Body specifies which the HTTP body to be used during the HTTP call.
 // This is an optional field.
-func (c *HTTPRequest) Body(requestBody string) *HTTPRequest {
+func (c *Request) Body(requestBody string) *Request {
 	c.body = requestBody
 	return c
 }
 
-func (c *HTTPRequest) ContentType(contentType string) *HTTPRequest {
+func (c *Request) ContentType(contentType string) *Request {
 	c.contentType = contentType
 	return c
 }
@@ -115,14 +115,14 @@ func (c *HTTPRequest) ContentType(contentType string) *HTTPRequest {
 // - the `status` object as a map
 // see Execute method for more details on the parsing logic.
 // This is an optional field.
-func (c *HTTPRequest) ParseResponse() *HTTPRequest {
+func (c *Request) ParseResponse() *Request {
 	c.parseResponse = true
 	return c
 }
 
 // Execute triggers the HTTP request according to all configuration set in the above fields,
 // and does some parsing of the response if configured by the client.
-func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]interface{}) {
+func (c *Request) Execute(t *testing.T) (map[string]interface{}, map[string]interface{}) {
 	var reqBody io.Reader
 	t.Logf("invoking http request: %s %s", c.method, c.url)
 
@@ -191,7 +191,7 @@ func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]
 }
 
 // UnmarshalJSON runs json unmarshalling on the response body, if JSON content type was expected.
-func (c *HTTPRequest) UnmarshalJSON(t *testing.T, body []byte) (map[string]interface{}, map[string]interface{}) {
+func (c *Request) UnmarshalJSON(t *testing.T, body []byte) (map[string]interface{}, map[string]interface{}) {
 	mp := make(map[string]interface{})
 	if len(body) > 0 {
 		err := json.Unmarshal(body, &mp)
