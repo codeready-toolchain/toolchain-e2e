@@ -77,7 +77,7 @@ func (a *HostAwaitility) sprintAllResources() string {
 		for _, r := range all {
 			y, _ := yaml.Marshal(r)
 			buf.Write(y)
-			buf.WriteString("\n")
+			buf.WriteString("\n---\n")
 		}
 	}
 	return buf.String()
@@ -101,6 +101,15 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range masteruserrecords.Items {
+		copy := i
+		all = append(all, &copy)
+	}
+	// spaces
+	spaces := &toolchainv1alpha1.SpaceList{}
+	if err := a.Client.List(context.TODO(), spaces, client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
+	}
+	for _, i := range spaces.Items {
 		copy := i
 		all = append(all, &copy)
 	}
