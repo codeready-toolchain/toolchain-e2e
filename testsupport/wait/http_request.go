@@ -36,12 +36,12 @@ func NewHTTPRequest() *HTTPRequest {
 // Function chaining may be used to achieve an efficient "single-statement" HTTP requests creation, for example:
 //
 // body, status := NewHTTPRequest().
-// 					Method("GET").
-//					URL(route + "/api/v1/signup").
-//					Token(token0).
-//					RequireStatusCode(http.StatusOK).
-//					ParseResponse().
-//					Execute(t)
+// Method("GET").
+// URL(route + "/api/v1/signup").
+// Token(token0).
+// RequireStatusCode(http.StatusOK).
+// ParseResponse().
+// Execute(t)
 type HTTPRequest struct {
 	client              *http.Client
 	method              string
@@ -187,14 +187,14 @@ func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]
 	}
 
 	//  return JSON response
-	return c.UnmarshalJSON(t, body, err)
+	return c.UnmarshalJSON(t, body)
 }
 
 // UnmarshalJSON runs json unmarshalling on the response body, if JSON content type was expected.
-func (c *HTTPRequest) UnmarshalJSON(t *testing.T, body []byte, err error) (map[string]interface{}, map[string]interface{}) {
+func (c *HTTPRequest) UnmarshalJSON(t *testing.T, body []byte) (map[string]interface{}, map[string]interface{}) {
 	mp := make(map[string]interface{})
 	if len(body) > 0 {
-		err = json.Unmarshal(body, &mp)
+		err := json.Unmarshal(body, &mp)
 		require.NoError(t, err)
 	}
 
