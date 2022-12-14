@@ -14,6 +14,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	httpsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/http"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -580,7 +581,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		route := hostAwait.RegistrationServiceURL
 
 		// Call signup endpoint with a valid token to initiate a signup process
-		statusErr, _ := wait.NewHTTPRequest().
+		statusErr, _ := httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			Token(token0).

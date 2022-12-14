@@ -13,6 +13,7 @@ import (
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	httpsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/http"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
@@ -214,7 +215,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	}
 
 	// Call the signup endpoint
-	wait.NewHTTPRequest().Method("POST").
+	httpsupport.NewRequest().Method("POST").
 		URL(hostAwait.RegistrationServiceURL + "/api/v1/signup").
 		Token(r.token).
 		RequireStatusCode(r.requiredHTTPStatus).

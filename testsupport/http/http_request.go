@@ -1,4 +1,4 @@
-package wait
+package http
 
 import (
 	"crypto/tls"
@@ -16,8 +16,8 @@ import (
 // HTTP request, but can be configured using the `c.ContentType` method.
 const ContentTypeApplicationJSON = "application/json"
 
-// NewHTTPRequest creates a new http client configuration
-func NewHTTPRequest() *HTTPRequest {
+// NewRequest creates a new http client configuration
+func NewRequest() *HTTPRequest {
 	cl := &http.Client{
 		Timeout: time.Second * 10,
 		Transport: &http.Transport{
@@ -35,7 +35,7 @@ func NewHTTPRequest() *HTTPRequest {
 // HTTPRequest provides an API for creating a new HTTP request.
 // Function chaining may be used to achieve an efficient "single-statement" HTTP requests creation, for example:
 //
-// body, status := NewHTTPRequest().
+// body, status := NewRequest().
 // Method("GET").
 // URL(route + "/api/v1/signup").
 // Token(token0).

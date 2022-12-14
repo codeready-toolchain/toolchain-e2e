@@ -17,7 +17,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-
+	httpsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/http"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
@@ -677,7 +677,7 @@ func (a *HostAwaitility) WaitForUserSignupReadyInRegistrationService(t *testing.
 	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
 	var mp, mpStatus map[string]interface{}
 	err := wait.Poll(time.Second, time.Second*60, func() (done bool, err error) {
-		mp, mpStatus = NewHTTPRequest().Method("GET").
+		mp, mpStatus = httpsupport.NewRequest().Method("GET").
 			URL(a.RegistrationServiceURL + "/api/v1/signup").
 			Token(bearerToken).
 			RequireStatusCode(http.StatusOK).

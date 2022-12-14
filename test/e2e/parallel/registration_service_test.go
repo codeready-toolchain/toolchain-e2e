@@ -16,6 +16,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	httpsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/http"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func TestLandingPageReachable(t *testing.T) {
 
 	// when & then
 	// just make sure that the landing page is reachable
-	wait.NewHTTPRequest().Method("GET").
+	httpsupport.NewRequest().Method("GET").
 		URL(route).
 		ContentType("text/plain").
 		RequireStatusCode(http.StatusOK).
@@ -48,7 +49,7 @@ func TestHealth(t *testing.T) {
 	t.Run("get healthcheck 200 OK", func(t *testing.T) {
 		// when
 		// Call health endpoint.
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("GET").
 			URL(route + "/api/v1/health").
 			RequireStatusCode(http.StatusOK).
@@ -84,7 +85,7 @@ func TestWoopra(t *testing.T) {
 	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseValue string) {
 		// when & then
 		// Call woopra domain endpoint.
-		wait.NewHTTPRequest().
+		httpsupport.NewRequest().
 			Method("GET").
 			URL(fmt.Sprintf("%s/api/v1/%s", route, endPointPath)).
 			ContentType("text/plain").
@@ -113,7 +114,7 @@ func TestAuthConfig(t *testing.T) {
 	t.Run("get authconfig 200 OK", func(t *testing.T) {
 		// when & then
 		// Call authconfig endpoint.
-		wait.NewHTTPRequest().Method("GET").
+		httpsupport.NewRequest().Method("GET").
 			URL(route + "/api/v1/authconfig").
 			RequireStatusCode(http.StatusOK).
 			Execute(t)
@@ -129,7 +130,7 @@ func TestSignupFails(t *testing.T) {
 	t.Run("post signup error no token 401 Unauthorized", func(t *testing.T) {
 		// when
 		// Call signup endpoint without a token.
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			RequireStatusCode(http.StatusUnauthorized).
@@ -143,7 +144,7 @@ func TestSignupFails(t *testing.T) {
 	t.Run("post signup error invalid token 401 Unauthorized", func(t *testing.T) {
 		// when
 		// Call signup endpoint with an invalid token.
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			Token("1223123123").
@@ -163,7 +164,7 @@ func TestSignupFails(t *testing.T) {
 			authsupport.WithEmail(emailAddress),
 			authsupport.WithExp(time.Now().Add(-60*time.Second)))
 		require.NoError(t, err)
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			Token(token1).
@@ -178,7 +179,7 @@ func TestSignupFails(t *testing.T) {
 	t.Run("get signup error no token 401 Unauthorized", func(t *testing.T) {
 		// when
 		// Call signup endpoint without a token.
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("GET").
 			URL(route + "/api/v1/signup").
 			RequireStatusCode(http.StatusUnauthorized).
@@ -192,7 +193,7 @@ func TestSignupFails(t *testing.T) {
 	t.Run("get signup error invalid token 401 Unauthorized", func(t *testing.T) {
 		// when
 		// Call signup endpoint with an invalid token.
-		mp, _ := wait.NewHTTPRequest().Method("GET").
+		mp, _ := httpsupport.NewRequest().Method("GET").
 			URL(route + "/api/v1/signup").
 			Token("1223123123").
 			RequireStatusCode(http.StatusUnauthorized).
@@ -211,7 +212,7 @@ func TestSignupFails(t *testing.T) {
 			authsupport.WithEmail(emailAddress),
 			authsupport.WithExp(time.Now().Add(-60*time.Second)))
 		require.NoError(t, err)
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("GET").
 			URL(route + "/api/v1/signup").
 			Token(token1).
@@ -250,7 +251,7 @@ func TestSignupFails(t *testing.T) {
 		require.NoError(t, err)
 
 		// Call signup endpoint with a valid token to initiate a signup process
-		response, _ := wait.NewHTTPRequest().
+		response, _ := httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			Token(token).
@@ -276,7 +277,7 @@ func TestSignupOK(t *testing.T) {
 	memberAwait := await.Member1()
 	signupUser := func(token, email, userSignupName string, identity *commonauth.Identity) *toolchainv1alpha1.UserSignup {
 		// Call signup endpoint with a valid token to initiate a signup process
-		wait.NewHTTPRequest().
+		httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			Token(token).
@@ -296,7 +297,7 @@ func TestSignupOK(t *testing.T) {
 		assertGetSignupStatusPendingApproval(t, await, identity.Username, token)
 
 		// Attempt to create same usersignup by calling post signup with same token should return an error
-		mp, _ := wait.NewHTTPRequest().
+		mp, _ := httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup").
 			Token(token).
@@ -368,7 +369,7 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 
 	// when
 	// Call the signup endpoint
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("POST").
 		URL(route + "/api/v1/signup").
 		Token(token0).
@@ -392,7 +393,7 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 		authsupport.WithPreferredUsername("arnold"))
 	require.NoError(t, err)
 
-	mp, mpStatus := wait.NewHTTPRequest().
+	mp, mpStatus := httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup").
 		Token(token0).
@@ -419,7 +420,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Call the signup endpoint
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("POST").
 		URL(route + "/api/v1/signup").
 		Token(token0).
@@ -436,11 +437,12 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, emailAddress, emailAnnotation)
 
 	// Call get signup endpoint with a valid token and make sure verificationRequired is true
-	mp, mpStatus := wait.NewHTTPRequest().
+	mp, mpStatus := httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup").
 		Token(token0).
 		RequireStatusCode(http.StatusOK).
+		ParseResponse().
 		Execute(t)
 	assert.Equal(t, "", mp["compliantUsername"])
 	assert.Equal(t, identity0.Username, mp["username"])
@@ -462,7 +464,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.True(t, errors.IsNotFound(err))
 
 	// Initiate the verification process
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("PUT").
 		URL(route + "/api/v1/signup/verification").
 		Token(token0).
@@ -482,7 +484,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NotEmpty(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationExpiryAnnotationKey])
 
 	// Attempt to verify with an incorrect verification code
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup/verification/invalid").
 		Token(token0).
@@ -500,7 +502,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.Equal(t, verificationCode, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 
 	// Verify with the correct code
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("GET").
 		URL(route + fmt.Sprintf("/api/v1/signup/verification/%s",
 			userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])).
@@ -522,7 +524,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.Empty(t, userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationInitTimestampAnnotationKey])
 
 	// Call get signup endpoint with a valid token and make sure it's pending approval
-	mp, mpStatus = wait.NewHTTPRequest().
+	mp, mpStatus = httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup").
 		Token(token0).
@@ -547,7 +549,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve the UserSignup from the GET endpoint
-	_, mpStatus = wait.NewHTTPRequest().
+	_, mpStatus = httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup").
 		Token(token0).
@@ -564,7 +566,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Call the signup endpoint
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("POST").
 		URL(route + "/api/v1/signup").
 		Token(otherToken).
@@ -581,7 +583,7 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, otherEmailValue, otherEmailAnnotation)
 
 	// Initiate the verification process using the same phone number as previously
-	responseMap, _ := wait.NewHTTPRequest().
+	responseMap, _ := httpsupport.NewRequest().
 		Method("PUT").
 		URL(route + "/api/v1/signup/verification").
 		Token(otherToken).
@@ -619,7 +621,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now attempt the verification again
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("PUT").
 		URL(route + "/api/v1/signup/verification").
 		Token(otherToken).
@@ -652,7 +654,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		userSignup, token := signup(t, hostAwait)
 
 		// when call verification endpoint with a valid activation code
-		wait.NewHTTPRequest().
+		httpsupport.NewRequest().
 			Method("POST").
 			URL(route + "/api/v1/signup/verification/activation-code").
 			Token(token).
@@ -702,7 +704,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			wait.NewHTTPRequest().
+			httpsupport.NewRequest().
 				Method("POST").
 				URL(route + "/api/v1/signup/verification/activation-code").
 				Token(token).
@@ -734,7 +736,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			wait.NewHTTPRequest().
+			httpsupport.NewRequest().
 				Method("POST").
 				URL(route + "/api/v1/signup/verification/activation-code").
 				Token(token).
@@ -758,7 +760,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			wait.NewHTTPRequest().
+			httpsupport.NewRequest().
 				Method("POST").
 				URL(route + "/api/v1/signup/verification/activation-code").
 				Token(token).
@@ -782,7 +784,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, token := signup(t, hostAwait)
 
 			// when call verification endpoint with a valid activation code
-			wait.NewHTTPRequest().
+			httpsupport.NewRequest().
 				Method("POST").
 				URL(route + "/api/v1/signup/verification/activation-code").
 				Token(token).
@@ -811,7 +813,7 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	require.NoError(t, err)
 
 	// Call the signup endpoint
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("POST").
 		URL(route + "/api/v1/signup").
 		Token(token).
@@ -845,7 +847,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
-	mp, mpStatus := wait.NewHTTPRequest().
+	mp, mpStatus := httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup").
 		Token(bearerToken).
@@ -860,7 +862,7 @@ func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities,
 
 func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
-	wait.NewHTTPRequest().
+	httpsupport.NewRequest().
 		Method("GET").
 		URL(route + "/api/v1/signup").
 		Token(bearerToken).
