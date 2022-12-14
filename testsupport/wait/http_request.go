@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ContentTypeApplicationJSON is the default content type set during
+// HTTP request, but can be configured using the `c.ContentType` method.
+const ContentTypeApplicationJSON = "application/json"
+
 // NewHTTPRequest creates a new http client configuration
 func NewHTTPRequest() *HTTPRequest {
 	cl := &http.Client{
@@ -47,6 +51,7 @@ type HTTPRequest struct {
 	requireResponseBody string
 	body                string
 	queryParams         map[string]string
+	contentType         string
 	parseResponse       bool
 }
 
@@ -99,15 +104,24 @@ func (c *HTTPRequest) Body(requestBody string) *HTTPRequest {
 	return c
 }
 
-// ParseResponse specifies if the response from the HTTP endpoint should be parsed according to custom logic.
-// See Execute method for more details on the parsing logic.
+func (c *HTTPRequest) ContentType(contentType string) *HTTPRequest {
+	c.contentType = contentType
+	return c
+}
+
+// ParseResponse specifies if the response from the HTTP endpoint should be parsed using custom logic.
+// It will expect a `status` field to be set in the response body, and it will return both:
+// - the entire body response
+// - the `status` object as a map
+// see Execute method for more details on the parsing logic.
 // This is an optional field.
 func (c *HTTPRequest) ParseResponse() *HTTPRequest {
 	c.parseResponse = true
 	return c
 }
 
-// Execute triggers the HTTP request according to all configuration set in the above fields
+// Execute triggers the HTTP request according to all configuration set in the above fields,
+// and does some parsing of the response if configured by the client.
 func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]interface{}) {
 	var reqBody io.Reader
 	t.Logf("invoking http request: %s %s", c.method, c.url)
@@ -124,7 +138,14 @@ func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
-	req.Header.Set("content-type", "application/json")
+	if c.contentType != "" {
+		// override default content type if specified
+		req.Header.Set("content-type", c.contentType)
+	} else {
+		// default content type is json if not set
+		c.contentType = ContentTypeApplicationJSON
+		req.Header.Set("content-type", ContentTypeApplicationJSON)
+	}
 
 	// set query parameters if specified
 	if len(c.queryParams) > 0 {
@@ -154,10 +175,23 @@ func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]
 		value := string(body)
 		require.NoError(t, err)
 
-		// Verify JSON response.
+		// Verify response string match
 		require.Equal(t, c.requireResponseBody, value)
 	}
 
+	// return raw response if it's not JSON
+	if c.contentType != ContentTypeApplicationJSON {
+		return map[string]interface{}{
+			"response": string(body),
+		}, nil
+	}
+
+	//  return JSON response
+	return c.UnmarshalJSON(t, body, err)
+}
+
+// UnmarshalJSON runs json unmarshalling on the response body, if JSON content type was expected.
+func (c *HTTPRequest) UnmarshalJSON(t *testing.T, body []byte, err error) (map[string]interface{}, map[string]interface{}) {
 	mp := make(map[string]interface{})
 	if len(body) > 0 {
 		err = json.Unmarshal(body, &mp)
@@ -165,7 +199,8 @@ func (c *HTTPRequest) Execute(t *testing.T) (map[string]interface{}, map[string]
 	}
 
 	if c.parseResponse {
-		// Check that the response looks fine
+		// Check if there is a status object in the response,
+		// and return that to the caller.
 		status, ok := mp["status"].(map[string]interface{})
 		require.True(t, ok)
 		return mp, status

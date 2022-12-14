@@ -34,6 +34,7 @@ func TestLandingPageReachable(t *testing.T) {
 	// just make sure that the landing page is reachable
 	wait.NewHTTPRequest().Method("GET").
 		URL(route).
+		ContentType("text/plain").
 		RequireStatusCode(http.StatusOK).
 		Execute(t)
 }
@@ -45,7 +46,6 @@ func TestHealth(t *testing.T) {
 	route := await.Host().RegistrationServiceURL
 
 	t.Run("get healthcheck 200 OK", func(t *testing.T) {
-
 		// when
 		// Call health endpoint.
 		mp, _ := wait.NewHTTPRequest().
@@ -87,6 +87,7 @@ func TestWoopra(t *testing.T) {
 		wait.NewHTTPRequest().
 			Method("GET").
 			URL(fmt.Sprintf("%s/api/v1/%s", route, endPointPath)).
+			ContentType("text/plain").
 			RequireStatusCode(http.StatusOK).
 			RequireResponseBody(expectedResponseValue).
 			Execute(t)
