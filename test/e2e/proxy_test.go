@@ -166,10 +166,10 @@ func TestProxyFlow(t *testing.T) {
 					// given
 					// verify first user's namespace still exists
 					ns := &corev1.Namespace{}
-					err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: users[0].compliantUsername}, ns)
+					err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: users[0].username}, ns)
 					require.NoError(t, err, "failed to verify the first user's namespace still exists")
 
-					appName := fmt.Sprintf("%s-proxy-test-app", users[0].compliantUsername)
+					appName := fmt.Sprintf("%s-proxy-test-app", users[0].username)
 					appToCreate := &hasv1alpha1.Application{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      appName,
