@@ -41,6 +41,7 @@ type proxyUser struct {
 	token                 string
 	identityID            uuid.UUID
 	signup                *toolchainv1alpha1.UserSignup
+	compliantUsername     string
 }
 
 // full flow from usersignup with approval down to namespaces creation and cleanup
@@ -73,6 +74,11 @@ func TestProxyFlow(t *testing.T) {
 			username:              "proxymember2",
 			identityID:            uuid.Must(uuid.NewV4()),
 		},
+		{
+			expectedMemberCluster: memberAwait,
+			username:              "compliant.username", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
+			identityID:            uuid.Must(uuid.NewV4()),
+		},
 	}
 
 	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
@@ -92,9 +98,10 @@ func TestProxyFlow(t *testing.T) {
 
 			user.signup, _ = req.Resources()
 			user.token = req.GetToken()
+			user.compliantUsername = user.signup.Status.CompliantUsername
 
 			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
-			_, err := hostAwait.GetMasterUserRecord(user.username)
+			_, err := hostAwait.GetMasterUserRecord(user.compliantUsername)
 			require.NoError(t, err)
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
@@ -107,8 +114,8 @@ func TestProxyFlow(t *testing.T) {
 				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
 					// given
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.username, i)
-					expectedApp := newApplication(applicationName, user.username)
+					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					expectedApp := newApplication(applicationName, user.compliantUsername)
 
 					// when
 					err := proxyCl.Create(context.TODO(), expectedApp)
@@ -126,7 +133,7 @@ func TestProxyFlow(t *testing.T) {
 
 					// Double check that the Application does exist using a regular client (non-proxy)
 					createdApp := &hasv1alpha1.Application{}
-					err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.username, Name: applicationName}, createdApp)
+					err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.compliantUsername, Name: applicationName}, createdApp)
 					require.NoError(t, err)
 					require.NotEmpty(t, createdApp)
 					assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
@@ -151,7 +158,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// then
 				err := proxyCl.Create(context.TODO(), expectedApp)
-				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.username, hostAwait.Namespace))
+				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, hostAwait.Namespace))
 			})
 
 			if index == 1 { // only for the second user
@@ -178,7 +185,7 @@ func TestProxyFlow(t *testing.T) {
 					err = proxyCl.Create(context.TODO(), appToCreate)
 
 					// then
-					require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.username, users[0].expectedMemberCluster.Namespace))
+					require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, users[0].expectedMemberCluster.Namespace))
 				})
 			}
 		})
@@ -254,7 +261,7 @@ func (w *wsWatcher) Start() func() {
 	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(w.user.token))
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
-	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.username)
+	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.compliantUsername)
 	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
