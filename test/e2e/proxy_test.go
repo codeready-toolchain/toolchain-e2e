@@ -204,7 +204,7 @@ func TestProxyFlow(t *testing.T) {
 func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
 	preexistingUser := &userv1.User{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: user.compliantUsername,
+			Name: user.username,
 		},
 		Identities: []string{
 			identitypkg.NewIdentityNamingStandard(user.identityID.String(), "rhd").IdentityName(),
