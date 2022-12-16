@@ -433,7 +433,6 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	checks := []spaceRoleObjectsCheck{}
 	roles := 0
 	rolebindings := 0
-	serviceAccounts := 0
 	for role, usernames := range spaceRoles {
 		switch role {
 		case "admin":
@@ -444,7 +443,6 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 					appstudioUserActionsRoleBinding(userName),
 					appstudioViewRoleBinding(userName),
 				)
-				serviceAccounts++
 				rolebindings += 2
 			}
 		case "viewer":
@@ -452,7 +450,6 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 				checks = append(checks,
 					appstudioViewRoleBinding(userName),
 				)
-				serviceAccounts++
 				rolebindings++
 			}
 		default:
@@ -463,7 +460,6 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
 		numberOfToolchainRoleBindings(rolebindings+1), // +1 for `member-operator-sa-read`
-		numberOfToolchainServiceAccounts(serviceAccounts),
 	)
 	return checks, nil
 }
@@ -1097,18 +1093,6 @@ func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 				t.Logf("associated NSTemplateSet: %s", spew.Sdump(nsTmplSet))
 			}
 		}
-		require.NoError(t, err)
-	}
-}
-
-func numberOfToolchainServiceAccounts(number int) spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		err := memberAwait.WaitForExpectedNumberOfResources(ns.Name, "ServiceAccounts", number, func() (int, error) {
-			serviceAccounts := &corev1.ServiceAccountList{}
-			err := memberAwait.Client.List(context.TODO(), serviceAccounts, providerMatchingLabels, client.InNamespace(ns.Name))
-			require.NoError(t, err)
-			return len(serviceAccounts.Items), err
-		})
 		require.NoError(t, err)
 	}
 }
