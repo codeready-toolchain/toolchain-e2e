@@ -441,21 +441,19 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
-					appstudioServiceAccount(userName),
 					appstudioUserActionsRoleBinding(userName),
 					appstudioViewRoleBinding(userName),
 				)
 				serviceAccounts++
-				rolebindings += 4
+				rolebindings += 2
 			}
 		case "viewer":
 			for _, userName := range usernames {
 				checks = append(checks,
-					appstudioServiceAccount(userName),
 					appstudioViewRoleBinding(userName),
 				)
 				serviceAccounts++
-				rolebindings += 2
+				rolebindings++
 			}
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
@@ -1171,15 +1169,6 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 	}
 }
 
-func appstudioServiceAccount(userName string) spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		sa, err := memberAwait.WaitForServiceAccount(ns.Name, fmt.Sprintf("appstudio-%s", userName))
-		require.NoError(t, err)
-		assert.Equal(t, "codeready-toolchain", sa.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, sa.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-	}
-}
-
 func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(ns, "appstudio-user-actions")
@@ -1258,19 +1247,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 
 func appstudioUserActionsRoleBinding(userName string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-user-actions", userName))
-		require.NoError(t, err)
-		assert.Len(t, rb.Subjects, 1)
-		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
-		assert.Equal(t, "appstudio-"+userName, rb.Subjects[0].Name)
-		assert.Equal(t, "", rb.Subjects[0].APIGroup)
-		assert.Equal(t, "appstudio-user-actions", rb.RoleRef.Name)
-		assert.Equal(t, "Role", rb.RoleRef.Kind)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-
-		rb, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-actions-user", userName))
+		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-actions-user", userName))
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
@@ -1285,19 +1262,7 @@ func appstudioUserActionsRoleBinding(userName string) spaceRoleObjectsCheck {
 
 func appstudioViewRoleBinding(userName string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view", userName))
-		require.NoError(t, err)
-		assert.Len(t, rb.Subjects, 1)
-		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
-		assert.Equal(t, "appstudio-"+userName, rb.Subjects[0].Name)
-		assert.Equal(t, "", rb.Subjects[0].APIGroup)
-		assert.Equal(t, "view", rb.RoleRef.Name)
-		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
-
-		rb, err = memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view-user", userName))
+		rb, err := memberAwait.WaitForRoleBinding(ns, fmt.Sprintf("appstudio-%s-view-user", userName))
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
