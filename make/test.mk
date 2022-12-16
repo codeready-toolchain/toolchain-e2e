@@ -138,7 +138,7 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-controller-manager NAMESPACE=${MEMBER_NS} ADDITIONAL_PARAMS="-c manager"
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-webhook NAMESPACE=${MEMBER_NS}
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-controller-manager NAMESPACE=${MEMBER_NS_2} ADDITIONAL_PARAMS="-c manager"; fi
-	$(MAKE) print-operator-logs DEPLOYMENT_NAME=registration-service NAMESPACE=${REGISTRATION_SERVICE_NS}
+	$(MAKE) print-deployment-logs DEPLOYMENT_NAME=registration-service DEPLOYMENT_LABELS="-l name=registration-service" NAMESPACE=${REGISTRATION_SERVICE_NS}
 else
 	$(MAKE) print-local-debug-info  HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS}
 endif
@@ -156,7 +156,7 @@ print-local-debug-info:
 	@echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS}"
 	@if [[ ${SECOND_MEMBER_MODE} == true ]]; then echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS_2}"; fi
 	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
-	@echo "oc logs deployment.apps/registration-service --namespace ${REGISTRATION_SERVICE_NS}"
+	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true"
 	@echo ""
 	@echo "Add the following lines at the very beginning of the test/suite that you want to run/debug from your IDE:"
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
@@ -164,6 +164,21 @@ print-local-debug-info:
 	@echo 'os.Setenv("HOST_NS","${HOST_NS}")'
 	@echo 'os.Setenv("REGISTRATION_SERVICE_NS","${REGISTRATION_SERVICE_NS}")'
 
+.PHONY: print-deployment-logs
+print-deployment-logs:
+	@echo "==============================================================================================================="
+	@echo "=========================== ${DEPLOYMENT_NAME} pod YAML - Namespace: ${NAMESPACE} ============================="
+	@echo "==============================================================================================================="
+	-oc get pods ${DEPLOYMENT_LABELS} --namespace ${NAMESPACE} -o yaml
+	@echo ""
+	@echo ""
+	@echo "==============================================================================================================="
+	@echo "======================= ${DEPLOYMENT_NAME} deployment logs - Namespace: ${NAMESPACE} =========================="
+	@echo "==============================================================================================================="
+	-oc logs ${DEPLOYMENT_LABELS} --namespace ${NAMESPACE} --all-containers=true --prefix=true > ${ARTIFACT_DIR}/${DEPLOYMENT_NAME}.log
+	@echo "==============================================================================================================="
+	@echo ""
+	@echo ""
 
 .PHONY: print-operator-logs
 print-operator-logs:
