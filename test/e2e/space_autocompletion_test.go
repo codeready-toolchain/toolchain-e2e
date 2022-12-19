@@ -38,30 +38,6 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		Execute()
 	hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultSpaceTier("appstudio"))
 
-	t.Run("set low capacity threshold and expect that space will have default tier, but won't have target cluster so it won't be provisioned", func(t *testing.T) {
-		// given
-		hostAwait.UpdateToolchainConfig(
-			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
-		)
-		// some short time to get the cache populated with the change
-		time.Sleep(1 * time.Second)
-
-		// when
-		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithTierName(""))
-
-		// then
-		space = waitUntilSpaceIsPendingCluster(t, hostAwait, space.Name)
-		assert.Equal(t, "appstudio", space.Spec.TierName)
-
-		t.Run("reset the threshold and expect the space will be have the targetCluster set and will be also provisioned", func(t *testing.T) {
-			// when
-			hostAwait.UpdateToolchainConfig(testconfig.CapacityThresholds().ResourceCapacityThreshold(80))
-
-			// then
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
-		})
-	})
-
 	t.Run("set low max number of spaces and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(
@@ -122,6 +98,30 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 				// then
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
 			})
+		})
+	})
+
+	t.Run("set low capacity threshold and expect that space will have default tier, but won't have target cluster so it won't be provisioned", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(
+			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
+		)
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
+
+		// when
+		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithTierName(""))
+
+		// then
+		space = waitUntilSpaceIsPendingCluster(t, hostAwait, space.Name)
+		assert.Equal(t, "appstudio", space.Spec.TierName)
+
+		t.Run("reset the threshold and expect the space will be have the targetCluster set and will be also provisioned", func(t *testing.T) {
+			// when
+			hostAwait.UpdateToolchainConfig(testconfig.CapacityThresholds().ResourceCapacityThreshold(80))
+
+			// then
+			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 		})
 	})
 
