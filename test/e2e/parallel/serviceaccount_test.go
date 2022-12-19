@@ -18,6 +18,8 @@ import (
 
 func TestDoNotOverrideServiceAccount(t *testing.T) {
 	// given
+	// currently skipped since the user SA was removed but this test logic will be useful when working on environment sub-workspaces
+	t.Skip("skipping since the user SA was removed as part of https://github.com/codeready-toolchain/host-operator/pull/719")
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	member := awaitilities.Member1()
