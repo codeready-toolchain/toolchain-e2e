@@ -20,7 +20,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	// given
 	// Skipping the TestDoNotOverrideServiceAccount test instead of deleting it because we will need to create SAs as part
 	// of the environment sub-workspaces so the test & logic will be useful to keep.
-	t.Skip("skipping since the user SA was removed as part of https://github.com/codeready-toolchain/host-operator/pull/719")
+	t.Skip("skipping since the user SA was removed as part of https://github.com/codeready-toolchain/host-operator/pull/719. To be added back with https://issues.redhat.com/browse/ASC-249")
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	member := awaitilities.Member1()
