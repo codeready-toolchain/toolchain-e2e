@@ -53,7 +53,7 @@ type MemberAwaitility struct {
 	*Awaitility
 }
 
-func NewMemberAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns, clusterName string) *MemberAwaitility {
+func NewMemberAwaitility(cfg *rest.Config, cl client.Client, ns, clusterName string) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,

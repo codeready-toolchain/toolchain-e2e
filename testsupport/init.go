@@ -61,7 +61,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		})
 		require.NoError(t, err)
 
-		initHostAwait = wait.NewHostAwaitility(t, kubeconfig, cl, hostNs, registrationServiceNs)
+		initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 		// wait for host operator to be ready
 		initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
@@ -163,7 +163,7 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, "member", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
-	memberAwait := wait.NewMemberAwaitility(t, memberConfig.RestConfig, memberClient, namespace, clusterName)
+	memberAwait := wait.NewMemberAwaitility(memberConfig.RestConfig, memberClient, namespace, clusterName)
 
 	deployment := memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
 

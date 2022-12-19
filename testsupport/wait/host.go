@@ -41,7 +41,7 @@ type HostAwaitility struct {
 }
 
 // NewHostAwaitility initializes a HostAwaitility
-func NewHostAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
+func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
