@@ -32,13 +32,13 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// Create and approve "testingtiers" signups
 	testingTiersName := "testingtiers"
-	testingtiers, _ := NewSignupRequest(t, awaitilities).
+	testingtiers, _ := NewSignupRequest(awaitilities).
 		Username(testingTiersName).
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().
+		Execute(t).
 		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
@@ -60,7 +60,7 @@ func TestNSTemplateTiers(t *testing.T) {
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierToCheck,
+		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierToCheck,
 			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
 
@@ -82,26 +82,26 @@ func TestSetDefaultTier(t *testing.T) {
 
 	t.Run("original default tier", func(t *testing.T) {
 		// Create and approve a new user that should be provisioned to the base tier
-		NewSignupRequest(t, awaitilities).
+		NewSignupRequest(awaitilities).
 			Username("defaulttier").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().
+			Execute(t).
 			Resources()
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
+		hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
-		NewSignupRequest(t, awaitilities).
+		NewSignupRequest(awaitilities).
 			Username("defaulttierchanged").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().
+			Execute(t).
 			Resources()
 	})
 }
@@ -122,11 +122,11 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	hostAwait = hostAwait.WithRetryOptions(TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
 	memberAwait = memberAwait.WithRetryOptions(TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
-	baseTier, err := hostAwait.WaitForNSTemplateTier("base")
+	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base")
 	require.NoError(t, err)
-	advancedTier, err := hostAwait.WaitForNSTemplateTier("advanced")
+	advancedTier, err := hostAwait.WaitForNSTemplateTier(t, "advanced")
 	require.NoError(t, err)
-	baseextendedidlingTier, err := hostAwait.WaitForNSTemplateTier("baseextendedidling")
+	baseextendedidlingTier, err := hostAwait.WaitForNSTemplateTier(t, "baseextendedidling")
 	require.NoError(t, err)
 
 	// create new NSTemplateTiers (derived from `base`)
@@ -148,11 +148,11 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	t.Log("updating tiers")
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources
-	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(advancedTier), tiers.WithSpaceRoles(advancedTier))
+	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
-	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(baseextendedidlingTier), tiers.WithClusterResources(baseextendedidlingTier))
+	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
 	// and when updating the "chocolate" tier to the "advanced" template refs for namespace resources
-	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(advancedTier))
+	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
 
 	// then
 	t.Log("verifying users and spaces after tier updates")
@@ -178,27 +178,28 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
-		userSignup, _ := NewSignupRequest(t, awaitilities).
+		userSignup, _ := NewSignupRequest(awaitilities).
 			Username("promoteuser").
 			Email("promoteuser@redhat.com").
 			ManuallyApprove().
 			TargetCluster(awaitilities.Member1()).
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().
+			Execute(t).
 			Resources()
 
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignup(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetDeactivating(us, true)
-		})
+		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
+			func(us *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivating(us, true)
+			})
 		require.NoError(t, err)
 
 		// Move the MUR to the user tier with longer deactivation time
 		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.Username, "deactivate90")
 
 		// Ensure the deactivating state is reset after promotion
-		promotedUserSignup, err := hostAwait.WaitForUserSignup(updatedUserSignup.Name)
+		promotedUserSignup, err := hostAwait.WaitForUserSignup(t, updatedUserSignup.Name)
 		require.NoError(t, err)
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
 		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "deactivate90", "base")
@@ -235,13 +236,13 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 	// and wait until they are all provisioned by calling EnsureMUR()
 	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		userSignups[i], _ = NewSignupRequest(t, awaitilities).
+		userSignups[i], _ = NewSignupRequest(awaitilities).
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			WaitForMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
-			Execute().
+			Execute(t).
 			Resources()
 	}
 
@@ -255,21 +256,21 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 }
 
 func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expectedCount int) {
-	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
 }
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
 	for _, usersignup := range userSignups {
-		userAccount, err := memberAwaitility.WaitForUserAccount(usersignup.Status.CompliantUsername,
+		userAccount, err := memberAwaitility.WaitForUserAccount(t, usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.Userid, usersignup.Spec.OriginalSub)),
 			UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tier.Name))
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tier.Name))
 		if err != nil {
 			t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
 		}

@@ -25,10 +25,9 @@ import (
 var httpClient = HTTPClient
 
 // NewSignupRequest creates a new signup request for the registration service
-func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupRequest {
+func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
 	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
 	return &SignupRequest{
-		t:                  t,
 		awaitilities:       awaitilities,
 		requiredHTTPStatus: http.StatusAccepted,
 		username:           defaultUsername,
@@ -47,9 +46,8 @@ func NewSignupRequest(t *testing.T, awaitilities wait.Awaitilities) *SignupReque
 // ManuallyApprove().
 // EnsureMUR().
 // RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-// Execute().Resources()
+// Execute(t).Resources()
 type SignupRequest struct {
-	t                    *testing.T
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
 	waitForMUR           bool
@@ -96,7 +94,7 @@ func (r *SignupRequest) OriginalSub(originalSub string) *SignupRequest {
 	return r
 }
 
-// Resources may be called only after a call to Execute().  It returns two parameters; the first is the UserSignup
+// Resources may be called only after a call to Execute(t).  It returns two parameters; the first is the UserSignup
 // instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
 // here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
@@ -116,7 +114,7 @@ func (r *SignupRequest) WaitForMUR() *SignupRequest {
 	return r
 }
 
-// GetToken may be called only after a call to Execute(). It returns the token that was generated for the request
+// GetToken may be called only after a call to Execute(t). It returns the token that was generated for the request
 func (r *SignupRequest) GetToken() string {
 	return r.token
 }
@@ -194,13 +192,13 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 
 // Execute executes the request against the Registration service REST endpoint.  This function may only be called
 // once, and must be called after all other functions EXCEPT for Resources()
-func (r *SignupRequest) Execute() *SignupRequest {
+func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 	hostAwait := r.awaitilities.Host()
-	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated()
-	require.NoError(r.t, err)
+	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
+	require.NoError(t, err)
 
 	// Create a token and identity to sign up with
-	usernamesInParallel.add(r.t, r.username)
+	usernamesInParallel.add(t, r.username)
 
 	userIdentity := &commonauth.Identity{
 		ID:       r.identityID,
@@ -211,7 +209,7 @@ func (r *SignupRequest) Execute() *SignupRequest {
 		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
 	}
 	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
-	require.NoError(r.t, err)
+	require.NoError(t, err)
 
 	queryParams := map[string]string{}
 	if r.noSpace {
@@ -219,18 +217,18 @@ func (r *SignupRequest) Execute() *SignupRequest {
 	}
 
 	// Call the signup endpoint
-	invokeEndpoint(r.t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
+	invokeEndpoint(t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
 		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
-	//userSignup, err := hostAwait.WaitForUserSignup(userIdentity.Username)
+	//userSignup, err := hostAwait.WaitForUserSignup(t,userIdentity.Username)
 	// TODO remove this after reg service PR #254 is merged
-	userSignup, err := hostAwait.WaitForUserSignupByUserIDAndUsername(userIdentity.ID.String(), userIdentity.Username)
+	userSignup, err := hostAwait.WaitForUserSignupByUserIDAndUsername(t, userIdentity.ID.String(), userIdentity.Username)
 
-	require.NoError(r.t, err)
+	require.NoError(t, err)
 
-	if r.targetCluster != nil && hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled != nil {
-		require.False(r.t, *hostAwait.GetToolchainConfig().Spec.Host.AutomaticApproval.Enabled,
+	if r.targetCluster != nil && hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled != nil {
+		require.False(t, *hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled,
 			"cannot specify a target cluster for new signup requests while automatic approval is enabled")
 	}
 
@@ -250,44 +248,44 @@ func (r *SignupRequest) Execute() *SignupRequest {
 			}
 		}
 
-		userSignup, err = hostAwait.UpdateUserSignup(userSignup.Name, doUpdate)
-		require.NoError(r.t, err)
+		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name, doUpdate)
+		require.NoError(t, err)
 	}
 
-	r.t.Logf("user signup '%s' created", userSignup.Name)
+	t.Logf("user signup '%s' created", userSignup.Name)
 
 	// If any required conditions have been specified, confirm the UserSignup has them
 	if len(r.conditions) > 0 {
-		userSignup, err = hostAwait.WaitForUserSignup(userSignup.Name, wait.UntilUserSignupHasConditions(r.conditions...))
-		require.NoError(r.t, err)
+		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasConditions(r.conditions...))
+		require.NoError(t, err)
 	}
 
 	r.userSignup = userSignup
 
 	if r.waitForMUR {
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-		require.NoError(r.t, err)
+		mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername)
+		require.NoError(t, err)
 		r.mur = mur
 	}
 
 	if r.ensureMUR {
 		expectedSpaceTier := "base"
-		if hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier != nil {
-			expectedSpaceTier = *hostAwait.GetToolchainConfig().Spec.Host.Tiers.DefaultSpaceTier
+		if hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier != nil {
+			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}
-		VerifyUserRelatedResources(r.t, r.awaitilities, userSignup, "deactivate30")
+		VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30")
 		if !r.noSpace {
-			VerifySpaceRelatedResources(r.t, r.awaitilities, userSignup, expectedSpaceTier)
+			VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
 		}
-		mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername)
-		require.NoError(r.t, err)
+		mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername)
+		require.NoError(t, err)
 		r.mur = mur
 	}
 
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
 	// and if cleanup hasn't been disabled
 	if !r.cleanupDisabled {
-		cleanup.AddCleanTasks(hostAwait, r.userSignup)
+		cleanup.AddCleanTasks(t, hostAwait.Client, r.userSignup)
 	}
 
 	return r

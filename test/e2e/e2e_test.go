@@ -32,7 +32,7 @@ func TestE2EFlow(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 
-	consoleURL := memberAwait.GetConsoleURL()
+	consoleURL := memberAwait.GetConsoleURL(t)
 	// host and member cluster statuses should be available at this point
 	t.Run("verify cluster statuses are valid", func(t *testing.T) {
 		t.Run("verify member cluster status", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("verify MemberOperatorConfigs synced from ToolchainConfig to member clusters", func(t *testing.T) {
-		currentConfig := hostAwait.GetToolchainConfig()
+		currentConfig := hostAwait.GetToolchainConfig(t)
 		expectedMemberConfiguration := currentConfig.Spec.Members.Default
 
 		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
@@ -60,21 +60,21 @@ func TestE2EFlow(t *testing.T) {
 		})
 		t.Run("verify updated toolchainconfig is synced - go to unready", func(t *testing.T) {
 			// set the che required flag to true to force an error on the memberstatus (che is not installed in e2e test environments)
-			memberConfigurationWithCheRequired := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(), testconfig.Che().Required(true))
-			hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
+			memberConfigurationWithCheRequired := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.Che().Required(true))
+			hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
 
-			err := memberAwait.WaitForMemberStatus(
+			err := memberAwait.WaitForMemberStatus(t,
 				wait.UntilMemberStatusHasConditions(ToolchainStatusComponentsNotReady("[routes]")))
 			require.NoError(t, err, "failed while waiting for MemberStatus to contain error due to che being required")
 
-			_, err = hostAwait.WaitForToolchainStatus(
+			_, err = hostAwait.WaitForToolchainStatus(t,
 				wait.UntilToolchainStatusHasConditions(ToolchainStatusComponentsNotReady("[members]"), ToolchainStatusUnreadyNotificationNotCreated()))
 			require.NoError(t, err, "failed while waiting for ToolchainStatus to contain error due to che being required")
 
 			t.Run("verify member and toolchain status go back to ready", func(t *testing.T) {
 				// change che required flag back to true to resolve the error on the memberstatus
-				memberConfigurationWithCheRequired = testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(), testconfig.Che().Required(false))
-				hostAwait.UpdateToolchainConfig(testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
+				memberConfigurationWithCheRequired = testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.Che().Required(false))
+				hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
 
 				VerifyMemberStatus(t, memberAwait, consoleURL)
 				VerifyToolchainStatus(t, hostAwait, memberAwait)
@@ -82,7 +82,7 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
-	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
+	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
 		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
@@ -95,43 +95,43 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup, _ := NewSignupRequest(t, awaitilities).
+	johnSignup, _ := NewSignupRequest(awaitilities).
 		Username(johnsmithName).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		DisableCleanup().
-		Execute().Resources()
+		Execute(t).Resources()
 
 	extrajohnName := "extrajohn"
-	johnExtraSignup, _ := NewSignupRequest(t, awaitilities).
+	johnExtraSignup, _ := NewSignupRequest(awaitilities).
 		Username(extrajohnName).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().Resources()
+		Execute(t).Resources()
 
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup, _ := NewSignupRequest(t, awaitilities).
+	targetedJohnSignup, _ := NewSignupRequest(awaitilities).
 		Username(targetedJohnName).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait2).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().Resources()
+		Execute(t).Resources()
 
 	originalSubJohnName := "originalsubjohn"
 	originalSubJohnClaim := "originalsub:john"
-	originalSubJohnSignup, _ := NewSignupRequest(t, awaitilities).
+	originalSubJohnSignup, _ := NewSignupRequest(awaitilities).
 		Username(originalSubJohnName).
 		OriginalSub(originalSubJohnClaim).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute().Resources()
+		Execute(t).Resources()
 
 	// Confirm the originalSub property has been set during signup
 	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.OriginalSub)
@@ -214,9 +214,9 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
 			// given
 			namespaces := make([]*corev1.Namespace, 0, 2)
-			templateRefs := tiers.GetTemplateRefs(hostAwait, "base")
+			templateRefs := tiers.GetTemplateRefs(t, hostAwait, "base")
 			for _, ref := range templateRefs.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
+				ns, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
 				namespaces = append(namespaces, ns)
 			}
@@ -229,7 +229,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			// wait for the namespaces to be re-created before validating all other resources to avoid race condition
 			for _, ref := range templateRefs.Namespaces {
-				_, err := memberAwait.WaitForNamespace(johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
+				_, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
 			}
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
@@ -238,7 +238,7 @@ func TestE2EFlow(t *testing.T) {
 
 		t.Run("delete useraccount and expect recreation", func(t *testing.T) {
 			// given
-			ua, err := memberAwait.WaitForUserAccount(johnSignup.Status.CompliantUsername)
+			ua, err := memberAwait.WaitForUserAccount(t, johnSignup.Status.CompliantUsername)
 			require.NoError(t, err)
 			originalCreationTimestamp := ua.CreationTimestamp
 
@@ -251,7 +251,7 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err)
 			// useraccount deletion happens very quickly so instead of waiting for the useraccount to
 			// have a deletion timestamp, ensure the creation timestamp is updated to a newer timestamp
-			_, err = memberAwait.WaitForUserAccount(ua.Name, wait.UntilUserAccountIsCreatedAfter(originalCreationTimestamp))
+			_, err = memberAwait.WaitForUserAccount(t, ua.Name, wait.UntilUserAccountIsCreatedAfter(originalCreationTimestamp))
 			require.NoError(t, err)
 
 			// then verify the recreated user account
@@ -264,7 +264,7 @@ func TestE2EFlow(t *testing.T) {
 		VerifyMultipleSignups(t, awaitilities, signups)
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(
+		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
 			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9))
 		require.NoError(t, err)
@@ -280,14 +280,14 @@ func TestE2EFlow(t *testing.T) {
 		userNamespace := "laracroft-dev"
 		cmName := "test-useraccount-delete-1"
 
-		laraSignUp, _ := NewSignupRequest(t, awaitilities).
+		laraSignUp, _ := NewSignupRequest(awaitilities).
 			Username(laraUserName).
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().Resources()
+			Execute(t).Resources()
 
 		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
 
@@ -310,7 +310,7 @@ func TestE2EFlow(t *testing.T) {
 		}
 		err = memberAwait.Client.Create(context.TODO(), cm)
 		require.NoError(t, err)
-		cm, err := memberAwait.WaitForConfigMap(userNamespace, cmName)
+		cm, err := memberAwait.WaitForConfigMap(t, userNamespace, cmName)
 		require.NoError(t, err)
 		require.NotEmpty(t, cm)
 
@@ -323,65 +323,65 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// then nothing should be deleted yet (because of the CM with its own finalizer)
-		nsTmplSet, err := memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
+		nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
 		// Check that namespace is not deleted and is in Terminating state after 10sec
-		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 10)).WaitForNamespaceInTerminating(userNamespace)
+		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespaceInTerminating(t, userNamespace)
 		require.NoError(t, err)
 
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
 		// UserAccount should be deleted when MUR is deleted
-		err = memberAwait.WaitUntilUserAccountDeleted(laraUserName)
+		err = memberAwait.WaitUntilUserAccountDeleted(t, laraUserName)
 		require.NoError(t, err)
 
 		// MUR should be deleted when UserSignup is deleted
-		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(laraUserName)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, laraUserName)
 		require.NoError(t, err)
 
 		// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
 		// the behaviour is consistent for both AppStudio & DevSandbox
-		err = hostAwait.WaitUntilUserSignupDeleted(laraSignUp.Name)
+		err = hostAwait.WaitUntilUserSignupDeleted(t, laraSignUp.Name)
 		require.NoError(t, err)
 
 		// space should be stuck terminating
-		space, err := hostAwait.WaitForSpace(laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(TerminatingSpace()))
+		space, err := hostAwait.WaitForSpace(t, laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(TerminatingSpace()))
 		require.NoError(t, err)
 		require.NotEmpty(t, space)
 
 		t.Run("remove finalizer", func(t *testing.T) {
 			// when removing the finalizer from the CM
-			_, err = memberAwait.UpdateConfigMap(cm.Namespace, cmName, func(cm *corev1.ConfigMap) {
+			_, err = memberAwait.UpdateConfigMap(t, cm.Namespace, cmName, func(cm *corev1.ConfigMap) {
 				cm.Finalizers = nil
 			})
 			require.NoError(t, err)
 
 			// then check remaining resources are deleted
-			err = memberAwait.WaitUntilNamespaceDeleted(laraUserName, "dev")
+			err = memberAwait.WaitUntilNamespaceDeleted(t, laraUserName, "dev")
 			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
 
-			err = memberAwait.WaitUntilNSTemplateSetDeleted(laraUserName)
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, laraUserName)
 			assert.NoError(t, err, "NSTemplateSet is not deleted")
 
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(laraUserName)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, laraUserName)
 			require.NoError(t, err)
 		})
 
 	})
 
 	t.Run("delete namespaced scoped resources of users and expect recreation", func(t *testing.T) {
-		userSignup, _ := NewSignupRequest(t, awaitilities).
+		userSignup, _ := NewSignupRequest(awaitilities).
 			Username("wonderwoman").
 			Email("wonderwoman@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute().Resources()
+			Execute(t).Resources()
 		devNs := corev1.Namespace{}
 		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
 		require.NoError(t, err)
@@ -445,7 +445,7 @@ func TestE2EFlow(t *testing.T) {
 
 	t.Run("delete usersignup and expect all resources to be deleted", func(t *testing.T) {
 		// given
-		johnSignup, err := hostAwait.WaitForUserSignup(johnSignup.Name)
+		johnSignup, err := hostAwait.WaitForUserSignup(t, johnSignup.Name)
 		require.NoError(t, err)
 
 		// when
@@ -455,38 +455,38 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("usersignup '%s' deleted (resource name='%s')", johnsmithName, johnSignup.Name)
 
-		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(johnsmithName)
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, johnsmithName)
 		assert.NoError(t, err, "MasterUserRecord is not deleted")
 
-		err = memberAwait.WaitUntilUserAccountDeleted(johnsmithName)
+		err = memberAwait.WaitUntilUserAccountDeleted(t, johnsmithName)
 		assert.NoError(t, err, "UserAccount is not deleted")
 
-		err = memberAwait.WaitUntilUserDeleted(johnsmithName)
+		err = memberAwait.WaitUntilUserDeleted(t, johnsmithName)
 		assert.NoError(t, err, "User is not deleted")
 
-		err = memberAwait.WaitUntilIdentityDeleted(johnsmithName)
+		err = memberAwait.WaitUntilIdentityDeleted(t, johnsmithName)
 		assert.NoError(t, err, "Identity is not deleted")
 
-		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(johnsmithName)
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, johnsmithName)
 		require.NoError(t, err)
 
-		err = memberAwait.WaitUntilNSTemplateSetDeleted(johnsmithName)
+		err = memberAwait.WaitUntilNSTemplateSetDeleted(t, johnsmithName)
 		assert.NoError(t, err, "NSTemplateSet is not deleted")
 
-		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(johnsmithName)
+		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(t, johnsmithName)
 		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "dev")
+		err = memberAwait.WaitUntilNamespaceDeleted(t, johnsmithName, "dev")
 		assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
 
-		err = memberAwait.WaitUntilNamespaceDeleted(johnsmithName, "stage")
+		err = memberAwait.WaitUntilNamespaceDeleted(t, johnsmithName, "stage")
 		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
 		require.NoError(t, err)
 		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
@@ -501,13 +501,13 @@ func TestE2EFlow(t *testing.T) {
 		// owner label to locate them
 
 		// First, find the MUR
-		mur, err := hostAwait.WaitForMasterUserRecord(originalSubJohnSignup.Status.CompliantUsername)
+		mur, err := hostAwait.WaitForMasterUserRecord(t, originalSubJohnSignup.Status.CompliantUsername)
 		require.NoError(t, err)
 
 		memberAwait := GetMurTargetMember(t, awaitilities, mur)
 
 		// Then locate the UserAccount
-		userAccount, err := memberAwait.WaitForUserAccount(mur.Name)
+		userAccount, err := memberAwait.WaitForUserAccount(t, mur.Name)
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 
@@ -528,26 +528,27 @@ func TestE2EFlow(t *testing.T) {
 		require.Len(t, userList.Items, 1)
 
 		// Now deactivate the UserSignup
-		userSignup, err := hostAwait.UpdateUserSignup(originalSubJohnSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetDeactivated(us, true)
-		})
+		userSignup, err := hostAwait.UpdateUserSignup(t, originalSubJohnSignup.Name,
+			func(us *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivated(us, true)
+			})
 		require.NoError(t, err)
 
 		// Wait until the UserSignup is deactivated
-		_, err = hostAwait.WaitForUserSignup(userSignup.Name,
+		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
 		require.NoError(t, err)
 
 		// Ensure the first identity is deleted
-		err = memberAwait.WaitUntilIdentityDeleted(identityList.Items[0].Name)
+		err = memberAwait.WaitUntilIdentityDeleted(t, identityList.Items[0].Name)
 		require.NoError(t, err)
 
 		// Ensure the second identity is deleted
-		err = memberAwait.WaitUntilIdentityDeleted(identityList.Items[1].Name)
+		err = memberAwait.WaitUntilIdentityDeleted(t, identityList.Items[1].Name)
 		require.NoError(t, err)
 
 		// Ensure the user is deleted
-		err = memberAwait.WaitUntilUserDeleted(userList.Items[0].Name)
+		err = memberAwait.WaitUntilUserDeleted(t, userList.Items[0].Name)
 		require.NoError(t, err)
 	})
 

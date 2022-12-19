@@ -19,28 +19,28 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait1 := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	_, mur := NewSignupRequest(t, awaitilities).
+	_, mur := NewSignupRequest(awaitilities).
 		Username("for-member1").
 		Email("for-member1@redhat.com").
 		TargetCluster(memberAwait1).
 		ManuallyApprove().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		EnsureMUR().
-		Execute().
+		Execute(t).
 		Resources()
-	NewSignupRequest(t, awaitilities).
+	NewSignupRequest(awaitilities).
 		Username("for-member2").
 		Email("for-member2@redhat.com").
 		TargetCluster(memberAwait2).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		ManuallyApprove().
 		EnsureMUR().
-		Execute()
-	hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultSpaceTier("appstudio"))
+		Execute(t)
+	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultSpaceTier("appstudio"))
 
 	t.Run("set low capacity threshold and expect that space will have default tier, but won't have target cluster so it won't be provisioned", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(
+		hostAwait.UpdateToolchainConfig(t,
 			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
 		)
 		// some short time to get the cache populated with the change
@@ -55,7 +55,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 		t.Run("reset the threshold and expect the space will be have the targetCluster set and will be also provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(testconfig.CapacityThresholds().ResourceCapacityThreshold(80))
+			hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().ResourceCapacityThreshold(80))
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
@@ -64,7 +64,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 	t.Run("set low max number of spaces and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(
+		hostAwait.UpdateToolchainConfig(t,
 			testconfig.CapacityThresholds().
 				MaxNumberOfSpaces(
 					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
@@ -85,7 +85,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
 			// when
-			toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+			toolchainStatus, err := hostAwait.WaitForToolchainStatus(t,
 				wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 			require.NoError(t, err)
 			spaceLimitsM1, spaceLimitsM2 := 0, 0
@@ -96,7 +96,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 					spaceLimitsM2 = m.SpaceCount
 				}
 			}
-			hostAwait.UpdateToolchainConfig(
+			hostAwait.UpdateToolchainConfig(t,
 				testconfig.CapacityThresholds().
 					MaxNumberOfSpaces(
 						// increment max spaces only on member1
@@ -111,7 +111,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
 				// when
-				hostAwait.UpdateToolchainConfig(
+				hostAwait.UpdateToolchainConfig(t,
 					testconfig.CapacityThresholds().
 						MaxNumberOfSpaces(
 							testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
@@ -128,7 +128,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("mark the first member cluster as full and for the second keep some capacity - expect that the space will be provisioned to the second one", func(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
-		toolchainStatus, err := hostAwait.WaitForToolchainStatus(
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(t,
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		}
 		require.Len(t, memberLimits, 2)
 
-		hostAwait.UpdateToolchainConfig(testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
+		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
@@ -160,7 +160,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 				}
 			}
 			require.Len(t, memberLimits, 2)
-			hostAwait.UpdateToolchainConfig(testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
+			hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 			// when
 			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-2"))
@@ -180,7 +180,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 }
 
 func waitUntilSpaceIsPendingCluster(t *testing.T, hostAwait *wait.HostAwaitility, name string) *toolchainv1alpha1.Space {
-	space, err := hostAwait.WaitForSpace(name,
+	space, err := hostAwait.WaitForSpace(t, name,
 		wait.UntilSpaceHasTier("appstudio"),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValuePending),
 		wait.UntilSpaceHasConditionForTime(ProvisioningPending("unspecified target member cluster"), time.Second))
