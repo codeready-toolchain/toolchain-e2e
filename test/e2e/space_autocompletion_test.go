@@ -61,23 +61,12 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
 			// when
-			toolchainStatus, err := hostAwait.WaitForToolchainStatus(
-				wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-			require.NoError(t, err)
-			spaceLimitsM1, spaceLimitsM2 := 0, 0
-			for _, m := range toolchainStatus.Status.Members {
-				if memberAwait1.ClusterName == m.ClusterName {
-					spaceLimitsM1 = m.SpaceCount
-				} else if memberAwait2.ClusterName == m.ClusterName {
-					spaceLimitsM2 = m.SpaceCount
-				}
-			}
 			hostAwait.UpdateToolchainConfig(
 				testconfig.CapacityThresholds().
 					MaxNumberOfSpaces(
 						// increment max spaces only on member1
-						testconfig.PerMemberCluster(memberAwait1.ClusterName, spaceLimitsM1+1),
-						testconfig.PerMemberCluster(memberAwait2.ClusterName, spaceLimitsM2),
+						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
+						testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
 					),
 			)
 
