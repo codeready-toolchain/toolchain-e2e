@@ -43,8 +43,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(
 			testconfig.CapacityThresholds().
 				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
+					testconfig.PerMemberCluster(memberAwait1.ClusterName, -1),
+					testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),
 				),
 		)
 
@@ -66,7 +66,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 					MaxNumberOfSpaces(
 						// increment max spaces only on member1
 						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
-						testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
+						testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),
 					),
 			)
 
