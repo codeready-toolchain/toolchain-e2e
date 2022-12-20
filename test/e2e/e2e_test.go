@@ -85,6 +85,10 @@ func TestE2EFlow(t *testing.T) {
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
 		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	originalMemberStatuses := map[string]toolchainv1alpha1.Member{}
+	for _, m := range originalToolchainStatus.Status.Members {
+		originalMemberStatuses[m.ClusterName] = m
+	}
 	require.NoError(t, err, "failed while waiting for ToolchainStatus")
 	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
 	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
@@ -264,14 +268,15 @@ func TestE2EFlow(t *testing.T) {
 		VerifyMultipleSignups(t, awaitilities, signups)
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
+		_, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
 			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9)) // 5 multiple signups + johnSignup + johnExtraSignup + targetedJohnName + originalSubJohnSignup +
+			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 multiple signups + johnSignup + johnExtraSignup + targetedJohnName + originalSubJohnSignup +
+			wait.UntilHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+8),
+			wait.UntilHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+1),
+			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+8),
+			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
+		)
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
-		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
-		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
 	t.Run("verify Space is not deleted if namespace is not deleted", func(t *testing.T) {
@@ -486,13 +491,16 @@ func TestE2EFlow(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
 
 		// check if the MUR and UA counts match
-		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-			wait.UntilToolchainStatusUpdatedAfter(time.Now()), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
+		_, err = hostAwait.WaitForToolchainStatus(t,
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
+			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8),
+			wait.UntilHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+7),
+			wait.UntilHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+1),
+			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+7),
+			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
+		)
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
-		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 7)
-		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
 
 	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
