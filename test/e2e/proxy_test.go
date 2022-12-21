@@ -63,7 +63,7 @@ func TestProxyFlow(t *testing.T) {
 	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
 	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 
-	users := []proxyUser{
+	users := []*proxyUser{
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
@@ -80,33 +80,34 @@ func TestProxyFlow(t *testing.T) {
 			identityID:            uuid.Must(uuid.NewV4()),
 		},
 	}
+	// create the users before the subtests, so they exist for the duration of the whole "ProxyFlow" test ;)
+	for _, user := range users {
+		// Create and approve signup
+		req := NewSignupRequest(awaitilities).
+			Username(user.username).
+			IdentityID(user.identityID).
+			ManuallyApprove().
+			TargetCluster(user.expectedMemberCluster).
+			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			Execute(t)
+		user.signup, _ = req.Resources()
+		user.token = req.GetToken()
+		VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
+		user.compliantUsername = user.signup.Status.CompliantUsername
+		_, err := hostAwait.GetMasterUserRecord(user.compliantUsername)
+		require.NoError(t, err)
+	}
 
 	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
-	preexistingUser, preexistingIdentity := createPreexistingUserAndIdentity(t, users[0])
+	preexistingUser, preexistingIdentity := createPreexistingUserAndIdentity(t, *users[0])
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
-			// Create and approve signup
-			req := NewSignupRequest(awaitilities).
-				Username(user.username).
-				IdentityID(user.identityID).
-				ManuallyApprove().
-				TargetCluster(user.expectedMemberCluster).
-				EnsureMUR().
-				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-				Execute(t)
-
-			user.signup, _ = req.Resources()
-			user.token = req.GetToken()
-			user.compliantUsername = user.signup.Status.CompliantUsername
-
-			VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
-			_, err := hostAwait.GetMasterUserRecord(user.compliantUsername)
-			require.NoError(t, err)
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
-				w := newWsWatcher(t, user, hostAwait.APIProxyURL)
+				w := newWsWatcher(t, *user, hostAwait.APIProxyURL)
 				closeConnection := w.Start()
 				defer closeConnection()
 				proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
