@@ -34,8 +34,6 @@ const (
 
 	MasterUserRecordsPerDomainMetric = "sandbox_master_user_records"
 
-	UserAccountsMetric = "sandbox_user_accounts_current"
-
 	SpacesMetric = "sandbox_spaces_current"
 
 	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
@@ -69,9 +67,6 @@ func (m *MetricsAssertionHelper) captureBaselineValues(t *testing.T, memberClust
 	m.baselineValues[UserSignupsAutoDeactivatedMetric] = m.await.GetMetricValue(t, UserSignupsAutoDeactivatedMetric)
 	m.baselineValues[UserSignupsBannedMetric] = m.await.GetMetricValue(t, UserSignupsBannedMetric)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
-		userAccountKey := m.baselineKey(t, UserAccountsMetric, "cluster_name", name)
-		m.baselineValues[userAccountKey] += m.await.GetMetricValue(t, UserAccountsMetric, "cluster_name", name)
-
 		spacesKey := m.baselineKey(t, SpacesMetric, "cluster_name", name)
 		m.baselineValues[spacesKey] += m.await.GetMetricValue(t, SpacesMetric, "cluster_name", name)
 	}

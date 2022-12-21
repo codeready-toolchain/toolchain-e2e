@@ -1327,30 +1327,6 @@ func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCrite
 	}
 }
 
-// UntilHasUserAccountCount returns a `ToolchainStatusWaitCriterion` which checks that the given
-// ToolchainStatus has the given count of MasterUserRecords
-func UntilHasUserAccountCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
-	return ToolchainStatusWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
-			for _, m := range actual.Status.Members {
-				if m.ClusterName == clusterName {
-					return m.UserAccountCount == expectedCount
-				}
-			}
-			return false
-		},
-		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
-			actualCount := 0
-			for _, m := range actual.Status.Members {
-				if m.ClusterName == clusterName {
-					actualCount = m.UserAccountCount
-				}
-			}
-			return fmt.Sprintf("expected UserAccount count for cluster %s to be %d. Actual: %d", clusterName, expectedCount, actualCount)
-		},
-	}
-}
-
 // UntilHasSpaceCount returns a `ToolchainStatusWaitCriterion` which checks that the given
 // ToolchainStatus has the given count of MasterUserRecords
 func UntilHasSpaceCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {

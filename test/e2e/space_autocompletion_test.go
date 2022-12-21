@@ -154,9 +154,9 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			var memberLimits []testconfig.PerMemberClusterOptionInt
 			for _, m := range toolchainStatus.Status.Members {
 				if memberAwait1.ClusterName == m.ClusterName {
-					memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.UserAccountCount))
+					memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.SpaceCount))
 				} else if memberAwait2.ClusterName == m.ClusterName {
-					memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.UserAccountCount))
+					memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.SpaceCount))
 				}
 			}
 			require.Len(t, memberLimits, 2)

@@ -271,8 +271,6 @@ func TestE2EFlow(t *testing.T) {
 		_, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
 			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 multiple signups + johnSignup + johnExtraSignup + targetedJohnName + originalSubJohnSignup +
-			wait.UntilHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+8),
-			wait.UntilHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+1),
 			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+8),
 			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
 		)
@@ -495,8 +493,6 @@ func TestE2EFlow(t *testing.T) {
 			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8),
-			wait.UntilHasUserAccountCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+7),
-			wait.UntilHasUserAccountCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].UserAccountCount+1),
 			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+7),
 			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
 		)
