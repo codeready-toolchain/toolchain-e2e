@@ -268,8 +268,6 @@ func TestE2EFlow(t *testing.T) {
 			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9))
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
@@ -489,8 +487,6 @@ func TestE2EFlow(t *testing.T) {
 		currentToolchainStatus, err := hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()), wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8))
 		require.NoError(t, err)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
-		VerifyIncreaseOfUserAccountCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, johnsmithMur.Spec.UserAccounts[0].TargetCluster, 8)
 		VerifyIncreaseOfSpaceCount(t, originalToolchainStatus, currentToolchainStatus, targetedJohnMur.Spec.UserAccounts[0].TargetCluster, 1)
 	})
