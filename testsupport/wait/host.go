@@ -1328,7 +1328,7 @@ func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCrite
 }
 
 // UntilHasSpaceCount returns a `ToolchainStatusWaitCriterion` which checks that the given
-// ToolchainStatus has the given count of MasterUserRecords
+// ToolchainStatus has the given count of Spaces
 func UntilHasSpaceCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
