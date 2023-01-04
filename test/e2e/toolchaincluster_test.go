@@ -55,13 +55,16 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// then the ToolchainCluster should be ready
 		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
+		namedToolchainCluster, err := await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
+		checkAbsenceOfHomeRoleLabel(t, &namedToolchainCluster)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		checkAbsenceOfHomeRoleLabel(t, &toolChainClusterWithCondition)
+		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
+		checkAbsenceOfHomeRoleLabel(t, &otherToolchainCluster)
 	})
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
@@ -86,17 +89,30 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		err := await.Client.Create(context.TODO(), toolchainCluster)
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
+		namedToolchainCluster, err := await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
 			Type:   toolchainv1alpha1.ToolchainClusterOffline,
 			Status: corev1.ConditionTrue,
 		})
 		require.NoError(t, err)
+		checkAbsenceOfHomeRoleLabel(t, &namedToolchainCluster)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		checkAbsenceOfHomeRoleLabel(t, &toolChainClusterWithCondition)
+		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
+		checkAbsenceOfHomeRoleLabel(t, &otherToolchainCluster)
 	})
+}
+
+// checkAbsenceOfHomeRoleLabel covers the scenario in which cluster-role label `home` should not be set
+// since it's not a member cluster type.
+func checkAbsenceOfHomeRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster) {
+	if clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]; clusterTypeLabelExists &&
+		clusterType != string(cluster.Member) {
+		_, clusterRoleHomeLabelFound := toolchainCluster.Labels[cluster.ToolchainClusterRoleLabelHome()]
+		require.False(t, clusterRoleHomeLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.ToolchainClusterRoleLabelHome(), toolchainCluster.Name)
+	}
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {

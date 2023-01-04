@@ -185,10 +185,16 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, cond
 // if the CR has the ClusterCondition
 func (a *Awaitility) GetToolchainCluster(clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
-	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
+	matchingLabels := client.MatchingLabels{
 		"namespace": namespace,
 		"type":      string(clusterType),
-	}); err != nil {
+	}
+	// add cluster role label home as filter for member type clusters
+	// this covers the scenario in which the `home` role label for member cluster should be set.
+	if clusterType == cluster.Member {
+		matchingLabels[cluster.ToolchainClusterRoleLabelHome()] = ""
+	}
+	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
 	}
 	if len(clusters.Items) == 0 {
