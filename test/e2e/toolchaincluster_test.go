@@ -105,13 +105,13 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	})
 }
 
-// checkAbsenceOfHomeRoleLabel covers the scenario in which cluster-role label `home` should not be set
-// since it's not a member cluster type.
+// checkAbsenceOfTenantRoleLabel covers the scenario in which cluster-role label `tenant` should not be set
+// since it's NOT a member cluster type.
 func checkAbsenceOfHomeRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster) {
 	if clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]; clusterTypeLabelExists &&
 		clusterType != string(cluster.Member) {
-		_, clusterRoleHomeLabelFound := toolchainCluster.Labels[cluster.ToolchainClusterRoleLabelHome()]
-		require.False(t, clusterRoleHomeLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.ToolchainClusterRoleLabelHome(), toolchainCluster.Name)
+		_, clusterRoleHomeLabelFound := toolchainCluster.Labels[cluster.ToolchainClusterRoleLabelTenant()]
+		require.False(t, clusterRoleHomeLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.ToolchainClusterRoleLabelTenant(), toolchainCluster.Name)
 	}
 }
 
