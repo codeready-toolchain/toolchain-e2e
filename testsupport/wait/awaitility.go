@@ -189,8 +189,8 @@ func (a *Awaitility) GetToolchainCluster(clusterType cluster.Type, namespace str
 		"namespace": namespace,
 		"type":      string(clusterType),
 	}
-	// add cluster role label home as filter for member type clusters
-	// this covers the scenario in which the `home` role label for member cluster should be set.
+	// add cluster role label tenant as filter for member type clusters
+	// this covers the scenario in which the `tenant` role label for member cluster should be set.
 	if clusterType == cluster.Member {
 		matchingLabels[cluster.ToolchainClusterRoleLabelTenant()] = ""
 	}
