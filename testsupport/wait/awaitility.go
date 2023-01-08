@@ -192,7 +192,8 @@ func (a *Awaitility) GetToolchainCluster(clusterType cluster.Type, namespace str
 	// add cluster role label tenant as filter for member type clusters
 	// this covers the scenario in which the `tenant` role label for member cluster should be set.
 	if clusterType == cluster.Member {
-		matchingLabels[cluster.ToolchainClusterRoleLabelTenant()] = ""
+		// we use only the label key, the value can remain empty.
+		matchingLabels[cluster.RoleLabel(cluster.Tenant)] = ""
 	}
 	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err

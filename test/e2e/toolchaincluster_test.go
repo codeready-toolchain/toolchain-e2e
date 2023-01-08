@@ -110,8 +110,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 func checkAbsenceOfTenantRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster) {
 	if clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]; clusterTypeLabelExists &&
 		clusterType != string(cluster.Member) {
-		_, clusterRoleHomeLabelFound := toolchainCluster.Labels[cluster.ToolchainClusterRoleLabelTenant()]
-		require.False(t, clusterRoleHomeLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.ToolchainClusterRoleLabelTenant(), toolchainCluster.Name)
+		_, clusterRoleHomeLabelFound := toolchainCluster.Labels[cluster.RoleLabel(cluster.Tenant)]
+		require.False(t, clusterRoleHomeLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)
 	}
 }
 
