@@ -38,6 +38,58 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		Execute()
 	hostAwait.UpdateToolchainConfig(testconfig.Tiers().DefaultSpaceTier("appstudio"))
 
+	t.Run("set low max number of spaces and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
+		// given
+		hostAwait.UpdateToolchainConfig(
+			testconfig.CapacityThresholds().
+				MaxNumberOfSpaces(
+					testconfig.PerMemberCluster(memberAwait1.ClusterName, -1),
+					testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),
+				),
+		)
+
+		// when
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist1"))
+
+		// we need to sleep one second to create UserSignup with different creation time
+		time.Sleep(time.Second)
+		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist2"))
+
+		// then
+		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
+		waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
+
+		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
+			// when
+			hostAwait.UpdateToolchainConfig(
+				testconfig.CapacityThresholds().
+					MaxNumberOfSpaces(
+						// increment max spaces only on member1
+						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
+						testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),
+					),
+			)
+
+			// then
+			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
+			// the second space won't be provisioned immediately
+			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
+			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
+				// when
+				hostAwait.UpdateToolchainConfig(
+					testconfig.CapacityThresholds().
+						MaxNumberOfSpaces(
+							testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
+							testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
+						),
+				)
+
+				// then
+				VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
+			})
+		})
+	})
+
 	t.Run("set low capacity threshold and expect that space will have default tier, but won't have target cluster so it won't be provisioned", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(
@@ -59,69 +111,6 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
-		})
-	})
-
-	t.Run("set low max number of spaces and expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
-		// given
-		hostAwait.UpdateToolchainConfig(
-			testconfig.CapacityThresholds().
-				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
-				),
-		)
-
-		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist1"))
-
-		// we need to sleep one second to create UserSignup with different creation time
-		time.Sleep(time.Second)
-		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist2"))
-
-		// then
-		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
-		waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
-
-		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
-			// when
-			toolchainStatus, err := hostAwait.WaitForToolchainStatus(
-				wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-			require.NoError(t, err)
-			spaceLimitsM1, spaceLimitsM2 := 0, 0
-			for _, m := range toolchainStatus.Status.Members {
-				if memberAwait1.ClusterName == m.ClusterName {
-					spaceLimitsM1 = m.SpaceCount
-				} else if memberAwait2.ClusterName == m.ClusterName {
-					spaceLimitsM2 = m.SpaceCount
-				}
-			}
-			hostAwait.UpdateToolchainConfig(
-				testconfig.CapacityThresholds().
-					MaxNumberOfSpaces(
-						// increment max spaces only on member1
-						testconfig.PerMemberCluster(memberAwait1.ClusterName, spaceLimitsM1+1),
-						testconfig.PerMemberCluster(memberAwait2.ClusterName, spaceLimitsM2),
-					),
-			)
-
-			// then
-			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
-			// the second space won't be provisioned immediately
-			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
-			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
-				// when
-				hostAwait.UpdateToolchainConfig(
-					testconfig.CapacityThresholds().
-						MaxNumberOfSpaces(
-							testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
-							testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
-						),
-				)
-
-				// then
-				VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
-			})
 		})
 	})
 
