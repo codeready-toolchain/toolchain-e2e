@@ -57,14 +57,14 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 		namedToolchainCluster, err := await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkAbsenceOfTenantRoleLabel(t, &namedToolchainCluster)
+		checkTenantRoleLabel(t, &namedToolchainCluster)
 		// other ToolchainCluster should be ready, too
 		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkAbsenceOfTenantRoleLabel(t, &toolChainClusterWithCondition)
+		checkTenantRoleLabel(t, &toolChainClusterWithCondition)
 		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkAbsenceOfTenantRoleLabel(t, &otherToolchainCluster)
+		checkTenantRoleLabel(t, &otherToolchainCluster)
 	})
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
@@ -94,24 +94,30 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			Status: corev1.ConditionTrue,
 		})
 		require.NoError(t, err)
-		checkAbsenceOfTenantRoleLabel(t, &namedToolchainCluster)
+		checkTenantRoleLabel(t, &namedToolchainCluster)
 		// other ToolchainCluster should be ready, too
 		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkAbsenceOfTenantRoleLabel(t, &toolChainClusterWithCondition)
+		checkTenantRoleLabel(t, &toolChainClusterWithCondition)
 		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkAbsenceOfTenantRoleLabel(t, &otherToolchainCluster)
+		checkTenantRoleLabel(t, &otherToolchainCluster)
 	})
 }
 
-// checkAbsenceOfTenantRoleLabel covers the scenario in which cluster-role label `tenant` should not be set
-// since it's NOT a member cluster type.
-func checkAbsenceOfTenantRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster) {
-	if clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]; clusterTypeLabelExists &&
-		clusterType != string(cluster.Member) {
-		_, clusterRoleHomeLabelFound := toolchainCluster.Labels[cluster.RoleLabel(cluster.Tenant)]
-		require.False(t, clusterRoleHomeLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)
+// checkTenantRoleLabel checks that cluster-role label `tenant` is set accordingly since not all cluster types
+// should have this label (only member ones).
+func checkTenantRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster) {
+	clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]
+	if clusterTypeLabelExists {
+		_, clusterRoleTenantLabelFound := toolchainCluster.Labels[cluster.RoleLabel(cluster.Tenant)]
+		if clusterType == string(cluster.Member) {
+			// check that member type cluster has the tenant cluster-role
+			require.True(t, clusterRoleTenantLabelFound, "missing expected label: %s on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)
+		} else {
+			// check that NON member type cluster does NOT contain tenant cluster-role
+			require.False(t, clusterRoleTenantLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)
+		}
 	}
 }
 
