@@ -191,7 +191,7 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithLabels(name string, matchin
 		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
 			return false, err
 		}
-		if len(clusters.Items) != 0 {
+		if len(clusters.Items) != 1 {
 			return false, fmt.Errorf("expected only one toolchaincluster with labels: found='%d' namespace='%s', labels='%v'", len(clusters.Items), a.Namespace, matchingLabels)
 		}
 		if clusters.Items[0].Name != name {
