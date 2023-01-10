@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestToolchainClusterE2E(t *testing.T) {
@@ -57,14 +58,14 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 		namedToolchainCluster, err := await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &namedToolchainCluster)
+		checkTenantRoleLabel(t, &namedToolchainCluster, await)
 		// other ToolchainCluster should be ready, too
 		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &toolChainClusterWithCondition)
+		checkTenantRoleLabel(t, &toolChainClusterWithCondition, await)
 		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &otherToolchainCluster)
+		checkTenantRoleLabel(t, &otherToolchainCluster, otherAwait)
 	})
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
@@ -94,26 +95,33 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			Status: corev1.ConditionTrue,
 		})
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &namedToolchainCluster)
+		checkTenantRoleLabel(t, &namedToolchainCluster, await)
 		// other ToolchainCluster should be ready, too
 		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &toolChainClusterWithCondition)
+		checkTenantRoleLabel(t, &toolChainClusterWithCondition, await)
 		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &otherToolchainCluster)
+		checkTenantRoleLabel(t, &otherToolchainCluster, otherAwait)
 	})
 }
 
 // checkTenantRoleLabel checks that cluster-role label `tenant` is set accordingly since not all cluster types
 // should have this label (only member ones).
-func checkTenantRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster) {
+// In case the label is expected but missing at the first check,
+// the function waits for the label to be added by the toolchaincluster controller.
+func checkTenantRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster, await *wait.Awaitility) {
 	clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]
 	if clusterTypeLabelExists {
 		_, clusterRoleTenantLabelFound := toolchainCluster.Labels[cluster.RoleLabel(cluster.Tenant)]
 		if clusterType == string(cluster.Member) {
 			// check that member type cluster has the tenant cluster-role
-			require.True(t, clusterRoleTenantLabelFound, "missing expected label: %s on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)
+			matchingLabels := &client.MatchingLabels{cluster.RoleLabel(cluster.Tenant): ""}
+			if !clusterRoleTenantLabelFound {
+				// wait to see if cluster-role label will be added by the toolchaincluster controller
+				_, err := await.WaitForNamedToolchainClusterWithLabels(toolchainCluster.Name, matchingLabels)
+				require.NoError(t, err)
+			}
 		} else {
 			// check that NON member type cluster does NOT contain tenant cluster-role
 			require.False(t, clusterRoleTenantLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)

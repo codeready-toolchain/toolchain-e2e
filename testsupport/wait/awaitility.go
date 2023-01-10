@@ -180,6 +180,28 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, cond
 	return c, err
 }
 
+// WaitForNamedToolchainClusterWithLabels waits until there is a ToolchainCluster with the given name
+// and with the given labels
+func (a *Awaitility) WaitForNamedToolchainClusterWithLabels(name string, matchingLabels *client.MatchingLabels) (toolchainv1alpha1.ToolchainCluster, error) {
+	a.T.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have labels '%v'", name, a.Namespace, matchingLabels)
+	timeout := a.Timeout
+	clusters := &toolchainv1alpha1.ToolchainClusterList{}
+	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
+		clusters = &toolchainv1alpha1.ToolchainClusterList{}
+		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
+			return false, err
+		}
+		if len(clusters.Items) != 0 {
+			return false, fmt.Errorf("expected only one toolchaincluster with labels: found='%d' namespace='%s', labels='%v'", len(clusters.Items), a.Namespace, matchingLabels)
+		}
+		if clusters.Items[0].Name != name {
+			return false, fmt.Errorf("expected toolchaincluster name doesn't match: foundName='%s' expectedName='%s' namespace='%s', labels='%v'", clusters.Items[0].Name, name, a.Namespace, matchingLabels)
+		}
+		return true, nil
+	})
+	return clusters.Items[0], err
+}
+
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
@@ -188,12 +210,6 @@ func (a *Awaitility) GetToolchainCluster(clusterType cluster.Type, namespace str
 	matchingLabels := client.MatchingLabels{
 		"namespace": namespace,
 		"type":      string(clusterType),
-	}
-	// add cluster role label tenant as filter for member type clusters
-	// this covers the scenario in which the `tenant` role label for member cluster should be set.
-	if clusterType == cluster.Member {
-		// we use only the label key, the value can remain empty.
-		matchingLabels[cluster.RoleLabel(cluster.Tenant)] = ""
 	}
 	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
