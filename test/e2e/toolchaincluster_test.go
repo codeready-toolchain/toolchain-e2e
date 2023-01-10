@@ -36,7 +36,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// given
 		name := "new-ready-" + string(await.Type)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
-			clusterType(await.Type),
+			clusterType(otherAwait.Type),
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
 			secretRef(current.Spec.SecretRef.Name),
