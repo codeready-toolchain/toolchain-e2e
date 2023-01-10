@@ -207,11 +207,10 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithLabels(name string, matchin
 // if the CR has the ClusterCondition
 func (a *Awaitility) GetToolchainCluster(clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
-	matchingLabels := client.MatchingLabels{
+	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
 		"namespace": namespace,
 		"type":      string(clusterType),
-	}
-	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
+	}); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
 	}
 	if len(clusters.Items) == 0 {
