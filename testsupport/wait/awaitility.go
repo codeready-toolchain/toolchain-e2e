@@ -186,20 +186,33 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithLabels(name string, matchin
 	a.T.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have labels '%v'", name, a.Namespace, matchingLabels)
 	timeout := a.Timeout
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
+	tc := toolchainv1alpha1.ToolchainCluster{}
 	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
 		clusters = &toolchainv1alpha1.ToolchainClusterList{}
 		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
 			return false, err
 		}
-		if len(clusters.Items) != 1 {
-			return false, fmt.Errorf("expected only one toolchaincluster with labels: found='%d' namespace='%s', labels='%v'", len(clusters.Items), a.Namespace, matchingLabels)
+		if len(clusters.Items) == 0 {
+			return false, fmt.Errorf("no toolchaincluster resource with expected labels: namespace='%s', matchingLabels='%v'", a.Namespace, matchingLabels)
 		}
-		if clusters.Items[0].Name != name {
-			return false, fmt.Errorf("expected toolchaincluster name doesn't match: foundName='%s' expectedName='%s' namespace='%s', labels='%v'", clusters.Items[0].Name, name, a.Namespace, matchingLabels)
+
+		// check if there is any toolchaincluster resource with given name
+		clusterFound := false
+		for _, cl := range clusters.Items {
+			if cl.Name == name {
+				clusterFound = true
+				tc = cl
+				break
+			}
 		}
-		return true, nil
+		// if we found the expected toolchaincluster we exit from the wait poll loop
+		if clusterFound {
+			return true, nil
+		}
+
+		return false, fmt.Errorf("no toolchaincluster with expected name found: expectedName='%s' namespace='%s', labels='%v'", name, a.Namespace, matchingLabels)
 	})
-	return clusters.Items[0], err
+	return tc, err
 }
 
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
