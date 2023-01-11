@@ -16,15 +16,15 @@ import (
 
 func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) {
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
-	expectedTemplateRefs := checks.GetExpectedTemplateRefs(hostAwait)
+	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
-	_, err := memberAwait.WaitForNSTmplSet(nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
+	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	require.NoError(t, err)
 
 	// Verify all namespaces and objects within
 	namespaceObjectChecks := sync.WaitGroup{}
 	for _, templateRef := range expectedTemplateRefs.Namespaces {
-		ns, err := memberAwait.WaitForNamespace(nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
+		ns, err := memberAwait.WaitForNamespace(t, nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
 		_, nsType, _, err := wait.Split(templateRef)
 		require.NoError(t, err)
@@ -38,7 +38,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 		}
 		spaceRoles := map[string][]string{}
 		for _, r := range nsTmplSet.Spec.SpaceRoles {
-			tmpl, err := hostAwait.WaitForTierTemplate(r.TemplateRef)
+			tmpl, err := hostAwait.WaitForTierTemplate(t, r.TemplateRef)
 			require.NoError(t, err)
 			t.Logf("space role template: %s", tmpl.GetName())
 			spaceRoles[tmpl.Spec.Type] = r.Usernames

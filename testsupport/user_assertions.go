@@ -34,7 +34,7 @@ func VerifyResourcesProvisionedForSignupWithoutSpace(t *testing.T, awaitilities 
 	VerifyUserRelatedResources(t, awaitilities, signup, userTierName)
 
 	// verify space does not exist
-	space, err := awaitilities.Host().WithRetryOptions(wait.TimeoutOption(3 * time.Second)).WaitForSpace(signup.Status.CompliantUsername)
+	space, err := awaitilities.Host().WithRetryOptions(wait.TimeoutOption(3*time.Second)).WaitForSpace(t, signup.Status.CompliantUsername)
 	require.Error(t, err)
 	require.Nil(t, space)
 }
@@ -44,13 +44,13 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	hostAwait := awaitilities.Host()
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
-	userSignup, err := hostAwait.WaitForUserSignup(signup.Name,
+	userSignup, err := hostAwait.WaitForUserSignup(t, signup.Name,
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
 		wait.ContainsCondition(Complete()))
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
+	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasTierName(tierName),
 		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	memberAwait := GetMurTargetMember(t, awaitilities, mur)
 
 	// Then wait for the associated UserAccount to be provisioned
-	userAccount, err := memberAwait.WaitForUserAccount(mur.Name,
+	userAccount, err := memberAwait.WaitForUserAccount(t, mur.Name,
 		wait.UntilUserAccountHasConditions(Provisioned()),
 		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
@@ -78,12 +78,12 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.OriginalSub, "rhd").IdentityName()
 	}
 
-	memberConfiguration := memberAwait.GetMemberOperatorConfig()
+	memberConfiguration := memberAwait.GetMemberOperatorConfig(t)
 
 	// Verify User and Identity if SkipUserCreation is not set or it is set to false
 	if memberConfiguration.Spec.SkipUserCreation == nil || !*memberConfiguration.Spec.SkipUserCreation {
 		// Verify provisioned User
-		_, err = memberAwait.WaitForUser(userAccount.Name,
+		_, err = memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
 			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
@@ -92,14 +92,14 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		// Verify provisioned Identity
 		identityName := identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()
 
-		_, err = memberAwait.WaitForIdentity(identityName,
+		_, err = memberAwait.WaitForIdentity(t, identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 		assert.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
 
 		// Verify the second identity
 		if originalSubIdentityName != "" {
-			_, err = memberAwait.WaitForIdentity(identityName,
+			_, err = memberAwait.WaitForIdentity(t, identityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
@@ -107,19 +107,19 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	} else {
 		// we don't expect User nor Identity resources to be present for AppStudio tier
 		// This can be removed as soon as we don't create UserAccounts in AppStudio environment.
-		err := memberAwait.WaitUntilUserDeleted(userAccount.Name)
+		err := memberAwait.WaitUntilUserDeleted(t, userAccount.Name)
 		assert.NoError(t, err)
-		err = memberAwait.WaitUntilIdentityDeleted(identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName())
+		err = memberAwait.WaitUntilIdentityDeleted(t, identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName())
 		assert.NoError(t, err)
 		// Verify the second identity
 		if originalSubIdentityName != "" {
-			err = memberAwait.WaitUntilIdentityDeleted(originalSubIdentityName)
+			err = memberAwait.WaitUntilIdentityDeleted(t, originalSubIdentityName)
 			assert.NoError(t, err)
 		}
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -128,11 +128,11 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		Cluster: toolchainv1alpha1.Cluster{
 			Name:        mur.Spec.UserAccounts[0].TargetCluster,
 			APIEndpoint: memberCluster.Spec.APIEndpoint,
-			ConsoleURL:  memberAwait.GetConsoleURL(),
+			ConsoleURL:  memberAwait.GetConsoleURL(t),
 		},
 		UserAccountStatus: userAccount.Status,
 	}
-	mur, err = hostAwait.WaitForMasterUserRecord(mur.Name,
+	mur, err = hostAwait.WaitForMasterUserRecord(t, mur.Name,
 		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
@@ -144,21 +144,21 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 	hostAwait := awaitilities.Host()
 
-	userSignup, err := hostAwait.WaitForUserSignup(userSignup.Name,
+	userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
 		wait.ContainsCondition(Complete()))
 	require.NoError(t, err)
 
-	mur, err := hostAwait.WaitForMasterUserRecord(userSignup.Status.CompliantUsername,
+	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 
-	tier, err := hostAwait.WaitForNSTemplateTier(spaceTierName)
+	tier, err := hostAwait.WaitForNSTemplateTier(t, spaceTierName)
 	require.NoError(t, err)
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
-	space, err := hostAwait.WaitForSpace(mur.Name,
+	space, err := hostAwait.WaitForSpace(t, mur.Name,
 		wait.UntilSpaceHasTier(spaceTierName),
 		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", spaceTierName), hash),
@@ -173,7 +173,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	require.NoError(t, err)
 	memberAwait := GetMurTargetMember(t, awaitilities, mur)
 	// Verify provisioned NSTemplateSet
-	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(space.Name,
+	nsTemplateSet, err := memberAwait.WaitForNSTmplSet(t, space.Name,
 		wait.UntilNSTemplateSetHasTier(tier.Name),
 		wait.UntilNSTemplateSetHasSpaceRolesFromBindings(tier, bindings),
 	)
@@ -205,7 +205,7 @@ func GetMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolc
 }
 
 func DeletedRoleAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitility, ns corev1.Namespace, role string) {
-	userRole, err := memberAwait.WaitForRole(&ns, role)
+	userRole, err := memberAwait.WaitForRole(t, &ns, role)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRole)
 	require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
@@ -215,13 +215,13 @@ func DeletedRoleAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitil
 	require.NoError(t, err)
 
 	// then verify role is recreated
-	userRole, err = memberAwait.WaitForRole(&ns, role)
+	userRole, err = memberAwait.WaitForRole(t, &ns, role)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRole)
 }
 
 func DeleteRoleBindingAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitility, ns corev1.Namespace, rolebinding string) {
-	userRoleBinding, err := memberAwait.WaitForRoleBinding(&ns, rolebinding)
+	userRoleBinding, err := memberAwait.WaitForRoleBinding(t, &ns, rolebinding)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRoleBinding)
 	require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
@@ -231,7 +231,7 @@ func DeleteRoleBindingAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberA
 	require.NoError(t, err)
 
 	// then verify role is recreated
-	userRoleBinding, err = memberAwait.WaitForRoleBinding(&ns, rolebinding)
+	userRoleBinding, err = memberAwait.WaitForRoleBinding(t, &ns, rolebinding)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRoleBinding)
 }

@@ -53,24 +53,17 @@ type MemberAwaitility struct {
 	*Awaitility
 }
 
-func NewMemberAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns, clusterName string) *MemberAwaitility {
+func NewMemberAwaitility(cfg *rest.Config, cl client.Client, ns, clusterName string) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
 			RestConfig:    cfg,
 			ClusterName:   clusterName,
-			T:             t,
 			Namespace:     ns,
 			Type:          cluster.Member,
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
-	}
-}
-
-func (a *MemberAwaitility) ForTest(t *testing.T) *MemberAwaitility {
-	return &MemberAwaitility{
-		Awaitility: a.Awaitility.ForTest(t),
 	}
 }
 
@@ -95,7 +88,7 @@ func matchUserAccountWaitCriterion(actual *toolchainv1alpha1.UserAccount, criter
 	return true
 }
 
-func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) {
+func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.UserAccount, criteria ...UserAccountWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find UserAccount\n")
@@ -115,7 +108,7 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(actual *toolchainv
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilUserAccountHasLabelWithValue returns a `UserAccountWaitCriterion` which checks that the given
@@ -232,7 +225,7 @@ func UntilUserAccountIsCreatedAfter(timestamp metav1.Time) UserAccountWaitCriter
 }
 
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
-func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
+func (a *MemberAwaitility) WaitForUserAccount(t *testing.T, name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
 	var userAccount *toolchainv1alpha1.UserAccount
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserAccount{}
@@ -247,7 +240,7 @@ func (a *MemberAwaitility) WaitForUserAccount(name string, criteria ...UserAccou
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printUserAccountWaitCriterionDiffs(userAccount, criteria...)
+		a.printUserAccountWaitCriterionDiffs(t, userAccount, criteria...)
 	}
 	return userAccount, err
 }
@@ -267,7 +260,7 @@ func matchNSTemplateSetWaitCriterion(actual *toolchainv1alpha1.NSTemplateSet, cr
 	return true
 }
 
-func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) {
+func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find NSTemplateSet at all\n")
@@ -287,7 +280,7 @@ func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(actual *toolchai
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilNSTemplateSetHasNoOwnerReferences returns a `NSTemplateSetWaitCriterion` which checks that the given
@@ -390,8 +383,8 @@ func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 }
 
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
-func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
-	a.T.Logf("waiting for NSTemplateSet '%s' to match criteria", name)
+func (a *MemberAwaitility) WaitForNSTmplSet(t *testing.T, name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
+	t.Logf("waiting for NSTemplateSet '%s' to match criteria", name)
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateSet{}
@@ -406,14 +399,14 @@ func (a *MemberAwaitility) WaitForNSTmplSet(name string, criteria ...NSTemplateS
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNSTemplateSetWaitCriterionDiffs(nsTmplSet, criteria...)
+		a.printNSTemplateSetWaitCriterionDiffs(t, nsTmplSet, criteria...)
 	}
 	return nsTmplSet, err
 }
 
 // WaitUntilNSTemplateSetDeleted waits until the NSTemplateSet with the given name is deleted (ie, is not found)
-func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(name string) error {
-	a.T.Logf("waiting for until NSTemplateSet '%s' in namespace '%s' is deleted", name, a.Namespace)
+func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(t *testing.T, name string) error {
+	t.Logf("waiting for until NSTemplateSet '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, nsTmplSet); err != nil {
@@ -490,7 +483,7 @@ func matchNamespaceWaitCriteria(actual *corev1.Namespace, criteria ...NamespaceW
 }
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
-func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, criteria ...NamespaceWaitCriterion) (*corev1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierName string, criteria ...NamespaceWaitCriterion) (*corev1.Namespace, error) {
 	_, kind, _, err := Split(tmplRef)
 	if err != nil {
 		return nil, err
@@ -502,7 +495,7 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 		"toolchain.dev.openshift.com/type":        kind,
 		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
 	}
-	a.T.Logf("waiting for namespace with custom criteria and labels %v", labels)
+	t.Logf("waiting for namespace with custom criteria and labels %v", labels)
 	var ns *corev1.Namespace
 	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		nss := &corev1.NamespaceList{}
@@ -517,17 +510,17 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 		return matchNamespaceWaitCriteria(ns, criteria...), nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace with labels: %v", labels)
+		t.Logf("failed to wait for namespace with labels: %v", labels)
 		opts := client.MatchingLabels(map[string]string{
 			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 		})
-		a.listAndPrint("Namespaces", "", &corev1.NamespaceList{}, opts)
+		a.listAndPrint(t, "Namespaces", "", &corev1.NamespaceList{}, opts)
 		if ns == nil {
-			a.T.Logf("a namespace with the following labels was not found: %v", labels)
+			t.Logf("a namespace with the following labels was not found: %v", labels)
 			return nil, err
 		}
 		for _, c := range criteria {
-			a.T.Logf(c.Diff(ns))
+			t.Logf(c.Diff(ns))
 		}
 		return nil, err
 	}
@@ -535,7 +528,7 @@ func (a *MemberAwaitility) WaitForNamespace(owner, tmplRef, tierName string, cri
 }
 
 // WaitForNamespaceWithName waits until a namespace with the given name
-func (a *MemberAwaitility) WaitForNamespaceWithName(name string, criteria ...LabelWaitCriterion) (*corev1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespaceWithName(t *testing.T, name string, criteria ...LabelWaitCriterion) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.Namespace{}
@@ -549,8 +542,8 @@ func (a *MemberAwaitility) WaitForNamespaceWithName(name string, criteria ...Lab
 		return matchLabelWaitCriteria(ns.ObjectMeta, criteria...), nil
 	})
 	if err != nil {
-		a.T.Log("failed to wait for namespace")
-		a.printNamespaceLabelCriterionDiffs(ns, criteria...)
+		t.Log("failed to wait for namespace")
+		a.printNamespaceLabelCriterionDiffs(t, ns, criteria...)
 		return nil, err
 	}
 	return ns, nil
@@ -565,7 +558,7 @@ func matchLabelWaitCriteria(actual metav1.ObjectMeta, criteria ...LabelWaitCrite
 	return true
 }
 
-func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(actual *corev1.Namespace, criteria ...LabelWaitCriterion) {
+func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(t *testing.T, actual *corev1.Namespace, criteria ...LabelWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Namespace\n")
@@ -585,11 +578,11 @@ func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(actual *corev1.Name
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
-func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*corev1.Namespace, error) {
+func (a *MemberAwaitility) WaitForNamespaceInTerminating(t *testing.T, nsName string) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.Namespace{}
@@ -603,15 +596,15 @@ func (a *MemberAwaitility) WaitForNamespaceInTerminating(nsName string) (*corev1
 		return obj.DeletionTimestamp != nil && obj.Status.Phase == corev1.NamespaceTerminating, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for namespace '%s' to be in 'Terminating' phase", nsName)
+		t.Logf("failed to wait for namespace '%s' to be in 'Terminating' phase", nsName)
 		return nil, err
 	}
 	return ns, nil
 }
 
 // WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name string) (*rbacv1.RoleBinding, error) {
-	a.T.Logf("waiting for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
+func (a *MemberAwaitility) WaitForRoleBinding(t *testing.T, namespace *corev1.Namespace, name string) (*rbacv1.RoleBinding, error) {
+	t.Logf("waiting for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
 	roleBinding := &rbacv1.RoleBinding{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &rbacv1.RoleBinding{}
@@ -629,15 +622,15 @@ func (a *MemberAwaitility) WaitForRoleBinding(namespace *corev1.Namespace, name 
 		return true, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
+		t.Logf("failed to wait for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
 		return nil, err
 	}
 	return roleBinding, err
 }
 
 // WaitUntilRoleBindingDeleted waits until a RoleBinding with the given name does not exist anymore in the given namespace
-func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(namespace *corev1.Namespace, name string) error {
-	a.T.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)
+func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(t *testing.T, namespace *corev1.Namespace, name string) error {
+	t.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		roleBinding := &rbacv1.RoleBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, roleBinding); err != nil {
@@ -650,8 +643,8 @@ func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(namespace *corev1.Namespa
 	})
 }
 
-func (a *MemberAwaitility) WaitForServiceAccount(namespace string, name string) (*corev1.ServiceAccount, error) {
-	a.T.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace)
+func (a *MemberAwaitility) WaitForServiceAccount(t *testing.T, namespace string, name string) (*corev1.ServiceAccount, error) {
+	t.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace)
 	serviceAccount := &corev1.ServiceAccount{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.ServiceAccount{}
@@ -665,15 +658,15 @@ func (a *MemberAwaitility) WaitForServiceAccount(namespace string, name string) 
 		return true, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for ServiceAccount '%s' in namespace '%s'.", name, namespace)
+		t.Logf("failed to wait for ServiceAccount '%s' in namespace '%s'.", name, namespace)
 		return nil, err
 	}
 	return serviceAccount, err
 }
 
 // WaitForLimitRange waits until a LimitRange with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForLimitRange(namespace *corev1.Namespace, name string) (*corev1.LimitRange, error) {
-	a.T.Logf("waiting for LimitRange '%s' in namespace '%s'", name, namespace.Name)
+func (a *MemberAwaitility) WaitForLimitRange(t *testing.T, namespace *corev1.Namespace, name string) (*corev1.LimitRange, error) {
+	t.Logf("waiting for LimitRange '%s' in namespace '%s'", name, namespace.Name)
 	lr := &corev1.LimitRange{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.LimitRange{}
@@ -691,14 +684,14 @@ func (a *MemberAwaitility) WaitForLimitRange(namespace *corev1.Namespace, name s
 		return true, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for LimitRange '%s' in namespace '%s'", name, namespace.Name)
+		t.Logf("failed to wait for LimitRange '%s' in namespace '%s'", name, namespace.Name)
 	}
 	return lr, err
 }
 
 // WaitForNetworkPolicy waits until a NetworkPolicy with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *corev1.Namespace, name string) (*netv1.NetworkPolicy, error) {
-	a.T.Logf("waiting for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
+func (a *MemberAwaitility) WaitForNetworkPolicy(t *testing.T, namespace *corev1.Namespace, name string) (*netv1.NetworkPolicy, error) {
+	t.Logf("waiting for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
 	np := &netv1.NetworkPolicy{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &netv1.NetworkPolicy{}
@@ -716,14 +709,14 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(namespace *corev1.Namespace, nam
 		return true, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
+		t.Logf("failed to wait for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
 	}
 	return np, err
 }
 
 // WaitForRole waits until a Role with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForRole(namespace *corev1.Namespace, name string) (*rbacv1.Role, error) {
-	a.T.Logf("waiting for Role '%s' in namespace '%s'", name, namespace.Name)
+func (a *MemberAwaitility) WaitForRole(t *testing.T, namespace *corev1.Namespace, name string) (*rbacv1.Role, error) {
+	t.Logf("waiting for Role '%s' in namespace '%s'", name, namespace.Name)
 	role := &rbacv1.Role{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &rbacv1.Role{}
@@ -741,14 +734,14 @@ func (a *MemberAwaitility) WaitForRole(namespace *corev1.Namespace, name string)
 		return true, nil
 	})
 	if err != nil {
-		a.T.Logf("failed to wait for Role '%s' in namespace '%s'", name, namespace.Name)
+		t.Logf("failed to wait for Role '%s' in namespace '%s'", name, namespace.Name)
 	}
 	return role, err
 }
 
 // WaitUntilRoleDeleted waits until a Role with the given name does not exist anymore in the given namespace
-func (a *MemberAwaitility) WaitUntilRoleDeleted(namespace *corev1.Namespace, name string) error {
-	a.T.Logf("waiting for Role '%s' in namespace '%s' to be deleted", name, namespace.Name)
+func (a *MemberAwaitility) WaitUntilRoleDeleted(t *testing.T, namespace *corev1.Namespace, name string) error {
+	t.Logf("waiting for Role '%s' in namespace '%s' to be deleted", name, namespace.Name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		role := &rbacv1.Role{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, role); err != nil {
@@ -776,7 +769,7 @@ func matchClusterResourceQuotaWaitCriteria(actual *quotav1.ClusterResourceQuota,
 	return true
 }
 
-func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) {
+func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(t *testing.T, actual *quotav1.ClusterResourceQuota, criteria ...ClusterResourceQuotaWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find ClusterResourceQuota\n")
@@ -796,12 +789,12 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(actual *q
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // WaitForClusterResourceQuota waits until a ClusterResourceQuota with the given name exists
-func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...ClusterResourceQuotaWaitCriterion) (*quotav1.ClusterResourceQuota, error) {
-	a.T.Logf("waiting for ClusterResourceQuota '%s' to match criteria", name)
+func (a *MemberAwaitility) WaitForClusterResourceQuota(t *testing.T, name string, criteria ...ClusterResourceQuotaWaitCriterion) (*quotav1.ClusterResourceQuota, error) {
+	t.Logf("waiting for ClusterResourceQuota '%s' to match criteria", name)
 	quota := &quotav1.ClusterResourceQuota{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &quotav1.ClusterResourceQuota{}
@@ -821,7 +814,7 @@ func (a *MemberAwaitility) WaitForClusterResourceQuota(name string, criteria ...
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printClusterResourceQuotaWaitCriterionDiffs(quota, criteria...)
+		a.printClusterResourceQuotaWaitCriterionDiffs(t, quota, criteria...)
 	}
 	return quota, err
 }
@@ -841,7 +834,7 @@ func matchResourceQuotaWaitCriteria(actual *corev1.ResourceQuota, criteria ...Re
 	return true
 }
 
-func (a *MemberAwaitility) printResourceQuotaWaitCriterionDiffs(actual *corev1.ResourceQuota, criteria ...ResourceQuotaWaitCriterion) {
+func (a *MemberAwaitility) printResourceQuotaWaitCriterionDiffs(t *testing.T, actual *corev1.ResourceQuota, criteria ...ResourceQuotaWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find ResourceQuota\n")
@@ -861,12 +854,12 @@ func (a *MemberAwaitility) printResourceQuotaWaitCriterionDiffs(actual *corev1.R
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // WaitForResourceQuota waits until a ResourceQuota with the given name exists
-func (a *MemberAwaitility) WaitForResourceQuota(namespace, name string, criteria ...ResourceQuotaWaitCriterion) (*corev1.ResourceQuota, error) {
-	a.T.Logf("waiting for ResourceQuota '%s' in %s to match criteria", name, namespace)
+func (a *MemberAwaitility) WaitForResourceQuota(t *testing.T, namespace, name string, criteria ...ResourceQuotaWaitCriterion) (*corev1.ResourceQuota, error) {
+	t.Logf("waiting for ResourceQuota '%s' in %s to match criteria", name, namespace)
 	quota := &corev1.ResourceQuota{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.ResourceQuota{}
@@ -881,7 +874,7 @@ func (a *MemberAwaitility) WaitForResourceQuota(namespace, name string, criteria
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printResourceQuotaWaitCriterionDiffs(quota, criteria...)
+		a.printResourceQuotaWaitCriterionDiffs(t, quota, criteria...)
 	}
 	return quota, err
 }
@@ -902,7 +895,7 @@ func matchIdlerWaitCriteria(actual *toolchainv1alpha1.Idler, criteria ...IdlerWa
 	return true
 }
 
-func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) {
+func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(t *testing.T, actual *toolchainv1alpha1.Idler, criteria ...IdlerWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Idler\n")
@@ -924,7 +917,7 @@ func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(actual *toolchainv1alpha1
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // IdlerConditions returns a `IdlerWaitCriterion` which checks that the given
@@ -965,8 +958,8 @@ func IdlerHasTier(expected string) IdlerWaitCriterion {
 }
 
 // WaitForIdler waits until an Idler with the given name exists
-func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
-	a.T.Logf("waiting for Idler '%s' to match criteria", name)
+func (a *MemberAwaitility) WaitForIdler(t *testing.T, name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
+	t.Logf("waiting for Idler '%s' to match criteria", name)
 	idler := &toolchainv1alpha1.Idler{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Idler{}
@@ -981,13 +974,13 @@ func (a *MemberAwaitility) WaitForIdler(name string, criteria ...IdlerWaitCriter
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printIdlerWaitCriteriaDiffs(idler, criteria...)
+		a.printIdlerWaitCriteriaDiffs(t, idler, criteria...)
 	}
 	return idler, err
 }
 
 // UpdateIdlerSpec tries to update the Idler.Spec until success
-func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
+func (a *MemberAwaitility) UpdateIdlerSpec(t *testing.T, idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
 	var result *toolchainv1alpha1.Idler
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Idler{}
@@ -996,7 +989,7 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 		}
 		obj.Spec = idler.Spec
 		if err := a.Client.Update(context.TODO(), obj); err != nil {
-			a.T.Logf("trying to update Idler %s. Error: %s. Will try to update again.", idler.Name, err.Error())
+			t.Logf("trying to update Idler %s. Error: %s. Will try to update again.", idler.Name, err.Error())
 			return false, nil
 		}
 		result = obj
@@ -1008,7 +1001,7 @@ func (a *MemberAwaitility) UpdateIdlerSpec(idler *toolchainv1alpha1.Idler) (*too
 // UpdateNSTemplateSet tries to update the Spec of the given NSTemplateSet
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated NSTemplateSet
-func (a *MemberAwaitility) UpdateNSTemplateSet(spaceName string, modifyNSTemplateSet func(nsTmplSet *toolchainv1alpha1.NSTemplateSet)) (*toolchainv1alpha1.NSTemplateSet, error) {
+func (a *MemberAwaitility) UpdateNSTemplateSet(t *testing.T, spaceName string, modifyNSTemplateSet func(nsTmplSet *toolchainv1alpha1.NSTemplateSet)) (*toolchainv1alpha1.NSTemplateSet, error) {
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshNSTmplSet := &toolchainv1alpha1.NSTemplateSet{}
@@ -1017,7 +1010,7 @@ func (a *MemberAwaitility) UpdateNSTemplateSet(spaceName string, modifyNSTemplat
 		}
 		modifyNSTemplateSet(freshNSTmplSet)
 		if err := a.Client.Update(context.TODO(), freshNSTmplSet); err != nil {
-			a.T.Logf("error updating NSTemplateSet '%s': %s. Will retry again...", spaceName, err.Error())
+			t.Logf("error updating NSTemplateSet '%s': %s. Will retry again...", spaceName, err.Error())
 			return false, nil
 		}
 		nsTmplSet = freshNSTmplSet
@@ -1028,10 +1021,10 @@ func (a *MemberAwaitility) UpdateNSTemplateSet(spaceName string, modifyNSTemplat
 
 // Create tries to create the object until success
 // Workaround for https://github.com/kubernetes/kubernetes/issues/67761
-func (a *MemberAwaitility) Create(obj client.Object) error {
+func (a *MemberAwaitility) Create(t *testing.T, obj client.Object) error {
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Create(context.TODO(), obj); err != nil {
-			a.T.Logf("trying to create %+v. Error: %s. Will try to create again.", obj, err.Error())
+			t.Logf("trying to create %+v. Error: %s. Will try to create again.", obj, err.Error())
 			return false, nil
 		}
 		return true, nil
@@ -1053,7 +1046,7 @@ func matchPodWaitCriterion(actual *corev1.Pod, criteria ...PodWaitCriterion) boo
 	return true
 }
 
-func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, ns string, criteria ...PodWaitCriterion) {
+func (a *MemberAwaitility) printPodWaitCriterionDiffs(t *testing.T, actual *corev1.Pod, ns string, criteria ...PodWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Pod\n")
@@ -1067,12 +1060,12 @@ func (a *MemberAwaitility) printPodWaitCriterionDiffs(actual *corev1.Pod, ns str
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // WaitForPod waits until a pod with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWaitCriterion) (*corev1.Pod, error) {
-	a.T.Logf("waiting for Pod '%s' in namespace '%s' with matching criteria", name, namespace)
+func (a *MemberAwaitility) WaitForPod(t *testing.T, namespace, name string, criteria ...PodWaitCriterion) (*corev1.Pod, error) {
+	t.Logf("waiting for Pod '%s' in namespace '%s' with matching criteria", name, namespace)
 	var pod *corev1.Pod
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.Pod{}
@@ -1092,14 +1085,14 @@ func (a *MemberAwaitility) WaitForPod(namespace, name string, criteria ...PodWai
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printPodWaitCriterionDiffs(pod, namespace, criteria...)
+		a.printPodWaitCriterionDiffs(t, pod, namespace, criteria...)
 	}
 	return pod, err
 }
 
 // WaitForConfigMap waits until a ConfigMap with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForConfigMap(namespace, name string) (*corev1.ConfigMap, error) {
-	a.T.Logf("waiting for ConfigMap '%s' in namespace '%s'", name, namespace)
+func (a *MemberAwaitility) WaitForConfigMap(t *testing.T, namespace, name string) (*corev1.ConfigMap, error) {
+	t.Logf("waiting for ConfigMap '%s' in namespace '%s'", name, namespace)
 	var cm *corev1.ConfigMap
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.ConfigMap{}
@@ -1121,8 +1114,8 @@ func (a *MemberAwaitility) WaitForConfigMap(namespace, name string) (*corev1.Con
 }
 
 // WaitForPods waits until "n" number of pods exist in the given namespace
-func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
-	a.T.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
+func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
+	t.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
 	pods := make([]corev1.Pod, 0, n)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		pds := make([]corev1.Pod, 0, n)
@@ -1149,8 +1142,8 @@ func (a *MemberAwaitility) WaitForPods(namespace string, n int, criteria ...PodW
 }
 
 // WaitUntilPodsDeleted waits until the pods are deleted from the given namespace
-func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...PodWaitCriterion) error {
-	a.T.Logf("waiting until Pods with matching criteria in namespace '%s' are deleted", namespace)
+func (a *MemberAwaitility) WaitUntilPodsDeleted(t *testing.T, namespace string, criteria ...PodWaitCriterion) error {
+	t.Logf("waiting until Pods with matching criteria in namespace '%s' are deleted", namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		foundPods := &corev1.PodList{}
 		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
@@ -1170,8 +1163,8 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(namespace string, criteria ...Po
 }
 
 // WaitUntilPodDeleted waits until the pod with the given name is deleted from the given namespace
-func (a *MemberAwaitility) WaitUntilPodDeleted(namespace, name string) error {
-	a.T.Logf("waiting until Pod '%s' in namespace '%s' is deleted", name, namespace)
+func (a *MemberAwaitility) WaitUntilPodDeleted(t *testing.T, namespace, name string) error {
+	t.Logf("waiting until Pod '%s' in namespace '%s' is deleted", name, namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.Pod{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
@@ -1256,8 +1249,8 @@ func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
 }
 
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
-func (a *MemberAwaitility) WaitUntilNamespaceDeleted(username, typeName string) error {
-	a.T.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
+func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typeName string) error {
+	t.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{
 			"toolchain.dev.openshift.com/owner": username,
@@ -1290,7 +1283,7 @@ func matchUserWaitCriterion(actual *userv1.User, criteria ...UserWaitCriterion) 
 	return true
 }
 
-func (a *MemberAwaitility) printUserWaitCriterionDiffs(actual *userv1.User, criteria ...UserWaitCriterion) {
+func (a *MemberAwaitility) printUserWaitCriterionDiffs(t *testing.T, actual *userv1.User, criteria ...UserWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find User\n")
@@ -1304,12 +1297,12 @@ func (a *MemberAwaitility) printUserWaitCriterionDiffs(actual *userv1.User, crit
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // WaitForUser waits until there is a User with the given name available
-func (a *MemberAwaitility) WaitForUser(name string, criteria ...UserWaitCriterion) (*userv1.User, error) {
-	a.T.Logf("waiting for User '%s'", name)
+func (a *MemberAwaitility) WaitForUser(t *testing.T, name string, criteria ...UserWaitCriterion) (*userv1.User, error) {
+	t.Logf("waiting for User '%s'", name)
 	user := &userv1.User{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user = &userv1.User{}
@@ -1328,7 +1321,7 @@ func (a *MemberAwaitility) WaitForUser(name string, criteria ...UserWaitCriterio
 		return false, nil
 	})
 	if err != nil {
-		a.printUserWaitCriterionDiffs(user, criteria...)
+		a.printUserWaitCriterionDiffs(t, user, criteria...)
 	}
 	return user, err
 }
@@ -1374,8 +1367,8 @@ func matchIdentityWaitCriterion(actual *userv1.Identity, criteria ...IdentityWai
 }
 
 // WaitForIdentity waits until there is an Identity with the given name available
-func (a *MemberAwaitility) WaitForIdentity(name string, criteria ...IdentityWaitCriterion) (*userv1.Identity, error) {
-	a.T.Logf("waiting for Identity '%s'", name)
+func (a *MemberAwaitility) WaitForIdentity(t *testing.T, name string, criteria ...IdentityWaitCriterion) (*userv1.Identity, error) {
+	t.Logf("waiting for Identity '%s'", name)
 	identity := &userv1.Identity{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		identity = &userv1.Identity{}
@@ -1394,16 +1387,16 @@ func (a *MemberAwaitility) WaitForIdentity(name string, criteria ...IdentityWait
 		return false, nil
 	})
 	if err != nil {
-		a.printIdentities(name)
+		a.printIdentities(t, name)
 	}
 	return identity, err
 }
 
-func (a *MemberAwaitility) printIdentities(expectedName string) {
+func (a *MemberAwaitility) printIdentities(t *testing.T, expectedName string) {
 	buf := &strings.Builder{}
 	buf.WriteString(fmt.Sprintf("failed to find Identity '%s'\n", expectedName))
 	buf.WriteString(a.listAndReturnContent("Identity", "", &userv1.IdentityList{}))
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilIdentityHasLabel checks if the Identity has the expected label
@@ -1419,8 +1412,8 @@ func UntilIdentityHasLabel(key, value string) IdentityWaitCriterion {
 }
 
 // WaitUntilUserAccountDeleted waits until the UserAccount with the given name is not found
-func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
-	a.T.Logf("waiting until UserAccount '%s' in namespace '%s' is deleted", name, a.Namespace)
+func (a *MemberAwaitility) WaitUntilUserAccountDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until UserAccount '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, ua); err != nil {
@@ -1434,8 +1427,8 @@ func (a *MemberAwaitility) WaitUntilUserAccountDeleted(name string) error {
 }
 
 // WaitUntilUserDeleted waits until the User with the given name is not found
-func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
-	a.T.Logf("waiting until User is deleted '%s'", name)
+func (a *MemberAwaitility) WaitUntilUserDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until User is deleted '%s'", name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user := &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
@@ -1452,8 +1445,8 @@ func (a *MemberAwaitility) WaitUntilUserDeleted(name string) error {
 }
 
 // WaitUntilIdentityDeleted waits until the Identity with the given name is not found
-func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
-	a.T.Logf("waiting until Identity is deleted '%s'", name)
+func (a *MemberAwaitility) WaitUntilIdentityDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until Identity is deleted '%s'", name)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		identity := &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
@@ -1470,17 +1463,17 @@ func (a *MemberAwaitility) WaitUntilIdentityDeleted(name string) error {
 }
 
 // GetConsoleURL retrieves Web Console Route and returns its URL
-func (a *MemberAwaitility) GetConsoleURL() string {
+func (a *MemberAwaitility) GetConsoleURL(t *testing.T) string {
 	route := &routev1.Route{}
 	namespacedName := types.NamespacedName{Namespace: "openshift-console", Name: "console"}
 	err := a.Client.Get(context.TODO(), namespacedName, route)
-	require.NoError(a.T, err)
+	require.NoError(t, err)
 	return fmt.Sprintf("https://%s/%s", route.Spec.Host, route.Spec.Path)
 }
 
 // WaitUntilClusterResourceQuotasDeleted waits until all ClusterResourceQuotas with the given owner label are deleted (ie, none is found)
-func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(username string) error {
-	a.T.Logf("waiting for deletion of ClusterResourceQuotas for user '%s'", username)
+func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(t *testing.T, username string) error {
+	t.Logf("waiting for deletion of ClusterResourceQuotas for user '%s'", username)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{"toolchain.dev.openshift.com/owner": username}
 		opts := client.MatchingLabels(labels)
@@ -1510,7 +1503,7 @@ func matchMemberStatusWaitCriterion(actual *toolchainv1alpha1.MemberStatus, crit
 	return true
 }
 
-func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) {
+func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.MemberStatus, criteria ...MemberStatusWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find MemberStatus\n")
@@ -1531,7 +1524,7 @@ func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(actual *toolchain
 			}
 		}
 	}
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilMemberStatusHasConditions returns a `MemberStatusWaitCriterion` which checks that the given
@@ -1583,9 +1576,9 @@ func UntilMemberStatusHasConsoleURLSet(expectedURL string, expectedCondition too
 }
 
 // WaitForMemberStatus waits until the MemberStatus is available with the provided criteria, if any
-func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCriterion) error {
+func (a *MemberAwaitility) WaitForMemberStatus(t *testing.T, criteria ...MemberStatusWaitCriterion) error {
 	name := "toolchain-member-status"
-	a.T.Logf("waiting for MemberStatus '%s' to match criteria", name)
+	t.Logf("waiting for MemberStatus '%s' to match criteria", name)
 	// there should only be one member status with the name toolchain-member-status
 	var memberStatus *toolchainv1alpha1.MemberStatus
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
@@ -1607,19 +1600,19 @@ func (a *MemberAwaitility) WaitForMemberStatus(criteria ...MemberStatusWaitCrite
 		return matchMemberStatusWaitCriterion(obj, criteria...), nil
 	})
 	if err != nil {
-		a.printMemberStatusWaitCriterionDiffs(memberStatus, criteria...)
+		a.printMemberStatusWaitCriterionDiffs(t, memberStatus, criteria...)
 	}
 	return err
 }
 
 // GetMemberOperatorConfig returns MemberOperatorConfig instance, nil if not found
-func (a *MemberAwaitility) GetMemberOperatorConfig() *toolchainv1alpha1.MemberOperatorConfig {
+func (a *MemberAwaitility) GetMemberOperatorConfig(t *testing.T) *toolchainv1alpha1.MemberOperatorConfig {
 	config := &toolchainv1alpha1.MemberOperatorConfig{}
 	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "config"), config); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		require.NoError(a.T, err)
+		require.NoError(t, err)
 	}
 	return config
 }
@@ -1636,10 +1629,10 @@ func UntilMemberConfigMatches(expectedMemberOperatorConfigSpec toolchainv1alpha1
 }
 
 // WaitForMemberOperatorConfig waits until the MemberOperatorConfig is available with the provided criteria, if any
-func (a *MemberAwaitility) WaitForMemberOperatorConfig(hostAwait *HostAwaitility, criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
+func (a *MemberAwaitility) WaitForMemberOperatorConfig(t *testing.T, hostAwait *HostAwaitility, criteria ...MemberOperatorConfigWaitCriterion) (*toolchainv1alpha1.MemberOperatorConfig, error) {
 	// there should only be one MemberOperatorConfig with the name config
 	name := "config"
-	a.T.Logf("waiting for MemberOperatorConfig '%s'", name)
+	t.Logf("waiting for MemberOperatorConfig '%s'", name)
 	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		memberOperatorConfig = &toolchainv1alpha1.MemberOperatorConfig{}
@@ -1678,27 +1671,27 @@ func (a *MemberAwaitility) GetMemberOperatorPod() (corev1.Pod, error) {
 	return pods.Items[0], nil
 }
 
-func (a *MemberAwaitility) WaitForMemberWebhooks(image string) {
-	a.waitForUsersPodPriorityClass()
-	a.waitForService()
-	a.waitForWebhookDeployment(image)
-	ca := a.verifySecret()
-	a.verifyUserPodWebhookConfig(ca)
-	a.verifyUsersRolebindingsWebhookConfig(ca)
+func (a *MemberAwaitility) WaitForMemberWebhooks(t *testing.T, image string) {
+	a.waitForUsersPodPriorityClass(t)
+	a.waitForService(t)
+	a.waitForWebhookDeployment(t, image)
+	ca := a.verifySecret(t)
+	a.verifyUserPodWebhookConfig(t, ca)
+	a.verifyUsersRolebindingsWebhookConfig(t, ca)
 }
 
-func (a *MemberAwaitility) waitForUsersPodPriorityClass() {
-	a.T.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
+func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
+	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
-	a.waitForResource("", "sandbox-users-pods", actualPrioClass)
+	a.waitForResource(t, "", "sandbox-users-pods", actualPrioClass)
 
-	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
-	assert.Equal(a.T, int32(-3), actualPrioClass.Value)
-	assert.False(a.T, actualPrioClass.GlobalDefault)
-	assert.Equal(a.T, "Priority class for pods in users' namespaces", actualPrioClass.Description)
+	assert.Equal(t, codereadyToolchainProviderLabel, actualPrioClass.Labels)
+	assert.Equal(t, int32(-3), actualPrioClass.Value)
+	assert.False(t, actualPrioClass.GlobalDefault)
+	assert.Equal(t, "Priority class for pods in users' namespaces", actualPrioClass.Description)
 }
 
-func (a *MemberAwaitility) waitForResource(namespace, name string, object client.Object) {
+func (a *MemberAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {
@@ -1708,213 +1701,213 @@ func (a *MemberAwaitility) waitForResource(namespace, name string, object client
 		}
 		return true, nil
 	})
-	require.NoError(a.T, err)
+	require.NoError(t, err)
 }
 
-func (a *MemberAwaitility) waitForService() {
-	a.T.Logf("waiting for Service '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
+func (a *MemberAwaitility) waitForService(t *testing.T) {
+	t.Logf("waiting for Service '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
 	actualService := &corev1.Service{}
-	a.waitForResource(a.Namespace, "member-operator-webhook", actualService)
-	assert.Equal(a.T, map[string]string{
+	a.waitForResource(t, a.Namespace, "member-operator-webhook", actualService)
+	assert.Equal(t, map[string]string{
 		"app":                                  "member-operator-webhook",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualService.Labels)
-	require.Len(a.T, actualService.Spec.Ports, 1)
-	assert.Equal(a.T, int32(443), actualService.Spec.Ports[0].Port)
-	assert.Equal(a.T, intstr.IntOrString{
+	require.Len(t, actualService.Spec.Ports, 1)
+	assert.Equal(t, int32(443), actualService.Spec.Ports[0].Port)
+	assert.Equal(t, intstr.IntOrString{
 		IntVal: 8443,
 	}, actualService.Spec.Ports[0].TargetPort)
-	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualService.Spec.Selector)
+	assert.Equal(t, appMemberOperatorWebhookLabel, actualService.Spec.Selector)
 }
 
-func (a *MemberAwaitility) waitForWebhookDeployment(image string) {
-	a.T.Logf("checking Deployment '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
-	actualDeployment := a.WaitForDeploymentToGetReady("member-operator-webhook", 1,
+func (a *MemberAwaitility) waitForWebhookDeployment(t *testing.T, image string) {
+	t.Logf("checking Deployment '%s' in namespace '%s'", "member-operator-webhook", a.Namespace)
+	actualDeployment := a.WaitForDeploymentToGetReady(t, "member-operator-webhook", 1,
 		DeploymentHasContainerWithImage("mutator", image))
 
-	assert.Equal(a.T, bothWebhookLabels, actualDeployment.Labels)
-	assert.Equal(a.T, int32(1), *actualDeployment.Spec.Replicas)
-	assert.Equal(a.T, appMemberOperatorWebhookLabel, actualDeployment.Spec.Selector.MatchLabels)
+	assert.Equal(t, bothWebhookLabels, actualDeployment.Labels)
+	assert.Equal(t, int32(1), *actualDeployment.Spec.Replicas)
+	assert.Equal(t, appMemberOperatorWebhookLabel, actualDeployment.Spec.Selector.MatchLabels)
 
 	template := actualDeployment.Spec.Template
-	assert.Equal(a.T, "member-operator-webhook", template.ObjectMeta.Name)
-	assert.Equal(a.T, appMemberOperatorWebhookLabel, template.ObjectMeta.Labels)
-	require.Len(a.T, template.Spec.Volumes, 1)
-	assert.Equal(a.T, "webhook-certs", template.Spec.Volumes[0].Name)
-	assert.Equal(a.T, "webhook-certs", template.Spec.Volumes[0].Secret.SecretName)
-	require.Len(a.T, template.Spec.Containers, 1)
+	assert.Equal(t, "member-operator-webhook", template.ObjectMeta.Name)
+	assert.Equal(t, appMemberOperatorWebhookLabel, template.ObjectMeta.Labels)
+	require.Len(t, template.Spec.Volumes, 1)
+	assert.Equal(t, "webhook-certs", template.Spec.Volumes[0].Name)
+	assert.Equal(t, "webhook-certs", template.Spec.Volumes[0].Secret.SecretName)
+	require.Len(t, template.Spec.Containers, 1)
 
 	container := template.Spec.Containers[0]
-	assert.Equal(a.T, "mutator", container.Name)
-	assert.NotEmpty(a.T, container.Image)
-	assert.Equal(a.T, []string{"member-operator-webhook"}, container.Command)
-	assert.Equal(a.T, corev1.PullIfNotPresent, container.ImagePullPolicy)
-	assert.NotEmpty(a.T, container.Resources)
+	assert.Equal(t, "mutator", container.Name)
+	assert.NotEmpty(t, container.Image)
+	assert.Equal(t, []string{"member-operator-webhook"}, container.Command)
+	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
+	assert.NotEmpty(t, container.Resources)
 
-	assert.Len(a.T, container.VolumeMounts, 1)
-	assert.Equal(a.T, "webhook-certs", container.VolumeMounts[0].Name)
-	assert.Equal(a.T, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
-	assert.True(a.T, container.VolumeMounts[0].ReadOnly)
+	assert.Len(t, container.VolumeMounts, 1)
+	assert.Equal(t, "webhook-certs", container.VolumeMounts[0].Name)
+	assert.Equal(t, "/etc/webhook/certs", container.VolumeMounts[0].MountPath)
+	assert.True(t, container.VolumeMounts[0].ReadOnly)
 
-	a.WaitForDeploymentToGetReady("member-operator-webhook", 1)
+	a.WaitForDeploymentToGetReady(t, "member-operator-webhook", 1)
 }
 
-func (a *MemberAwaitility) verifySecret() []byte {
-	a.T.Logf("checking Secret '%s' in namespace '%s'", "webhook-certs", a.Namespace)
+func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
+	t.Logf("checking Secret '%s' in namespace '%s'", "webhook-certs", a.Namespace)
 	secret := &corev1.Secret{}
-	a.waitForResource(a.Namespace, "webhook-certs", secret)
-	assert.NotEmpty(a.T, secret.Data["server-key.pem"])
-	assert.NotEmpty(a.T, secret.Data["server-cert.pem"])
+	a.waitForResource(t, a.Namespace, "webhook-certs", secret)
+	assert.NotEmpty(t, secret.Data["server-key.pem"])
+	assert.NotEmpty(t, secret.Data["server-cert.pem"])
 	ca := secret.Data["ca-cert.pem"]
-	assert.NotEmpty(a.T, ca)
+	assert.NotEmpty(t, ca)
 	return ca
 }
 
-func (a *MemberAwaitility) verifyUserPodWebhookConfig(ca []byte) {
-	a.T.Logf("checking MutatingWebhookConfiguration '%s'", "sandbox-users-pods")
+func (a *MemberAwaitility) verifyUserPodWebhookConfig(t *testing.T, ca []byte) {
+	t.Logf("checking MutatingWebhookConfiguration '%s'", "sandbox-users-pods")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
-	a.waitForResource("", "member-operator-webhook", actualMutWbhConf)
-	assert.Equal(a.T, bothWebhookLabels, actualMutWbhConf.Labels)
-	require.Len(a.T, actualMutWbhConf.Webhooks, 1)
+	a.waitForResource(t, "", "member-operator-webhook", actualMutWbhConf)
+	assert.Equal(t, bothWebhookLabels, actualMutWbhConf.Labels)
+	require.Len(t, actualMutWbhConf.Webhooks, 1)
 
 	webhook := actualMutWbhConf.Webhooks[0]
-	assert.Equal(a.T, "users.pods.webhook.sandbox", webhook.Name)
-	assert.Equal(a.T, []string{"v1"}, webhook.AdmissionReviewVersions)
-	assert.Equal(a.T, admv1.SideEffectClassNone, *webhook.SideEffects)
-	assert.Equal(a.T, int32(5), *webhook.TimeoutSeconds)
-	assert.Equal(a.T, admv1.NeverReinvocationPolicy, *webhook.ReinvocationPolicy)
-	assert.Equal(a.T, admv1.Ignore, *webhook.FailurePolicy)
-	assert.Equal(a.T, admv1.Equivalent, *webhook.MatchPolicy)
-	assert.Equal(a.T, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
-	assert.Equal(a.T, ca, webhook.ClientConfig.CABundle)
-	assert.Equal(a.T, "member-operator-webhook", webhook.ClientConfig.Service.Name)
-	assert.Equal(a.T, a.Namespace, webhook.ClientConfig.Service.Namespace)
-	assert.Equal(a.T, "/mutate-users-pods", *webhook.ClientConfig.Service.Path)
-	assert.Equal(a.T, int32(443), *webhook.ClientConfig.Service.Port)
-	require.Len(a.T, webhook.Rules, 1)
+	assert.Equal(t, "users.pods.webhook.sandbox", webhook.Name)
+	assert.Equal(t, []string{"v1"}, webhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *webhook.SideEffects)
+	assert.Equal(t, int32(5), *webhook.TimeoutSeconds)
+	assert.Equal(t, admv1.NeverReinvocationPolicy, *webhook.ReinvocationPolicy)
+	assert.Equal(t, admv1.Ignore, *webhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *webhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, webhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", webhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, webhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/mutate-users-pods", *webhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *webhook.ClientConfig.Service.Port)
+	require.Len(t, webhook.Rules, 1)
 
 	rule := webhook.Rules[0]
-	//assert.Equal(a.T, []admv1.OperationType{admv1.Create}, rule.Operations)
-	assert.Equal(a.T, []string{""}, rule.APIGroups)
-	assert.Equal(a.T, []string{"v1"}, rule.APIVersions)
-	assert.Equal(a.T, []string{"pods"}, rule.Resources)
-	assert.Equal(a.T, admv1.NamespacedScope, *rule.Scope)
+	//assert.Equal(t, []admv1.OperationType{admv1.Create}, rule.Operations)
+	assert.Equal(t, []string{""}, rule.APIGroups)
+	assert.Equal(t, []string{"v1"}, rule.APIVersions)
+	assert.Equal(t, []string{"pods"}, rule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *rule.Scope)
 }
 
-func (a *MemberAwaitility) verifyUsersRolebindingsWebhookConfig(ca []byte) {
-	a.T.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
+func (a *MemberAwaitility) verifyUsersRolebindingsWebhookConfig(t *testing.T, ca []byte) {
+	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
-	a.waitForResource("", "member-operator-validating-webhook", actualValWbhConf)
-	assert.Equal(a.T, bothWebhookLabels, actualValWbhConf.Labels)
-	// require.Len(a.T, actualValWbhConf.Webhooks, 2)
+	a.waitForResource(t, "", "member-operator-validating-webhook", actualValWbhConf)
+	assert.Equal(t, bothWebhookLabels, actualValWbhConf.Labels)
+	// require.Len(t, actualValWbhConf.Webhooks, 2)
 
 	rolebindingWebhook := actualValWbhConf.Webhooks[0]
-	assert.Equal(a.T, "users.rolebindings.webhook.sandbox", rolebindingWebhook.Name)
-	assert.Equal(a.T, []string{"v1"}, rolebindingWebhook.AdmissionReviewVersions)
-	assert.Equal(a.T, admv1.SideEffectClassNone, *rolebindingWebhook.SideEffects)
-	assert.Equal(a.T, int32(5), *rolebindingWebhook.TimeoutSeconds)
-	assert.Equal(a.T, admv1.Ignore, *rolebindingWebhook.FailurePolicy)
-	assert.Equal(a.T, admv1.Equivalent, *rolebindingWebhook.MatchPolicy)
-	assert.Equal(a.T, codereadyToolchainProviderLabel, rolebindingWebhook.NamespaceSelector.MatchLabels)
-	assert.Equal(a.T, ca, rolebindingWebhook.ClientConfig.CABundle)
-	assert.Equal(a.T, "member-operator-webhook", rolebindingWebhook.ClientConfig.Service.Name)
-	assert.Equal(a.T, a.Namespace, rolebindingWebhook.ClientConfig.Service.Namespace)
-	assert.Equal(a.T, "/validate-users-rolebindings", *rolebindingWebhook.ClientConfig.Service.Path)
-	assert.Equal(a.T, int32(443), *rolebindingWebhook.ClientConfig.Service.Port)
-	require.Len(a.T, rolebindingWebhook.Rules, 1)
+	assert.Equal(t, "users.rolebindings.webhook.sandbox", rolebindingWebhook.Name)
+	assert.Equal(t, []string{"v1"}, rolebindingWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *rolebindingWebhook.SideEffects)
+	assert.Equal(t, int32(5), *rolebindingWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Ignore, *rolebindingWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *rolebindingWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, rolebindingWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, rolebindingWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", rolebindingWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, rolebindingWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-users-rolebindings", *rolebindingWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *rolebindingWebhook.ClientConfig.Service.Port)
+	require.Len(t, rolebindingWebhook.Rules, 1)
 
 	rolebindingRule := rolebindingWebhook.Rules[0]
-	assert.Equal(a.T, []admv1.OperationType{admv1.Create, admv1.Update}, rolebindingRule.Operations)
-	assert.Equal(a.T, []string{"rbac.authorization.k8s.io", "authorization.openshift.io"}, rolebindingRule.APIGroups)
-	assert.Equal(a.T, []string{"v1"}, rolebindingRule.APIVersions)
-	assert.Equal(a.T, []string{"rolebindings"}, rolebindingRule.Resources)
-	assert.Equal(a.T, admv1.NamespacedScope, *rolebindingRule.Scope)
+	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, rolebindingRule.Operations)
+	assert.Equal(t, []string{"rbac.authorization.k8s.io", "authorization.openshift.io"}, rolebindingRule.APIGroups)
+	assert.Equal(t, []string{"v1"}, rolebindingRule.APIVersions)
+	assert.Equal(t, []string{"rolebindings"}, rolebindingRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *rolebindingRule.Scope)
 
 	checlusterWebhook := actualValWbhConf.Webhooks[1]
-	assert.Equal(a.T, "users.checlusters.webhook.sandbox", checlusterWebhook.Name)
-	assert.Equal(a.T, []string{"v1"}, checlusterWebhook.AdmissionReviewVersions)
-	assert.Equal(a.T, admv1.SideEffectClassNone, *checlusterWebhook.SideEffects)
-	assert.Equal(a.T, int32(5), *checlusterWebhook.TimeoutSeconds)
-	assert.Equal(a.T, admv1.Ignore, *checlusterWebhook.FailurePolicy)
-	assert.Equal(a.T, admv1.Equivalent, *checlusterWebhook.MatchPolicy)
-	assert.Equal(a.T, codereadyToolchainProviderLabel, checlusterWebhook.NamespaceSelector.MatchLabels)
-	assert.Equal(a.T, ca, checlusterWebhook.ClientConfig.CABundle)
-	assert.Equal(a.T, "member-operator-webhook", checlusterWebhook.ClientConfig.Service.Name)
-	assert.Equal(a.T, a.Namespace, checlusterWebhook.ClientConfig.Service.Namespace)
-	assert.Equal(a.T, "/validate-users-checlusters", *checlusterWebhook.ClientConfig.Service.Path)
-	assert.Equal(a.T, int32(443), *checlusterWebhook.ClientConfig.Service.Port)
-	require.Len(a.T, checlusterWebhook.Rules, 1)
+	assert.Equal(t, "users.checlusters.webhook.sandbox", checlusterWebhook.Name)
+	assert.Equal(t, []string{"v1"}, checlusterWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *checlusterWebhook.SideEffects)
+	assert.Equal(t, int32(5), *checlusterWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Ignore, *checlusterWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *checlusterWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, checlusterWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, checlusterWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", checlusterWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, checlusterWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-users-checlusters", *checlusterWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *checlusterWebhook.ClientConfig.Service.Port)
+	require.Len(t, checlusterWebhook.Rules, 1)
 
 	checlusterRule := checlusterWebhook.Rules[0]
-	assert.Equal(a.T, []admv1.OperationType{admv1.Create}, checlusterRule.Operations)
-	assert.Equal(a.T, []string{"org.eclipse.che"}, checlusterRule.APIGroups)
-	assert.Equal(a.T, []string{"v2"}, checlusterRule.APIVersions)
-	assert.Equal(a.T, []string{"checlusters"}, checlusterRule.Resources)
-	assert.Equal(a.T, admv1.NamespacedScope, *checlusterRule.Scope)
+	assert.Equal(t, []admv1.OperationType{admv1.Create}, checlusterRule.Operations)
+	assert.Equal(t, []string{"org.eclipse.che"}, checlusterRule.APIGroups)
+	assert.Equal(t, []string{"v2"}, checlusterRule.APIVersions)
+	assert.Equal(t, []string{"checlusters"}, checlusterRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *checlusterRule.Scope)
 
 }
 
-func (a *MemberAwaitility) WaitForAutoscalingBufferApp() {
-	a.verifyAutoscalingBufferPriorityClass()
-	a.verifyAutoscalingBufferDeployment()
+func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
+	a.verifyAutoscalingBufferPriorityClass(t)
+	a.verifyAutoscalingBufferDeployment(t)
 }
 
-func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass() {
-	a.T.Logf("checking PrioritiyClass '%s'", "member-operator-autoscaling-buffer")
+func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass(t *testing.T) {
+	t.Logf("checking PrioritiyClass '%s'", "member-operator-autoscaling-buffer")
 	actualPrioClass := &schedulingv1.PriorityClass{}
-	a.waitForResource("", "member-operator-autoscaling-buffer", actualPrioClass)
+	a.waitForResource(t, "", "member-operator-autoscaling-buffer", actualPrioClass)
 
-	assert.Equal(a.T, codereadyToolchainProviderLabel, actualPrioClass.Labels)
-	assert.Equal(a.T, int32(-5), actualPrioClass.Value)
-	assert.False(a.T, actualPrioClass.GlobalDefault)
-	assert.Equal(a.T, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
+	assert.Equal(t, codereadyToolchainProviderLabel, actualPrioClass.Labels)
+	assert.Equal(t, int32(-5), actualPrioClass.Value)
+	assert.False(t, actualPrioClass.GlobalDefault)
+	assert.Equal(t, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
 }
 
-func (a *MemberAwaitility) verifyAutoscalingBufferDeployment() {
-	a.T.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
+func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
+	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
 	actualDeployment := &appsv1.Deployment{}
-	a.waitForResource(a.Namespace, "autoscaling-buffer", actualDeployment)
+	a.waitForResource(t, a.Namespace, "autoscaling-buffer", actualDeployment)
 
-	assert.Equal(a.T, map[string]string{
+	assert.Equal(t, map[string]string{
 		"app":                                  "autoscaling-buffer",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualDeployment.Labels)
-	assert.Equal(a.T, int32(2), *actualDeployment.Spec.Replicas)
-	assert.Equal(a.T, map[string]string{"app": "autoscaling-buffer"}, actualDeployment.Spec.Selector.MatchLabels)
+	assert.Equal(t, int32(2), *actualDeployment.Spec.Replicas)
+	assert.Equal(t, map[string]string{"app": "autoscaling-buffer"}, actualDeployment.Spec.Selector.MatchLabels)
 
 	template := actualDeployment.Spec.Template
-	assert.Equal(a.T, map[string]string{"app": "autoscaling-buffer"}, template.ObjectMeta.Labels)
+	assert.Equal(t, map[string]string{"app": "autoscaling-buffer"}, template.ObjectMeta.Labels)
 
-	assert.Equal(a.T, "member-operator-autoscaling-buffer", template.Spec.PriorityClassName)
-	assert.Equal(a.T, int64(0), *template.Spec.TerminationGracePeriodSeconds)
+	assert.Equal(t, "member-operator-autoscaling-buffer", template.Spec.PriorityClassName)
+	assert.Equal(t, int64(0), *template.Spec.TerminationGracePeriodSeconds)
 
-	require.Len(a.T, template.Spec.Containers, 1)
+	require.Len(t, template.Spec.Containers, 1)
 	container := template.Spec.Containers[0]
-	assert.Equal(a.T, "autoscaling-buffer", container.Name)
-	assert.Equal(a.T, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
-	assert.Equal(a.T, corev1.PullIfNotPresent, container.ImagePullPolicy)
+	assert.Equal(t, "autoscaling-buffer", container.Name)
+	assert.Equal(t, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
+	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
 
 	expectedMemory, err := resource.ParseQuantity("50Mi")
-	require.NoError(a.T, err)
-	assert.True(a.T, container.Resources.Requests.Memory().Equal(expectedMemory))
-	assert.True(a.T, container.Resources.Limits.Memory().Equal(expectedMemory))
+	require.NoError(t, err)
+	assert.True(t, container.Resources.Requests.Memory().Equal(expectedMemory))
+	assert.True(t, container.Resources.Limits.Memory().Equal(expectedMemory))
 
-	a.WaitForDeploymentToGetReady("autoscaling-buffer", 2)
+	a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2)
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfResources(namespace, kind string, expected int, list func() (int, error)) error {
+func (a *MemberAwaitility) WaitForExpectedNumberOfResources(t *testing.T, namespace, kind string, expected int, list func() (int, error)) error {
 	if actual, err := a.waitForExpectedNumberOfResources(expected, list); err != nil {
-		a.T.Logf("expected number of resources of kind '%s' in namespace '%s' to be %d but it was %d", kind, namespace, expected, actual)
+		t.Logf("expected number of resources of kind '%s' in namespace '%s' to be %d but it was %d", kind, namespace, expected, actual)
 		return err
 	}
 	return nil
 }
 
 // WaitForExpectedNumberOfClusterResources waits until the number of resources matches the expected count
-func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(kind string, expected int, list func() (int, error)) error {
+func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(t *testing.T, kind string, expected int, list func() (int, error)) error {
 	if actual, err := a.waitForExpectedNumberOfResources(expected, list); err != nil {
-		a.T.Logf("expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)
+		t.Logf("expected number of resources of kind '%s' to be %d but it was %d", kind, expected, actual)
 		return err
 	}
 	return nil
@@ -1933,7 +1926,7 @@ func (a *MemberAwaitility) waitForExpectedNumberOfResources(expected int, list f
 	return actual, err
 }
 
-func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
+func (a *MemberAwaitility) UpdatePod(t *testing.T, namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
 	var m *corev1.Pod
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshPod := &corev1.Pod{}
@@ -1943,7 +1936,7 @@ func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(p
 
 		modifyPod(freshPod)
 		if err := a.Client.Update(context.TODO(), freshPod); err != nil {
-			a.T.Logf("error updating Pod '%s' Will retry again...", podName)
+			t.Logf("error updating Pod '%s' Will retry again...", podName)
 			return false, nil // nolint:nilerr
 		}
 		m = freshPod
@@ -1952,7 +1945,7 @@ func (a *MemberAwaitility) UpdatePod(namespace, podName string, modifyPod func(p
 	return m, err
 }
 
-func (a *MemberAwaitility) UpdateConfigMap(namespace, cmName string, modifyCM func(*corev1.ConfigMap)) (*corev1.ConfigMap, error) {
+func (a *MemberAwaitility) UpdateConfigMap(t *testing.T, namespace, cmName string, modifyCM func(*corev1.ConfigMap)) (*corev1.ConfigMap, error) {
 	var cm *corev1.ConfigMap
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.ConfigMap{}
@@ -1964,7 +1957,7 @@ func (a *MemberAwaitility) UpdateConfigMap(namespace, cmName string, modifyCM fu
 		}
 		modifyCM(obj)
 		if err := a.Client.Update(context.TODO(), obj); err != nil {
-			a.T.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
+			t.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
 			return false, nil // nolint:nilerr
 		}
 		cm = obj

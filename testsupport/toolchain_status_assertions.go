@@ -13,7 +13,7 @@ import (
 )
 
 func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expectedURL string) {
-	err := memberAwait.WaitForMemberStatus(
+	err := memberAwait.WaitForMemberStatus(t,
 		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
 		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
@@ -21,10 +21,10 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expect
 }
 
 func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
-	memberCluster, found, err := hostAwait.GetToolchainCluster(cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
-	_, err = hostAwait.WaitForToolchainStatus(wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilAllMembersHaveUsageSet(),
 		wait.UntilAllMembersHaveAPIEndpoint(memberCluster.Spec.APIEndpoint),
 		wait.UntilProxyURLIsPresent(hostAwait.APIProxyURL))
