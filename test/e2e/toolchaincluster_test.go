@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -37,7 +38,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// given
 		name := "new-ready-" + string(await.Type)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
-			clusterType(await.Type),
+			clusterType(otherAwait.Type),
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
 			secretRef(current.Spec.SecretRef.Name),
@@ -53,26 +54,42 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// when
 		err := await.Client.Create(context.TODO(), toolchainCluster)
+		require.NoError(t, err)
+		// wait for toolchaincontroller to reconcile
+		time.Sleep(1 * time.Second)
 
 		// then the ToolchainCluster should be ready
+		_, err = await.WaitForToolchainCluster(
+			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
+			wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
-		namedToolchainCluster, err := await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, wait.ReadyToolchainCluster)
-		require.NoError(t, err)
-		checkTenantRoleLabel(t, &namedToolchainCluster, await)
 		// other ToolchainCluster should be ready, too
-		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainCluster(wait.UntilToolchainClusterHasLabels(
+			client.MatchingLabels{
+				"namespace": otherAwait.Namespace,
+				"type":      string(otherAwait.Type),
+			},
+		), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &toolChainClusterWithCondition, await)
-		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainCluster(
+			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
+				"namespace": await.Namespace,
+				"type":      string(await.Type),
+			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(await.Type),
+		)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &otherToolchainCluster, otherAwait)
 	})
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
 		// given
 		name := "new-offline-" + string(await.Type)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
-			clusterType(await.Type),
+			clusterType(otherAwait.Type),
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
 			secretRef(current.Spec.SecretRef.Name),
@@ -88,45 +105,56 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// when
 		err := await.Client.Create(context.TODO(), toolchainCluster)
+		// wait for toolchaincontroller to reconcile
+		time.Sleep(1 * time.Second)
+
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)
-		namedToolchainCluster, err := await.WaitForNamedToolchainClusterWithCondition(toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
-			Type:   toolchainv1alpha1.ToolchainClusterOffline,
-			Status: corev1.ConditionTrue,
-		})
+		_, err = await.WaitForToolchainCluster(
+			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
+			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterCondition{
+				Type:   toolchainv1alpha1.ToolchainClusterOffline,
+				Status: corev1.ConditionTrue,
+			}),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &namedToolchainCluster, await)
 		// other ToolchainCluster should be ready, too
-		toolChainClusterWithCondition, err := await.WaitForToolchainClusterWithCondition(otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainCluster(wait.UntilToolchainClusterHasLabels(
+			client.MatchingLabels{
+				"namespace": otherAwait.Namespace,
+				"type":      string(otherAwait.Type),
+			},
+		), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &toolChainClusterWithCondition, await)
-		otherToolchainCluster, err := otherAwait.WaitForToolchainClusterWithCondition(await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainCluster(
+			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
+				"namespace": await.Namespace,
+				"type":      string(await.Type),
+			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(await.Type),
+		)
 		require.NoError(t, err)
-		checkTenantRoleLabel(t, &otherToolchainCluster, otherAwait)
 	})
 }
 
-// checkTenantRoleLabel checks that cluster-role label `tenant` is set accordingly since not all cluster types
-// should have this label (only member ones).
-// In case the label is expected but missing at the first check,
-// the function waits for the label to be added by the toolchaincluster controller.
-func checkTenantRoleLabel(t *testing.T, toolchainCluster *toolchainv1alpha1.ToolchainCluster, await *wait.Awaitility) {
-	clusterType, clusterTypeLabelExists := toolchainCluster.Labels[cluster.LabelType]
-	if clusterTypeLabelExists {
-		_, clusterRoleTenantLabelFound := toolchainCluster.Labels[cluster.RoleLabel(cluster.Tenant)]
-		if clusterType == string(cluster.Member) {
-			// check that member type cluster has the tenant cluster-role
-			matchingLabels := &client.MatchingLabels{cluster.RoleLabel(cluster.Tenant): ""}
-			if !clusterRoleTenantLabelFound {
-				// wait to see if cluster-role label will be added by the toolchaincluster controller
-				_, err := await.WaitForNamedToolchainClusterWithLabels(toolchainCluster.Name, matchingLabels)
-				require.NoError(t, err)
-			}
-		} else {
-			// check that NON member type cluster does NOT contain tenant cluster-role
-			require.False(t, clusterRoleTenantLabelFound, "invalid label: %s found on toolchaincluster: %s ", cluster.RoleLabel(cluster.Tenant), toolchainCluster.Name)
-		}
+// toolchainClusterWaitCriterionBasedOnType returns ToolchainClusterWaitCriterion based on toolchaincluster type (member or host)
+func toolchainClusterWaitCriterionBasedOnType(clusterType cluster.Type) wait.ToolchainClusterWaitCriterion {
+	var clusterRoleTenantAssertion wait.ToolchainClusterWaitCriterion
+	if clusterType == cluster.Member {
+		// for toolchaincluster of type member we check that cluster-role tenant label is set as expected
+		clusterRoleTenantAssertion = wait.UntilToolchainClusterHasLabels(
+			client.MatchingLabels{
+				// we use only the key so the value can be blank
+				cluster.RoleLabel(cluster.Tenant): "",
+			})
+	} else {
+		// for toolchaincluster of other types we check that cluster-role tenant label is missing as expected
+		clusterRoleTenantAssertion = wait.UntilToolchainClusterHasNoTenantLabel()
 	}
+	return clusterRoleTenantAssertion
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {

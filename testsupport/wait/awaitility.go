@@ -180,41 +180,6 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(name string, cond
 	return c, err
 }
 
-// WaitForNamedToolchainClusterWithLabels waits until there is a ToolchainCluster with the given name
-// and with the given labels
-func (a *Awaitility) WaitForNamedToolchainClusterWithLabels(name string, matchingLabels *client.MatchingLabels) (toolchainv1alpha1.ToolchainCluster, error) {
-	a.T.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have labels '%v'", name, a.Namespace, matchingLabels)
-	timeout := a.Timeout
-	clusters := &toolchainv1alpha1.ToolchainClusterList{}
-	tc := toolchainv1alpha1.ToolchainCluster{}
-	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
-		clusters = &toolchainv1alpha1.ToolchainClusterList{}
-		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), matchingLabels); err != nil {
-			return false, err
-		}
-		if len(clusters.Items) == 0 {
-			return false, fmt.Errorf("no toolchaincluster resource with expected labels: namespace='%s', matchingLabels='%v'", a.Namespace, matchingLabels)
-		}
-
-		// check if there is any toolchaincluster resource with given name
-		clusterFound := false
-		for _, cl := range clusters.Items {
-			if cl.Name == name {
-				clusterFound = true
-				tc = cl
-				break
-			}
-		}
-		// if we found the expected toolchaincluster we exit from the wait poll loop
-		if clusterFound {
-			return true, nil
-		}
-
-		return false, fmt.Errorf("no toolchaincluster with expected name found: expectedName='%s' namespace='%s', labels='%v'", name, a.Namespace, matchingLabels)
-	})
-	return tc, err
-}
-
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
@@ -535,6 +500,85 @@ func DeploymentHasContainerWithImage(containerName, image string) DeploymentCrit
 			}
 		}
 		return false
+	}
+}
+
+// ToolchainClusterWaitCriterion a struct to compare with an expected ToolchainCluster CR
+type ToolchainClusterWaitCriterion struct {
+	Match func(toolchainCluster *toolchainv1alpha1.ToolchainCluster) bool
+}
+
+// WaitForToolchainCluster waits until there is a ToolchainCluster CR available with the given list of criteria
+func (a *Awaitility) WaitForToolchainCluster(criteria ...ToolchainClusterWaitCriterion) (*toolchainv1alpha1.ToolchainCluster, error) {
+	a.T.Logf("waiting for toolchaincluster in namespace '%s' to match criteria", a.Namespace)
+	var clusters *toolchainv1alpha1.ToolchainClusterList
+	var cl *toolchainv1alpha1.ToolchainCluster
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		clusters = &toolchainv1alpha1.ToolchainClusterList{}
+		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		for _, obj := range clusters.Items {
+			if matchesAllCriteria := matchToolchainClusterWaitCriterion(&obj, criteria...); matchesAllCriteria {
+				cl = &obj
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	return cl, err
+}
+
+func matchToolchainClusterWaitCriterion(actual *toolchainv1alpha1.ToolchainCluster, criteria ...ToolchainClusterWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+// UntilToolchainClusterHasName checks if ToolchainCluster has given name
+func UntilToolchainClusterHasName(expectedName string) ToolchainClusterWaitCriterion {
+	return ToolchainClusterWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
+			return actual.Name == expectedName
+		},
+	}
+}
+
+// UntilToolchainClusterHasCondition checks if ToolchainCluster has the given condition
+func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.ToolchainClusterCondition) ToolchainClusterWaitCriterion {
+	return ToolchainClusterWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
+			return containsClusterCondition(actual.Status.Conditions, &expected)
+		},
+	}
+}
+
+// UntilToolchainClusterHasLabels checks if ToolchainCluster has the given labels
+func UntilToolchainClusterHasLabels(expected client.MatchingLabels) ToolchainClusterWaitCriterion {
+	return ToolchainClusterWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
+			for expectedLabelKey, expectedLabelValue := range expected {
+				if actualLabelValue, found := actual.Labels[expectedLabelKey]; !found || expectedLabelValue != actualLabelValue {
+					return false
+				}
+			}
+			return true
+		},
+	}
+}
+
+// UntilToolchainClusterHasNoTenantLabel checks if ToolchainCluster has no tenant cluster-role label
+func UntilToolchainClusterHasNoTenantLabel() ToolchainClusterWaitCriterion {
+	return ToolchainClusterWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
+			if _, found := actual.Labels[cluster.RoleLabel(cluster.Tenant)]; found {
+				return false
+			}
+			return true
+		},
 	}
 }
 
