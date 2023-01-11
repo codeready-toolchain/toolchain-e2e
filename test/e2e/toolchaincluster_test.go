@@ -66,9 +66,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
 		// given
-		name := "new-offline-" + string(await.Type)
+		name := "new-offline-" + string(otherAwait.Type)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
-			clusterType(await.Type),
+			clusterType(otherAwait.Type),
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
 			secretRef(current.Spec.SecretRef.Name),
