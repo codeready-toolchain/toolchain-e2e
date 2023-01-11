@@ -508,8 +508,9 @@ func (a *Awaitility) WaitForToolchainCluster(t *testing.T, criteria ...Toolchain
 			return false, err
 		}
 		for _, obj := range clusters.Items {
-			if matchesAllCriteria := matchToolchainClusterWaitCriterion(&obj, criteria...); matchesAllCriteria {
-				cl = &obj
+			cpObj := obj
+			if matchesAllCriteria := matchToolchainClusterWaitCriterion(&cpObj, criteria...); matchesAllCriteria {
+				cl = &cpObj
 				return true, nil
 			}
 		}
