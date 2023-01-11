@@ -41,10 +41,9 @@ type HostAwaitility struct {
 }
 
 // NewHostAwaitility initializes a HostAwaitility
-func NewHostAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
+func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrationServiceNs string) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
-			T:             t,
 			Client:        cl,
 			RestConfig:    cfg,
 			Namespace:     ns,
@@ -60,15 +59,6 @@ func NewHostAwaitility(t *testing.T, cfg *rest.Config, cl client.Client, ns stri
 func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitility {
 	return &HostAwaitility{
 		Awaitility:             a.Awaitility.WithRetryOptions(options...),
-		RegistrationServiceNs:  a.RegistrationServiceNs,
-		RegistrationServiceURL: a.RegistrationServiceURL,
-		APIProxyURL:            a.APIProxyURL,
-	}
-}
-
-func (a *HostAwaitility) ForTest(t *testing.T) *HostAwaitility {
-	return &HostAwaitility{
-		Awaitility:             a.Awaitility.ForTest(t),
 		RegistrationServiceNs:  a.RegistrationServiceNs,
 		RegistrationServiceURL: a.RegistrationServiceURL,
 		APIProxyURL:            a.APIProxyURL,
@@ -163,8 +153,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 }
 
 // WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions
-func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
-	a.T.Logf("waiting for MasterUserRecord '%s' in namespace '%s' to match criteria", name, a.Namespace)
+func (a *HostAwaitility) WaitForMasterUserRecord(t *testing.T, name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
+	t.Logf("waiting for MasterUserRecord '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var mur *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.MasterUserRecord{}
@@ -179,7 +169,7 @@ func (a *HostAwaitility) WaitForMasterUserRecord(name string, criteria ...Master
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printMasterUserRecordWaitCriterionDiffs(mur, criteria...)
+		a.printMasterUserRecordWaitCriterionDiffs(t, mur, criteria...)
 	}
 	return mur, err
 }
@@ -195,21 +185,21 @@ func (a *HostAwaitility) GetMasterUserRecord(name string) (*toolchainv1alpha1.Ma
 // UpdateMasterUserRecordSpec tries to update the Spec of the given MasterUserRecord
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
 // Returns the updated MasterUserRecord
-func (a *HostAwaitility) UpdateMasterUserRecordSpec(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
-	return a.UpdateMasterUserRecord(false, murName, modifyMur)
+func (a *HostAwaitility) UpdateMasterUserRecordSpec(t *testing.T, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+	return a.UpdateMasterUserRecord(t, false, murName, modifyMur)
 }
 
 // UpdateMasterUserRecordStatus tries to update the Status of the given MasterUserRecord
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
 // Returns the updated MasterUserRecord
-func (a *HostAwaitility) UpdateMasterUserRecordStatus(murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
-	return a.UpdateMasterUserRecord(true, murName, modifyMur)
+func (a *HostAwaitility) UpdateMasterUserRecordStatus(t *testing.T, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+	return a.UpdateMasterUserRecord(t, true, murName, modifyMur)
 }
 
 // UpdateMasterUserRecord tries to update the Spec or the Status of the given MasterUserRecord
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
 // Returns the updated MasterUserRecord
-func (a *HostAwaitility) UpdateMasterUserRecord(status bool, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
+func (a *HostAwaitility) UpdateMasterUserRecord(t *testing.T, status bool, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
 	var m *toolchainv1alpha1.MasterUserRecord
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshMur := &toolchainv1alpha1.MasterUserRecord{}
@@ -221,11 +211,11 @@ func (a *HostAwaitility) UpdateMasterUserRecord(status bool, murName string, mod
 		if status {
 			// Update status
 			if err := a.Client.Status().Update(context.TODO(), freshMur); err != nil {
-				a.T.Logf("error updating MasterUserRecord.Status '%s': %s. Will retry again...", murName, err.Error())
+				t.Logf("error updating MasterUserRecord.Status '%s': %s. Will retry again...", murName, err.Error())
 				return false, nil
 			}
 		} else if err := a.Client.Update(context.TODO(), freshMur); err != nil {
-			a.T.Logf("error updating MasterUserRecord.Spec '%s': %s. Will retry again...", murName, err.Error())
+			t.Logf("error updating MasterUserRecord.Spec '%s': %s. Will retry again...", murName, err.Error())
 			return false, nil
 		}
 		m = freshMur
@@ -237,7 +227,7 @@ func (a *HostAwaitility) UpdateMasterUserRecord(status bool, murName string, mod
 // UpdateUserSignup tries to update the Spec of the given UserSignup
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated UserSignup
-func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
+func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshUserSignup := &toolchainv1alpha1.UserSignup{}
@@ -247,7 +237,7 @@ func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignu
 
 		modifyUserSignup(freshUserSignup)
 		if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
-			a.T.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
+			t.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
 			return false, nil
 		}
 		userSignup = freshUserSignup
@@ -259,7 +249,7 @@ func (a *HostAwaitility) UpdateUserSignup(userSignupName string, modifyUserSignu
 // UpdateSpace tries to update the Spec of the given Space
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated Space
-func (a *HostAwaitility) UpdateSpace(spaceName string, modifySpace func(s *toolchainv1alpha1.Space)) (*toolchainv1alpha1.Space, error) {
+func (a *HostAwaitility) UpdateSpace(t *testing.T, spaceName string, modifySpace func(s *toolchainv1alpha1.Space)) (*toolchainv1alpha1.Space, error) {
 	var s *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		freshSpace := &toolchainv1alpha1.Space{}
@@ -268,7 +258,7 @@ func (a *HostAwaitility) UpdateSpace(spaceName string, modifySpace func(s *toolc
 		}
 		modifySpace(freshSpace)
 		if err := a.Client.Update(context.TODO(), freshSpace); err != nil {
-			a.T.Logf("error updating Space '%s': %s. Will retry again...", spaceName, err.Error())
+			t.Logf("error updating Space '%s': %s. Will retry again...", spaceName, err.Error())
 			return false, nil
 		}
 		s = freshSpace
@@ -292,7 +282,7 @@ func matchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserReco
 	return true
 }
 
-func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) {
+func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find MasterUserRecord\n")
@@ -312,11 +302,11 @@ func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(actual *toolcha
 		}
 	}
 	// also include other resources relevant in the host namespace, to help troubleshooting
-	a.listAndPrint("UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
-	a.listAndPrint("MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
-	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
+	a.listAndPrint(t, "UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
+	a.listAndPrint(t, "MasterUserRecords", a.Namespace, &toolchainv1alpha1.MasterUserRecordList{})
+	a.listAndPrint(t, "Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilMasterUserRecordIsBeingDeleted checks if MasterUserRecord has Deletion Timestamp
@@ -424,7 +414,7 @@ func matchUserSignupWaitCriterion(actual *toolchainv1alpha1.UserSignup, criteria
 	return true
 }
 
-func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) {
+func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.UserSignup, criteria ...UserSignupWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find UserSignup\n")
@@ -445,7 +435,7 @@ func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(actual *toolchainv1al
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	buf.WriteString(a.sprintAllResources())
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilUserSignupIsBeingDeleted returns a `UserSignupWaitCriterion` which checks that the given
@@ -553,8 +543,8 @@ func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
 }
 
 // WaitForTestResourcesCleanup waits for all UserSignup, MasterUserRecord, Space, SpaceBinding, NSTemplateSet and Namespace deletions to complete
-func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration) error {
-	a.T.Logf("waiting for resource cleanup")
+func (a *HostAwaitility) WaitForTestResourcesCleanup(t *testing.T, initialDelay time.Duration) error {
+	t.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		usList := &toolchainv1alpha1.UserSignupList{}
@@ -621,8 +611,8 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(initialDelay time.Duration)
 }
 
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
-func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
-	a.T.Logf("waiting for UserSignup '%s' in namespace '%s' to match criteria", name, a.Namespace)
+func (a *HostAwaitility) WaitForUserSignup(t *testing.T, name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	t.Logf("waiting for UserSignup '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
@@ -637,14 +627,14 @@ func (a *HostAwaitility) WaitForUserSignup(name string, criteria ...UserSignupWa
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printUserSignupWaitCriterionDiffs(userSignup, criteria...)
+		a.printUserSignupWaitCriterionDiffs(t, userSignup, criteria...)
 	}
 	return userSignup, err
 }
 
 // WaitForUserSignup waits until there is a UserSignup available with the given name and set of status conditions
-func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
-	a.T.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userID, username, a.Namespace)
+func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(t *testing.T, userID, username string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
+	t.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userID, username, a.Namespace)
 	encodedUsername := EncodeUserIdentifier(username)
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -666,14 +656,14 @@ func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(userID, username s
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printUserSignupWaitCriterionDiffs(userSignup, criteria...)
+		a.printUserSignupWaitCriterionDiffs(t, userSignup, criteria...)
 	}
 	return userSignup, err
 }
 
 // WaitAndVerifyThatUserSignupIsNotCreated waits and checks that the UserSignup is not created
-func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(name string) {
-	a.T.Logf("waiting and verifying that UserSignup '%s' in namespace '%s' is not created", name, a.Namespace)
+func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(t *testing.T, name string) {
+	t.Logf("waiting and verifying that UserSignup '%s' in namespace '%s' is not created", name, a.Namespace)
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
@@ -687,13 +677,13 @@ func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(name string) {
 		return true, nil
 	})
 	if err == nil {
-		require.Fail(a.T, fmt.Sprintf("UserSignup '%s' should not be created, but it was found: %v", name, userSignup))
+		require.Fail(t, fmt.Sprintf("UserSignup '%s' should not be created, but it was found: %v", name, userSignup))
 	}
 }
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email
-func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.BannedUser, error) {
-	a.T.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
+func (a *HostAwaitility) WaitForBannedUser(t *testing.T, email string) (*toolchainv1alpha1.BannedUser, error) {
+	t.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
 	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email)}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -709,14 +699,14 @@ func (a *HostAwaitility) WaitForBannedUser(email string) (*toolchainv1alpha1.Ban
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Logf("failed to find Banned for email address '%s': %v", email, err)
+		t.Logf("failed to find Banned for email address '%s': %v", email, err)
 	}
 	return bannedUser, err
 }
 
 // DeleteToolchainStatus deletes the ToolchainStatus resource with the given name and in the host operator namespace
-func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
-	a.T.Logf("deleting ToolchainStatus '%s' in namespace '%s'", name, a.Namespace)
+func (a *HostAwaitility) DeleteToolchainStatus(t *testing.T, name string) error {
+	t.Logf("deleting ToolchainStatus '%s' in namespace '%s'", name, a.Namespace)
 	toolchainstatus := &toolchainv1alpha1.ToolchainStatus{}
 	if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, toolchainstatus); err != nil {
 		if errors.IsNotFound(err) {
@@ -728,8 +718,8 @@ func (a *HostAwaitility) DeleteToolchainStatus(name string) error {
 }
 
 // WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
-	a.T.Logf("waiting until BannedUser '%s' in namespace '%s' is deleted", name, a.Namespace)
+func (a *HostAwaitility) WaitUntilBannedUserDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until BannedUser '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		user := &toolchainv1alpha1.BannedUser{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, user); err != nil {
@@ -743,8 +733,8 @@ func (a *HostAwaitility) WaitUntilBannedUserDeleted(name string) error {
 }
 
 // WaitUntilUserSignupDeleted waits until the UserSignup with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
-	a.T.Logf("waiting until UserSignup '%s' in namespace '%s is deleted", name, a.Namespace)
+func (a *HostAwaitility) WaitUntilUserSignupDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until UserSignup '%s' in namespace '%s is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		userSignup := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, userSignup); err != nil {
@@ -758,14 +748,14 @@ func (a *HostAwaitility) WaitUntilUserSignupDeleted(name string) error {
 }
 
 // WaitUntilMasterUserRecordAndSpaceBindingsDeleted waits until the MUR with the given name and its associated SpaceBindings are deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(name string) error {
-	a.T.Logf("waiting until MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
+func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
 				// once the MUR is deleted, wait for the associated spacebindings to be deleted as well
-				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey, name); err != nil {
+				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(t, toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey, name); err != nil {
 					return false, err
 				}
 				return true, nil
@@ -777,8 +767,8 @@ func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(name s
 }
 
 // CheckMasterUserRecordIsDeleted checks that the MUR with the given name is not present and won't be created in the next 2 seconds
-func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
-	a.T.Logf("checking that MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
+func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(t *testing.T, name string) {
+	t.Logf("checking that MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, 2*time.Second, func() (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
@@ -789,7 +779,7 @@ func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(name string) {
 		}
 		return false, fmt.Errorf("the MasterUserRecord '%s' should not be present, but it is", name)
 	})
-	require.Equal(a.T, wait.ErrWaitTimeout, err)
+	require.Equal(t, wait.ErrWaitTimeout, err)
 }
 
 func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
@@ -803,8 +793,8 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 }
 
 // WaitForUserTier waits until an UserTier with the given name exists and matches any given criteria
-func (a *HostAwaitility) WaitForUserTier(name string, criteria ...UserTierWaitCriterion) (*toolchainv1alpha1.UserTier, error) {
-	a.T.Logf("waiting until UserTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
+func (a *HostAwaitility) WaitForUserTier(t *testing.T, name string, criteria ...UserTierWaitCriterion) (*toolchainv1alpha1.UserTier, error) {
+	t.Logf("waiting until UserTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
 	tier := &toolchainv1alpha1.UserTier{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.UserTier{}
@@ -821,7 +811,7 @@ func (a *HostAwaitility) WaitForUserTier(name string, criteria ...UserTierWaitCr
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printUserTierWaitCriterionDiffs(tier, criteria...)
+		a.printUserTierWaitCriterionDiffs(t, tier, criteria...)
 	}
 	return tier, err
 }
@@ -842,7 +832,7 @@ func matchUserTierWaitCriterion(actual *toolchainv1alpha1.UserTier, criteria ...
 	return true
 }
 
-func (a *HostAwaitility) printUserTierWaitCriterionDiffs(actual *toolchainv1alpha1.UserTier, criteria ...UserTierWaitCriterion) {
+func (a *HostAwaitility) printUserTierWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.UserTier, criteria ...UserTierWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find UserTier\n")
@@ -861,7 +851,7 @@ func (a *HostAwaitility) printUserTierWaitCriterionDiffs(actual *toolchainv1alph
 		}
 	}
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilUserTierHasDeactivationTimeoutDays verify that the UserTier status.Updates has the specified number of entries
@@ -876,19 +866,19 @@ func UntilUserTierHasDeactivationTimeoutDays(expected int) UserTierWaitCriterion
 	}
 }
 
-func (a *HostAwaitility) WaitUntilBaseUserTierIsUpdated() error {
-	_, err := a.WaitForUserTier("deactivate30", UntilUserTierHasDeactivationTimeoutDays(30))
+func (a *HostAwaitility) WaitUntilBaseUserTierIsUpdated(t *testing.T) error {
+	_, err := a.WaitForUserTier(t, "deactivate30", UntilUserTierHasDeactivationTimeoutDays(30))
 	return err
 }
 
-func (a *HostAwaitility) WaitUntilBaseNSTemplateTierIsUpdated() error {
-	_, err := a.WaitForNSTemplateTier("base", UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+func (a *HostAwaitility) WaitUntilBaseNSTemplateTierIsUpdated(t *testing.T) error {
+	_, err := a.WaitForNSTemplateTier(t, "base", UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
 	return err
 }
 
 // WaitForNSTemplateTier waits until an NSTemplateTier with the given name exists and matches the given conditions
-func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
-	a.T.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
+func (a *HostAwaitility) WaitForNSTemplateTier(t *testing.T, name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
+	t.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
 	tier := &toolchainv1alpha1.NSTemplateTier{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateTier{}
@@ -905,14 +895,14 @@ func (a *HostAwaitility) WaitForNSTemplateTier(name string, criteria ...NSTempla
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNSTemplateTierWaitCriterionDiffs(tier, criteria...)
+		a.printNSTemplateTierWaitCriterionDiffs(t, tier, criteria...)
 	}
 	return tier, err
 }
 
 // WaitForNSTemplateTierAndCheckTemplates waits until an NSTemplateTier with the given name exists matching the given conditions and then it verifies that all expected templates exist
-func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
-	tier, err := a.WaitForNSTemplateTier(name, criteria...)
+func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
+	tier, err := a.WaitForNSTemplateTier(t, name, criteria...)
 	if err != nil {
 		return nil, err
 	}
@@ -923,7 +913,7 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, cri
 		if ns.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
 		}
-		if _, err := a.WaitForTierTemplate(ns.TemplateRef); err != nil {
+		if _, err := a.WaitForTierTemplate(t, ns.TemplateRef); err != nil {
 			return nil, err
 		}
 	}
@@ -931,7 +921,7 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, cri
 		if tier.Spec.ClusterResources.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' for the cluster resources in NSTemplateTier '%s'", tier.Name)
 		}
-		if _, err := a.WaitForTierTemplate(tier.Spec.ClusterResources.TemplateRef); err != nil {
+		if _, err := a.WaitForTierTemplate(t, tier.Spec.ClusterResources.TemplateRef); err != nil {
 			return nil, err
 		}
 	}
@@ -940,9 +930,9 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(name string, cri
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint:unparam
+func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint:unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
-	a.T.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
+	t.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.TierTemplate{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
@@ -956,7 +946,7 @@ func (a *HostAwaitility) WaitForTierTemplate(name string) (*toolchainv1alpha1.Ti
 	})
 	// log message if an error occurred
 	if err != nil {
-		a.T.Logf("failed to find TierTemplate '%s': %v", name, err)
+		t.Logf("failed to find TierTemplate '%s': %v", name, err)
 	}
 	return tierTemplate, err
 }
@@ -977,7 +967,7 @@ func matchNSTemplateTierWaitCriterion(actual *toolchainv1alpha1.NSTemplateTier, 
 	return true
 }
 
-func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) {
+func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.NSTemplateTier, criteria ...NSTemplateTierWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find NSTemplateTier\n")
@@ -998,7 +988,7 @@ func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(actual *toolchain
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	buf.WriteString(a.sprintAllResources())
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // NSTemplateTierSpecMatcher a struct to compare with an expected NSTemplateTierSpec
@@ -1081,7 +1071,7 @@ func matchNotificationWaitCriterion(actual []toolchainv1alpha1.Notification, cri
 	return true
 }
 
-func (a *HostAwaitility) printNotificationWaitCriterionDiffs(actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) {
+func (a *HostAwaitility) printNotificationWaitCriterionDiffs(t *testing.T, actual []toolchainv1alpha1.Notification, criteria ...NotificationWaitCriterion) {
 	buf := &strings.Builder{}
 	if len(actual) == 0 {
 		buf.WriteString("no notification found\n")
@@ -1106,12 +1096,12 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(actual []toolchainv
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	buf.WriteString(a.sprintAllResources())
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // WaitForNotifications waits until there is an expected number of Notifications available for the provided user and with the notification type and which match the conditions (if provided).
-func (a *HostAwaitility) WaitForNotifications(username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
-	a.T.Logf("waiting for notifications to match criteria for user '%s'", username)
+func (a *HostAwaitility) WaitForNotifications(t *testing.T, username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
+	t.Logf("waiting for notifications to match criteria for user '%s'", username)
 	var notifications []toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
@@ -1128,14 +1118,14 @@ func (a *HostAwaitility) WaitForNotifications(username, notificationType string,
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNotificationWaitCriterionDiffs(notifications, criteria...)
+		a.printNotificationWaitCriterionDiffs(t, notifications, criteria...)
 	}
 	return notifications, err
 }
 
 // WaitForNotificationWithName waits until there is an expected Notifications available with the provided name and with the notification type and which match the conditions (if provided).
-func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
-	a.T.Logf("waiting for notification with name '%s'", notificationName)
+func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
+	t.Logf("waiting for notification with name '%s'", notificationName)
 	var notification toolchainv1alpha1.Notification
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, &notification); err != nil {
@@ -1151,14 +1141,14 @@ func (a *HostAwaitility) WaitForNotificationWithName(notificationName, notificat
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNotificationWaitCriterionDiffs([]toolchainv1alpha1.Notification{notification}, criteria...)
+		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{notification}, criteria...)
 	}
 	return notification, err
 }
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationType string) error {
-	a.T.Logf("waiting until notifications have been deleted for user '%s'", username)
+func (a *HostAwaitility) WaitUntilNotificationsDeleted(t *testing.T, username, notificationType string) error {
+	t.Logf("waiting until notifications have been deleted for user '%s'", username)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
@@ -1171,8 +1161,8 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(username, notificationTyp
 }
 
 // WaitUntilNotificationWithNameDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationWithNameDeleted(notificationName string) error {
-	a.T.Logf("waiting for notification with name '%s' to get deleted", notificationName)
+func (a *HostAwaitility) WaitUntilNotificationWithNameDeleted(t *testing.T, notificationName string) error {
+	t.Logf("waiting for notification with name '%s' to get deleted", notificationName)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		notification := &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
@@ -1212,7 +1202,7 @@ func matchToolchainStatusWaitCriterion(actual *toolchainv1alpha1.ToolchainStatus
 	return true
 }
 
-func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) {
+func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.ToolchainStatus, criteria ...ToolchainStatusWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Toolchainstatus\n")
@@ -1233,7 +1223,7 @@ func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(actual *toolchai
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	buf.WriteString(a.sprintAllResources())
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 // UntilToolchainStatusHasConditions returns a `ToolchainStatusWaitCriterion` which checks that the given
@@ -1337,8 +1327,32 @@ func UntilHasMurCount(domain string, expectedCount int) ToolchainStatusWaitCrite
 	}
 }
 
+// UntilHasSpaceCount returns a `ToolchainStatusWaitCriterion` which checks that the given
+// ToolchainStatus has the given count of Spaces
+func UntilHasSpaceCount(clusterName string, expectedCount int) ToolchainStatusWaitCriterion {
+	return ToolchainStatusWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
+			for _, m := range actual.Status.Members {
+				if m.ClusterName == clusterName {
+					return m.SpaceCount == expectedCount
+				}
+			}
+			return false
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainStatus) string {
+			actualCount := 0
+			for _, m := range actual.Status.Members {
+				if m.ClusterName == clusterName {
+					actualCount = m.SpaceCount
+				}
+			}
+			return fmt.Sprintf("expected Space count for cluster %s to be %d. Actual: %d", clusterName, expectedCount, actualCount)
+		},
+	}
+}
+
 // WaitForToolchainStatus waits until the ToolchainStatus is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitCriterion) (*toolchainv1alpha1.ToolchainStatus, error) {
+func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...ToolchainStatusWaitCriterion) (*toolchainv1alpha1.ToolchainStatus, error) {
 	// there should only be one toolchain status with the name toolchain-status
 	name := "toolchain-status"
 	toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
@@ -1362,19 +1376,19 @@ func (a *HostAwaitility) WaitForToolchainStatus(criteria ...ToolchainStatusWaitC
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printToolchainStatusWaitCriterionDiffs(toolchainStatus, criteria...)
+		a.printToolchainStatusWaitCriterionDiffs(t, toolchainStatus, criteria...)
 	}
 	return toolchainStatus, err
 }
 
 // GetToolchainConfig returns ToolchainConfig instance, nil if not found
-func (a *HostAwaitility) GetToolchainConfig() *toolchainv1alpha1.ToolchainConfig {
+func (a *HostAwaitility) GetToolchainConfig(t *testing.T) *toolchainv1alpha1.ToolchainConfig {
 	config := &toolchainv1alpha1.ToolchainConfig{}
 	if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "config"), config); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		require.NoError(a.T, err)
+		require.NoError(t, err)
 	}
 	return config
 }
@@ -1394,7 +1408,7 @@ func matchToolchainConfigWaitCriterion(actual *toolchainv1alpha1.ToolchainConfig
 	return true
 }
 
-func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(actual *toolchainv1alpha1.ToolchainConfig, criteria ...ToolchainConfigWaitCriterion) {
+func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.ToolchainConfig, criteria ...ToolchainConfigWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find ToolchainConfig\n")
@@ -1415,7 +1429,7 @@ func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(actual *toolchai
 	// also include other resources relevant in the host namespace, to help troubleshooting
 	buf.WriteString(a.sprintAllResources())
 
-	a.T.Log(buf.String())
+	t.Log(buf.String())
 }
 
 func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) ToolchainConfigWaitCriterion {
@@ -1432,7 +1446,7 @@ func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) T
 }
 
 // WaitForToolchainConfig waits until the ToolchainConfig is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
+func (a *HostAwaitility) WaitForToolchainConfig(t *testing.T, criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
 	// there should only be one ToolchainConfig with the name "config"
 	name := "config"
 	var toolchainConfig *toolchainv1alpha1.ToolchainConfig
@@ -1455,7 +1469,7 @@ func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitC
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printToolchainConfigWaitCriterionDiffs(toolchainConfig, criteria...)
+		a.printToolchainConfigWaitCriterionDiffs(t, toolchainConfig, criteria...)
 	}
 	return toolchainConfig, err
 }
@@ -1463,10 +1477,10 @@ func (a *HostAwaitility) WaitForToolchainConfig(criteria ...ToolchainConfigWaitC
 // UpdateToolchainConfig updates the current resource of the ToolchainConfig CR with the given options.
 // If there is no existing resource already, then it creates a new one.
 // At the end of the test it returns the resource back to the original value/state.
-func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainConfigOption) {
+func (a *HostAwaitility) UpdateToolchainConfig(t *testing.T, options ...testconfig.ToolchainConfigOption) {
 	var originalConfig *toolchainv1alpha1.ToolchainConfig
 	// try to get the current ToolchainConfig
-	config := a.GetToolchainConfig()
+	config := a.GetToolchainConfig(t)
 	if config == nil {
 		// if it doesn't exist, then create a new one
 		config = &toolchainv1alpha1.ToolchainConfig{
@@ -1489,36 +1503,36 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 	if originalConfig == nil {
 		// then create a new one
 		err := a.Client.Create(context.TODO(), config)
-		require.NoError(a.T, err)
+		require.NoError(t, err)
 
 		// and as a cleanup function delete it at the end of the test
-		a.T.Cleanup(func() {
+		t.Cleanup(func() {
 			err := a.Client.Delete(context.TODO(), config)
 			if err != nil && !errors.IsNotFound(err) {
-				require.NoError(a.T, err)
+				require.NoError(t, err)
 			}
 		})
 		return
 	}
 
 	// if the config did exist before the tests, then update it
-	err := a.updateToolchainConfigWithRetry(config)
-	require.NoError(a.T, err)
+	err := a.updateToolchainConfigWithRetry(t, config)
+	require.NoError(t, err)
 
 	// and as a cleanup function update it back to the original value
-	a.T.Cleanup(func() {
-		config := a.GetToolchainConfig()
+	t.Cleanup(func() {
+		config := a.GetToolchainConfig(t)
 		// if the current config wasn't found
 		if config == nil {
 			if originalConfig != nil {
 				// then create it back with the original values
 				err := a.Client.Create(context.TODO(), originalConfig)
-				require.NoError(a.T, err)
+				require.NoError(t, err)
 			}
 		} else {
 			// otherwise just update it
-			err := a.updateToolchainConfigWithRetry(originalConfig)
-			require.NoError(a.T, err)
+			err := a.updateToolchainConfigWithRetry(t, originalConfig)
+			require.NoError(t, err)
 		}
 	})
 }
@@ -1526,12 +1540,12 @@ func (a *HostAwaitility) UpdateToolchainConfig(options ...testconfig.ToolchainCo
 // updateToolchainConfigWithRetry attempts to update the toolchainconfig, helpful because the toolchainconfig controller updates the toolchainconfig
 // resource periodically which can cause errors like `Operation cannot be fulfilled on toolchainconfigs.toolchain.dev.openshift.com "config": the object has been modified; please apply your changes to the latest version and try again`
 // in some cases. Retrying mitigates the potential for test flakiness due to this behaviour.
-func (a *HostAwaitility) updateToolchainConfigWithRetry(updatedConfig *toolchainv1alpha1.ToolchainConfig) error {
+func (a *HostAwaitility) updateToolchainConfigWithRetry(t *testing.T, updatedConfig *toolchainv1alpha1.ToolchainConfig) error {
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		config := a.GetToolchainConfig()
+		config := a.GetToolchainConfig(t)
 		config.Spec = updatedConfig.Spec
 		if err := a.Client.Update(context.TODO(), config); err != nil {
-			a.T.Logf("Retrying ToolchainConfig update due to error: %s", err.Error())
+			t.Logf("Retrying ToolchainConfig update due to error: %s", err.Error())
 			return false, nil
 		}
 		return true, nil
@@ -1552,15 +1566,15 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 }
 
 // CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
-func (a *HostAwaitility) CreateAPIProxyClient(usertoken string) client.Client {
+func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, usertoken string) client.Client {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-	require.NoError(a.T, err)
+	require.NoError(t, err)
 	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
-	require.NoError(a.T, err)
+	require.NoError(t, err)
 
 	s := scheme.Scheme
 	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
-	require.NoError(a.T, builder.AddToScheme(s))
+	require.NoError(t, builder.AddToScheme(s))
 
 	proxyKubeConfig := &rest.Config{
 		Host:            a.APIProxyURL,
@@ -1570,7 +1584,7 @@ func (a *HostAwaitility) CreateAPIProxyClient(usertoken string) client.Client {
 	proxyCl, err := client.New(proxyKubeConfig, client.Options{
 		Scheme: s,
 	})
-	require.NoError(a.T, err)
+	require.NoError(t, err)
 	return proxyCl
 }
 
@@ -1589,8 +1603,8 @@ func matchSpaceWaitCriterion(actual *toolchainv1alpha1.Space, criteria ...SpaceW
 }
 
 // WaitForSpace waits until the Space with the given name is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
-	a.T.Logf("waiting for Space '%s' with matching criteria", name)
+func (a *HostAwaitility) WaitForSpace(t *testing.T, name string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+	t.Logf("waiting for Space '%s' with matching criteria", name)
 	var space *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
@@ -1611,12 +1625,12 @@ func (a *HostAwaitility) WaitForSpace(name string, criteria ...SpaceWaitCriterio
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printSpaceWaitCriterionDiffs(space, criteria...)
+		a.printSpaceWaitCriterionDiffs(t, space, criteria...)
 	}
 	return space, err
 }
 
-func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.Space, criteria ...SpaceWaitCriterion) {
+func (a *HostAwaitility) printSpaceWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.Space, criteria ...SpaceWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find Space\n")
@@ -1636,8 +1650,8 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(actual *toolchainv1alpha1.
 		}
 	}
 	// also include Spaces resources in the host namespace, to help troubleshooting
-	a.listAndPrint("Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
-	a.T.Log(buf.String())
+	a.listAndPrint(t, "Spaces", a.Namespace, &toolchainv1alpha1.SpaceList{})
+	t.Log(buf.String())
 }
 
 // UntilSpaceIsBeingDeleted checks if Space has Deletion Timestamp
@@ -1772,8 +1786,8 @@ func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
 }
 
 // WaitUntilSpaceAndSpaceBindingsDeleted waits until the Space with the given name and its associated SpaceBindings are deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) error {
-	a.T.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
+func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(t *testing.T, name string) error {
+	t.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
 	var s *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
@@ -1784,7 +1798,7 @@ func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) erro
 			}, obj); err != nil {
 			if errors.IsNotFound(err) {
 				// once the space is deleted, wait for the associated spacebindings to be deleted as well
-				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(toolchainv1alpha1.SpaceBindingSpaceLabelKey, name); err != nil {
+				if err := a.WaitUntilSpaceBindingsWithLabelDeleted(t, toolchainv1alpha1.SpaceBindingSpaceLabelKey, name); err != nil {
 					return false, err
 				}
 				return true, nil
@@ -1796,7 +1810,7 @@ func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(name string) erro
 	})
 	if err != nil {
 		y, _ := yaml.Marshal(s)
-		a.T.Logf("Space '%s' was not deleted as expected: %s", name, y)
+		t.Logf("Space '%s' was not deleted as expected: %s", name, y)
 		return err
 	}
 	return nil
@@ -1817,9 +1831,9 @@ func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
 }
 
 // WaitUntilSpaceBindingsWithLabelDeleted waits until there are no SpaceBindings listed using the given labels
-func (a *HostAwaitility) WaitUntilSpaceBindingsWithLabelDeleted(key, value string) error {
+func (a *HostAwaitility) WaitUntilSpaceBindingsWithLabelDeleted(t *testing.T, key, value string) error {
 	labels := map[string]string{key: value}
-	a.T.Logf("waiting until SpaceBindings with labels '%v' in namespace '%s' are deleted", labels, a.Namespace)
+	t.Logf("waiting until SpaceBindings with labels '%v' in namespace '%s' are deleted", labels, a.Namespace)
 	var spaceBindingList *toolchainv1alpha1.SpaceBindingList
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		// retrieve the SpaceBinding from the host namespace
@@ -1857,7 +1871,7 @@ func matchSpaceBindingWaitCriterion(actual *toolchainv1alpha1.SpaceBinding, crit
 }
 
 // WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
+func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
 	var spacebinding *toolchainv1alpha1.SpaceBinding
 	labels := map[string]string{
 		toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
@@ -1881,12 +1895,12 @@ func (a *HostAwaitility) WaitForSpaceBinding(murName, spaceName string, criteria
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printSpaceBindingWaitCriterionDiffs(spacebinding, criteria...)
+		a.printSpaceBindingWaitCriterionDiffs(t, spacebinding, criteria...)
 	}
 	return spacebinding, err
 }
 
-func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) {
+func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find SpaceBinding\n")
@@ -1906,8 +1920,8 @@ func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(actual *toolchainv1
 		}
 	}
 	// also include SpaceBindings resources in the host namespace, to help troubleshooting
-	a.listAndPrint("SpaceBindings", a.Namespace, &toolchainv1alpha1.SpaceBindingList{})
-	a.T.Log(buf.String())
+	a.listAndPrint(t, "SpaceBindings", a.Namespace, &toolchainv1alpha1.SpaceBindingList{})
+	t.Log(buf.String())
 }
 
 func (a *HostAwaitility) ListSpaceBindings(spaceName string) ([]toolchainv1alpha1.SpaceBinding, error) {
@@ -1973,8 +1987,8 @@ func matchSocialEventWaitCriterion(actual *toolchainv1alpha1.SocialEvent, criter
 	return true
 }
 
-func (a *HostAwaitility) WaitForSocialEvent(name string, criteria ...SocialEventWaitCriterion) (*toolchainv1alpha1.SocialEvent, error) {
-	a.T.Logf("waiting for SocialEvent '%s' in namespace '%s' to match criteria", name, a.Namespace)
+func (a *HostAwaitility) WaitForSocialEvent(t *testing.T, name string, criteria ...SocialEventWaitCriterion) (*toolchainv1alpha1.SocialEvent, error) {
+	t.Logf("waiting for SocialEvent '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var event *toolchainv1alpha1.SocialEvent
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
 		obj := &toolchainv1alpha1.SocialEvent{}
@@ -1995,7 +2009,7 @@ func (a *HostAwaitility) WaitForSocialEvent(name string, criteria ...SocialEvent
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printSocialEventWaitCriterionDiffs(event, criteria...)
+		a.printSocialEventWaitCriterionDiffs(t, event, criteria...)
 	}
 	return event, err
 }
@@ -2026,7 +2040,7 @@ func UntilSocialEventHasConditions(expected ...toolchainv1alpha1.Condition) Soci
 	}
 }
 
-func (a *HostAwaitility) printSocialEventWaitCriterionDiffs(actual *toolchainv1alpha1.SocialEvent, criteria ...SocialEventWaitCriterion) {
+func (a *HostAwaitility) printSocialEventWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.SocialEvent, criteria ...SocialEventWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find SocialEvent\n")
@@ -2046,8 +2060,8 @@ func (a *HostAwaitility) printSocialEventWaitCriterionDiffs(actual *toolchainv1a
 		}
 	}
 	// also include SocialEvents resources in the host namespace, to help troubleshooting
-	a.listAndPrint("SocialEvents", a.Namespace, &toolchainv1alpha1.SocialEventList{})
-	a.T.Log(buf.String())
+	a.listAndPrint(t, "SocialEvents", a.Namespace, &toolchainv1alpha1.SocialEventList{})
+	t.Log(buf.String())
 }
 
 const (

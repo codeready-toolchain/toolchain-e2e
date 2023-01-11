@@ -9,11 +9,11 @@ import (
 )
 
 func VerifyToolchainConfig(t *testing.T, hostAwait *wait.HostAwaitility, criteria ...wait.ToolchainConfigWaitCriterion) {
-	_, err := hostAwait.WaitForToolchainConfig(criteria...)
+	_, err := hostAwait.WaitForToolchainConfig(t, criteria...)
 	require.NoError(t, err, "failed while waiting for ToolchainConfig to meet the required criteria")
 }
 
 func VerifyMemberOperatorConfig(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, criteria ...wait.MemberOperatorConfigWaitCriterion) {
-	_, err := memberAwait.WaitForMemberOperatorConfig(hostAwait, criteria...)
+	_, err := memberAwait.WaitForMemberOperatorConfig(t, hostAwait, criteria...)
 	require.NoError(t, err, "failed while waiting for MemberOperatorConfig to meet the required criteria")
 }

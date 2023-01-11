@@ -12,11 +12,10 @@ func TestSetupMigration(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 
 	runner := migration.SetupMigrationRunner{
-		T:            t,
 		Awaitilities: awaitilities,
 		WithCleanup:  false,
 	}
 
-	runner.Run()
+	runner.Run(t)
 
 }
