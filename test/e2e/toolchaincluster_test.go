@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
@@ -13,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestToolchainClusterE2E(t *testing.T) {
@@ -52,15 +54,35 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// when
 		err := await.Client.Create(context.TODO(), toolchainCluster)
+		require.NoError(t, err)
+		// wait for toolchaincontroller to reconcile
+		time.Sleep(1 * time.Second)
 
 		// then the ToolchainCluster should be ready
-		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(t, toolchainCluster.Name, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
+			wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainClusterWithCondition(t, otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasLabels(
+				client.MatchingLabels{
+					"namespace": otherAwait.Namespace,
+					"type":      string(otherAwait.Type),
+				},
+			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainClusterWithCondition(t, await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
+				"namespace": await.Namespace,
+				"type":      string(await.Type),
+			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(await.Type),
+		)
 		require.NoError(t, err)
 	})
 
@@ -84,19 +106,57 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// when
 		err := await.Client.Create(context.TODO(), toolchainCluster)
+		// wait for toolchaincontroller to reconcile
+		time.Sleep(1 * time.Second)
+
 		// then the ToolchainCluster should be offline
 		require.NoError(t, err)
-		_, err = await.WaitForNamedToolchainClusterWithCondition(t, toolchainCluster.Name, &toolchainv1alpha1.ToolchainClusterCondition{
-			Type:   toolchainv1alpha1.ToolchainClusterOffline,
-			Status: corev1.ConditionTrue,
-		})
+		_, err = await.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
+			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterCondition{
+				Type:   toolchainv1alpha1.ToolchainClusterOffline,
+				Status: corev1.ConditionTrue,
+			}),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainClusterWithCondition(t, otherAwait.Type, otherAwait.Namespace, wait.ReadyToolchainCluster)
+		_, err = await.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasLabels(
+				client.MatchingLabels{
+					"namespace": otherAwait.Namespace,
+					"type":      string(otherAwait.Type),
+				},
+			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
+		)
 		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainClusterWithCondition(t, await.Type, await.Namespace, wait.ReadyToolchainCluster)
+		_, err = otherAwait.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
+				"namespace": await.Namespace,
+				"type":      string(await.Type),
+			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnType(await.Type),
+		)
 		require.NoError(t, err)
 	})
+}
+
+// toolchainClusterWaitCriterionBasedOnType returns ToolchainClusterWaitCriterion based on toolchaincluster type (member or host)
+func toolchainClusterWaitCriterionBasedOnType(clusterType cluster.Type) wait.ToolchainClusterWaitCriterion {
+	var clusterRoleTenantAssertion wait.ToolchainClusterWaitCriterion
+	if clusterType == cluster.Member {
+		// for toolchaincluster of type member we check that cluster-role tenant label is set as expected
+		clusterRoleTenantAssertion = wait.UntilToolchainClusterHasLabels(
+			client.MatchingLabels{
+				// we use only the key so the value can be blank
+				cluster.RoleLabel(cluster.Tenant): "",
+			})
+	} else {
+		// for toolchaincluster of other types we check that cluster-role tenant label is missing as expected
+		clusterRoleTenantAssertion = wait.UntilToolchainClusterHasNoTenantLabel()
+	}
+	return clusterRoleTenantAssertion
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
