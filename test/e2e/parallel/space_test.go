@@ -252,6 +252,67 @@ func TestRetargetSpace(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDeleteParentSpace(t *testing.T) {
+	// given
+	t.Parallel()
+	// make sure everything is ready before running the actual tests
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	t.Run("create parent-space", func(t *testing.T) {
+		// when
+		parentSpace, _, _ := CreateSpace(t, awaitilities,
+			WithTierName("appstudio"),
+			WithTargetCluster(memberAwait.ClusterName))
+		// then
+		VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name,
+			UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		t.Run("create a sub-space", func(t *testing.T) {
+			// when
+			subSpace, _, _ := CreateSpace(t, awaitilities,
+				WithTierName("appstudio"),
+				WithTargetCluster(memberAwait.ClusterName),
+				WithParentSpace(parentSpace.Name))
+			// then
+			VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+				UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName),
+				UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label was added accordingly
+			t.Run("delete parent-space", func(t *testing.T) {
+				// when
+				// now, delete the parent-space and expect that first sub-space will be deleted,
+				// then also parent-space will be deleted
+				err := hostAwait.Client.Delete(context.TODO(), parentSpace)
+
+				// then
+				// parent-space is in terminating state
+				require.NoError(t, err)
+				_, err = hostAwait.WaitForSpace(t, parentSpace.Name,
+					UntilSpaceIsBeingDeleted(),
+					UntilSpaceHasConditions(TerminatingSpace()))
+				// sub-space is deleted first
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
+				require.NoError(t, err)
+				err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
+				require.NoError(t, err)
+				err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio")
+				require.NoError(t, err)
+				// parent-space is still present in Terminating ...
+				_, err = hostAwait.WaitForSpace(t, parentSpace.Name,
+					UntilSpaceIsBeingDeleted(),
+					UntilSpaceHasConditions(TerminatingSpace()))
+				// parent-space is deleted next
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, parentSpace.Name)
+				require.NoError(t, err)
+				err = memberAwait.WaitUntilNSTemplateSetDeleted(t, parentSpace.Name)
+				require.NoError(t, err)
+				err = memberAwait.WaitUntilNamespaceDeleted(t, parentSpace.Name, "appstudio")
+				require.NoError(t, err)
+			})
+		})
+	})
+}
+
 func ProvisioningFailed(msg string) toolchainv1alpha1.Condition {
 	return toolchainv1alpha1.Condition{
 		Type:    toolchainv1alpha1.ConditionReady,
