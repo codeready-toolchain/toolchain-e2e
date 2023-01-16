@@ -290,6 +290,7 @@ func TestDeleteParentSpace(t *testing.T) {
 				_, err = hostAwait.WaitForSpace(t, parentSpace.Name,
 					UntilSpaceIsBeingDeleted(),
 					UntilSpaceHasConditions(TerminatingSpace()))
+				require.NoError(t, err)
 				// sub-space is deleted first
 				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
 				require.NoError(t, err)
@@ -301,6 +302,7 @@ func TestDeleteParentSpace(t *testing.T) {
 				_, err = hostAwait.WaitForSpace(t, parentSpace.Name,
 					UntilSpaceIsBeingDeleted(),
 					UntilSpaceHasConditions(TerminatingSpace()))
+				require.NoError(t, err)
 				// parent-space is deleted next
 				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, parentSpace.Name)
 				require.NoError(t, err)
