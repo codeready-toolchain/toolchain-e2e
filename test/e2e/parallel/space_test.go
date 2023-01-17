@@ -270,13 +270,9 @@ func TestDeleteParentSpace(t *testing.T) {
 			UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 		t.Run("create a sub-space", func(t *testing.T) {
 			// when
-			subSpace, _, _ := CreateSpace(t, awaitilities,
-				WithTierName("appstudio"),
-				WithTargetCluster(memberAwait.ClusterName),
-				WithParentSpace(parentSpace.Name))
+			subSpace := CreateSubSpace(t, awaitilities, parentSpace.Name)
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
-				UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName),
 				UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label was added accordingly
 			t.Run("delete parent-space", func(t *testing.T) {
 				// when
@@ -292,11 +288,7 @@ func TestDeleteParentSpace(t *testing.T) {
 					UntilSpaceHasConditions(TerminatingSpace()))
 				require.NoError(t, err)
 				// sub-space is deleted first
-				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
-				require.NoError(t, err)
-				err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
-				require.NoError(t, err)
-				err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio")
+				err = hostAwait.WaitUntilSpaceDeleted(t, subSpace.Name)
 				require.NoError(t, err)
 				// parent-space is still present in Terminating ...
 				_, err = hostAwait.WaitForSpace(t, parentSpace.Name,
