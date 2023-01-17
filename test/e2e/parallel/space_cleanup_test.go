@@ -70,6 +70,33 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		space2, err := hostAwait.WaitForSpace(t, space2.Name, wait.UntilSpaceHasCreationTimestampOlderThan(deletionThreshold))
 		require.NoError(t, err)
 
+		t.Run("when space has parent-space, then it should not be deleted even if without spacebinding", func(t *testing.T) {
+			// when
+			parentSpace, err := hostAwait.WaitForSpace(t, space1.Name)
+			subSpace := CreateSubSpace(t, awaitilities, parentSpace.Name)
+			require.NoError(t, err)
+
+			// then
+			// parent-space should be provisioned
+			parentSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
+			// sub-space should be provisioned
+			VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+				wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label was added accordingly
+
+			t.Run("when SpaceBinding is inherited from parent-space, then sub-space should not be deleted", func(t *testing.T) {
+				// when
+				// there is no spaceBinding with the sub-space name as label
+				err := hostAwait.WaitUntilSpaceBindingsWithLabelDeleted(t, toolchainv1alpha1.SpaceBindingSpaceLabelKey, subSpace.Name)
+				require.NoError(t, err)
+
+				// then
+				// sub-space is provisioned
+				VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+					wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label is present
+			})
+
+		})
+
 		t.Run("when space is provisioned for more than 30 seconds, then it should not delete the Space when SpaceBinding still exists", func(t *testing.T) {
 
 			// when
