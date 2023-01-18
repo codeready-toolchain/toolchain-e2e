@@ -95,7 +95,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 				actualSubSpace, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
 					wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label is present
 				// check that sub-space was not recreated
-				assert.Equal(t, actualSubSpace.UID, subSpace.UID)
+				assert.Equal(t, subSpace.UID, actualSubSpace.UID)
 			})
 
 		})
