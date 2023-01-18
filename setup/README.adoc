@@ -84,7 +84,13 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 
 *IMPORTANT: Performance results may be skewed when a fresh cluster is not used. Results for performance comparison and operator onboarding purposes should be captured using a fresh cluster.*
 
-. Populate the cluster with 2000 users and both default and custom resources for all users
+. Run the setup with a single user to verify all the operators can be installed and a user can be provisioned.
++
+```
+go run setup/main.go --users 1 --default 1 --custom 0 --username setup -b 1
+```
++
+. Populate the cluster with 2000 users along with default and custom resources for each user.
 +
 Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 2 separate terminals using a unique username prefix in each terminal.
 +
@@ -134,4 +140,21 @@ make clean-users
 === Remove All Sandbox-related Resources
 ```
 make clean-e2e-resources
+```
+
+== Baseline Runs (Done by the Sandbox team)
+
+1. Install operators
+```
+go run setup/main.go --users 1 --default 1 --custom 0 --username setup -b 1
+```
+
+2. Run setup for 1000 users in terminal 1
+```
+go run setup/main.go --users 1000 --default 1000 --custom 0 --username pizza
+```
+
+3. Run setup for 1000 users in terminal 2
+```
+go run setup/main.go --users 1000 --default 1000 --custom 0 --username pasta
 ```
