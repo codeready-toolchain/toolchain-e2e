@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,8 +92,10 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 				// then
 				// sub-space is provisioned
-				VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+				actualSubSpace, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
 					wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label is present
+				// check that sub-space was not recreated
+				assert.Equal(t, actualSubSpace.UID, subSpace.UID)
 			})
 
 		})
