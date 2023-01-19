@@ -23,7 +23,7 @@ objects:
       name: devspaces
       source: redhat-operators
       sourceNamespace: openshift-marketplace
-      startingCSV: devspacesoperator.v3.1.0-0.1661879180.p
+      startingCSV: devspacesoperator.v3.3.0-0.1673528130.p
 parameters:
   - name: DEVSPACES_OPERATOR_NAMESPACE
     value: crw
