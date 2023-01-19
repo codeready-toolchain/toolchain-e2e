@@ -1182,7 +1182,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequest"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
 					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
 				},
 				{
