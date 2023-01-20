@@ -74,8 +74,8 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		t.Run("when space has parent-space, then it should not be deleted even if without spacebinding", func(t *testing.T) {
 			// when
 			parentSpace, err := hostAwait.WaitForSpace(t, space1.Name)
-			subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name))
 			require.NoError(t, err)
+			subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name))
 
 			// then
 			// parent-space should be provisioned

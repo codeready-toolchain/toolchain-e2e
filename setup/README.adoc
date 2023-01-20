@@ -4,7 +4,7 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
 
 == Prereqs
 
-. Provision the *latest available* GA version of *OCP 4.10.x* on AWS with sufficient resources: 3 `m5.12xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
+. Provision the *latest available* GA version of *OCP 4.12.x* on AWS with sufficient resources: 3 `m5.12xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
 +
 The latest version of openshift-install can be downloaded from https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
 +
@@ -84,7 +84,17 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 
 *IMPORTANT: Performance results may be skewed when a fresh cluster is not used. Results for performance comparison and operator onboarding purposes should be captured using a fresh cluster.*
 
-. Populate the cluster with 2000 users and both default and custom resources for all users
+. Run the setup with a single user to verify all the operators can be installed and capture metrics after installing all operators but before provisioning the 2000 users.
++
+```
+go run setup/main.go --users 1 --default 1 --custom 0 --username setup -b 1
+```
++
+After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.
++
+Add the results to the Onboarding Performance Checklist spreadsheet in the `Onboarding Operator 1 user` column.
++
+. Populate the cluster with 2000 users along with default and custom resources for each user.
 +
 Creating 2000 users can take a long time so it's better to run the setup tool concurrently to speed up the process. Run the following command in 2 separate terminals using a unique username prefix in each terminal.
 +
@@ -111,6 +121,8 @@ Use `go run setup/main.go --help` to see the full set of options. +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <num_users_default_user_workloads_template> --custom <num_users_custom_user_workloads_template>`
 +
 . After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.
++
+Copy these values to the Onboarding Performance Checklist spreadsheet. Add the results to the `Onboarding Operator 2k users` column.
 
 === Evaluate the Cluster and Operator(s)
 
@@ -134,4 +146,21 @@ make clean-users
 === Remove All Sandbox-related Resources
 ```
 make clean-e2e-resources
+```
+
+== Baseline Runs (Done by the Sandbox team)
+
+1. Install operators
+```
+go run setup/main.go --users 1 --default 1 --custom 0 --username setup -b 1
+```
+
+2. Run setup for 1000 users in terminal 1
+```
+go run setup/main.go --users 1000 --default 1000 --custom 0 --username pizza
+```
+
+3. Run setup for 1000 users in terminal 2
+```
+go run setup/main.go --users 1000 --default 1000 --custom 0 --username pasta
 ```
