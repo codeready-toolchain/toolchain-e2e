@@ -39,6 +39,7 @@ func TestNSTemplateTiers(t *testing.T) {
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute(t).
+		DisableCleanup().
 		Resources()
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test

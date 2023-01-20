@@ -11,6 +11,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
@@ -1964,4 +1965,20 @@ func (a *MemberAwaitility) UpdateConfigMap(t *testing.T, namespace, cmName strin
 		return true, nil
 	})
 	return cm, err
+}
+
+func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name string) (*appstudiov1.Environment, error) {
+	var env *appstudiov1.Environment
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &appstudiov1.Environment{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      name},
+			obj); err != nil {
+			return true, err
+		}
+		env = obj
+		return true, nil
+	})
+	return env, err
 }

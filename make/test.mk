@@ -68,7 +68,7 @@ e2e-deploy-latest:
 	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true LETS_ENCRYPT_PARAM=${LETS_ENCRYPT_PARAM}
 
 .PHONY: prepare-e2e
-prepare-e2e: build clean-e2e-files create-has-application-crd
+prepare-e2e: build clean-e2e-files create-appstudio-crds
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
@@ -347,8 +347,8 @@ ifneq ($(E2E_TEST_EXECUTION),true)
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 endif
 
-.PHONY: create-has-application-crd
-create-has-application-crd:
+.PHONY: create-appstudio-crds
+create-appstudio-crds:
 	oc apply -f deploy/member-operator/e2e-tests/
 
 .PHONY: create-project
