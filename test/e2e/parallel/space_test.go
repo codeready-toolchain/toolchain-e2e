@@ -353,10 +353,11 @@ func TestSubSpace(t *testing.T) {
 
 				t.Run("we remove a user from subSpace only", func(t *testing.T) {
 					// when
-					err := hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
+					err = hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
 
 					// then
 					// subSpace should have one user less
+					require.NoError(t, err)
 					subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
 						UntilNSTemplateSetHasConditions(Provisioned()),
 						UntilNSTemplateSetHasSpaceRoles(
@@ -372,6 +373,7 @@ func TestSubSpace(t *testing.T) {
 							SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
 						),
 					)
+					require.NoError(t, err)
 					VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
 				})
 
