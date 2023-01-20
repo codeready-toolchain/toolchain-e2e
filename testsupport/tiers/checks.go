@@ -1156,7 +1156,6 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 
 func environment(name string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		// TODO fix for migration/existing namespaces cases
 		_, err := memberAwait.WaitForEnvironment(t, ns.Name, name)
 		require.NoError(t, err)
 	}
