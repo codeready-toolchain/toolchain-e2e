@@ -1974,8 +1974,10 @@ func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name stri
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: namespace,
 			Name:      name},
-			obj); err != nil {
-			return true, err
+			obj); errors.IsNotFound(err) {
+			return false, nil
+		} else if err != nil {
+			return false, err
 		}
 		env = obj
 		return true, nil
