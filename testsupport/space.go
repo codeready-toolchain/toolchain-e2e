@@ -49,6 +49,12 @@ func WithTargetCluster(clusterName string) SpaceOption {
 	}
 }
 
+func WithParentSpace(name string) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.Spec.ParentSpace = name
+	}
+}
+
 func WithTierName(tierName string) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
 		s.Spec.TierName = tierName
@@ -109,6 +115,16 @@ func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *t
 	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 
 	return space, spaceBinding
+}
+
+// CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
+func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, parentName string) *toolchainv1alpha1.Space {
+	space := NewSpace(t, awaitilities, WithParentSpace(parentName))
+
+	err := awaitilities.Host().CreateWithCleanup(t, space)
+	require.NoError(t, err)
+
+	return space
 }
 
 func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space) *wait.MemberAwaitility {
