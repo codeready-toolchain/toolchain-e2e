@@ -5,4 +5,4 @@ Copy content from:
 - https://github.com/redhat-appstudio/application-api/blob/main/api/v1alpha1/snapshotenvironmentbinding_types.go
 - https://github.com/redhat-appstudio/application-api/blob/main/api/v1alpha1/zz_generated.deepcopy.go
 
-and remove everything that is not related to the `Environment` type.
+and remove everything that is not related to the types: `Environment`, `Application`.
