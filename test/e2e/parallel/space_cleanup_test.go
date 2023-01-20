@@ -9,6 +9,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,7 +74,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		t.Run("when space has parent-space, then it should not be deleted even if without spacebinding", func(t *testing.T) {
 			// when
 			parentSpace, err := hostAwait.WaitForSpace(t, space1.Name)
-			subSpace := CreateSubSpace(t, awaitilities, parentSpace.Name)
+			subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name))
 			require.NoError(t, err)
 
 			// then
@@ -91,8 +92,10 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 				// then
 				// sub-space is provisioned
-				VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+				actualSubSpace, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
 					wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.ParentSpaceLabelKey, parentSpace.Name)) // check that parent-space label is present
+				// check that sub-space was not recreated
+				assert.Equal(t, subSpace.UID, actualSubSpace.UID)
 			})
 
 		})

@@ -118,8 +118,8 @@ func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *t
 }
 
 // CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
-func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, parentName string) *toolchainv1alpha1.Space {
-	space := NewSpace(t, awaitilities, WithParentSpace(parentName))
+func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
+	space := NewSpace(t, awaitilities, opts...)
 
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
