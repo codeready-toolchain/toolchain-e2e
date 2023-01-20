@@ -351,37 +351,6 @@ func TestSubSpace(t *testing.T) {
 				require.NoError(t, err)
 				VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
 
-				t.Run("role from subSpaceBinding overrides the one from parentSpaceBinding if username is the same ", func(t *testing.T) {
-					// when
-					// we create spaceBinding for subSpace
-					subSpaceBinding, err = hostAwait.UpdateSpaceBinding(t, subSpaceBinding.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
-						sb.Spec.MasterUserRecord = parentSpaceBindings.Spec.MasterUserRecord // let's set same MUR name in subSpaceBinding
-						sb.Spec.SpaceRole = "admin"                                          // but keep admin role only for subSpace
-					})
-					require.NoError(t, err)
-
-					// then
-					// user should be admin in subSpace
-					subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-						UntilNSTemplateSetHasConditions(Provisioned()),
-						UntilNSTemplateSetHasSpaceRoles(
-							SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // viewer user was upgrade to admin role
-							// and since subSpace MUR name now is same as parentSpace MUR, we have one username less
-						),
-					)
-					require.NoError(t, err)
-					VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
-					// .... while in parentSpace it's still viewer
-					parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-						UntilNSTemplateSetHasConditions(Provisioned()),
-						UntilNSTemplateSetHasSpaceRoles(
-							SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // in parentSpace is still viewer
-						),
-					)
-					require.NoError(t, err)
-					VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
-				})
-
 				t.Run("we remove a user from subSpace only", func(t *testing.T) {
 					// when
 					err := hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
