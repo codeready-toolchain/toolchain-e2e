@@ -1968,6 +1968,7 @@ func (a *MemberAwaitility) UpdateConfigMap(t *testing.T, namespace, cmName strin
 }
 
 func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name string) (*appstudiov1.Environment, error) {
+	t.Logf("waiting for Environment resource '%s' to exist in namespace '%s'", name, namespace)
 	var env *appstudiov1.Environment
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &appstudiov1.Environment{}

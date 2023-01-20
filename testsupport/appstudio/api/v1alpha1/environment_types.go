@@ -51,8 +51,8 @@ type EnvironmentSpec struct {
 type EnvironmentType string
 
 const (
-	EnvironmentType_POC    EnvironmentType = "POC"
-	EnvironmentType_NonPOC EnvironmentType = "Non-POC"
+	EnvironmentTypePOC    EnvironmentType = "POC"
+	EnvironmentTypeNonPOC EnvironmentType = "Non-POC"
 )
 
 // DeploymentStrategyType defines the available promotion/deployment strategies for an Environment
@@ -61,12 +61,12 @@ type DeploymentStrategyType string
 
 const (
 	// DeploymentStrategy_Manual: Promotions to an Environment with this strategy will occur due to explicit user intent
-	DeploymentStrategy_Manual DeploymentStrategyType = "Manual"
+	DeploymentStrategyManual DeploymentStrategyType = "Manual"
 
 	// DeploymentStrategy_AppStudioAutomated: Promotions to an Environment with this strategy will occur if a previous ("parent")
 	// environment in the environment graph was successfully promoted to.
 	// See Environment API doc for details.
-	DeploymentStrategy_AppStudioAutomated DeploymentStrategyType = "AppStudioAutomated"
+	DeploymentStrategyAppStudioAutomated DeploymentStrategyType = "AppStudioAutomated"
 )
 
 // UnstableEnvironmentConfiguration contains fields that are related to configuration of the target environment:
@@ -107,7 +107,7 @@ type KubernetesClusterCredentials struct {
 // EnvironmentConfiguration contains Environment-specific configurations details, to be used when generating
 // Component/Application GitOps repository resources.
 type EnvironmentConfiguration struct {
-	// Env is an array of standard environment vairables
+	// Env is an array of standard environment variables
 	Env []EnvVarPair `json:"env"`
 }
 
