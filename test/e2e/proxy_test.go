@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -60,8 +61,12 @@ func TestProxyFlow(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
+
+	// member cluster configured to skip user creation to mimic stonesoup configuration where user & identity resources are not created
 	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
 	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
+
+	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
 
 	users := []*proxyUser{
 		{
@@ -107,10 +112,11 @@ func TestProxyFlow(t *testing.T) {
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
-				w := newWsWatcher(t, *user, hostAwait.APIProxyURL)
+				w := newWsWatcher(t, *user, user.compliantUsername, hostAwait.APIProxyURL)
 				closeConnection := w.Start()
 				defer closeConnection()
-				proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+				require.NoError(t, err)
 
 				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
@@ -155,10 +161,11 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				// when
-				proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+				require.NoError(t, err)
 
 				// then
-				err := proxyCl.Create(context.TODO(), expectedApp)
+				err = proxyCl.Create(context.TODO(), expectedApp)
 				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, hostAwait.Namespace))
 			})
 
@@ -182,15 +189,133 @@ func TestProxyFlow(t *testing.T) {
 					}
 
 					// when
-					proxyCl := hostAwait.CreateAPIProxyClient(t, user.token)
+					proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+					require.NoError(t, err)
 					err = proxyCl.Create(context.TODO(), appToCreate)
 
 					// then
 					require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, users[0].expectedMemberCluster.Namespace))
 				})
 			}
+
+			t.Run("successful workspace context", func(t *testing.T) {
+				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
+				// Start a new websocket watcher which watches for Application CRs in the user's namespace
+				w := newWsWatcher(t, *user, user.compliantUsername, proxyWorkspaceURL)
+				closeConnection := w.Start()
+				defer closeConnection()
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
+				require.NoError(t, err)
+
+				// given
+				applicationName := fmt.Sprintf("%s-workspace-context", user.compliantUsername)
+				expectedApp := newApplication(applicationName, user.compliantUsername)
+
+				// when
+				err = proxyCl.Create(context.TODO(), expectedApp)
+				require.NoError(t, err)
+
+				// then
+				// wait for the websocket watcher which uses the proxy to receive the Application CR
+				found, err := w.WaitForApplication(
+					user.expectedMemberCluster.RetryInterval,
+					user.expectedMemberCluster.Timeout,
+					expectedApp.Name,
+				)
+				require.NoError(t, err)
+				assert.NotEmpty(t, found)
+
+				// Double check that the Application does exist using a regular client (non-proxy)
+				createdApp := &hasv1alpha1.Application{}
+				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.compliantUsername, Name: applicationName}, createdApp)
+				require.NoError(t, err)
+				require.NotEmpty(t, createdApp)
+				assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+			})
+
+			t.Run("invalid workspace context", func(t *testing.T) {
+				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
+				// Start a new websocket watcher which watches for Application CRs in the user's namespace
+				_, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
+				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space in not available") has prevented the request from succeeding`)
+			})
 		})
 	} // end users loop
+
+	t.Run("workspace sharing", func(t *testing.T) {
+		// given
+		userA := users[0]
+		userB := users[1]
+		applicationName := fmt.Sprintf("%s-share-workspace-context", userB.compliantUsername)
+		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(userB.compliantUsername) // set workspace context using userB's workspace
+
+		// ensure the app exists in userB's space
+		expectedApp := newApplication(applicationName, userB.compliantUsername)
+		err := userB.expectedMemberCluster.Client.Create(context.TODO(), expectedApp)
+		require.NoError(t, err)
+
+		t.Run("userA request to unauthorized workspace", func(t *testing.T) {
+			proxyCl, err := hostAwait.CreateAPIProxyClient(t, userA.token, proxyWorkspaceURL)
+			require.NoError(t, err)
+
+			// when
+			actualApp := &hasv1alpha1.Application{}
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userB.compliantUsername}, actualApp)
+
+			// then
+			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, userA.compliantUsername, userB.compliantUsername))
+
+			// Double check that the Application does exist using a regular client (non-proxy)
+			createdApp := &hasv1alpha1.Application{}
+			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userB.compliantUsername, Name: applicationName}, createdApp)
+			require.NoError(t, err)
+			require.NotEmpty(t, createdApp)
+			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+		})
+
+		t.Run("share userB workspace with userA", func(t *testing.T) {
+			// share userB space with userA
+			userAMur, err := hostAwait.GetMasterUserRecord(userA.compliantUsername)
+			require.NoError(t, err)
+			userBSpace, err := hostAwait.WaitForSpace(t, userB.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+			require.NoError(t, err)
+			CreateSpaceBinding(t, hostAwait, userAMur, userBSpace, "admin") // creating a spacebinding gives userA access to userB's space
+
+			// VerifySpaceRelatedResources will verify the roles and rolebindings are updated to include userA's SpaceBinding
+			VerifySpaceRelatedResources(t, awaitilities, userB.signup, "appstudio")
+
+			// Start a new websocket watcher which watches for Application CRs in the user's namespace
+			w := newWsWatcher(t, *userA, userB.compliantUsername, proxyWorkspaceURL)
+			closeConnection := w.Start()
+			defer closeConnection()
+			proxyCl, err := hostAwait.CreateAPIProxyClient(t, userA.token, proxyWorkspaceURL)
+			require.NoError(t, err)
+
+			// when
+			actualApp := &hasv1alpha1.Application{}
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userB.compliantUsername}, actualApp)
+
+			// then
+			require.NoError(t, err)
+
+			// wait for the websocket watcher which uses the proxy to receive the Application CR
+			found, err := w.WaitForApplication(
+				userB.expectedMemberCluster.RetryInterval,
+				userB.expectedMemberCluster.Timeout,
+				expectedApp.Name,
+			)
+			require.NoError(t, err)
+			assert.NotEmpty(t, found)
+
+			// Double check that the Application does exist using a regular client (non-proxy)
+			createdApp := &hasv1alpha1.Application{}
+			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userB.compliantUsername, Name: applicationName}, createdApp)
+			require.NoError(t, err)
+			require.NotEmpty(t, createdApp)
+			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+		})
+
+	})
 
 	// preexisting user & identity are still there
 	// Verify provisioned User
@@ -228,25 +353,27 @@ func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.Use
 	return preexistingUser, preexistingIdentity
 }
 
-func newWsWatcher(t *testing.T, user proxyUser, proxyURL string) *wsWatcher {
-	u, err := url.Parse(proxyURL)
+func newWsWatcher(t *testing.T, user proxyUser, namespace, proxyURL string) *wsWatcher {
+	_, err := url.Parse(proxyURL)
 	require.NoError(t, err)
 	return &wsWatcher{
-		t:         t,
-		user:      user,
-		proxyHost: u.Host,
+		t:            t,
+		namespace:    namespace,
+		user:         user,
+		proxyBaseURL: proxyURL,
 	}
 }
 
 // wsWatcher represents a watcher which leverages a WebSocket connection to watch for Applications in the user's namespace.
 // The connection is established with the reg-service proxy instead of direct connection to the API server.
 type wsWatcher struct {
-	done       chan interface{}
-	interrupt  chan os.Signal
-	t          *testing.T
-	user       proxyUser
-	connection *websocket.Conn
-	proxyHost  string
+	done         chan interface{}
+	interrupt    chan os.Signal
+	t            *testing.T
+	user         proxyUser
+	namespace    string
+	connection   *websocket.Conn
+	proxyBaseURL string
 
 	mu           sync.RWMutex
 	receivedApps map[string]*hasv1alpha1.Application
@@ -262,7 +389,8 @@ func (w *wsWatcher) Start() func() {
 	encodedToken := base64.RawURLEncoding.EncodeToString([]byte(w.user.token))
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
-	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", w.proxyHost, w.user.compliantUsername)
+	trimmedProxyURL := strings.TrimPrefix(w.proxyBaseURL, "https://")
+	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", trimmedProxyURL, w.namespace)
 	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
