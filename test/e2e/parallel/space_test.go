@@ -23,9 +23,9 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("create space", func(t *testing.T) {
 		// when
-		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
+		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetClusterName(memberAwait.ClusterName))
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetClusterName(memberAwait.ClusterName))
 
 		t.Run("delete space", func(t *testing.T) {
 			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
@@ -48,7 +48,7 @@ func TestCreateSpace(t *testing.T) {
 	t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
 		// given & when
 		s, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
-			space.Spec.TargetCluster = "unknown"
+			space.Spec.TargetCluster.Name = "unknown"
 		})
 
 		// then
@@ -67,7 +67,7 @@ func TestCreateSpace(t *testing.T) {
 			t.Run("update target cluster to unblock deletion", func(t *testing.T) {
 				// when
 				s, err = hostAwait.UpdateSpace(t, s.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TargetCluster = memberAwait.ClusterName
+					s.Spec.TargetCluster.Name = memberAwait.ClusterName
 				})
 
 				// then it should fail while the member cluster is unknown (ie, unreachable)
@@ -111,13 +111,13 @@ func TestSpaceRoles(t *testing.T) {
 
 	// when a space owned by the user above is created (and user is an admin of this space)
 	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
-		WithTargetCluster(awaitilities.Member1().ClusterName),
+		WithTargetClusterName(awaitilities.Member1().ClusterName),
 		WithTierName("appstudio"),
 	)
 
 	// then
 	_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
-		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
+		UntilSpaceHasStatusTargetClusterName(awaitilities.Member1().ClusterName),
 		UntilSpaceHasTier("appstudio"),
 	)
 	require.NoError(t, err)
@@ -211,9 +211,9 @@ func TestPromoteSpace(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// when
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait.ClusterName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetClusterName(memberAwait.ClusterName))
 	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetClusterName(memberAwait.ClusterName))
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// when
@@ -234,14 +234,14 @@ func TestRetargetSpace(t *testing.T) {
 	member2Await := awaitilities.Member2()
 
 	// when
-	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(member1Await.ClusterName))
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetClusterName(member1Await.ClusterName))
 	// then
 	// wait until Space has been provisioned on member-1
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetClusterName(member1Await.ClusterName))
 
 	// when
 	space, err := hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = member2Await.ClusterName
+		s.Spec.TargetCluster.Name = member2Await.ClusterName
 	})
 	require.NoError(t, err)
 

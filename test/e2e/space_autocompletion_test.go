@@ -5,6 +5,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -136,7 +137,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetClusterName(memberAwait2.ClusterName))
 
 		t.Run("after both members marking as full then the new space won't be provisioned", func(t *testing.T) {
 			// given
@@ -159,12 +160,80 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
-				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1.ClusterName))
+				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetClusterName(memberAwait1.ClusterName))
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space3.Name)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 			})
 		})
+	})
+
+	t.Run("set cluster-role label only on member2 cluster and expect it will be selected", func(t *testing.T) {
+		// given
+		var memberLimits []testconfig.PerMemberClusterOptionInt
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(t,
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+		require.NoError(t, err)
+		for _, m := range toolchainStatus.Status.Members {
+			if memberAwait1.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.SpaceCount+1))
+			} else if memberAwait2.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.SpaceCount+1))
+			}
+		}
+		require.Len(t, memberLimits, 2)
+
+		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
+		// let's add a custom cluster-role for member2
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, "e2e", memberAwait2.Namespace, nil)
+		require.NoError(t, err)
+		require.True(t, found)
+		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Labels[cluster.RoleLabel("workspace")] = "" // add a new cluster-role label, the value is blank since only key matters.
+		})
+		require.NoError(t, err)
+
+		// when
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-clusterole-tenant"),
+			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
+
+		// then
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetClusterName(memberAwait2.ClusterName))
+	})
+
+	t.Run("set cluster-role label only on member2 cluster but mark it as full so no that no cluster will be available", func(t *testing.T) {
+		// given
+		var memberLimits []testconfig.PerMemberClusterOptionInt
+		toolchainStatus, err := hostAwait.WaitForToolchainStatus(t,
+			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+		require.NoError(t, err)
+		for _, m := range toolchainStatus.Status.Members {
+			if memberAwait1.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait1.ClusterName, m.SpaceCount+1)) // only member2 has room but we will remove the cluster-role label required
+			} else if memberAwait2.ClusterName == m.ClusterName {
+				memberLimits = append(memberLimits, testconfig.PerMemberCluster(memberAwait2.ClusterName, m.SpaceCount))
+			}
+		}
+		require.Len(t, memberLimits, 2)
+
+		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
+		// let's remove the tenant cluster-role from member2
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, "e2e", memberAwait2.Namespace, nil)
+		require.NoError(t, err)
+		require.True(t, found)
+		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Labels[cluster.RoleLabel("workspace")] = "" // add a new cluster-role label, the value is blank since only key matters.
+		})
+		require.NoError(t, err)
+
+		// when
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-clusterole-tenant-pending"),
+			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
+
+		// then
+		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
 	})
 }
 

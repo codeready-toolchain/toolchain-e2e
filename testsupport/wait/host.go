@@ -1746,12 +1746,12 @@ func UntilSpaceHasConditionForTime(expected toolchainv1alpha1.Condition, duratio
 	}
 }
 
-// UntilSpaceHasAnyTargetClusterSet returns a `SpaceWaitCriterion` which checks that the given
-// Space has any `spec.targetCluster` set
-func UntilSpaceHasAnyTargetClusterSet() SpaceWaitCriterion {
+// UntilSpaceHasAnyTargetClusterNameSet returns a `SpaceWaitCriterion` which checks that the given
+// Space has any `spec.targetCluster.name` set
+func UntilSpaceHasAnyTargetClusterNameSet() SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
-			return actual.Spec.TargetCluster != ""
+			return actual.Spec.TargetCluster.Name != ""
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected target clusters not to be empty. Actual Space resource:\n%v", actual)
@@ -1772,12 +1772,12 @@ func UntilSpaceHasAnyTierNameSet() SpaceWaitCriterion {
 	}
 }
 
-// UntilSpaceHasStatusTargetCluster returns a `SpaceWaitCriterion` which checks that the given
-// Space has the expected `targetCluster` in its status
-func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
+// UntilSpaceHasStatusTargetClusterName returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected `targetClusterName` in its status
+func UntilSpaceHasStatusTargetClusterName(expected string) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
-			return actual.Status.TargetCluster == expected
+			return actual.Status.TargetCluster.Name == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected status target clusters to match:\n%s", Diff(expected, actual.Status.TargetCluster))

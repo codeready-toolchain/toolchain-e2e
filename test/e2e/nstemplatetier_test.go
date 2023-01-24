@@ -217,7 +217,7 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTe
 	var spaces []string
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf(nameFmt, i)
-		s, _, _ := CreateSpace(t, awaitilities, WithName(name), WithTierNameAndHashLabel(tier.Name, hash), WithTargetCluster(targetCluster.ClusterName))
+		s, _, _ := CreateSpace(t, awaitilities, WithName(name), WithTierNameAndHashLabel(tier.Name, hash), WithTargetClusterName(targetCluster.ClusterName))
 		spaces = append(spaces, s.Name)
 	}
 	return spaces

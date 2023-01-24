@@ -43,9 +43,15 @@ func NewSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption)
 
 type SpaceOption func(*toolchainv1alpha1.Space)
 
-func WithTargetCluster(clusterName string) SpaceOption {
+func WithTargetClusterName(clusterName string) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = clusterName
+		s.Spec.TargetCluster.Name = clusterName
+	}
+}
+
+func WithTargetClusterRoles(clusterRoles []string) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.Spec.TargetCluster.Roles = clusterRoles
 	}
 }
 
@@ -84,7 +90,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 	space := NewSpace(t, awaitilities, opts...)
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
-	space, err = awaitilities.Host().WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+	space, err = awaitilities.Host().WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyTargetClusterNameSet(), wait.UntilSpaceHasAnyTierNameSet())
 	require.NoError(t, err)
 	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	signup, mur, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
@@ -92,7 +98,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 	// before we can check the resources (roles and rolebindings)
 	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
 	require.NoError(t, err)
-	if memberAwait, err := awaitilities.Member(space.Status.TargetCluster); err == nil {
+	if memberAwait, err := awaitilities.Member(space.Status.TargetCluster.Name); err == nil {
 		// if member is `unknown` or invalid (depending on the test case), then don't try to check the associated NSTemplateSet
 		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
 			wait.UntilNSTemplateSetHasSpaceRoles(
@@ -129,7 +135,7 @@ func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, parentName str
 
 func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space) *wait.MemberAwaitility {
 	for _, member := range awaitilities.AllMembers() {
-		if space.Spec.TargetCluster == member.ClusterName {
+		if space.Spec.TargetCluster.Name == member.ClusterName {
 			return member
 		}
 	}
@@ -143,7 +149,7 @@ func getSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *t
 func VerifyResourcesProvisionedForSpace(t *testing.T, awaitilities wait.Awaitilities, spaceName string, additionalCriteria ...wait.SpaceWaitCriterion) (*toolchainv1alpha1.Space, *toolchainv1alpha1.NSTemplateSet) {
 	space, err := awaitilities.Host().WaitForSpace(t, spaceName,
 		append(additionalCriteria,
-			wait.UntilSpaceHasAnyTargetClusterSet(),
+			wait.UntilSpaceHasAnyTargetClusterNameSet(),
 			wait.UntilSpaceHasAnyTierNameSet())...)
 	require.NoError(t, err)
 	targetCluster := getSpaceTargetMember(t, awaitilities, space)
@@ -171,7 +177,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tier.Name), hash),
 		wait.UntilSpaceHasConditions(Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
-		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
+		wait.UntilSpaceHasStatusTargetClusterName(targetCluster.ClusterName))
 	require.NoError(t, err)
 
 	// verify that there is only one toolchain.dev.openshift.com/<>-tier-hash label
