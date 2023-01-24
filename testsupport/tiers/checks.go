@@ -417,7 +417,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("20", "64Gi", "2", "32Gi"),
-		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
