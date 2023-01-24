@@ -216,7 +216,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "14Gi", "1750m", "14Gi"),
 		resourceQuotaComputeBuild("20", "10Gi", "2", "10Gi"),
-		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
@@ -417,7 +417,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("20", "64Gi", "2", "32Gi"),
-		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
