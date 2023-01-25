@@ -266,8 +266,10 @@ func TestSubSpace(t *testing.T) {
 		// we have a parentSpace
 		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, WithTargetCluster(memberAwait.ClusterName), WithTierName("appstudio"))
 		// then
-		// wait until Space has been provisioned
+		// wait until MUR and Space have been provisioned
 		_, parentNSTemplateSet := VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		parentMUR, err := hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
+		require.NoError(t, err)
 
 		// when
 		// we also have a subSpace with same tier
@@ -351,17 +353,18 @@ func TestSubSpace(t *testing.T) {
 				require.NoError(t, err)
 				VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
 
-				t.Run("we remove a user from subSpace only", func(t *testing.T) {
+				t.Run("we override the SpaceBinding from parentSpace", func(t *testing.T) {
 					// when
-					err = hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
+					// we create spaceBinding for subSpace
+					// override the parentMUR and give him admin role (was viewer previously)
+					CreateSpaceBinding(t, awaitilities.Host(), parentMUR, subSpace, "admin")
 
 					// then
-					// subSpace should have one user less
-					require.NoError(t, err)
+					// subSpace should have usernames and roles from parentSpaceBindings+subSpaceBindings
 					subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
 						UntilNSTemplateSetHasConditions(Provisioned()),
 						UntilNSTemplateSetHasSpaceRoles(
-							SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
+							SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord, subSpaceBinding.Spec.MasterUserRecord), // parent MUR is added as admin
 						),
 					)
 					require.NoError(t, err)
@@ -370,13 +373,38 @@ func TestSubSpace(t *testing.T) {
 					parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
 						UntilNSTemplateSetHasConditions(Provisioned()),
 						UntilNSTemplateSetHasSpaceRoles(
-							SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
+							SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged in parentNSTemplateSet
 						),
 					)
 					require.NoError(t, err)
 					VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
-				})
 
+					t.Run("we remove a user from subSpace only", func(t *testing.T) {
+						// when
+						err = hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
+
+						// then
+						// subSpace should have one user less
+						require.NoError(t, err)
+						subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
+							UntilNSTemplateSetHasConditions(Provisioned()),
+							UntilNSTemplateSetHasSpaceRoles(
+								SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
+							),
+						)
+						require.NoError(t, err)
+						VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
+						// parentSpace should not have this username role added
+						parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
+							UntilNSTemplateSetHasConditions(Provisioned()),
+							UntilNSTemplateSetHasSpaceRoles(
+								SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
+							),
+						)
+						require.NoError(t, err)
+						VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
+					})
+				})
 			})
 		})
 	})
