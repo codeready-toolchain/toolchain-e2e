@@ -417,12 +417,13 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("20", "64Gi", "2", "32Gi"),
-		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
 		memberOperatorSaReadRoleBinding(),
 		gitOpsServiceLabel(),
+		environment("development"),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -1153,11 +1154,18 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 	}
 }
 
+func environment(name string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		_, err := memberAwait.WaitForEnvironment(t, ns.Name, name)
+		require.NoError(t, err)
+	}
+}
+
 func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 12)
+		assert.Len(t, role.Rules, 13)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1219,6 +1227,12 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					APIGroups: []string{"jvmbuildservice.io"},
 					Resources: []string{"jbsconfigs", "artifactbuilds"},
 					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"},
+				},
+				{
+					APIGroups:     []string{""},
+					Resources:     []string{"serviceaccounts"},
+					ResourceNames: []string{"pipeline"},
+					Verbs:         []string{"get", "list", "watch", "update", "patch"},
 				},
 			},
 		}
