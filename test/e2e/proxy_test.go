@@ -226,7 +226,7 @@ func TestProxyFlow(t *testing.T) {
 				assert.NotEmpty(t, found)
 
 				// Double check that the Application does exist using a regular client (non-proxy)
-				createdApp := &hasv1alpha1.Application{}
+				createdApp := &appstudiov1.Application{}
 				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.compliantUsername, Name: applicationName}, createdApp)
 				require.NoError(t, err)
 				require.NotEmpty(t, createdApp)
@@ -259,14 +259,14 @@ func TestProxyFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// when
-			actualApp := &hasv1alpha1.Application{}
+			actualApp := &appstudiov1.Application{}
 			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userB.compliantUsername}, actualApp)
 
 			// then
 			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, userA.compliantUsername, userB.compliantUsername))
 
 			// Double check that the Application does exist using a regular client (non-proxy)
-			createdApp := &hasv1alpha1.Application{}
+			createdApp := &appstudiov1.Application{}
 			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userB.compliantUsername, Name: applicationName}, createdApp)
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
@@ -292,7 +292,7 @@ func TestProxyFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// when
-			actualApp := &hasv1alpha1.Application{}
+			actualApp := &appstudiov1.Application{}
 			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userB.compliantUsername}, actualApp)
 
 			// then
@@ -308,7 +308,7 @@ func TestProxyFlow(t *testing.T) {
 			assert.NotEmpty(t, found)
 
 			// Double check that the Application does exist using a regular client (non-proxy)
-			createdApp := &hasv1alpha1.Application{}
+			createdApp := &appstudiov1.Application{}
 			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userB.compliantUsername, Name: applicationName}, createdApp)
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
