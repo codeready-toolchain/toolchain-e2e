@@ -21,7 +21,7 @@ import (
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	hasv1alpha1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/has/api/v1alpha1"
+	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
@@ -133,7 +133,7 @@ func TestProxyFlow(t *testing.T) {
 					assert.NotEmpty(t, found)
 
 					// Double check that the Application does exist using a regular client (non-proxy)
-					createdApp := &hasv1alpha1.Application{}
+					createdApp := &appstudiov1.Application{}
 					err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.compliantUsername, Name: applicationName}, createdApp)
 					require.NoError(t, err)
 					require.NotEmpty(t, createdApp)
@@ -144,12 +144,12 @@ func TestProxyFlow(t *testing.T) {
 			t.Run("try to create a resource in an unauthorized namespace", func(t *testing.T) {
 				// given
 				appName := fmt.Sprintf("%s-proxy-test-app", user.username)
-				expectedApp := &hasv1alpha1.Application{
+				expectedApp := &appstudiov1.Application{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      appName,
 						Namespace: hostAwait.Namespace, // user should not be allowed to create a resource in the host operator namespace
 					},
-					Spec: hasv1alpha1.ApplicationSpec{
+					Spec: appstudiov1.ApplicationSpec{
 						DisplayName: "Should be forbidden",
 					},
 				}
@@ -171,12 +171,12 @@ func TestProxyFlow(t *testing.T) {
 					require.NoError(t, err, "failed to verify the first user's namespace still exists")
 
 					appName := fmt.Sprintf("%s-proxy-test-app", users[0].username)
-					appToCreate := &hasv1alpha1.Application{
+					appToCreate := &appstudiov1.Application{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      appName,
 							Namespace: users[0].expectedMemberCluster.Namespace, // user should not be allowed to create a resource in the first user's namespace
 						},
-						Spec: hasv1alpha1.ApplicationSpec{
+						Spec: appstudiov1.ApplicationSpec{
 							DisplayName: "Should be forbidden",
 						},
 					}
@@ -249,7 +249,7 @@ type wsWatcher struct {
 	proxyHost  string
 
 	mu           sync.RWMutex
-	receivedApps map[string]*hasv1alpha1.Application
+	receivedApps map[string]*appstudiov1.Application
 }
 
 // start creates a new WebSocket connection. The method returns a function which is to be used to close the connection when done.
@@ -284,7 +284,7 @@ func (w *wsWatcher) Start() func() {
 	}
 	require.NoError(w.t, err)
 	w.connection = conn
-	w.receivedApps = make(map[string]*hasv1alpha1.Application)
+	w.receivedApps = make(map[string]*appstudiov1.Application)
 
 	go w.receiveHandler()
 	go w.startMainLoop()
@@ -331,7 +331,7 @@ func (w *wsWatcher) startMainLoop() {
 
 type message struct {
 	MessageType string                  `json:"type"`
-	Application hasv1alpha1.Application `json:"object"`
+	Application appstudiov1.Application `json:"object"`
 }
 
 // receiveHandler listens to the incoming messages and stores them as Applications objects
@@ -354,8 +354,8 @@ func (w *wsWatcher) receiveHandler() {
 	}
 }
 
-func (w *wsWatcher) WaitForApplication(retryInterval, timeout time.Duration, expectedAppName string) (*hasv1alpha1.Application, error) {
-	var foundApp *hasv1alpha1.Application
+func (w *wsWatcher) WaitForApplication(retryInterval, timeout time.Duration, expectedAppName string) (*appstudiov1.Application, error) {
+	var foundApp *appstudiov1.Application
 	err := kubewait.Poll(retryInterval, timeout, func() (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
@@ -365,13 +365,13 @@ func (w *wsWatcher) WaitForApplication(retryInterval, timeout time.Duration, exp
 	return foundApp, err
 }
 
-func newApplication(applicationName, namespace string) *hasv1alpha1.Application {
-	return &hasv1alpha1.Application{
+func newApplication(applicationName, namespace string) *appstudiov1.Application {
+	return &appstudiov1.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      applicationName,
 			Namespace: namespace,
 		},
-		Spec: hasv1alpha1.ApplicationSpec{
+		Spec: appstudiov1.ApplicationSpec{
 			DisplayName: fmt.Sprintf("Proxy test for user %s", namespace),
 		},
 	}

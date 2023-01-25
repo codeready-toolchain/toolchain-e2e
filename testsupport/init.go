@@ -10,7 +10,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-	hasv1alpha1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/has/api/v1alpha1"
+	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -180,7 +180,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		openshiftappsv1.Install,
 		corev1.AddToScheme,
 		metrics.AddToScheme,
-		hasv1alpha1.AddToScheme,
+		appstudiov1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s

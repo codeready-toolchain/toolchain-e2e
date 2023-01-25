@@ -417,12 +417,13 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("20", "64Gi", "2", "32Gi"),
-		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		toolchainSaReadRole(),
 		memberOperatorSaReadRoleBinding(),
 		gitOpsServiceLabel(),
+		environment("development"),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -1149,6 +1150,13 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
 		}
 		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
+		require.NoError(t, err)
+	}
+}
+
+func environment(name string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		_, err := memberAwait.WaitForEnvironment(t, ns.Name, name)
 		require.NoError(t, err)
 	}
 }
