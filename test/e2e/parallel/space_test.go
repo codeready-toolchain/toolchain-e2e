@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -361,10 +362,12 @@ func TestSubSpace(t *testing.T) {
 
 					// then
 					// subSpace should have usernames and roles from parentSpaceBindings+subSpaceBindings
+					sortedUsernames := []string{parentSpaceBindings.Spec.MasterUserRecord, subSpaceBinding.Spec.MasterUserRecord}
+					sort.Strings(sortedUsernames) // the NSTemplateSet has usernames sorted, this is required so that assertion doesn't fail when order changes
 					subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
 						UntilNSTemplateSetHasConditions(Provisioned()),
 						UntilNSTemplateSetHasSpaceRoles(
-							SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord, subSpaceBinding.Spec.MasterUserRecord), // parent MUR is added as admin
+							SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, sortedUsernames...), // parent MUR is added as admin
 						),
 					)
 					require.NoError(t, err)
