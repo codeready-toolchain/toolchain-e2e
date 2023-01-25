@@ -1,0 +1,3 @@
+= HOW-TO
+
+Copy/paste relevant definitions from https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
