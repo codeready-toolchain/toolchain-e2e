@@ -1566,7 +1566,7 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 }
 
 // CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
-func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, usertoken string) client.Client {
+func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, usertoken, proxyURL string) (client.Client, error) {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(t, err)
 	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
@@ -1577,15 +1577,19 @@ func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, usertoken string) cl
 	require.NoError(t, builder.AddToScheme(s))
 
 	proxyKubeConfig := &rest.Config{
-		Host:            a.APIProxyURL,
+		Host:            proxyURL,
 		TLSClientConfig: defaultConfig.TLSClientConfig,
 		BearerToken:     usertoken,
 	}
-	proxyCl, err := client.New(proxyKubeConfig, client.Options{
-		Scheme: s,
-	})
-	require.NoError(t, err)
-	return proxyCl
+	proxyCl, err := client.New(proxyKubeConfig, client.Options{Scheme: s})
+	if err != nil {
+		return nil, err
+	}
+	return proxyCl, nil
+}
+
+func (a *HostAwaitility) ProxyURLWithWorkspaceContext(workspaceContext string) string {
+	return fmt.Sprintf("%s/workspaces/%s", a.APIProxyURL, workspaceContext)
 }
 
 type SpaceWaitCriterion struct {
