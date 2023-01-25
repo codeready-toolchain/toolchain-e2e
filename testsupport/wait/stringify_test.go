@@ -43,8 +43,10 @@ metadata:
   creationTimestamp: "2021-12-16T10:45:30Z"
   name: oddity-1
 spec:
+  targetCluster: {}
   tierName: base
-status: {}
+status:
+  targetCluster: {}
 `, string(result))
 }
 
@@ -103,14 +105,18 @@ func TestStringifyObjects(t *testing.T) {
     creationTimestamp: "2021-12-16T10:45:30Z"
     name: oddity-1
   spec:
+    targetCluster: {}
     tierName: base
-  status: {}
+  status:
+    targetCluster: {}
 - kind: Space
   metadata:
     creationTimestamp: "2021-12-16T10:45:30Z"
     name: oddity-2
   spec:
+    targetCluster: {}
     tierName: advanced
-  status: {}
+  status:
+    targetCluster: {}
 `, string(result))
 }
