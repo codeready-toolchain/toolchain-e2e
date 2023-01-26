@@ -274,7 +274,7 @@ func TestSubSpace(t *testing.T) {
 
 		// when
 		// we also have a subSpace with same tier
-		subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name), WithTierName("appstudio"))
+		subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name), WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
 
 		// then
 		// wait until subSpace has been provisioned as well
