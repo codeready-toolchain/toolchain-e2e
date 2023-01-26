@@ -137,7 +137,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetClusterName(memberAwait2.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
 
 		t.Run("after both members marking as full then the new space won't be provisioned", func(t *testing.T) {
 			// given
@@ -160,7 +160,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
-				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetClusterName(memberAwait1.ClusterName))
+				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1.ClusterName))
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space3.Name)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
@@ -199,7 +199,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetClusterName(memberAwait2.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
 	})
 
 	t.Run("set cluster-role label only on member2 cluster but mark it as full so no that no cluster will be available", func(t *testing.T) {
