@@ -1777,7 +1777,7 @@ func UntilSpaceHasAnyTierNameSet() SpaceWaitCriterion {
 }
 
 // UntilSpaceHasStatusTargetCluster returns a `SpaceWaitCriterion` which checks that the given
-// Space has the expected `targetClusterName` in its status
+// Space has the expected `targetCluster` in its status
 func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
@@ -2018,7 +2018,7 @@ func (a *HostAwaitility) WaitForSocialEvent(t *testing.T, name string, criteria 
 	return event, err
 }
 
-// UntilSpaceHasStateLabel returns a `SpaceWaitCriterion` which checks that the
+// UntilSocialEventHasActivationCount returns a `SpaceWaitCriterion` which checks that the
 // Space has the expected value of the state label
 func UntilSocialEventHasActivationCount(expected int) SocialEventWaitCriterion {
 	return SocialEventWaitCriterion{
