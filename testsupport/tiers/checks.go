@@ -196,7 +196,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -264,7 +264,7 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wai
 
 func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -282,7 +282,7 @@ type base1nsnoidlingTierChecks struct {
 
 func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -300,7 +300,7 @@ type base1ns6didlerTierChecks struct {
 
 func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -319,7 +319,7 @@ type baselargeTierChecks struct {
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -338,7 +338,7 @@ type baseextendedidlingTierChecks struct {
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -367,7 +367,7 @@ type advancedTierChecks struct {
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -416,7 +416,7 @@ type appstudioTierChecks struct {
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("20", "64Gi", "2", "32Gi"),
+		resourceQuotaComputeBuild("60", "64Gi", "6", "32Gi"),
 		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
@@ -473,7 +473,7 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaDeployments("150"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -874,7 +874,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 	}
 }
 
-func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
+func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
@@ -883,7 +883,7 @@ func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
 			require.NoError(t, err)
 			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
-			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity("50")
+			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(pods)
 			require.NoError(t, err)
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
