@@ -397,7 +397,7 @@ func TestSubSpace(t *testing.T) {
 						)
 						require.NoError(t, err)
 						VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
-					// parentSpace should not be affected by the change in sub-space
+						// parentSpace should not be affected by the change in sub-space
 						parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
 							UntilNSTemplateSetHasConditions(Provisioned()),
 							UntilNSTemplateSetHasSpaceRoles(
