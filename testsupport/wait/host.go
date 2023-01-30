@@ -267,6 +267,27 @@ func (a *HostAwaitility) UpdateSpace(t *testing.T, spaceName string, modifySpace
 	return s, err
 }
 
+// UpdateSpaceBinding tries to update the Spec of the given SpaceBinding
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated SpaceBinding
+func (a *HostAwaitility) UpdateSpaceBinding(t *testing.T, spaceBindingName string, modifySpaceBinding func(s *toolchainv1alpha1.SpaceBinding)) (*toolchainv1alpha1.SpaceBinding, error) {
+	var s *toolchainv1alpha1.SpaceBinding
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshSpaceBinding := &toolchainv1alpha1.SpaceBinding{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceBindingName}, freshSpaceBinding); err != nil {
+			return true, err
+		}
+		modifySpaceBinding(freshSpaceBinding)
+		if err := a.Client.Update(context.TODO(), freshSpaceBinding); err != nil {
+			t.Logf("error updating SpaceBinding '%s': %s. Will retry again...", spaceBindingName, err.Error())
+			return false, nil
+		}
+		s = freshSpaceBinding
+		return true, nil
+	})
+	return s, err
+}
+
 // MasterUserRecordWaitCriterion a struct to compare with an expected MasterUserRecord
 type MasterUserRecordWaitCriterion struct {
 	Match func(*toolchainv1alpha1.MasterUserRecord) bool

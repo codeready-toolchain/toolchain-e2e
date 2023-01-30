@@ -75,7 +75,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// when
 			parentSpace, err := hostAwait.WaitForSpace(t, space1.Name)
 			require.NoError(t, err)
-			subSpace := CreateSubSpace(t, awaitilities, parentSpace.Name)
+			subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name))
 
 			// then
 			// parent-space should be provisioned
