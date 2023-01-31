@@ -48,6 +48,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 					testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),
 				),
 		)
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist1"))
