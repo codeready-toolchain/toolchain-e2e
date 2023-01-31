@@ -122,7 +122,7 @@ func TestProxyFlow(t *testing.T) {
 				for i := 0; i < 2; i++ {
 					// given
 					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
-					expectedApp := newApplication(applicationName, user.compliantUsername)
+					expectedApp := newApplication(applicationName, tenantNsName(user.compliantUsername))
 
 					// when
 					err := proxyCl.Create(context.TODO(), expectedApp)
@@ -139,8 +139,9 @@ func TestProxyFlow(t *testing.T) {
 					assert.NotEmpty(t, found)
 
 					// Double check that the Application does exist using a regular client (non-proxy)
+					namespacedName := types.NamespacedName{Namespace: tenantNsName(user.compliantUsername), Name: applicationName}
 					createdApp := &appstudiov1.Application{}
-					err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.compliantUsername, Name: applicationName}, createdApp)
+					err = user.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, createdApp)
 					require.NoError(t, err)
 					require.NotEmpty(t, createdApp)
 					assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
@@ -174,7 +175,7 @@ func TestProxyFlow(t *testing.T) {
 					// given
 					// verify first user's namespace still exists
 					ns := &corev1.Namespace{}
-					err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: users[0].username}, ns)
+					err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: tenantNsName(users[0].username)}, ns)
 					require.NoError(t, err, "failed to verify the first user's namespace still exists")
 
 					appName := fmt.Sprintf("%s-proxy-test-app", users[0].username)
@@ -209,7 +210,8 @@ func TestProxyFlow(t *testing.T) {
 
 				// given
 				applicationName := fmt.Sprintf("%s-workspace-context", user.compliantUsername)
-				expectedApp := newApplication(applicationName, user.compliantUsername)
+				namespaceName := tenantNsName(user.compliantUsername)
+				expectedApp := newApplication(applicationName, namespaceName)
 
 				// when
 				err = proxyCl.Create(context.TODO(), expectedApp)
@@ -227,7 +229,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// Double check that the Application does exist using a regular client (non-proxy)
 				createdApp := &appstudiov1.Application{}
-				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: user.compliantUsername, Name: applicationName}, createdApp)
+				err = user.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespaceName, Name: applicationName}, createdApp)
 				require.NoError(t, err)
 				require.NotEmpty(t, createdApp)
 				assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
@@ -250,7 +252,8 @@ func TestProxyFlow(t *testing.T) {
 		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(userB.compliantUsername) // set workspace context using userB's workspace
 
 		// ensure the app exists in userB's space
-		expectedApp := newApplication(applicationName, userB.compliantUsername)
+		userBNamespace := tenantNsName(userB.compliantUsername)
+		expectedApp := newApplication(applicationName, userBNamespace)
 		err := userB.expectedMemberCluster.Client.Create(context.TODO(), expectedApp)
 		require.NoError(t, err)
 
@@ -260,14 +263,14 @@ func TestProxyFlow(t *testing.T) {
 
 			// when
 			actualApp := &appstudiov1.Application{}
-			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userB.compliantUsername}, actualApp)
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userBNamespace}, actualApp)
 
 			// then
-			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, userA.compliantUsername, userB.compliantUsername))
+			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, userA.compliantUsername, userBNamespace))
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
-			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userB.compliantUsername, Name: applicationName}, createdApp)
+			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userBNamespace, Name: applicationName}, createdApp)
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
@@ -293,7 +296,7 @@ func TestProxyFlow(t *testing.T) {
 
 			// when
 			actualApp := &appstudiov1.Application{}
-			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userB.compliantUsername}, actualApp)
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userBNamespace}, actualApp)
 
 			// then
 			require.NoError(t, err)
@@ -309,7 +312,7 @@ func TestProxyFlow(t *testing.T) {
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
-			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userB.compliantUsername, Name: applicationName}, createdApp)
+			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userBNamespace, Name: applicationName}, createdApp)
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
@@ -325,6 +328,10 @@ func TestProxyFlow(t *testing.T) {
 	// Verify provisioned Identity
 	_, err = memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
 	assert.NoError(t, err)
+}
+
+func tenantNsName(username string) string {
+	return fmt.Sprintf("%s-tenant", username)
 }
 
 func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
@@ -390,7 +397,7 @@ func (w *wsWatcher) Start() func() {
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
 	trimmedProxyURL := strings.TrimPrefix(w.proxyBaseURL, "https://")
-	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", trimmedProxyURL, w.namespace)
+	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", trimmedProxyURL, tenantNsName(w.namespace))
 	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
