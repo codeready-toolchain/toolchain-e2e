@@ -152,6 +152,10 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
+				Name: s.Name,
+				Type: "default", // default ns name should be there
+			}}),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceguest", "spaceowner"), // sorted usernames
 			),
@@ -172,6 +176,10 @@ func TestSpaceRoles(t *testing.T) {
 			require.NoError(t, err)
 			nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 				UntilNSTemplateSetHasConditions(Provisioned()),
+				UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
+					Name: s.Name,
+					Type: "default", // default ns name should be there
+				}}),
 				UntilNSTemplateSetHasSpaceRoles(
 					SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"), // "spaceguest" was removed
 				),
@@ -192,6 +200,10 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
+				Name: s.Name,
+				Type: "default", // default ns name should be there
+			}}),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["viewer"].TemplateRef, ownerMUR.Name),
 			),

@@ -383,6 +383,19 @@ func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 	}
 }
 
+// UntilNSTemplateSetHasProvisionedNamespaces returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemlateSet has exactly all the given status provisioned namespaces
+func UntilNSTemplateSetHasProvisionedNamespaces(expected []toolchainv1alpha1.Namespace) NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return reflect.DeepEqual(actual.Status.ProvisionedNamespaces, expected)
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.ProvisionedNamespaces))
+		},
+	}
+}
+
 // WaitForNSTmplSet wait until the NSTemplateSet with the given name and conditions exists
 func (a *MemberAwaitility) WaitForNSTmplSet(t *testing.T, name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
 	t.Logf("waiting for NSTemplateSet '%s' to match criteria", name)
