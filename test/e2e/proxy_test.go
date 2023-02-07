@@ -20,6 +20,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
@@ -31,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -204,7 +206,7 @@ func TestProxyFlow(t *testing.T) {
 				w := newWsWatcher(t, *user, user.compliantUsername, proxyWorkspaceURL)
 				closeConnection := w.Start()
 				defer closeConnection()
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // proxy client with workspace context
 				require.NoError(t, err)
 
 				// given
@@ -231,14 +233,114 @@ func TestProxyFlow(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, createdApp)
 				assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
-			})
+			}) // end of successful workspace context
 
 			t.Run("invalid workspace context", func(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				_, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
-				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space in not available") has prevented the request from succeeding`)
+				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
 			})
+
+			t.Run("successful space lister request", func(t *testing.T) {
+				// given
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+				require.NoError(t, err)
+				expectedWorkspace := commonproxy.NewWorkspace(user.compliantUsername,
+					commonproxy.WithNamespaces([]toolchainv1alpha1.SpaceNamespace{
+						{
+							Name: user.compliantUsername + "-tenant",
+							Type: "default",
+						},
+					}),
+					commonproxy.WithOwner(user.signup.Name),
+					commonproxy.WithRole("admin"),
+				)
+
+				t.Run("successful list", func(t *testing.T) {
+					// when
+					workspaces := &toolchainv1alpha1.WorkspaceList{}
+					err = proxyCl.List(context.TODO(), workspaces)
+
+					// then
+					require.NoError(t, err)
+					require.Len(t, workspaces.Items, 1)
+					assert.Equal(t, expectedWorkspace.Status, workspaces.Items[0].Status)
+					t.Logf("workspace name: %s", workspaces.Items[0].Name)
+				})
+
+				t.Run("successful get", func(t *testing.T) {
+					// when
+					workspace := &toolchainv1alpha1.Workspace{}
+					t.Logf("getting: %s", user.compliantUsername)
+					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: user.compliantUsername}, workspace)
+
+					// then
+					require.NoError(t, err)
+					assert.Equal(t, expectedWorkspace.Status, workspace.Status)
+				})
+			}) // end successful space lister request
+
+			t.Run("invalid space lister request", func(t *testing.T) {
+				// given
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+				require.NoError(t, err)
+
+				// when
+				workspaceToCreate := commonproxy.NewWorkspace(user.compliantUsername,
+					commonproxy.WithNamespaces([]toolchainv1alpha1.SpaceNamespace{
+						{
+							Name: user.username,
+							Type: "default",
+						},
+					}),
+					commonproxy.WithOwner(user.signup.Name),
+					commonproxy.WithRole("admin"),
+				)
+
+				t.Run("workspace not found", func(t *testing.T) {
+					workspaceToGet := &toolchainv1alpha1.Workspace{}
+					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: "not-exist"}, workspaceToGet)
+
+					t.Logf("full error: %+v", err)
+
+					// then
+					require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com not-exist)")
+					require.True(t, apierrors.IsNotFound(err))
+				})
+
+				t.Run("create not allowed", func(t *testing.T) {
+					err = proxyCl.Create(context.TODO(), workspaceToCreate)
+
+					// then
+					require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com is forbidden: User \"%s\" cannot create resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", user.compliantUsername))
+				})
+
+				t.Run("delete not allowed", func(t *testing.T) {
+					workspaceToDelete := &toolchainv1alpha1.Workspace{}
+					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: user.compliantUsername}, workspaceToDelete)
+					require.NoError(t, err)
+					assert.NotNil(t, workspaceToDelete)
+
+					err = proxyCl.Delete(context.TODO(), workspaceToDelete)
+
+					// then
+					require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot delete resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", user.compliantUsername))
+				})
+
+				t.Run("update not allowed", func(t *testing.T) {
+					workspaceToUpdate := &toolchainv1alpha1.Workspace{}
+					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: user.compliantUsername}, workspaceToUpdate)
+					require.NoError(t, err)
+					assert.NotNil(t, workspaceToUpdate)
+
+					err = proxyCl.Update(context.TODO(), workspaceToUpdate)
+
+					// then
+					require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot update resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", user.compliantUsername))
+				})
+			}) // end invalid space lister request
+
 		})
 	} // end users loop
 
