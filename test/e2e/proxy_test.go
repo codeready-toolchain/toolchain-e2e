@@ -32,7 +32,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -45,6 +44,34 @@ type proxyUser struct {
 	identityID            uuid.UUID
 	signup                *toolchainv1alpha1.UserSignup
 	compliantUsername     string
+}
+
+func (u *proxyUser) shareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility, guestUser *proxyUser) {
+	// share primaryUser space with guestUser
+	guestUserMur, err := hostAwait.GetMasterUserRecord(guestUser.compliantUsername)
+	require.NoError(t, err)
+	primaryUserSpace, err := hostAwait.WaitForSpace(t, u.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+	require.NoError(t, err)
+	CreateSpaceBinding(t, hostAwait, guestUserMur, primaryUserSpace, "admin") // creating a spacebinding gives guestUser access to primaryUser's space
+}
+
+func (u *proxyUser) listWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility) []toolchainv1alpha1.Workspace {
+	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.token, hostAwait.APIProxyURL)
+	require.NoError(t, err)
+
+	workspaces := &toolchainv1alpha1.WorkspaceList{}
+	err = proxyCl.List(context.TODO(), workspaces)
+	require.NoError(t, err)
+	return workspaces.Items
+}
+
+func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, workspaceName string) (*toolchainv1alpha1.Workspace, error) {
+	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.token, hostAwait.APIProxyURL)
+	require.NoError(t, err)
+
+	workspace := &toolchainv1alpha1.Workspace{}
+	err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
+	return workspace, err
 }
 
 // full flow from usersignup with approval down to namespaces creation and cleanup
@@ -64,9 +91,7 @@ func TestProxyFlow(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 
-	// member cluster configured to skip user creation to mimic stonesoup configuration where user & identity resources are not created
-	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
-	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
+	setStoneSoupConfig(t, hostAwait, memberAwait)
 
 	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
 
@@ -89,21 +114,7 @@ func TestProxyFlow(t *testing.T) {
 	}
 	// create the users before the subtests, so they exist for the duration of the whole "ProxyFlow" test ;)
 	for _, user := range users {
-		// Create and approve signup
-		req := NewSignupRequest(awaitilities).
-			Username(user.username).
-			IdentityID(user.identityID).
-			ManuallyApprove().
-			TargetCluster(user.expectedMemberCluster).
-			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute(t)
-		user.signup, _ = req.Resources()
-		user.token = req.GetToken()
-		VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
-		user.compliantUsername = user.signup.Status.CompliantUsername
-		_, err := hostAwait.GetMasterUserRecord(user.compliantUsername)
-		require.NoError(t, err)
+		createAppStudioUser(t, awaitilities, user)
 	}
 
 	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
@@ -172,36 +183,35 @@ func TestProxyFlow(t *testing.T) {
 				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, hostAwait.Namespace))
 			})
 
-			if index == 1 { // only for the second user
-				t.Run("try to create a resource in the other users namespace", func(t *testing.T) {
-					// given
-					// verify first user's namespace still exists
-					ns := &corev1.Namespace{}
-					err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: tenantNsName(users[0].username)}, ns)
-					require.NoError(t, err, "failed to verify the first user's namespace still exists")
+			t.Run("unable to create a resource in the other users namespace because it is not shared", func(t *testing.T) {
+				// given
+				otherUser := users[(index+1)%len(users)]
+				// verify other user's namespace still exists
+				ns := &corev1.Namespace{}
+				err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: tenantNsName(otherUser.compliantUsername)}, ns)
+				require.NoError(t, err, "the other user's namespace should still exist")
 
-					appName := fmt.Sprintf("%s-proxy-test-app", users[0].username)
-					appToCreate := &appstudiov1.Application{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      appName,
-							Namespace: users[0].expectedMemberCluster.Namespace, // user should not be allowed to create a resource in the first user's namespace
-						},
-						Spec: appstudiov1.ApplicationSpec{
-							DisplayName: "Should be forbidden",
-						},
-					}
+				appName := fmt.Sprintf("%s-proxy-test-app", otherUser.compliantUsername)
+				appToCreate := &appstudiov1.Application{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      appName,
+						Namespace: otherUser.expectedMemberCluster.Namespace, // user should not be allowed to create a resource in the first user's namespace
+					},
+					Spec: appstudiov1.ApplicationSpec{
+						DisplayName: "Should be forbidden",
+					},
+				}
 
-					// when
-					proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
-					require.NoError(t, err)
-					err = proxyCl.Create(context.TODO(), appToCreate)
+				// when
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+				require.NoError(t, err)
+				err = proxyCl.Create(context.TODO(), appToCreate)
 
-					// then
-					require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, users[0].expectedMemberCluster.Namespace))
-				})
-			}
+				// then
+				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, otherUser.expectedMemberCluster.Namespace))
+			})
 
-			t.Run("successful workspace context", func(t *testing.T) {
+			t.Run("successful workspace context request", func(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				w := newWsWatcher(t, *user, user.compliantUsername, proxyWorkspaceURL)
@@ -235,178 +245,77 @@ func TestProxyFlow(t *testing.T) {
 				require.NoError(t, err)
 				require.NotEmpty(t, createdApp)
 				assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
-			}) // end of successful workspace context
+			}) // end of successful workspace context request
 
-			t.Run("invalid workspace context", func(t *testing.T) {
+			t.Run("invalid workspace context request", func(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				_, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
 				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
 			})
-
-			t.Run("successful space lister request", func(t *testing.T) {
-				// given
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
-				require.NoError(t, err)
-				expectedWorkspace := commonproxy.NewWorkspace(user.compliantUsername,
-					commonproxy.WithNamespaces([]toolchainv1alpha1.SpaceNamespace{
-						{
-							Name: user.compliantUsername + "-tenant",
-							Type: "default",
-						},
-					}),
-					commonproxy.WithOwner(user.signup.Name),
-					commonproxy.WithRole("admin"),
-				)
-
-				t.Run("successful list", func(t *testing.T) {
-					// when
-					workspaces := &toolchainv1alpha1.WorkspaceList{}
-					err = proxyCl.List(context.TODO(), workspaces)
-
-					// then
-					require.NoError(t, err)
-					require.Len(t, workspaces.Items, 1)
-					assert.Equal(t, expectedWorkspace.Status, workspaces.Items[0].Status)
-					t.Logf("workspace name: %s", workspaces.Items[0].Name)
-				})
-
-				t.Run("successful get", func(t *testing.T) {
-					// when
-					workspace := &toolchainv1alpha1.Workspace{}
-					t.Logf("getting: %s", user.compliantUsername)
-					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: user.compliantUsername}, workspace)
-
-					// then
-					require.NoError(t, err)
-					assert.Equal(t, expectedWorkspace.Status, workspace.Status)
-				})
-			}) // end successful space lister request
-
-			t.Run("invalid space lister request", func(t *testing.T) {
-				// given
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
-				require.NoError(t, err)
-
-				// when
-				workspaceToCreate := commonproxy.NewWorkspace(user.compliantUsername,
-					commonproxy.WithNamespaces([]toolchainv1alpha1.SpaceNamespace{
-						{
-							Name: user.username,
-							Type: "default",
-						},
-					}),
-					commonproxy.WithOwner(user.signup.Name),
-					commonproxy.WithRole("admin"),
-				)
-
-				t.Run("workspace not found", func(t *testing.T) {
-					workspaceToGet := &toolchainv1alpha1.Workspace{}
-					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: "not-exist"}, workspaceToGet)
-
-					t.Logf("full error: %+v", err)
-
-					// then
-					require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com not-exist)")
-					require.True(t, apierrors.IsNotFound(err))
-				})
-
-				t.Run("create not allowed", func(t *testing.T) {
-					err = proxyCl.Create(context.TODO(), workspaceToCreate)
-
-					// then
-					require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com is forbidden: User \"%s\" cannot create resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", user.compliantUsername))
-				})
-
-				t.Run("delete not allowed", func(t *testing.T) {
-					workspaceToDelete := &toolchainv1alpha1.Workspace{}
-					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: user.compliantUsername}, workspaceToDelete)
-					require.NoError(t, err)
-					assert.NotNil(t, workspaceToDelete)
-
-					err = proxyCl.Delete(context.TODO(), workspaceToDelete)
-
-					// then
-					require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot delete resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", user.compliantUsername))
-				})
-
-				t.Run("update not allowed", func(t *testing.T) {
-					workspaceToUpdate := &toolchainv1alpha1.Workspace{}
-					err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: user.compliantUsername}, workspaceToUpdate)
-					require.NoError(t, err)
-					assert.NotNil(t, workspaceToUpdate)
-
-					err = proxyCl.Update(context.TODO(), workspaceToUpdate)
-
-					// then
-					require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot update resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", user.compliantUsername))
-				})
-			}) // end invalid space lister request
-
 		})
 	} // end users loop
 
-	t.Run("workspace sharing", func(t *testing.T) {
+	t.Run("proxy with shared workspace use cases", func(t *testing.T) {
 		// given
-		userA := users[0]
-		userB := users[1]
-		applicationName := fmt.Sprintf("%s-share-workspace-context", userB.compliantUsername)
-		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(userB.compliantUsername) // set workspace context using userB's workspace
+		guestUser := users[0]
+		primaryUser := users[1]
+		applicationName := fmt.Sprintf("%s-share-workspace-context", primaryUser.compliantUsername)
+		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(primaryUser.compliantUsername) // set workspace context using primaryUser's workspace
 
-		// ensure the app exists in userB's space
-		userBNamespace := tenantNsName(userB.compliantUsername)
-		expectedApp := newApplication(applicationName, userBNamespace)
-		err := userB.expectedMemberCluster.Client.Create(context.TODO(), expectedApp)
+		// ensure the app exists in primaryUser's space
+		primaryUserNamespace := tenantNsName(primaryUser.compliantUsername)
+		expectedApp := newApplication(applicationName, primaryUserNamespace)
+		err := primaryUser.expectedMemberCluster.Client.Create(context.TODO(), expectedApp)
 		require.NoError(t, err)
 
-		t.Run("userA request to unauthorized workspace", func(t *testing.T) {
-			proxyCl, err := hostAwait.CreateAPIProxyClient(t, userA.token, proxyWorkspaceURL)
+		t.Run("guestUser request to unauthorized workspace", func(t *testing.T) {
+			proxyCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, proxyWorkspaceURL)
 			require.NoError(t, err)
 
 			// when
 			actualApp := &appstudiov1.Application{}
-			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userBNamespace}, actualApp)
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
 
 			// then
-			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, userA.compliantUsername, userBNamespace))
+			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, guestUser.compliantUsername, primaryUserNamespace))
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
-			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userBNamespace, Name: applicationName}, createdApp)
+			err = guestUser.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: primaryUserNamespace, Name: applicationName}, createdApp)
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
 		})
 
-		t.Run("share userB workspace with userA", func(t *testing.T) {
-			// share userB space with userA
-			userAMur, err := hostAwait.GetMasterUserRecord(userA.compliantUsername)
-			require.NoError(t, err)
-			userBSpace, err := hostAwait.WaitForSpace(t, userB.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
-			require.NoError(t, err)
-			CreateSpaceBinding(t, hostAwait, userAMur, userBSpace, "admin") // creating a spacebinding gives userA access to userB's space
+		t.Run("share primaryUser workspace with guestUser", func(t *testing.T) {
+			// given
 
-			// VerifySpaceRelatedResources will verify the roles and rolebindings are updated to include userA's SpaceBinding
-			VerifySpaceRelatedResources(t, awaitilities, userB.signup, "appstudio")
+			// share primaryUser space with guestUser
+			primaryUser.shareSpaceWith(t, hostAwait, guestUser)
+
+			// VerifySpaceRelatedResources will verify the roles and rolebindings are updated to include guestUser's SpaceBinding
+			VerifySpaceRelatedResources(t, awaitilities, primaryUser.signup, "appstudio")
 
 			// Start a new websocket watcher which watches for Application CRs in the user's namespace
-			w := newWsWatcher(t, *userA, userB.compliantUsername, proxyWorkspaceURL)
+			w := newWsWatcher(t, *guestUser, primaryUser.compliantUsername, proxyWorkspaceURL)
 			closeConnection := w.Start()
 			defer closeConnection()
-			proxyCl, err := hostAwait.CreateAPIProxyClient(t, userA.token, proxyWorkspaceURL)
+			guestUserProxyCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, proxyWorkspaceURL)
 			require.NoError(t, err)
 
 			// when
+			// user A requests the Application CR in primaryUser's namespace using the proxy
 			actualApp := &appstudiov1.Application{}
-			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: userBNamespace}, actualApp)
+			err = guestUserProxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
 
 			// then
-			require.NoError(t, err)
+			require.NoError(t, err) // allowed since guestUser has access to primaryUser's space
 
 			// wait for the websocket watcher which uses the proxy to receive the Application CR
 			found, err := w.WaitForApplication(
-				userB.expectedMemberCluster.RetryInterval,
-				userB.expectedMemberCluster.Timeout,
+				primaryUser.expectedMemberCluster.RetryInterval,
+				primaryUser.expectedMemberCluster.Timeout,
 				expectedApp.Name,
 			)
 			require.NoError(t, err)
@@ -414,7 +323,7 @@ func TestProxyFlow(t *testing.T) {
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
-			err = userA.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: userBNamespace, Name: applicationName}, createdApp)
+			err = guestUser.expectedMemberCluster.Client.Get(context.TODO(), types.NamespacedName{Namespace: primaryUserNamespace, Name: applicationName}, createdApp)
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
@@ -432,8 +341,210 @@ func TestProxyFlow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSpaceLister(t *testing.T) {
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
+
+	setStoneSoupConfig(t, hostAwait, memberAwait)
+
+	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
+
+	users := map[string]*proxyUser{
+		"car": {
+			expectedMemberCluster: memberAwait,
+			username:              "car",
+			identityID:            uuid.Must(uuid.NewV4()),
+		},
+		"bus": {
+			expectedMemberCluster: memberAwait2,
+			username:              "bus",
+			identityID:            uuid.Must(uuid.NewV4()),
+		},
+		"bicycle": {
+			expectedMemberCluster: memberAwait,
+			username:              "road.bicycle", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
+			identityID:            uuid.Must(uuid.NewV4()),
+		},
+	}
+
+	// create the users before the subtests, so they exist for the duration of the whole test
+	for _, user := range users {
+		createAppStudioUser(t, awaitilities, user)
+	}
+
+	users["car"].shareSpaceWith(t, hostAwait, users["bus"])
+	users["car"].shareSpaceWith(t, hostAwait, users["bicycle"])
+	users["bus"].shareSpaceWith(t, hostAwait, users["bicycle"])
+
+	t.Run("car lists workspaces", func(t *testing.T) {
+		// when
+		workspaces := users["car"].listWorkspaces(t, hostAwait)
+
+		// then
+		// car should see only car's workspace
+		require.Len(t, workspaces, 1)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["car"]), workspaces...)
+	})
+
+	t.Run("car gets workspaces", func(t *testing.T) {
+		t.Run("can get car workspace", func(t *testing.T) {
+			// when
+			workspace, err := users["car"].getWorkspace(t, hostAwait, users["car"].compliantUsername)
+
+			// then
+			require.NoError(t, err)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["car"]), *workspace)
+		})
+
+		t.Run("cannot get bus workspace", func(t *testing.T) {
+			// when
+			workspace, err := users["car"].getWorkspace(t, hostAwait, users["bus"].compliantUsername)
+
+			// then
+			require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com bus)")
+			assert.Empty(t, workspace)
+		})
+	})
+
+	t.Run("bus lists workspaces", func(t *testing.T) {
+		// when
+		workspaces := users["bus"].listWorkspaces(t, hostAwait)
+
+		// then
+		// bus should see both its own and car's workspace
+		require.Len(t, workspaces, 2)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["bus"]), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["car"]), workspaces...)
+	})
+
+	t.Run("bus gets workspaces", func(t *testing.T) {
+		t.Run("can get bus workspace", func(t *testing.T) {
+			// when
+			busWS, err := users["bus"].getWorkspace(t, hostAwait, users["bus"].compliantUsername)
+
+			// then
+			require.NoError(t, err)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["bus"]), *busWS)
+		})
+
+		t.Run("can get car workspace", func(t *testing.T) {
+			// when
+			carWS, err := users["bus"].getWorkspace(t, hostAwait, users["car"].compliantUsername)
+
+			// then
+			require.NoError(t, err)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["car"]), *carWS)
+		})
+	})
+
+	t.Run("bicycle lists workspaces", func(t *testing.T) {
+		// when
+		workspaces := users["bicycle"].listWorkspaces(t, hostAwait)
+
+		// then
+		// car should see only car's workspace
+		require.Len(t, workspaces, 3)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["bicycle"]), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["car"]), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["bus"]), workspaces...)
+	})
+
+	t.Run("bicycle gets workspaces", func(t *testing.T) {
+		t.Run("can get bus workspace", func(t *testing.T) {
+			// when
+			busWS, err := users["bicycle"].getWorkspace(t, hostAwait, users["bus"].compliantUsername)
+
+			// then
+			require.NoError(t, err)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["bus"]), *busWS)
+		})
+
+		t.Run("can get car workspace", func(t *testing.T) {
+			// when
+			carWS, err := users["bicycle"].getWorkspace(t, hostAwait, users["car"].compliantUsername)
+
+			// then
+			require.NoError(t, err)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["car"]), *carWS)
+		})
+
+		t.Run("can get bicycle workspace", func(t *testing.T) {
+			// when
+			bicycleWS, err := users["bicycle"].getWorkspace(t, hostAwait, users["bicycle"].compliantUsername)
+
+			// then
+			require.NoError(t, err)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(users["bicycle"]), *bicycleWS)
+		})
+	})
+
+	t.Run("other workspace actions not permitted", func(t *testing.T) {
+		t.Run("create not allowed", func(t *testing.T) {
+			// given
+			workspaceToCreate := expectedWorkspaceFor(users["bus"])
+			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
+			require.NoError(t, err)
+
+			// when
+			// bicycle user tries to create a workspace
+			err = bicycleCl.Create(context.TODO(), &workspaceToCreate)
+
+			// then
+			require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com is forbidden: User \"%s\" cannot create resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", users["bicycle"].compliantUsername))
+		})
+
+		t.Run("delete not allowed", func(t *testing.T) {
+			// given
+			workspaceToDelete, err := users["bicycle"].getWorkspace(t, hostAwait, users["bicycle"].compliantUsername)
+			require.NoError(t, err)
+			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
+			require.NoError(t, err)
+
+			// bicycle user tries to delete a workspace
+			err = bicycleCl.Delete(context.TODO(), workspaceToDelete)
+
+			// then
+			require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot delete resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", users["bicycle"].compliantUsername))
+		})
+
+		t.Run("update not allowed", func(t *testing.T) {
+			// when
+			workspaceToUpdate := expectedWorkspaceFor(users["bicycle"])
+			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
+			require.NoError(t, err)
+
+			// bicycle user tries to update a workspace
+			err = bicycleCl.Update(context.TODO(), &workspaceToUpdate)
+
+			// then
+			require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot update resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", users["bicycle"].compliantUsername))
+		})
+	})
+}
+
 func tenantNsName(username string) string {
 	return fmt.Sprintf("%s-tenant", username)
+}
+
+func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *proxyUser) {
+	// Create and approve signup
+	req := NewSignupRequest(awaitilities).
+		Username(user.username).
+		IdentityID(user.identityID).
+		ManuallyApprove().
+		TargetCluster(user.expectedMemberCluster).
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute(t)
+	user.signup, _ = req.Resources()
+	user.token = req.GetToken()
+	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
+	user.compliantUsername = user.signup.Status.CompliantUsername
+	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	require.NoError(t, err)
 }
 
 func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
@@ -612,4 +723,35 @@ func newApplication(applicationName, namespace string) *appstudiov1.Application 
 			DisplayName: fmt.Sprintf("Proxy test for user %s", namespace),
 		},
 	}
+}
+
+// setStoneSoupConfig applies toolchain configuration for stone soup scenarios
+func setStoneSoupConfig(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
+	// member cluster configured to skip user creation to mimic stonesoup configuration where user & identity resources are not created
+	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
+	// configure default space tier to appstudio
+	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
+}
+
+func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha1.Workspace, actualWorkspaces ...toolchainv1alpha1.Workspace) {
+	for _, actualWorkspace := range actualWorkspaces {
+		if actualWorkspace.Name == expectedWorkspace.Name {
+			assert.Equal(t, expectedWorkspace.Status, actualWorkspace.Status)
+			return
+		}
+	}
+	t.Errorf("expected workspace %s not found", expectedWorkspace.Name)
+}
+
+func expectedWorkspaceFor(user *proxyUser) toolchainv1alpha1.Workspace {
+	return *commonproxy.NewWorkspace(user.compliantUsername,
+		commonproxy.WithNamespaces([]toolchainv1alpha1.SpaceNamespace{
+			{
+				Name: user.compliantUsername + "-tenant",
+				Type: "default",
+			},
+		}),
+		commonproxy.WithOwner(user.signup.Name),
+		commonproxy.WithRole("admin"),
+	)
 }
