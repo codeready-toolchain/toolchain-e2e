@@ -1797,6 +1797,19 @@ func UntilSpaceHasAnyTierNameSet() SpaceWaitCriterion {
 	}
 }
 
+// UntilSpaceHasProvisionedNamespaces returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected `provisionedNamespaces` list in its status
+func UntilSpaceHasProvisionedNamespaces(expectedProvisionedNamespaces []toolchainv1alpha1.Namespace) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return reflect.DeepEqual(expectedProvisionedNamespaces, actual.Status.ProvisionedNamespaces)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected provisioned namespaces status to match:\n%s", Diff(expectedProvisionedNamespaces, actual.Status.ProvisionedNamespaces))
+		},
+	}
+}
+
 // UntilSpaceHasStatusTargetCluster returns a `SpaceWaitCriterion` which checks that the given
 // Space has the expected `targetCluster` in its status
 func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {

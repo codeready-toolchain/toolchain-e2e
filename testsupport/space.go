@@ -213,6 +213,10 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 		}}))
 		require.NoError(t, err)
 	}
+	// wait for space to have list of provisioned namespaces in status
+	_, err = hostAwait.WaitForSpace(t, spaceName,
+		wait.UntilSpaceHasProvisionedNamespaces(nsTmplSet.Status.ProvisionedNamespaces))
+	require.NoError(t, err)
 
 	return space, nsTmplSet
 }
