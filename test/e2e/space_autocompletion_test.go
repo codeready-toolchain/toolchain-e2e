@@ -49,7 +49,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 				),
 		)
 		// some short time to get the cache populated with the change
-		// sometimes the ToolchainConfig doesn't have the new values in the CapacityThresholds section before the creation os Spaces is issued
+		// sometimes the ToolchainConfig doesn't have the new values in the CapacityThresholds section before the creation of Spaces is issued
 		// so Spaces were still created while Capacity was updated with the above values.
 		time.Sleep(1 * time.Second)
 
