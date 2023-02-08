@@ -152,7 +152,7 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
+			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
 				Name: s.Name,
 				Type: "default", // default ns name should be there
 			}}),
@@ -176,7 +176,7 @@ func TestSpaceRoles(t *testing.T) {
 			require.NoError(t, err)
 			nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 				UntilNSTemplateSetHasConditions(Provisioned()),
-				UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
+				UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
 					Name: s.Name,
 					Type: "default", // default ns name should be there
 				}}),
@@ -200,7 +200,7 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
+			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
 				Name: s.Name,
 				Type: "default", // default ns name should be there
 			}}),
