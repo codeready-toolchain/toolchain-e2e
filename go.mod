@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20230112114359-7b98ad24caf0
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20230112091129-d06f31ddd2f6
+	github.com/codeready-toolchain/api v0.0.0-20230208154642-e7b66da70ad4
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20230208193548-b1b52619bc11
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
@@ -118,9 +118,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/codeready-toolchain/api => github.com/rajivnathan/api v0.0.0-20230206185838-81bf04f3c5d3
-
-replace github.com/codeready-toolchain/toolchain-common => github.com/rajivnathan/toolchain-common v0.0.0-20230206190931-61a5ee0ff0df
 
 go 1.18
