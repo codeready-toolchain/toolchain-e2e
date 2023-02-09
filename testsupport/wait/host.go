@@ -1602,9 +1602,17 @@ func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, usertoken, proxyURL 
 		TLSClientConfig: defaultConfig.TLSClientConfig,
 		BearerToken:     usertoken,
 	}
-	proxyCl, err := client.New(proxyKubeConfig, client.Options{Scheme: s})
-	if err != nil {
-		return nil, err
+
+	// Getting the proxy client can fail from time to time if the proxy's informer cache has not been
+	// updated yet and we try to create the client too quickly so retry to reduce flakiness.
+	var proxyCl client.Client
+	var initProxyClError error
+	waitErr := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		proxyCl, initProxyClError = client.New(proxyKubeConfig, client.Options{Scheme: s})
+		return initProxyClError == nil, nil
+	})
+	if waitErr != nil {
+		return nil, initProxyClError
 	}
 	return proxyCl, nil
 }

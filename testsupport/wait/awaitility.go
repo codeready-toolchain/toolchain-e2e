@@ -279,14 +279,14 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 					InsecureSkipVerify: true, // nolint:gosec
 				},
 			}
-			request, err = http.NewRequest("Get", "https://"+route.Status.Ingress[0].Host+endpoint, nil)
+			request, err = http.NewRequest("GET", "https://"+route.Status.Ingress[0].Host+endpoint, nil)
 			if err != nil {
 				return false, err
 			}
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
 
 		} else {
-			request, err = http.NewRequest("Get", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
+			request, err = http.NewRequest("GET", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
 			if err != nil {
 				return false, err
 			}
