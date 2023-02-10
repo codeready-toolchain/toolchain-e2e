@@ -49,6 +49,12 @@ func WithTargetCluster(clusterName string) SpaceOption {
 	}
 }
 
+func WithTargetClusterRoles(clusterRoles []string) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.Spec.TargetClusterRoles = clusterRoles
+	}
+}
+
 func WithParentSpace(name string) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
 		s.Spec.ParentSpace = name

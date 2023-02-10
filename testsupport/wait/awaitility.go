@@ -572,6 +572,27 @@ func UntilToolchainClusterHasNoTenantLabel() ToolchainClusterWaitCriterion {
 	}
 }
 
+// UpdateToolchainCluster tries to update the Spec of the given ToolchainCluster
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated ToolchainCluster
+func (a *Awaitility) UpdateToolchainCluster(t *testing.T, toolchainClusterName string, modifyToolchainCluster func(s *toolchainv1alpha1.ToolchainCluster)) (*toolchainv1alpha1.ToolchainCluster, error) {
+	var tc *toolchainv1alpha1.ToolchainCluster
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		newToolchainCluster := &toolchainv1alpha1.ToolchainCluster{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
+			return true, err
+		}
+		modifyToolchainCluster(newToolchainCluster)
+		if err := a.Client.Update(context.TODO(), newToolchainCluster); err != nil {
+			t.Logf("error updating ToolchainCluster '%s': %s. Will retry again...", toolchainClusterName, err.Error())
+			return false, nil
+		}
+		tc = newToolchainCluster
+		return true, nil
+	})
+	return tc, err
+}
+
 // CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
 func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...client.CreateOption) error {
 	if err := a.Client.Create(context.TODO(), obj, opts...); err != nil {
