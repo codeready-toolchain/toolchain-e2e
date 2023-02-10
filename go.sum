@@ -452,8 +452,8 @@ github.com/mattn/go-runewidth v0.0.7/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 h1:I0XW9+e1XWDxdcEniV4rQAIOPUGDq67JSCiRCgGCZLI=
 github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
-github.com/mfrancisc/api v0.0.0-20230210102142-7059558f1382 h1:USgc6HSsjuhO8Y2u66e+i/DFf+RvJo6i1w473ayispQ=
-github.com/mfrancisc/api v0.0.0-20230210102142-7059558f1382/go.mod h1:eOu09m3Vyr5/gmTKQ0w1z6bOmujX6l6PuaXqCx3whpw=
+github.com/mfrancisc/api v0.0.0-20230210160923-56cca6d4889b h1:Og1z3xScGC0kT02TmOu/1Tvg2dzxjrki3ExTNxBSMD4=
+github.com/mfrancisc/api v0.0.0-20230210160923-56cca6d4889b/go.mod h1:eOu09m3Vyr5/gmTKQ0w1z6bOmujX6l6PuaXqCx3whpw=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/mikefarah/yq/v3 v3.0.0-20201202084205-8846255d1c37/go.mod h1:dYWq+UWoFCDY1TndvFUQuhBbIYmZpjreC8adEAx93zE=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
