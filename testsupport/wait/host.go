@@ -2047,7 +2047,7 @@ func (a *HostAwaitility) WaitForSocialEvent(t *testing.T, name string, criteria 
 	return event, err
 }
 
-// UntilSpaceHasStateLabel returns a `SpaceWaitCriterion` which checks that the
+// UntilSocialEventHasActivationCount returns a `SpaceWaitCriterion` which checks that the
 // Space has the expected value of the state label
 func UntilSocialEventHasActivationCount(expected int) SocialEventWaitCriterion {
 	return SocialEventWaitCriterion{

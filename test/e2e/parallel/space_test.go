@@ -85,7 +85,6 @@ func TestCreateSpace(t *testing.T) {
 }
 
 func TestSpaceRoles(t *testing.T) {
-
 	t.Parallel()
 
 	// make sure everything is ready before running the actual tests
