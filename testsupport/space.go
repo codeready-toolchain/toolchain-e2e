@@ -208,7 +208,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 
 		// check that namespace list is available in the NSTemplate status
 		nsTmplSet, err = targetCluster.WaitForNSTmplSet(t, spaceName, wait.UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
-			Name: spaceName,
+			Name: spaceName + "-tenant",
 			Type: "default", // default type should be there
 		}}))
 		require.NoError(t, err)
