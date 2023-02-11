@@ -302,7 +302,7 @@ endif
 ###########################################################
 
 .PHONY: prepare-projects
-prepare-projects: label-olm-ns create-host-project create-member1 create-member2
+prepare-projects: create-host-project create-member1 create-member2
 
 .PHONY: create-member1
 create-member1:
