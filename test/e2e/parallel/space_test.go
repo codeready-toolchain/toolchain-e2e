@@ -440,7 +440,7 @@ func TestSpaceNamespaces(t *testing.T) {
 	// then
 	// wait until NSTemplateSet has expected list of provisioned namespaces
 	// todo check also list of provisioned namespaces from space once functionality will be available
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
+	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 		UntilNSTemplateSetHasConditions(Provisioned()),
 		UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{
 			{
