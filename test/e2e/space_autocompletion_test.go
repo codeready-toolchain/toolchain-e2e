@@ -49,6 +49,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 				),
 		)
 		// some short time to get the cache populated with the change
+		// sometimes the ToolchainConfig doesn't have the new values in the CapacityThresholds section before the creation of Spaces is issued
+		// so Spaces were still created while Capacity was updated with the above values.
 		time.Sleep(1 * time.Second)
 
 		// when
@@ -218,7 +220,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
 	})
 
-	t.Run("provision space on preferred cluster even if it doesn't match the specified cluster-role", func(t *testing.T) {
+	t.Run("provision space on the required cluster even if it doesn't match the specified cluster-role", func(t *testing.T) {
 		// given
 		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(
 			testconfig.PerMemberCluster(memberAwait1.ClusterName, 500), // member1 has more room
@@ -234,11 +236,11 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-preferred-tenant"),
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-required-tenant"),
 			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")}), WithTargetCluster(memberAwait1.ClusterName)) // request that specific cluster role and preferred cluster which will have priority on the roles
 
 		// then
-		// space should end up on preferred cluster even if it doesn't have the specified cluster roles
+		// space should end up on the required cluster even if it doesn't have the specified cluster roles
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait1.ClusterName))
 	})
 }
