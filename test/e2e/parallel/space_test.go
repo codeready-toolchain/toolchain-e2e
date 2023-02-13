@@ -152,8 +152,8 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
-				Name: s.Name,
+			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
+				Name: s.Name + "-tenant",
 				Type: "default", // default ns name should be there
 			}}),
 			UntilNSTemplateSetHasSpaceRoles(
@@ -176,8 +176,8 @@ func TestSpaceRoles(t *testing.T) {
 			require.NoError(t, err)
 			nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 				UntilNSTemplateSetHasConditions(Provisioned()),
-				UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
-					Name: s.Name,
+				UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
+					Name: s.Name + "-tenant",
 					Type: "default", // default ns name should be there
 				}}),
 				UntilNSTemplateSetHasSpaceRoles(
@@ -200,8 +200,8 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.Namespace{{
-				Name: s.Name,
+			UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
+				Name: s.Name + "-tenant",
 				Type: "default", // default ns name should be there
 			}}),
 			UntilNSTemplateSetHasSpaceRoles(
@@ -422,6 +422,41 @@ func TestSubSpace(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestSpaceNamespaces(t *testing.T) {
+	// given
+	t.Parallel()
+	// make sure everything is ready before running the actual tests
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	// when
+	space, _, _ := CreateSpace(t, awaitilities, WithTierName("base"), WithTargetCluster(memberAwait.ClusterName))
+	// then
+	// wait until Space has been provisioned on member-1
+	space, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	expectedProvisionedNamespaces := []toolchainv1alpha1.SpaceNamespace{
+		{
+			Name: space.Name + "-dev",
+			Type: "default", // default ns name should be there
+		},
+		{
+			Name: space.Name + "-stage",
+		},
+	}
+
+	// then
+	// wait until NSTemplateSet has expected list of provisioned namespaces
+	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
+		UntilNSTemplateSetHasConditions(Provisioned()),
+		UntilNSTemplateSetHasProvisionedNamespaces(expectedProvisionedNamespaces),
+	)
+	require.NoError(t, err)
+	// we check also list of provisioned namespaces in space status
+	_, err = hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasProvisionedNamespaces(expectedProvisionedNamespaces))
+	require.NoError(t, err)
 }
 
 func ProvisioningFailed(msg string) toolchainv1alpha1.Condition {

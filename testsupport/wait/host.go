@@ -1807,7 +1807,7 @@ func UntilSpaceHasAnyTierNameSet() SpaceWaitCriterion {
 
 // UntilSpaceHasProvisionedNamespaces returns a `SpaceWaitCriterion` which checks that the given
 // Space has the expected `provisionedNamespaces` list in its status
-func UntilSpaceHasProvisionedNamespaces(expectedProvisionedNamespaces []toolchainv1alpha1.Namespace) SpaceWaitCriterion {
+func UntilSpaceHasProvisionedNamespaces(expectedProvisionedNamespaces []toolchainv1alpha1.SpaceNamespace) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
 			return reflect.DeepEqual(expectedProvisionedNamespaces, actual.Status.ProvisionedNamespaces)
