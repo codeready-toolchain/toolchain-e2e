@@ -193,7 +193,11 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	}
 
 	// get NSTemplateSet
-	nsTmplSet, err := targetCluster.WaitForNSTmplSet(t, spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
+	nsTmplSet, err := targetCluster.WaitForNSTmplSet(t, spaceName,
+		wait.UntilNSTemplateSetHasTier(tier.Name),
+		wait.UntilNSTemplateSetHasConditions(Provisioned()),
+		wait.UntilNSTemplateSetProvisionedNamespacesIsNotEmpty(),
+	)
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
