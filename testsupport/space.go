@@ -209,7 +209,8 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
 		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
 	}
-	// wait for space to have list of provisioned namespaces in status
+	// Wait for space to have list of provisioned namespaces in Space status.
+	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
 	_, err = hostAwait.WaitForSpace(t, spaceName,
 		wait.UntilSpaceHasProvisionedNamespaces(nsTmplSet.Status.ProvisionedNamespaces))
 	require.NoError(t, err)
