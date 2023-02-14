@@ -93,10 +93,10 @@ func getExpectedProvisionedNamespaces(namespaces []string) []toolchainv1alpha1.S
 		return namespaces[i] < namespaces[j]
 	})
 	// set first namespace as default for now...
-	expectedProvisionedNamespaces = []toolchainv1alpha1.SpaceNamespace{{
+	expectedProvisionedNamespaces[0] = toolchainv1alpha1.SpaceNamespace{
 		Name: namespaces[0],
 		Type: "default",
-	}}
+	}
 
 	// skip first one since already added with `default` type,
 	// but add all other namespaces without any specific type for now.
