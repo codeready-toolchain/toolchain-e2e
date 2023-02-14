@@ -83,7 +83,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 // todo this is just temporary logic, since now only first namespace in alphabetical order has the `default` type,
 // as soon as we introduce logic with multiple types, we may need to have one of those functions per tier (e.g. as for the other checks).
 func getExpectedProvisionedNamespaces(namespaces []string) []toolchainv1alpha1.SpaceNamespace {
-	expectedProvisionedNamespaces := make([]toolchainv1alpha1.SpaceNamespace, len(namespaces), len(namespaces))
+	expectedProvisionedNamespaces := make([]toolchainv1alpha1.SpaceNamespace, len(namespaces))
 	if len(namespaces) == 0 {
 		return expectedProvisionedNamespaces // no provisioned namespaces expected
 	}
@@ -101,9 +101,9 @@ func getExpectedProvisionedNamespaces(namespaces []string) []toolchainv1alpha1.S
 	// skip first one since already added with `default` type,
 	// but add all other namespaces without any specific type for now.
 	for i := 1; i < len(namespaces); i++ {
-		expectedProvisionedNamespaces = append(expectedProvisionedNamespaces, toolchainv1alpha1.SpaceNamespace{
+		expectedProvisionedNamespaces[i] = toolchainv1alpha1.SpaceNamespace{
 			Name: namespaces[i],
-		})
+		}
 	}
 
 	return expectedProvisionedNamespaces
