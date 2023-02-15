@@ -193,7 +193,10 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	}
 
 	// get NSTemplateSet
-	nsTmplSet, err := targetCluster.WaitForNSTmplSet(t, spaceName, wait.UntilNSTemplateSetHasTier(tier.Name), wait.UntilNSTemplateSetHasConditions(Provisioned()))
+	nsTmplSet, err := targetCluster.WaitForNSTmplSet(t, spaceName,
+		wait.UntilNSTemplateSetHasTier(tier.Name),
+		wait.UntilNSTemplateSetHasConditions(Provisioned()),
+	)
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
@@ -205,14 +208,12 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 		require.NoError(t, err)
 		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
 		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
-
-		// check that namespace list is available in the NSTemplate status
-		nsTmplSet, err = targetCluster.WaitForNSTmplSet(t, spaceName, wait.UntilNSTemplateSetHasProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{{
-			Name: spaceName + "-tenant",
-			Type: "default", // default type should be there
-		}}))
-		require.NoError(t, err)
 	}
+	// Wait for space to have list of provisioned namespaces in Space status.
+	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
+	_, err = hostAwait.WaitForSpace(t, spaceName,
+		wait.UntilSpaceHasProvisionedNamespaces(nsTmplSet.Status.ProvisionedNamespaces))
+	require.NoError(t, err)
 
 	return space, nsTmplSet
 }

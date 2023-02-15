@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20230213174945-d3c8d3adc123
+	github.com/codeready-toolchain/api v0.0.0-20230215084327-eb8fd41b3f52
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20230213135025-a17b1e073489
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0

@@ -384,7 +384,7 @@ func UntilNSTemplateSetHasTier(expected string) NSTemplateSetWaitCriterion {
 }
 
 // UntilNSTemplateSetHasProvisionedNamespaces returns a `NSTemplateSetWaitCriterion` which checks that the given
-// NSTemlateSet has exactly all the given status provisioned namespaces
+// NSTemplateSet has exactly all the given status provisioned namespaces
 func UntilNSTemplateSetHasProvisionedNamespaces(expected []toolchainv1alpha1.SpaceNamespace) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
