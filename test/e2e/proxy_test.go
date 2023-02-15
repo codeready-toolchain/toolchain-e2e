@@ -736,7 +736,7 @@ func setStoneSoupConfig(t *testing.T, hostAwait *wait.HostAwaitility, memberAwai
 func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha1.Workspace, actualWorkspaces ...toolchainv1alpha1.Workspace) {
 	for _, actualWorkspace := range actualWorkspaces {
 		if actualWorkspace.Name == expectedWorkspace.Name {
-			assert.NotEmpty(t, actualWorkspace.Status, "Workspace.Status field is empty", actualWorkspace, expectedWorkspace)
+			assert.Equal(t, expectedWorkspace.Status, actualWorkspace.Status)
 			assert.NotEmpty(t, actualWorkspace.ObjectMeta.ResourceVersion, "Workspace.ObjectMeta.ResourceVersion field is empty: %#v", actualWorkspace)
 			assert.NotEmpty(t, actualWorkspace.ObjectMeta.Generation, "Workspace.ObjectMeta.Generation field is empty: %#v", actualWorkspace)
 			assert.NotEmpty(t, actualWorkspace.ObjectMeta.CreationTimestamp, "Workspace.ObjectMeta.CreationTimestamp field is empty: %#v", actualWorkspace)
