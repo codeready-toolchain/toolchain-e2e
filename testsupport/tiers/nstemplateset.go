@@ -9,7 +9,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +20,9 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	require.NoError(t, err)
 
+	// save the names of the namespaces provisioned by the NSTemplateSet,
+	// so that we can check they are correctly reflected in the NSTemplateSet.Status.ProvisionedNamespace and Space.Status.ProvisionedNamespace.
+	var actualNamespaces []string
 	// Verify all namespaces and objects within
 	namespaceObjectChecks := sync.WaitGroup{}
 	for _, templateRef := range expectedTemplateRefs.Namespaces {
@@ -52,6 +54,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 				checkSpaceRoleObjects(t, ns, memberAwait, nsTmplSet.Name)
 			}(check)
 		}
+		actualNamespaces = append(actualNamespaces, ns.GetName())
 	}
 
 	// Verify the Cluster Resources
@@ -68,6 +71,42 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	}
 	namespaceObjectChecks.Wait()
 	clusterObjectChecks.Wait()
+
+	// Once all concurrent checks are done, and the expected list of namespaces for the NSTemplateSet is generated,
+	// let's verify NSTemplateSet.Status.ProvisionedNamespaces is populated as expected.
+	expectedProvisionedNamespaces := getExpectedProvisionedNamespaces(actualNamespaces)
+	_, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, wait.UntilNSTemplateSetHasProvisionedNamespaces(expectedProvisionedNamespaces))
+	require.NoError(t, err)
+}
+
+// getExpectedProvisionedNamespaces returns a list of provisioned namespaces from the given slice containing namespaces of the template tier.
+// todo this is just temporary logic, since now only first namespace in alphabetical order has the `default` type,
+// as soon as we introduce logic with multiple types, we may need to have one of those functions per tier (e.g. as for the other checks).
+func getExpectedProvisionedNamespaces(namespaces []string) []toolchainv1alpha1.SpaceNamespace {
+	expectedProvisionedNamespaces := make([]toolchainv1alpha1.SpaceNamespace, len(namespaces))
+	if len(namespaces) == 0 {
+		return expectedProvisionedNamespaces // no provisioned namespaces expected
+	}
+
+	// sort namespaces by name
+	sort.Slice(namespaces, func(i, j int) bool {
+		return namespaces[i] < namespaces[j]
+	})
+	// set first namespace as default for now...
+	expectedProvisionedNamespaces[0] = toolchainv1alpha1.SpaceNamespace{
+		Name: namespaces[0],
+		Type: "default",
+	}
+
+	// skip first one since already added with `default` type,
+	// but add all other namespaces without any specific type for now.
+	for i := 1; i < len(namespaces); i++ {
+		expectedProvisionedNamespaces[i] = toolchainv1alpha1.SpaceNamespace{
+			Name: namespaces[i],
+		}
+	}
+
+	return expectedProvisionedNamespaces
 }
 
 // UntilNSTemplateSetHasTemplateRefs checks if the NSTemplateTier has the expected template refs
