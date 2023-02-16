@@ -744,6 +744,7 @@ func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha
 			return
 		}
 	}
+
 	t.Errorf("expected workspace %s not found", expectedWorkspace.Name)
 }
 
