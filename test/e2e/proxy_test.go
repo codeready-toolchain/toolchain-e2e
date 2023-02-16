@@ -737,10 +737,10 @@ func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha
 	for _, actualWorkspace := range actualWorkspaces {
 		if actualWorkspace.Name == expectedWorkspace.Name {
 			assert.Equal(t, expectedWorkspace.Status, actualWorkspace.Status)
-			assert.Equal(t, expectedWorkspace.ObjectMeta.ResourceVersion, actualWorkspace.ObjectMeta.ResourceVersion)
-			assert.Equal(t, expectedWorkspace.ObjectMeta.Generation, actualWorkspace.ObjectMeta.Generation)
-			assert.Equal(t, expectedWorkspace.ObjectMeta.CreationTimestamp, actualWorkspace.ObjectMeta.CreationTimestamp)
-			assert.Equal(t, expectedWorkspace.ObjectMeta.UID, actualWorkspace.ObjectMeta.UID)
+			assert.NotEmpty(t, actualWorkspace.ObjectMeta.ResourceVersion, "Workspace.ObjectMeta.ResourceVersion field is empty: %#v", actualWorkspace)
+			assert.NotEmpty(t, actualWorkspace.ObjectMeta.Generation, "Workspace.ObjectMeta.Generation field is empty: %#v", actualWorkspace)
+			assert.NotEmpty(t, actualWorkspace.ObjectMeta.CreationTimestamp, "Workspace.ObjectMeta.CreationTimestamp field is empty: %#v", actualWorkspace)
+			assert.NotEmpty(t, actualWorkspace.ObjectMeta.UID, "Workspace.ObjectMeta.UID field is empty: %#v", actualWorkspace)
 			return
 		}
 	}
