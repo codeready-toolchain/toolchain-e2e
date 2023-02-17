@@ -1171,7 +1171,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
 					Resources: []string{"gitopsdeployments"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
