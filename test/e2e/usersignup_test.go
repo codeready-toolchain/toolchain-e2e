@@ -209,6 +209,24 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	})
 }
 
+func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user").
+		Email("test-user@redhat.com").
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
 	hostAwait := s.Host()
 	hostAwait.CheckMasterUserRecordIsDeleted(s.T(), userSignup.Spec.Username)
