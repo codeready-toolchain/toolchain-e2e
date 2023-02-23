@@ -219,6 +219,8 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	userSignup, _ := NewSignupRequest(s.Awaitilities).
 		Username("test-user").
 		Email("test-user@redhat.com").
+		UserID("123456789").
+		AccountID("987654321").
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute(s.T()).Resources()
