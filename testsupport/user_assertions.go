@@ -83,11 +83,25 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	// Verify User and Identity if SkipUserCreation is not set or it is set to false
 	if memberConfiguration.Spec.SkipUserCreation == nil || !*memberConfiguration.Spec.SkipUserCreation {
 		// Verify provisioned User
-		_, err = memberAwait.WaitForUser(t, userAccount.Name,
+		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
 			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
 		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
+
+		userID, found := userSignup.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
+		if found {
+			accountID, found := userSignup.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey]
+			if found {
+				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey])
+				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey])
+			}
+		}
+
+		if !found {
+			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOUserIDAnnotationKey)
+			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOAccountIDAnnotationKey)
+		}
 
 		// Verify provisioned Identity
 		identityName := identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()

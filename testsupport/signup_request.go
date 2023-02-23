@@ -63,6 +63,8 @@ type SignupRequest struct {
 	mur                  *toolchainv1alpha1.MasterUserRecord
 	token                string
 	originalSub          string
+	userID               string
+	accountID            string
 	cleanupDisabled      bool
 	noSpace              bool
 	activationCode       string
@@ -91,6 +93,16 @@ func (r *SignupRequest) Email(email string) *SignupRequest {
 // OriginalSub specifies the original sub value which will be used for migrating the user to a new IdP client
 func (r *SignupRequest) OriginalSub(originalSub string) *SignupRequest {
 	r.originalSub = originalSub
+	return r
+}
+
+func (r *SignupRequest) UserID(userID string) *SignupRequest {
+	r.userID = userID
+	return r
+}
+
+func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
+	r.accountID = accountID
 	return r
 }
 
@@ -207,6 +219,12 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim(r.email)}
 	if r.originalSub != "" {
 		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
+	}
+	if r.userID != "" {
+		claims = append(claims, commonauth.WithUserIDClaim(r.userID))
+	}
+	if r.accountID != "" {
+		claims = append(claims, commonauth.WithAccountIDClaim(r.accountID))
 	}
 	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(t, err)
