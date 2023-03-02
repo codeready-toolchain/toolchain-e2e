@@ -180,35 +180,41 @@ func TestProxyFlow(t *testing.T) {
 
 				// then
 				err = proxyCl.Create(context.TODO(), expectedApp)
-				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, hostAwait.Namespace))
+				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (post applications.appstudio.redhat.com)`, hostAwait.Namespace, user.compliantUsername))
 			})
 
-			t.Run("unable to create a resource in the other users namespace because it is not shared", func(t *testing.T) {
+			t.Run("unable to create a resource in the other users namespace because the workspace is not shared", func(t *testing.T) {
 				// given
 				otherUser := users[(index+1)%len(users)]
+				t.Log("other user: ", otherUser.username)
 				// verify other user's namespace still exists
 				ns := &corev1.Namespace{}
-				err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: tenantNsName(otherUser.compliantUsername)}, ns)
+				namespaceName := tenantNsName(otherUser.compliantUsername)
+				err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: namespaceName}, ns)
 				require.NoError(t, err, "the other user's namespace should still exist")
 
-				appName := fmt.Sprintf("%s-proxy-test-app", otherUser.compliantUsername)
+				// when
+				appName := fmt.Sprintf("%s-proxy-test-app", user.compliantUsername)
 				appToCreate := &appstudiov1.Application{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      appName,
-						Namespace: otherUser.expectedMemberCluster.Namespace, // user should not be allowed to create a resource in the first user's namespace
+						Namespace: namespaceName, // user should not be allowed to create a resource in the other user's namespace
 					},
 					Spec: appstudiov1.ApplicationSpec{
 						DisplayName: "Should be forbidden",
 					},
 				}
-
-				// when
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
+				workspaceName := otherUser.compliantUsername
+				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(workspaceName) // set workspace context to other user's workspace
+				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
 				require.NoError(t, err)
 				err = proxyCl.Create(context.TODO(), appToCreate)
 
 				// then
-				require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com is forbidden: User "%[1]s" cannot create resource "applications" in API group "appstudio.redhat.com" in the namespace "%[2]s"`, user.compliantUsername, otherUser.expectedMemberCluster.Namespace))
+				// note: the actual error message is "invalid workspace request: access to workspace '%s' is forbidden" but clients make api discovery calls
+				// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
+				// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
+				require.EqualError(t, err, `no matches for kind "Application" in version "appstudio.redhat.com/v1alpha1"`)
 			})
 
 			t.Run("successful workspace context request", func(t *testing.T) {
@@ -217,7 +223,7 @@ func TestProxyFlow(t *testing.T) {
 				w := newWsWatcher(t, *user, user.compliantUsername, proxyWorkspaceURL)
 				closeConnection := w.Start()
 				defer closeConnection()
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // proxy client with workspace context
+				workspaceCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // proxy client with workspace context
 				require.NoError(t, err)
 
 				// given
@@ -226,7 +232,7 @@ func TestProxyFlow(t *testing.T) {
 				expectedApp := newApplication(applicationName, namespaceName)
 
 				// when
-				err = proxyCl.Create(context.TODO(), expectedApp)
+				err = workspaceCl.Create(context.TODO(), expectedApp)
 				require.NoError(t, err)
 
 				// then
@@ -261,7 +267,8 @@ func TestProxyFlow(t *testing.T) {
 		guestUser := users[0]
 		primaryUser := users[1]
 		applicationName := fmt.Sprintf("%s-share-workspace-context", primaryUser.compliantUsername)
-		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(primaryUser.compliantUsername) // set workspace context using primaryUser's workspace
+		workspaceName := primaryUser.compliantUsername
+		primaryUserWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(workspaceName) // set workspace context using primaryUser's workspace
 
 		// ensure the app exists in primaryUser's space
 		primaryUserNamespace := tenantNsName(primaryUser.compliantUsername)
@@ -270,7 +277,7 @@ func TestProxyFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("guestUser request to unauthorized workspace", func(t *testing.T) {
-			proxyCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, proxyWorkspaceURL)
+			proxyCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, primaryUserWorkspaceURL)
 			require.NoError(t, err)
 
 			// when
@@ -278,7 +285,10 @@ func TestProxyFlow(t *testing.T) {
 			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
 
 			// then
-			require.EqualError(t, err, fmt.Sprintf(`applications.appstudio.redhat.com "%s" is forbidden: User "%s" cannot get resource "applications" in API group "appstudio.redhat.com" in the namespace "%s"`, expectedApp.Name, guestUser.compliantUsername, primaryUserNamespace))
+			// note: the actual error message is "invalid workspace request: access to workspace '%s' is forbidden" but clients make api discovery calls
+			// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
+			// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
+			require.EqualError(t, err, `no matches for kind "Application" in version "appstudio.redhat.com/v1alpha1"`)
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
@@ -298,16 +308,16 @@ func TestProxyFlow(t *testing.T) {
 			VerifySpaceRelatedResources(t, awaitilities, primaryUser.signup, "appstudio")
 
 			// Start a new websocket watcher which watches for Application CRs in the user's namespace
-			w := newWsWatcher(t, *guestUser, primaryUser.compliantUsername, proxyWorkspaceURL)
+			w := newWsWatcher(t, *guestUser, primaryUser.compliantUsername, primaryUserWorkspaceURL)
 			closeConnection := w.Start()
 			defer closeConnection()
-			guestUserProxyCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, proxyWorkspaceURL)
+			guestUserPrimaryWsCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, primaryUserWorkspaceURL)
 			require.NoError(t, err)
 
 			// when
 			// user A requests the Application CR in primaryUser's namespace using the proxy
 			actualApp := &appstudiov1.Application{}
-			err = guestUserProxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
+			err = guestUserPrimaryWsCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
 
 			// then
 			require.NoError(t, err) // allowed since guestUser has access to primaryUser's space
@@ -327,6 +337,24 @@ func TestProxyFlow(t *testing.T) {
 			require.NoError(t, err)
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+
+			t.Run("request for namespace that doesn't belong to workspace context should fail", func(t *testing.T) {
+				// In this test the guest user has access to the primary user's namespace since the primary user's workspace has been shared, but if they specify the wrong
+				// workspace context (guest user's workspace context) the request should fail. In order for proxy requests to succeed the namespace must belong to the workspace.
+
+				// given
+				workspaceName := guestUser.compliantUsername // guestUser's workspace
+				guestUserWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(workspaceName)
+				guestUserGuestWsCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, guestUserWorkspaceURL)
+				require.NoError(t, err)
+
+				// when
+				actualApp := &appstudiov1.Application{}
+				err = guestUserGuestWsCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp) // primaryUser's namespace
+
+				// then
+				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (get applications.appstudio.redhat.com %s)`, primaryUserNamespace, workspaceName, applicationName))
+			})
 		})
 
 	})
