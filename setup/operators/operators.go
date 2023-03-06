@@ -24,8 +24,6 @@ const (
 
 var Templates = []string{
 	"devspaces.yaml",
-	"rhoda.yaml",
-	"rhods.yaml",
 	"aikit.yaml",
 	"openvino.yaml",
 	// "devworkspace-operator.yaml", // included with DevSpaces install
