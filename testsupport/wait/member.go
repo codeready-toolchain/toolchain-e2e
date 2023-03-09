@@ -1569,7 +1569,7 @@ func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
 
 func hasMemberStatusUsageSet(status toolchainv1alpha1.MemberStatusStatus) bool {
 	usage := status.ResourceUsage.MemoryUsagePerNodeRole
-	return len(usage) == 2 && usage["worker"] > 0 && usage["master"] > 0
+	return len(usage) == 1 && usage["worker"] > 0
 }
 
 // UntilMemberStatusHasConsoleURLSet returns a `MemberStatusWaitCriterion` which checks that the given
