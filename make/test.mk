@@ -330,15 +330,15 @@ create-host-project:
 .PHONY: create-host-resources
 create-host-resources:
 	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
-	- oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
+	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
 	# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then \
 		API_ENDPOINT=`oc get infrastructure cluster -o jsonpath='{.status.apiServerURL}'`; \
 		echo "API_ENDPOINT $${API_ENDPOINT}"; \
-    	JOINING_CLUSTER_NAME=`echo "$${API_ENDPOINT}" | sed 's/^[^/]*\/\/\([^:/]*\)\(:.*\)\{0,1\}\(\/.*\)\{0,1\}$$/\1/' | sed 's/^api\.//'`; \
-    	echo "Joining cluster name: $${JOINING_CLUSTER_NAME}"; \
+		JOINING_CLUSTER_NAME=`echo "$${API_ENDPOINT}" | sed 's/^[^/]*\/\/\([^:/]*\)\(:.*\)\{0,1\}\(\/.*\)\{0,1\}$$/\1/' | sed 's/^api\.//'`; \
+		echo "Joining cluster name: $${JOINING_CLUSTER_NAME}"; \
 		TOOLCHAIN_CLUSTER_NAME=`echo "member-$${JOINING_CLUSTER_NAME:0:55}2"`; \
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
