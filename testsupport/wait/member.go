@@ -1562,14 +1562,14 @@ func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
 			return hasMemberStatusUsageSet(actual.Status)
 		},
 		Diff: func(actual *toolchainv1alpha1.MemberStatus) string {
-			return fmt.Sprintf("expected MemberStatus to have 'master' and 'worker' usages set: %v", actual.Status.ResourceUsage.MemoryUsagePerNodeRole)
+			return fmt.Sprintf("expected MemberStatus to have 'master' and/or 'worker' usages set: %v", actual.Status.ResourceUsage.MemoryUsagePerNodeRole)
 		},
 	}
 }
 
 func hasMemberStatusUsageSet(status toolchainv1alpha1.MemberStatusStatus) bool {
 	usage := status.ResourceUsage.MemoryUsagePerNodeRole
-	return len(usage) == 1 && usage["worker"] > 0
+	return len(usage) >= 1 && usage["worker"] > 0
 }
 
 // UntilMemberStatusHasConsoleURLSet returns a `MemberStatusWaitCriterion` which checks that the given
