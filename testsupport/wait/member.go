@@ -1569,6 +1569,9 @@ func UntilMemberStatusHasUsageSet() MemberStatusWaitCriterion {
 
 func hasMemberStatusUsageSet(status toolchainv1alpha1.MemberStatusStatus) bool {
 	usage := status.ResourceUsage.MemoryUsagePerNodeRole
+	// Usage of nodes can be for both master and worker types.
+	// We check explicitly that at least the one for `worker` node type is present,
+	// since the `master` node type may not be available on hypershift clusters for example.
 	return len(usage) >= 1 && usage["worker"] > 0
 }
 
