@@ -253,6 +253,32 @@ func TestProxyFlow(t *testing.T) {
 				assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
 			}) // end of successful workspace context request
 
+			t.Run("successful workspace context request with proxy plugin", func(t *testing.T) {
+				// we are going to repurpose a well known, always running route as a proxy plugin to contact through the registration service
+				CreateProxyPluginWithCleanup(t, hostAwait, "openshift-console", "openshift-console", "console")
+				VerifyProxyPlugin(t, hostAwait, "openshift-console")
+				proxyPluginWorkspaceURL := hostAwait.PluginProxyURLWithWorkspaceContext("openshift-console", user.compliantUsername)
+				client := http.Client{
+					Timeout: 30 * time.Second,
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+					},
+				}
+				request, err := http.NewRequest("GET", proxyPluginWorkspaceURL, nil)
+				require.NoError(t, err)
+
+				request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", user.token))
+				var resp *http.Response
+				resp, err = client.Do(request)
+				require.NoError(t, err)
+				var body []byte
+				body, err = io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				if resp.StatusCode != http.StatusOK {
+					t.Errorf("unexpected http return code of %d with body text %s", resp.StatusCode, string(body))
+				}
+			}) // end of successful workspace context request with proxy plugin
+
 			t.Run("invalid workspace context request", func(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
