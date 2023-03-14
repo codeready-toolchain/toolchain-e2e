@@ -9,7 +9,27 @@ This repo contains e2e tests for https://github.com/codeready-toolchain/host-ope
 
 Requires Go version 1.17.x (1.17.9 or higher) - download for your development environment https://golang.org/dl/[here].
 
-This repository uses https://github.com/golang/go/wiki/Modules[Go modules].
+Requires Operator SDK (operator-sdk) version 1.23.0 - follow the installation instructions https://sdk.operatorframework.io/docs/installation/#install-from-github-release[here].
+Make sure that the download URL (specified by the `OPERATOR_SDK_DL_URL` environment variable) is set to the correct version:
+
+`export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.23.0`
+
+Requires Operator Registry (opm) version 1.23.0 also, which can be found in https://github.com/operator-framework/operator-registry[here].
+
+To install the Operator Registry tool (for Linux) into your `/bin/` directory, execute the following commands.  Modify these as appropriate to install to a different target directory.
+
+```
+curl -Lo opm https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/linux-amd64-opm
+chmod +x opm
+sudo cp opm /bin/opm
+rm opm
+```
+
+Confirm that the Operator Registry tool is installed correctly:
+
+`opm version`
+
+This repository also uses https://github.com/golang/go/wiki/Modules[Go modules].
 
 == Step by step guide - running in CodeReady Containers
 
