@@ -335,11 +335,11 @@ create-host-resources:
 	# since e2e environment has 2 member operators running in the same cluster
 	# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then \
-		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -l type=member -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name" | grep "2$"`; \
+		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -l type=member -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name" | grep "2$$"`; \
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
 		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false}}}}}}" > $$PATCH_FILE; \
-		oc patch toolchainconfig config -n $(HOST_NS) --type=merge --patch "$$(cat $$PATCH_FILE)"; \
+		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 ifneq ($(E2E_TEST_EXECUTION),true)
 	# if it's not part of e2e test execution, then delete registration-service pods in case they already exist so that the ToolchainConfig will be reloaded
