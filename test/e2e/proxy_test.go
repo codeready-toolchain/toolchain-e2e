@@ -271,6 +271,7 @@ func TestProxyFlow(t *testing.T) {
 				var resp *http.Response
 				resp, err = client.Do(request)
 				require.NoError(t, err)
+				defer resp.Body.Close()
 				var body []byte
 				body, err = io.ReadAll(resp.Body)
 				require.NoError(t, err)
