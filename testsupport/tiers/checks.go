@@ -1241,7 +1241,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"authorization.k8s.io"},
-					Resources: []string{"selfsubjectaccessreview"},
+					Resources: []string{"selfsubjectaccessreviews"},
 					Verbs:     []string{"create"},
 				},
 			},
