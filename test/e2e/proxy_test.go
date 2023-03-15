@@ -267,7 +267,7 @@ func TestProxyFlow(t *testing.T) {
 				request, err := http.NewRequest("GET", proxyPluginWorkspaceURL, nil)
 				require.NoError(t, err)
 
-				request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", user.token))
+				request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.token))
 				var resp *http.Response
 				resp, err = client.Do(request)
 				require.NoError(t, err)
