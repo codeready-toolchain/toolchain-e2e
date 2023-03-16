@@ -275,8 +275,12 @@ func TestProxyFlow(t *testing.T) {
 				var body []byte
 				body, err = io.ReadAll(resp.Body)
 				require.NoError(t, err)
+				bodyStr := string(body)
 				if resp.StatusCode != http.StatusOK {
-					t.Errorf("unexpected http return code of %d with body text %s", resp.StatusCode, string(body))
+					t.Errorf("unexpected http return code of %d with body text %s", resp.StatusCode, bodyStr)
+				}
+				if !strings.Contains(bodyStr, "Red") || !strings.Contains(bodyStr, "Open") {
+					t.Errorf("unexpected http response body %s", bodyStr)
 				}
 			}) // end of successful workspace context request with proxy plugin
 
