@@ -1165,7 +1165,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 13)
+		assert.Len(t, role.Rules, 15)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1182,6 +1182,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
 					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims", "deploymenttargetclasses"},
+					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
@@ -1233,6 +1238,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Resources:     []string{"serviceaccounts"},
 					ResourceNames: []string{"pipeline"},
 					Verbs:         []string{"get", "list", "watch", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"authorization.k8s.io"},
+					Resources: []string{"selfsubjectaccessreviews"},
+					Verbs:     []string{"create"},
 				},
 			},
 		}
