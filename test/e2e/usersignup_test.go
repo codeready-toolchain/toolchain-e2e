@@ -92,7 +92,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		t.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true),
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
 				testconfig.CapacityThresholds().
 					MaxNumberOfSpaces(
 						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
@@ -111,7 +111,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
 				// when
-				hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true),
+				hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
 					testconfig.CapacityThresholds().
 						MaxNumberOfSpaces(
 							testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
@@ -132,7 +132,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(s.T(),
+		hostAwait.UpdateToolchainConfig(t,
 			testconfig.AutomaticApproval().Enabled(true),
 			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
 		)
@@ -149,7 +149,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(s.T(),
+			hostAwait.UpdateToolchainConfig(t,
 				testconfig.AutomaticApproval().Enabled(true),
 				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
 			)
@@ -171,7 +171,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	memberAwait2 := s.Member2()
 	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true),
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
 			testconfig.CapacityThresholds().MaxNumberOfSpaces(
 				testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
 				testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
@@ -242,7 +242,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 	memberAwait := s.Member1()
 	s.T().Run("default approval config - manual", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false),
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
 			testconfig.
 				CapacityThresholds().
 				MaxNumberOfSpaces(
@@ -301,7 +301,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("set low max number of spaces and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false),
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
 			testconfig.CapacityThresholds().
 				MaxNumberOfSpaces(
 					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
@@ -329,7 +329,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false),
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
 				testconfig.CapacityThresholds().
 					MaxNumberOfSpaces(
 						testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
@@ -348,7 +348,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(s.T(),
+		hostAwait.UpdateToolchainConfig(t,
 			testconfig.AutomaticApproval().Enabled(false),
 			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
 		)
@@ -366,7 +366,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(s.T(),
+			hostAwait.UpdateToolchainConfig(t,
 				testconfig.AutomaticApproval().Enabled(false),
 				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
 			)
@@ -382,7 +382,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("when approved and set target cluster manually, then the limits will be ignored", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(s.T(),
+		hostAwait.UpdateToolchainConfig(t,
 			testconfig.AutomaticApproval().Enabled(false),
 			testconfig.CapacityThresholds().
 				ResourceCapacityThreshold(1).
@@ -410,7 +410,7 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
 	s.T().Run("automatic approval with verification required", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false),
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
 			testconfig.CapacityThresholds().MaxNumberOfSpaces(testconfig.PerMemberCluster(memberAwait.ClusterName, 1000)).
 				ResourceCapacityThreshold(80))
 

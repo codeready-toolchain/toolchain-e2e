@@ -116,7 +116,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
-			DisableCleanup().
 			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute(t).Resources()
