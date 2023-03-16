@@ -246,6 +246,104 @@ func (a *MemberAwaitility) WaitForUserAccount(t *testing.T, name string, criteri
 	return userAccount, err
 }
 
+// SpaceRequestWaitCriterion a struct to compare with a given SpaceRequest
+type SpaceRequestWaitCriterion struct {
+	Match func(request *toolchainv1alpha1.SpaceRequest) bool
+	Diff  func(request *toolchainv1alpha1.SpaceRequest) string
+}
+
+// WaitForSpaceRequest waits until there is a SpaceRequest available with the given name, namespace, spec and the set of status conditions
+func (a *MemberAwaitility) WaitForSpaceRequest(t *testing.T, namespacedName types.NamespacedName, criteria ...SpaceRequestWaitCriterion) (*toolchainv1alpha1.SpaceRequest, error) {
+	var spaceRequest *toolchainv1alpha1.SpaceRequest
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.SpaceRequest{}
+		if err := a.Client.Get(context.TODO(), namespacedName, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		spaceRequest = obj
+		return matchSpaceRequestWaitCriterion(obj, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceRequestWaitCriterionDiffs(t, spaceRequest, criteria...)
+	}
+	return spaceRequest, err
+}
+
+// UntilSpaceRequestHasTierName returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has a specific tierName
+func UntilSpaceRequestHasTierName(expected string) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return actual.Spec.TierName == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected tier name to be '%s'\nbut it was '%s'", expected, actual.Spec.TierName)
+		},
+	}
+}
+
+// UntilSpaceRequestHasTargetClusterRoles returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has the expected cluster roles
+func UntilSpaceRequestHasTargetClusterRoles(expected []string) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return reflect.DeepEqual(expected, actual.Spec.TargetClusterRoles)
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected space roles to match:\n%s", Diff(expected, actual.Spec.TargetClusterRoles))
+		},
+	}
+}
+
+// UntilSpaceRequestHasConditions returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has exactly all the given status conditions
+func UntilSpaceRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
+		},
+	}
+}
+
+func matchSpaceRequestWaitCriterion(actual *toolchainv1alpha1.SpaceRequest, criteria ...SpaceRequestWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *MemberAwaitility) printSpaceRequestWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.SpaceRequest, criteria ...SpaceRequestWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find SpaceRequest\n")
+		buf.WriteString(a.listAndReturnContent("SpaceRequest", a.Namespace, &toolchainv1alpha1.UserAccountList{}))
+	} else {
+		buf.WriteString("failed to find SpaceRequest with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) && c.Diff != nil {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	t.Log(buf.String())
+}
+
 // NSTemplateSetWaitCriterion a struct to compare with a given NSTemplateSet
 type NSTemplateSetWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateSet) bool
@@ -1031,6 +1129,27 @@ func (a *MemberAwaitility) UpdateNSTemplateSet(t *testing.T, spaceName string, m
 		return true, nil
 	})
 	return nsTmplSet, err
+}
+
+// UpdateSpaceRequest tries to update the Spec of the given SpaceRequest
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated SpaceRequest
+func (a *MemberAwaitility) UpdateSpaceRequest(t *testing.T, spaceRequestNamespacedName types.NamespacedName, modifySpaceRequest func(s *toolchainv1alpha1.SpaceRequest)) (*toolchainv1alpha1.SpaceRequest, error) {
+	var sr *toolchainv1alpha1.SpaceRequest
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshSpaceRequest := &toolchainv1alpha1.SpaceRequest{}
+		if err := a.Client.Get(context.TODO(), spaceRequestNamespacedName, freshSpaceRequest); err != nil {
+			return true, err
+		}
+		modifySpaceRequest(freshSpaceRequest)
+		if err := a.Client.Update(context.TODO(), freshSpaceRequest); err != nil {
+			t.Logf("error updating SpaceRequest '%s' in namespace '%s': %s. Will retry again...", spaceRequestNamespacedName.Name, spaceRequestNamespacedName.Name, err.Error())
+			return false, nil
+		}
+		sr = freshSpaceRequest
+		return true, nil
+	})
+	return sr, err
 }
 
 // Create tries to create the object until success

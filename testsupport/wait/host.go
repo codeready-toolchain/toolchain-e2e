@@ -1736,6 +1736,19 @@ func UntilSpaceHasTier(expected string) SpaceWaitCriterion {
 	}
 }
 
+// UntilSpaceHasTargetClusterRoles returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected target cluster roles set in its Spec
+func UntilSpaceHasTargetClusterRoles(expected []string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return reflect.DeepEqual(actual.Spec.TargetClusterRoles, expected)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected target cluster roles to match:\n%s", Diff(expected, actual.Spec.TargetClusterRoles))
+		},
+	}
+}
+
 // UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
 // Space has exactly all the given status conditions
 func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitCriterion {
@@ -1775,6 +1788,19 @@ func UntilSpaceHasConditionForTime(expected toolchainv1alpha1.Condition, duratio
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected conditions to match:\n%s\nAnd having the LastTransitionTime %s or older", Diff(expected, actual.Status.Conditions), time.Now().Add(-duration).String())
+		},
+	}
+}
+
+// UntilSpaceHasAnyProvisionedNamespaces returns a `SpaceWaitCriterion` which checks that the given
+// Space has any `status.ProvisionedNamespaces` set
+func UntilSpaceHasAnyProvisionedNamespaces() SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return len(actual.Status.ProvisionedNamespaces) > 0
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected provisioned namespaces not to be empty. Actual Space provisioned namespaces:\n%v", actual)
 		},
 	}
 }
