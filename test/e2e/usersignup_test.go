@@ -57,7 +57,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		// update max number of spaces to current number of spaces provisioned
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true),
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
 			testconfig.CapacityThresholds().
 				MaxNumberOfSpaces(
 					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
@@ -104,9 +104,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			userSignup, err := hostAwait.WaitForUserSignup(t, waitingList1.Name,
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
+			require.NoError(t, err)
 
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 			s.userIsNotProvisioned(t, waitlinglist2)
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
@@ -123,9 +123,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				userSignup, err := hostAwait.WaitForUserSignup(t, waitlinglist2.Name,
 					wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-				require.NoError(s.T(), err)
+				require.NoError(t, err)
 
-				VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+				VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 			})
 		})
 	})
@@ -142,7 +142,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			Username("automatic3").
 			Email("automatic3@redhat.com").
 			RequireConditions(ConditionSet(Default(), PendingApproval(), PendingApprovalNoCluster())...).
-			Execute(s.T()).Resources()
+			Execute(t).Resources()
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -158,8 +158,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			require.NoError(t, err)
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
 
@@ -193,7 +193,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			Execute(s.T()).Resources()
 
 		// then
-		require.NotEqual(s.T(), mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
+		require.NotEqual(t, mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
@@ -231,7 +231,7 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
 	hostAwait := s.Host()
-	hostAwait.CheckMasterUserRecordIsDeleted(s.T(), userSignup.Spec.Username)
+	hostAwait.CheckMasterUserRecordIsDeleted(t, userSignup.Spec.Username)
 	currentUserSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name)
 	require.NoError(t, err)
 	assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValuePending, currentUserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
@@ -341,8 +341,8 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			require.NoError(t, err)
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
 
@@ -375,8 +375,8 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(s.T(), err)
-			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+			require.NoError(t, err)
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
 
