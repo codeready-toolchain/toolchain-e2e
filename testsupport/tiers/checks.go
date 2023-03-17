@@ -917,9 +917,9 @@ func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("10")
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
-			hard[count("ingresses.extensions")], err = resource.ParseQuantity("10")
+			hard[count("ingresses.extensions")], err = resource.ParseQuantity("30")
 			require.NoError(t, err)
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
