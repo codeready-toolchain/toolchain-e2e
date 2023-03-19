@@ -1942,6 +1942,36 @@ func matchSpaceBindingWaitCriterion(actual *toolchainv1alpha1.SpaceBinding, crit
 	return true
 }
 
+// WaitForSubSpace waits until the space provisioned by a SpaceRequest is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRequestNamespace string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+	var subSpace *toolchainv1alpha1.Space
+	labels := map[string]string{
+		toolchainv1alpha1.SpaceRequestLabelKey:          spaceRequestName,
+		toolchainv1alpha1.SpaceRequestNamespaceLabelKey: spaceRequestNamespace,
+	}
+
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the subSpace from the host namespace
+		spaceList := &toolchainv1alpha1.SpaceList{}
+		if err = a.Client.List(context.TODO(), spaceList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		if len(spaceList.Items) == 0 {
+			return false, nil
+		}
+		if len(spaceList.Items) > 1 {
+			return false, fmt.Errorf("more than 1 subSpaces for SpaceRequest '%s'", spaceRequestName)
+		}
+		subSpace = &spaceList.Items[0]
+		return matchSpaceWaitCriterion(subSpace, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceWaitCriterionDiffs(t, subSpace, criteria...)
+	}
+	return subSpace, err
+}
+
 // WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
 	var spacebinding *toolchainv1alpha1.SpaceBinding

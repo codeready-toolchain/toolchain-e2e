@@ -1,7 +1,6 @@
 package testsupport
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -45,7 +44,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 	err = memberAwait.CreateWithCleanup(t, spaceRequest)
 	require.NoError(t, err)
 	// check for the subSpace creation
-	subSpace, err := awaitilities.Host().WaitForSpace(t, fmt.Sprintf("%s-%s", parentSpace.Name, "subs"),
+	subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace,
 		wait.UntilSpaceHasAnyTargetClusterSet(),
 		wait.UntilSpaceHasAnyTierNameSet(),
 		wait.UntilSpaceHasAnyProvisionedNamespaces(),

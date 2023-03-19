@@ -299,6 +299,19 @@ func UntilSpaceRequestHasTargetClusterRoles(expected []string) SpaceRequestWaitC
 	}
 }
 
+// UntilSpaceRequestHasStatusTargetClusterURL returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has the expected .Status.TargetClusterURL value
+func UntilSpaceRequestHasStatusTargetClusterURL(expected string) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return expected == actual.Status.TargetClusterURL
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected space roles to match:\n%s", Diff(expected, actual.Status.TargetClusterURL))
+		},
+	}
+}
+
 // UntilSpaceRequestHasConditions returns a `SpaceRequestWaitCriterion` which checks that the given
 // SpaceRequest has exactly all the given status conditions
 func UntilSpaceRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceRequestWaitCriterion {
