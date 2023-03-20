@@ -19,6 +19,9 @@ func TestCreateSpaceRequest(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	require.NoError(t, err)
+	require.True(t, found)
 
 	t.Run("create space request", func(t *testing.T) {
 		// when
@@ -29,7 +32,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err := memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(subSpace.Status.TargetCluster))
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint))
 		require.NoError(t, err)
 
 		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
