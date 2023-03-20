@@ -80,7 +80,7 @@ func ApprovedAutomatically() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
-			Reason: "ApprovedAutomatically",
+			Reason: toolchainv1alpha1.UserSignupApprovedAutomaticallyReason,
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
@@ -94,7 +94,7 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 		{
 			Type:   toolchainv1alpha1.UserSignupApproved,
 			Status: corev1.ConditionTrue,
-			Reason: "ApprovedByAdmin",
+			Reason: toolchainv1alpha1.UserSignupApprovedByAdminReason,
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupComplete,
