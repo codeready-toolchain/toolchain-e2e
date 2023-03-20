@@ -32,6 +32,7 @@ func InNamespace(namespace string) SpaceRequestOption {
 
 func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceRequestOption) (*toolchainv1alpha1.SpaceRequest, *toolchainv1alpha1.Space) {
 	memberAwait, err := awaitilities.Member(memberName)
+	require.NoError(t, err)
 	// let's first create a parentSpace
 	parentSpace, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
 	// wait for the namespace to be provisioned since we will be creating the spacerequest into it.
@@ -39,7 +40,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 	require.NoError(t, err)
 
 	// create the space request in the "default" namespace provisioned by the parentSpace
-	spaceRequest := NewSpaceRequest(t, awaitilities, append(opts, InNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)))...)
+	spaceRequest := NewSpaceRequest(t, append(opts, InNamespace(GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)))...)
 	require.NoError(t, err)
 	err = memberAwait.CreateWithCleanup(t, spaceRequest)
 	require.NoError(t, err)
@@ -56,7 +57,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 
 // NewSpaceRequest initializes a new SpaceRequest object with the given options.
 // By default sets appstudio tier and tenant roles for the cluster to use
-func NewSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
+func NewSpaceRequest(t *testing.T, opts ...SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
 	namePrefix := strings.ToLower(t.Name())
 	// Remove all invalid characters
 	namePrefix = notAllowedChars.ReplaceAllString(namePrefix, "")

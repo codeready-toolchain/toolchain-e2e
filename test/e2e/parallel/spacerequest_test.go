@@ -33,8 +33,8 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
-			// now, delete the SpaceRequest and expect that the Space will be deleted as well,
-			// along with its associated namespace, but a new Space will be provisioned by the SpaceRequest.
+			// now, delete the subSpace, along with its associated namespace,
+			// but a new Space will be provisioned by the SpaceRequest.
 
 			// when
 			err := memberAwait.Client.Delete(context.TODO(), subSpace)
