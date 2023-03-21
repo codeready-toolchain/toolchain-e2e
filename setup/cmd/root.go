@@ -88,7 +88,7 @@ func Execute() {
 	}
 }
 
-func setup(cmd *cobra.Command, args []string) { // nolint:gocyclo
+func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	cmd.SilenceUsage = true
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
 
