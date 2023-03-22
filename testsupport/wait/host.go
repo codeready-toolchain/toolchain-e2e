@@ -92,8 +92,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// masteruserrecords
 	masteruserrecords := &toolchainv1alpha1.MasterUserRecordList{}
@@ -101,8 +101,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range masteruserrecords.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// notifications
 	notifications := &toolchainv1alpha1.NotificationList{}
@@ -110,8 +110,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range notifications.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// nstemplatetiers
 	nstemplatetiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -119,8 +119,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range nstemplatetiers.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// usertiers
 	usertiers := &toolchainv1alpha1.UserTierList{}
@@ -128,8 +128,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range usertiers.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// toolchainconfig
 	toolchainconfigs := &toolchainv1alpha1.ToolchainConfigList{}
@@ -137,8 +137,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range toolchainconfigs.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// toolchainstatus
 	toolchainstatuses := &toolchainv1alpha1.ToolchainStatusList{}
@@ -146,8 +146,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	return all, nil
 }
@@ -1511,7 +1511,7 @@ func (a *HostAwaitility) UpdateToolchainConfig(t *testing.T, options ...testconf
 			},
 		}
 	} else {
-		// if it exists then create a copy to store the original values
+		// if it exists then create a copied to store the original values
 		originalConfig = config.DeepCopy()
 	}
 
@@ -1621,6 +1621,10 @@ func (a *HostAwaitility) ProxyURLWithWorkspaceContext(workspaceContext string) s
 	return fmt.Sprintf("%s/workspaces/%s", a.APIProxyURL, workspaceContext)
 }
 
+func (a *HostAwaitility) PluginProxyURLWithWorkspaceContext(proxyPluginName, workspaceContext string) string {
+	return fmt.Sprintf("%s/plugins/%s/workspaces/%s", a.APIProxyURL, proxyPluginName, workspaceContext)
+}
+
 type SpaceWaitCriterion struct {
 	Match func(*toolchainv1alpha1.Space) bool
 	Diff  func(*toolchainv1alpha1.Space) string
@@ -1661,6 +1665,28 @@ func (a *HostAwaitility) WaitForSpace(t *testing.T, name string, criteria ...Spa
 		a.printSpaceWaitCriterionDiffs(t, space, criteria...)
 	}
 	return space, err
+}
+
+func (a *HostAwaitility) WaitForProxyPlugin(t *testing.T, name string) (*toolchainv1alpha1.ProxyPlugin, error) {
+	t.Logf("waiting for ProxyPlugin %q", name)
+	var proxyPlugin *toolchainv1alpha1.ProxyPlugin
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.ProxyPlugin{}
+		if err = a.Client.Get(context.TODO(),
+			types.NamespacedName{
+				Namespace: a.Namespace,
+				Name:      name,
+			},
+			obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+		}
+		proxyPlugin = obj
+		return true, nil
+
+	})
+	return proxyPlugin, err
 }
 
 func (a *HostAwaitility) printSpaceWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.Space, criteria ...SpaceWaitCriterion) {

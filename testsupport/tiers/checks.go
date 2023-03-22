@@ -118,7 +118,7 @@ func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return checks.GetClusterObjectChecks()
 }
 
-func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwaitility) TemplateRefs {
 	var clusterResourcesTmplRef *string
 	if c.tier.NSTemplateTier.Spec.ClusterResources != nil {
 		clusterResourcesTmplRef = &c.tier.NSTemplateTier.Spec.ClusterResources.TemplateRef

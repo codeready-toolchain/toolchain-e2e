@@ -48,8 +48,5 @@ func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Sc
 		return fmt.Errorf("no objects found in templates %v", templatePaths)
 	}
 
-	if err := templates.ApplyObjectsConcurrently(cl, combinedObjsToProcess, templates.NamespaceModifier(userNS)); err != nil {
-		return err
-	}
-	return nil
+	return templates.ApplyObjectsConcurrently(cl, combinedObjsToProcess, templates.NamespaceModifier(userNS))
 }
