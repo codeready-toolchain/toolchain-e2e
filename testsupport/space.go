@@ -20,14 +20,7 @@ var notAllowedChars = regexp.MustCompile("[^-a-z0-9]")
 
 // NewSpace initializes a new Space object with the given options. By default, it doesn't set anything in the spec.
 func NewSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
-	namePrefix := strings.ToLower(t.Name())
-	// Remove all invalid characters
-	namePrefix = notAllowedChars.ReplaceAllString(namePrefix, "")
-
-	// Trim if the length exceeds 40 chars (63 is the max)
-	if len(namePrefix) > 40 {
-		namePrefix = namePrefix[0:40]
-	}
+	namePrefix := NewObjectNamePrefix(t)
 
 	space := &toolchainv1alpha1.Space{
 		ObjectMeta: metav1.ObjectMeta{
@@ -240,4 +233,13 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 	}
 	t.Logf("The SpaceBinding %s was created", binding.Name)
 	return signup, mur, binding
+}
+
+func GetDefaultNamespace(provisionedNamespaces []toolchainv1alpha1.SpaceNamespace) string {
+	for _, namespaceObj := range provisionedNamespaces {
+		if namespaceObj.Type == "default" {
+			return namespaceObj.Name
+		}
+	}
+	return ""
 }

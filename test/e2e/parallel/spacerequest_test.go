@@ -25,12 +25,21 @@ func TestCreateSpaceRequest(t *testing.T) {
 
 	t.Run("create space request", func(t *testing.T) {
 		// when
-		spaceRequest, subSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+		targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
+		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
 			WithSpecTierName("appstudio"),
-			WithSpecTargetClusterRoles([]string{cluster.RoleLabel(cluster.Tenant)}))
+			WithSpecTargetClusterRoles(targetClusterRoles))
+
 		// then
+		// check for the subSpace creation
+		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+			UntilSpaceHasTargetClusterRoles(targetClusterRoles),
+			UntilSpaceHasTier("appstudio"),
+			UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
-		spaceRequest, err := memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint))
 		require.NoError(t, err)
@@ -51,9 +60,9 @@ func TestCreateSpaceRequest(t *testing.T) {
 			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio")
 			require.NoError(t, err)
 			// a new subSpace is created
-			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace,
-				UntilSpaceHasAnyTargetClusterSet(),
-				UntilSpaceHasAnyTierNameSet(),
+			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+				UntilSpaceHasTargetClusterRoles(targetClusterRoles),
+				UntilSpaceHasTier("appstudio"),
 				UntilSpaceHasAnyProvisionedNamespaces(),
 			)
 			require.NoError(t, err)
@@ -72,7 +81,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 				// spaceRequest should reset back the tierName
 				_, err = awaitilities.Host().WaitForSpace(t, subSpace.GetName(),
 					UntilSpaceHasTier("appstudio"), // tierName is back as the one on spaceRequest
-					UntilSpaceHasAnyTargetClusterSet(),
+					UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 					UntilSpaceHasAnyProvisionedNamespaces(),
 				)
 				require.NoError(t, err)
@@ -87,11 +96,11 @@ func TestCreateSpaceRequest(t *testing.T) {
 					// then
 					// subSpace should be deleted as well
 					require.NoError(t, err)
-					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
+					err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio")
 					require.NoError(t, err)
 					err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
 					require.NoError(t, err)
-					err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio")
+					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
 					require.NoError(t, err)
 				})
 			})
@@ -108,13 +117,19 @@ func TestUpdateSpaceRequest(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// when
-	spaceRequest, subSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+	spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
 		WithSpecTierName("appstudio"),
 		WithSpecTargetClusterRoles([]string{cluster.RoleLabel(cluster.Tenant)}))
 
 	// then
+	// check for the subSpace creation
+	subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+		UntilSpaceHasAnyTargetClusterSet(),
+		UntilSpaceHasTier("appstudio"),
+		UntilSpaceHasAnyProvisionedNamespaces(),
+	)
 	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
-	_, err := memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 		UntilSpaceRequestHasTierName("appstudio"),
 		UntilSpaceRequestHasConditions(Provisioned()),
 	)
@@ -135,6 +150,12 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		//then
+		// wait for spaceRequest to transition into a "non-ready" condition
+		// due to the change of the tier which triggers and update of the Space CR.
+		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+			UntilSpaceRequestHasTierName("base"),
+			UntilSpaceRequestHasConditions(TerminatingSpace()), // ready condition is false while space is terminating
+		)
 		// wait for both spaceRequest and subSpace to have same tierName
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 			UntilSpaceRequestHasTierName("base"),

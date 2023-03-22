@@ -1969,11 +1969,12 @@ func matchSpaceBindingWaitCriterion(actual *toolchainv1alpha1.SpaceBinding, crit
 }
 
 // WaitForSubSpace waits until the space provisioned by a SpaceRequest is available with the provided criteria, if any
-func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRequestNamespace string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRequestNamespace, parentSpaceName string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
 	var subSpace *toolchainv1alpha1.Space
 	labels := map[string]string{
 		toolchainv1alpha1.SpaceRequestLabelKey:          spaceRequestName,
 		toolchainv1alpha1.SpaceRequestNamespaceLabelKey: spaceRequestNamespace,
+		toolchainv1alpha1.ParentSpaceLabelKey:           parentSpaceName,
 	}
 
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {

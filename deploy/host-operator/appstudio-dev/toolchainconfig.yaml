@@ -11,6 +11,8 @@ spec:
       enabled: true
     deactivation:
       deactivationDomainsExcluded: '@redhat.com'
+    spaceConfig:
+      spaceRequestEnabled: true
     registrationService:
       environment: 'dev'
       verification:

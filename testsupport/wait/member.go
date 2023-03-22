@@ -307,7 +307,7 @@ func UntilSpaceRequestHasStatusTargetClusterURL(expected string) SpaceRequestWai
 			return expected == actual.Status.TargetClusterURL
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
-			return fmt.Sprintf("expected space roles to match:\n%s", Diff(expected, actual.Status.TargetClusterURL))
+			return fmt.Sprintf("expected target cluster URL to match:\n%s", Diff(expected, actual.Status.TargetClusterURL))
 		},
 	}
 }
@@ -338,7 +338,7 @@ func (a *MemberAwaitility) printSpaceRequestWaitCriterionDiffs(t *testing.T, act
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find SpaceRequest\n")
-		buf.WriteString(a.listAndReturnContent("SpaceRequest", a.Namespace, &toolchainv1alpha1.UserAccountList{}))
+		buf.WriteString(a.listAndReturnContent("SpaceRequest", a.Namespace, &toolchainv1alpha1.SpaceRequestList{}))
 	} else {
 		buf.WriteString("failed to find SpaceRequest with matching criteria:\n")
 		buf.WriteString("----\n")
