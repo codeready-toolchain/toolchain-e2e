@@ -559,6 +559,7 @@ func TestE2EFlow(t *testing.T) {
 }
 
 func listByOwnerLabel(owner string) client.ListOption {
+
 	labels := map[string]string{toolchainv1alpha1.OwnerLabelKey: owner}
 	return client.MatchingLabels(labels)
 }
