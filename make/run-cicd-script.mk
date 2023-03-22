@@ -1,5 +1,5 @@
 
-OWNER_AND_BRANCH_LOCATION=mfrancisc/toolchain-cicd/feature/ASC-299_hypershift_cluster
+OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 USE_LOCAL_SCRIPTS=false
 
