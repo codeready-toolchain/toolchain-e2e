@@ -128,6 +128,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		UntilSpaceHasTier("appstudio"),
 		UntilSpaceHasAnyProvisionedNamespaces(),
 	)
+	require.NoError(t, err)
 	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
 	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 		UntilSpaceRequestHasTierName("appstudio"),
@@ -156,6 +157,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 			UntilSpaceRequestHasTierName("base"),
 			UntilSpaceRequestHasConditions(TerminatingSpace()), // ready condition is false while space is terminating
 		)
+		require.NoError(t, err)
 		// wait for both spaceRequest and subSpace to have same tierName
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 			UntilSpaceRequestHasTierName("base"),
