@@ -92,8 +92,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// masteruserrecords
 	masteruserrecords := &toolchainv1alpha1.MasterUserRecordList{}
@@ -101,8 +101,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range masteruserrecords.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// notifications
 	notifications := &toolchainv1alpha1.NotificationList{}
@@ -110,8 +110,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range notifications.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// nstemplatetiers
 	nstemplatetiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -119,8 +119,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range nstemplatetiers.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// usertiers
 	usertiers := &toolchainv1alpha1.UserTierList{}
@@ -128,8 +128,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range usertiers.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// toolchainconfig
 	toolchainconfigs := &toolchainv1alpha1.ToolchainConfigList{}
@@ -137,8 +137,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range toolchainconfigs.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	// toolchainstatus
 	toolchainstatuses := &toolchainv1alpha1.ToolchainStatusList{}
@@ -146,8 +146,8 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		return nil, err
 	}
 	for _, i := range usersignups.Items {
-		copy := i
-		all = append(all, &copy)
+		copied := i
+		all = append(all, &copied)
 	}
 	return all, nil
 }
@@ -1511,7 +1511,7 @@ func (a *HostAwaitility) UpdateToolchainConfig(t *testing.T, options ...testconf
 			},
 		}
 	} else {
-		// if it exists then create a copy to store the original values
+		// if it exists then create a copied to store the original values
 		originalConfig = config.DeepCopy()
 	}
 
