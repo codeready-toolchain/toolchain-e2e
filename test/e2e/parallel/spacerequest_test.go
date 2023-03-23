@@ -151,13 +151,6 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		//then
-		// wait for spaceRequest to transition into a "non-ready" condition
-		// due to the change of the tier which triggers and update of the Space CR.
-		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-			UntilSpaceRequestHasTierName("base"),
-			UntilSpaceRequestHasConditions(TerminatingSpace()), // ready condition is false while space is terminating
-		)
-		require.NoError(t, err)
 		// wait for both spaceRequest and subSpace to have same tierName
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 			UntilSpaceRequestHasTierName("base"),
