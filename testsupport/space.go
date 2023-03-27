@@ -90,10 +90,11 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 	space := NewSpace(t, awaitilities, opts...)
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
-	space, err = awaitilities.Host().WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
-	require.NoError(t, err)
 	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	signup, mur, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
+	// let's see that space was provisioned
+	space, err = awaitilities.Host().WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+	require.NoError(t, err)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
 	// before we can check the resources (roles and rolebindings)
 	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
