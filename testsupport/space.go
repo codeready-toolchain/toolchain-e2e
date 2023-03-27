@@ -5,13 +5,12 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,21 +84,27 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 	}
 }
 
-func WithCreationTimestamp(creationTimestamp time.Time) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.CreationTimestamp = metav1.NewTime(creationTimestamp)
-	}
-}
-
 // CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
 func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
+	username := uuid.Must(uuid.NewV4()).String()
+	signup, mur := NewSignupRequest(awaitilities).
+		Username(username).
+		Email(username + "@acme.com").
+		ManuallyApprove().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		NoSpace().
+		WaitForMUR().Execute(t).Resources()
+	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
+	// then create the actual space
 	space := NewSpace(t, awaitilities, opts...)
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
-	// we also need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
-	signup, mur, spaceBinding := CreateMurWithAdminSpaceBindingForSpace(t, awaitilities, space, true)
-	// let's see that space was provisioned
+	// create spacebinding request immediately after
+	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+	t.Logf("The SpaceBinding %s was created", spaceBinding.Name)
+	// let's see if space was provisioned as expected
 	space, err = awaitilities.Host().WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
 	require.NoError(t, err)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
