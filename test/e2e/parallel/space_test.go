@@ -49,7 +49,7 @@ func TestCreateSpace(t *testing.T) {
 	t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
 		// given & when
 		s, _, _ := CreateSpace(t, awaitilities,
-			WithCreationTimestamp(time.Now().Add(time.Second+60)), // we set a time in the future, so that spacecleanup_controller doesn't delete the space before we actually create the spacebinding
+			WithCreationTimestamp(time.Now().Add(time.Second*60)), // we set a time in the future, so that spacecleanup_controller doesn't delete the space before we actually create the spacebinding
 			WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
 				space.Spec.TargetCluster = "unknown"
 			})

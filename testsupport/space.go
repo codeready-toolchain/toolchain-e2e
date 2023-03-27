@@ -87,7 +87,7 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 
 func WithCreationTimestamp(creationTimestamp time.Time) SpaceOption {
 	return func(s *toolchainv1alpha1.Space) {
-		s.ObjectMeta.CreationTimestamp = metav1.NewTime(creationTimestamp)
+		s.CreationTimestamp = metav1.NewTime(creationTimestamp)
 	}
 }
 
