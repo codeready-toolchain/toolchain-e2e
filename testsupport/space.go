@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
@@ -81,6 +82,12 @@ func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
 			s.Labels = map[string]string{}
 		}
 		s.Labels[testtier.TemplateTierHashLabelKey(tierName)] = hash
+	}
+}
+
+func WithCreationTimestamp(creationTimestamp time.Time) SpaceOption {
+	return func(s *toolchainv1alpha1.Space) {
+		s.ObjectMeta.CreationTimestamp = metav1.NewTime(creationTimestamp)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -47,9 +48,11 @@ func TestCreateSpace(t *testing.T) {
 
 	t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
 		// given & when
-		s, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
-			space.Spec.TargetCluster = "unknown"
-		})
+		s, _, _ := CreateSpace(t, awaitilities,
+			WithCreationTimestamp(time.Now().Add(time.Second+60)), // we set a time in the future, so that spacecleanup_controller doesn't delete the space before we actually create the spacebinding
+			WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
+				space.Spec.TargetCluster = "unknown"
+			})
 
 		// then
 		s, err := hostAwait.WaitForSpace(t, s.Name, UntilSpaceHasConditions(ProvisioningFailed("unknown target member cluster 'unknown'")))
