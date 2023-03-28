@@ -14,9 +14,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
+	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
@@ -2165,4 +2165,41 @@ func EncodeUserIdentifier(subject string) string {
 	}
 
 	return encoded
+}
+
+// CreateSpaceAndSpaceBinding creates a space and spacebindig and waits until both are present.
+// We are creating both of them (Space and SpaceBinding) at the same time , with polling logic, so that we mitigate the issue with spacecleanup_controller deleting the Space before we create it's SpaceBinding.
+func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
+	var spaceBinding *toolchainv1alpha1.SpaceBinding
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		// create the space
+		if err := a.CreateWithCleanup(t, space); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		// create spacebinding request immediately after ...
+		spaceBinding = spacebinding.NewSpaceBinding(mur, space, spaceRole)
+		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
+			return false, err
+		}
+		// let's see if space was provisioned as expected
+		space, err = a.WaitForSpace(t, space.Name, UntilSpaceHasAnyTargetClusterSet(), UntilSpaceHasAnyTierNameSet())
+		if err != nil {
+			return false, err
+		}
+		// let's see if spacebinding was provisioned as expected
+		spaceBinding, err = a.WaitForSpaceBinding(t, mur.Name, space.Name,
+			UntilSpaceBindingHasMurName(mur.Name),
+			UntilSpaceBindingHasSpaceName(space.Name),
+			UntilSpaceBindingHasSpaceRole(spaceRole),
+		)
+		if err != nil {
+			return false, err
+		}
+		t.Logf("Space %s and SpaceBinding %s created", space.Name, spaceBinding.Name)
+		return true, nil
+	})
+	return space, spaceBinding, err
 }
