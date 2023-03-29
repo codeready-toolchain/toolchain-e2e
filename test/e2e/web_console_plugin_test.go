@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,9 @@ func (s *webConsolePluginTest) TearDownTest() {
 
 func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	// Provision a new user
-	// when & then
+	hostAwait := s.Host()
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
 	response := NewSignupRequest(s.Awaitilities).
 		Username("consoletest").
 		Email("consoletest@redhat.com").
