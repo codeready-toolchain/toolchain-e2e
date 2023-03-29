@@ -42,7 +42,7 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 		Email("consoletest@redhat.com").
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
-		Execute(s.T()).SignupResponse()
+		Execute(s.T()).GetSignupResponse(s.T())
 
 	// Response should contain a ConsoleURL with a value something like:
 	// https://console-openshift-console.apps.99b682869228f7464338-mgmt.ci.hypershift.devcluster.openshift.com/
