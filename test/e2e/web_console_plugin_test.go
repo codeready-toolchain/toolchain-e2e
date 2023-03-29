@@ -1,9 +1,9 @@
 package e2e
 
 import (
+	"fmt"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/google/martian/log"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -44,5 +44,5 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	require.Contains(s.T(), response, "ConsoleURL")
 
 	consoleURL := response["ConsoleURL"]
-	log.Infof("#### Got Console URL: %s", consoleURL)
+	fmt.Printf("#### Got Console URL: %s", consoleURL)
 }
