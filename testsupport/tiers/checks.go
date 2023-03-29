@@ -337,7 +337,7 @@ type baseextendedidlingTierChecks struct {
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
