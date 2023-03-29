@@ -498,7 +498,7 @@ func matchNamespaceWaitCriteria(actual *corev1.Namespace, criteria ...NamespaceW
 
 // WaitForNamespace waits until a namespace with the given owner (username), type, revision and tier labels exists
 func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierName string, criteria ...NamespaceWaitCriterion) (*corev1.Namespace, error) {
-	_, kind, _, err := Split(tmplRef)
+	_, kind, err := TierAndType(tmplRef)
 	if err != nil {
 		return nil, err
 	}

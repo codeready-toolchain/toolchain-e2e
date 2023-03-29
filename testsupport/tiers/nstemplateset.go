@@ -28,7 +28,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	for _, templateRef := range expectedTemplateRefs.Namespaces {
 		ns, err := memberAwait.WaitForNamespace(t, nsTmplSet.Name, templateRef, nsTmplSet.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
-		_, nsType, _, err := wait.Split(templateRef)
+		_, nsType, err := wait.TierAndType(templateRef)
 		require.NoError(t, err)
 		namespaceChecks := checks.GetNamespaceObjectChecks(nsType)
 		for _, check := range namespaceChecks {
