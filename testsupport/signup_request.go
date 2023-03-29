@@ -68,6 +68,7 @@ type SignupRequest struct {
 	cleanupDisabled      bool
 	noSpace              bool
 	activationCode       string
+	signupResponse       map[string]interface{}
 }
 
 // IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
@@ -111,6 +112,10 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 // here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	return r.userSignup, r.mur
+}
+
+func (r *SignupRequest) SignupResponse() map[string]interface{} {
+	return r.signupResponse
 }
 
 // EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
@@ -235,7 +240,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 	}
 
 	// Call the signup endpoint
-	invokeEndpoint(t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
+	r.signupResponse = invokeEndpoint(t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
 		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
