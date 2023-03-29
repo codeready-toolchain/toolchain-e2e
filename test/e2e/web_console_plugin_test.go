@@ -44,6 +44,10 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
 		Execute(s.T()).SignupResponse()
 
+	// Response should contain a ConsoleURL with a value something like:
+	// https://console-openshift-console.apps.99b682869228f7464338-mgmt.ci.hypershift.devcluster.openshift.com/
+	fmt.Printf("#### response value: %s", response)
+
 	require.Contains(s.T(), response, "ConsoleURL")
 
 	consoleURL := response["ConsoleURL"]
