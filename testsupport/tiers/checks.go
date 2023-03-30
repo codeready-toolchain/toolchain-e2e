@@ -529,7 +529,7 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 
 func (a *appstudioEnvTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
-	verifyNsTypes(t, a.tierName, templateRefs, "ev")
+	verifyNsTypes(t, a.tierName, templateRefs, "env")
 	return templateRefs
 }
 
