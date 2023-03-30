@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"crypto/tls"
 	"fmt"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -56,13 +57,21 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	manifestURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/plugin-manifest.json")
 	healthCheckURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/status")
 
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	httpClient := &http.Client{Transport: tr}
+
 	// First perform a health check - we will attempt up to 5 times to invoke the health check endpoint without error
 	var err error
 	var resp *http.Response
 	retries := 0
 
 	for retries < 5 {
-		resp, err = http.Get(healthCheckURL) //nolint
+		resp, err = httpClient.Get(healthCheckURL) //nolint
 		if err != nil {
 			// Wait 5 seconds before attempting again
 			time.Sleep(5 * time.Second)
@@ -75,7 +84,7 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
-	resp, err = http.Get(manifestURL) //nolint
+	resp, err = httpClient.Get(manifestURL) //nolint
 	require.NoError(s.T(), err)
 
 	body, err := io.ReadAll(resp.Body)
