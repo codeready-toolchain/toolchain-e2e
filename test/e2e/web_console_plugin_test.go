@@ -42,12 +42,13 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	hostAwait := s.Host()
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
-	response := NewSignupRequest(s.Awaitilities).
+	signupRequest := NewSignupRequest(s.Awaitilities).
 		Username("consoletest").
 		Email("consoletest@redhat.com").
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
-		Execute(s.T()).GetSignupResponse(s.T())
+		Execute(s.T())
+	response := signupRequest.GetSignupResponse(s.T())
 
 	// Response should contain a ConsoleURL with a value something like:
 	// https://console-openshift-console.apps.99b682869228f7464338-mgmt.ci.hypershift.devcluster.openshift.com/
@@ -73,12 +74,16 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	var resp *http.Response
 	retries := 0
 
+	req, err := http.NewRequest("GET", healthCheckURL, nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", signupRequest.GetToken())
+
 	for retries < 5 {
-		resp, err = httpClient.Get(healthCheckURL) //nolint
+		resp, err = httpClient.Do(req) //nolint
 		if err != nil {
-			// Wait 5 seconds before attempting again
-			time.Sleep(5 * time.Second)
+			// Wait an increasing amount of time before attempting again
 			retries++
+			time.Sleep(time.Duration(retries*5) * time.Second)
 			continue
 		}
 		break
@@ -87,7 +92,11 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
-	resp, err = httpClient.Get(manifestURL) //nolint
+	req, err = http.NewRequest("GET", manifestURL, nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", signupRequest.GetToken())
+
+	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
 
 	body, err := io.ReadAll(resp.Body)
