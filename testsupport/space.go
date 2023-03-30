@@ -100,7 +100,17 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 
 	// create the actual space
 	space := NewSpace(t, awaitilities, opts...)
-	space, spaceBinding, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin")
+	space, spaceBinding, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin", TerminatingSpace())
+	space, err = awaitilities.Host().WaitForSpace(t, space.Name,
+		wait.UntilSpaceHasAnyTargetClusterSet(),
+		wait.UntilSpaceHasAnyTierNameSet())
+	require.NoError(t, err)
+	// let's see if spacebinding was provisioned as expected
+	spaceBinding, err = awaitilities.Host().WaitForSpaceBinding(t, mur.Name, space.Name,
+		wait.UntilSpaceBindingHasMurName(mur.Name),
+		wait.UntilSpaceBindingHasSpaceName(space.Name),
+		wait.UntilSpaceBindingHasSpaceRole("admin"),
+	)
 	require.NoError(t, err)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
 	// before we can check the resources (roles and rolebindings)
