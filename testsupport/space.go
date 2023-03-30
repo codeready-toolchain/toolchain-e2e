@@ -100,7 +100,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 
 	// create the actual space
 	space := NewSpace(t, awaitilities, opts...)
-	space, _, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin", TerminatingSpace())
+	space, _, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin")
 	require.NoError(t, err)
 	space, err = awaitilities.Host().WaitForSpace(t, space.Name,
 		wait.UntilSpaceHasAnyTargetClusterSet(),
