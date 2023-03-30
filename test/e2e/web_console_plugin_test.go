@@ -97,6 +97,7 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	req.Header.Set("Authorization", signupRequest.GetToken())
 
 	resp, err = httpClient.Do(req)
+	defer resp.Body.Close()
 	require.NoError(s.T(), err)
 
 	body, err := io.ReadAll(resp.Body)
