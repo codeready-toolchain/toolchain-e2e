@@ -1180,7 +1180,7 @@ func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 	}
 }
 
-func numberOfLimitRanges(number int) namespaceObjectsCheck {
+func numberOfLimitRanges(number int) namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		err := memberAwait.WaitForExpectedNumberOfResources(t, ns.Name, "LimitRanges", number, func() (int, error) {
 			limitRanges := &corev1.LimitRangeList{}
