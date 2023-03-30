@@ -57,10 +57,13 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	manifestURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/plugin-manifest.json")
 	healthCheckURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/status")
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
+	var tr *http.Transport
+	{ // #nosec G402
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
 	}
 
 	httpClient := &http.Client{Transport: tr}
