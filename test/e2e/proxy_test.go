@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -683,7 +682,7 @@ func (w *wsWatcher) Start() func() {
 
 	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
 	if errors.Is(err, websocket.ErrBadHandshake) {
-		r, _ := ioutil.ReadAll(resp.Body)
+		r, _ := io.ReadAll(resp.Body)
 		defer func() {
 			resp.Body.Close()
 		}()

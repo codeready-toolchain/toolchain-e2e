@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 type webConsolePluginTest struct {
@@ -53,8 +54,28 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 
 	consoleURL := response["consoleURL"]
 	manifestURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/plugin-manifest.json")
+	healthCheckURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/status")
 
-	resp, err := http.Get(manifestURL)
+	// First perform a health check - we will attempt up to 5 times to invoke the health check endpoint without error
+	var err error
+	var resp *http.Response
+	retries := 0
+
+	for retries < 5 {
+		resp, err = http.Get(healthCheckURL) //nolint
+		if err != nil {
+			// Wait 5 seconds before attempting again
+			time.Sleep(5 * time.Second)
+			retries++
+			continue
+		}
+		break
+	}
+
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+
+	resp, err = http.Get(manifestURL) //nolint
 	require.NoError(s.T(), err)
 
 	body, err := io.ReadAll(resp.Body)

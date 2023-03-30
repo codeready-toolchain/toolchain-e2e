@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -365,7 +364,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)
 	defer Close(t, resp)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)
@@ -382,7 +381,7 @@ func Close(t *testing.T, resp *http.Response) {
 	if resp == nil {
 		return
 	}
-	_, err := ioutil.ReadAll(resp.Body)
+	_, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	err = resp.Body.Close()
 	require.NoError(t, err)

@@ -3,7 +3,6 @@ package configuration
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -122,7 +121,7 @@ func getKubeconfigFile(kubeconfigPath string) (*os.File, error) {
 }
 
 func newKubeConfig(r io.Reader) (clientcmd.ClientConfig, error) {
-	d, err := ioutil.ReadAll(r)
+	d, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}

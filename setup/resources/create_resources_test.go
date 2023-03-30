@@ -3,7 +3,6 @@ package resources
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -90,7 +89,7 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 				}
 				cl := commontest.NewFakeClient(t, ns)
 				username := "user0001"
-				tmpFile, err := ioutil.TempFile(os.TempDir(), "setup-template-")
+				tmpFile, err := os.CreateTemp(os.TempDir(), "setup-template-")
 				require.NoError(t, err)
 				_, _ = tmpFile.WriteString(deployment)
 
