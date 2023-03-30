@@ -7,6 +7,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -46,10 +49,16 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 
 	// Response should contain a ConsoleURL with a value something like:
 	// https://console-openshift-console.apps.99b682869228f7464338-mgmt.ci.hypershift.devcluster.openshift.com/
-	fmt.Printf("#### response value: %s", response)
-
 	require.Contains(s.T(), response, "consoleURL")
 
 	consoleURL := response["consoleURL"]
-	fmt.Printf("#### Got Console URL: %s", consoleURL)
+	manifestURL := fmt.Sprintf("%s%s", consoleURL, "api/plugins/toolchain-member-web-console-plugin/plugin-manifest.json")
+
+	resp, err := http.Get(manifestURL)
+	require.NoError(s.T(), err)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+
+	require.True(s.T(), strings.HasPrefix(string(body), "{\n  \"name\": \"toolchain-member-web-console-plugin\","))
 }
