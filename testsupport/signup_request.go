@@ -141,7 +141,7 @@ func (r *SignupRequest) GetSignupResponse(t *testing.T) map[string]interface{} {
 
 	// Call the signup GET endpoint
 	response := invokeEndpoint(t, "GET", hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		r.token, "", r.requiredHTTPStatus, queryParams)
+		r.token, "", http.StatusOK, queryParams)
 
 	return response
 }

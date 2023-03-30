@@ -48,8 +48,8 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	// https://console-openshift-console.apps.99b682869228f7464338-mgmt.ci.hypershift.devcluster.openshift.com/
 	fmt.Printf("#### response value: %s", response)
 
-	require.Contains(s.T(), response, "ConsoleURL")
+	require.Contains(s.T(), response, "consoleURL")
 
-	consoleURL := response["ConsoleURL"]
+	consoleURL := response["consoleURL"]
 	fmt.Printf("#### Got Console URL: %s", consoleURL)
 }
