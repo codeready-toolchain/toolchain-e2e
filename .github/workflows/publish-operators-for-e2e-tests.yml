@@ -64,7 +64,7 @@ jobs:
         python-version: '3.x'
 
     - name: Prepare tools
-      uses: codeready-toolchain/toolchain-cicd/prepare-tools-action@master
+      uses: codeready-toolchain/mfrancisc/prepare-tools-action@crt1740
 
     # Execute composite action using values from PR event
     # Is executed only for PR events - in that case the comment field is empty
