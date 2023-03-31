@@ -9,8 +9,8 @@ ENV LANG=en_US.utf8 \
     PATH=$PATH:$GOPATH/bin \
     GIT_COMMITTER_NAME=devtools \
     GIT_COMMITTER_EMAIL=devtools@redhat.com \
-    GOLANG_VERSION=go1.17.13 \
-    GOLANG_SHA256=4cdd2bc664724dc7db94ad51b503512c5ae7220951cac568120f64f8e94399fc
+    GOLANG_VERSION=go1.19.7 \
+    GOLANG_SHA256=7a75720c9b066ae1750f6bcc7052aba70fa3813f4223199ee2a2315fd3eb533d
 
 ARG GO_PACKAGE_PATH=github.com/codeready-toolchain/toolchain-e2e
 
