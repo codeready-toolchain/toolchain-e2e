@@ -6,6 +6,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"io"
@@ -72,24 +73,20 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	// First perform a health check - we will attempt up to 5 times to invoke the health check endpoint without error
 	var err error
 	var resp *http.Response
-	retries := 0
 
 	req, err := http.NewRequest("GET", healthCheckURL, nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("Authorization", signupRequest.GetToken())
 
-	for retries < 5 {
+	pollResult, err := testutil.Poll(time.Second*5, time.Minute, func() (bool, error) {
 		resp, err = httpClient.Do(req) //nolint
 		if err != nil {
-			// Wait an increasing amount of time before attempting again
-			retries++
-			time.Sleep(time.Duration(retries*5) * time.Second)
-			continue
+			return false, err
 		}
-		break
-	}
-
+		return true, nil
+	})
 	require.NoError(s.T(), err)
+	require.True(s.T(), pollResult)
 	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 
 	req, err = http.NewRequest("GET", manifestURL, nil)
