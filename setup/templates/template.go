@@ -2,7 +2,7 @@ package templates
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -19,7 +19,7 @@ import (
 )
 
 func GetTemplateFromFile(filepath string) (*templatev1.Template, error) {
-	content, err := ioutil.ReadFile(filepath)
+	content, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}

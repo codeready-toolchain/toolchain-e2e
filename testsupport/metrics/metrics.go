@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -39,7 +39,7 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	metrics, err = ioutil.ReadAll(resp.Body)
+	metrics, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, err
 	}

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
@@ -67,7 +66,7 @@ func TestHealth(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NotNil(t, body)
 
@@ -112,7 +111,7 @@ func TestWoopra(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NotNil(t, body)
 
@@ -151,7 +150,7 @@ func TestAuthConfig(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NotNil(t, body)
 	})
@@ -178,7 +177,7 @@ func TestSignupFails(t *testing.T) {
 		// Retrieve unauthorized http status code.
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NotNil(t, body)
 
@@ -224,7 +223,7 @@ func TestSignupFails(t *testing.T) {
 		// Retrieve unauthorized http status code.
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NotNil(t, body)
 
