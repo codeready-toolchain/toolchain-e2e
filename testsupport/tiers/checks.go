@@ -441,17 +441,30 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
-					appstudioUserActionsRoleBinding(userName),
+					appstudioUserActionsRoleBinding(userName, "admin"),
 					appstudioViewRoleBinding(userName),
 				)
 				rolebindings += 2
 			}
-		case "viewer":
+		case "maintainer":
+			checks = append(checks, appstudioMaintainerUserActionsRole())
+			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "maintainer"),
 					appstudioViewRoleBinding(userName),
 				)
-				rolebindings++
+				rolebindings += 2
+			}
+		case "contributor":
+			checks = append(checks, appstudioContributorUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "contributor"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
 			}
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
@@ -1165,14 +1178,9 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 14)
+		assert.Len(t, role.Rules, 12)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
-					Verbs:     []string{"get", "list", "watch"},
-				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"applications", "components", "componentdetectionqueries"},
@@ -1181,27 +1189,17 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
+					Verbs:     []string{"*"},
 				},
 				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaseplans", "releaseplanadmissions"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
-				},
-				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
-				},
-				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokendataupdates"},
-					Verbs:     []string{"create"},
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
 					APIGroups: []string{"tekton.dev"},
@@ -1209,29 +1207,34 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
-					APIGroups: []string{""},
-					Resources: []string{"secrets"},
-					Verbs:     []string{"create", "delete"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"configmaps"},
-					Verbs:     []string{"create", "delete", "get", "list", "watch"},
-				},
-				{
 					APIGroups: []string{"results.tekton.dev"},
 					Resources: []string{"results", "records"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
-					APIGroups: []string{"singapore.open-cluster-management.io"},
-					Resources: []string{"registeredclusters"},
-					Verbs:     []string{"create", "get", "list", "watch", "delete"},
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaseplans", "releaseplanadmissions"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"jvmbuildservice.io"},
 					Resources: []string{"jbsconfigs", "artifactbuilds"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups:     []string{""},
@@ -1248,14 +1251,185 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	}
 }
 
-func appstudioUserActionsRoleBinding(userName string) spaceRoleObjectsCheck {
+func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rb, err := memberAwait.WaitForRoleBinding(t, ns, fmt.Sprintf("appstudio-%s-actions-user", userName))
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 13)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"integrationtestscenarios"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releases", "releasestrategies", "releaseplans"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releaseplanadmissions"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+	}
+}
+
+func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 13)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"integrationtestscenarios"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releases", "releasestrategies", "releaseplans"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releaseplanadmissions"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+	}
+}
+
+func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rbName := ""
+		roleName := ""
+		if role == "admin" {
+			roleName = "appstudio-user-actions"
+			rbName = fmt.Sprintf("appstudio-%s-actions-user", userName)
+		} else {
+			roleName = fmt.Sprintf("appstudio-%s-user-actions", role)
+			rbName = fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
+		}
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, rbName)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userName, rb.Subjects[0].Name)
-		assert.Equal(t, "appstudio-user-actions", rb.RoleRef.Name)
+		assert.Equal(t, roleName, rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
