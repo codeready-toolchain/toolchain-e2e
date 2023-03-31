@@ -317,7 +317,7 @@ func TestSubSpace(t *testing.T) {
 
 		t.Run("we update role in parentSpaceBinding and expect change to be reflected in subSpace", func(t *testing.T) {
 			// given
-			// the parentSpace role was "downgraded" to maintainer 
+			// the parentSpace role was "downgraded" to maintainer
 			parentSpaceBindings.Spec.SpaceRole = "maintainer"
 
 			// when
