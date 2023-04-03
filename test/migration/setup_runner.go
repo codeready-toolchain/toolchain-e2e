@@ -68,7 +68,7 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 	err := hostAwait.Client.Create(context.TODO(), space)
 	require.NoError(t, err)
 
-	test.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, false)
+	test.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, r.WithCleanup)
 
 	_, err = hostAwait.WaitForSpace(t, space.Name,
 		wait.UntilSpaceHasConditions(test.Provisioned()))
