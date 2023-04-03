@@ -9,6 +9,9 @@ spec:
       defaultSpaceTier: 'appstudio'
     automaticApproval:
       enabled: true
+    capacityThresholds:
+      resourceCapacityThreshold:
+        defaultThreshold: 90
     deactivation:
       deactivationDomainsExcluded: '@redhat.com'
     spaceConfig:
