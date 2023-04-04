@@ -2229,6 +2229,7 @@ func EncodeUserIdentifier(subject string) string {
 // We are creating both of them (Space and SpaceBinding) at the same time , with polling logic, so that we mitigate the issue with spacecleanup_controller deleting the Space before we create it's SpaceBinding.
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
+	var spaceCreated *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		if err := a.CreateWithCleanup(t, space); err != nil {
@@ -2244,27 +2245,27 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			}
 		}
 		// let's see if space was provisioned as expected
-		space, err = a.WaitForSpace(t, space.Name)
+		spaceCreated, err = a.WaitForSpace(t, space.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		if util.IsBeingDeleted(space) {
+		if util.IsBeingDeleted(spaceCreated) {
 			// space is in terminating let's wait until is gone and recreate it ...
-			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, space.Name)
+			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, spaceCreated.Name)
 		}
 		// let's see if spacebinding was provisioned as expected
-		spaceBinding, err = a.WaitForSpaceBinding(t, mur.Name, space.Name)
+		spaceBinding, err = a.WaitForSpaceBinding(t, mur.Name, spaceCreated.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		t.Logf("Space %s and SpaceBinding %s created", space.Name, spaceBinding.Name)
+		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
 		return true, nil
 	})
-	return space, spaceBinding, err
+	return spaceCreated, spaceBinding, err
 }
