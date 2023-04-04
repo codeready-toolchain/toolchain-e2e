@@ -14,6 +14,8 @@ spec:
         defaultThreshold: 90
     deactivation:
       deactivationDomainsExcluded: '@redhat.com'
+    spaceConfig:
+      spaceRequestEnabled: true
     registrationService:
       environment: 'dev'
       verification:
