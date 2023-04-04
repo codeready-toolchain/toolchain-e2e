@@ -1763,6 +1763,19 @@ func UntilSpaceHasTier(expected string) SpaceWaitCriterion {
 	}
 }
 
+// UntilSpaceHasTargetClusterRoles returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected target cluster roles set in its Spec
+func UntilSpaceHasTargetClusterRoles(expected []string) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return reflect.DeepEqual(actual.Spec.TargetClusterRoles, expected)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected target cluster roles to match:\n%s", Diff(expected, actual.Spec.TargetClusterRoles))
+		},
+	}
+}
+
 // UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
 // Space has exactly all the given status conditions
 func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitCriterion {
@@ -1802,6 +1815,19 @@ func UntilSpaceHasConditionForTime(expected toolchainv1alpha1.Condition, duratio
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected conditions to match:\n%s\nAnd having the LastTransitionTime %s or older", Diff(expected, actual.Status.Conditions), time.Now().Add(-duration).String())
+		},
+	}
+}
+
+// UntilSpaceHasAnyProvisionedNamespaces returns a `SpaceWaitCriterion` which checks that the given
+// Space has any `status.ProvisionedNamespaces` set
+func UntilSpaceHasAnyProvisionedNamespaces() SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return len(actual.Status.ProvisionedNamespaces) > 0
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected provisioned namespaces not to be empty. Actual Space provisioned namespaces:\n%v", actual)
 		},
 	}
 }
@@ -1941,6 +1967,37 @@ func matchSpaceBindingWaitCriterion(actual *toolchainv1alpha1.SpaceBinding, crit
 		}
 	}
 	return true
+}
+
+// WaitForSubSpace waits until the space provisioned by a SpaceRequest is available with the provided criteria, if any
+func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRequestNamespace, parentSpaceName string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
+	var subSpace *toolchainv1alpha1.Space
+	labels := map[string]string{
+		toolchainv1alpha1.SpaceRequestLabelKey:          spaceRequestName,
+		toolchainv1alpha1.SpaceRequestNamespaceLabelKey: spaceRequestNamespace,
+		toolchainv1alpha1.ParentSpaceLabelKey:           parentSpaceName,
+	}
+
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+		// retrieve the subSpace from the host namespace
+		spaceList := &toolchainv1alpha1.SpaceList{}
+		if err = a.Client.List(context.TODO(), spaceList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		if len(spaceList.Items) == 0 {
+			return false, nil
+		}
+		if len(spaceList.Items) > 1 {
+			return false, fmt.Errorf("more than 1 subSpaces for SpaceRequest '%s'", spaceRequestName)
+		}
+		subSpace = &spaceList.Items[0]
+		return matchSpaceWaitCriterion(subSpace, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceWaitCriterionDiffs(t, subSpace, criteria...)
+	}
+	return subSpace, err
 }
 
 // WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
@@ -2172,6 +2229,7 @@ func EncodeUserIdentifier(subject string) string {
 // We are creating both of them (Space and SpaceBinding) at the same time , with polling logic, so that we mitigate the issue with spacecleanup_controller deleting the Space before we create it's SpaceBinding.
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
+	var spaceCreated *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		if err := a.CreateWithCleanup(t, space); err != nil {
@@ -2187,27 +2245,27 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			}
 		}
 		// let's see if space was provisioned as expected
-		space, err = a.WaitForSpace(t, space.Name)
+		spaceCreated, err = a.WaitForSpace(t, space.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		if util.IsBeingDeleted(space) {
+		if util.IsBeingDeleted(spaceCreated) {
 			// space is in terminating let's wait until is gone and recreate it ...
-			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, space.Name)
+			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, spaceCreated.Name)
 		}
 		// let's see if spacebinding was provisioned as expected
-		spaceBinding, err = a.WaitForSpaceBinding(t, mur.Name, space.Name)
+		spaceBinding, err = a.WaitForSpaceBinding(t, mur.Name, spaceCreated.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		t.Logf("Space %s and SpaceBinding %s created", space.Name, spaceBinding.Name)
+		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
 		return true, nil
 	})
-	return space, spaceBinding, err
+	return spaceCreated, spaceBinding, err
 }
