@@ -10,8 +10,13 @@ spec:
       durationBeforeChangeTierRequestDeletion: '5s'
     automaticApproval:
       enabled: true
+    capacityThresholds:
+      resourceCapacityThreshold:
+        defaultThreshold: 90
     deactivation:
       deactivationDomainsExcluded: '@redhat.com'
+    spaceConfig:
+      spaceRequestEnabled: true
     environment: 'e2e-tests'
     notifications:
       durationBeforeNotificationDeletion: '5s'

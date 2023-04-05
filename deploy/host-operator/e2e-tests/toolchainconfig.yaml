@@ -23,6 +23,8 @@ spec:
           twilioAccountSID: 'twilio.account.sid'
           twilioAuthToken: 'twilio.auth.token'
           twilioFromNumber: 'twilio.from_number'
+    spaceConfig:
+      spaceRequestEnabled: true
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
     toolchainStatus:

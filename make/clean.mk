@@ -11,6 +11,7 @@ clean:
 ##    * all usersignups including user namespaces
 clean-users:
 	$(Q)-oc delete usersignups --all --all-namespaces
+	$(Q)-oc delete spacerequests --all --all-namespaces
 	$(Q)-oc delete spaces --all --all-namespaces
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
 
