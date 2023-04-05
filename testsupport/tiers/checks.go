@@ -527,8 +527,10 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 		switch role {
 		case "admin":
 			// no permissions granted
-		case "viewer":
+		case "maintainer":
 			// no permissions granted
+		case "contributor":
+			//no permissions granted
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
 		}
