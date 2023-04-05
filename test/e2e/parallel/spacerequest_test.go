@@ -106,6 +106,45 @@ func TestCreateSpaceRequest(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("subSpace has parentSpace target cluster when target roles are empty", func(t *testing.T) {
+		// when
+		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+			WithSpecTierName("appstudio"))
+
+		// then
+		// check for the subSpace creation with same target cluster as parent one
+		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+			UntilSpaceHasTargetClusterRoles([]string(nil)),                     // empty target cluster roles
+			UntilSpaceHasStatusTargetCluster(parentSpace.Status.TargetCluster), // subSpace should have same target cluster as parent space
+			UntilSpaceHasTier("appstudio"),
+			UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
+		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint))
+		require.NoError(t, err)
+
+		t.Run("delete space request", func(t *testing.T) {
+			// now, delete the SpaceRequest and expect that the Space will be deleted as well,
+			// along with its associated namespace
+
+			// when
+			err := memberAwait.Client.Delete(context.TODO(), spaceRequest)
+
+			// then
+			// subSpace should be deleted as well
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio")
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
+			require.NoError(t, err)
+		})
+	})
 }
 
 func TestUpdateSpaceRequest(t *testing.T) {
