@@ -97,16 +97,7 @@ Automatic approval means enabling automatic approval in the Dev Sandbox configur
 . Enable automatic approval
 +
 ```
-cat <<EOF | oc apply -f -
-apiVersion: toolchain.dev.openshift.com/v1alpha1
-kind: HostOperatorConfig
-metadata:
-  name: config
-  namespace: <host operator namespace>
-spec:
-  automaticApproval:
-    enabled: true
-EOF
+oc patch ToolchainConfig -p '{"spec":{"host":{"automaticApproval":{"enabled":true}}}}' --type=merge config -n <host operator namespace>
 ```
 
 === Using the Sandbox

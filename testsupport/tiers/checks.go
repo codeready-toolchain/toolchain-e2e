@@ -26,6 +26,7 @@ const (
 	// tier names
 	advanced           = "advanced"
 	appstudio          = "appstudio"
+	appstudioEnv       = "appstudio-env"
 	base               = "base"
 	base1ns            = "base1ns"
 	base1ns6didler     = "base1ns6didler"
@@ -75,6 +76,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
+
+	case appstudioEnv:
+		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
 
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
@@ -195,7 +199,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -216,7 +220,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "14Gi", "1750m", "14Gi"),
 		resourceQuotaComputeBuild("20", "10Gi", "2", "10Gi"),
-		resourceQuotaStorage("15Gi", "15Gi", "15Gi", "5"),
+		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
 		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
@@ -318,7 +322,7 @@ type baselargeTierChecks struct {
 
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -337,7 +341,7 @@ type baseextendedidlingTierChecks struct {
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "15Gi"),
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -366,7 +370,7 @@ type advancedTierChecks struct {
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "15Gi"),
+		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -441,17 +445,30 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
-					appstudioUserActionsRoleBinding(userName),
+					appstudioUserActionsRoleBinding(userName, "admin"),
 					appstudioViewRoleBinding(userName),
 				)
 				rolebindings += 2
 			}
-		case "viewer":
+		case "maintainer":
+			checks = append(checks, appstudioMaintainerUserActionsRole())
+			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "maintainer"),
 					appstudioViewRoleBinding(userName),
 				)
-				rolebindings++
+				rolebindings += 2
+			}
+		case "contributor":
+			checks = append(checks, appstudioContributorUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "contributor"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
 			}
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
@@ -485,12 +502,72 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		idlers(0, ""))
 }
 
+type appstudioEnvTierChecks struct {
+	tierName string
+}
+
+func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
+		zeroResourceQuotaComputeBuild(),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
+		limitRange("2", "2Gi", "10m", "256Mi"),
+		numberOfLimitRanges(1),
+		namespaceManagerSA(),
+		namespaceManagerSaEditRoleBinding(),
+		gitOpsServiceLabel(),
+	}
+
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	return checks
+}
+
+func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
+	for role := range spaceRoles {
+		switch role {
+		case "admin":
+			// no permissions granted
+		case "maintainer":
+			// no permissions granted
+		case "contributor":
+			//no permissions granted
+		default:
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
+		}
+	}
+	// count the roles, rolebindings
+	return []spaceRoleObjectsCheck{
+		numberOfToolchainRoles(0),
+		numberOfToolchainRoleBindings(1), // 1 for `namespace-manager`
+	}, nil
+}
+
+func (a *appstudioEnvTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
+	verifyNsTypes(t, a.tierName, templateRefs, "env")
+	return templateRefs
+}
+
+func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeployments("150"),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(0, "env"))
+}
+
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
 func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expectedNSTypes ...string) {
 	require.Len(t, templateRefs.Namespaces, len(expectedNSTypes))
 	actualNSTypes := make([]string, len(expectedNSTypes))
 	for i, templateRef := range templateRefs.Namespaces {
-		actualTier, actualType, _, err := wait.Split(templateRef)
+		actualTier, actualType, err := wait.TierAndType(templateRef)
 		require.NoError(t, err)
 		require.Equal(t, tier, actualTier)
 		actualNSTypes[i] = actualType
@@ -643,6 +720,26 @@ func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest 
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsMemory], err = resource.ParseQuantity(memoryRequest)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "compute-build", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func zeroResourceQuotaComputeBuild() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
+			Hard:   make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard[corev1.ResourceCPU], err = resource.ParseQuantity("0")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourceMemory], err = resource.ParseQuantity("0")
+		require.NoError(t, err)
+		spec.Hard[corev1.ResourcePods], err = resource.ParseQuantity("0")
 		require.NoError(t, err)
 
 		criteria := resourceQuotaMatches(ns.Name, "compute-build", spec)
@@ -1098,7 +1195,7 @@ func numberOfToolchainRoleBindings(number int) spaceRoleObjectsCheck {
 	}
 }
 
-func numberOfLimitRanges(number int) namespaceObjectsCheck {
+func numberOfLimitRanges(number int) namespaceObjectsCheck { // nolint:unparam
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		err := memberAwait.WaitForExpectedNumberOfResources(t, ns.Name, "LimitRanges", number, func() (int, error) {
 			limitRanges := &corev1.LimitRangeList{}
@@ -1165,14 +1262,9 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions")
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 14)
+		assert.Len(t, role.Rules, 12)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
-					Verbs:     []string{"get", "list", "watch"},
-				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"applications", "components", "componentdetectionqueries"},
@@ -1181,27 +1273,17 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
+					Verbs:     []string{"*"},
 				},
 				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaseplans", "releaseplanadmissions"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
-				},
-				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete"},
-				},
-				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"spiaccesstokendataupdates"},
-					Verbs:     []string{"create"},
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
 					APIGroups: []string{"tekton.dev"},
@@ -1209,29 +1291,34 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
-					APIGroups: []string{""},
-					Resources: []string{"secrets"},
-					Verbs:     []string{"create", "delete"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"configmaps"},
-					Verbs:     []string{"create", "delete", "get", "list", "watch"},
-				},
-				{
 					APIGroups: []string{"results.tekton.dev"},
 					Resources: []string{"results", "records"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
-					APIGroups: []string{"singapore.open-cluster-management.io"},
-					Resources: []string{"registeredclusters"},
-					Verbs:     []string{"create", "get", "list", "watch", "delete"},
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaseplans", "releaseplanadmissions"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"jvmbuildservice.io"},
 					Resources: []string{"jbsconfigs", "artifactbuilds"},
-					Verbs:     []string{"create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests", "spiaccesstokendataupdates"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups:     []string{""},
@@ -1248,14 +1335,185 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	}
 }
 
-func appstudioUserActionsRoleBinding(userName string) spaceRoleObjectsCheck {
+func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rb, err := memberAwait.WaitForRoleBinding(t, ns, fmt.Sprintf("appstudio-%s-actions-user", userName))
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 13)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"integrationtestscenarios"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releases", "releasestrategies", "releaseplans"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releaseplanadmissions"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests", "spiaccesstokendataupdates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+	}
+}
+
+func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions")
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 13)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"integrationtestscenarios"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releases", "releasestrategies", "releaseplans"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releaseplanadmissions"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+	}
+}
+
+func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rbName := ""
+		roleName := ""
+		if role == "admin" {
+			roleName = "appstudio-user-actions"
+			rbName = fmt.Sprintf("appstudio-%s-actions-user", userName)
+		} else {
+			roleName = fmt.Sprintf("appstudio-%s-user-actions", role)
+			rbName = fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
+		}
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, rbName)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "User", rb.Subjects[0].Kind)
 		assert.Equal(t, userName, rb.Subjects[0].Name)
-		assert.Equal(t, "appstudio-user-actions", rb.RoleRef.Name)
+		assert.Equal(t, roleName, rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
@@ -1293,6 +1551,20 @@ func memberOperatorSaReadRoleBinding() namespaceObjectsCheck {
 	}
 }
 
+func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, "namespace-manager")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+		assert.Equal(t, "namespace-manager", rb.Subjects[0].Name)
+		assert.Equal(t, "edit", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
 func toolchainSaReadRole() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
 		role, err := memberAwait.WaitForRole(t, ns, "toolchain-sa-read")
@@ -1314,5 +1586,13 @@ func toolchainSaReadRole() namespaceObjectsCheck {
 
 		assert.Equal(t, expected.Rules, role.Rules)
 		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func namespaceManagerSA() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		serviceAccount, err := memberAwait.WaitForServiceAccount(t, ns.Name, "namespace-manager")
+		require.NoError(t, err)
+		assert.Equal(t, "codeready-toolchain", serviceAccount.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
 }
