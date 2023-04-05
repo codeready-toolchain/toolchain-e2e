@@ -143,7 +143,10 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 
 	resp, err = httpClient.Do(req)
 	require.NoError(s.T(), err)
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		require.NoError(s.T(), err)
+	}(resp.Body)
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(s.T(), err)
