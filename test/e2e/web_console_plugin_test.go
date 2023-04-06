@@ -97,13 +97,14 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 		},
 	}
 
+	reloaded, err := memberAwait.WaitForRouteToBeAvailable(s.T(), route.Namespace, route.Name, "/")
+	require.NoError(s.T(), err, "route not available", route)
+
 	err = memberAwait.Create(s.T(), route)
 	require.NoError(s.T(), err)
 
-	consoleURL := response["consoleURL"].(string)
-
-	// From the Console URL we should be able to construct the Route URL
-	routeURL := strings.Replace(consoleURL, "console-openshift-console", "consolepluginroute-toolchain-member-operator", 1)
+	// Construct the routeURL from the route host
+	routeURL := reloaded.Spec.Host + "/"
 
 	manifestURL := fmt.Sprintf("%s%s", routeURL, "plugin-manifest.json")
 	healthCheckURL := fmt.Sprintf("%s%s", routeURL, "status")
