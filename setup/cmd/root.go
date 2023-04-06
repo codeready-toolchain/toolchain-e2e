@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -157,7 +156,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		if err != nil {
 			term.Fatalf(err, "invalid template file: '%s'", absPath)
 		}
-		_, err = ioutil.ReadFile(absPath)
+		_, err = os.ReadFile(absPath)
 		if err != nil {
 			term.Fatalf(err, "invalid template file: '%s'", absPath)
 		}

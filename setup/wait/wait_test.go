@@ -115,7 +115,7 @@ func TestHasSubscriptionWithCondition(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t) // csv does not exist
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -186,7 +186,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -259,7 +259,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t) // csv does not exist
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -329,7 +329,7 @@ func TestForCSVWithCriteria(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
