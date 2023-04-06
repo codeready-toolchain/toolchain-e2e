@@ -6,13 +6,13 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/coreos/etcd/pkg/testutil"
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	wait2 "k8s.io/apimachinery/pkg/util/wait"
 	"net/http"
 	"strings"
 	"testing"
@@ -120,35 +120,32 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	httpClient := &http.Client{Transport: tr}
 
 	// First perform a health check - we will attempt up to 5 times to invoke the health check endpoint without error
-	var resp *http.Response
+	var healthCheckResponse *http.Response
 
 	req, err := http.NewRequest("GET", healthCheckURL, nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("Authorization", signupRequest.GetToken())
 
-	pollResult, err := testutil.Poll(time.Second*5, time.Minute, func() (bool, error) {
-		resp, err = httpClient.Do(req) //nolint
+	err = wait2.Poll(time.Second*5, time.Minute, func() (bool, error) {
+		healthCheckResponse, err = httpClient.Do(req) //nolint
 		if err != nil {
 			return false, err
 		}
+		defer healthCheckResponse.Body.Close()
 		return true, nil
 	})
 	require.NoError(s.T(), err)
-	require.True(s.T(), pollResult)
-	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	require.Equal(s.T(), http.StatusOK, healthCheckResponse.StatusCode)
 
 	req, err = http.NewRequest("GET", manifestURL, nil)
 	require.NoError(s.T(), err)
 	req.Header.Set("Authorization", signupRequest.GetToken())
 
-	resp, err = httpClient.Do(req)
+	manifestResponse, err := httpClient.Do(req)
 	require.NoError(s.T(), err)
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		require.NoError(s.T(), err)
-	}(resp.Body)
+	defer manifestResponse.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(manifestResponse.Body)
 	require.NoError(s.T(), err)
 
 	require.True(s.T(), strings.HasPrefix(string(body), "{\n  \"name\": \"toolchain-member-web-console-plugin\","))
