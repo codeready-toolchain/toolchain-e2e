@@ -136,7 +136,7 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 		return true, nil
 	})
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), http.StatusOK, healthCheckResponse.StatusCode)
+	require.Equal(s.T(), http.StatusOK, healthCheckResponse.StatusCode, "error polling health check endpoint", route)
 
 	req, err = http.NewRequest("GET", manifestURL, nil)
 	require.NoError(s.T(), err)
