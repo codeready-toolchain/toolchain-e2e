@@ -97,11 +97,11 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 		},
 	}
 
-	reloaded, err := memberAwait.WaitForRouteToBeAvailable(s.T(), route.Namespace, route.Name, "/")
-	require.NoError(s.T(), err, "route not available", route)
-
 	err = memberAwait.Create(s.T(), route)
 	require.NoError(s.T(), err)
+
+	reloaded, err := memberAwait.WaitForRouteToBeAvailable(s.T(), route.Namespace, route.Name, "/status")
+	require.NoError(s.T(), err, "route not available", route)
 
 	// Construct the routeURL from the route host
 	routeURL := reloaded.Spec.Host + "/"
