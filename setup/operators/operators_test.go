@@ -26,7 +26,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 		t.Run("operator not installed", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
 					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
 					return nil
@@ -37,7 +37,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 					kialiCSV.DeepCopyInto(csv)
 					return nil
 				}
-				return cl.Client.Get(ctx, key, obj)
+				return cl.Client.Get(ctx, key, obj, opts...)
 			}
 
 			// when
@@ -72,14 +72,14 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
 			count := 0
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
 					if count > 1 { // ignore the first call because it's called from the applyclient
 						return fmt.Errorf("Test client error")
 					}
 					count++
 				}
-				return cl.Client.Get(ctx, key, obj)
+				return cl.Client.Get(ctx, key, obj, opts...)
 			}
 
 			// when
@@ -92,7 +92,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 		t.Run("error when getting csv", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
 					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
 					return nil
@@ -101,7 +101,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 				if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterServiceVersion" {
 					return fmt.Errorf("Test client error")
 				}
-				return cl.Client.Get(ctx, key, obj)
+				return cl.Client.Get(ctx, key, obj, opts...)
 			}
 
 			// when
@@ -114,7 +114,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 		t.Run("csv has wrong phase", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				if sub, ok := obj.(*v1alpha1.Subscription); ok {
 					sub.Status.CurrentCSV = "kiali-operator.v1.24.7" // set CurrentCSV to simulate a good subscription
 					return nil
@@ -125,7 +125,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 					kialiCSV.DeepCopyInto(csv)
 					return nil
 				}
-				return cl.Client.Get(ctx, key, obj)
+				return cl.Client.Get(ctx, key, obj, opts...)
 			}
 
 			// when

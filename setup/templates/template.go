@@ -3,8 +3,6 @@ package templates
 import (
 	"fmt"
 	"os"
-
-	//"io/ioutil"
 	"sync"
 	"time"
 
