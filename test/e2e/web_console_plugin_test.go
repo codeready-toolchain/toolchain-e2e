@@ -106,8 +106,8 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 	// Construct the routeURL from the route host
 	routeURL := reloaded.Spec.Host + "/"
 
-	manifestURL := fmt.Sprintf("%s%s", routeURL, "plugin-manifest.json")
-	healthCheckURL := fmt.Sprintf("%s%s", routeURL, "status")
+	manifestURL := fmt.Sprintf("%s%s%s", "https://", routeURL, "plugin-manifest.json")
+	healthCheckURL := fmt.Sprintf("%s%s%s", "https://", routeURL, "status")
 
 	var tr *http.Transport
 	{ // #nosec G402
