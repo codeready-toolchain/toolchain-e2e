@@ -87,9 +87,15 @@ func (m *MetricsAssertionHelper) captureBaselineValues(t *testing.T, memberClust
 func (m *MetricsAssertionHelper) WaitForMetricDelta(t *testing.T, family string, delta float64, labels ...string) {
 	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
 	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
-	key := m.baselineKey(t, string(family), labels...)
+	key := m.baselineKey(t, family, labels...)
 	adjustedValue := m.baselineValues[key] + delta
-	m.await.WaitUntiltMetricHasValue(t, string(family), adjustedValue, labels...)
+	m.await.WaitUntiltMetricHasValue(t, family, adjustedValue, labels...)
+}
+
+// WaitForMetricBaseline waits for the metric value to reach the baseline value back (to be used during the cleanup)
+func (m *MetricsAssertionHelper) WaitForMetricBaseline(t *testing.T, family string, labels ...string) {
+	key := m.baselineKey(t, family, labels...)
+	m.await.WaitUntiltMetricHasValue(t, family, m.baselineValues[key], labels...)
 }
 
 // generates a key to retain the baseline metric value, by joining the metric name and its labels.
