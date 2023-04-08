@@ -120,7 +120,7 @@ func (s *webConsolePluginTest) TestWebConsoleDeployedSuccessfully() {
 
 	httpClient := &http.Client{Transport: tr}
 
-	// First perform a health check - we will attempt up to 5 times to invoke the health check endpoint without error
+	// First perform a health check - if the health check doesn't pass within one minute then the test will fail
 	var healthCheckResponse *http.Response
 
 	req, err := http.NewRequest("GET", healthCheckURL, nil)
