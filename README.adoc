@@ -7,7 +7,7 @@ This repo contains e2e tests for https://github.com/codeready-toolchain/host-ope
 
 == Build
 
-Requires Go version 1.17.x (1.17.9 or higher) - download for your development environment https://golang.org/dl/[here].
+Requires Go version 1.19.x (1.19.7 or higher) - download for your development environment https://golang.org/dl/[here].
 
 Requires Operator SDK (operator-sdk) version 1.23.0 - follow the installation instructions https://sdk.operatorframework.io/docs/installation/#install-from-github-release[here].
 Make sure that the download URL (specified by the `OPERATOR_SDK_DL_URL` environment variable) is set to the correct version:

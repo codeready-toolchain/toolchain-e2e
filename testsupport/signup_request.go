@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -111,6 +110,39 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 // here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	return r.userSignup, r.mur
+}
+
+func (r *SignupRequest) GetSignupResponse(t *testing.T) map[string]interface{} {
+	hostAwait := r.awaitilities.Host()
+	userIdentity := &commonauth.Identity{
+		ID:       r.identityID,
+		Username: r.username,
+	}
+	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim(r.email)}
+	if r.originalSub != "" {
+		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
+	}
+	if r.userID != "" {
+		claims = append(claims, commonauth.WithUserIDClaim(r.userID))
+	}
+	if r.accountID != "" {
+		claims = append(claims, commonauth.WithAccountIDClaim(r.accountID))
+	}
+
+	var err error
+	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
+	require.NoError(t, err)
+
+	queryParams := map[string]string{}
+	if r.noSpace {
+		queryParams["no-space"] = "true"
+	}
+
+	// Call the signup GET endpoint
+	response := invokeEndpoint(t, "GET", hostAwait.RegistrationServiceURL+"/api/v1/signup",
+		r.token, "", http.StatusOK, queryParams)
+
+	return response
 }
 
 // EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
@@ -234,7 +266,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		queryParams["no-space"] = "true"
 	}
 
-	// Call the signup endpoint
+	// Call the signup POST endpoint
 	invokeEndpoint(t, "POST", hostAwait.RegistrationServiceURL+"/api/v1/signup",
 		r.token, "", r.requiredHTTPStatus, queryParams)
 
@@ -332,7 +364,7 @@ func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, r
 	require.NoError(t, err, "error posting signup request.\nmethod : %s\npath : %s\nauthToken : %s\nbody : %s", method, path, authToken, requestBody)
 	defer Close(t, resp)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.Equal(t, requiredStatus, resp.StatusCode, "unexpected response status with body: %s", body)
@@ -349,7 +381,7 @@ func Close(t *testing.T, resp *http.Response) {
 	if resp == nil {
 		return
 	}
-	_, err := ioutil.ReadAll(resp.Body)
+	_, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	err = resp.Body.Close()
 	require.NoError(t, err)

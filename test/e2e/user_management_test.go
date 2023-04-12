@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -604,7 +604,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 		defer Close(t, resp)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.NotNil(t, body)
 		assert.Equal(t, http.StatusForbidden, resp.StatusCode)
