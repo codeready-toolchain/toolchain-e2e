@@ -1426,8 +1426,8 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
-					Verbs:     []string{"get", "list", "watch"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"tekton.dev"},
@@ -1503,7 +1503,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
@@ -1584,7 +1584,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
