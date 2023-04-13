@@ -136,7 +136,7 @@ func (c *cleanTask) cleanObject() {
 					return false, err
 				}
 				// if the object was UserSignup, then let's check that the Space is deleted as well
-				if spaceDeleted, err := c.verifyMurDeleted(isUserSignup, userSignup, false); !spaceDeleted || err != nil {
+				if spaceDeleted, err := c.verifySpaceDeleted(isUserSignup, userSignup, false); !spaceDeleted || err != nil {
 					return false, err
 				}
 				return true, nil
