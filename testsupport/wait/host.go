@@ -2007,8 +2007,11 @@ func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName st
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (bool, error) {
 		// retrieve the SpaceBinding from the host namespace
 		var err error
-		if spaceBinding, err = a.GetSpaceBinding(murName, spaceName); err != nil {
+		if spaceBinding, err = a.GetSpaceBindingByListing(murName, spaceName); err != nil {
 			return false, err
+		}
+		if spaceBinding == nil {
+			return false, nil
 		}
 		return matchSpaceBindingWaitCriterion(spaceBinding, criteria...), nil
 	})
@@ -2019,8 +2022,8 @@ func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName st
 	return spaceBinding, err
 }
 
-// GetSpaceBinding lists all available SpaceBinding with the given MUR and Space names set as labels. If none is found, then it returns nil, nil
-func (a *HostAwaitility) GetSpaceBinding(murName, spaceName string) (*toolchainv1alpha1.SpaceBinding, error) {
+// GetSpaceBindingByListing lists all available SpaceBinding with the given MUR and Space names set as labels. If none is found, then it returns nil, nil
+func (a *HostAwaitility) GetSpaceBindingByListing(murName, spaceName string) (*toolchainv1alpha1.SpaceBinding, error) {
 	labels := map[string]string{
 		toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
 		toolchainv1alpha1.SpaceBindingSpaceLabelKey:            spaceName,
@@ -2267,7 +2270,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, spaceCreated.Name)
 		}
 		// let's see if SpaceBinding was provisioned as expected
-		spaceBinding, err = a.GetSpaceBinding(mur.Name, spaceCreated.Name)
+		spaceBinding, err = a.GetSpaceBindingByListing(mur.Name, spaceCreated.Name)
 		if err != nil {
 			return false, err
 		}
