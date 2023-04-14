@@ -312,6 +312,19 @@ func UntilSpaceRequestHasStatusTargetClusterURL(expected string) SpaceRequestWai
 	}
 }
 
+// UntilSpaceRequestHasNamespaceAccess returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has `status.NamespaceAccess` set
+func UntilSpaceRequestHasNamespaceAccess() SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return len(actual.Status.NamespaceAccess) > 0
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected namespaceAccess not to be empty. Actual SpaceRequest namespaceAccess:\n%v", actual)
+		},
+	}
+}
+
 // UntilSpaceRequestHasConditions returns a `SpaceRequestWaitCriterion` which checks that the given
 // SpaceRequest has exactly all the given status conditions
 func UntilSpaceRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceRequestWaitCriterion {
@@ -1409,6 +1422,24 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typ
 		}
 		if len(namespaceList.Items) < 1 {
 			return true, nil
+		}
+		return false, nil
+	})
+}
+
+// WaitUntilSecretDeleted waits until the secret with the given name is deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilSecretDeleted(t *testing.T, secret *corev1.Secret) error {
+	t.Logf("waiting until secret '%s' in namespace '%s' is deleted", secret.Name, secret.Namespace)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		err = a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: secret.Namespace,
+			Name:      secret.Name,
+		}, &corev1.Secret{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
 		}
 		return false, nil
 	})
