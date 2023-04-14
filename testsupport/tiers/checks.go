@@ -428,6 +428,13 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		memberOperatorSaReadRoleBinding(),
 		gitOpsServiceLabel(),
 		environment("development"),
+		resourceQuotaAppstudioCrds("512", "512", "512"),
+		resourceQuotaAppstudioCrdsBuild("512"),
+		resourceQuotaAppstudioCrdsGitops("512", "512", "512", "512", "512"),
+		resourceQuotaAppstudioCrdsIntegration("512", "512", "512"),
+		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
+		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
+		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -765,6 +772,143 @@ func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs
 
 		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "storage", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrds(applicationsLimit, componentsLimit, componentDetectionQueriesLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/applications.appstudio.redhat.com"], err = resource.ParseQuantity(applicationsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/components.appstudio.redhat.com"], err = resource.ParseQuantity(componentsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/componentdetectionqueries.appstudio.redhat.com"], err = resource.ParseQuantity(componentDetectionQueriesLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrdsBuild(buildpipelineselectorsLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/buildpipelineselectors.appstudio.redhat.com"], err = resource.ParseQuantity(buildpipelineselectorsLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds-build", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds-build", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrdsGitops(environmentsLimit, promotionrunsLimit, deploymenttargetclaimsLimit, deploymenttargetclassesLimit, deploymenttargetsLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/environments.appstudio.redhat.com"], err = resource.ParseQuantity(environmentsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/promotionruns.appstudio.redhat.com"], err = resource.ParseQuantity(promotionrunsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/deploymenttargetclaims.appstudio.redhat.com"], err = resource.ParseQuantity(deploymenttargetclaimsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/deploymenttargetclasses.appstudio.redhat.com"], err = resource.ParseQuantity(deploymenttargetclassesLimit)
+		require.NoError(t, err)
+		spec.Hard["count/deploymenttargets.appstudio.redhat.com"], err = resource.ParseQuantity(deploymenttargetsLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds-gitops", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds-gitops", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrdsIntegration(integrationtestscenariosLimit, snapshotsLimit, snapshotenvironmentbindingsLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/integrationtestscenarios.appstudio.redhat.com"], err = resource.ParseQuantity(integrationtestscenariosLimit)
+		require.NoError(t, err)
+		spec.Hard["count/snapshots.appstudio.redhat.com"], err = resource.ParseQuantity(snapshotsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/snapshotenvironmentbindings.appstudio.redhat.com"], err = resource.ParseQuantity(snapshotenvironmentbindingsLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds-integration", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds-integration", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrdsRelease(releaseplanadmissionsLimit, releaseplansLimit, releasesLimit, releasestrategiesLimit, internalrequestsLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/releaseplanadmissions.appstudio.redhat.com"], err = resource.ParseQuantity(releaseplanadmissionsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/releaseplans.appstudio.redhat.com"], err = resource.ParseQuantity(releaseplansLimit)
+		require.NoError(t, err)
+		spec.Hard["count/releases.appstudio.redhat.com"], err = resource.ParseQuantity(releasesLimit)
+		require.NoError(t, err)
+		spec.Hard["count/releasestrategies.appstudio.redhat.com"], err = resource.ParseQuantity(releasestrategiesLimit)
+		require.NoError(t, err)
+		spec.Hard["count/internalrequests.appstudio.redhat.com"], err = resource.ParseQuantity(internalrequestsLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds-release", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds-release", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrdsEnterpriseContract(enterprisecontractpoliciesLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/enterprisecontractpolicies.appstudio.redhat.com"], err = resource.ParseQuantity(enterprisecontractpoliciesLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds-enterprisecontract", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds-enterprisecontract", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaAppstudioCrdsSPI(spiaccesschecksLimit, spiaccesstokenbindingsLimit, spiaccesstokendataupdatesLimit, spiaccesstokensLimit, spifilecontentrequestsLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/spiaccesschecks.appstudio.redhat.com"], err = resource.ParseQuantity(spiaccesschecksLimit)
+		require.NoError(t, err)
+		spec.Hard["count/spiaccesstokenbindings.appstudio.redhat.com"], err = resource.ParseQuantity(spiaccesstokenbindingsLimit)
+		require.NoError(t, err)
+		spec.Hard["count/spiaccesstokendataupdates.appstudio.redhat.com"], err = resource.ParseQuantity(spiaccesstokendataupdatesLimit)
+		require.NoError(t, err)
+		spec.Hard["count/spiaccesstokens.appstudio.redhat.com"], err = resource.ParseQuantity(spiaccesstokensLimit)
+		require.NoError(t, err)
+		spec.Hard["count/spifilecontentrequests.appstudio.redhat.com"], err = resource.ParseQuantity(spifilecontentrequestsLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "appstudio-crds-spi", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "appstudio-crds-spi", criteria)
 		require.NoError(t, err)
 	}
 }
@@ -1282,8 +1426,8 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
-					Verbs:     []string{"get", "list", "watch"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
+					Verbs:     []string{"*"},
 				},
 				{
 					APIGroups: []string{"tekton.dev"},
@@ -1359,7 +1503,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
@@ -1440,7 +1584,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
-					Resources: []string{"gitopsdeployments"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{

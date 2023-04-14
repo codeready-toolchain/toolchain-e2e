@@ -1272,6 +1272,29 @@ func (a *MemberAwaitility) WaitForConfigMap(t *testing.T, namespace, name string
 	return cm, err
 }
 
+// WaitForSecret waits until a Secret with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForSecret(t *testing.T, namespace, name string) (*corev1.Secret, error) {
+	t.Logf("waiting for Secret '%s' in namespace '%s'", name, namespace)
+	var cm *corev1.Secret
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &corev1.Secret{}
+		if err = a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				// loop again
+				return false, nil
+			}
+			// exit
+			return false, err
+		}
+		cm = obj
+		return true, nil
+	})
+	return cm, err
+}
+
 // WaitForPods waits until "n" number of pods exist in the given namespace
 func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
 	t.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
