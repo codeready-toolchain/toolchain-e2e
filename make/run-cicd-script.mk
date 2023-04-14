@@ -1,5 +1,5 @@
 
-OWNER_AND_BRANCH_LOCATION=mfrancisc/ASC-258_sr_secret
+OWNER_AND_BRANCH_LOCATION=mfrancisc/toolchain-cicd/ASC-258_sr_secret
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 USE_LOCAL_SCRIPTS=false
 
