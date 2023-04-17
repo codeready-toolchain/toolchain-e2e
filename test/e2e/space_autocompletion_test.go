@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestAutomaticClusterAssignment(t *testing.T) {
@@ -65,12 +67,27 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
 		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
+			// given
+			presentSpaces := &toolchainv1alpha1.SpaceList{}
+			require.NoError(t, hostAwait.Client.List(context.TODO(), presentSpaces, client.InNamespace(hostAwait.Namespace)))
+			inMember1 := 0
+			t.Log("present Spaces:")
+			for _, space := range presentSpaces.Items {
+				t.Logf("Space: %s provisioned in %s", space.Name, space.Spec.TargetCluster)
+				if space.Spec.TargetCluster == memberAwait1.ClusterName {
+					inMember1++
+				}
+			}
+			status, err := hostAwait.WaitForToolchainStatus(t)
+			require.NoError(t, err)
+			t.Logf("status %+v", status)
+
 			// when
 			hostAwait.UpdateToolchainConfig(t,
 				testconfig.CapacityThresholds().
 					MaxNumberOfSpaces(
 						// increment max spaces only on member1
-						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
+						testconfig.PerMemberCluster(memberAwait1.ClusterName, inMember1+1),
 						testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),
 					),
 			)
