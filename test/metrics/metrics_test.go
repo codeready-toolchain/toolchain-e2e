@@ -32,6 +32,12 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
 	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		// wait until metrics are back to their respective baselines
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName)
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName)
+	})
+
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
@@ -96,6 +102,10 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
 	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName) // wait until counter is back to 0
+	})
+
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 
 	// when
@@ -179,6 +189,10 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
 	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName) // wait until counter is back to 0
+	})
+
 	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
 
 	for i := 1; i <= 2; i++ {
@@ -236,6 +250,12 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	// given
 	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		t.Log("waiting for metrics to get back to their baseline values...")
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName)  // wait until counter is back to 0
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName) // wait until counter is back to 0
+	})
+
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	// Create a new UserSignup and approve it manually
 	userSignup, _ := NewSignupRequest(awaitilities).
@@ -304,6 +324,11 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	VerifyHostMetricsService(t, hostAwait)
 	VerifyMemberMetricsService(t, memberAwait)
 	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		t.Log("waiting for metrics to get back to their baseline values...")
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName)  // wait until counter is back to 0
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName) // wait until counter is back to 0
+	})
 
 	// Create UserSignup
 	_, mur := NewSignupRequest(awaitilities).
