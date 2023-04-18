@@ -104,7 +104,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 ....
 ```
 
-NOTE: replace the values with the ones from you dev/test environment and REMEMBER TO REMOVE THE SNIPPET BEFORE COMMITTING THE CODE OR OPENING A PR IN GH :)
+NOTE: replace the values with the ones from your dev/test environment and REMEMBER TO REMOVE THE SNIPPET BEFORE COMMITTING THE CODE OR OPENING A PR IN GH :)
 
 
 ===== What To Do
