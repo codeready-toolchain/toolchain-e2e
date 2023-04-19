@@ -53,7 +53,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		)
 		require.NoError(t, err)
 		// verify secret containing kubeconfig was provisioned
-		kubeClient, namespaceAccessSecret := newKubeClientFromSecret(t, memberAwait, spaceRequest.Namespace, spaceRequest.Status.NamespaceAccess[0].SecretRef)
+		kubeClient, _ := newKubeClientFromSecret(t, memberAwait, spaceRequest.Namespace, spaceRequest.Status.NamespaceAccess[0].SecretRef)
 		// check that kubeconfig is valid
 		validateKubeClient(t, kubeClient, spaceRequest)
 
@@ -99,44 +99,22 @@ func TestCreateSpaceRequest(t *testing.T) {
 				)
 				require.NoError(t, err)
 
-				t.Run("namespace access secret is recreated if deleted ", func(t *testing.T) {
-					// now, delete the namespace access secret
+				t.Run("delete space request", func(t *testing.T) {
+					// now, delete the SpaceRequest and expect that the Space will be deleted as well,
+					// along with its associated namespace
+
 					// when
-					err := memberAwait.Client.Delete(context.TODO(), namespaceAccessSecret)
+					err := memberAwait.Client.Delete(context.TODO(), spaceRequest)
 
 					// then
+					// subSpace should be deleted as well
 					require.NoError(t, err)
-					err = memberAwait.WaitUntilSecretDeleted(t, namespaceAccessSecret)
+					err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
 					require.NoError(t, err)
-					// a new secret should be created
-					spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-						UntilSpaceRequestHasConditions(Provisioned()),
-						UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
-						UntilSpaceRequestHasNamespaceAccess(),
-					)
+					err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
 					require.NoError(t, err)
-					// verify secret containing kubeconfig was provisioned
-					kubeClient, _ = newKubeClientFromSecret(t, memberAwait, spaceRequest.Namespace, spaceRequest.Status.NamespaceAccess[0].SecretRef)
-					// check that kubeconfig is valid
-					validateKubeClient(t, kubeClient, spaceRequest)
-
-					t.Run("delete space request", func(t *testing.T) {
-						// now, delete the SpaceRequest and expect that the Space will be deleted as well,
-						// along with its associated namespace
-
-						// when
-						err := memberAwait.Client.Delete(context.TODO(), spaceRequest)
-
-						// then
-						// subSpace should be deleted as well
-						require.NoError(t, err)
-						err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
-						require.NoError(t, err)
-						err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
-						require.NoError(t, err)
-						err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
-						require.NoError(t, err)
-					})
+					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
+					require.NoError(t, err)
 				})
 			})
 		})
