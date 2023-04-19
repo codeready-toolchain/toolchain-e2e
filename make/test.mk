@@ -125,6 +125,10 @@ e2e-run:
 
 .PHONY: execute-tests
 execute-tests:
+	@echo "Present Spaces"
+	-oc get Space -n ${HOST_NS}
+	@echo "Status of ToolchainStatus"
+	-oc get ToolchainStatus -n ${HOST_NS} -o yaml
 	@echo "Starting test $(shell date)"
 	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
@@ -133,7 +137,8 @@ execute-tests:
 print-logs:
 	@echo "Time: $(shell date)"
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
-	oc adm must-gather --dest-dir=${ARTIFACT_DIR}
+	echo "artifact directory: ${ARTIFACT_DIR}"
+	-oc adm must-gather --dest-dir=${ARTIFACT_DIR}
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=host-operator-controller-manager NAMESPACE=${HOST_NS} ADDITIONAL_PARAMS="-c manager"
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-controller-manager NAMESPACE=${MEMBER_NS} ADDITIONAL_PARAMS="-c manager"
 	$(MAKE) print-operator-logs DEPLOYMENT_NAME=member-operator-webhook NAMESPACE=${MEMBER_NS}
@@ -156,7 +161,7 @@ print-local-debug-info:
 	@echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS}"
 	@if [[ ${SECOND_MEMBER_MODE} == true ]]; then echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS_2}"; fi
 	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
-	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true"
+	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true --tail=-1"
 	@echo ""
 	@echo "Add the following lines at the very beginning of the test/suite that you want to run/debug from your IDE:"
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
@@ -175,7 +180,7 @@ print-deployment-logs:
 	@echo "==============================================================================================================="
 	@echo "======================= ${DEPLOYMENT_NAME} deployment logs - Namespace: ${NAMESPACE} =========================="
 	@echo "==============================================================================================================="
-	-oc logs ${DEPLOYMENT_LABELS} --namespace ${NAMESPACE} --all-containers=true --prefix=true > ${ARTIFACT_DIR}/${DEPLOYMENT_NAME}.log
+	-oc logs ${DEPLOYMENT_LABELS} --namespace ${NAMESPACE} --all-containers=true --prefix=true --tail=-1 > ${ARTIFACT_DIR}/${DEPLOYMENT_NAME}.log
 	@echo "==============================================================================================================="
 	@echo ""
 	@echo ""
