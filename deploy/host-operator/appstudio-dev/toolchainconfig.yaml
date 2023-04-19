@@ -26,5 +26,6 @@ spec:
           twilioFromNumber: 'twilio.from_number'
   members:
     default:
+      skipUserCreation: true
       autoscaler:
         deploy: false
