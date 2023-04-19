@@ -161,7 +161,7 @@ print-local-debug-info:
 	@echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS}"
 	@if [[ ${SECOND_MEMBER_MODE} == true ]]; then echo "oc logs deployment.apps/member-operator-controller-manager -c manager --namespace ${MEMBER_NS_2}"; fi
 	@echo "oc logs deployment.apps/member-operator-webhook --namespace ${MEMBER_NS}"
-	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true"
+	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true --tail=-1"
 	@echo ""
 	@echo "Add the following lines at the very beginning of the test/suite that you want to run/debug from your IDE:"
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
@@ -180,7 +180,7 @@ print-deployment-logs:
 	@echo "==============================================================================================================="
 	@echo "======================= ${DEPLOYMENT_NAME} deployment logs - Namespace: ${NAMESPACE} =========================="
 	@echo "==============================================================================================================="
-	-oc logs ${DEPLOYMENT_LABELS} --namespace ${NAMESPACE} --all-containers=true --prefix=true > ${ARTIFACT_DIR}/${DEPLOYMENT_NAME}.log
+	-oc logs ${DEPLOYMENT_LABELS} --namespace ${NAMESPACE} --all-containers=true --prefix=true --tail=-1 > ${ARTIFACT_DIR}/${DEPLOYMENT_NAME}.log
 	@echo "==============================================================================================================="
 	@echo ""
 	@echo ""
