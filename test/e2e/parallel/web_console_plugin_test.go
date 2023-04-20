@@ -112,6 +112,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		manifestResponse, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer manifestResponse.Body.Close()
+		require.Equal(t, http.StatusOK, healthCheckResponse.StatusCode, "error polling console plugin manifests", route)
 
 		body, err := io.ReadAll(manifestResponse.Body)
 		require.NoError(t, err)
