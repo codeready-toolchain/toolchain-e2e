@@ -8,15 +8,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/kubectl/pkg/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestCreateSpaceRequest(t *testing.T) {
@@ -49,13 +42,10 @@ func TestCreateSpaceRequest(t *testing.T) {
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
-			UntilSpaceRequestHasNamespaceAccess(),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
-		// verify secret containing kubeconfig was provisioned
-		kubeClient, _ := newKubeClientFromSecret(t, memberAwait, spaceRequest.Namespace, spaceRequest.Status.NamespaceAccess[0].SecretRef)
-		// check that kubeconfig is valid
-		validateKubeClient(t, kubeClient, spaceRequest)
+		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
 			// now, delete the subSpace, along with its associated namespace,
@@ -137,8 +127,10 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint))
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)
+		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 		t.Run("delete space request", func(t *testing.T) {
 			// now, delete the SpaceRequest and expect that the Space will be deleted as well,
@@ -181,17 +173,18 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		UntilSpaceHasAnyProvisionedNamespaces(),
 	)
 	require.NoError(t, err)
-	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
-	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-		UntilSpaceRequestHasTierName("appstudio"),
-		UntilSpaceRequestHasConditions(Provisioned()),
-	)
-	require.NoError(t, err)
-
 	VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
 		UntilSpaceHasAnyTargetClusterSet(),
 		UntilSpaceHasTier(spaceRequest.Spec.TierName),
 	)
+	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
+	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+		UntilSpaceRequestHasTierName("appstudio"),
+		UntilSpaceRequestHasConditions(Provisioned()),
+		UntilSpaceRequestHasNamespaceAccess(subSpace),
+	)
+	require.NoError(t, err)
+	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 	t.Run("update space request tierName", func(t *testing.T) {
 		// when
@@ -207,6 +200,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 			UntilSpaceRequestHasTierName("base"),
 			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
@@ -230,6 +224,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
 			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
@@ -237,38 +232,4 @@ func TestUpdateSpaceRequest(t *testing.T) {
 			UntilSpaceHasConditions(Provisioned()))
 		require.NoError(t, err)
 	})
-}
-
-func newKubeClientFromSecret(t *testing.T, member *MemberAwaitility, ns, secretName string) (client.Client, *corev1.Secret) {
-	adminSecret := &corev1.Secret{}
-	// retrieve the secret containing the kubeconfig
-	require.NoError(t, member.Client.Get(context.TODO(), types.NamespacedName{
-		Namespace: ns,
-		Name:      secretName,
-	}, adminSecret))
-	assert.NotEmpty(t, adminSecret.Data["kubeconfig"])
-	apiConfig, err := clientcmd.Load(adminSecret.Data["kubeconfig"])
-	require.NoError(t, err)
-	require.False(t, api.IsConfigEmpty(apiConfig))
-
-	// create a new client with the given kubeconfig
-	kubeconfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
-	require.NoError(t, err)
-	s := scheme.Scheme
-	builder := append(runtime.SchemeBuilder{},
-		corev1.AddToScheme,
-	)
-	require.NoError(t, builder.AddToScheme(s))
-	namespaceAccessClient, err := client.New(kubeconfig, client.Options{
-		Scheme: s,
-	})
-	require.NoError(t, err)
-	return namespaceAccessClient, adminSecret
-}
-
-func validateKubeClient(t *testing.T, namespaceAccessClient client.Client, spaceRequest *toolchainv1alpha1.SpaceRequest) {
-	// validate for example that the client can list secrets in the namespace
-	secretsList := &corev1.SecretList{}
-	require.NoError(t, namespaceAccessClient.List(context.TODO(), secretsList, client.InNamespace(spaceRequest.Status.NamespaceAccess[0].Name)))
-	require.NotEmpty(t, secretsList)
 }

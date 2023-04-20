@@ -313,14 +313,43 @@ func UntilSpaceRequestHasStatusTargetClusterURL(expected string) SpaceRequestWai
 }
 
 // UntilSpaceRequestHasNamespaceAccess returns a `SpaceRequestWaitCriterion` which checks that the given
-// SpaceRequest has `status.NamespaceAccess` set
-func UntilSpaceRequestHasNamespaceAccess() SpaceRequestWaitCriterion {
+// SpaceRequest has `status.NamespaceAccess` set and each namespace access is actually valid.
+func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) SpaceRequestWaitCriterion {
+	var expectedNames []string
+	for _, expectedNamespace := range subSpace.Status.ProvisionedNamespaces {
+		expectedNames = append(expectedNames, expectedNamespace.Name)
+	}
 	return SpaceRequestWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
-			return len(actual.Status.NamespaceAccess) > 0
+			// check if expected number of namespaces matches
+			if len(actual.Status.NamespaceAccess) != len(expectedNames) {
+				return false
+			}
+
+			for _, nsAccess := range actual.Status.NamespaceAccess {
+				// check the name of the namespaces are matching
+				for _, expectedNamespace := range expectedNames {
+					found := false
+					if expectedNamespace == nsAccess.Name {
+						found = true
+						break
+					}
+					if !found {
+						return false
+					}
+				}
+			}
+			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
-			return fmt.Sprintf("expected namespaceAccess not to be empty. Actual SpaceRequest namespaceAccess:\n%v", actual)
+			if len(actual.Status.NamespaceAccess) != len(subSpace.Status.ProvisionedNamespaces) {
+				return fmt.Sprintf("invalid number of namespaces found in namespaceAccess. expected %d but got %d", len(subSpace.Status.ProvisionedNamespaces), len(actual.Status.NamespaceAccess))
+			}
+			var actualNamespaces []string
+			for _, actualNamespace := range actual.Status.NamespaceAccess {
+				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
+			}
+			return fmt.Sprintf("could not match namespace names: \n%s ", Diff(expectedNames, actualNamespaces))
 		},
 	}
 }
