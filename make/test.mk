@@ -114,7 +114,7 @@ test-e2e-registration-local:
 .PHONY: e2e-run-parallel
 e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel/web_console_plugin_test.go" E2E_PARALLELISM=100
 	@echo "The parallel e2e tests successfully finished"
 
 .PHONY: e2e-run
@@ -343,7 +343,7 @@ create-host-resources:
 		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -l type=member -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name" | grep "2$$"`; \
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
-		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false}}}}}}" > $$PATCH_FILE; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true}}}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 ifneq ($(E2E_TEST_EXECUTION),true)
