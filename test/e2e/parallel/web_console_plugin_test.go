@@ -27,6 +27,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 			TargetCluster(memberAwait).
 			ManuallyApprove().
 			EnsureMUR().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute(t)
 		response := signupRequest.GetSignupResponse(t)
 
