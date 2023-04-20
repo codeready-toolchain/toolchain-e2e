@@ -2244,7 +2244,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 	var spaceCreated *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
-		if err := a.CreateWithCleanup(t, space); err != nil {
+		if err := a.CreateWithCleanup(t, space.DeepCopy()); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
