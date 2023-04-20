@@ -114,7 +114,7 @@ test-e2e-registration-local:
 .PHONY: e2e-run-parallel
 e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel/web_console_plugin_test.go" E2E_PARALLELISM=100
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
 	@echo "The parallel e2e tests successfully finished"
 
 .PHONY: e2e-run
