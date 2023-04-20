@@ -2244,13 +2244,14 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 	var spaceCreated *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
-		if err := a.CreateWithCleanup(t, space.DeepCopy()); err != nil {
+		spaceToCreate := space.DeepCopy()
+		if err := a.CreateWithCleanup(t, spaceToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, space, spaceRole)
+		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole)
 		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
@@ -2258,7 +2259,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		}
 		// let's see if space was provisioned as expected
 		spaceCreated = &toolchainv1alpha1.Space{}
-		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), spaceCreated)
+		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
