@@ -9,8 +9,12 @@ import (
 	"testing"
 
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	v1 "github.com/openshift/api/route/v1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -20,6 +24,16 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 	await := WaitForDeployments(t)
 
 	for i, memberAwait := range await.AllMembers() {
+
+		image := memberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBCONSOLEPLUGIN_IMAGE")
+		require.NotEmpty(t, image, "The value of the env var MEMBER_OPERATOR_WEBCONSOLEPLUGIN_IMAGE wasn't found in the deployment of the member operator.")
+
+		_, err := memberAwait.WaitForServiceAccount(t, memberAwait.Namespace, "member-operator-console-plugin")
+		require.NoError(t, err)
+		waitForWebConsolePluginRole(t, memberAwait)
+		waitForWebConsolePluginRoleBinding(t, memberAwait)
+		waitForWebConsolePluginDeployment(t, memberAwait, image)
+		waitForWebConsolePluginService(t, memberAwait)
 
 		signupRequest := NewSignupRequest(await).
 			Username(fmt.Sprintf("consoletest%d", i)).
@@ -97,7 +111,9 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 
 		// at this point, since the test is not executed as the first one in the whole e2e test suite,
 		// we expect that the service should be already healthy, thus we don't need to pool because waiting
-		// another minute shouldn't have any impact on the outcome. If it fails, then there is definitely
+		// another minute shouldn't have any impact on the outcome. At the same time the presence
+		// of all Web console plugins related resources are verified at the beginning of thi test including
+		// the availability of the deployment. In other words, if it fails, then there is definitely
 		// some problem with the service.
 		req, err := http.NewRequest("GET", healthCheckURL, nil)
 		require.NoError(t, err)
@@ -122,4 +138,102 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 
 		require.True(t, strings.HasPrefix(string(body), "{\n  \"name\": \"toolchain-member-web-console-plugin\","))
 	}
+}
+
+func waitForWebConsolePluginRole(t *testing.T, await *wait.MemberAwaitility) {
+	ns := &corev1.Namespace{}
+	ns.Name = await.Namespace
+	role, err := await.WaitForRole(t, ns, "member-operator-console-plugin")
+	require.NoError(t, err)
+	assert.Len(t, role.Rules, 2)
+	expected := &rbacv1.Role{
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"toolchain.dev.openshift.com"},
+				Resources: []string{"memberoperatorconfigs"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{""},
+				Resources: []string{"secrets"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+		},
+	}
+
+	assert.Equal(t, expected.Rules, role.Rules)
+	assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+}
+
+func waitForWebConsolePluginRoleBinding(t *testing.T, await *wait.MemberAwaitility) {
+	ns := &corev1.Namespace{}
+	ns.Name = await.Namespace
+	rb, err := await.WaitForRoleBinding(t, ns, "member-operator-console-plugin")
+	require.NoError(t, err)
+	assert.Len(t, rb.Subjects, 1)
+	assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+	assert.Equal(t, "member-operator-console-plugin", rb.Subjects[0].Name)
+	assert.Equal(t, "member-operator-console-plugin", rb.RoleRef.Name)
+	assert.Equal(t, "Role", rb.RoleRef.Kind)
+	assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+}
+
+func waitForWebConsolePluginDeployment(t *testing.T, await *wait.MemberAwaitility, image string) {
+	t.Logf("checking Deployment '%s' in namespace '%s' and with image '%s'", "member-operator-console-plugin", await.Namespace, image)
+	actualDeployment := await.WaitForDeploymentToGetReady(t, "member-operator-console-plugin", 3,
+		wait.DeploymentHasContainerWithImage("member-operator-console-plugin", image))
+
+	assert.Equal(t, "codeready-toolchain", actualDeployment.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	assert.Equal(t, int32(3), *actualDeployment.Spec.Replicas)
+	assert.Equal(t, map[string]string{
+		"name": "member-operator-console-plugin",
+	}, actualDeployment.Spec.Selector.MatchLabels)
+
+	template := actualDeployment.Spec.Template
+	assert.Equal(t, map[string]string{
+		"name": "member-operator-console-plugin",
+		"run":  "member-operator-console-plugin",
+	}, template.ObjectMeta.Labels)
+	assert.Equal(t, "member-operator-console-plugin", template.Spec.ServiceAccountName)
+	require.Len(t, template.Spec.Volumes, 1)
+	assert.Equal(t, "consoleplugin-certs", template.Spec.Volumes[0].Name)
+	assert.Equal(t, "member-operator-console-plugin", template.Spec.Volumes[0].Secret.SecretName)
+	require.Len(t, template.Spec.Containers, 1)
+
+	container := template.Spec.Containers[0]
+	assert.Equal(t, "member-operator-console-plugin", container.Name)
+	assert.NotEmpty(t, container.Image)
+	assert.Equal(t, []string{"member-operator-console-plugin"}, container.Command)
+	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
+	assert.NotEmpty(t, container.LivenessProbe)
+	assert.NotEmpty(t, container.ReadinessProbe)
+	assert.NotEmpty(t, container.StartupProbe)
+	assert.Len(t, container.Env, 1)
+	assert.Equal(t, "WATCH_NAMESPACE", container.Env[0].Name)
+	assert.Equal(t, await.Namespace, container.Env[0].Value)
+
+	assert.Len(t, container.VolumeMounts, 1)
+	assert.Equal(t, "consoleplugin-certs", container.VolumeMounts[0].Name)
+	assert.Equal(t, "/etc/consoleplugin/certs", container.VolumeMounts[0].MountPath)
+	assert.True(t, container.VolumeMounts[0].ReadOnly)
+}
+
+func waitForWebConsolePluginService(t *testing.T, await *wait.MemberAwaitility) {
+	t.Logf("waiting for Service '%s' in namespace '%s'", "member-operator-console-plugin", await.Namespace)
+	service, err := await.WaitForService(t, "member-operator-console-plugin")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{
+		"run":                                  "member-operator-console-plugin",
+		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+	}, service.Labels)
+	require.Len(t, service.Spec.Ports, 1)
+	assert.Equal(t, int32(9443), service.Spec.Ports[0].Port)
+	assert.Equal(t, "9443", service.Spec.Ports[0].Name)
+	assert.Equal(t, intstr.IntOrString{
+		IntVal: 9443,
+	}, service.Spec.Ports[0].TargetPort)
+	assert.Equal(t, map[string]string{
+		"run": "member-operator-console-plugin",
+	}, service.Spec.Selector)
 }

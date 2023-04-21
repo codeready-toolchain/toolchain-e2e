@@ -2156,3 +2156,20 @@ func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name stri
 	})
 	return env, err
 }
+
+func (a *MemberAwaitility) GetContainerEnv(t *testing.T, name string) string {
+	deployment := a.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
+	var value string
+containers:
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name == "manager" {
+			for _, env := range container.Env {
+				if env.Name == name {
+					value = env.Value
+					break containers
+				}
+			}
+		}
+	}
+	return value
+}
