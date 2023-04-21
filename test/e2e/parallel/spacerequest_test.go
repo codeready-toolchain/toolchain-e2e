@@ -9,6 +9,8 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -142,6 +144,15 @@ func TestCreateSpaceRequest(t *testing.T) {
 			// then
 			// subSpace should be deleted as well
 			require.NoError(t, err)
+			// check that created namespaces secret access are deleted
+			for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
+				err = memberAwait.WaitUntilSecretDeleted(t, &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: nsAccess.SecretRef, Namespace: spaceRequest.GetNamespace()},
+				})
+				require.NoError(t, err)
+			}
+			// provisioned namespace should be deleted
+			// and all the other subspace related resources as well.
 			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
 			require.NoError(t, err)
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
@@ -152,84 +163,89 @@ func TestCreateSpaceRequest(t *testing.T) {
 	})
 }
 
-func TestUpdateSpaceRequest(t *testing.T) {
-	// given
-	t.Parallel()
-	// make sure everything is ready before running the actual tests
-	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member1()
-
-	// when
-	spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
-		WithSpecTierName("appstudio"),
-		WithSpecTargetClusterRoles([]string{cluster.RoleLabel(cluster.Tenant)}))
-
-	// then
-	// check for the subSpace creation
-	subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
-		UntilSpaceHasAnyTargetClusterSet(),
-		UntilSpaceHasTier("appstudio"),
-		UntilSpaceHasAnyProvisionedNamespaces(),
-	)
-	require.NoError(t, err)
-	VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
-		UntilSpaceHasAnyTargetClusterSet(),
-		UntilSpaceHasTier(spaceRequest.Spec.TierName),
-	)
-	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
-	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-		UntilSpaceRequestHasTierName("appstudio"),
-		UntilSpaceRequestHasConditions(Provisioned()),
-		UntilSpaceRequestHasNamespaceAccess(subSpace),
-	)
-	require.NoError(t, err)
-	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
-
-	t.Run("update space request tierName", func(t *testing.T) {
-		// when
-		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
-			func(s *toolchainv1alpha1.SpaceRequest) {
-				s.Spec.TierName = "base"
-			},
-		)
-		require.NoError(t, err)
-
-		//then
-		// wait for both spaceRequest and subSpace to have same tierName
-		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-			UntilSpaceRequestHasTierName("base"),
-			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasNamespaceAccess(subSpace),
-		)
-		require.NoError(t, err)
-		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
-			UntilSpaceHasTier("base"),
-			UntilSpaceHasConditions(Provisioned()))
-		require.NoError(t, err)
-	})
-
-	t.Run("update space request target cluster roles", func(t *testing.T) {
-		// when
-		newTargetClusterRoles := append(spaceRequest.Spec.TargetClusterRoles, cluster.RoleLabel("workload"))
-		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
-			func(s *toolchainv1alpha1.SpaceRequest) {
-				s.Spec.TargetClusterRoles = newTargetClusterRoles // let's assume we add a new cluster role label
-			},
-		)
-		require.NoError(t, err)
-
-		//then
-		// wait for both spaceRequest and subSpace to have same target cluster roles
-		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
-			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasNamespaceAccess(subSpace),
-		)
-		require.NoError(t, err)
-		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
-			UntilSpaceHasTargetClusterRoles(newTargetClusterRoles),
-			UntilSpaceHasConditions(Provisioned()))
-		require.NoError(t, err)
-	})
-}
+// Update scenarios are not supported as of now since:
+// - the only tier that works with this controller is `appstudio-env`,
+//   the controller tries to create a TokenRequest for the `namespace-manager` SA , and the only tier that has this SA is the `appstudio-env` tier
+// - updating the cluster roles in the SpaceRequest doesn't provision the namespace to a different cluster, as of now this feature is not available.
+//
+//func TestUpdateSpaceRequest(t *testing.T) {
+//	// given
+//	t.Parallel()
+//	// make sure everything is ready before running the actual tests
+//	awaitilities := WaitForDeployments(t)
+//	hostAwait := awaitilities.Host()
+//	memberAwait := awaitilities.Member1()
+//
+//	// when
+//	spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+//		WithSpecTierName("appstudio"),
+//		WithSpecTargetClusterRoles([]string{cluster.RoleLabel(cluster.Tenant)}))
+//
+//	// then
+//	// check for the subSpace creation
+//	subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+//		UntilSpaceHasAnyTargetClusterSet(),
+//		UntilSpaceHasTier("appstudio"),
+//		UntilSpaceHasAnyProvisionedNamespaces(),
+//	)
+//	require.NoError(t, err)
+//	VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+//		UntilSpaceHasAnyTargetClusterSet(),
+//		UntilSpaceHasTier(spaceRequest.Spec.TierName),
+//	)
+//	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
+//	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+//		UntilSpaceRequestHasTierName("appstudio"),
+//		UntilSpaceRequestHasConditions(Provisioned()),
+//		UntilSpaceRequestHasNamespaceAccess(subSpace),
+//	)
+//	require.NoError(t, err)
+//	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+//
+//	t.Run("update space request tierName", func(t *testing.T) {
+//		// when
+//		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
+//			func(s *toolchainv1alpha1.SpaceRequest) {
+//				s.Spec.TierName = "base"
+//			},
+//		)
+//		require.NoError(t, err)
+//
+//		//then
+//		// wait for both spaceRequest and subSpace to have same tierName
+//		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+//			UntilSpaceRequestHasTierName("base"),
+//			UntilSpaceRequestHasConditions(Provisioned()),
+//			UntilSpaceRequestHasNamespaceAccess(subSpace),
+//		)
+//		require.NoError(t, err)
+//		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
+//			UntilSpaceHasTier("base"),
+//			UntilSpaceHasConditions(Provisioned()))
+//		require.NoError(t, err)
+//	})
+//
+//	t.Run("update space request target cluster roles", func(t *testing.T) {
+//		// when
+//		newTargetClusterRoles := append(spaceRequest.Spec.TargetClusterRoles, cluster.RoleLabel("workload"))
+//		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
+//			func(s *toolchainv1alpha1.SpaceRequest) {
+//				s.Spec.TargetClusterRoles = newTargetClusterRoles // let's assume we add a new cluster role label
+//			},
+//		)
+//		require.NoError(t, err)
+//
+//		//then
+//		// wait for both spaceRequest and subSpace to have same target cluster roles
+//		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+//			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
+//			UntilSpaceRequestHasConditions(Provisioned()),
+//			UntilSpaceRequestHasNamespaceAccess(subSpace),
+//		)
+//		require.NoError(t, err)
+//		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
+//			UntilSpaceHasTargetClusterRoles(newTargetClusterRoles),
+//			UntilSpaceHasConditions(Provisioned()))
+//		require.NoError(t, err)
+//	})
+//}
