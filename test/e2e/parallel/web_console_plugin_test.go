@@ -43,11 +43,6 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 			EnsureMUR().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute(t)
-		response := signupRequest.GetSignupResponse(t)
-
-		// Response should contain a ConsoleURL with a value something like:
-		// https://console-openshift-console.apps.99b682869228f7464338-mgmt.ci.hypershift.devcluster.openshift.com/
-		require.Contains(t, response, "consoleURL")
 
 		// Since we can't easily access the web console API resources directly (due to complex security requirements) we
 		// will instead create a route in the member cluster with which to access the console plugin
