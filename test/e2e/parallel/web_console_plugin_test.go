@@ -93,9 +93,12 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 
 		httpClient := &http.Client{Transport: tr}
 
-		// First perform a health check - if the health check doesn't pass within one minute then the test will fail
 		var healthCheckResponse *http.Response
 
+		// at this point, since the test is not executed as the first one in the whole e2e test suite,
+		// we expect that the service should be already healthy, thus we don't need to pool because waiting
+		// another minute shouldn't have any impact on the outcome. If it fails, then there is definitely
+		// some problem with the service.
 		req, err := http.NewRequest("GET", healthCheckURL, nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", signupRequest.GetToken())
@@ -103,7 +106,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		healthCheckResponse, err = httpClient.Do(req) //nolint
 		require.NoError(t, err)
 		defer healthCheckResponse.Body.Close()
-		require.Equal(t, http.StatusOK, healthCheckResponse.StatusCode, "error polling health check endpoint", route)
+		require.Equal(t, http.StatusOK, healthCheckResponse.StatusCode, "error calling health check endpoint", route)
 
 		req, err = http.NewRequest("GET", manifestURL, nil)
 		require.NoError(t, err)
