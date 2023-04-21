@@ -2,6 +2,7 @@ package cleanup
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 	"testing"
@@ -128,7 +129,7 @@ func (c *cleanTask) cleanObject() {
 
 	// wait until deletion is done
 	c.t.Logf("waiting until %s: %s is completely deleted", kind, objToClean.GetName())
-	require.NoError(c.t, wait.Poll(defaultRetryInterval, defaultTimeout, func() (done bool, err error) {
+	err := wait.Poll(defaultRetryInterval, defaultTimeout, func() (done bool, err error) {
 		if err := c.client.Get(context.TODO(), test.NamespacedName(objToClean.GetNamespace(), objToClean.GetName()), objToClean); err != nil {
 			if errors.IsNotFound(err) {
 				// if the object was UserSignup, then let's check that the MUR is deleted as well
@@ -145,7 +146,31 @@ func (c *cleanTask) cleanObject() {
 			return false, err
 		}
 		return false, nil
-	}), "The object still exists after the time out expired: %s", spew.Sdump(objToClean))
+	})
+	if err != nil {
+		if isUserSignup {
+			message := spew.Sprintf("The proper cleanup of the UserSignup '%s' and related resources wasn't finished within the given timeout\n", objToClean.GetName())
+
+			message += c.checkIfStillPresent(&toolchainv1alpha1.UserSignup{}, "UserSignup", userSignup.GetNamespace(), userSignup.Name)
+			if userSignup.Status.CompliantUsername != "" {
+				message += c.checkIfStillPresent(&toolchainv1alpha1.MasterUserRecord{}, "MasterUserRecord", userSignup.GetNamespace(), userSignup.Status.CompliantUsername)
+				message += c.checkIfStillPresent(&toolchainv1alpha1.Space{}, "Space", userSignup.GetNamespace(), userSignup.Status.CompliantUsername)
+			}
+			require.NoError(c.t, err, message)
+		} else {
+			require.NoError(c.t, err, "The object still exists after the time out expired: %s", spew.Sdump(objToClean))
+		}
+	}
+}
+
+func (c *cleanTask) checkIfStillPresent(obj client.Object, kind, namespace, name string) string {
+	err := c.client.Get(context.TODO(), test.NamespacedName(namespace, name), obj)
+	if err == nil {
+		return fmt.Sprintf("the %s '%s' is still present in the cluster: %+v \n", kind, name, obj)
+	} else if !errors.IsNotFound(err) {
+		return fmt.Sprintf("unexpected error when getting the %s '%s': %s \n", kind, name, err.Error())
+	}
+	return fmt.Sprintf("the %s '%s' has been cleaned properly \n", kind, name)
 }
 
 func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1alpha1.UserSignup, delete bool) (bool, error) {
