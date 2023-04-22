@@ -82,9 +82,7 @@ func TestCreateSpace(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			// then
-			// it should fail,  while the member cluster is unknown (ie, unreachable),
-			// since this space was already provisioned.
+			// when
 			err = hostAwait.Client.Delete(context.TODO(), s)
 			require.NoError(t, err)
 			s, err = hostAwait.WaitForSpace(t, s.Name, UntilSpaceHasConditions(TerminatingFailed("cannot delete NSTemplateSet: unknown target member cluster: 'unknown'")))
