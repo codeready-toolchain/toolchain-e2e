@@ -73,7 +73,7 @@ func TestCreateSpace(t *testing.T) {
 		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 
 		t.Run("unable to delete space that was already provisioned", func(t *testing.T) {
 			// given
@@ -99,12 +99,10 @@ func TestCreateSpace(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				t.Run("space should be finally deleted", func(t *testing.T) {
-					// when
-					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, s.Name)
-					// then
-					require.NoError(t, err)
-				})
+				// then
+				// space should be finally deleted
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, s.Name)
+				require.NoError(t, err)
 			})
 		})
 	})
