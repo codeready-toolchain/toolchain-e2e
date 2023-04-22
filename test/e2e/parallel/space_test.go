@@ -76,7 +76,7 @@ func TestCreateSpace(t *testing.T) {
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 
 		t.Run("unable to delete space that was already provisioned", func(t *testing.T) {
-			// when
+			// given
 			s, err := hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
 				s.Spec.TargetCluster = "unknown"
 			})
