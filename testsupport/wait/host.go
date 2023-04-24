@@ -2002,32 +2002,44 @@ func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRe
 
 // WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
-	var spacebinding *toolchainv1alpha1.SpaceBinding
+	var spaceBinding *toolchainv1alpha1.SpaceBinding
+
+	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (bool, error) {
+		// retrieve the SpaceBinding from the host namespace
+		var err error
+		if spaceBinding, err = a.GetSpaceBindingByListing(murName, spaceName); err != nil {
+			return false, err
+		}
+		if spaceBinding == nil {
+			return false, nil
+		}
+		return matchSpaceBindingWaitCriterion(spaceBinding, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceBindingWaitCriterionDiffs(t, spaceBinding, criteria...)
+	}
+	return spaceBinding, err
+}
+
+// GetSpaceBindingByListing lists all available SpaceBinding with the given MUR and Space names set as labels. If none is found, then it returns nil, nil
+func (a *HostAwaitility) GetSpaceBindingByListing(murName, spaceName string) (*toolchainv1alpha1.SpaceBinding, error) {
 	labels := map[string]string{
 		toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
 		toolchainv1alpha1.SpaceBindingSpaceLabelKey:            spaceName,
 	}
 
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		// retrieve the SpaceBinding from the host namespace
-		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
-		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
-			return false, err
-		}
-		if len(spaceBindingList.Items) == 0 {
-			return false, nil
-		}
-		if len(spaceBindingList.Items) > 1 {
-			return false, fmt.Errorf("more than 1 binding for MasterUserRecord '%s' to Space '%s'", murName, spaceName)
-		}
-		spacebinding = &spaceBindingList.Items[0]
-		return matchSpaceBindingWaitCriterion(spacebinding, criteria...), nil
-	})
-	// no match found, print the diffs
-	if err != nil {
-		a.printSpaceBindingWaitCriterionDiffs(t, spacebinding, criteria...)
+	spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
+	if err := a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
+		return nil, err
 	}
-	return spacebinding, err
+	if len(spaceBindingList.Items) == 0 {
+		return nil, nil
+	}
+	if len(spaceBindingList.Items) > 1 {
+		return nil, fmt.Errorf("more than 1 binding for MasterUserRecord '%s' to Space '%s'", murName, spaceName)
+	}
+	return &spaceBindingList.Items[0], nil
 }
 
 func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.SpaceBinding, criteria ...SpaceBindingWaitCriterion) {
@@ -2232,20 +2244,22 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 	var spaceCreated *toolchainv1alpha1.Space
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
-		if err := a.CreateWithCleanup(t, space); err != nil {
+		spaceToCreate := space.DeepCopy()
+		if err := a.CreateWithCleanup(t, spaceToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, space, spaceRole)
+		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole)
 		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
 		// let's see if space was provisioned as expected
-		spaceCreated, err = a.WaitForSpace(t, space.Name)
+		spaceCreated = &toolchainv1alpha1.Space{}
+		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -2256,13 +2270,13 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			// space is in terminating let's wait until is gone and recreate it ...
 			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, spaceCreated.Name)
 		}
-		// let's see if spacebinding was provisioned as expected
-		spaceBinding, err = a.WaitForSpaceBinding(t, mur.Name, spaceCreated.Name)
+		// let's see if SpaceBinding was provisioned as expected
+		spaceBinding, err = a.GetSpaceBindingByListing(mur.Name, spaceCreated.Name)
 		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
 			return false, err
+		}
+		if spaceBinding == nil {
+			return false, nil
 		}
 		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
 		return true, nil
