@@ -343,7 +343,7 @@ create-host-resources:
 		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -l type=member -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name" | grep "2$$"`; \
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
-		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false}}}}}}" > $$PATCH_FILE; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true}}}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 ifneq ($(E2E_TEST_EXECUTION),true)
