@@ -1,5 +1,5 @@
 
-OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master
+OWNER_AND_BRANCH_LOCATION=MatousJobanek/toolchain-cicd/update-to-latest-sandbox-sre
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 USE_LOCAL_SCRIPTS=false
 
