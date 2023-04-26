@@ -112,39 +112,6 @@ func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1
 	return r.userSignup, r.mur
 }
 
-func (r *SignupRequest) GetSignupResponse(t *testing.T) map[string]interface{} {
-	hostAwait := r.awaitilities.Host()
-	userIdentity := &commonauth.Identity{
-		ID:       r.identityID,
-		Username: r.username,
-	}
-	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim(r.email)}
-	if r.originalSub != "" {
-		claims = append(claims, commonauth.WithOriginalSubClaim(r.originalSub))
-	}
-	if r.userID != "" {
-		claims = append(claims, commonauth.WithUserIDClaim(r.userID))
-	}
-	if r.accountID != "" {
-		claims = append(claims, commonauth.WithAccountIDClaim(r.accountID))
-	}
-
-	var err error
-	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
-	require.NoError(t, err)
-
-	queryParams := map[string]string{}
-	if r.noSpace {
-		queryParams["no-space"] = "true"
-	}
-
-	// Call the signup GET endpoint
-	response := invokeEndpoint(t, "GET", hostAwait.RegistrationServiceURL+"/api/v1/signup",
-		r.token, "", http.StatusOK, queryParams)
-
-	return response
-}
-
 // EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
 // the Resources() function to return a non-nil value for its second return parameter.
 func (r *SignupRequest) EnsureMUR() *SignupRequest {
