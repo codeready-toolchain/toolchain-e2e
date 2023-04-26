@@ -121,16 +121,16 @@ func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
 }
 
 func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser(t *testing.T) {
-	r.prepareUser(t, AppStudioProvisionedUser, r.Awaitilities.Member1())
+	usersignup := r.prepareUser(t, AppStudioProvisionedUser, r.Awaitilities.Member1())
 	hostAwait := r.Awaitilities.Host()
 
 	// promote to appstudio
-	tiers.MoveSpaceToTier(t, hostAwait, AppStudioProvisionedUser, "appstudio")
+	tiers.MoveSpaceToTier(t, hostAwait, usersignup.Status.CompliantUsername, "appstudio")
 
 	t.Logf("user %s was promoted to appstudio tier", AppStudioProvisionedUser)
 
 	// verify that it's promoted
-	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(t, AppStudioProvisionedUser,
+	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(t, usersignup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasConditions(test.Provisioned(), test.ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 }

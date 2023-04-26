@@ -17,6 +17,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
+	"github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
@@ -756,7 +757,8 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
-	assert.Equal(t, username, mp["compliantUsername"])
+	transformedUsername := usersignup.TransformUsername(username)
+	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
 	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
