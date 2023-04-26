@@ -28,7 +28,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 		t.Run("when space is deleted", func(t *testing.T) {
 
 			// given
-			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "redhat")
+			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "for-redhat")
 
 			// when
 			err := hostAwait.Client.Delete(context.TODO(), space)
@@ -41,7 +41,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 		t.Run("when mur is deleted", func(t *testing.T) {
 			// given
-			_, userSignup, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "lara", "ibm")
+			_, userSignup, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "lara", "for-ibm")
 
 			// when
 			// deactivate the UserSignup so that the MUR will be deleted

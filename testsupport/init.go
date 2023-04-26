@@ -12,7 +12,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
 
@@ -85,10 +84,9 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
 
 		// wait for member operators to be ready
-		var memberDeployment *appsv1.Deployment
-		initMemberAwait, memberDeployment = getMemberAwaitility(t, cl, initHostAwait, memberNs)
+		initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
 
-		initMember2Await, _ = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
+		initMember2Await = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
 
 		hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
@@ -116,18 +114,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// (we can't deploy the same webhook multiple times on the same cluster)
 		// Also verify the autoscaling buffer in both members
 
-		var webhookImage string
-	containers:
-		for _, container := range memberDeployment.Spec.Template.Spec.Containers {
-			if container.Name == "manager" {
-				for _, env := range container.Env {
-					if env.Name == "MEMBER_OPERATOR_WEBHOOK_IMAGE" {
-						webhookImage = env.Value
-						break containers
-					}
-				}
-			}
-		}
+		webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
 		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
 		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 		initMemberAwait.WaitForAutoscalingBufferApp(t)
@@ -149,7 +136,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
 
-func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) (*wait.MemberAwaitility, *appsv1.Deployment) {
+func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
 	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition(t, "e2e", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
@@ -165,9 +152,9 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	clusterName := memberCluster.Name
 	memberAwait := wait.NewMemberAwaitility(memberConfig.RestConfig, memberClient, namespace, clusterName)
 
-	deployment := memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
+	memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
 
-	return memberAwait, deployment
+	return memberAwait
 }
 
 func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
