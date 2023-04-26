@@ -1301,14 +1301,14 @@ func (a *MemberAwaitility) WaitForConfigMap(t *testing.T, namespace, name string
 	return cm, err
 }
 
-// WaitForSecret waits until a Secret with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForSecret(t *testing.T, namespace, name string) (*corev1.Secret, error) {
-	t.Logf("waiting for Secret '%s' in namespace '%s'", name, namespace)
+// WaitForSecret waits until a Secret with the given name exists in the operator namespace
+func (a *MemberAwaitility) WaitForSecret(t *testing.T, name string) (*corev1.Secret, error) {
+	t.Logf("waiting for Secret '%s' in namespace '%s'", name, a.Namespace)
 	var cm *corev1.Secret
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.Secret{}
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: namespace,
+			Namespace: a.Namespace,
 			Name:      name,
 		}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -2215,4 +2215,21 @@ func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name stri
 		return true, nil
 	})
 	return env, err
+}
+
+func (a *MemberAwaitility) GetContainerEnv(t *testing.T, name string) string {
+	deployment := a.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
+	var value string
+containers:
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name == "manager" {
+			for _, env := range container.Env {
+				if env.Name == name {
+					value = env.Value
+					break containers
+				}
+			}
+		}
+	}
+	return value
 }

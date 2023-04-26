@@ -103,8 +103,8 @@ func (o TimeoutOption) apply(a *Awaitility) {
 	a.Timeout = time.Duration(o)
 }
 
-// WaitForMetricsService waits until there's a service with the given name in the current namespace
-func (a *Awaitility) WaitForMetricsService(t *testing.T, name string) (corev1.Service, error) {
+// WaitForService waits until there's a service with the given name in the current namespace
+func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, error) {
 	t.Logf("waiting for Service '%s' in namespace '%s'", name, a.Namespace)
 	var metricsSvc *corev1.Service
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -209,7 +209,7 @@ func containsClusterCondition(conditions []toolchainv1alpha1.ToolchainClusterCon
 // and then making a call to the given endpoint
 func (a *Awaitility) SetupRouteForService(t *testing.T, serviceName, endpoint string) (routev1.Route, error) {
 	t.Logf("setting up route for service '%s' with endpoint '%s'", serviceName, endpoint)
-	service, err := a.WaitForMetricsService(t, serviceName)
+	service, err := a.WaitForService(t, serviceName)
 	if err != nil {
 		return routev1.Route{}, err
 	}
