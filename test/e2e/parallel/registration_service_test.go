@@ -18,6 +18,7 @@ import (
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
 	"github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
+	commonsignup "github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
@@ -515,9 +516,9 @@ func TestPhoneVerification(t *testing.T) {
 			states.SetApprovedManually(instance, true)
 		})
 	require.NoError(t, err)
-
+	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.Username)
 	// Confirm the MasterUserRecord is provisioned
-	_, err = hostAwait.WaitForMasterUserRecord(t, identity0.Username, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	_, err = hostAwait.WaitForMasterUserRecord(t, transformedUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 	require.NoError(t, err)
 
 	// Retrieve the UserSignup from the GET endpoint
