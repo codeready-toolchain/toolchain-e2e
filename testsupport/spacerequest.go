@@ -76,14 +76,21 @@ func NewSpaceRequest(t *testing.T, opts ...SpaceRequestOption) *toolchainv1alpha
 func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceRequest *toolchainv1alpha1.SpaceRequest) {
 	for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
 		// create a kube client by ready the secret created in the spacerequest namespace
-		namespaceAccessClient := newKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
+		namespaceAccessClient, adminSecret := newKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
+
+		// check expected labels on the secret
+		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey])
+		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey], spaceRequest.GetName())
+		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey])
+		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
+
 		// validate the kube client has access to the namespace name that's in the spacerequest.Status.Namepsacess[n].Name field
 		validateKubeClient(t, namespaceAccessClient, nsAccess.Name)
 	}
 }
 
 // newKubeClientFromSecret reads the kubeconfig from a given secret, create a kube rest client and validates that it works.
-func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretNamespace string) client.Client {
+func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretNamespace string) (client.Client, *corev1.Secret) {
 	adminSecret := &corev1.Secret{}
 	// retrieve the secret containing the kubeconfig
 	require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{
@@ -107,7 +114,7 @@ func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretN
 		Scheme: s,
 	})
 	require.NoError(t, err)
-	return namespaceAccessClient
+	return namespaceAccessClient, adminSecret
 }
 
 // validateKubeClient validates the the kube client can access the given namespace

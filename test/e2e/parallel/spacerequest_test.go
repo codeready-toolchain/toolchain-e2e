@@ -9,9 +9,8 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestCreateSpaceRequest(t *testing.T) {
@@ -145,12 +144,12 @@ func TestCreateSpaceRequest(t *testing.T) {
 			// subSpace should be deleted as well
 			require.NoError(t, err)
 			// check that created namespaces secret access are deleted
-			for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
-				err = memberAwait.WaitUntilSecretDeleted(t, &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: nsAccess.SecretRef, Namespace: spaceRequest.GetNamespace()},
-				})
-				require.NoError(t, err)
-			}
+			err = memberAwait.WaitUntilSecretsDeleted(t, spaceRequest.Namespace,
+				client.MatchingLabels{
+					toolchainv1alpha1.SpaceRequestLabelKey: spaceRequest.GetName(),
+				},
+			)
+			require.NoError(t, err)
 			// provisioned namespace should be deleted
 			// and all the other subspace related resources as well.
 			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")

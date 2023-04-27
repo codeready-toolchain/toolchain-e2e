@@ -1479,19 +1479,16 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typ
 	})
 }
 
-// WaitUntilSecretDeleted waits until the secret with the given name is deleted (ie, is not found)
-func (a *MemberAwaitility) WaitUntilSecretDeleted(t *testing.T, secret *corev1.Secret) error {
-	t.Logf("waiting until secret '%s' in namespace '%s' is deleted", secret.Name, secret.Namespace)
+// WaitUntilSecretsDeleted waits until the secrets with the given labels are deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilSecretsDeleted(t *testing.T, namespace string, labels client.MatchingLabels) error {
+	t.Logf("waiting until secrets with lables '%v' in namespace '%s' is deleted", labels, namespace)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		err = a.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: secret.Namespace,
-			Name:      secret.Name,
-		}, &corev1.Secret{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
+		secretList := &corev1.SecretList{}
+		if err := a.Client.List(context.TODO(), secretList, labels); err != nil {
 			return false, err
+		}
+		if len(secretList.Items) < 1 {
+			return true, nil
 		}
 		return false, nil
 	})
