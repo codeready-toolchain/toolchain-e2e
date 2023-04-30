@@ -435,7 +435,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 					})
 				if err != nil {
 					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
-					require.EqualError(t, err, fmt.Sprintf("masteruserrecords.toolchain.dev.openshift.com %s not found", murName))
+					require.EqualError(t, err, fmt.Sprintf("masteruserrecords.toolchain.dev.openshift.com \"%s\" not found", murName))
 				}
 
 				// The user should now be set to deactivated
