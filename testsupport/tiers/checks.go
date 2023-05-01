@@ -435,6 +435,8 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
+		pipelineServiceAccount(),
+		pipelineRunnerRoleBinding(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -1738,5 +1740,26 @@ func namespaceManagerSA() namespaceObjectsCheck {
 		serviceAccount, err := memberAwait.WaitForServiceAccount(t, ns.Name, "namespace-manager")
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", serviceAccount.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func pipelineServiceAccount() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline")
+		require.NoError(t, err)
+	}
+}
+
+func pipelineRunnerRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, "appstudio-pipelines-runner-rolebinding")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+		assert.Equal(t, "appstudio-pipeline", rb.Subjects[0].Name)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.Subjects[0].APIGroup)
+		assert.Equal(t, "appstudio-pipelines-runner-clusterrole", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
 	}
 }
