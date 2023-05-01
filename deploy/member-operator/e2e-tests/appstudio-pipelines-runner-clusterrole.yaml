@@ -1,0 +1,8 @@
+# A cluster role with name "appstudio-pipelines-runner-clusterrole" is expected in member clusters.
+# Otherwise the appstudio tier template would fail to get applied because this role is referenced in the pipeline service account role binding.
+# In production this cluster role is deployed by the pipeline component and not available in Sandbox OOTB.
+# See for more details: https://github.com/codeready-toolchain/host-operator/pull/797
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: appstudio-pipelines-runner-clusterrole

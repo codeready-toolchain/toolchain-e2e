@@ -1757,7 +1757,7 @@ func pipelineRunnerRoleBinding() namespaceObjectsCheck {
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
 		assert.Equal(t, "appstudio-pipeline", rb.Subjects[0].Name)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.Subjects[0].APIGroup)
+		assert.Equal(t, ns.Name, rb.Subjects[0].Namespace)
 		assert.Equal(t, "appstudio-pipelines-runner-clusterrole", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
