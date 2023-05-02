@@ -326,9 +326,9 @@ func TestProxyFlow(t *testing.T) {
 						defer func() {
 							resp.Body.Close()
 						}()
-						require.Equal(t, 403, resp.StatusCode)
+						require.Equal(t, 403, resp.StatusCode) // should be forbidden
 						r, _ := io.ReadAll(resp.Body)
-						assert.NotContains(t, string(r), "NodeList")
+						assert.NotContains(t, string(r), "NodeList") // request should be forbidden so there should be no NodeList in the response
 					})
 				}
 
