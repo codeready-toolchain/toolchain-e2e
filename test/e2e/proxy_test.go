@@ -323,9 +323,7 @@ func TestProxyFlow(t *testing.T) {
 						// then
 						require.NoError(t, err)
 						require.NotNil(t, resp)
-						defer func() {
-							resp.Body.Close()
-						}()
+						defer resp.Body.Close()
 						require.Equal(t, 403, resp.StatusCode) // should be forbidden
 						r, _ := io.ReadAll(resp.Body)
 						assert.Contains(t, string(r), fmt.Sprintf(`nodes is forbidden: User \"%s\" cannot list resource \"nodes\" in API group \"\" at the cluster scope`, user.compliantUsername))
@@ -727,9 +725,7 @@ func (w *wsWatcher) Start() func() {
 	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
 	if errors.Is(err, websocket.ErrBadHandshake) {
 		r, _ := io.ReadAll(resp.Body)
-		defer func() {
-			resp.Body.Close()
-		}()
+		defer resp.Body.Close()
 		w.t.Logf("handshake failed with status %d / response %s", resp.StatusCode, string(r))
 	}
 	require.NoError(w.t, err)
