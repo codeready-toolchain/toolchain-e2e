@@ -323,11 +323,11 @@ func TestProxyFlow(t *testing.T) {
 						// then
 						require.NoError(t, err)
 						require.NotNil(t, resp)
-						require.Equal(t, 403, resp.StatusCode)
-						r, _ := io.ReadAll(resp.Body)
 						defer func() {
 							resp.Body.Close()
 						}()
+						require.Equal(t, 403, resp.StatusCode)
+						r, _ := io.ReadAll(resp.Body)
 						assert.NotContains(t, string(r), "NodeList")
 					})
 				}
