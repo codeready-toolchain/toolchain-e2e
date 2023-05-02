@@ -328,7 +328,7 @@ func TestProxyFlow(t *testing.T) {
 						}()
 						require.Equal(t, 403, resp.StatusCode) // should be forbidden
 						r, _ := io.ReadAll(resp.Body)
-						assert.NotContains(t, string(r), "NodeList") // request should be forbidden so there should be no NodeList in the response
+						assert.Contains(t, string(r), fmt.Sprintf(`nodes is forbidden: User \"%s\" cannot list resource \"nodes\" in API group \"\" at the cluster scope`, user.compliantUsername))
 					})
 				}
 
