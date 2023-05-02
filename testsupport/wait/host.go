@@ -2282,7 +2282,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			t.Logf("The created SpaceBinding %s is not present", spaceCreated.Name)
 			return false, nil
 		}
-		if util.IsBeingDeleted(spaceCreated) {
+		if util.IsBeingDeleted(spaceBinding) {
 			// spacebinding is in terminating let's wait until is gone and recreate it ...
 			t.Logf("The created SpaceBinding %s is being deleted", spaceCreated.Name)
 			return false, a.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
