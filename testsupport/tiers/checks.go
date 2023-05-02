@@ -1436,7 +1436,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
-					Resources: []string{"results", "records"},
+					Resources: []string{"results", "records", "logs"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
@@ -1513,7 +1513,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
-					Resources: []string{"results", "records"},
+					Resources: []string{"results", "records", "logs"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
@@ -1594,7 +1594,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
-					Resources: []string{"results", "records"},
+					Resources: []string{"results", "records", "logs"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
