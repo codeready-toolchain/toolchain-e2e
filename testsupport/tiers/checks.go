@@ -218,7 +218,7 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "14Gi", "3000m", "14Gi"),
+		resourceQuotaComputeDeploy("20", "14Gi", "3", "14Gi"),
 		resourceQuotaComputeBuild("20", "10Gi", "3", "10Gi"),
 		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
 		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
