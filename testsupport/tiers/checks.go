@@ -218,8 +218,8 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "14Gi", "1750m", "14Gi"),
-		resourceQuotaComputeBuild("20", "10Gi", "2", "10Gi"),
+		resourceQuotaComputeDeploy("20", "14Gi", "3", "14Gi"),
+		resourceQuotaComputeBuild("20", "10Gi", "3", "10Gi"),
 		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
 		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
@@ -1436,7 +1436,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
-					Resources: []string{"results", "records"},
+					Resources: []string{"results", "records", "logs"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
@@ -1513,7 +1513,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
-					Resources: []string{"results", "records"},
+					Resources: []string{"results", "records", "logs"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
@@ -1594,7 +1594,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
-					Resources: []string{"results", "records"},
+					Resources: []string{"results", "records", "logs"},
 					Verbs:     []string{"get", "list"},
 				},
 				{
@@ -1697,11 +1697,11 @@ func memberOperatorSaReadRoleBinding() namespaceObjectsCheck {
 
 func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		rb, err := memberAwait.WaitForRoleBinding(t, ns, "namespace-manager")
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, toolchainv1alpha1.AdminServiceAccountName)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
-		assert.Equal(t, "namespace-manager", rb.Subjects[0].Name)
+		assert.Equal(t, toolchainv1alpha1.AdminServiceAccountName, rb.Subjects[0].Name)
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
@@ -1735,7 +1735,7 @@ func toolchainSaReadRole() namespaceObjectsCheck {
 
 func namespaceManagerSA() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		serviceAccount, err := memberAwait.WaitForServiceAccount(t, ns.Name, "namespace-manager")
+		serviceAccount, err := memberAwait.WaitForServiceAccount(t, ns.Name, toolchainv1alpha1.AdminServiceAccountName)
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", serviceAccount.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
 	}
