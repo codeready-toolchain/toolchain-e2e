@@ -116,6 +116,29 @@ func (u *proxyUser) getApplicationName(i int) string {
 	return fmt.Sprintf("%s-test-app-%d", u.compliantUsername, i)
 }
 
+func (u *proxyUser) getComponent(t *testing.T, proxyClient client.Client, componentName string) *appstudiov1.Component {
+	component := &appstudiov1.Component{}
+	namespacedName := types.NamespacedName{Namespace: tenantNsName(u.compliantUsername), Name: componentName}
+	// Get Component
+	err := proxyClient.Get(context.TODO(), namespacedName, component)
+	require.NoError(t, err)
+	require.NotEmpty(t, component)
+	return component
+}
+
+func (u *proxyUser) getComponentWithoutProxy(t *testing.T, componentName string) *appstudiov1.Component {
+	namespacedName := types.NamespacedName{Namespace: tenantNsName(u.compliantUsername), Name: componentName}
+	component := &appstudiov1.Component{}
+	err := u.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, component)
+	require.NoError(t, err)
+	require.NotEmpty(t, component)
+	return component
+}
+
+func (u *proxyUser) getComponentName(i int) string {
+	return fmt.Sprintf("%s-test-component-%d", u.compliantUsername, i)
+}
+
 // full flow from usersignup with approval down to namespaces creation and cleanup
 //
 // !!! Additional context !!!
@@ -176,6 +199,7 @@ func TestProxyFlow(t *testing.T) {
 			defer closeConnection()
 			proxyCl := user.createProxyClient(t, hostAwait)
 			applicationList := &appstudiov1.ApplicationList{}
+			componentList := &appstudiov1.ComponentList{}
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
 				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
@@ -199,6 +223,9 @@ func TestProxyFlow(t *testing.T) {
 
 					proxyApp := user.getApplication(t, proxyCl, applicationName)
 					assert.NotEmpty(t, proxyApp)
+
+					newApp := user.getApplication(t, proxyCl, applicationName)
+					assert.NotEmpty(t, newApp)
 
 					// Double check that the Application does exist using a regular client (non-proxy)
 					noProxyApp := user.getApplicationWithoutProxy(t, applicationName)
@@ -286,6 +313,118 @@ func TestProxyFlow(t *testing.T) {
 						err = user.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, originalApp)
 						require.Error(t, err) //not found
 						require.True(t, k8serr.IsNotFound(err))
+					}
+				})
+			})
+
+			t.Run("use proxy to create a HAS Application with ComponentSpec CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
+				closeConnection = w.Start("components")
+				for i := 0; i < 2; i++ {
+					// given
+					applicationName := user.getApplicationName(i)
+					componentName := user.getComponentName(i)
+
+					expectedComponent := newComponent(applicationName, tenantNsName(user.compliantUsername), componentName, true)
+
+					// when
+					err := proxyCl.Create(context.TODO(), expectedComponent)
+					require.NoError(t, err)
+
+					// then
+					// wait for the websocket watcher which uses the proxy to receive the Application CR
+					foundComp, err := w.WaitForComponent(
+						expectedComponent.Name,
+					)
+					require.NoError(t, err)
+					assert.NotEmpty(t, foundComp)
+				}
+
+				t.Run("use proxy to LIST a HAS Application with ComponentSpec CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
+					// Get List of components.
+					err := proxyCl.List(context.TODO(), componentList, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
+					// User should be able to list components
+					require.NoError(t, err)
+					assert.NotEmpty(t, componentList)
+
+					// Check that the applicationList using a regular client (non-proxy)
+					componentsListWS := &appstudiov1.ComponentList{}
+					err = user.expectedMemberCluster.Client.List(context.TODO(), componentsListWS, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
+					require.NoError(t, err)
+					require.NotEmpty(t, componentsListWS)
+					assert.Equal(t, componentsListWS.Items, componentList.Items)
+				})
+
+				t.Run("use proxy to UPDATE a HAS Application with ComponentSpec CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
+					// Update component
+					componentName := user.getComponentName(0)
+					// Get component
+					proxyComponent := user.getComponent(t, proxyCl, componentName)
+					// Update target port
+					proxyComponent.Spec.TargetPort = 8081
+					err := proxyCl.Update(context.TODO(), proxyComponent)
+					require.NoError(t, err)
+
+					// Find component and check, if it is updated
+					updatedComponent := user.getComponent(t, proxyCl, componentName)
+					assert.Equal(t, updatedComponent.Spec.TargetPort, proxyComponent.Spec.TargetPort)
+
+					// Check that the component is updated using a regular client (non-proxy)
+					originalComp := user.getComponentWithoutProxy(t, componentName)
+					assert.EqualValues(t, originalComp.Spec.TargetPort, 8081)
+				})
+
+				t.Run("use proxy to PATCH a ComponentSpec CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
+					// Patch component
+					componentName := user.getComponentName(1)
+					patchString := "SomeGitRevisionNew"
+					// Get component
+					proxyComp := user.getComponent(t, proxyCl, componentName)
+					// Patch for Git Revision
+					patchPayload := []patchStringValue{{
+						Op:    "replace",
+						Path:  "/spec/source/git/revision",
+						Value: patchString,
+					}}
+					patchPayloadBytes, _ := json.Marshal(patchPayload)
+
+					// Appply Patch
+					err := proxyCl.Patch(context.TODO(), proxyComp, client.RawPatch(types.JSONPatchType, patchPayloadBytes))
+					require.NoError(t, err)
+
+					// Get patched component and verify patched revision
+					patchedComponent := user.getComponent(t, proxyCl, componentName)
+					assert.Equal(t, patchedComponent.Spec.Source.GitSource.Revision, patchString)
+
+					// Check that the component is patched using a regular client (non-proxy)
+					wsComponent := user.getComponentWithoutProxy(t, componentName)
+					assert.Equal(t, wsComponent.Spec.Source.GitSource.Revision, patchString)
+				})
+
+				t.Run("use proxy to DELETE a ComponentSpec CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
+					for i := 0; i < 2; i++ {
+						// given
+						applicationName := user.getApplicationName(i)
+						componentName := user.getComponentName(i)
+
+						expectedComponent := newComponent(applicationName, tenantNsName(user.compliantUsername), componentName, true)
+
+						// when
+						err := proxyCl.Delete(context.TODO(), expectedComponent)
+						require.NoError(t, err)
+
+						// then
+						// wait for the websocket watcher which uses the proxy to receive the component CR
+						err = w.WaitForComponentDeletion(
+							expectedComponent.Name,
+						)
+						require.NoError(t, err)
+
+						// Double check that the component does not exist using a regular client (non-proxy)
+						namespacedName := types.NamespacedName{Namespace: tenantNsName(user.compliantUsername), Name: applicationName}
+						createdComponent := &appstudiov1.Component{}
+						err = user.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, createdComponent)
+						require.Error(t, err)
+						require.Empty(t, createdComponent)
 					}
 				})
 			})
@@ -889,12 +1028,17 @@ type wsWatcher struct {
 	connection   *websocket.Conn
 	proxyBaseURL string
 
-	mu           sync.RWMutex
-	receivedApps map[string]*appstudiov1.Application
+	mu                 sync.RWMutex
+	receivedApps       map[string]*appstudiov1.Application
+	receivedComponents map[string]*appstudiov1.Component
 }
 
 // start creates a new WebSocket connection. The method returns a function which is to be used to close the connection when done.
-func (w *wsWatcher) Start() func() {
+func (w *wsWatcher) Start(resource_optional ...string) func() {
+	resource := "applications"
+	if len(resource_optional) > 0 {
+		resource = resource_optional[0]
+	}
 	w.done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
 	w.interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
 
@@ -904,7 +1048,7 @@ func (w *wsWatcher) Start() func() {
 	protocol := fmt.Sprintf("base64url.bearer.authorization.k8s.io.%s", encodedToken)
 
 	trimmedProxyURL := strings.TrimPrefix(w.proxyBaseURL, "https://")
-	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/applications?watch=true", trimmedProxyURL, tenantNsName(w.namespace))
+	socketURL := fmt.Sprintf("wss://%s/apis/appstudio.redhat.com/v1alpha1/namespaces/%s/%s?watch=true", trimmedProxyURL, tenantNsName(w.namespace), resource)
 	w.t.Logf("opening connection to '%s'", socketURL)
 	dialer := &websocket.Dialer{
 		Subprotocols: []string{protocol, "base64.binary.k8s.io"},
@@ -925,6 +1069,7 @@ func (w *wsWatcher) Start() func() {
 	require.NoError(w.t, err)
 	w.connection = conn
 	w.receivedApps = make(map[string]*appstudiov1.Application)
+	w.receivedComponents = make(map[string]*appstudiov1.Component)
 
 	go w.receiveHandler()
 	go w.startMainLoop()
@@ -970,8 +1115,8 @@ func (w *wsWatcher) startMainLoop() {
 }
 
 type message struct {
-	MessageType string                  `json:"type"`
-	Application appstudiov1.Application `json:"object"`
+	MessageType string          `json:"type"`
+	MessageLoad json.RawMessage `json:"object"`
 }
 
 // receiveHandler listens to the incoming messages and stores them as Applications objects
@@ -987,14 +1132,33 @@ func (w *wsWatcher) receiveHandler() {
 		message := message{}
 		err = json.Unmarshal(msg, &message)
 		require.NoError(w.t, err)
-		copyApp := message.Application
-		w.mu.Lock()
-		if message.MessageType == "DELETED" {
-			delete(w.receivedApps, copyApp.Name)
-		} else {
-			w.receivedApps[copyApp.Name] = &copyApp
+		result := make(map[string]interface{})
+		json.Unmarshal([]byte(message.MessageLoad), &result)
+		switch result["kind"] {
+		case "Application":
+			copyApp := &appstudiov1.Application{}
+			err = json.Unmarshal([]byte(message.MessageLoad), &copyApp)
+			require.NoError(w.t, err)
+			w.mu.Lock()
+			if message.MessageType == "DELETED" {
+				delete(w.receivedApps, copyApp.Name)
+			} else {
+				w.receivedApps[copyApp.Name] = copyApp
+			}
+			w.mu.Unlock()
+		case "Component":
+			copyComp := &appstudiov1.Component{}
+			err = json.Unmarshal([]byte(message.MessageLoad), &copyComp)
+			require.NoError(w.t, err)
+			w.mu.Lock()
+			if message.MessageType == "DELETED" {
+				delete(w.receivedComponents, copyComp.Name)
+			} else {
+				w.receivedComponents[copyComp.Name] = copyComp
+			}
+			w.mu.Unlock()
 		}
-		w.mu.Unlock()
+
 	}
 }
 
@@ -1019,6 +1183,28 @@ func (w *wsWatcher) WaitForApplicationDeletion(expectedAppName string) error {
 	return err
 }
 
+func (w *wsWatcher) WaitForComponent(expectedCompName string) (*appstudiov1.Component, error) {
+	var foundComponent *appstudiov1.Component
+	err := kubewait.Poll(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+		defer w.mu.RUnlock()
+		w.mu.RLock()
+		foundComponent = w.receivedComponents[expectedCompName]
+		return foundComponent != nil, nil
+	})
+	return foundComponent, err
+}
+
+func (w *wsWatcher) WaitForComponentDeletion(expectedAppName string) error {
+	//var foundApp *appstudiov1.Application
+	err := kubewait.PollImmediate(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+		defer w.mu.RUnlock()
+		w.mu.RLock()
+		_, present := w.receivedComponents[expectedAppName]
+		return present == false, nil
+	})
+	return err
+}
+
 func newApplication(applicationName, namespace string) *appstudiov1.Application {
 	return &appstudiov1.Application{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1028,6 +1214,32 @@ func newApplication(applicationName, namespace string) *appstudiov1.Application 
 		Spec: appstudiov1.ApplicationSpec{
 			DisplayName: fmt.Sprintf("Proxy test for user %s", namespace),
 		},
+	}
+}
+
+func newComponent(applicationName, namespace string, componentName string, skipInitialChecks bool) *appstudiov1.Component {
+	return &appstudiov1.Component{ObjectMeta: metav1.ObjectMeta{
+		Annotations: map[string]string{},
+		Labels:      map[string]string{},
+		Name:        componentName,
+		Namespace:   namespace,
+	},
+		Spec: appstudiov1.ComponentSpec{
+			ComponentName: componentName,
+			Application:   applicationName,
+			Source: appstudiov1.ComponentSource{
+				ComponentSourceUnion: appstudiov1.ComponentSourceUnion{
+					GitSource: &appstudiov1.GitSource{
+						URL:      "gitSourceURL",
+						Revision: "gitSourceRevision",
+					},
+				},
+			},
+			Secret:         "secret",
+			ContainerImage: "containerImage",
+			Replicas:       1,
+			TargetPort:     8080,
+			Route:          ""},
 	}
 }
 

@@ -9,7 +9,6 @@ require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/google/go-cmp v0.5.9
-	github.com/gorilla/websocket v1.4.2
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
@@ -31,6 +30,8 @@ require (
 	k8s.io/metrics v0.25.0
 	sigs.k8s.io/controller-runtime v0.13.0
 )
+
+require github.com/gorilla/websocket v1.4.2
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
