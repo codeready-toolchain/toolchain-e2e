@@ -2242,6 +2242,7 @@ func EncodeUserIdentifier(subject string) string {
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 	var spaceCreated *toolchainv1alpha1.Space
+	t.Logf("Creating Space %s and SpaceBinding for %s", space.Name, mur.Name)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		spaceToCreate := space.DeepCopy()
@@ -2262,12 +2263,14 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
+				t.Logf("The created Space %s is not present", spaceCreated.Name)
 				return false, nil
 			}
 			return false, err
 		}
 		if util.IsBeingDeleted(spaceCreated) {
 			// space is in terminating let's wait until is gone and recreate it ...
+			t.Logf("The created Space %s is being deleted", spaceCreated.Name)
 			return false, a.WaitUntilSpaceAndSpaceBindingsDeleted(t, spaceCreated.Name)
 		}
 		// let's see if SpaceBinding was provisioned as expected
@@ -2276,7 +2279,13 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, err
 		}
 		if spaceBinding == nil {
+			t.Logf("The created SpaceBinding %s is not present", spaceCreated.Name)
 			return false, nil
+		}
+		if util.IsBeingDeleted(spaceBinding) {
+			// spacebinding is in terminating let's wait until is gone and recreate it ...
+			t.Logf("The created SpaceBinding %s is being deleted", spaceBinding.Name)
+			return false, a.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
 		}
 		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
 		return true, nil
