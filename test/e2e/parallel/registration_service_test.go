@@ -291,6 +291,26 @@ func TestSignupFails(t *testing.T) {
 		hostAwait := await.Host()
 		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
 	})
+
+	t.Run("get signup for crtadmin with longer username fails", func(t *testing.T) {
+		// Get valid generated token for e2e tests. IAT claim is overridden
+		// to avoid token used before issued error. Username claim is also
+		// overridden to trigger error and ensure that usersignup is not created.
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
+		identity, token, err := authsupport.NewToken(
+			authsupport.WithEmail(emailAddress),
+			authsupport.WithPreferredUsername("longer-username-crtadmin")) // when username is greater than 20 characters,
+		require.NoError(t, err)
+
+		// Call signup endpoint with a valid token to initiate a signup process
+		response := invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusForbidden)
+		require.Equal(t, "forbidden: failed to create usersignup for longer-username-crtadmin", response["message"])
+		require.Equal(t, "error creating UserSignup resource", response["details"])
+		require.Equal(t, float64(403), response["code"])
+
+		hostAwait := await.Host()
+		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
+	})
 }
 
 func TestSignupOK(t *testing.T) {
