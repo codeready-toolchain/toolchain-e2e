@@ -17,7 +17,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
-	"github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	commonsignup "github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
@@ -778,7 +777,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
-	transformedUsername := usersignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	transformedUsername := commonsignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
