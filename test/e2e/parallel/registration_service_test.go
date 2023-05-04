@@ -291,6 +291,7 @@ func TestSignupFails(t *testing.T) {
 		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
 	})
 
+	// since transformUsername code in toolchain-common truncates the username to be not more than 20 characters, this test is to make sure that creating a crtadmin with a longer username still fails
 	t.Run("get signup for crtadmin with longer username fails", func(t *testing.T) {
 		// Get valid generated token for e2e tests. IAT claim is overridden
 		// to avoid token used before issued error. Username claim is also
