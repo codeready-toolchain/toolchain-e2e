@@ -536,7 +536,7 @@ func TestPhoneVerification(t *testing.T) {
 			states.SetApprovedManually(instance, true)
 		})
 	require.NoError(t, err)
-	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.Username)
+	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.Username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	// Confirm the MasterUserRecord is provisioned
 	_, err = hostAwait.WaitForMasterUserRecord(t, transformedUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 	require.NoError(t, err)
@@ -778,7 +778,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
-	transformedUsername := usersignup.TransformUsername(username)
+	transformedUsername := usersignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
