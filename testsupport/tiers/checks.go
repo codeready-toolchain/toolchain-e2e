@@ -528,6 +528,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		namespaceManagerSA(),
 		namespaceManagerSaEditRoleBinding(),
 		gitOpsServiceLabel(),
+		appstudioWorkSpaceNameLabel(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)

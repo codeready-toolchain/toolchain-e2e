@@ -187,7 +187,6 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	space, err := hostAwait.WaitForSpace(t, spaceName,
 		wait.UntilSpaceHasTier(tier.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tier.Name), hash),
-		wait.UntilSpaceHasLabelWithValue("appstudio.redhat.com/workspace_name", tier.Name),
 		wait.UntilSpaceHasConditions(Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
@@ -220,7 +219,9 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 		ns, err := targetCluster.WaitForNamespace(t, space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
 		require.NoError(t, err)
 		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
+		require.Contains(t, ns.Labels, "appstudio.redhat.com/workspace_name")
 		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
+		assert.Equal(t, space.Name, ns.Labels["appstudio.redhat.com/workspace_name"])
 	}
 	// Wait for space to have list of provisioned namespaces in Space status.
 	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
