@@ -571,7 +571,7 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute(s.T()).Resources()
 
-	require.Equal(s.T(), "username-with-a-crt", userSignup.Status.CompliantUsername)
+	require.Equal(s.T(), "username-with-ad-crt", userSignup.Status.CompliantUsername)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
