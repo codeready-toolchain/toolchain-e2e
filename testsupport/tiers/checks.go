@@ -1402,11 +1402,11 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 }
 
 func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner) {
 		// TODO fix for migration/existing namespaces cases
 		labelWaitCriterion := []wait.LabelWaitCriterion{}
 		if !strings.HasPrefix(ns.Name, "migration-") {
-			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("appstudio.redhat.com/workspace_name", ns.Name))
+			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("appstudio.redhat.com/workspace_name", owner))
 		}
 		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
 		require.NoError(t, err)
