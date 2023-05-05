@@ -14,7 +14,6 @@ objects:
     name: ovms-operator
     source: certified-operators
     sourceNamespace: openshift-marketplace
-    startingCSV: openvino-operator.v1.0.0
 parameters:
 - name: INTEL_NAMESPACE
   value: openshift-operators
