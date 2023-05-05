@@ -1402,7 +1402,7 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 }
 
 func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		// TODO fix for migration/existing namespaces cases
 		labelWaitCriterion := []wait.LabelWaitCriterion{}
 		if !strings.HasPrefix(ns.Name, "migration-") {
