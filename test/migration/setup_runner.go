@@ -17,7 +17,7 @@ import (
 
 const (
 	ProvisionedUser             = "mig-prov"
-	DeactivatedUser             = "mig-deact
+	DeactivatedUser             = "mig-deact"
 	BannedUser                  = "mig-banned"
 	AppStudioProvisionedUser    = "mig-appst"
 	SecondMemberProvisionedUser = "mig-m2-user"
