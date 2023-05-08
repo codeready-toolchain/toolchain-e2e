@@ -224,7 +224,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 }
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.SpaceBinding) {
-	username := "for-space-" + space.Name
+	username := space.Name
 	builder := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
