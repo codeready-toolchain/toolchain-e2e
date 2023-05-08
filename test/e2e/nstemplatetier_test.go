@@ -207,7 +207,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 }
 
 // setupSpaces takes care of:
-// 1. creating a new tier with the provided tierName and using the TemplateRefs of the "base" tier.
+// 1. creating a new tier with the provided tierName and using the TemplateRefs of the provided tier.
 // 2. creating `count` number of spaces
 func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []string {
 	hash, err := testtier.ComputeTemplateRefsHash(tier.NSTemplateTier) // we can assume the JSON marshalling will always work

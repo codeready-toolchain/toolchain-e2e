@@ -45,46 +45,67 @@ func TestCreateSpace(t *testing.T) {
 		})
 	})
 
-	// Temporarily commented out until we revisit the functionality in Space controller https://issues.redhat.com/browse/CRT-1775
-	//
-	//t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
-	//	// given & when
-	//	s, _, _ := CreateSpace(t, awaitilities,
-	//		WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
-	//			space.Spec.TargetCluster = "unknown"
-	//		})
-	//
-	//	// then
-	//	s, err := hostAwait.WaitForSpace(t, s.Name, UntilSpaceHasConditions(ProvisioningFailed("unknown target member cluster 'unknown'")))
-	//	require.NoError(t, err)
-	//
-	//	t.Run("unable to delete space", func(t *testing.T) {
-	//		// when
-	//		err = hostAwait.Client.Delete(context.TODO(), s)
-	//
-	//		// then it should fail while the member cluster is unknown (ie, unreachable)
-	//		require.NoError(t, err)
-	//		s, err = hostAwait.WaitForSpace(t, s.Name, UntilSpaceHasConditions(TerminatingFailed("cannot delete NSTemplateSet: unknown target member cluster: 'unknown'")))
-	//		require.NoError(t, err)
-	//
-	//		t.Run("update target cluster to unblock deletion", func(t *testing.T) {
-	//			// when
-	//			s, err = hostAwait.UpdateSpace(t, s.Name, func(s *toolchainv1alpha1.Space) {
-	//				s.Spec.TargetCluster = memberAwait.ClusterName
-	//			})
-	//
-	//			// then it should fail while the member cluster is unknown (ie, unreachable)
-	//			require.NoError(t, err)
-	//
-	//			t.Run("space should be finally deleted", func(t *testing.T) {
-	//				// when
-	//				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, s.Name)
-	//				// then
-	//				require.NoError(t, err)
-	//			})
-	//		})
-	//	})
-	//})
+	t.Run("failed to create space - unknown target member cluster", func(t *testing.T) {
+		// given & when
+		s, _, _ := CreateSpace(t, awaitilities,
+			WithTierName("appstudio"), func(space *toolchainv1alpha1.Space) {
+				space.Spec.TargetCluster = "unknown"
+			})
+
+		// then
+		s, err := hostAwait.WaitForSpace(t, s.Name, UntilSpaceHasConditions(ProvisioningFailed("unknown target member cluster 'unknown'")))
+		require.NoError(t, err)
+
+		t.Run("space should be deleted", func(t *testing.T) {
+			// when
+			err = hostAwait.Client.Delete(context.TODO(), s)
+
+			// then
+			// it should still delete the space since it wasn't provisioned
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, s.Name)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("failed to delete provisioned space - unknown target member cluster", func(t *testing.T) {
+		// given & when
+		space, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
+
+		// then
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+
+		t.Run("unable to delete space that was already provisioned", func(t *testing.T) {
+			// given
+			s, err := hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
+				s.Spec.TargetCluster = "unknown"
+			})
+			require.NoError(t, err)
+
+			// when
+			err = hostAwait.Client.Delete(context.TODO(), s)
+			require.NoError(t, err)
+
+			// then
+			// it should fail,  while the member cluster is unknown (ie, unreachable),
+			// since this space was already provisioned.
+			s, err = hostAwait.WaitForSpace(t, s.Name, UntilSpaceHasConditions(TerminatingFailed("cannot delete NSTemplateSet: unknown target member cluster: 'unknown'")))
+			require.NoError(t, err)
+
+			t.Run("update target cluster to unblock deletion", func(t *testing.T) {
+				// when
+				s, err = hostAwait.UpdateSpace(t, s.Name, func(s *toolchainv1alpha1.Space) {
+					s.Spec.TargetCluster = memberAwait.ClusterName
+				})
+				require.NoError(t, err)
+
+				// then
+				// space should be finally deleted
+				err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, s.Name)
+				require.NoError(t, err)
+			})
+		})
+	})
 }
 
 func TestSpaceRoles(t *testing.T) {
