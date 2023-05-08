@@ -486,7 +486,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	// also count the roles, rolebindings and service accounts
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
-		numberOfToolchainRoleBindings(rolebindings+1), // +1 for `member-operator-sa-read`
+		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `member-operator-sa-read` and `appstudio-pipelines-runner-rolebinding`
 	)
 	return checks, nil
 }
