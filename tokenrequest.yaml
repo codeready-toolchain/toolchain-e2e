@@ -1,0 +1,7 @@
+apiVersion: authentication.k8s.io/v1
+kind: TokenRequest
+metadata:
+  name: mytokenrequest
+  namespace: default
+spec:
+  expirationSeconds: 10000

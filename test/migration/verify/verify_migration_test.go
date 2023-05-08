@@ -87,10 +87,25 @@ func TestAfterMigration(t *testing.T) {
 		// then we can easily make sure that it's fully compatible with both versions of Dev Sandbox.
 		runner := migration.SetupMigrationRunner{
 			Awaitilities: awaitilities,
-			WithCleanup:  true,
+			WithCleanup:  false,
 		}
 
 		runner.Run(t)
+
+		t.Run("run migration verify with new operator versions for compatibility", func(t *testing.T) {
+			// when & then - run all functions in parallel
+			for _, funcToRun := range toRun {
+				wg.Add(1)
+				go func(run func()) {
+					defer wg.Done()
+					run()
+				}(funcToRun)
+			}
+
+			wg.Wait()
+
+			cleanup.ExecuteAllCleanTasks(t)
+		})
 	})
 }
 
