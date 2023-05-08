@@ -26,6 +26,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	// TODO: needs to be changed as soon as we start creating objects in namespaces for SpaceRoles - we need to verify that it also automatically updates NSTemplateSet and the resources in the namespaces
 	t.Run("for SpaceBinding", func(t *testing.T) {
 		t.Run("when space is deleted", func(t *testing.T) {
+
 			// given
 			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "for-redhat")
 
@@ -151,7 +152,7 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 	// before we can check the resources (roles and rolebindings)
 	_, err = targetMember.WaitForNSTmplSet(t, spaceName,
 		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Name, murName)))
+			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Status.CompliantUsername, murName)))
 	require.NoError(t, err)
 	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))

@@ -448,14 +448,14 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 func (s *userSignupIntegrationTest) TestTransformUsername() {
 	// Create UserSignup with a username that we don't need to transform
 	userSignup, _ := NewSignupRequest(s.Awaitilities).
-		Username("paul-no-need-to-transform").
-		Email("paulnoneedtotransform@hotel.com").
+		Username("paul-no-transform").
+		Email("paulnotransform@hotel.com").
 		ManuallyApprove().
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		Execute(s.T()).Resources()
 
-	require.Equal(s.T(), "paul-no-need-to-transform", userSignup.Status.CompliantUsername)
+	require.Equal(s.T(), "paul-no-transform", userSignup.Status.CompliantUsername)
 
 	// Create UserSignup with a username to transform
 	userSignup, _ = NewSignupRequest(s.Awaitilities).
@@ -550,6 +550,28 @@ func (s *userSignupIntegrationTest) TestTransformUsername() {
 
 		require.Equal(s.T(), fmt.Sprintf("%s-crt", suffix), userSignup.Status.CompliantUsername)
 	}
+
+	// create a usersignup where the length of the username is greater than 20 chars, and is transformed by truncating
+	userSignup, _ = NewSignupRequest(s.Awaitilities).
+		Username("username-greater-than-20").
+		Email("paulathotel@hotel.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute(s.T()).Resources()
+
+	require.Equal(s.T(), "username-greater-tha", userSignup.Status.CompliantUsername)
+
+	// create a usersignup where the name is greater than 20 chars, but when truncating the username it has a forbidden suffix. Check the compliant username is replacing the suffix, instead of adding
+	userSignup, _ = NewSignupRequest(s.Awaitilities).
+		Username("username-with-admin-more-than-20-chars").
+		Email("paulathotel@hotel.com").
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		Execute(s.T()).Resources()
+
+	require.Equal(s.T(), "username-with-ad-crt", userSignup.Status.CompliantUsername)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
