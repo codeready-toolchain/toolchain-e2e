@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	ProvisionedUser             = "mgr-provisioned"
-	DeactivatedUser             = "mgr-deactivated"
-	BannedUser                  = "mgr-banned"
-	AppStudioProvisionedUser    = "mgr-appstudio"
-	SecondMemberProvisionedUser = "mgr-member2-user"
+	ProvisionedUser             = "mig-prov"
+	DeactivatedUser             = "mig-deact
+	BannedUser                  = "mig-banned"
+	AppStudioProvisionedUser    = "mig-appst"
+	SecondMemberProvisionedUser = "mig-m2-user"
 
-	ProvisionedAppStudioSpace    = "mgr-appstudio-space"
-	SecondMemberProvisionedSpace = "mgr-member2-space"
+	ProvisionedAppStudioSpace    = "mig-appst-space"
+	SecondMemberProvisionedSpace = "mig-m2-space"
 )
 
 type SetupMigrationRunner struct {
