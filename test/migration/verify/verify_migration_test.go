@@ -28,6 +28,43 @@ func TestAfterMigration(t *testing.T) {
 		awaitilities.Member1().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)),
 		awaitilities.Member2().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)))
 
+	// run all the verify functions concurrently
+	// to ensure that the objects provisioned with the "old" operator versions are not altered in an unexpected way by the new operator version (the changes are backward compatible)
+	runVerifyFunctions(t, awaitilities)
+
+	t.Run("run migration setup with new operator versions for compatibility", func(t *testing.T) {
+		// We need to run the migration setup part to ensure the compatibility with both versions of the sandbox (the old one as well as the new one)
+		// Consider this:
+		//    1. there is a running version of host/member-operator that populates the `UserAccount.Spec.NSTemplateSet` field
+		//    2. the `migration setup logic` checks and expects that this field is populated
+		//    3. there is a migration PR that drops usage of that `UserAccount.Spec.NSTemplateSet` field so it won't be populated any more
+		//    4. there is also paired e2e PR that modifies the `verify migration test` so it doesn't expect the field to be populated
+		//    5. the tests are green - so far so good.
+		//    6. now, when the PRs are merged, we need to make sure that the setup will pass also for all the following PRs. If the logic wasn't compatible
+		//       then the next PRs would fail in the `migration setup logic` because it would still contain the logic that would check and expect
+		//       `UserAccount.Spec.NSTemplateSet` to be populated.
+		//
+		// That use-case could fit to any situation where the setup part relies on a functionality/feature that is present in the current version of operators
+		// but won't be present in the next one.
+		//
+		// This is based on the assumption that everything what is merged in master works as expected. This means that we can "just" create either UserSignup
+		// or Space and wait for the provisioned status (or any other status/state that signs that the process is done). We don't have to verify the actual
+		// content of the resources, nor labels, etc... because it was already verified when the PR that was merged. If we agree on such a generic setup logic,
+		// then we can easily make sure that it's fully compatible with both versions of Dev Sandbox.
+		runner := migration.SetupMigrationRunner{
+			Awaitilities: awaitilities,
+			WithCleanup:  false,
+		}
+
+		runner.Run(t)
+
+		// run all the verify functions concurrently
+		// to ensure that everything was provisioned as expected using the new operator versions.
+		runVerifyFunctions(t, awaitilities)
+	})
+}
+
+func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 	// check MUR migrations and get Signups for the users provisioned in the setup part
 	t.Log("checking MUR Migrations")
 	provisionedSignup := checkMURMigratedAndGetSignup(t, awaitilities.Host(), migration.ProvisionedUser)
@@ -65,48 +102,6 @@ func TestAfterMigration(t *testing.T) {
 	wg.Wait()
 
 	cleanup.ExecuteAllCleanTasks(t)
-
-	t.Run("run migration setup with new operator versions for compatibility", func(t *testing.T) {
-		// We need to run the migration setup part to ensure the compatibility with both versions of the sandbox (the old one as well as the new one)
-		// Consider this:
-		//    1. there is a running version of host/member-operator that populates the `UserAccount.Spec.NSTemplateSet` field
-		//    2. the `migration setup logic` checks and expects that this field is populated
-		//    3. there is a migration PR that drops usage of that `UserAccount.Spec.NSTemplateSet` field so it won't be populated any more
-		//    4. there is also paired e2e PR that modifies the `verify migration test` so it doesn't expect the field to be populated
-		//    5. the tests are green - so far so good.
-		//    6. now, when the PRs are merged, we need to make sure that the setup will pass also for all the following PRs. If the logic wasn't compatible
-		//       then the next PRs would fail in the `migration setup logic` because it would still contain the logic that would check and expect
-		//       `UserAccount.Spec.NSTemplateSet` to be populated.
-		//
-		// That use-case could fit to any situation where the setup part relies on a functionality/feature that is present in the current version of operators
-		// but won't be present in the next one.
-		//
-		// This is based on the assumption that everything what is merged in master works as expected. This means that we can "just" create either UserSignup
-		// or Space and wait for the provisioned status (or any other status/state that signs that the process is done). We don't have to verify the actual
-		// content of the resources, nor labels, etc... because it was already verified when the PR that was merged. If we agree on such a generic setup logic,
-		// then we can easily make sure that it's fully compatible with both versions of Dev Sandbox.
-		runner := migration.SetupMigrationRunner{
-			Awaitilities: awaitilities,
-			WithCleanup:  false,
-		}
-
-		runner.Run(t)
-
-		t.Run("run migration verify with new operator versions for compatibility", func(t *testing.T) {
-			// when & then - run all functions in parallel
-			for _, funcToRun := range toRun {
-				wg.Add(1)
-				go func(run func()) {
-					defer wg.Done()
-					run()
-				}(funcToRun)
-			}
-
-			wg.Wait()
-
-			cleanup.ExecuteAllCleanTasks(t)
-		})
-	})
 }
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
