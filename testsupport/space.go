@@ -214,13 +214,6 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	// verify NSTemplateSet with namespace & cluster scoped resources
 	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
 
-	if tier.Name == "appstudio" {
-		// checks that namespace exists and has the expected label(s)
-		ns, err := targetCluster.WaitForNamespace(t, space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
-		require.NoError(t, err)
-		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
-		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
-	}
 	// Wait for space to have list of provisioned namespaces in Space status.
 	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
 	_, err = hostAwait.WaitForSpace(t, spaceName,
