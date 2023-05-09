@@ -9,6 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/davecgh/go-spew/spew"
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -435,6 +436,8 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
+		pipelineServiceAccount(),
+		pipelineRunnerRoleBinding(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -484,7 +487,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	// also count the roles, rolebindings and service accounts
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
-		numberOfToolchainRoleBindings(rolebindings+1), // +1 for `member-operator-sa-read`
+		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `member-operator-sa-read` and `appstudio-pipelines-runner-rolebinding`
 	)
 	return checks, nil
 }
@@ -506,7 +509,8 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
-		idlers(0, ""))
+		idlers(0, ""),
+		pipelineRunnerClusterRole())
 }
 
 type appstudioEnvTierChecks struct {
@@ -1738,5 +1742,39 @@ func namespaceManagerSA() namespaceObjectsCheck {
 		serviceAccount, err := memberAwait.WaitForServiceAccount(t, ns.Name, toolchainv1alpha1.AdminServiceAccountName)
 		require.NoError(t, err)
 		assert.Equal(t, "codeready-toolchain", serviceAccount.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+	}
+}
+
+func pipelineServiceAccount() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline")
+		require.NoError(t, err)
+	}
+}
+
+func pipelineRunnerRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, "appstudio-pipelines-runner-rolebinding")
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+		assert.Equal(t, "appstudio-pipeline", rb.Subjects[0].Name)
+		assert.Equal(t, ns.Name, rb.Subjects[0].Namespace)
+		assert.Equal(t, "appstudio-pipelines-runner", rb.RoleRef.Name)
+		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+}
+
+func pipelineRunnerClusterRole() clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			clusterRole := &rbacv1.ClusterRole{}
+			// we don't wait because this should have been already created by OLM as part of the operator deployment
+			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "appstudio-pipelines-runner"}, clusterRole)
+			require.NoError(t, err)
+			assert.NotEmpty(t, clusterRole.Rules)
+			//	we don't care much about the content, it should be applied and maintained by the OLM
+		}
 	}
 }
