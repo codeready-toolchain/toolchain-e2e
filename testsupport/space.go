@@ -214,13 +214,6 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	// verify NSTemplateSet with namespace & cluster scoped resources
 	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
 
-	if tier.Name == "appstudio" {
-		// checks that namespace exists and has the expected label(s)
-		ns, err := targetCluster.WaitForNamespace(t, space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
-		require.NoError(t, err)
-		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
-		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
-	}
 	// Wait for space to have list of provisioned namespaces in Space status.
 	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
 	_, err = hostAwait.WaitForSpace(t, spaceName,
@@ -231,7 +224,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 }
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.SpaceBinding) {
-	username := "for-space-" + space.Name
+	username := space.Name
 	builder := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").

@@ -17,6 +17,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
+	commonsignup "github.com/codeready-toolchain/toolchain-common/pkg/usersignup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
@@ -289,6 +290,27 @@ func TestSignupFails(t *testing.T) {
 		hostAwait := await.Host()
 		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
 	})
+
+	// since transformUsername code in toolchain-common truncates the username to be not more than 20 characters, this test is to make sure that creating a crtadmin with a longer username still fails
+	t.Run("get signup for crtadmin with longer username fails", func(t *testing.T) {
+		// Get valid generated token for e2e tests. IAT claim is overridden
+		// to avoid token used before issued error. Username claim is also
+		// overridden to trigger error and ensure that usersignup is not created.
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
+		identity, token, err := authsupport.NewToken(
+			authsupport.WithEmail(emailAddress),
+			authsupport.WithPreferredUsername("longer-username-crtadmin")) // when username is greater than 20 characters,
+		require.NoError(t, err)
+
+		// Call signup endpoint with a valid token to initiate a signup process
+		response := invokeEndpoint(t, "POST", route+"/api/v1/signup", token, "", http.StatusForbidden)
+		require.Equal(t, "forbidden: failed to create usersignup for longer-username-crtadmin", response["message"])
+		require.Equal(t, "error creating UserSignup resource", response["details"])
+		require.Equal(t, float64(403), response["code"])
+
+		hostAwait := await.Host()
+		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
+	})
 }
 
 func TestSignupOK(t *testing.T) {
@@ -514,9 +536,9 @@ func TestPhoneVerification(t *testing.T) {
 			states.SetApprovedManually(instance, true)
 		})
 	require.NoError(t, err)
-
+	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.Username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	// Confirm the MasterUserRecord is provisioned
-	_, err = hostAwait.WaitForMasterUserRecord(t, identity0.Username, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	_, err = hostAwait.WaitForMasterUserRecord(t, transformedUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
 	require.NoError(t, err)
 
 	// Retrieve the UserSignup from the GET endpoint
@@ -756,7 +778,8 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
-	assert.Equal(t, username, mp["compliantUsername"])
+	transformedUsername := commonsignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
 	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
