@@ -373,8 +373,8 @@ func commonToolchainLabelsRoleCheck() spaceRoleObjectsCheck {
 		roles := &rbacv1.RoleList{}
 		err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
 		require.NoError(t, err)
-		for _, role := range roles.Items {
-			assertExpectedToolchainLabels(t, &role, userName)
+		for i := range roles.Items {
+			assertExpectedToolchainLabels(t, &roles.Items[i], userName)
 		}
 	}
 }
@@ -384,8 +384,8 @@ func commonToolchainLabelsRoleBindingsCheck() spaceRoleObjectsCheck {
 		roleBindings := &rbacv1.RoleBindingList{}
 		err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
 		require.NoError(t, err)
-		for _, roleBinding := range roleBindings.Items {
-			assertExpectedToolchainLabels(t, &roleBinding, userName)
+		for i := range roleBindings.Items {
+			assertExpectedToolchainLabels(t, &roleBindings.Items[i], userName)
 		}
 	}
 }
