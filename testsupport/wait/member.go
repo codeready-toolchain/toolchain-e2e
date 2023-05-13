@@ -656,11 +656,12 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 		return nil, err
 	}
 	labels := map[string]string{
-		"toolchain.dev.openshift.com/owner":       owner,
-		"toolchain.dev.openshift.com/templateref": tmplRef,
-		"toolchain.dev.openshift.com/tier":        tierName,
-		"toolchain.dev.openshift.com/type":        kind,
-		"toolchain.dev.openshift.com/provider":    "codeready-toolchain",
+		toolchainv1alpha1.OwnerLabelKey:       owner,
+		toolchainv1alpha1.SpaceLabelKey:       owner,
+		toolchainv1alpha1.TemplateRefLabelKey: tmplRef,
+		toolchainv1alpha1.TierLabelKey:        tierName,
+		toolchainv1alpha1.TypeLabelKey:        kind,
+		toolchainv1alpha1.ProviderLabelKey:    toolchainv1alpha1.ProviderLabelValue,
 	}
 	t.Logf("waiting for namespace with custom criteria and labels %v", labels)
 	var ns *corev1.Namespace
@@ -679,7 +680,7 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 	if err != nil {
 		t.Logf("failed to wait for namespace with labels: %v", labels)
 		opts := client.MatchingLabels(map[string]string{
-			"toolchain.dev.openshift.com/provider": "codeready-toolchain",
+			toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
 		})
 		a.listAndPrint(t, "Namespaces", "", &corev1.NamespaceList{}, opts)
 		if ns == nil {
@@ -691,6 +692,7 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 		}
 		return nil, err
 	}
+	t.Logf("found namespace %s with custom criteria and labels %v", ns.Name, labels)
 	return ns, nil
 }
 
@@ -1464,8 +1466,9 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typ
 	t.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{
-			"toolchain.dev.openshift.com/owner": username,
-			"toolchain.dev.openshift.com/type":  typeName,
+			toolchainv1alpha1.OwnerLabelKey: username,
+			toolchainv1alpha1.SpaceLabelKey: username,
+			toolchainv1alpha1.TypeLabelKey:  typeName,
 		}
 		opts := client.MatchingLabels(labels)
 		namespaceList := &corev1.NamespaceList{}
@@ -1663,7 +1666,7 @@ func (a *MemberAwaitility) WaitUntilUserDeleted(t *testing.T, name string) error
 			}
 			return false, err
 		}
-		if _, exists := user.Labels["toolchain.dev.openshift.com/owner"]; exists {
+		if _, exists := user.Labels[toolchainv1alpha1.OwnerLabelKey]; exists {
 			return false, nil
 		}
 		return true, nil
@@ -1681,7 +1684,7 @@ func (a *MemberAwaitility) WaitUntilIdentityDeleted(t *testing.T, name string) e
 			}
 			return false, err
 		}
-		if _, exists := identity.Labels["toolchain.dev.openshift.com/owner"]; exists {
+		if _, exists := identity.Labels[toolchainv1alpha1.OwnerLabelKey]; exists {
 			return false, nil
 		}
 		return true, nil
@@ -1701,7 +1704,10 @@ func (a *MemberAwaitility) GetConsoleURL(t *testing.T) string {
 func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(t *testing.T, username string) error {
 	t.Logf("waiting for deletion of ClusterResourceQuotas for user '%s'", username)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		labels := map[string]string{"toolchain.dev.openshift.com/owner": username}
+		labels := map[string]string{
+			toolchainv1alpha1.OwnerLabelKey: username,
+			toolchainv1alpha1.SpaceLabelKey: username,
+		}
 		opts := client.MatchingLabels(labels)
 		quotaList := &quotav1.ClusterResourceQuotaList{}
 		if err := a.Client.List(context.TODO(), quotaList, opts); err != nil {

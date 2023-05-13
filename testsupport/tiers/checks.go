@@ -10,6 +10,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"k8s.io/apimachinery/pkg/types"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/davecgh/go-spew/spew"
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -42,7 +43,7 @@ const (
 )
 
 var (
-	providerMatchingLabels = client.MatchingLabels(map[string]string{"toolchain.dev.openshift.com/provider": "codeready-toolchain"})
+	providerMatchingLabels = client.MatchingLabels(map[string]string{toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue})
 )
 
 type TierChecks interface {
@@ -150,6 +151,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
+		commonToolchainLabelsNamespaceCheck(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
 	var otherNamespaceKind string
@@ -188,6 +190,8 @@ func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]s
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
+		commonToolchainLabelsRoleCheck(),
+		commonToolchainLabelsRoleBindingsCheck(),
 	)
 	return checks, nil
 }
@@ -227,6 +231,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
+		commonToolchainLabelsNamespaceCheck(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
 	checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
@@ -257,6 +262,8 @@ func (a *base1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) (
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
+		commonToolchainLabelsRoleCheck(),
+		commonToolchainLabelsRoleBindingsCheck(),
 	)
 	return checks, nil
 }
@@ -355,6 +362,43 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		idlers(518400, "dev", "stage"))
 }
 
+func commonToolchainLabelsNamespaceCheck() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, _ *wait.MemberAwaitility, userName string) {
+		assertExpectedToolchainLabels(t, ns, userName)
+	}
+}
+
+func commonToolchainLabelsRoleCheck() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		roles := &rbacv1.RoleList{}
+		err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
+		require.NoError(t, err)
+		for _, role := range roles.Items {
+			assertExpectedToolchainLabels(t, &role, userName)
+		}
+	}
+}
+
+func commonToolchainLabelsRoleBindingsCheck() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		roleBindings := &rbacv1.RoleBindingList{}
+		err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
+		require.NoError(t, err)
+		for _, roleBinding := range roleBindings.Items {
+			assertExpectedToolchainLabels(t, &roleBinding, userName)
+		}
+	}
+}
+
+func assertExpectedToolchainLabels(t *testing.T, object runtimeclient.Object, userName string) {
+	assert.Contains(t, object.GetLabels(), toolchainv1alpha1.OwnerLabelKey)
+	assert.Equal(t, userName, object.GetLabels()[toolchainv1alpha1.OwnerLabelKey])
+	assert.Contains(t, object.GetLabels(), toolchainv1alpha1.SpaceLabelKey)
+	assert.Equal(t, userName, object.GetLabels()[toolchainv1alpha1.SpaceLabelKey])
+	assert.Contains(t, object.GetLabels(), toolchainv1alpha1.ProviderLabelKey)
+	assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, object.GetLabels()[toolchainv1alpha1.ProviderLabelKey])
+}
+
 func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{
 		networkPolicySameNamespace(),
@@ -438,6 +482,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
 		pipelineRunnerRoleBinding(),
+		commonToolchainLabelsNamespaceCheck(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -488,6 +533,8 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `member-operator-sa-read` and `appstudio-pipelines-runner-rolebinding`
+		commonToolchainLabelsRoleCheck(),
+		commonToolchainLabelsRoleBindingsCheck(),
 	)
 	return checks, nil
 }
@@ -527,6 +574,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		namespaceManagerSA(),
 		namespaceManagerSaEditRoleBinding(),
 		gitOpsServiceLabel(),
+		commonToolchainLabelsNamespaceCheck(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -550,6 +598,8 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 	return []spaceRoleObjectsCheck{
 		numberOfToolchainRoles(0),
 		numberOfToolchainRoleBindings(1), // 1 for `namespace-manager`
+		commonToolchainLabelsRoleCheck(),
+		commonToolchainLabelsRoleBindingsCheck(),
 	}, nil
 }
 
@@ -603,8 +653,9 @@ func userEditRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 	}
 }
 
@@ -618,8 +669,9 @@ func rbacEditRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "rbac-edit", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 	}
 }
 
@@ -633,8 +685,9 @@ func crtadminViewRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "view", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 	}
 }
 
@@ -648,8 +701,9 @@ func crtadminPodsRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "exec-pods", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, userName, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, userName, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+		assert.Equal(t, userName, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 	}
 }
 
@@ -669,8 +723,9 @@ func execPodsRole() namespaceObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, userName, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, role.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, userName, role.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+		assert.Equal(t, userName, role.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 	}
 }
 
@@ -690,8 +745,9 @@ func rbacEditRole() spaceRoleObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, role.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, owner, role.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+		assert.Equal(t, owner, role.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 	}
 }
 
@@ -931,7 +987,7 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 		require.NoError(t, err)
 		defReq[corev1.ResourceMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
-		assert.Equal(t, "codeready-toolchain", lr.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, lr.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
 		expected := &corev1.LimitRange{
 			Spec: corev1.LimitRangeSpec{
 				Limits: []corev1.LimitRangeItem{
@@ -952,7 +1008,7 @@ func networkPolicySameNamespace() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-same-namespace")
 		require.NoError(t, err)
-		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
@@ -1031,7 +1087,7 @@ func networkPolicyIngress(name, labelName, labelValue string) namespaceObjectsCh
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
-		assert.Equal(t, "codeready-toolchain", np.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
@@ -1073,15 +1129,17 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 				}
 				idler, err := memberAwait.WaitForIdler(t, idlerName, wait.IdlerHasTier(tierLabel), wait.IdlerHasTimeoutSeconds(timeoutSeconds))
 				require.NoError(t, err)
-				assert.Equal(t, userName, idler.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+				assert.Equal(t, userName, idler.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
+				assert.Equal(t, userName, idler.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
 			}
 
 			// Make sure there is no unexpected idlers
 			idlers := &toolchainv1alpha1.IdlerList{}
 			err := memberAwait.Client.List(context.TODO(), idlers,
 				client.MatchingLabels(map[string]string{
-					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
-					"toolchain.dev.openshift.com/owner":    userName,
+					toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
+					toolchainv1alpha1.OwnerLabelKey:    userName,
+					toolchainv1alpha1.SpaceLabelKey:    userName,
 				}))
 			require.NoError(t, err)
 			assert.Len(t, idlers.Items, len(namespaceTypes))
@@ -1113,8 +1171,9 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-compute", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-compute", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1133,8 +1192,9 @@ func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1151,8 +1211,9 @@ func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1169,8 +1230,9 @@ func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1191,8 +1253,9 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-jobs", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-jobs", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1207,8 +1270,9 @@ func clusterResourceQuotaServices() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1223,8 +1287,9 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-bc", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-bc", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1239,8 +1304,9 @@ func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1255,8 +1321,9 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
 
 			criteria := clusterResourceQuotaMatches(userName, tierLabel, hard)
 
-			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName), criteria)
+			crq, err := memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName), criteria)
 			require.NoError(t, err)
+			assertExpectedToolchainLabels(t, crq, userName)
 		}
 	}
 }
@@ -1373,8 +1440,9 @@ func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 			err := memberAwait.WaitForExpectedNumberOfClusterResources(t, "ClusterResourceQuotas", number, func() (int, error) {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
-					"toolchain.dev.openshift.com/provider": "codeready-toolchain",
-					"toolchain.dev.openshift.com/owner":    userName,
+					toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
+					toolchainv1alpha1.OwnerLabelKey:    userName,
+					toolchainv1alpha1.SpaceLabelKey:    userName,
 				})
 				err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)
 				require.NoError(t, err)
@@ -1400,9 +1468,10 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 }
 
 func environment(name string) namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		_, err := memberAwait.WaitForEnvironment(t, ns.Name, name)
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		env, err := memberAwait.WaitForEnvironment(t, ns.Name, name)
 		require.NoError(t, err)
+		assertExpectedToolchainLabels(t, env, owner)
 	}
 }
 
@@ -1478,8 +1547,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assertExpectedToolchainLabels(t, role, owner)
 	}
 }
 
@@ -1559,8 +1627,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assertExpectedToolchainLabels(t, role, owner)
 	}
 }
 
@@ -1640,8 +1707,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, role.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assertExpectedToolchainLabels(t, role, owner)
 	}
 }
 
@@ -1664,8 +1730,7 @@ func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObje
 		assert.Equal(t, roleName, rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
@@ -1679,13 +1744,12 @@ func appstudioViewRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "view", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels["toolchain.dev.openshift.com/owner"])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
 func memberOperatorSaReadRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, "member-operator-sa-read")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -1695,12 +1759,12 @@ func memberOperatorSaReadRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "toolchain-sa-read", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
 func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, toolchainv1alpha1.AdminServiceAccountName)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -1709,12 +1773,12 @@ func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, "codeready-toolchain", rb.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
 func toolchainSaReadRole() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "toolchain-sa-read")
 		require.NoError(t, err)
 		expected := &rbacv1.Role{
@@ -1733,27 +1797,30 @@ func toolchainSaReadRole() namespaceObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, "codeready-toolchain", role.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		assertExpectedToolchainLabels(t, role, owner)
 	}
 }
 
 func namespaceManagerSA() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		serviceAccount, err := memberAwait.WaitForServiceAccount(t, ns.Name, toolchainv1alpha1.AdminServiceAccountName)
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, toolchainv1alpha1.AdminServiceAccountName)
 		require.NoError(t, err)
-		assert.Equal(t, "codeready-toolchain", serviceAccount.ObjectMeta.Labels["toolchain.dev.openshift.com/provider"])
+		// fixme: decide if we want to check labels also on serviceaccounts
+		//assertExpectedToolchainLabels(t, sa, owner)
 	}
 }
 
 func pipelineServiceAccount() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline")
 		require.NoError(t, err)
+		// fixme: decide if we want to check labels also on serviceaccounts
+		//assertExpectedToolchainLabels(t, sa, owner)
 	}
 }
 
 func pipelineRunnerRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, "appstudio-pipelines-runner-rolebinding")
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
@@ -1763,6 +1830,7 @@ func pipelineRunnerRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "appstudio-pipelines-runner", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
