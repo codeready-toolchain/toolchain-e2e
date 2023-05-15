@@ -229,6 +229,64 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSet() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-with-userid").
+		Email("test-user-with-userid@redhat.com").
+		UserID("111222333").
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubSet() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-with-originalsub").
+		Email("test-user-with-originalsub@redhat.com").
+		OriginalSub("abc:fff000111-bbbccc").
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDAndOriginalSubSet() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-with-userid-and-originalsub").
+		Email("test-user-with-userid-and-originalsub@redhat.com").
+		UserID("88776655").
+		OriginalSub("def:98734987234").
+		EnsureMUR().
+		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
 	hostAwait := s.Host()
 	hostAwait.CheckMasterUserRecordIsDeleted(t, userSignup.Spec.Username)
