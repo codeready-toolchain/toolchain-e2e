@@ -151,7 +151,6 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
-		commonToolchainLabelsNamespaceCheck(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
 	var otherNamespaceKind string
@@ -229,7 +228,6 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
-		commonToolchainLabelsNamespaceCheck(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
 	checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
@@ -358,12 +356,6 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		idlers(518400, "dev", "stage"))
 }
 
-func commonToolchainLabelsNamespaceCheck() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, _ *wait.MemberAwaitility, userName string) {
-		assertExpectedToolchainLabels(t, ns, userName)
-	}
-}
-
 func assertExpectedToolchainLabels(t *testing.T, object runtimeclient.Object, userName string) {
 	assert.Contains(t, object.GetLabels(), toolchainv1alpha1.OwnerLabelKey)
 	assert.Equal(t, userName, object.GetLabels()[toolchainv1alpha1.OwnerLabelKey])
@@ -446,6 +438,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		toolchainSaReadRole(),
 		memberOperatorSaReadRoleBinding(),
 		gitOpsServiceLabel(),
+		appstudioWorkSpaceNameLabel(),
 		environment("development"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
@@ -456,7 +449,6 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
 		pipelineRunnerRoleBinding(),
-		commonToolchainLabelsNamespaceCheck(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -546,7 +538,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		namespaceManagerSA(),
 		namespaceManagerSaEditRoleBinding(),
 		gitOpsServiceLabel(),
-		commonToolchainLabelsNamespaceCheck(),
+		appstudioWorkSpaceNameLabel(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -1419,6 +1411,17 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 		if !strings.HasPrefix(ns.Name, "migration-") {
 			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
 		}
+		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
+		require.NoError(t, err)
+	}
+}
+
+func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+
+		labelWaitCriterion := []wait.LabelWaitCriterion{}
+		labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("appstudio.redhat.com/workspace_name", owner))
+
 		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
 		require.NoError(t, err)
 	}
