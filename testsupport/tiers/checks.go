@@ -190,8 +190,6 @@ func (a *baseTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]s
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
-		commonToolchainLabelsRoleCheck(),
-		commonToolchainLabelsRoleBindingsCheck(),
 	)
 	return checks, nil
 }
@@ -262,8 +260,6 @@ func (a *base1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) (
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
-		commonToolchainLabelsRoleCheck(),
-		commonToolchainLabelsRoleBindingsCheck(),
 	)
 	return checks, nil
 }
@@ -365,28 +361,6 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 func commonToolchainLabelsNamespaceCheck() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, _ *wait.MemberAwaitility, userName string) {
 		assertExpectedToolchainLabels(t, ns, userName)
-	}
-}
-
-func commonToolchainLabelsRoleCheck() spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		roles := &rbacv1.RoleList{}
-		err := memberAwait.Client.List(context.TODO(), roles, providerMatchingLabels, client.InNamespace(ns.Name))
-		require.NoError(t, err)
-		for i := range roles.Items {
-			assertExpectedToolchainLabels(t, &roles.Items[i], userName)
-		}
-	}
-}
-
-func commonToolchainLabelsRoleBindingsCheck() spaceRoleObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		roleBindings := &rbacv1.RoleBindingList{}
-		err := memberAwait.Client.List(context.TODO(), roleBindings, providerMatchingLabels, client.InNamespace(ns.Name))
-		require.NoError(t, err)
-		for i := range roleBindings.Items {
-			assertExpectedToolchainLabels(t, &roleBindings.Items[i], userName)
-		}
 	}
 }
 
@@ -533,8 +507,6 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	checks = append(checks,
 		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
 		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `member-operator-sa-read` and `appstudio-pipelines-runner-rolebinding`
-		commonToolchainLabelsRoleCheck(),
-		commonToolchainLabelsRoleBindingsCheck(),
 	)
 	return checks, nil
 }
@@ -598,8 +570,6 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 	return []spaceRoleObjectsCheck{
 		numberOfToolchainRoles(0),
 		numberOfToolchainRoleBindings(1), // 1 for `namespace-manager`
-		commonToolchainLabelsRoleCheck(),
-		commonToolchainLabelsRoleBindingsCheck(),
 	}, nil
 }
 
@@ -653,9 +623,7 @@ func userEditRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
@@ -669,9 +637,7 @@ func rbacEditRoleBinding(userName string) spaceRoleObjectsCheck {
 		assert.Equal(t, "rbac-edit", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
@@ -685,9 +651,7 @@ func crtadminViewRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "view", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-		assert.Equal(t, owner, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+		assertExpectedToolchainLabels(t, rb, owner)
 	}
 }
 
@@ -701,9 +665,7 @@ func crtadminPodsRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "exec-pods", rb.RoleRef.Name)
 		assert.Equal(t, "Role", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, rb.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
-		assert.Equal(t, userName, rb.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-		assert.Equal(t, userName, rb.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+		assertExpectedToolchainLabels(t, rb, userName)
 	}
 }
 
@@ -723,9 +685,7 @@ func execPodsRole() namespaceObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, role.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
-		assert.Equal(t, userName, role.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-		assert.Equal(t, userName, role.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+		assertExpectedToolchainLabels(t, role, userName)
 	}
 }
 
@@ -745,9 +705,7 @@ func rbacEditRole() spaceRoleObjectsCheck {
 		}
 
 		assert.Equal(t, expected.Rules, role.Rules)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, role.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
-		assert.Equal(t, owner, role.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-		assert.Equal(t, owner, role.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+		assertExpectedToolchainLabels(t, role, owner)
 	}
 }
 
@@ -1129,8 +1087,7 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 				}
 				idler, err := memberAwait.WaitForIdler(t, idlerName, wait.IdlerHasTier(tierLabel), wait.IdlerHasTimeoutSeconds(timeoutSeconds))
 				require.NoError(t, err)
-				assert.Equal(t, userName, idler.ObjectMeta.Labels[toolchainv1alpha1.OwnerLabelKey])
-				assert.Equal(t, userName, idler.ObjectMeta.Labels[toolchainv1alpha1.SpaceLabelKey])
+				assertExpectedToolchainLabels(t, idler, userName)
 			}
 
 			// Make sure there is no unexpected idlers
