@@ -525,7 +525,7 @@ func UntilNSTemplateSetHasAnySpaceRoles() NSTemplateSetWaitCriterion {
 			return len(actual.Spec.SpaceRoles) > 0
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected space roles to not be empty.")
+			return "expected space roles to not be empty."
 		},
 	}
 }
