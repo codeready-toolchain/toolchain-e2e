@@ -26,11 +26,12 @@ type metricsProvider interface {
 
 // metric constants
 const (
-	UserSignupsMetric                = "sandbox_user_signups_total"
-	UserSignupsApprovedMetric        = "sandbox_user_signups_approved_total"
-	UserSignupsDeactivatedMetric     = "sandbox_user_signups_deactivated_total"
-	UserSignupsAutoDeactivatedMetric = "sandbox_user_signups_auto_deactivated_total"
-	UserSignupsBannedMetric          = "sandbox_user_signups_banned_total"
+	UserSignupsMetric                   = "sandbox_user_signups_total"
+	UserSignupsApprovedMetric           = "sandbox_user_signups_approved_total"
+	UserSignupsApprovedWithMethodMetric = "sandbox_user_signups_approved_with_method_total"
+	UserSignupsDeactivatedMetric        = "sandbox_user_signups_deactivated_total"
+	UserSignupsAutoDeactivatedMetric    = "sandbox_user_signups_auto_deactivated_total"
+	UserSignupsBannedMetric             = "sandbox_user_signups_banned_total"
 
 	MasterUserRecordsPerDomainMetric = "sandbox_master_user_records"
 
@@ -80,6 +81,10 @@ func (m *MetricsAssertionHelper) captureBaselineValues(t *testing.T, memberClust
 	for _, domain := range []string{"internal", "external"} {
 		key := m.baselineKey(t, MasterUserRecordsPerDomainMetric, "domain", domain)
 		m.baselineValues[key] = m.await.GetMetricValueOrZero(t, MasterUserRecordsPerDomainMetric, "domain", domain)
+	}
+	for _, approvalMethod := range []string{"automatic", "manual"} {
+		key := m.baselineKey(t, UserSignupsApprovedWithMethodMetric, "method", approvalMethod)
+		m.baselineValues[key] = m.await.GetMetricValueOrZero(t, UserSignupsApprovedWithMethodMetric, "method", approvalMethod)
 	}
 }
 
