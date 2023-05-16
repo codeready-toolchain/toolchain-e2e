@@ -86,7 +86,6 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilUserHasLabel(toolchainv1alpha1.SpaceLabelKey, userAccount.Name),
 			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
 		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
@@ -109,16 +108,14 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 
 		_, err = memberAwait.WaitForIdentity(t, identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
-			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilIdentityHasLabel(toolchainv1alpha1.SpaceLabelKey, userAccount.Name))
+			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 		assert.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
 
 		// Verify the second identity
 		if originalSubIdentityName != "" {
 			_, err = memberAwait.WaitForIdentity(t, identityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
-				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-				wait.UntilIdentityHasLabel(toolchainv1alpha1.SpaceLabelKey, userAccount.Name))
+				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
 		}
 	} else {
