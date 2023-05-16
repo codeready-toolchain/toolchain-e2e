@@ -17,7 +17,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
 	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
-	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
+	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
 	require.NoError(t, err)
 
 	// save the names of the namespaces provisioned by the NSTemplateSet,
