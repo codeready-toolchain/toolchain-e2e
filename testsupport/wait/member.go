@@ -517,6 +517,19 @@ func UntilNSTemplateSetHasSpaceRolesFromBindings(tier *toolchainv1alpha1.NSTempl
 	}
 }
 
+// UntilNSTemplateSetHasAnySpaceRoles returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet has any space roles set.
+func UntilNSTemplateSetHasAnySpaceRoles() NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return len(actual.Spec.SpaceRoles) > 0
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return "expected space roles to not be empty."
+		},
+	}
+}
+
 func SpaceRole(templateRef string, usernames ...string) toolchainv1alpha1.NSTemplateSetSpaceRole {
 	return toolchainv1alpha1.NSTemplateSetSpaceRole{
 		TemplateRef: templateRef,
