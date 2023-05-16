@@ -90,6 +90,10 @@ func (u *proxyUser) getApplication(t *testing.T, proxyClient client.Client, appl
 	return app
 }
 
+func (u *proxyUser) getApplicationName(i int) string {
+	return fmt.Sprintf("%s-test-app-%d", u.compliantUsername, i)
+}
+
 // full flow from usersignup with approval down to namespaces creation and cleanup
 //
 // !!! Additional context !!!
@@ -150,7 +154,7 @@ func TestProxyFlow(t *testing.T) {
 				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
 					// given
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					applicationName := user.getApplicationName(i)
 					expectedApp := newApplication(applicationName, tenantNsName(user.compliantUsername))
 
 					// when
@@ -188,7 +192,7 @@ func TestProxyFlow(t *testing.T) {
 				// Retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
 					// given
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					applicationName := user.getApplicationName(i)
 					// Get Application
 					proxyApp := user.getApplication(t, proxyCl, applicationName)
 
@@ -212,7 +216,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// Retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					applicationName := user.getApplicationName(i)
 					// Get application
 					proxyApp := user.getApplication(t, proxyCl, applicationName)
 					// Update DisplayName
@@ -268,7 +272,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// Find and patch the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					applicationName := user.getApplicationName(i)
 					patchString := "Patched application for proxy test"
 					// Get application
 					proxyApp := user.getApplication(t, proxyCl, applicationName)
@@ -309,8 +313,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// Delete application
 				for i := 0; i < 2; i++ {
-					// Find application
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					applicationName := user.getApplicationName(i)
 					// Get application
 					proxyApp := user.getApplication(t, proxyCl, applicationName)
 					// Delete
