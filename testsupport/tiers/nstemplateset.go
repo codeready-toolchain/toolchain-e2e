@@ -17,7 +17,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
 	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
-	_, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
+	nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
 	require.NoError(t, err)
 
 	// save the names of the namespaces provisioned by the NSTemplateSet,
@@ -42,7 +42,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 		for _, r := range nsTmplSet.Spec.SpaceRoles {
 			tmpl, err := hostAwait.WaitForTierTemplate(t, r.TemplateRef)
 			require.NoError(t, err)
-			t.Logf("space role template: %s", tmpl.GetName())
+			t.Logf("space role template '%s' for usernames '%v' in NSTemplateSet '%s'", tmpl.GetName(), r.Usernames, nsTmplSet.Name)
 			spaceRoles[tmpl.Spec.Type] = r.Usernames
 		}
 		spaceRoleChecks, err := checks.GetSpaceRoleChecks(spaceRoles)
