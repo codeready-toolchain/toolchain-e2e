@@ -125,12 +125,17 @@ func TestWoopra(t *testing.T) {
 
 	t.Run("get woopra domain 200 OK", func(t *testing.T) {
 		// Call woopra domain endpoint.
-		assertNotSecuredGetResponseEquals("woopra-domain", "test woopra domain")
+		assertNotSecuredGetResponseEquals("woopra-domain", "test devspaces woopra domain")
 	})
 
-	t.Run("get segment write key 200 OK", func(t *testing.T) {
+	t.Run("get sandbox segment write key 200 OK", func(t *testing.T) {
 		// Call segment write key endpoint.
-		assertNotSecuredGetResponseEquals("segment-write-key", "test segment write key")
+		assertNotSecuredGetResponseEquals("segment-write-key", "test sandbox segment write key")
+	})
+
+	t.Run("get devspaces segment write key 200 OK", func(t *testing.T) {
+		// Call segment write key endpoint.
+		assertNotSecuredGetResponseEquals("devspaces-segment-write-key", "test devspaces segment write key")
 	})
 }
 

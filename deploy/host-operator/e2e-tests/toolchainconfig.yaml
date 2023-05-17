@@ -11,8 +11,11 @@ spec:
       durationBeforeNotificationDeletion: '5s'
     registrationService:
       analytics:
-        segmentWriteKey: 'test segment write key'
-        woopraDomain: 'test woopra domain'
+        devSpaces:
+          woopraDomain: 'test devspaces woopra domain'
+          segmentWriteKey: 'test devspaces segment write key'
+        segmentWriteKey: 'test sandbox segment write key'
+        woopraDomain: 'test sandbox woopra domain'
       environment: 'e2e-tests'
       replicas: 2
       verification:
