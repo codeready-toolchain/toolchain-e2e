@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
@@ -165,6 +168,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
+	route := hostAwait.RegistrationServiceURL
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false)) // disable automatic approval so that users are created with verification required
 	// host metrics should be available at this point
 	VerifyHostMetricsService(t, hostAwait)
@@ -176,61 +180,81 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName)
 	})
 
-	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
-	for i := 1; i <= 2; i++ {
-		username := fmt.Sprintf("user-%04d", i)
-
-		// Create UserSignup
-		usersignups[username], _ = NewSignupRequest(awaitilities).
-			Username(username).
-			Email(username + "@redhat.com").
-			EnsureMUR().
-			TargetCluster(memberAwait2).
-			RequireConditions(ConditionSet(Default(), VerificationRequired())...). // verification required
-			Execute(t).
-			Resources()
-	}
-	metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 2) // both pending verification
-
-	// pending verification metric should only be incremented the first time verification is required
-	// try entering a verification code and verify that the metric is not incremented
-	// route := hostAwait.RegistrationServiceURL
-
-	// when deactivating the users
-	for username, usersignup := range usersignups {
-		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
-			func(usersignup *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(usersignup, true)
-			})
+	var userSignup *toolchainv1alpha1.UserSignup
+	t.Run("VerificationRequiredMetric", func(t *testing.T) {
+		// given
+		username := "user-verification-required"
+		// Create a token and identity to sign up with
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@some.domain"
+		identity0, token0, err := authsupport.NewToken(authsupport.WithEmail(emailAddress))
 		require.NoError(t, err)
 
-		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
+		// when
+		// Create UserSignup with verification required
+		InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+
+		// Wait for the UserSignup to be created and in verification required status
+		userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+			wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+
+		// then
 		require.NoError(t, err)
+		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 
-		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
-		require.NoError(t, err)
-	}
+		// Confirm the CompliantUsername has NOT been set, since verification is required and it hasn't been approved yet
+		require.Empty(t, userSignup.Status.CompliantUsername)
+		// verify the value of the `sandbox_user_signups_verification_required_total` metric
+		metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 1) // user is pending verification
 
-	// then verify the value of the `sandbox_user_signups_verification_required_total` metric
-	metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 2) // no change
+		// Pending verification metric should only be incremented the first time verification is required.
+		// Try entering a verification code and verify that the metric is not incremented.
+		t.Run("no change to metric when verification initiated", func(t *testing.T) {
+			// when
+			// Initiate the verification process
+			InvokeEndpoint(t, "PUT", route+"/api/v1/signup/verification", token0,
+				`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
-	// when reactivating the users
-	for i := 1; i <= 2; i++ {
-		username := fmt.Sprintf("user-%04d", i)
+			// then
+			// Retrieve the updated UserSignup
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username)
+			require.NoError(t, err)
+			// Confirm there is a verification code annotation value, and store it in a variable
+			verificationCode := userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]
+			require.NotEmpty(t, verificationCode)
+			// Attempt to verify with an incorrect verification code
+			InvokeEndpoint(t, "GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+			metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 1) // no change after verification initiated
+		})
 
-		// Create UserSignup
-		usersignups[username], _ = NewSignupRequest(awaitilities).
-			Username(username).
-			Email(username + "@redhat.com").
-			EnsureMUR().
-			TargetCluster(memberAwait2).
-			RequireConditions(ConditionSet(Default(), VerificationRequired())...). // verification required
-			Execute(t).
-			Resources()
-	}
+		t.Run("no change to metric when user deactivated", func(t *testing.T) {
+			// when deactivating the user
+			_, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+				func(usersignup *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(usersignup, true)
+				})
 
-	// then verify the value of the `sandbox_user_signups_verification_required_total` metric
-	metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 4) // additional 2 pending verification since both were reactivated
+			// then
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
+			require.NoError(t, err)
+			metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 1) // no change
+		})
+
+		t.Run("metric incremented when user reactivated", func(t *testing.T) {
+			// when reactivating the user
+			InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+
+			// then
+			require.NoError(t, err)
+			metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 2) // additional pending verification since user was reactivated
+		})
+	})
 }
 
 // TestMetricsWhenUsersReactivated activates and deactivates a few users, and check the metrics.
