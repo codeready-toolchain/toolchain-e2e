@@ -248,7 +248,7 @@ func TestProxyFlow(t *testing.T) {
 
 				// Get List of applications.
 				applicationList := &appstudiov1.ApplicationList{}
-				proxyCl.List(context.TODO(), applicationList, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
+				err = proxyCl.List(context.TODO(), applicationList, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
 				// User should be able to list applications
 				require.NoError(t, err)
 				assert.NotNil(t, applicationList)
