@@ -267,17 +267,20 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubSet()
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
-func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDAndOriginalSubSet() {
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSameAsSubAndOriginalSubSet() {
 	hostAwait := s.Host()
 
 	// given
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
+	identityID := uuid.Must(uuid.NewV4())
+
 	// when
 	userSignup, _ := NewSignupRequest(s.Awaitilities).
 		Username("test-user-with-userid-and-originalsub").
 		Email("test-user-with-userid-and-originalsub@redhat.com").
-		UserID("88776655").
+		IdentityID(identityID).
+		UserID(identityID.String()).
 		OriginalSub("def:98734987234").
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
