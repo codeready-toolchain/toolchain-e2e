@@ -428,6 +428,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		toolchainSaReadRole(),
 		memberOperatorSaReadRoleBinding(),
 		gitOpsServiceLabel(),
+		appstudioWorkSpaceNameLabel(),
 		environment("development"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
@@ -527,6 +528,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		namespaceManagerSA(),
 		namespaceManagerSaEditRoleBinding(),
 		gitOpsServiceLabel(),
+		appstudioWorkSpaceNameLabel(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -1394,6 +1396,17 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 		if !strings.HasPrefix(ns.Name, "migration-") {
 			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
 		}
+		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
+		require.NoError(t, err)
+	}
+}
+
+func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+
+		labelWaitCriterion := []wait.LabelWaitCriterion{}
+		labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("appstudio.redhat.com/workspace_name", owner))
+
 		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
 		require.NoError(t, err)
 	}
