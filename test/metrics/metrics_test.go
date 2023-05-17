@@ -158,6 +158,81 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 
 }
 
+// TestVerificationRequiredMetric verifies that `UserSignupVerificationRequiredMetric` counters are increased only once when users are created/reactivated
+func TestVerificationRequiredMetric(t *testing.T) {
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false)) // disable automatic approval so that users are created with verification required
+	// host metrics should be available at this point
+	VerifyHostMetricsService(t, hostAwait)
+	VerifyMemberMetricsService(t, memberAwait)
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		// wait until metrics are back to their respective baselines
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName)
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName)
+	})
+
+	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
+	for i := 1; i <= 2; i++ {
+		username := fmt.Sprintf("user-%04d", i)
+
+		// Create UserSignup
+		usersignups[username], _ = NewSignupRequest(awaitilities).
+			Username(username).
+			Email(username + "@redhat.com").
+			EnsureMUR().
+			TargetCluster(memberAwait2).
+			RequireConditions(ConditionSet(Default(), VerificationRequired())...). // verification required
+			Execute(t).
+			Resources()
+	}
+	metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 2) // both pending verification
+
+	// pending verification metric should only be incremented the first time verification is required
+	// try entering a verification code and verify that the metric is not incremented
+	// route := hostAwait.RegistrationServiceURL
+
+	// when deactivating the users
+	for username, usersignup := range usersignups {
+		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
+			func(usersignup *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivated(usersignup, true)
+			})
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
+		require.NoError(t, err)
+	}
+
+	// then verify the value of the `sandbox_user_signups_verification_required_total` metric
+	metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 2) // no change
+
+	// when reactivating the users
+	for i := 1; i <= 2; i++ {
+		username := fmt.Sprintf("user-%04d", i)
+
+		// Create UserSignup
+		usersignups[username], _ = NewSignupRequest(awaitilities).
+			Username(username).
+			Email(username + "@redhat.com").
+			EnsureMUR().
+			TargetCluster(memberAwait2).
+			RequireConditions(ConditionSet(Default(), VerificationRequired())...). // verification required
+			Execute(t).
+			Resources()
+	}
+
+	// then verify the value of the `sandbox_user_signups_verification_required_total` metric
+	metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 4) // additional 2 pending verification since both were reactivated
+}
+
 // TestMetricsWhenUsersReactivated activates and deactivates a few users, and check the metrics.
 // user-0001 will be activated 1 time
 // user-0002 will be activated 2 times
