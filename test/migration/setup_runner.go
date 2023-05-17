@@ -68,7 +68,16 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 	err := hostAwait.Client.Create(context.TODO(), space)
 	require.NoError(t, err)
 
-	test.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, r.WithCleanup)
+	_, _, binding := test.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, r.WithCleanup)
+
+	tier, err := hostAwait.WaitForNSTemplateTier(t, tierName)
+	require.NoError(t, err)
+
+	_, err = targetCluster.WaitForNSTmplSet(t, space.Name,
+		wait.UntilNSTemplateSetHasConditions(test.Provisioned()),
+		wait.UntilNSTemplateSetHasSpaceRoles(
+			wait.SpaceRole(tier.Spec.SpaceRoles[binding.Spec.SpaceRole].TemplateRef, binding.Spec.MasterUserRecord)))
+	require.NoError(t, err)
 
 	_, err = hostAwait.WaitForSpace(t, space.Name,
 		wait.UntilSpaceHasConditions(test.Provisioned()))
