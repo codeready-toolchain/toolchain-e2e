@@ -12,7 +12,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -784,29 +783,50 @@ func (a *MemberAwaitility) WaitForNamespaceInTerminating(t *testing.T, nsName st
 	return ns, nil
 }
 
+func (a *MemberAwaitility) printRoleBindingWaitCriterionDiffs(t *testing.T, actual *rbacv1.RoleBinding, criteria ...LabelWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find RoleBinding\n")
+		buf.WriteString(a.listAndReturnContent("RoleBinding", "", &rbacv1.RoleBindingList{}))
+	} else {
+		buf.WriteString("failed to find RoleBinding with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual.ObjectMeta) {
+				buf.WriteString(c.Diff(actual.ObjectMeta))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	t.Log(buf.String())
+}
+
 // WaitForRoleBinding waits until a RoleBinding with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForRoleBinding(t *testing.T, namespace *corev1.Namespace, name string) (*rbacv1.RoleBinding, error) {
+func (a *MemberAwaitility) WaitForRoleBinding(t *testing.T, namespace *corev1.Namespace, name string, criteria ...LabelWaitCriterion) (*rbacv1.RoleBinding, error) {
 	t.Logf("waiting for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
 	roleBinding := &rbacv1.RoleBinding{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &rbacv1.RoleBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				allRBs := &rbacv1.RoleBindingList{}
-				if err := a.Client.List(context.TODO(), allRBs, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
-					return false, err
-				}
 				return false, nil
 			}
 			return false, err
 		}
 		roleBinding = obj
-		return true, nil
+		return matchLabelWaitCriteria(obj.ObjectMeta, criteria...), nil
 	})
 	if err != nil {
-		t.Logf("failed to wait for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
+		t.Logf("failed to wait for rolebinding")
+		a.printRoleBindingWaitCriterionDiffs(t, roleBinding, criteria...)
 		return nil, err
 	}
+	t.Logf("found rolebinding %s with custom labels", roleBinding.Name)
 	return roleBinding, err
 }
 
@@ -897,26 +917,23 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(t *testing.T, namespace *corev1.
 }
 
 // WaitForRole waits until a Role with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForRole(t *testing.T, namespace *corev1.Namespace, name string) (*rbacv1.Role, error) {
+func (a *MemberAwaitility) WaitForRole(t *testing.T, namespace *corev1.Namespace, name string, criteria ...LabelWaitCriterion) (*rbacv1.Role, error) {
 	t.Logf("waiting for Role '%s' in namespace '%s'", name, namespace.Name)
 	role := &rbacv1.Role{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &rbacv1.Role{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
-				allRoles := &rbacv1.RoleList{}
-				if err := a.Client.List(context.TODO(), allRoles, client.MatchingLabels(codereadyToolchainProviderLabel)); err != nil {
-					return false, err
-				}
 				return false, nil
 			}
 			return false, err
 		}
 		role = obj
-		return true, nil
+		return matchLabelWaitCriteria(obj.ObjectMeta, criteria...), nil
 	})
 	if err != nil {
 		t.Logf("failed to wait for Role '%s' in namespace '%s'", name, namespace.Name)
+		a.printRoleWaitCriterionDiffs(t, role, criteria...)
 	}
 	return role, err
 }
@@ -934,6 +951,29 @@ func (a *MemberAwaitility) WaitUntilRoleDeleted(t *testing.T, namespace *corev1.
 		}
 		return false, nil
 	})
+}
+
+func (a *MemberAwaitility) printRoleWaitCriterionDiffs(t *testing.T, actual *rbacv1.Role, criteria ...LabelWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find Role\n")
+		buf.WriteString(a.listAndReturnContent("Role", "", &rbacv1.RoleList{}))
+	} else {
+		buf.WriteString("failed to find Role with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual.ObjectMeta) {
+				buf.WriteString(c.Diff(actual.ObjectMeta))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	t.Log(buf.String())
 }
 
 // ClusterResourceQuotaWaitCriterion a struct to compare with a given ClusterResourceQuota
@@ -1135,6 +1175,18 @@ func IdlerHasTier(expected string) IdlerWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.Idler) string {
 			return fmt.Sprintf("expected Idler 'toolchain.dev.openshift.com/tier' label to be '%s' but it was '%s'", expected, actual.Labels["toolchain.dev.openshift.com/tier"])
+		},
+	}
+}
+
+// IdlerHasLabel checks if the Idler has the given label
+func IdlerHasLabel(key, value string) IdlerWaitCriterion {
+	return IdlerWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Idler) bool {
+			return actual.Labels != nil && value == actual.Labels[key]
+		},
+		Diff: func(actual *toolchainv1alpha1.Idler) string {
+			return fmt.Sprintf("expected Idler %s label to be '%s' but it was '%s'", actual.Name, value, actual.Labels[key])
 		},
 	}
 }
@@ -2214,7 +2266,7 @@ func (a *MemberAwaitility) UpdateConfigMap(t *testing.T, namespace, cmName strin
 	return cm, err
 }
 
-func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name string) (*appstudiov1.Environment, error) {
+func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name string, criteria ...LabelWaitCriterion) (*appstudiov1.Environment, error) {
 	t.Logf("waiting for Environment resource '%s' to exist in namespace '%s'", name, namespace)
 	var env *appstudiov1.Environment
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -2228,9 +2280,38 @@ func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name stri
 			return false, err
 		}
 		env = obj
-		return true, nil
+		return matchLabelWaitCriteria(obj.ObjectMeta, criteria...), nil
 	})
+	if err != nil {
+		t.Logf("failed to wait for Environment")
+		a.printEnvironmentWaitCriterionDiffs(t, env, criteria...)
+		return nil, err
+	}
+	t.Logf("found Environment %s with custom labels", env.Name)
 	return env, err
+}
+
+func (a *MemberAwaitility) printEnvironmentWaitCriterionDiffs(t *testing.T, actual *appstudiov1.Environment, criteria ...LabelWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find Environment\n")
+		buf.WriteString(a.listAndReturnContent("Environment", "", &appstudiov1.EnvironmentList{}))
+	} else {
+		buf.WriteString("failed to find Environment with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual.ObjectMeta) {
+				buf.WriteString(c.Diff(actual.ObjectMeta))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	t.Log(buf.String())
 }
 
 func (a *MemberAwaitility) GetContainerEnv(t *testing.T, name string) string {
