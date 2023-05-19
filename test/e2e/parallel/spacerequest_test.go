@@ -51,23 +51,21 @@ func TestCreateSpaceRequest(t *testing.T) {
 		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
 			// now, delete the subSpace, along with its associated namespace,
 			// but a new Space will be provisioned by the SpaceRequest.
+			//
+			// save the creation timestamp that will be used to ensure that a new subSpace was created with the same name.
+			oldSpaceCreationTimeStamp := subSpace.CreationTimestamp
 
 			// when
 			err := hostAwait.Client.Delete(context.TODO(), subSpace)
 
 			// then
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
-			require.NoError(t, err)
-			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
-			require.NoError(t, err)
-			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
-			require.NoError(t, err)
 			// a new subSpace is created
+			// with the same name but creation timestamp should be greater (more recent).
 			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
 				UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 				UntilSpaceHasTier("appstudio-env"),
 				UntilSpaceHasAnyProvisionedNamespaces(),
+				UntilSpaceHasCreationTimestampGreaterThan(oldSpaceCreationTimeStamp.Time),
 			)
 			require.NoError(t, err)
 
