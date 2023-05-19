@@ -99,7 +99,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		userID, found := userSignup.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
 		if found {
 			accountID, found := userSignup.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey]
-			if found {
+			if found && userID != "" && accountID != "" {
 				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey])
 				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey])
 			}
