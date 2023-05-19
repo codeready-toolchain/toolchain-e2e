@@ -26,12 +26,13 @@ type metricsProvider interface {
 
 // metric constants
 const (
-	UserSignupsMetric                   = "sandbox_user_signups_total"
-	UserSignupsApprovedMetric           = "sandbox_user_signups_approved_total"
-	UserSignupsApprovedWithMethodMetric = "sandbox_user_signups_approved_with_method_total"
-	UserSignupsDeactivatedMetric        = "sandbox_user_signups_deactivated_total"
-	UserSignupsAutoDeactivatedMetric    = "sandbox_user_signups_auto_deactivated_total"
-	UserSignupsBannedMetric             = "sandbox_user_signups_banned_total"
+	UserSignupsMetric                    = "sandbox_user_signups_total"
+	UserSignupsApprovedMetric            = "sandbox_user_signups_approved_total"
+	UserSignupsApprovedWithMethodMetric  = "sandbox_user_signups_approved_with_method_total"
+	UserSignupsDeactivatedMetric         = "sandbox_user_signups_deactivated_total"
+	UserSignupsAutoDeactivatedMetric     = "sandbox_user_signups_auto_deactivated_total"
+	UserSignupsBannedMetric              = "sandbox_user_signups_banned_total"
+	UserSignupVerificationRequiredMetric = "sandbox_user_signups_verification_required_total"
 
 	MasterUserRecordsPerDomainMetric = "sandbox_master_user_records"
 
@@ -67,6 +68,7 @@ func (m *MetricsAssertionHelper) captureBaselineValues(t *testing.T, memberClust
 	m.baselineValues[UserSignupsDeactivatedMetric] = m.await.GetMetricValue(t, UserSignupsDeactivatedMetric)
 	m.baselineValues[UserSignupsAutoDeactivatedMetric] = m.await.GetMetricValue(t, UserSignupsAutoDeactivatedMetric)
 	m.baselineValues[UserSignupsBannedMetric] = m.await.GetMetricValue(t, UserSignupsBannedMetric)
+	m.baselineValues[UserSignupVerificationRequiredMetric] = m.await.GetMetricValue(t, UserSignupVerificationRequiredMetric)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
 		spacesKey := m.baselineKey(t, SpacesMetric, "cluster_name", name)
 		m.baselineValues[spacesKey] += m.await.GetMetricValue(t, SpacesMetric, "cluster_name", name)
