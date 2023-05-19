@@ -61,6 +61,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			// then
 			// a new subSpace is created
 			// with the same name but creation timestamp should be greater (more recent).
+			require.NoError(t, err)
 			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
 				UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 				UntilSpaceHasTier("appstudio-env"),
