@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -154,6 +155,7 @@ func TestProxyFlow(t *testing.T) {
 			closeConnection := w.Start()
 			defer closeConnection()
 			proxyCl := createProxyClient(t, user, hostAwait)
+			applicationList := &appstudiov1.ApplicationList{}
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
@@ -187,7 +189,7 @@ func TestProxyFlow(t *testing.T) {
 				}
 			})
 
-			t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it updated", func(t *testing.T) {
+			t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
 				// Update application
 				applicationName := user.getApplicationName(0)
 				// Get application
@@ -201,21 +203,19 @@ func TestProxyFlow(t *testing.T) {
 				updatedApp := user.getApplication(t, proxyCl, applicationName)
 				assert.Equal(t, updatedApp.Spec.DisplayName, proxyApp.Spec.DisplayName)
 
-				// Double check that the Application is updated using a regular client (non-proxy)
+				// Check that the Application is updated using a regular client (non-proxy)
 				originalApp := user.getApplicationWithoutProxy(t, applicationName)
-				assert.Equal(t, updatedApp.Spec.DisplayName, originalApp.Spec.DisplayName)
+				assert.Contains(t, originalApp.Spec.DisplayName, "updated application")
 			})
 
 			t.Run("use proxy to list a HAS Application CR in the user appstudio namespace", func(t *testing.T) {
 				// Get List of applications.
-				applicationList := &appstudiov1.ApplicationList{}
 				err := proxyCl.List(context.TODO(), applicationList, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
 				// User should be able to list applications
 				require.NoError(t, err)
-				assert.NotNil(t, applicationList)
 				assert.NotEmpty(t, applicationList)
 
-				// Double check that the applicationList using a regular client (non-proxy)
+				// Check that the applicationList using a regular client (non-proxy)
 				applicationListWS := &appstudiov1.ApplicationList{}
 				err = user.expectedMemberCluster.Client.List(context.TODO(), applicationListWS, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
 				require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestProxyFlow(t *testing.T) {
 				assert.Equal(t, applicationListWS.Items, applicationList.Items)
 			})
 
-			t.Run("use proxy to patch a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it patched", func(t *testing.T) {
+			t.Run("use proxy to patch a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
 				// Patch application
 				applicationName := user.getApplicationName(1)
 				patchString := "Patched application for proxy test"
@@ -252,26 +252,25 @@ func TestProxyFlow(t *testing.T) {
 
 			t.Run("use proxy to delete a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it deleted", func(t *testing.T) {
 				// Delete applications
-				for i := 0; i < 2; i++ {
-					applicationName := user.getApplicationName(i)
+				for i := 0; i < len(applicationList.Items); i++ {
 					// Get application
-					proxyApp := user.getApplication(t, proxyCl, applicationName)
+					proxyApp := applicationList.Items[i].DeepCopy()
 					// Delete
 					err := proxyCl.Delete(context.TODO(), proxyApp)
 					require.NoError(t, err)
 					err = w.WaitForApplicationDeletion(
 						user.expectedMemberCluster.RetryInterval,
 						user.expectedMemberCluster.Timeout,
-						applicationName,
+						proxyApp.Name,
 					)
 					require.NoError(t, err)
 
-					// Double check that the Application is deleted using a regular client (non-proxy)
-					namespacedName := types.NamespacedName{Namespace: tenantNsName(user.compliantUsername), Name: applicationName}
+					// Check that the Application is deleted using a regular client (non-proxy)
+					namespacedName := types.NamespacedName{Namespace: tenantNsName(user.compliantUsername), Name: proxyApp.Name}
 					originalApp := &appstudiov1.Application{}
 					err = user.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, originalApp)
 					require.Error(t, err) //not found
-					require.Empty(t, originalApp)
+					require.True(t, k8serr.IsNotFound(err))
 				}
 			})
 
