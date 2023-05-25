@@ -95,14 +95,14 @@ func TestHealth(t *testing.T) {
 	})
 }
 
-func TestWoopra(t *testing.T) {
+func TestAnalytics(t *testing.T) {
 	// given
 	t.Parallel()
 	await := WaitForDeployments(t)
 	route := await.Host().RegistrationServiceURL
 
 	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseValue string) {
-		// Call woopra domain endpoint.
+		// Call analytics domain endpoint.
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", route, endPointPath), nil)
 		require.NoError(t, err)
 
@@ -122,11 +122,6 @@ func TestWoopra(t *testing.T) {
 		// Verify JSON response.
 		require.Equal(t, expectedResponseValue, value)
 	}
-
-	t.Run("get woopra domain 200 OK", func(t *testing.T) {
-		// Call woopra domain endpoint.
-		assertNotSecuredGetResponseEquals("woopra-domain", "test devspaces woopra domain")
-	})
 
 	t.Run("get sandbox segment write key 200 OK", func(t *testing.T) {
 		// Call segment write key endpoint.

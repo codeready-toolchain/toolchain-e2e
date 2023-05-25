@@ -12,10 +12,8 @@ spec:
     registrationService:
       analytics:
         devSpaces:
-          woopraDomain: 'test devspaces woopra domain'
           segmentWriteKey: 'test devspaces segment write key'
         segmentWriteKey: 'test sandbox segment write key'
-        woopraDomain: 'test sandbox woopra domain'
       environment: 'e2e-tests'
       replicas: 2
       verification:
