@@ -14,9 +14,9 @@ import (
 
 func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expectedURL string) {
 	err := memberAwait.WaitForMemberStatus(t,
-		wait.UntilMemberStatusHasConditions(ToolchainStatusReady()),
+		wait.UntilMemberStatusHasConditions(wait.ToolchainStatusReady()),
 		wait.UntilMemberStatusHasUsageSet(),
-		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, RoutesAvailable()))
+		wait.UntilMemberStatusHasConsoleURLSet(expectedURL, wait.RoutesAvailable()))
 	require.NoError(t, err, "failed while waiting for MemberStatus")
 }
 
@@ -24,7 +24,7 @@ func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberA
 	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
-	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilAllMembersHaveUsageSet(),
 		wait.UntilAllMembersHaveAPIEndpoint(memberCluster.Spec.APIEndpoint),
 		wait.UntilProxyURLIsPresent(hostAwait.APIProxyURL))

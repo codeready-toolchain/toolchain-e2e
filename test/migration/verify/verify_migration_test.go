@@ -140,7 +140,7 @@ func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signu
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
 
 	_, err := awaitilities.Host().WaitForUserSignup(t, signup.Name,
-		wait.UntilUserSignupContainsConditions(ConditionSet(Default(), DeactivatedWithoutPreDeactivation())...),
+		wait.UntilUserSignupContainsConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(t, err)
 	require.True(t, states.Deactivated(signup), "usersignup should be deactivated")
@@ -160,7 +160,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 
 	// verify that it's still banned
 	_, err := hostAwait.WaitForUserSignup(t, signup.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 	require.NoError(t, err)
 
@@ -189,7 +189,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
 	provisionedMur, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*120)).WaitForMasterUserRecord(t, murName,
-		wait.UntilMasterUserRecordHasCondition(Provisioned()),
+		wait.UntilMasterUserRecordHasCondition(wait.Provisioned()),
 		wait.UntilMasterUserRecordHasNoTierHashLabel(), // after migration there should be no tier hash label so we should wait for that to confirm migration is completed before proceeding
 	)
 	require.NoError(t, err)
