@@ -8,6 +8,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -127,7 +128,7 @@ func TestSpaceRoles(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
 		Execute(t).
 		Resources()
@@ -165,7 +166,7 @@ func TestSpaceRoles(t *testing.T) {
 			TargetCluster(awaitilities.Member1()).
 			WaitForMUR().
 			NoSpace().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 
@@ -175,7 +176,7 @@ func TestSpaceRoles(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
-			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasConditions(wait.Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceguest", "spaceowner"), // sorted usernames
 			),
@@ -195,7 +196,7 @@ func TestSpaceRoles(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
-				UntilNSTemplateSetHasConditions(Provisioned()),
+				UntilNSTemplateSetHasConditions(wait.Provisioned()),
 				UntilNSTemplateSetHasSpaceRoles(
 					SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"), // "spaceguest" was removed
 				),
@@ -215,7 +216,7 @@ func TestSpaceRoles(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
-			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasConditions(wait.Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, ownerMUR.Name),
 			),
@@ -234,7 +235,7 @@ func TestSpaceRoles(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
-			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasConditions(wait.Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["contributor"].TemplateRef, ownerMUR.Name),
 			),
@@ -323,7 +324,7 @@ func TestSubSpace(t *testing.T) {
 		_, subSpaceNSTemplateSet := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 		// check that username and role from parentSpace was inherited in the subSpace NSTemplateSet
 		_, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasConditions(wait.Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // MUR from parentSpaceBinding is here
 			),
@@ -332,7 +333,7 @@ func TestSubSpace(t *testing.T) {
 
 		// check that user was added to the parentSpace
 		_, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasConditions(wait.Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord),
 			),
@@ -352,7 +353,7 @@ func TestSubSpace(t *testing.T) {
 			// downgrade of the usernames is done in parentSpace
 			require.NoError(t, err)
 			parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-				UntilNSTemplateSetHasConditions(Provisioned()),
+				UntilNSTemplateSetHasConditions(wait.Provisioned()),
 				UntilNSTemplateSetHasSpaceRoles(
 					SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // user was downgraded to viewer
 				),
@@ -362,7 +363,7 @@ func TestSubSpace(t *testing.T) {
 			// ....and the downgrade of to viewer of the user should be reflected also to the subSpace
 			require.NoError(t, err)
 			subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-				UntilNSTemplateSetHasConditions(Provisioned()),
+				UntilNSTemplateSetHasConditions(wait.Provisioned()),
 				UntilNSTemplateSetHasSpaceRoles(
 					SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // user was downgraded to viewer
 				),
@@ -378,7 +379,7 @@ func TestSubSpace(t *testing.T) {
 				// then
 				// subSpace should have usernames and roles from parentSpaceBindings+subSpaceBindings
 				subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-					UntilNSTemplateSetHasConditions(Provisioned()),
+					UntilNSTemplateSetHasConditions(wait.Provisioned()),
 					UntilNSTemplateSetHasSpaceRoles(
 						SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, subSpaceBinding.Spec.MasterUserRecord),          // new MUR is added as admin
 						SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // remains unchanged
@@ -388,7 +389,7 @@ func TestSubSpace(t *testing.T) {
 				VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 				// parentSpace should not have this username role added
 				parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-					UntilNSTemplateSetHasConditions(Provisioned()),
+					UntilNSTemplateSetHasConditions(wait.Provisioned()),
 					UntilNSTemplateSetHasSpaceRoles(
 						SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
 					),
@@ -407,7 +408,7 @@ func TestSubSpace(t *testing.T) {
 					sortedUsernames := []string{parentSpaceBindings.Spec.MasterUserRecord, subSpaceBinding.Spec.MasterUserRecord}
 					sort.Strings(sortedUsernames) // the NSTemplateSet has usernames sorted, this is required so that assertion doesn't fail when order changes
 					subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-						UntilNSTemplateSetHasConditions(Provisioned()),
+						UntilNSTemplateSetHasConditions(wait.Provisioned()),
 						UntilNSTemplateSetHasSpaceRoles(
 							SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, sortedUsernames...), // parent MUR is added as admin
 						),
@@ -416,7 +417,7 @@ func TestSubSpace(t *testing.T) {
 					VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 					// parentSpace should not be affected by the change in sub-space
 					parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-						UntilNSTemplateSetHasConditions(Provisioned()),
+						UntilNSTemplateSetHasConditions(wait.Provisioned()),
 						UntilNSTemplateSetHasSpaceRoles(
 							SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged in parentNSTemplateSet
 						),
@@ -432,7 +433,7 @@ func TestSubSpace(t *testing.T) {
 						// subSpace should have one user less
 						require.NoError(t, err)
 						subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-							UntilNSTemplateSetHasConditions(Provisioned()),
+							UntilNSTemplateSetHasConditions(wait.Provisioned()),
 							UntilNSTemplateSetHasSpaceRoles(
 								SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
 							),
@@ -441,7 +442,7 @@ func TestSubSpace(t *testing.T) {
 						VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 						// parentSpace should not be affected by the change in sub-space
 						parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-							UntilNSTemplateSetHasConditions(Provisioned()),
+							UntilNSTemplateSetHasConditions(wait.Provisioned()),
 							UntilNSTemplateSetHasSpaceRoles(
 								SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
 							),
