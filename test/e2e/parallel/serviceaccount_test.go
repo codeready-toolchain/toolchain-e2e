@@ -31,7 +31,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(member).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).
 		Resources()
 
