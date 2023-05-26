@@ -8,7 +8,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	cfg "github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,7 +43,7 @@ func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {
 			return false, err
 		}
 		// check the status conditions, wait until the idler is "Ready/True"
-		return test.ContainsCondition(idler.Status.Conditions, testsupport.Running()), nil
+		return test.ContainsCondition(idler.Status.Conditions, wait.Running()), nil
 
 	})
 	return idler, err

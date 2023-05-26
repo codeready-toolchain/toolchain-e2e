@@ -41,7 +41,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 			TargetCluster(memberAwait).
 			ManuallyApprove().
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
 
 		// Since we can't easily access the web console API resources directly (due to complex security requirements) we

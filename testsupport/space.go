@@ -86,7 +86,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
 		WaitForMUR().Execute(t).Resources()
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
@@ -187,7 +187,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	space, err := hostAwait.WaitForSpace(t, spaceName,
 		wait.UntilSpaceHasTier(tier.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tier.Name), hash),
-		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasConditions(wait.Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
 	require.NoError(t, err)
@@ -207,7 +207,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	// get NSTemplateSet
 	nsTmplSet, err := targetCluster.WaitForNSTmplSet(t, spaceName,
 		wait.UntilNSTemplateSetHasTier(tier.Name),
-		wait.UntilNSTemplateSetHasConditions(Provisioned()),
+		wait.UntilNSTemplateSetHasConditions(wait.Provisioned()),
 	)
 	require.NoError(t, err)
 
@@ -229,7 +229,7 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
 		WaitForMUR()
 	if !cleanup {

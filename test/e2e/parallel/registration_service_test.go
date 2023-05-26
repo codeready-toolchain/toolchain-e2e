@@ -321,7 +321,7 @@ func TestSignupOK(t *testing.T) {
 
 		// Wait for the UserSignup to be created
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignupName,
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(t, err)
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
@@ -371,7 +371,7 @@ func TestSignupOK(t *testing.T) {
 			})
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), DeactivatedWithoutPreDeactivation())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
 
@@ -404,7 +404,7 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(t, "arnold",
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
@@ -442,7 +442,7 @@ func TestPhoneVerification(t *testing.T) {
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(t, identity0.Username,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
@@ -460,7 +460,7 @@ func TestPhoneVerification(t *testing.T) {
 
 	// Confirm the status of the UserSignup is correct
 	_, err = hostAwait.WaitForUserSignup(t, identity0.Username,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 
@@ -532,7 +532,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.Username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	// Confirm the MasterUserRecord is provisioned
-	_, err = hostAwait.WaitForMasterUserRecord(t, transformedUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	_, err = hostAwait.WaitForMasterUserRecord(t, transformedUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
 
 	// Retrieve the UserSignup from the GET endpoint
@@ -551,7 +551,7 @@ func TestPhoneVerification(t *testing.T) {
 
 	// Wait for the UserSignup to be created
 	otherUserSignup, err := hostAwait.WaitForUserSignup(t, otherIdentity.Username,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, otherUserSignup)
@@ -589,7 +589,7 @@ func TestPhoneVerification(t *testing.T) {
 
 	// Ensure the UserSignup is deactivated
 	_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.ManuallyDeactivated())...))
 	require.NoError(t, err)
 
 	// Now attempt the verification again
@@ -628,7 +628,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		// because in these series of parallel tests, automatic approval is disabled ¯\_(ツ)_/¯
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), PendingApproval())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
 		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
@@ -645,12 +645,12 @@ func TestActivationCodeVerification(t *testing.T) {
 		require.NoError(t, err)
 		mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
 			wait.UntilMasterUserRecordHasTierName(event.Spec.UserTier),
-			wait.UntilMasterUserRecordHasCondition(Provisioned()))
+			wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 		require.NoError(t, err)
 		assert.Equal(t, event.Spec.UserTier, mur.Spec.TierName)
 		_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
 			wait.UntilSpaceHasTier(event.Spec.SpaceTier),
-			wait.UntilSpaceHasConditions(Provisioned()),
+			wait.UntilSpaceHasConditions(wait.Provisioned()),
 		)
 		require.NoError(t, err)
 
@@ -671,7 +671,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is not approved yet
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
 			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
 		})
@@ -697,7 +697,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is not approved yet
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
 			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
 		})
@@ -715,7 +715,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is not approved yet
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
 			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
 		})
@@ -733,7 +733,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is approved
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
 			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
 		})
@@ -759,7 +759,7 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(t, identity.Username,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
