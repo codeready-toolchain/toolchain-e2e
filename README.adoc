@@ -88,6 +88,45 @@ It will also create all required CRDs, role and role bindings for the service ac
 
 NOTE: you can override the default namespace names where the end-to-end tests are going to be executed - eg.: `make test-e2e HOST_NS=my-host MEMBER_NS=my-member` file.
 
+=== Running/Debugging e2e tests from your IDE
+
+In order to run/debug tests from your IDE you'll need to export some required env variables, those will be used by the test framework to interact with the operator namespaces and the other toolchain resources in you cluster.
+Following snippet of code should be TEMPORARILY added at the top of the test you want to run/debug from your IDE:
+
+```
+os.Setenv("MEMBER_NS","toolchain-member-18161051")
+os.Setenv("MEMBER_NS_2","toolchain-member2-18161051")
+os.Setenv("HOST_NS","toolchain-host-18161051")
+os.Setenv("REGISTRATION_SERVICE_NS","toolchain-host-18161051")
+os.Setenv("KUBECONFIG", "~/aws-cluster-test/my-devsandbox/auth/kubeconfig")
+```
+
+example of Test case code containing the debugging env variables:
+```
+package parallel
+
+import (
+	"context"
+	"os"
+	"testing"
+)
+
+func TestCreateSpaceRequest(t *testing.T) {
+	os.Setenv("MEMBER_NS","toolchain-member-18161051")
+	os.Setenv("MEMBER_NS_2","toolchain-member2-18161051")
+	os.Setenv("HOST_NS","toolchain-host-18161051")
+	os.Setenv("REGISTRATION_SERVICE_NS","toolchain-host-18161051")
+	os.Setenv("KUBECONFIG", "~/aws-cluster-test/my-devsandbox/auth/kubeconfig")
+	// some more code here ...
+
+	t.Run("create space request", func(t *testing.T) {
+        // test case impelementation here ...
+....
+```
+
+NOTE: replace the values with the ones from your dev/test environment and REMEMBER TO REMOVE THE SNIPPET BEFORE COMMITTING THE CODE OR OPENING A PR IN GH :)
+
+
 ===== What To Do
 
 If you are still confused by the different e2e/operator location, execution and branch pairing, see the following cases and needed steps:

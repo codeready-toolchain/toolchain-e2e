@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
@@ -19,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// TestMetricsWhenUsersDeactivated verifies that `UserSignupsDeactivatedMetric` counter is increased when users are deactivated
-// (`UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged)
-func TestMetricsWhenUsersDeactivated(t *testing.T) {
+// TestMetricsWhenUsersManuallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
+// (also verifies `UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged after deactivation)
+func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -49,7 +52,7 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait2).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 	}
@@ -58,6 +61,8 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all activated
 	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 2)                                                    // all activated
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")                   // not automatically approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 2, "method", "manual")                      // both manually approved
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
 	metricsAssertion.WaitForMetricDelta(t, SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	metricsAssertion.WaitForMetricDelta(t, SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName) // 2 spaces created on member-2
@@ -82,10 +87,174 @@ func TestMetricsWhenUsersDeactivated(t *testing.T) {
 	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all deactivated (but this metric is never decremented)
 	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")                   // all deactivated (but counters are never decremented)
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 2, "method", "manual")                      // all deactivated (but counters are never decremented)
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
 	metricsAssertion.WaitForMetricDelta(t, SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	metricsAssertion.WaitForMetricDelta(t, SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // 2 spaces deleted from member-2
 
+}
+
+// TestMetricsWhenUsersAutomaticallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
+func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+	// host metrics should be available at this point
+	VerifyHostMetricsService(t, hostAwait)
+	VerifyMemberMetricsService(t, memberAwait)
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		// wait until metrics are back to their respective baselines
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName)
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName)
+	})
+
+	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
+	for i := 1; i <= 2; i++ {
+		username := fmt.Sprintf("userautoapprove-%04d", i)
+
+		// Create UserSignup
+		usersignups[username], _ = NewSignupRequest(awaitilities).
+			Username(username).
+			Email(username + "@redhat.com").
+			EnsureMUR().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+			Execute(t).
+			Resources()
+	}
+	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 2)                                                            // all signups
+	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all activated
+	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 2)                                                    // all activated
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // both automatically approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
+
+	// when deactivating the users
+	for username, usersignup := range usersignups {
+		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
+			func(usersignup *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivated(usersignup, true)
+			})
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
+		require.NoError(t, err)
+
+		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
+		require.NoError(t, err)
+	}
+
+	// then verify the value of the `sandbox_users_per_activations` metric
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 2)                                                            // all signups (even if deactivated)
+	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all deactivated (but this metric is never decremented)
+	metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // all deactivated (but counters are never decremented)
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // all deactivated (but counters are never decremented)
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
+
+}
+
+// TestVerificationRequiredMetric verifies that `UserSignupVerificationRequiredMetric` counters are increased only once when users are created/reactivated
+func TestVerificationRequiredMetric(t *testing.T) {
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
+	route := hostAwait.RegistrationServiceURL
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false)) // disable automatic approval so that users are created with verification required
+	// host metrics should be available at this point
+	VerifyHostMetricsService(t, hostAwait)
+	VerifyMemberMetricsService(t, memberAwait)
+	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	t.Cleanup(func() {
+		// wait until metrics are back to their respective baselines
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait.ClusterName)
+		metricsAssertion.WaitForMetricBaseline(t, SpacesMetric, "cluster_name", memberAwait2.ClusterName)
+	})
+
+	var userSignup *toolchainv1alpha1.UserSignup
+	t.Run("VerificationRequiredMetric", func(t *testing.T) {
+		// given
+		username := "user-verification-required"
+		// Create a token and identity to sign up with
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@some.domain"
+		identity0, token0, err := authsupport.NewToken(authsupport.WithEmail(emailAddress))
+		require.NoError(t, err)
+
+		// when
+		// Create UserSignup with verification required
+		InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+
+		// Wait for the UserSignup to be created and in verification required status
+		userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+
+		// then
+		require.NoError(t, err)
+		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
+
+		// Confirm the CompliantUsername has NOT been set, since verification is required and it hasn't been approved yet
+		require.Empty(t, userSignup.Status.CompliantUsername)
+		// verify the value of the `sandbox_user_signups_verification_required_total` metric
+		metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 1) // user is pending verification
+
+		// Pending verification metric should only be incremented the first time verification is required.
+		// Try entering a verification code and verify that the metric is not incremented.
+		t.Run("no change to metric when verification initiated", func(t *testing.T) {
+			// when
+			// Initiate the verification process
+			InvokeEndpoint(t, "PUT", route+"/api/v1/signup/verification", token0,
+				`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
+
+			// then
+			// Retrieve the updated UserSignup
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username)
+			require.NoError(t, err)
+			// Confirm there is a verification code annotation value, and store it in a variable
+			verificationCode := userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]
+			require.NotEmpty(t, verificationCode)
+			// Attempt to verify with an incorrect verification code
+			InvokeEndpoint(t, "GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+			metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 1) // no change after verification initiated
+		})
+
+		t.Run("no change to metric when user deactivated", func(t *testing.T) {
+			// when deactivating the user
+			_, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+				func(usersignup *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(usersignup, true)
+				})
+
+			// then
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
+			require.NoError(t, err)
+			metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 1) // no change
+		})
+
+		t.Run("metric incremented when user reactivated", func(t *testing.T) {
+			// when reactivating the user
+			InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
+				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
+
+			// then
+			require.NoError(t, err)
+			metricsAssertion.WaitForMetricDelta(t, UserSignupVerificationRequiredMetric, 2) // additional pending verification since user was reactivated
+		})
+	})
 }
 
 // TestMetricsWhenUsersReactivated activates and deactivates a few users, and check the metrics.
@@ -117,7 +286,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 
@@ -142,7 +311,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 				ManuallyApprove().
 				TargetCluster(memberAwait).
 				EnsureMUR().
-				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				Execute(t).
 				Resources()
 		}
@@ -201,7 +370,7 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 			Username(username).
 			ManuallyApprove().
 			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 	}
@@ -264,7 +433,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 
 	// when creating the BannedUser resource
@@ -273,11 +442,13 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	// then
 	// confirm the user is banned
 	_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(t, userSignup.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...))
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
 	require.NoError(t, err)
 	// verify the metrics
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 1)
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1)
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 1, "method", "manual")
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsBannedMetric, 1)
 	metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "external")
 	metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
@@ -302,9 +473,11 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, bannedUser.GetName())
 		require.NoError(t, err)
 		// verify the metrics
-		metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 0)         // unchanged: user signup already existed
-		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1) // user approved
-		metricsAssertion.WaitForMetricDelta(t, UserSignupsBannedMetric, 0)   // unchanged: banneduser already existed
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 0)                                          // unchanged: user signup already existed
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1)                                  // user approved
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // unchanged: unbanning uses previous method of approval
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 1, "method", "manual")    // unbanning uses previous method of approval
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsBannedMetric, 0)                                    // unchanged: banneduser already existed
 		metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 		metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		metricsAssertion.WaitForMetricDelta(t, SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space provisioned on member1
@@ -336,12 +509,14 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).
 		Resources()
 
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 1)
-	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1) // approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1)                                  // approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // not automatically approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 1, "method", "manual")    // manually approved
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsBannedMetric, 0)
 	metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 1, "domain", "external")
@@ -358,7 +533,9 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	// then
 	// verify the metrics
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 1)
-	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1) // still approved even though (temporarily) disabled
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 1)                                  // still approved even though (temporarily) disabled
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // not automatically approved
+	metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 1, "method", "manual")    // manually approved
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsBannedMetric, 0)
 	metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 1, "domain", "external")
@@ -378,8 +555,10 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 
 		// then
 		// verify the metrics
-		metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 0)         // unchanged, user was already provisioned
-		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 0) // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 0)                                          // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedMetric, 0)                                  // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // unchanged, user was already provisioned
+		metricsAssertion.WaitForMetricDelta(t, UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // unchanged, user was already provisioned
 		metricsAssertion.WaitForMetricDelta(t, UserSignupsBannedMetric, 0)
 		metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "external") // unchanged, user was already provisioned
 		metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "internal")

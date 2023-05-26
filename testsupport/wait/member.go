@@ -312,6 +312,48 @@ func UntilSpaceRequestHasStatusTargetClusterURL(expected string) SpaceRequestWai
 	}
 }
 
+// UntilSpaceRequestHasNamespaceAccess returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has `status.NamespaceAccess` set and each namespace access is actually valid.
+func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) SpaceRequestWaitCriterion {
+	var expectedNames []string
+	for _, expectedNamespace := range subSpace.Status.ProvisionedNamespaces {
+		expectedNames = append(expectedNames, expectedNamespace.Name)
+	}
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			// check if expected number of namespaces matches
+			if len(actual.Status.NamespaceAccess) != len(expectedNames) {
+				return false
+			}
+
+			for _, nsAccess := range actual.Status.NamespaceAccess {
+				// check the name of the namespaces are matching
+				for _, expectedNamespace := range expectedNames {
+					found := false
+					if expectedNamespace == nsAccess.Name {
+						found = true
+						break
+					}
+					if !found {
+						return false
+					}
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			if len(actual.Status.NamespaceAccess) != len(subSpace.Status.ProvisionedNamespaces) {
+				return fmt.Sprintf("invalid number of namespaces found in namespaceAccess. expected %d but got %d", len(subSpace.Status.ProvisionedNamespaces), len(actual.Status.NamespaceAccess))
+			}
+			var actualNamespaces []string
+			for _, actualNamespace := range actual.Status.NamespaceAccess {
+				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
+			}
+			return fmt.Sprintf("could not match namespace names: \n%s ", Diff(expectedNames, actualNamespaces))
+		},
+	}
+}
+
 // UntilSpaceRequestHasConditions returns a `SpaceRequestWaitCriterion` which checks that the given
 // SpaceRequest has exactly all the given status conditions
 func UntilSpaceRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceRequestWaitCriterion {
@@ -471,6 +513,19 @@ func UntilNSTemplateSetHasSpaceRolesFromBindings(tier *toolchainv1alpha1.NSTempl
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
 			return fmt.Sprintf("expected space roles to match:\n%s", Diff(expected, actual.Spec.SpaceRoles))
+		},
+	}
+}
+
+// UntilNSTemplateSetHasAnySpaceRoles returns a `NSTemplateSetWaitCriterion` which checks that the given
+// NSTemplateSet has any space roles set.
+func UntilNSTemplateSetHasAnySpaceRoles() NSTemplateSetWaitCriterion {
+	return NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			return len(actual.Spec.SpaceRoles) > 0
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return "expected space roles to not be empty."
 		},
 	}
 }
@@ -1259,14 +1314,14 @@ func (a *MemberAwaitility) WaitForConfigMap(t *testing.T, namespace, name string
 	return cm, err
 }
 
-// WaitForSecret waits until a Secret with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForSecret(t *testing.T, namespace, name string) (*corev1.Secret, error) {
-	t.Logf("waiting for Secret '%s' in namespace '%s'", name, namespace)
+// WaitForSecret waits until a Secret with the given name exists in the operator namespace
+func (a *MemberAwaitility) WaitForSecret(t *testing.T, name string) (*corev1.Secret, error) {
+	t.Logf("waiting for Secret '%s' in namespace '%s'", name, a.Namespace)
 	var cm *corev1.Secret
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		obj := &corev1.Secret{}
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: namespace,
+			Namespace: a.Namespace,
 			Name:      name,
 		}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1431,6 +1486,21 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typ
 			return false, err
 		}
 		if len(namespaceList.Items) < 1 {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+// WaitUntilSecretsDeleted waits until the secrets with the given labels are deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilSecretsDeleted(t *testing.T, namespace string, labels client.MatchingLabels) error {
+	t.Logf("waiting until secrets with lables '%v' in namespace '%s' is deleted", labels, namespace)
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		secretList := &corev1.SecretList{}
+		if err := a.Client.List(context.TODO(), secretList, labels); err != nil {
+			return false, err
+		}
+		if len(secretList.Items) < 1 {
 			return true, nil
 		}
 		return false, nil
@@ -2155,4 +2225,21 @@ func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name stri
 		return true, nil
 	})
 	return env, err
+}
+
+func (a *MemberAwaitility) GetContainerEnv(t *testing.T, name string) string {
+	deployment := a.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
+	var value string
+containers:
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name == "manager" {
+			for _, env := range container.Env {
+				if env.Name == name {
+					value = env.Value
+					break containers
+				}
+			}
+		}
+	}
+	return value
 }

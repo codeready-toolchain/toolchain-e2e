@@ -289,6 +289,48 @@ func TestProxyFlow(t *testing.T) {
 				_, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
 				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
 			})
+
+			t.Run("invalid request headers", func(t *testing.T) {
+				// given
+				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
+				rejectedHeaders := []headerKeyValue{
+					{"Impersonate-Group", "system:cluster-admins"},
+					{"Impersonate-Group", "system:node-admins"},
+				}
+				client := http.Client{
+					Timeout: time.Duration(5 * time.Second), // because sometimes the network connection may be a bit slow
+				}
+				client.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true, // nolint:gosec
+					},
+				}
+				t.Logf("proxyWorkspaceURL: %s", proxyWorkspaceURL)
+				nodesURL := fmt.Sprintf("%s/api/v1/nodes", proxyWorkspaceURL)
+				t.Logf("nodesURL: %s", nodesURL)
+
+				for _, header := range rejectedHeaders {
+					t.Run(fmt.Sprintf("k=%s,v=%s", header.key, header.value), func(t *testing.T) {
+						// given
+						request, err := http.NewRequest("GET", nodesURL, nil)
+						request.Header.Add(header.key, header.value)
+						require.NoError(t, err)
+						request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", user.token)) // uses the user's token with the impersonation headers
+
+						// when
+						resp, err := client.Do(request)
+
+						// then
+						require.NoError(t, err)
+						require.NotNil(t, resp)
+						defer resp.Body.Close()
+						require.Equal(t, 403, resp.StatusCode) // should be forbidden
+						r, _ := io.ReadAll(resp.Body)
+						assert.Contains(t, string(r), fmt.Sprintf(`nodes is forbidden: User \"%s\" cannot list resource \"nodes\" in API group \"\" at the cluster scope`, user.compliantUsername))
+					})
+				}
+
+			}) // end of invalid request headers
 		})
 	} // end users loop
 
@@ -595,13 +637,13 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		ManuallyApprove().
 		TargetCluster(user.expectedMemberCluster).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 	user.signup, _ = req.Resources()
 	user.token = req.GetToken()
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
-	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(Provisioned()))
+	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
 }
 
@@ -683,9 +725,7 @@ func (w *wsWatcher) Start() func() {
 	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
 	if errors.Is(err, websocket.ErrBadHandshake) {
 		r, _ := io.ReadAll(resp.Body)
-		defer func() {
-			resp.Body.Close()
-		}()
+		defer resp.Body.Close()
 		w.t.Logf("handshake failed with status %d / response %s", resp.StatusCode, string(r))
 	}
 	require.NoError(w.t, err)
@@ -825,4 +865,8 @@ func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *pr
 		ws.Status.Type = "home"
 	}
 	return *ws
+}
+
+type headerKeyValue struct {
+	key, value string
 }

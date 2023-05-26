@@ -26,8 +26,9 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	// TODO: needs to be changed as soon as we start creating objects in namespaces for SpaceRoles - we need to verify that it also automatically updates NSTemplateSet and the resources in the namespaces
 	t.Run("for SpaceBinding", func(t *testing.T) {
 		t.Run("when space is deleted", func(t *testing.T) {
+
 			// given
-			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "redhat")
+			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "for-redhat")
 
 			// when
 			err := hostAwait.Client.Delete(context.TODO(), space)
@@ -40,7 +41,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 
 		t.Run("when mur is deleted", func(t *testing.T) {
 			// given
-			_, userSignup, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "lara", "ibm")
+			_, userSignup, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "lara", "for-ibm")
 
 			// when
 			// deactivate the UserSignup so that the MUR will be deleted
@@ -142,7 +143,7 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 		ManuallyApprove().
 		TargetCluster(targetMember).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier(t, "appstudio")
@@ -151,7 +152,7 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 	// before we can check the resources (roles and rolebindings)
 	_, err = targetMember.WaitForNSTmplSet(t, spaceName,
 		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Name, murName)))
+			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Status.CompliantUsername, murName)))
 	require.NoError(t, err)
 	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))

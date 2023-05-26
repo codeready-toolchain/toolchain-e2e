@@ -25,7 +25,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		Email("for-member1@redhat.com").
 		TargetCluster(memberAwait1).
 		ManuallyApprove().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		EnsureMUR().
 		Execute(t).
 		Resources()
@@ -33,7 +33,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		Username("for-member2").
 		Email("for-member2@redhat.com").
 		TargetCluster(memberAwait2).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		ManuallyApprove().
 		EnsureMUR().
 		Execute(t)
@@ -123,7 +123,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		// given
 		var memberLimits []testconfig.PerMemberClusterOptionInt
 		toolchainStatus, err := hostAwait.WaitForToolchainStatus(t,
-			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {

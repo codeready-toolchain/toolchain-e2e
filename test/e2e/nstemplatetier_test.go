@@ -12,6 +12,7 @@ import (
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestNSTemplateTiers(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).
 		Resources()
 
@@ -87,7 +88,7 @@ func TestSetDefaultTier(t *testing.T) {
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 	})
@@ -100,7 +101,7 @@ func TestSetDefaultTier(t *testing.T) {
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 	})
@@ -184,7 +185,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 			ManuallyApprove().
 			TargetCluster(awaitilities.Member1()).
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 
@@ -207,7 +208,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 }
 
 // setupSpaces takes care of:
-// 1. creating a new tier with the provided tierName and using the TemplateRefs of the "base" tier.
+// 1. creating a new tier with the provided tierName and using the TemplateRefs of the provided tier.
 // 2. creating `count` number of spaces
 func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []string {
 	hash, err := testtier.ComputeTemplateRefsHash(tier.NSTemplateTier) // we can assume the JSON marshalling will always work
@@ -240,7 +241,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			WaitForMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
 			Execute(t).
 			Resources()
@@ -264,7 +265,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(t, usersignup.Status.CompliantUsername,
-			UntilUserAccountHasConditions(Provisioned()),
+			UntilUserAccountHasConditions(wait.Provisioned()),
 			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.Userid, usersignup.Spec.OriginalSub)),
 			UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err)

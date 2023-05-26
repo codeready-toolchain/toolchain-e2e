@@ -86,7 +86,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
 		WaitForMUR().Execute(t).Resources()
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
@@ -187,7 +187,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	space, err := hostAwait.WaitForSpace(t, spaceName,
 		wait.UntilSpaceHasTier(tier.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", tier.Name), hash),
-		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasConditions(wait.Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(targetCluster.ClusterName))
 	require.NoError(t, err)
@@ -207,20 +207,13 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	// get NSTemplateSet
 	nsTmplSet, err := targetCluster.WaitForNSTmplSet(t, spaceName,
 		wait.UntilNSTemplateSetHasTier(tier.Name),
-		wait.UntilNSTemplateSetHasConditions(Provisioned()),
+		wait.UntilNSTemplateSetHasConditions(wait.Provisioned()),
 	)
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
 	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
 
-	if tier.Name == "appstudio" {
-		// checks that namespace exists and has the expected label(s)
-		ns, err := targetCluster.WaitForNamespace(t, space.Name, tier.Spec.Namespaces[0].TemplateRef, space.Spec.TierName, wait.UntilNamespaceIsActive())
-		require.NoError(t, err)
-		require.Contains(t, ns.Labels, toolchainv1alpha1.WorkspaceLabelKey)
-		assert.Equal(t, space.Name, ns.Labels[toolchainv1alpha1.WorkspaceLabelKey])
-	}
 	// Wait for space to have list of provisioned namespaces in Space status.
 	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
 	_, err = hostAwait.WaitForSpace(t, spaceName,
@@ -231,12 +224,12 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 }
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.SpaceBinding) {
-	username := "for-space-" + space.Name
+	username := space.Name
 	builder := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
 		WaitForMUR()
 	if !cleanup {
