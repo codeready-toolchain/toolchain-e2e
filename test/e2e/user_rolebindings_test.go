@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	testsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 )
 
 func TestUserCreatingRoleBindings(t *testing.T) {
@@ -37,7 +38,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
-		RequireConditions(testsupport.ConditionSet(testsupport.Default(), testsupport.ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
 	//create a non-sandbox user

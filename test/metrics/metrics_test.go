@@ -52,7 +52,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait2).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 	}
@@ -122,7 +122,7 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 			Username(username).
 			Email(username + "@redhat.com").
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(t).
 			Resources()
 	}
@@ -195,7 +195,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		// Wait for the UserSignup to be created and in verification required status
 		userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 
 		// then
@@ -247,7 +247,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			// when reactivating the user
 			InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
 			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
-				wait.UntilUserSignupHasConditions(ConditionSet(Default(), VerificationRequired())...),
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 
 			// then
@@ -286,7 +286,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 
@@ -311,7 +311,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 				ManuallyApprove().
 				TargetCluster(memberAwait).
 				EnsureMUR().
-				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				Execute(t).
 				Resources()
 		}
@@ -370,7 +370,7 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 			Username(username).
 			ManuallyApprove().
 			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
 			Resources()
 	}
@@ -433,7 +433,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 
 	// when creating the BannedUser resource
@@ -442,7 +442,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	// then
 	// confirm the user is banned
 	_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(t, userSignup.Name,
-		wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), Banned())...))
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
 	require.NoError(t, err)
 	// verify the metrics
 	metricsAssertion.WaitForMetricDelta(t, UserSignupsMetric, 1)
@@ -509,7 +509,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).
 		Resources()
 

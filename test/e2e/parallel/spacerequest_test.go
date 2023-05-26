@@ -7,6 +7,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +42,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasConditions(wait.Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
@@ -127,7 +128,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasConditions(wait.Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)
@@ -195,7 +196,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 //	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
 //	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 //		UntilSpaceRequestHasTierName("appstudio"),
-//		UntilSpaceRequestHasConditions(Provisioned()),
+//		UntilSpaceRequestHasConditions(wait.Provisioned()),
 //		UntilSpaceRequestHasNamespaceAccess(subSpace),
 //	)
 //	require.NoError(t, err)
@@ -214,13 +215,13 @@ func TestCreateSpaceRequest(t *testing.T) {
 //		// wait for both spaceRequest and subSpace to have same tierName
 //		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 //			UntilSpaceRequestHasTierName("base"),
-//			UntilSpaceRequestHasConditions(Provisioned()),
+//			UntilSpaceRequestHasConditions(wait.Provisioned()),
 //			UntilSpaceRequestHasNamespaceAccess(subSpace),
 //		)
 //		require.NoError(t, err)
 //		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
 //			UntilSpaceHasTier("base"),
-//			UntilSpaceHasConditions(Provisioned()))
+//			UntilSpaceHasConditions(wait.Provisioned()))
 //		require.NoError(t, err)
 //	})
 //
@@ -238,13 +239,13 @@ func TestCreateSpaceRequest(t *testing.T) {
 //		// wait for both spaceRequest and subSpace to have same target cluster roles
 //		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 //			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
-//			UntilSpaceRequestHasConditions(Provisioned()),
+//			UntilSpaceRequestHasConditions(wait.Provisioned()),
 //			UntilSpaceRequestHasNamespaceAccess(subSpace),
 //		)
 //		require.NoError(t, err)
 //		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
 //			UntilSpaceHasTargetClusterRoles(newTargetClusterRoles),
-//			UntilSpaceHasConditions(Provisioned()))
+//			UntilSpaceHasConditions(wait.Provisioned()))
 //		require.NoError(t, err)
 //	})
 //}
