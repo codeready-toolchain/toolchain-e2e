@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -151,6 +153,74 @@ func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
 		all = append(all, &copied)
 	}
 	return all, nil
+}
+
+// WaitForMetricsService verifies that there is a service called `host-operator-metrics-service`
+// in the host namespace.
+func (a *HostAwaitility) WaitForMetricsService(t *testing.T) {
+	_, err := a.WaitForService(t, "host-operator-metrics-service")
+	require.NoError(t, err, "failed while waiting for 'host-operator-metrics-service' service")
+}
+
+// metric constants
+const (
+	UserSignupsMetric                    = "sandbox_user_signups_total"
+	UserSignupsApprovedMetric            = "sandbox_user_signups_approved_total"
+	UserSignupsApprovedWithMethodMetric  = "sandbox_user_signups_approved_with_method_total"
+	UserSignupsDeactivatedMetric         = "sandbox_user_signups_deactivated_total"
+	UserSignupsAutoDeactivatedMetric     = "sandbox_user_signups_auto_deactivated_total"
+	UserSignupsBannedMetric              = "sandbox_user_signups_banned_total"
+	UserSignupVerificationRequiredMetric = "sandbox_user_signups_verification_required_total"
+
+	MasterUserRecordsPerDomainMetric = "sandbox_master_user_records"
+
+	SpacesMetric = "sandbox_spaces_current"
+
+	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
+)
+
+// InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
+func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string) {
+	// Wait for pending usersignup deletions before capturing baseline values so that test assertions are stable
+	err := a.WaitForTestResourcesCleanup(t, 10*time.Second)
+	require.NoError(t, err)
+
+	// wait for toolchainstatus metrics to be updated
+	_, err = a.WaitForToolchainStatus(t,
+		UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
+
+	a.WaitForMetricsService(t)
+	// Capture baseline values
+	a.baselineValues = make(map[string]float64)
+	a.baselineValues[UserSignupsMetric] = a.GetMetricValue(t, UserSignupsMetric)
+	a.baselineValues[UserSignupsApprovedMetric] = a.GetMetricValue(t, UserSignupsApprovedMetric)
+	a.baselineValues[UserSignupsDeactivatedMetric] = a.GetMetricValue(t, UserSignupsDeactivatedMetric)
+	a.baselineValues[UserSignupsAutoDeactivatedMetric] = a.GetMetricValue(t, UserSignupsAutoDeactivatedMetric)
+	a.baselineValues[UserSignupsBannedMetric] = a.GetMetricValue(t, UserSignupsBannedMetric)
+	a.baselineValues[UserSignupVerificationRequiredMetric] = a.GetMetricValue(t, UserSignupVerificationRequiredMetric)
+	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
+		spacesKey := a.baselineKey(t, SpacesMetric, "cluster_name", name)
+		a.baselineValues[spacesKey] += a.GetMetricValue(t, SpacesMetric, "cluster_name", name)
+	}
+	// capture `sandbox_users_per_activations_and_domain` with "activations" from `1` to `10` and `internal`/`external` domains
+	for i := 1; i <= 10; i++ {
+		for _, domain := range []string{"internal", "external"} {
+			key := a.baselineKey(t, UsersPerActivationsAndDomainMetric, "activations", strconv.Itoa(i), "domain", domain)
+			a.baselineValues[key] = a.GetMetricValueOrZero(t, UsersPerActivationsAndDomainMetric, "activations", strconv.Itoa(i), "domain", domain)
+		}
+	}
+	for _, domain := range []string{"internal", "external"} {
+		key := a.baselineKey(t, MasterUserRecordsPerDomainMetric, "domain", domain)
+		a.baselineValues[key] = a.GetMetricValueOrZero(t, MasterUserRecordsPerDomainMetric, "domain", domain)
+	}
+	for _, approvalMethod := range []string{"automatic", "manual"} {
+		key := a.baselineKey(t, UserSignupsApprovedWithMethodMetric, "method", approvalMethod)
+		a.baselineValues[key] = a.GetMetricValueOrZero(t, UserSignupsApprovedWithMethodMetric, "method", approvalMethod)
+	}
+
+	t.Logf("captured baselines:\n%s", spew.Sdump(a.baselineValues))
 }
 
 // WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions

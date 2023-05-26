@@ -8,6 +8,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,7 +37,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"name": "controller-manager"})
 	require.NoError(t, err)
 
-	metricsAssertion := InitMetricsAssertion(t, awaitilities)
+	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 
 	t.Run("tampering activation-counter annotations", func(t *testing.T) {
 
@@ -67,8 +68,8 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			// metrics have not changed yet
-			metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
-			metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
+			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
 		})
 
 		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
@@ -82,8 +83,8 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			// metrics have been updated
-			metricsAssertion.WaitForMetricDelta(t, MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
-			metricsAssertion.WaitForMetricDelta(t, UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
+			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
 
 		})
 	})
