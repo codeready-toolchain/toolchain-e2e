@@ -46,20 +46,20 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	// ensure the compliantusername is available
 	userSignup, err := hostAwait.WaitForUserSignup(t, signup.Name,
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
-		wait.ContainsCondition(Complete()))
+		wait.ContainsCondition(wait.Complete()))
 	require.NoError(t, err)
 
 	// First, wait for the MasterUserRecord to exist, no matter what status
 	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasTierName(tierName),
-		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 
 	memberAwait := GetMurTargetMember(t, awaitilities, mur)
 
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(t, mur.Name,
-		wait.UntilUserAccountHasConditions(Provisioned()),
+		wait.UntilUserAccountHasConditions(wait.Provisioned()),
 		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.OriginalSub)),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
 		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
@@ -147,7 +147,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		UserAccountStatus: userAccount.Status,
 	}
 	mur, err = hostAwait.WaitForMasterUserRecord(t, mur.Name,
-		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()),
+		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
 
@@ -160,11 +160,11 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 	userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
-		wait.ContainsCondition(Complete()))
+		wait.ContainsCondition(wait.Complete()))
 	require.NoError(t, err)
 
 	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasConditions(Provisioned(), ProvisionedNotificationCRCreated()))
+		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)
 
 	tier, err := hostAwait.WaitForNSTemplateTier(t, spaceTierName)
@@ -176,7 +176,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 		wait.UntilSpaceHasTier(spaceTierName),
 		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", spaceTierName), hash),
-		wait.UntilSpaceHasConditions(Provisioned()),
+		wait.UntilSpaceHasConditions(wait.Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
 		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
 	require.NoError(t, err)

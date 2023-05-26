@@ -49,7 +49,7 @@ func TestE2EFlow(t *testing.T) {
 		expectedMemberConfiguration := currentConfig.Spec.Members.Default
 
 		t.Run("verify ToolchainConfig has synced status", func(t *testing.T) {
-			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(ToolchainConfigSyncComplete()))
+			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasSyncedStatus(wait.ToolchainConfigSyncComplete()))
 		})
 		t.Run("verify MemberOperatorConfig was synced to member 1", func(t *testing.T) {
 			VerifyMemberOperatorConfig(t, hostAwait, memberAwait, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
@@ -64,11 +64,11 @@ func TestE2EFlow(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(memberConfigurationWithCheRequired.Spec))
 
 			err := memberAwait.WaitForMemberStatus(t,
-				wait.UntilMemberStatusHasConditions(ToolchainStatusComponentsNotReady("[routes]")))
+				wait.UntilMemberStatusHasConditions(wait.ToolchainStatusComponentsNotReady("[routes]")))
 			require.NoError(t, err, "failed while waiting for MemberStatus to contain error due to che being required")
 
 			_, err = hostAwait.WaitForToolchainStatus(t,
-				wait.UntilToolchainStatusHasConditions(ToolchainStatusComponentsNotReady("[members]"), ToolchainStatusUnreadyNotificationNotCreated()))
+				wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusComponentsNotReady("[members]"), wait.ToolchainStatusUnreadyNotificationNotCreated()))
 			require.NoError(t, err, "failed while waiting for ToolchainStatus to contain error due to che being required")
 
 			t.Run("verify member and toolchain status go back to ready", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
-		ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 	originalMemberStatuses := map[string]toolchainv1alpha1.Member{}
 	for _, m := range originalToolchainStatus.Status.Members {
@@ -104,7 +104,7 @@ func TestE2EFlow(t *testing.T) {
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		DisableCleanup().
 		Execute(t).Resources()
 
@@ -114,7 +114,7 @@ func TestE2EFlow(t *testing.T) {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 
 	targetedJohnName := "targetedjohn"
@@ -123,7 +123,7 @@ func TestE2EFlow(t *testing.T) {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait2).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 
 	originalSubJohnName := "originalsubjohn"
@@ -134,7 +134,7 @@ func TestE2EFlow(t *testing.T) {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 
 	// Confirm the originalSub property has been set during signup
@@ -269,7 +269,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		_, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
-			ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
+			wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 multiple signups + johnSignup + johnExtraSignup + targetedJohnName + originalSubJohnSignup +
 			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+8),
 			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
@@ -289,7 +289,7 @@ func TestE2EFlow(t *testing.T) {
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).Resources()
 
 		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
@@ -326,7 +326,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// then nothing should be deleted yet (because of the CM with its own finalizer)
-		nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
+		nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(wait.TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
@@ -334,7 +334,7 @@ func TestE2EFlow(t *testing.T) {
 		_, err = memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForNamespaceInTerminating(t, userNamespace)
 		require.NoError(t, err)
 
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(TerminatingNSTemplateSet()))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, laraUserName, wait.UntilNSTemplateSetIsBeingDeleted(), wait.UntilNSTemplateSetHasConditions(wait.TerminatingNSTemplateSet()))
 		require.NoError(t, err)
 		require.NotEmpty(t, nsTmplSet)
 
@@ -352,7 +352,7 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// space should be stuck terminating
-		space, err := hostAwait.WaitForSpace(t, laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(TerminatingSpace()))
+		space, err := hostAwait.WaitForSpace(t, laraUserName, wait.UntilSpaceIsBeingDeleted(), wait.UntilSpaceHasConditions(wait.TerminatingSpace()))
 		require.NoError(t, err)
 		require.NotEmpty(t, space)
 
@@ -383,7 +383,7 @@ func TestE2EFlow(t *testing.T) {
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).Resources()
 		devNs := corev1.Namespace{}
 		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
@@ -490,7 +490,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// check if the MUR and UA counts match
 		_, err = hostAwait.WaitForToolchainStatus(t,
-			wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8),
 			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+7),
@@ -540,7 +540,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// Wait until the UserSignup is deactivated
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(ConditionSet(Default(), ApprovedByAdmin(), ManuallyDeactivated())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.ManuallyDeactivated())...))
 		require.NoError(t, err)
 
 		// Ensure the first identity is deleted
