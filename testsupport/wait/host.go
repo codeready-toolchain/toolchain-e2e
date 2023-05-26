@@ -1750,6 +1750,19 @@ func UntilSpaceHasCreationTimestampOlderThan(expectedElapsedTime time.Duration) 
 	}
 }
 
+// UntilSpaceHasCreationTimestampGreaterThan returns a `SpaceWaitCriterion` which checks that the given
+// Space was created after a given creationTimestamp
+func UntilSpaceHasCreationTimestampGreaterThan(creationTimestamp time.Time) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.CreationTimestamp.Time.After(creationTimestamp)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected space to be created after %s; Actual creation timestamp %s", creationTimestamp.String(), actual.CreationTimestamp.String())
+		},
+	}
+}
+
 // UntilSpaceHasTier returns a `SpaceWaitCriterion` which checks that the given
 // Space has the expected tier name set in its Spec
 func UntilSpaceHasTier(expected string) SpaceWaitCriterion {

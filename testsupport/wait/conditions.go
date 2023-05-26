@@ -1,4 +1,4 @@
-package testsupport
+package wait
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 //
 // Usage example:
 //
-// ConditionSet(Default(), Provisioned()) - returns an array of conditions that contains the condition types:
+// ConditionSet(Default(), wait.Provisioned()) - returns an array of conditions that contains the condition types:
 // ConditionReady										true		"Provisioned"
 // UserSignupUserDeactivatedNotificationCreated		false		"UserIsActive"
 // UserSignupUserDeactivatingNotificationCreated		false		"UserNotInPreDeactivation"
