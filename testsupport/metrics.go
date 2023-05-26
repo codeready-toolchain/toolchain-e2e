@@ -48,7 +48,7 @@ func InitMetricsAssertion(t *testing.T, awaitilities wait.Awaitilities) *Metrics
 	require.NoError(t, err)
 	// wait for toolchainstatus metrics to be updated
 	_, err = awaitilities.Host().WaitForToolchainStatus(t,
-		wait.UntilToolchainStatusHasConditions(ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+		wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 	require.NoError(t, err)
 
