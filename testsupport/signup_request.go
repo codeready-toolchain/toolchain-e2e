@@ -44,7 +44,7 @@ func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
 // Email("sample-user@redhat.com").
 // ManuallyApprove().
 // EnsureMUR().
-// RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+// RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 // Execute(t).Resources()
 type SignupRequest struct {
 	awaitilities         wait.Awaitilities

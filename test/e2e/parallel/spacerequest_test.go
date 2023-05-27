@@ -7,6 +7,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +42,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasConditions(wait.Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
@@ -51,23 +52,22 @@ func TestCreateSpaceRequest(t *testing.T) {
 		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
 			// now, delete the subSpace, along with its associated namespace,
 			// but a new Space will be provisioned by the SpaceRequest.
+			//
+			// save the creation timestamp that will be used to ensure that a new subSpace was created with the same name.
+			oldSpaceCreationTimeStamp := subSpace.CreationTimestamp
 
 			// when
 			err := hostAwait.Client.Delete(context.TODO(), subSpace)
 
 			// then
-			require.NoError(t, err)
-			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
-			require.NoError(t, err)
-			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
-			require.NoError(t, err)
-			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
-			require.NoError(t, err)
 			// a new subSpace is created
+			// with the same name but creation timestamp should be greater (more recent).
+			require.NoError(t, err)
 			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
 				UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 				UntilSpaceHasTier("appstudio-env"),
 				UntilSpaceHasAnyProvisionedNamespaces(),
+				UntilSpaceHasCreationTimestampGreaterThan(oldSpaceCreationTimeStamp.Time),
 			)
 			require.NoError(t, err)
 
@@ -127,7 +127,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasConditions(wait.Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)
@@ -195,7 +195,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 //	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
 //	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 //		UntilSpaceRequestHasTierName("appstudio"),
-//		UntilSpaceRequestHasConditions(Provisioned()),
+//		UntilSpaceRequestHasConditions(wait.Provisioned()),
 //		UntilSpaceRequestHasNamespaceAccess(subSpace),
 //	)
 //	require.NoError(t, err)
@@ -214,13 +214,13 @@ func TestCreateSpaceRequest(t *testing.T) {
 //		// wait for both spaceRequest and subSpace to have same tierName
 //		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 //			UntilSpaceRequestHasTierName("base"),
-//			UntilSpaceRequestHasConditions(Provisioned()),
+//			UntilSpaceRequestHasConditions(wait.Provisioned()),
 //			UntilSpaceRequestHasNamespaceAccess(subSpace),
 //		)
 //		require.NoError(t, err)
 //		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
 //			UntilSpaceHasTier("base"),
-//			UntilSpaceHasConditions(Provisioned()))
+//			UntilSpaceHasConditions(wait.Provisioned()))
 //		require.NoError(t, err)
 //	})
 //
@@ -238,13 +238,13 @@ func TestCreateSpaceRequest(t *testing.T) {
 //		// wait for both spaceRequest and subSpace to have same target cluster roles
 //		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
 //			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
-//			UntilSpaceRequestHasConditions(Provisioned()),
+//			UntilSpaceRequestHasConditions(wait.Provisioned()),
 //			UntilSpaceRequestHasNamespaceAccess(subSpace),
 //		)
 //		require.NoError(t, err)
 //		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
 //			UntilSpaceHasTargetClusterRoles(newTargetClusterRoles),
-//			UntilSpaceHasConditions(Provisioned()))
+//			UntilSpaceHasConditions(wait.Provisioned()))
 //		require.NoError(t, err)
 //	})
 //}
