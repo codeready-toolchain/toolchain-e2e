@@ -242,7 +242,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSet() {
 		UserID("111222333").
 		AccountID("jnwww029837").
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T()).Resources()
 
 	// then
@@ -261,7 +261,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubSet()
 		Email("test-user-with-originalsub@redhat.com").
 		OriginalSub("abc:fff000111-bbbccc").
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T()).Resources()
 
 	// then
@@ -285,7 +285,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSameAsSubA
 		AccountID("abc-8783").
 		OriginalSub("def:98734987234").
 		EnsureMUR().
-		RequireConditions(ConditionSet(Default(), ApprovedAutomatically())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T()).Resources()
 
 	// then
