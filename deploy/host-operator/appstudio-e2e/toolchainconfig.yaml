@@ -39,3 +39,4 @@ spec:
         deploy: false
       memberStatus:
         refreshPeriod: "1s"
+      environment: 'e2e-tests'

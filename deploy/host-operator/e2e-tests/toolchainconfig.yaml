@@ -39,3 +39,4 @@ spec:
         refreshPeriod: "1s"
       webConsolePlugin:
         deploy: true
+      environment: 'e2e-tests'
