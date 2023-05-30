@@ -181,7 +181,7 @@ func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1a
 			if err := c.client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), mur); err != nil {
 				// if MUR is not found then we are good
 				if errors.IsNotFound(err) {
-					// c.t.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+					c.t.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
 					return true, nil
 				}
 				c.t.Logf("problem with getting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
@@ -191,7 +191,7 @@ func (c *cleanTask) verifyMurDeleted(isUserSignup bool, userSignup *toolchainv1a
 				c.t.Logf("deleting also the related MasterUserRecord: %s", userSignup.Status.CompliantUsername)
 				if err := c.client.Delete(context.TODO(), mur, propagationPolicyOpts); err != nil {
 					if errors.IsNotFound(err) {
-						// c.t.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
+						c.t.Logf("the related MasterUserRecord: %s is deleted as well", userSignup.Status.CompliantUsername)
 						return true, nil
 					}
 					c.t.Logf("problem with deleting the related MasterUserRecord %s: %s", userSignup.Status.CompliantUsername, err)
