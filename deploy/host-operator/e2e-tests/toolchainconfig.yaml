@@ -12,7 +12,6 @@ spec:
     registrationService:
       analytics:
         segmentWriteKey: 'test segment write key'
-        woopraDomain: 'test woopra domain'
       environment: 'e2e-tests'
       replicas: 2
       verification:
