@@ -1526,7 +1526,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups:     []string{""},
 					Resources:     []string{"serviceaccounts"},
-					ResourceNames: []string{"pipeline"},
+					ResourceNames: []string{"appstudio-pipeline"},
 					Verbs:         []string{"get", "list", "watch", "update", "patch"},
 				},
 			},
