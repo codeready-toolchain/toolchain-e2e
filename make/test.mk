@@ -68,7 +68,7 @@ e2e-deploy-latest:
 	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true LETS_ENCRYPT_PARAM=${LETS_ENCRYPT_PARAM}
 
 .PHONY: prepare-e2e
-prepare-e2e: build clean-e2e-files create-appstudio-crds
+prepare-e2e: build clean-e2e-files
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
@@ -307,7 +307,7 @@ endif
 ###########################################################
 
 .PHONY: prepare-projects
-prepare-projects: create-host-project create-member1 create-member2
+prepare-projects: create-host-project create-member1 create-member2 create-appstudio-crds
 
 .PHONY: create-member1
 create-member1:
