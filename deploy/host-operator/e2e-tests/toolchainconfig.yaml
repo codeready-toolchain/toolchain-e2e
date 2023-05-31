@@ -11,7 +11,9 @@ spec:
       durationBeforeNotificationDeletion: '5s'
     registrationService:
       analytics:
-        segmentWriteKey: 'test segment write key'
+        devSpaces:
+          segmentWriteKey: 'test devspaces segment write key'
+        segmentWriteKey: 'test sandbox segment write key'
       environment: 'e2e-tests'
       replicas: 2
       verification:
