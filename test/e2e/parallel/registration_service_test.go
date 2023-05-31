@@ -122,9 +122,9 @@ func TestAnalytics(t *testing.T) {
 		require.Equal(t, expectedResponseValue, value)
 	}
 
-	t.Run("get segment write key 200 OK", func(t *testing.T) {
+	t.Run("get devspaces segment write key 200 OK", func(t *testing.T) {
 		// Call segment write key endpoint.
-		assertNotSecuredGetResponseEquals("segment-write-key", "test segment write key")
+		assertNotSecuredGetResponseEquals("segment-write-key", "test devspaces segment write key")
 	})
 }
 
