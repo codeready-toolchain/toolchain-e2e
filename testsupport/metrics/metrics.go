@@ -95,3 +95,56 @@ func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {
 		return -1, fmt.Errorf("unknown or unsupported metric type %s", t.String())
 	}
 }
+
+// GetMetricLabels return all labels (indexed by key) for all metrics of the given `family`
+func GetMetricLabels(restConfig *rest.Config, url string, family string) ([]map[string]*string, error) {
+	uri := fmt.Sprintf("https://%s/metrics", url)
+	var metrics []byte
+
+	client := http.Client{
+		Timeout: time.Duration(30 * time.Second),
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		},
+	}
+	request, err := http.NewRequest("Get", uri, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", restConfig.BearerToken))
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	metrics, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse the metrics
+	parser := expfmt.TextParser{}
+	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
+	if err != nil {
+		return nil, err
+	}
+
+	labels := make([]map[string]*string, 0, len(families))
+	for _, f := range families {
+		if f.GetName() == family {
+			lbls := map[string]*string{}
+			labels = append(labels, lbls)
+			for _, m := range f.GetMetric() {
+				for _, kv := range m.Label {
+					if kv.Name != nil {
+						lbls[*kv.Name] = kv.Value
+					}
+				}
+			}
+		}
+	}
+	// here we can return `0` is the metric does not exist, which may be valid if the expected value is `0`, too.
+	return labels, nil
+}
