@@ -215,7 +215,7 @@ func (c *cleanTask) verifySpaceDeleted(isUserSignup bool, userSignup *toolchainv
 			if err := c.client.Get(context.TODO(), test.NamespacedName(userSignup.GetNamespace(), userSignup.Status.CompliantUsername), space); err != nil {
 				// if Space is not found then we are good
 				if errors.IsNotFound(err) {
-					c.t.Logf("the related Space: %s is deleted as well", userSignup.Status.CompliantUsername)
+					// c.t.Logf("the related Space: %s is deleted as well", userSignup.Status.CompliantUsername)
 					return true, nil
 				}
 				c.t.Logf("problem with getting the related Space %s: %s", userSignup.Status.CompliantUsername, err)
@@ -225,14 +225,14 @@ func (c *cleanTask) verifySpaceDeleted(isUserSignup bool, userSignup *toolchainv
 				c.t.Logf("deleting also the related Space: %s", userSignup.Status.CompliantUsername)
 				if err := c.client.Delete(context.TODO(), space, propagationPolicyOpts); err != nil {
 					if errors.IsNotFound(err) {
-						c.t.Logf("the related Space: %s is deleted as well", userSignup.Status.CompliantUsername)
+						// c.t.Logf("the related Space: %s is deleted as well", userSignup.Status.CompliantUsername)
 						return true, nil
 					}
 					c.t.Logf("problem with deleting the related Space %s: %s", userSignup.Status.CompliantUsername, err)
 					return false, err
 				}
 			}
-			c.t.Logf("waiting until Space: %s is completely deleted", userSignup.Status.CompliantUsername)
+			// c.t.Logf("waiting until Space: %s is completely deleted", userSignup.Status.CompliantUsername)
 			return false, nil
 		}
 		c.t.Logf("the UserSignup %s doesn't have CompliantUsername set", userSignup.Name)

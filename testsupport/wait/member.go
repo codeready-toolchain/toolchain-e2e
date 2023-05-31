@@ -67,6 +67,13 @@ func NewMemberAwaitility(cfg *rest.Config, cl client.Client, ns, clusterName str
 	}
 }
 
+// WaitForMetricsService verifies that there is a service called `host-operator-metrics-service`
+// in the member namespace.
+func (a *MemberAwaitility) WaitForMetricsService(t *testing.T) {
+	_, err := a.WaitForService(t, "member-operator-metrics-service")
+	require.NoError(t, err, "failed while waiting for 'member-operator-metrics-service' service")
+}
+
 func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: a.Awaitility.WithRetryOptions(options...),
