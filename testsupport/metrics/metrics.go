@@ -8,10 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"k8s.io/client-go/rest"
-
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"k8s.io/client-go/rest"
 )
 
 func GetMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
