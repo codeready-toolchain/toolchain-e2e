@@ -188,7 +188,7 @@ func TestProxyFlow(t *testing.T) {
 
 					// Double check that the Application does exist using a regular client (non-proxy)
 					createdApp := user.getApplicationWithoutProxy(t, applicationName)
-					assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+					assert.Equal(t, expectedApp.Spec, createdApp.Spec)
 				}
 
 				t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
