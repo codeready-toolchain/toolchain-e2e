@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,10 +17,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
-	"github.com/redhat-cop/operator-utils/pkg/util"
-	"k8s.io/kubectl/pkg/util/podutils"
 
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
+	"k8s.io/kubectl/pkg/util/podutils"
 	k8smetrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -45,14 +46,15 @@ const (
 )
 
 type Awaitility struct {
-	Client        client.Client
-	RestConfig    *rest.Config
-	ClusterName   string
-	Namespace     string
-	Type          cluster.Type
-	RetryInterval time.Duration
-	Timeout       time.Duration
-	MetricsURL    string
+	Client         client.Client
+	RestConfig     *rest.Config
+	ClusterName    string
+	Namespace      string
+	Type           cluster.Type
+	RetryInterval  time.Duration
+	Timeout        time.Duration
+	MetricsURL     string
+	baselineValues map[string]float64
 }
 
 func (a *Awaitility) GetClient() client.Client {
@@ -101,6 +103,32 @@ var _ RetryOption = TimeoutOption(0)
 
 func (o TimeoutOption) apply(a *Awaitility) {
 	a.Timeout = time.Duration(o)
+}
+
+// WaitForMetricDelta waits for the metric value to reach the adjusted value. The adjusted value is the delta value combined with the baseline value.
+func (a *Awaitility) WaitForMetricDelta(t *testing.T, family string, delta float64, labels ...string) {
+	// The delta is relative to the starting value, eg. If there are 3 usersignups when a test is started and we are waiting
+	// for 2 more usersignups to be created (delta is +2) then the actual metric value (adjustedValue) we're waiting for is 5
+	key := a.baselineKey(t, family, labels...)
+	adjustedValue := a.baselineValues[key] + delta
+	a.WaitUntiltMetricHasValue(t, family, adjustedValue, labels...)
+}
+
+// WaitForMetricBaseline waits for the metric value to reach the baseline value back (to be used during the cleanup)
+func (a *Awaitility) WaitForMetricBaseline(t *testing.T, family string, labels ...string) {
+	t.Log("waiting until host metrics reached their baseline again...")
+	key := a.baselineKey(t, family, labels...)
+	a.WaitUntiltMetricHasValue(t, family, a.baselineValues[key], labels...)
+}
+
+// generates a key to retain the baseline metric value, by joining the metric name and its labels.
+// Note: there are probably more sophisticated ways to combine the name and the labels, but for now
+// this simple concatenation should be enough to make the keys unique
+func (a *Awaitility) baselineKey(t *testing.T, name string, labelAndValues ...string) string {
+	if len(labelAndValues)%2 != 0 {
+		t.Fatal("`labelAndValues` must be pairs of labels and values")
+	}
+	return strings.Join(append([]string{name}, labelAndValues...), ",")
 }
 
 // WaitForService waits until there's a service with the given name in the current namespace
