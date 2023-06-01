@@ -348,6 +348,14 @@ func (a *Awaitility) GetMetricValue(t *testing.T, family string, labelAndValues 
 }
 
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
+// fails if the metric with the given labelAndValues does not exist
+func (a *Awaitility) GetMetricLabels(t *testing.T, family string) []map[string]*string {
+	labels, err := metrics.GetMetricLabels(a.RestConfig, a.MetricsURL, family)
+	require.NoError(t, err)
+	return labels
+}
+
+// GetMetricValue gets the value of the metric with the given family and label key-value pair
 // return 0 if the metric with the given labelAndValues does not exist
 func (a *Awaitility) GetMetricValueOrZero(t *testing.T, family string, labelAndValues ...string) float64 {
 	if len(labelAndValues)%2 != 0 {

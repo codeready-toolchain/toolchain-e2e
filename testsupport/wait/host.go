@@ -177,6 +177,8 @@ const (
 	SpacesMetric = "sandbox_spaces_current"
 
 	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
+
+	HostOperatorVersionMetric = "sandbox_host_operator_version"
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
@@ -200,6 +202,7 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 	a.baselineValues[UserSignupsAutoDeactivatedMetric] = a.GetMetricValue(t, UserSignupsAutoDeactivatedMetric)
 	a.baselineValues[UserSignupsBannedMetric] = a.GetMetricValue(t, UserSignupsBannedMetric)
 	a.baselineValues[UserSignupVerificationRequiredMetric] = a.GetMetricValue(t, UserSignupVerificationRequiredMetric)
+	a.baselineValues[HostOperatorVersionMetric] = a.GetMetricValue(t, HostOperatorVersionMetric)
 	for _, name := range memberClusterNames { // sum of gauge value of all member clusters
 		spacesKey := a.baselineKey(t, SpacesMetric, "cluster_name", name)
 		a.baselineValues[spacesKey] += a.GetMetricValue(t, SpacesMetric, "cluster_name", name)

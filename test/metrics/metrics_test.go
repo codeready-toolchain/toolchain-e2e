@@ -17,10 +17,28 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func TestHostOperatorVersionMetrics(t *testing.T) {
+
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	// host metrics should be available at this point
+	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
+
+	labels := hostAwait.GetMetricLabels(t, wait.HostOperatorVersionMetric)
+
+	// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+	require.Len(t, labels, 1)
+	commit := labels[0]["commit"]
+	require.NotNil(t, commit)
+	assert.Len(t, *commit, 7)
+}
 
 // TestMetricsWhenUsersManuallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
 // (also verifies `UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged after deactivation)
