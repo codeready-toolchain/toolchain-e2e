@@ -23,21 +23,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestHostOperatorVersionMetrics(t *testing.T) {
+func TestOperatorVersionMetrics(t *testing.T) {
 
-	// given
-	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	// host metrics should be available at this point
-	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
+	t.Run("host-operator", func(t *testing.T) {
+		// given
+		awaitilities := WaitForDeployments(t)
+		hostAwait := awaitilities.Host()
+		// host metrics should be available at this point
+		hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 
-	labels := hostAwait.GetMetricLabels(t, wait.HostOperatorVersionMetric)
+		// when
+		labels := hostAwait.GetMetricLabels(t, wait.HostOperatorVersionMetric)
 
-	// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
-	require.Len(t, labels, 1)
-	commit := labels[0]["commit"]
-	require.NotNil(t, commit)
-	assert.Len(t, *commit, 7)
+		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+		require.Len(t, labels, 1)
+		commit := labels[0]["commit"]
+		require.NotNil(t, commit)
+		assert.Len(t, *commit, 7)
+	})
+
+	t.Run("member-operators", func(t *testing.T) {
+		// given
+		awaitilities := WaitForDeployments(t)
+		member1Await := awaitilities.Member1()
+		// host metrics should be available at this point
+		member1Await.InitMetrics(t)
+
+		// when
+		labels := member1Await.GetMetricLabels(t, wait.MemberOperatorVersionMetric)
+
+		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+		require.Len(t, labels, 1)
+		commit := labels[0]["commit"]
+		require.NotNil(t, commit)
+		assert.Len(t, *commit, 7)
+	})
 }
 
 // TestMetricsWhenUsersManuallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
