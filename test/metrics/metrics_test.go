@@ -46,7 +46,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// given
 		awaitilities := WaitForDeployments(t)
 		member1Await := awaitilities.Member1()
-		// host metrics should be available at this point
+		// member metrics should be available at this point
 		member1Await.InitMetrics(t)
 
 		// when
