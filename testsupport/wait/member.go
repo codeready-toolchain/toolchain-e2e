@@ -74,6 +74,20 @@ func (a *MemberAwaitility) WaitForMetricsService(t *testing.T) {
 	require.NoError(t, err, "failed while waiting for 'member-operator-metrics-service' service")
 }
 
+// metric constants
+const (
+	MemberOperatorVersionMetric = "sandbox_member_operator_version"
+)
+
+// InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
+func (a *MemberAwaitility) InitMetrics(t *testing.T) {
+	a.WaitForMetricsService(t)
+	// Capture baseline values
+	a.baselineValues = make(map[string]float64)
+	a.baselineValues[MemberOperatorVersionMetric] = a.GetMetricValue(t, MemberOperatorVersionMetric)
+	t.Logf("captured baselines:\n%s", spew.Sdump(a.baselineValues))
+}
+
 func (a *MemberAwaitility) WithRetryOptions(options ...RetryOption) *MemberAwaitility {
 	return &MemberAwaitility{
 		Awaitility: a.Awaitility.WithRetryOptions(options...),
