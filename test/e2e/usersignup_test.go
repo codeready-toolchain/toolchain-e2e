@@ -229,7 +229,14 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
-func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSet() {
+// TestUserResourcesCreatedWhenUserIDIsSet tests the case where:
+//
+// 1. sub claim is generated automatically
+// 2. user ID is set by test
+// 3. no original sub claim is set
+//
+// This scenario is expected with the regular RHD SSO client
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDIsSet() {
 	hostAwait := s.Host()
 
 	// given
@@ -249,7 +256,12 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSet() {
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
-func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubSet() {
+// TestUserResourcesCreatedWhenOriginalSubIsSet tests the case where:
+//
+// 1. sub claim is generated automatically
+// 2. user id is not set
+// 3. original sub claim set
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet() {
 	hostAwait := s.Host()
 
 	// given
@@ -268,7 +280,14 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubSet()
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
-func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDSameAsSubAndOriginalSubSet() {
+// TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub tests the case where:
+//
+// 1. sub claim set manually by test
+// 2. user id set by test and equal to sub claim
+// 3. original sub is set to a different value
+//
+// This scenario is expected when using the current sandbox RHD SSO client
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub() {
 	hostAwait := s.Host()
 
 	// given
