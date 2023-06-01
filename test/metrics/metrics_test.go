@@ -23,21 +23,58 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestHostOperatorVersionMetrics(t *testing.T) {
+func TestOperatorVersionMetrics(t *testing.T) {
 
 	// given
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	// host metrics should be available at this point
-	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 
-	labels := hostAwait.GetMetricLabels(t, wait.HostOperatorVersionMetric)
+	t.Run("host-operator", func(t *testing.T) {
+		// given
+		hostAwait := awaitilities.Host()
+		// host metrics should be available at this point
+		hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 
-	// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
-	require.Len(t, labels, 1)
-	commit := labels[0]["commit"]
-	require.NotNil(t, commit)
-	assert.Len(t, *commit, 7)
+		// when
+		labels := hostAwait.GetMetricLabels(t, wait.HostOperatorVersionMetric)
+
+		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
+		require.Len(t, labels, 1)
+		commit := labels[0]["commit"]
+		require.NotNil(t, commit)
+		assert.Len(t, *commit, 7)
+	})
+
+	t.Run("member-operators", func(t *testing.T) {
+		// given
+		member1Await := awaitilities.Member1()
+		member2Await := awaitilities.Member1()
+		// member metrics should be available at this point
+		member1Await.InitMetrics(t)
+		member2Await.InitMetrics(t)
+
+		// --- member1 ---
+		// when
+		labels := member1Await.GetMetricLabels(t, wait.MemberOperatorVersionMetric)
+
+		// verify that the "version" metric exists for the first Member Operator and that it has a non-empty `commit` label
+		require.Len(t, labels, 1)
+		commit1 := labels[0]["commit"]
+		require.NotNil(t, commit1)
+		assert.Len(t, *commit1, 7)
+
+		// --- member2 ---
+		// when
+		labels = member2Await.GetMetricLabels(t, wait.MemberOperatorVersionMetric)
+
+		// verify that the "version" metric exists for the second Member Operator and that it has a non-empty `commit` label
+		require.Len(t, labels, 1)
+		commit2 := labels[0]["commit"]
+		require.NotNil(t, commit2)
+		assert.Len(t, *commit2, 7)
+
+		// expect the same version on member1 and member2
+		assert.Equal(t, *commit1, *commit2)
+	})
 }
 
 // TestMetricsWhenUsersManuallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
