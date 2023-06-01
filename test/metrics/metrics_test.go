@@ -25,9 +25,11 @@ import (
 
 func TestOperatorVersionMetrics(t *testing.T) {
 
+	// given
+	awaitilities := WaitForDeployments(t)
+
 	t.Run("host-operator", func(t *testing.T) {
 		// given
-		awaitilities := WaitForDeployments(t)
 		hostAwait := awaitilities.Host()
 		// host metrics should be available at this point
 		hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
@@ -44,7 +46,6 @@ func TestOperatorVersionMetrics(t *testing.T) {
 
 	t.Run("member-operators", func(t *testing.T) {
 		// given
-		awaitilities := WaitForDeployments(t)
 		member1Await := awaitilities.Member1()
 		// member metrics should be available at this point
 		member1Await.InitMetrics(t)
