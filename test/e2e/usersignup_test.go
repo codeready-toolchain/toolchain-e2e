@@ -293,6 +293,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 	// given
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
+	// generate a new identity ID
 	identityID := uuid.Must(uuid.NewV4())
 
 	// when
