@@ -222,7 +222,8 @@ func DeletedRoleAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitil
 	userRole, err := memberAwait.WaitForRole(t, &ns, role)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRole)
-	require.Contains(t, userRole.Labels, "toolchain.dev.openshift.com/owner")
+	require.Contains(t, userRole.Labels, toolchainv1alpha1.OwnerLabelKey)
+	require.Contains(t, userRole.Labels, toolchainv1alpha1.SpaceLabelKey)
 
 	//when role deleted
 	err = memberAwait.Client.Delete(context.TODO(), userRole)
@@ -238,7 +239,8 @@ func DeleteRoleBindingAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberA
 	userRoleBinding, err := memberAwait.WaitForRoleBinding(t, &ns, rolebinding)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRoleBinding)
-	require.Contains(t, userRoleBinding.Labels, "toolchain.dev.openshift.com/owner")
+	require.Contains(t, userRoleBinding.Labels, toolchainv1alpha1.OwnerLabelKey)
+	require.Contains(t, userRoleBinding.Labels, toolchainv1alpha1.SpaceLabelKey)
 
 	//when rolebinding deleted
 	err = memberAwait.Client.Delete(context.TODO(), userRoleBinding)
