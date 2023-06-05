@@ -229,6 +229,89 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
+// TestUserResourcesCreatedWhenUserIDIsSet tests the case where:
+//
+// 1. sub claim is generated automatically
+// 2. user ID is set by test
+// 3. no original sub claim is set
+//
+// This scenario is expected with the regular RHD SSO client
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDIsSet() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-with-userid").
+		Email("test-user-with-userid@redhat.com").
+		UserID("111222333").
+		AccountID("jnwww029837").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+// TestUserResourcesCreatedWhenOriginalSubIsSet tests the case where:
+//
+// 1. sub claim is generated automatically
+// 2. user id is not set
+// 3. original sub claim set
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-with-originalsub").
+		Email("test-user-with-originalsub@redhat.com").
+		OriginalSub("abc:fff000111-bbbccc").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+// TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub tests the case where:
+//
+// 1. sub claim set manually by test
+// 2. user id set by test and equal to sub claim
+// 3. original sub is set to a different value
+//
+// This scenario is expected when using the current sandbox RHD SSO client
+func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// generate a new identity ID
+	identityID := uuid.Must(uuid.NewV4())
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-with-userid-and-originalsub").
+		Email("test-user-with-userid-and-originalsub@redhat.com").
+		IdentityID(identityID).
+		UserID(identityID.String()).
+		AccountID("abc-8783").
+		OriginalSub("def:98734987234").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
 	hostAwait := s.Host()
 	hostAwait.CheckMasterUserRecordIsDeleted(t, userSignup.Spec.Username)

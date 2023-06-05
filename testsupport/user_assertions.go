@@ -72,10 +72,17 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	require.True(t, foundLastCluster)
 	require.Equal(t, memberAwait.ClusterName, lastCluster)
 
-	// Check the second identity
+	// Check the originalSub identity
 	originalSubIdentityName := ""
 	if userAccount.Spec.OriginalSub != "" {
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.OriginalSub, "rhd").IdentityName()
+	}
+
+	// Check the UserID identity
+	userIDIdentityName := ""
+	val, ok := userAccount.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
+	if ok {
+		userIDIdentityName = identitypkg.NewIdentityNamingStandard(val, "rhd").IdentityName()
 	}
 
 	memberConfiguration := memberAwait.GetMemberOperatorConfig(t)
@@ -92,7 +99,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		userID, found := userSignup.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
 		if found {
 			accountID, found := userSignup.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey]
-			if found {
+			if found && userID != "" && accountID != "" {
 				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey])
 				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey])
 			}
@@ -111,9 +118,17 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 		assert.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
 
-		// Verify the second identity
+		// Verify the originalSub identity
 		if originalSubIdentityName != "" {
-			_, err = memberAwait.WaitForIdentity(t, identityName,
+			_, err = memberAwait.WaitForIdentity(t, originalSubIdentityName,
+				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
+				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
+			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
+		}
+
+		// Verify the userID identity
+		if userIDIdentityName != "" {
+			_, err = memberAwait.WaitForIdentity(t, userIDIdentityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
 			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
@@ -125,11 +140,17 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		assert.NoError(t, err)
 		err = memberAwait.WaitUntilIdentityDeleted(t, identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName())
 		assert.NoError(t, err)
-		// Verify the second identity
+		// Verify the originalSub identity
 		if originalSubIdentityName != "" {
 			err = memberAwait.WaitUntilIdentityDeleted(t, originalSubIdentityName)
 			assert.NoError(t, err)
 		}
+		// Verify the userID identity
+		if userIDIdentityName != "" {
+			err = memberAwait.WaitUntilIdentityDeleted(t, userIDIdentityName)
+			assert.NoError(t, err)
+		}
+
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
