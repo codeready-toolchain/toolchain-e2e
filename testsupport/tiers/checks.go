@@ -1515,6 +1515,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"*"},
+				},
+				{
 					APIGroups: []string{""},
 					Resources: []string{"secrets"},
 					Verbs:     []string{"*"},
