@@ -183,12 +183,12 @@ func TestProxyFlow(t *testing.T) {
 					assert.NotEmpty(t, found)
 					assert.Equal(t, expectedApp.Spec, found.Spec)
 
-					newApp := user.getApplication(t, proxyCl, applicationName)
-					assert.NotEmpty(t, newApp)
+					proxyApp := user.getApplication(t, proxyCl, applicationName)
+					assert.NotEmpty(t, proxyApp)
 
 					// Double check that the Application does exist using a regular client (non-proxy)
-					createdApp := user.getApplicationWithoutProxy(t, applicationName)
-					assert.Equal(t, expectedApp.Spec, createdApp.Spec)
+					noProxyApp := user.getApplicationWithoutProxy(t, applicationName)
+					assert.Equal(t, expectedApp.Spec, noProxyApp.Spec)
 				}
 
 				t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
@@ -207,8 +207,8 @@ func TestProxyFlow(t *testing.T) {
 					assert.Equal(t, proxyApp.Spec.DisplayName, updatedApp.Spec.DisplayName)
 
 					// Check that the Application is updated using a regular client (non-proxy)
-					originalApp := user.getApplicationWithoutProxy(t, applicationName)
-					assert.Equal(t, originalApp.Spec.DisplayName, changedDisplayName)
+					noProxyUpdatedApp := user.getApplicationWithoutProxy(t, applicationName)
+					assert.Equal(t, proxyApp.Spec.DisplayName, noProxyUpdatedApp.Spec.DisplayName)
 				})
 
 				t.Run("use proxy to list a HAS Application CR in the user appstudio namespace", func(t *testing.T) {
@@ -222,7 +222,7 @@ func TestProxyFlow(t *testing.T) {
 					applicationListWS := &appstudiov1.ApplicationList{}
 					err = user.expectedMemberCluster.Client.List(context.TODO(), applicationListWS, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
 					require.NoError(t, err)
-					require.NotEmpty(t, applicationListWS.Items)
+					require.Len(t, applicationListWS.Items, 2)
 					assert.Equal(t, applicationListWS.Items, applicationList.Items)
 				})
 
@@ -246,11 +246,11 @@ func TestProxyFlow(t *testing.T) {
 
 					// Get patched app and verify patched DisplayName
 					patchedApp := user.getApplication(t, proxyCl, applicationName)
-					assert.Equal(t, patchedApp.Spec.DisplayName, patchString)
+					assert.Equal(t, patchString, patchedApp.Spec.DisplayName)
 
 					// Double check that the Application is patched using a regular client (non-proxy)
-					wsApp := user.getApplicationWithoutProxy(t, applicationName)
-					assert.Equal(t, wsApp.Spec.DisplayName, patchString)
+					noProxyApp := user.getApplicationWithoutProxy(t, applicationName)
+					assert.Equal(t, patchString, noProxyApp.Spec.DisplayName)
 				})
 
 				t.Run("use proxy to delete a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it deleted", func(t *testing.T) {
