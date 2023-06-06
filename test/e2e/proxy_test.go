@@ -24,6 +24,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
@@ -31,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -45,6 +47,12 @@ type proxyUser struct {
 	compliantUsername     string
 }
 
+type patchStringValue struct {
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value string `json:"value"`
+}
+
 func (u *proxyUser) shareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility, guestUser *proxyUser) {
 	// share primaryUser space with guestUser
 	guestUserMur, err := hostAwait.GetMasterUserRecord(guestUser.compliantUsername)
@@ -55,22 +63,49 @@ func (u *proxyUser) shareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility,
 }
 
 func (u *proxyUser) listWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility) []toolchainv1alpha1.Workspace {
-	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.token, hostAwait.APIProxyURL)
-	require.NoError(t, err)
+	proxyCl := u.createProxyClient(t, hostAwait)
 
 	workspaces := &toolchainv1alpha1.WorkspaceList{}
-	err = proxyCl.List(context.TODO(), workspaces)
+	err := proxyCl.List(context.TODO(), workspaces)
 	require.NoError(t, err)
 	return workspaces.Items
 }
 
-func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, workspaceName string) (*toolchainv1alpha1.Workspace, error) {
+func (u *proxyUser) createProxyClient(t *testing.T, hostAwait *wait.HostAwaitility) client.Client {
 	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.token, hostAwait.APIProxyURL)
 	require.NoError(t, err)
+	return proxyCl
+}
+
+func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, workspaceName string) (*toolchainv1alpha1.Workspace, error) {
+	proxyCl := u.createProxyClient(t, hostAwait)
 
 	workspace := &toolchainv1alpha1.Workspace{}
-	err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
+	err := proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
 	return workspace, err
+}
+
+func (u *proxyUser) getApplication(t *testing.T, proxyClient client.Client, applicationName string) *appstudiov1.Application {
+	app := &appstudiov1.Application{}
+	namespacedName := types.NamespacedName{Namespace: tenantNsName(u.compliantUsername), Name: applicationName}
+	// Get Application
+	err := proxyClient.Get(context.TODO(), namespacedName, app)
+	require.NoError(t, err)
+	require.NotEmpty(t, app)
+	return app
+}
+
+func (u *proxyUser) getApplicationWithoutProxy(t *testing.T, applicationName string) *appstudiov1.Application {
+	namespacedName := types.NamespacedName{Namespace: tenantNsName(u.compliantUsername), Name: applicationName}
+	app := &appstudiov1.Application{}
+	err := u.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, app)
+	require.NoError(t, err)
+	require.NotEmpty(t, app)
+	return app
+}
+
+func (u *proxyUser) getApplicationName(i int) string {
+	return fmt.Sprintf("%s-test-app-%d", u.compliantUsername, i)
 }
 
 // full flow from usersignup with approval down to namespaces creation and cleanup
@@ -111,7 +146,7 @@ func TestProxyFlow(t *testing.T) {
 			identityID:            uuid.Must(uuid.NewV4()),
 		},
 	}
-	// create the users before the subtests, so they exist for the duration of the whole "ProxyFlow" test ;)
+	//create the users before the subtests, so they exist for the duration of the whole "ProxyFlow" test ;)
 	for _, user := range users {
 		createAppStudioUser(t, awaitilities, user)
 	}
@@ -121,19 +156,18 @@ func TestProxyFlow(t *testing.T) {
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
+			// Start a new websocket watcher
+			w := newWsWatcher(t, *user, user.compliantUsername, hostAwait.APIProxyURL)
+			closeConnection := w.Start()
+			defer closeConnection()
+			proxyCl := user.createProxyClient(t, hostAwait)
+			applicationList := &appstudiov1.ApplicationList{}
 
 			t.Run("use proxy to create a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it created", func(t *testing.T) {
-				// Start a new websocket watcher which watches for Application CRs in the user's namespace
-				w := newWsWatcher(t, *user, user.compliantUsername, hostAwait.APIProxyURL)
-				closeConnection := w.Start()
-				defer closeConnection()
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
-				require.NoError(t, err)
-
 				// Create and retrieve the application resources multiple times for the same user to make sure the proxy cache kicks in.
 				for i := 0; i < 2; i++ {
 					// given
-					applicationName := fmt.Sprintf("%s-test-app-%d", user.compliantUsername, i)
+					applicationName := user.getApplicationName(i)
 					expectedApp := newApplication(applicationName, tenantNsName(user.compliantUsername))
 
 					// when
@@ -143,21 +177,103 @@ func TestProxyFlow(t *testing.T) {
 					// then
 					// wait for the websocket watcher which uses the proxy to receive the Application CR
 					found, err := w.WaitForApplication(
-						user.expectedMemberCluster.RetryInterval,
-						user.expectedMemberCluster.Timeout,
 						expectedApp.Name,
 					)
 					require.NoError(t, err)
 					assert.NotEmpty(t, found)
+					assert.Equal(t, expectedApp.Spec, found.Spec)
+
+					proxyApp := user.getApplication(t, proxyCl, applicationName)
+					assert.NotEmpty(t, proxyApp)
 
 					// Double check that the Application does exist using a regular client (non-proxy)
-					namespacedName := types.NamespacedName{Namespace: tenantNsName(user.compliantUsername), Name: applicationName}
-					createdApp := &appstudiov1.Application{}
-					err = user.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, createdApp)
-					require.NoError(t, err)
-					require.NotEmpty(t, createdApp)
-					assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
+					noProxyApp := user.getApplicationWithoutProxy(t, applicationName)
+					assert.Equal(t, expectedApp.Spec, noProxyApp.Spec)
 				}
+
+				t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
+					// Update application
+					applicationName := user.getApplicationName(0)
+					// Get application
+					proxyApp := user.getApplication(t, proxyCl, applicationName)
+					// Update DisplayName
+					changedDisplayName := fmt.Sprintf("Proxy test for user %s - updated application", tenantNsName(user.compliantUsername))
+					proxyApp.Spec.DisplayName = changedDisplayName
+					err := proxyCl.Update(context.TODO(), proxyApp)
+					require.NoError(t, err)
+
+					// Find application and check, if it is updated
+					updatedApp := user.getApplication(t, proxyCl, applicationName)
+					assert.Equal(t, proxyApp.Spec.DisplayName, updatedApp.Spec.DisplayName)
+
+					// Check that the Application is updated using a regular client (non-proxy)
+					noProxyUpdatedApp := user.getApplicationWithoutProxy(t, applicationName)
+					assert.Equal(t, proxyApp.Spec.DisplayName, noProxyUpdatedApp.Spec.DisplayName)
+				})
+
+				t.Run("use proxy to list a HAS Application CR in the user appstudio namespace", func(t *testing.T) {
+					// Get List of applications.
+					err := proxyCl.List(context.TODO(), applicationList, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
+					// User should be able to list applications
+					require.NoError(t, err)
+					assert.NotEmpty(t, applicationList.Items)
+
+					// Check that the applicationList using a regular client (non-proxy)
+					applicationListWS := &appstudiov1.ApplicationList{}
+					err = user.expectedMemberCluster.Client.List(context.TODO(), applicationListWS, &client.ListOptions{Namespace: tenantNsName(user.compliantUsername)})
+					require.NoError(t, err)
+					require.Len(t, applicationListWS.Items, 2)
+					assert.Equal(t, applicationListWS.Items, applicationList.Items)
+				})
+
+				t.Run("use proxy to patch a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
+					// Patch application
+					applicationName := user.getApplicationName(1)
+					patchString := "Patched application for proxy test"
+					// Get application
+					proxyApp := user.getApplication(t, proxyCl, applicationName)
+					// Patch for DisplayName
+					patchPayload := []patchStringValue{{
+						Op:    "replace",
+						Path:  "/spec/displayName",
+						Value: patchString,
+					}}
+					patchPayloadBytes, _ := json.Marshal(patchPayload)
+
+					// Appply Patch
+					err := proxyCl.Patch(context.TODO(), proxyApp, client.RawPatch(types.JSONPatchType, patchPayloadBytes))
+					require.NoError(t, err)
+
+					// Get patched app and verify patched DisplayName
+					patchedApp := user.getApplication(t, proxyCl, applicationName)
+					assert.Equal(t, patchString, patchedApp.Spec.DisplayName)
+
+					// Double check that the Application is patched using a regular client (non-proxy)
+					noProxyApp := user.getApplicationWithoutProxy(t, applicationName)
+					assert.Equal(t, patchString, noProxyApp.Spec.DisplayName)
+				})
+
+				t.Run("use proxy to delete a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it deleted", func(t *testing.T) {
+					// Delete applications
+					for i := 0; i < len(applicationList.Items); i++ {
+						// Get application
+						proxyApp := applicationList.Items[i].DeepCopy()
+						// Delete
+						err := proxyCl.Delete(context.TODO(), proxyApp)
+						require.NoError(t, err)
+						err = w.WaitForApplicationDeletion(
+							proxyApp.Name,
+						)
+						require.NoError(t, err)
+
+						// Check that the Application is deleted using a regular client (non-proxy)
+						namespacedName := types.NamespacedName{Namespace: tenantNsName(user.compliantUsername), Name: proxyApp.Name}
+						originalApp := &appstudiov1.Application{}
+						err = user.expectedMemberCluster.Client.Get(context.TODO(), namespacedName, originalApp)
+						require.Error(t, err) //not found
+						require.True(t, k8serr.IsNotFound(err))
+					}
+				})
 			})
 
 			t.Run("try to create a resource in an unauthorized namespace", func(t *testing.T) {
@@ -174,11 +290,10 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				// when
-				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, hostAwait.APIProxyURL)
-				require.NoError(t, err)
+				proxyCl = user.createProxyClient(t, hostAwait)
 
 				// then
-				err = proxyCl.Create(context.TODO(), expectedApp)
+				err := proxyCl.Create(context.TODO(), expectedApp)
 				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (post applications.appstudio.redhat.com)`, hostAwait.Namespace, user.compliantUsername))
 			})
 
@@ -237,8 +352,6 @@ func TestProxyFlow(t *testing.T) {
 				// then
 				// wait for the websocket watcher which uses the proxy to receive the Application CR
 				found, err := w.WaitForApplication(
-					user.expectedMemberCluster.RetryInterval,
-					user.expectedMemberCluster.Timeout,
 					expectedApp.Name,
 				)
 				require.NoError(t, err)
@@ -396,8 +509,6 @@ func TestProxyFlow(t *testing.T) {
 
 			// wait for the websocket watcher which uses the proxy to receive the Application CR
 			found, err := w.WaitForApplication(
-				primaryUser.expectedMemberCluster.RetryInterval,
-				primaryUser.expectedMemberCluster.Timeout,
 				expectedApp.Name,
 			)
 			require.NoError(t, err)
@@ -795,20 +906,34 @@ func (w *wsWatcher) receiveHandler() {
 		require.NoError(w.t, err)
 		copyApp := message.Application
 		w.mu.Lock()
-		w.receivedApps[copyApp.Name] = &copyApp
+		if message.MessageType == "DELETED" {
+			delete(w.receivedApps, copyApp.Name)
+		} else {
+			w.receivedApps[copyApp.Name] = &copyApp
+		}
 		w.mu.Unlock()
 	}
 }
 
-func (w *wsWatcher) WaitForApplication(retryInterval, timeout time.Duration, expectedAppName string) (*appstudiov1.Application, error) {
+func (w *wsWatcher) WaitForApplication(expectedAppName string) (*appstudiov1.Application, error) {
 	var foundApp *appstudiov1.Application
-	err := kubewait.Poll(retryInterval, timeout, func() (bool, error) {
+	err := kubewait.Poll(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
 		foundApp = w.receivedApps[expectedAppName]
 		return foundApp != nil, nil
 	})
 	return foundApp, err
+}
+
+func (w *wsWatcher) WaitForApplicationDeletion(expectedAppName string) error {
+	err := kubewait.PollImmediate(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+		defer w.mu.RUnlock()
+		w.mu.RLock()
+		_, present := w.receivedApps[expectedAppName]
+		return !present, nil
+	})
+	return err
 }
 
 func newApplication(applicationName, namespace string) *appstudiov1.Application {
