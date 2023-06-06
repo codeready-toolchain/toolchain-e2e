@@ -1515,6 +1515,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"*"},
+				},
+				{
 					APIGroups: []string{""},
 					Resources: []string{"secrets"},
 					Verbs:     []string{"*"},
@@ -1605,6 +1610,11 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
 					APIGroups: []string{""},
 					Resources: []string{"configmaps"},
 					Verbs:     []string{"get", "list", "watch"},
@@ -1681,6 +1691,11 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
