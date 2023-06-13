@@ -1,8 +1,10 @@
 package metrics
 
 import (
+	"encoding/csv"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 	"time"
 
@@ -40,6 +42,10 @@ type aggregateResult struct {
 	sampleCount int
 	max         float64
 	sum         float64
+}
+
+func (r aggregateResult) avg() float64 {
+	return r.sum / float64(r.sampleCount)
 }
 
 // New creates a new gatherer with default queries
@@ -95,7 +101,7 @@ func (g *Gatherer) StartGathering() chan struct{} {
 	}
 
 	// ensure metrics are dumped if there's a fatal error
-	g.term.AddPreFatalExitHook(g.PrintResults)
+	g.term.AddPreFatalExitHook(g.OutputResults)
 
 	stop := make(chan struct{})
 	go func() {
@@ -146,36 +152,96 @@ func (g *Gatherer) sample(q queries.Query) error {
 	return nil
 }
 
-// PrintResults iterates through each query and prints the aggregated results to the terminal
-func (g *Gatherer) PrintResults() {
+// OutputResults outputs the aggregated results to the terminal and a csv file
+func (g *Gatherer) OutputResults() {
+	pwd, err := os.Getwd()
+	if err != nil {
+		g.term.Infof("error getting current working directory %s", err)
+		os.Exit(1)
+	}
+	resultsDir := pwd + "/results/"
+	os.MkdirAll(resultsDir, os.ModePerm)
+	resultsFilepath := resultsDir + time.Now().Format("2006-01-02_15:04:05") + ".csv"
+
+	csvWriter := g.newCSVWriter(resultsFilepath)
+
+	g.writeResults(terminalWriter{g.term}, csvWriter)
+
+	g.term.Infof("\nResults file: " + csvWriter.path)
+}
+
+// Results iterates through each query and aggregates the results
+func (g *Gatherer) Results() [][]string {
+	var tuples [][]string
 	for _, q := range g.mqueries {
+		result := g.results[q.Name()]
 		switch q.ResultType() {
 		case "percentage":
-			PrintPercentage(g.term, q.Name(), g.results[q.Name()])
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s (%%)", q.Name()), percentage(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s (%%)", q.Name()), percentage(result.max)})
 		case "memory":
-			PrintMemory(g.term, q.Name(), g.results[q.Name()])
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s (MB)", q.Name()), bytesToMBString(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s (MB)", q.Name()), bytesToMBString(result.max)})
 		case "simple":
-			PrintSimple(g.term, q.Name(), g.results[q.Name()])
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s", q.Name()), bytesToMBString(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s", q.Name()), bytesToMBString(result.max)})
 		default:
 			g.term.Fatalf(fmt.Errorf("query %s is missing a result type", q.Name()), "invalid query")
 		}
 	}
+	return tuples
 }
 
-func PrintPercentage(t terminal.Terminal, name string, r aggregateResult) {
-	avg := r.sum / float64(r.sampleCount)
-	t.Infof("Average %s: %.2f %%", name, avg*100)
-	t.Infof("Max %s: %.2f %%", name, r.max*100)
+type resultsWriter interface {
+	Write([][]string) error
+	Close() error
 }
 
-func PrintMemory(t terminal.Terminal, name string, r aggregateResult) {
-	avg := r.sum / float64(r.sampleCount)
-	t.Infof("Average %s: %s", name, bytesToMBString(avg))
-	t.Infof("Max %s: %s", name, bytesToMBString(r.max))
+func (g *Gatherer) writeResults(writers ...resultsWriter) error {
+	results := g.Results()
+	for _, w := range writers {
+		if err := w.Write(results); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func PrintSimple(t terminal.Terminal, name string, r aggregateResult) {
-	avg := r.sum / float64(r.sampleCount)
-	t.Infof("Average %s: %s", name, simple(avg))
-	t.Infof("Max %s: %s", name, simple(r.max))
+func (g *Gatherer) newCSVWriter(resultsFilepath string) *csvWriter {
+	csvFile, err := os.Create(resultsFilepath)
+	if err != nil {
+		g.term.Infof("failed creating file: %s", err)
+		os.Exit(1)
+	}
+
+	return &csvWriter{resultsFilepath, csvFile}
+}
+
+type csvWriter struct {
+	path string
+	f    *os.File
+}
+
+func (w csvWriter) Write(results [][]string) error {
+	writer := csv.NewWriter(w.f)
+	return writer.WriteAll(results)
+}
+
+func (w csvWriter) Close() error {
+	return w.f.Close()
+}
+
+type terminalWriter struct {
+	t terminal.Terminal
+}
+
+func (w terminalWriter) Write(results [][]string) error {
+	for _, result := range results {
+		w.t.Infof("%s: %s", result[0], result[1])
+	}
+	return nil
+}
+
+func (w terminalWriter) Close() error {
+	return nil
 }

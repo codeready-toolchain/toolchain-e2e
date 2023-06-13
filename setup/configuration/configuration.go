@@ -13,6 +13,7 @@ import (
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,6 +82,7 @@ func NewScheme() (*runtime.Scheme, error) {
 		toolchainv1alpha1.AddToScheme,
 		quotav1.Install,
 		operatorsv1alpha1.AddToScheme,
+		operatorsv1.AddToScheme,
 		templatev1.Install,
 		routev1.Install,
 		appsv1.AddToScheme,
@@ -102,6 +104,21 @@ func ConfigureDefaultSpaceTier(cl client.Client) error {
 
 	toolchainCfg.Spec.Host.Tiers.DefaultSpaceTier = &UserSpaceTier
 	return cl.Update(context.TODO(), toolchainCfg)
+}
+
+// DisableCopiedCSVs disables OLM's CopiedCSVs feature, since OpenShift 4.13 the console no longer relies on CSVs to know which operators are installed
+func DisableCopiedCSVs(cl client.Client) error {
+	olmConfig := &operatorsv1.OLMConfig{}
+	if err := cl.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, olmConfig); err != nil {
+		return err
+	}
+	val := true
+	spec := &olmConfig.Spec
+	if spec.Features == nil {
+		spec.Features = &operatorsv1.Features{}
+	}
+	spec.Features.DisableCopiedCSVs = &val
+	return cl.Update(context.TODO(), olmConfig)
 }
 
 // GetKubeconfigFile returns a file reader on (by order of match):

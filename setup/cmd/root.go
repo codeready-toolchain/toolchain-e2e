@@ -20,6 +20,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
+
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -37,7 +38,7 @@ var (
 	userBatches          int
 	defaultTemplateUsers int
 	customTemplateUsers  int
-	skipCSVGen           bool
+	skipInstallOperators bool
 	skipIdlerSetup       bool
 	interactive          bool
 	operatorsLimit       int
@@ -73,7 +74,7 @@ func Execute() {
 	cmd.Flags().StringSliceVar(&customTemplatePaths, "template", []string{}, "the path to the OpenShift template to apply for each custom user")
 	cmd.Flags().IntVarP(&defaultTemplateUsers, cfg.DefaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
 	cmd.Flags().IntVarP(&customTemplateUsers, cfg.CustomTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
-	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
+	cmd.Flags().BoolVar(&skipInstallOperators, "skip-install-operators", false, "skip the installation of operators")
 	cmd.Flags().BoolVar(&skipIdlerSetup, "skip-idler", false, "if the idler timeout should be modified for each user")
 	cmd.Flags().BoolVar(&interactive, "interactive", true, "if user is prompted to confirm all actions")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
@@ -172,12 +173,18 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
 	}
 
+	term.Infof("Configuring default space tier...")
 	if err := cfg.ConfigureDefaultSpaceTier(cl); err != nil {
 		term.Fatalf(err, "unable to set default space tier")
 	}
 
-	if !skipCSVGen {
-		term.Infof("⏳ preparing cluster for setup...")
+	term.Infof("Disabling copied CSVs feature...")
+	if err := cfg.DisableCopiedCSVs(cl); err != nil {
+		term.Fatalf(err, "unable to disable OLM copy CSVs feature")
+	}
+
+	if !skipInstallOperators {
+		term.Infof("⏳ installing operators...")
 		// install operators for member clusters
 		templatePaths := []string{}
 		for i := 0; i < operatorsLimit; i++ {
@@ -328,7 +335,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	term.Infof("\n📈 Results 📉")
 	term.Infof("Average Idler Update Time: %.2f s", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
 	term.Infof("Average Time Per User: %.2f s", AverageTimePerUser.Seconds()/float64(numberOfUsers))
-	metricsInstance.PrintResults()
+	metricsInstance.OutputResults()
 	term.Infof("👋 have fun!")
 }
 
