@@ -1463,7 +1463,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 12)
+		assert.Len(t, role.Rules, 13)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1512,6 +1512,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"*"},
+				},
+				{
 					APIGroups: []string{""},
 					Resources: []string{"secrets"},
 					Verbs:     []string{"*"},
@@ -1538,7 +1543,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 13)
+		assert.Len(t, role.Rules, 14)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1602,6 +1607,11 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
 					APIGroups: []string{""},
 					Resources: []string{"configmaps"},
 					Verbs:     []string{"get", "list", "watch"},
@@ -1617,7 +1627,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 13)
+		assert.Len(t, role.Rules, 14)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1678,6 +1688,11 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
