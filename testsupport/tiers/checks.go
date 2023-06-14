@@ -367,7 +367,6 @@ func toolchainLabelsWaitCriterion(userName string) []wait.LabelWaitCriterion {
 // toolchainLabels returns a map containing the expected kubernetes labels that a toolchain resource should have.
 func toolchainLabels(userName string) map[string]string {
 	return map[string]string{
-		toolchainv1alpha1.OwnerLabelKey:    userName,
 		toolchainv1alpha1.SpaceLabelKey:    userName,
 		toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
 	}
@@ -1096,7 +1095,6 @@ func idlers(timeoutSeconds int, namespaceTypes ...string) clusterObjectsCheckCre
 			err := memberAwait.Client.List(context.TODO(), idlers,
 				client.MatchingLabels(map[string]string{
 					toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
-					toolchainv1alpha1.OwnerLabelKey:    userName,
 					toolchainv1alpha1.SpaceLabelKey:    userName,
 				}))
 			require.NoError(t, err)
@@ -1418,7 +1416,6 @@ func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 				quotas := &quotav1.ClusterResourceQuotaList{}
 				matchingLabels := client.MatchingLabels(map[string]string{ // make sure we only list the ClusterResourceQuota resources associated with the given "userName"
 					toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue,
-					toolchainv1alpha1.OwnerLabelKey:    userName,
 					toolchainv1alpha1.SpaceLabelKey:    userName,
 				})
 				err := memberAwait.Client.List(context.TODO(), quotas, matchingLabels)

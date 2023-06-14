@@ -689,7 +689,6 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 		return nil, err
 	}
 	labels := map[string]string{
-		toolchainv1alpha1.OwnerLabelKey:       owner,
 		toolchainv1alpha1.SpaceLabelKey:       owner,
 		toolchainv1alpha1.TemplateRefLabelKey: tmplRef,
 		toolchainv1alpha1.TierLabelKey:        tierName,
@@ -1552,7 +1551,6 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typ
 	t.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{
-			toolchainv1alpha1.OwnerLabelKey: username,
 			toolchainv1alpha1.SpaceLabelKey: username,
 			toolchainv1alpha1.TypeLabelKey:  typeName,
 		}
@@ -1791,7 +1789,6 @@ func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(t *testing.T, u
 	t.Logf("waiting for deletion of ClusterResourceQuotas for user '%s'", username)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		labels := map[string]string{
-			toolchainv1alpha1.OwnerLabelKey: username,
 			toolchainv1alpha1.SpaceLabelKey: username,
 		}
 		opts := client.MatchingLabels(labels)
