@@ -165,7 +165,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 		cl := test.NewFakeClient(t, sub) // subscription exists
 
 		// when
-		err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
+		err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns", configuration.DefaultTimeout)
 
 		// then
 		require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 			cl := test.NewFakeClient(t) // subscription does not exist
 
 			// when
-			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
+			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns", configuration.DefaultTimeout)
 
 			// then
 			require.EqualError(t, err, `could not find a Subscription with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: timed out waiting for the condition`)
@@ -191,7 +191,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 			}
 
 			// when
-			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns")
+			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns", configuration.DefaultTimeout)
 
 			// then
 			require.EqualError(t, err, `could not find a Subscription with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: Test client error`)

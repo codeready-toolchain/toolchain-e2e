@@ -38,8 +38,9 @@ var (
 	userBatches          int
 	defaultTemplateUsers int
 	customTemplateUsers  int
-	skipInstallOperators bool
+	skipAdditionalWait   bool
 	skipIdlerSetup       bool
+	skipInstallOperators bool
 	interactive          bool
 	operatorsLimit       int
 	idlerTimeout         string
@@ -74,8 +75,9 @@ func Execute() {
 	cmd.Flags().StringSliceVar(&customTemplatePaths, "template", []string{}, "the path to the OpenShift template to apply for each custom user")
 	cmd.Flags().IntVarP(&defaultTemplateUsers, cfg.DefaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
 	cmd.Flags().IntVarP(&customTemplateUsers, cfg.CustomTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
-	cmd.Flags().BoolVar(&skipInstallOperators, "skip-install-operators", false, "skip the installation of operators")
+	cmd.Flags().BoolVar(&skipAdditionalWait, "skip-wait", false, "skip the additional wait time after the setup is complete to allow the cluster to settle, primarily used for debugging")
 	cmd.Flags().BoolVar(&skipIdlerSetup, "skip-idler", false, "if the idler timeout should be modified for each user")
+	cmd.Flags().BoolVar(&skipInstallOperators, "skip-install-operators", false, "skip the installation of operators")
 	cmd.Flags().BoolVar(&interactive, "interactive", true, "if user is prompted to confirm all actions")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
@@ -309,7 +311,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 
 				startTime := time.Now()
 
-				// create resources for every nth user
+				// create resources for users that should have the custom template applied
 				if customUserSetupBar.Current() <= customTemplateUsers {
 					if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, customTemplatePaths); err != nil {
 						term.Fatalf(err, "failed to create resources for user '%s'", username)
@@ -328,13 +330,17 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	term.Infof("🏁 done provisioning users")
 
 	// continue gathering metrics for some time after creating all users and resources since memory usage was observed to continue changing
-	additionalMetricsDuration := 15 * time.Minute
-	term.Infof("Continuing to gather metrics for %s...", additionalMetricsDuration)
-	time.Sleep(additionalMetricsDuration)
+	if !skipAdditionalWait {
+		additionalMetricsDuration := 15 * time.Minute
+		term.Infof("Continuing to gather metrics for %s...", additionalMetricsDuration)
+		time.Sleep(additionalMetricsDuration)
+	}
 
 	term.Infof("\n📈 Results 📉")
-	term.Infof("Average Idler Update Time: %.2f s", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
-	term.Infof("Average Time Per User: %.2f s", AverageTimePerUser.Seconds()/float64(numberOfUsers))
+	idlerResults := [][]string{}
+	idlerResults = append(idlerResults, []string{"Average Idler Update Time (s)", fmt.Sprintf("%.2f", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))})
+	idlerResults = append(idlerResults, []string{"Average Time Per User (s)", fmt.Sprintf("%.2f", AverageTimePerUser.Seconds()/float64(numberOfUsers))})
+	metricsInstance.AddResults(idlerResults)
 	metricsInstance.OutputResults()
 	term.Infof("👋 have fun!")
 }

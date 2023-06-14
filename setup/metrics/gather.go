@@ -35,6 +35,7 @@ type Gatherer struct {
 	queryInterval time.Duration
 	mqueries      []queries.Query
 	results       map[string]aggregateResult
+	otherResults  [][]string
 	term          terminal.Terminal
 }
 
@@ -171,7 +172,7 @@ func (g *Gatherer) OutputResults() {
 }
 
 // Results iterates through each query and aggregates the results
-func (g *Gatherer) Results() [][]string {
+func (g *Gatherer) computeResults() [][]string {
 	var tuples [][]string
 	for _, q := range g.mqueries {
 		result := g.results[q.Name()]
@@ -192,13 +193,20 @@ func (g *Gatherer) Results() [][]string {
 	return tuples
 }
 
+func (g *Gatherer) AddResults(otherResults [][]string) {
+	g.otherResults = append(g.otherResults, otherResults...)
+}
+
 type resultsWriter interface {
 	Write([][]string) error
 	Close() error
 }
 
 func (g *Gatherer) writeResults(writers ...resultsWriter) error {
-	results := g.Results()
+	results := [][]string{}
+	results = append(results, []string{"Item", "Value"})
+	results = append(results, g.computeResults()...)
+	results = append(results, g.otherResults...)
 	for _, w := range writers {
 		if err := w.Write(results); err != nil {
 			return err
