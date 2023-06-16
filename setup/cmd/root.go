@@ -225,6 +225,19 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	uip := uiprogress.New()
 	uip.Start()
 
+	tempStdout := os.Stdout
+	tempStderr := os.Stderr
+	stdOutFile, err := os.Create(cfg.StdOutFilepath())
+	if err != nil {
+		term.Fatalf(err, "failed creating stdout file: %s", cfg.StdOutFilepath())
+	}
+	stdErrFile, err := os.Create(cfg.StdErrFilepath())
+	if err != nil {
+		term.Fatalf(err, "failed creating stderr file: %s", cfg.StdErrFilepath())
+	}
+	os.Stdout = stdOutFile
+	os.Stderr = stdErrFile
+
 	// start the progress bars in go routines
 	var wg sync.WaitGroup
 	usersignupBar := uip.AddBar(numberOfUsers).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
@@ -326,6 +339,10 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	defer close(stopMetrics)
 	wg.Wait()
 	uip.Stop()
+
+	// restore stdout and stderr to originals
+	os.Stdout = tempStdout
+	os.Stderr = tempStderr
 
 	term.Infof("🏁 done provisioning users")
 

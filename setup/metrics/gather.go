@@ -155,16 +155,8 @@ func (g *Gatherer) sample(q queries.Query) error {
 
 // OutputResults outputs the aggregated results to the terminal and a csv file
 func (g *Gatherer) OutputResults() {
-	pwd, err := os.Getwd()
-	if err != nil {
-		g.term.Infof("error getting current working directory %s", err)
-		os.Exit(1)
-	}
-	resultsDir := pwd + "/results/"
-	os.MkdirAll(resultsDir, os.ModePerm)
-	resultsFilepath := resultsDir + time.Now().Format("2006-01-02_15:04:05") + ".csv"
 
-	csvWriter := g.newCSVWriter(resultsFilepath)
+	csvWriter := g.newCSVWriter(cfg.ResultsFilepath())
 
 	g.writeResults(terminalWriter{g.term}, csvWriter)
 

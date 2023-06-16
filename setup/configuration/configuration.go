@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -45,7 +46,30 @@ var (
 	DefaultTimeout       = time.Minute * 5
 
 	UserSpaceTier = "base1ns"
+
+	resultsDir       string
+	resultsFilepath  string
+	stdOutFilepath   string
+	stdErrFilepath   string
+	startedTimestamp = time.Now().Format("2006-01-02_15:04:05")
 )
+
+func init() {
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("error getting current working directory %s", err)
+		os.Exit(1)
+	}
+	resultsDirectory := pwd + "/results/"
+	if os.MkdirAll(resultsDir, os.ModePerm); err != nil {
+		fmt.Printf("error creating results directory %s", err)
+		os.Exit(1)
+	}
+	resultsDir = resultsDirectory
+	resultsFilepath = resultsDir + startedTimestamp + ".csv"
+	stdOutFilepath = resultsDir + startedTimestamp + "-stdout.log"
+	stdErrFilepath = resultsDir + startedTimestamp + "-stderr.log"
+}
 
 // NewClient returns a new client to the cluster defined by the current context in
 // the KUBECONFIG
@@ -150,4 +174,24 @@ func homeDir() string {
 		return h
 	}
 	return os.Getenv("USERPROFILE") // windows
+}
+
+func ResultsDir() string {
+	return resultsDir
+}
+
+func ResultsFilepath() string {
+	return resultsFilepath
+}
+
+func StdOutFilepath() string {
+	return stdOutFilepath
+}
+
+func StdErrFilepath() string {
+	return stdErrFilepath
+}
+
+func StartedTimestamp() string {
+	return startedTimestamp
 }
