@@ -243,7 +243,6 @@ func DeletedRoleAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberAwaitil
 	userRole, err := memberAwait.WaitForRole(t, &ns, role)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRole)
-	require.Contains(t, userRole.Labels, toolchainv1alpha1.OwnerLabelKey)
 	require.Contains(t, userRole.Labels, toolchainv1alpha1.SpaceLabelKey)
 
 	//when role deleted
@@ -260,7 +259,6 @@ func DeleteRoleBindingAndAwaitRecreation(t *testing.T, memberAwait *wait.MemberA
 	userRoleBinding, err := memberAwait.WaitForRoleBinding(t, &ns, rolebinding)
 	require.NoError(t, err)
 	require.NotEmpty(t, userRoleBinding)
-	require.Contains(t, userRoleBinding.Labels, toolchainv1alpha1.OwnerLabelKey)
 	require.Contains(t, userRoleBinding.Labels, toolchainv1alpha1.SpaceLabelKey)
 
 	//when rolebinding deleted

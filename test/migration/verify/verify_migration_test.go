@@ -194,7 +194,7 @@ func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, 
 	)
 	require.NoError(t, err)
 
-	signup, err := hostAwait.WaitForUserSignup(t, provisionedMur.Labels[toolchainv1alpha1.OwnerLabelKey])
+	signup, err := hostAwait.WaitForUserSignup(t, provisionedMur.Labels[toolchainv1alpha1.MasterUserRecordOwnerLabelKey])
 	require.NoError(t, err)
 
 	checkMURMigrated(t, provisionedMur)
