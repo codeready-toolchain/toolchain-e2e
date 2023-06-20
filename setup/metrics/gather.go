@@ -161,8 +161,8 @@ func (g *Gatherer) ComputeResults() [][]string {
 			tuples = append(tuples, []string{fmt.Sprintf("Average %s (MB)", q.Name()), bytesToMBString(result.avg())})
 			tuples = append(tuples, []string{fmt.Sprintf("Max %s (MB)", q.Name()), bytesToMBString(result.max)})
 		case "simple":
-			tuples = append(tuples, []string{fmt.Sprintf("Average %s", q.Name()), bytesToMBString(result.avg())})
-			tuples = append(tuples, []string{fmt.Sprintf("Max %s", q.Name()), bytesToMBString(result.max)})
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s", q.Name()), simple(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s", q.Name()), simple(result.max)})
 		default:
 			g.term.Fatalf(fmt.Errorf("query %s is missing a result type", q.Name()), "invalid query")
 		}
