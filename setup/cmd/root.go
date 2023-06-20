@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/operators"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/results"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
@@ -49,8 +51,9 @@ var (
 )
 
 var (
-	AverageIdlerUpdateTime time.Duration
-	AverageTimePerUser     time.Duration
+	AverageIdlerUpdateTime         time.Duration
+	AverageDefaultApplyTimePerUser time.Duration
+	AverageCustomApplyTimePerUser  time.Duration
 )
 
 // Execute the setup command to fill a cluster with as many users as requested.
@@ -81,6 +84,7 @@ func Execute() {
 	cmd.Flags().BoolVar(&interactive, "interactive", true, "if user is prompted to confirm all actions")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
+	cmd.Flags().StringVar(&cfg.Testname, "testname", "", "a name that is added as a suffix to the result file names")
 	cmd.Flags().StringVarP(&token, "token", "t", "", "Openshift API token")
 	cmd.Flags().StringSliceVar(&workloads, "workloads", []string{}, "workload namespace:name pairs that should have metrics collected during the setup. all values are comma-separated eg. \"--workloads service-binding-operator:service-binding-operator,rhoas-operator:rhoas-operator\"")
 
@@ -100,6 +104,20 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	term.Infof("User Batch Size:           '%d'", userBatches)
 	term.Infof("Host Operator Namespace:   '%s'", cfg.HostOperatorNamespace)
 	term.Infof("Member Operator Namespace: '%s'\n", cfg.MemberOperatorNamespace)
+
+	var generalResultsInfo = func() [][]string {
+		return [][]string{
+			{"Number of Users", strconv.Itoa(numberOfUsers)},
+			{"Number of Default Template Users", strconv.Itoa(defaultTemplateUsers)},
+			{"Number of Custom Template Users", strconv.Itoa(customTemplateUsers)},
+			{"User Batch Size", strconv.Itoa(userBatches)},
+			{"Host Operator Namespace", cfg.HostOperatorNamespace},
+			{"Member Operator Namespace", cfg.MemberOperatorNamespace},
+			{"Average Idler Update Time (s)", fmt.Sprintf("%.2f", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))},
+			{"Average Time Per User - default (s)", fmt.Sprintf("%.2f", AverageDefaultApplyTimePerUser.Seconds()/float64(numberOfUsers))},
+			{"Average Time Per User - custom (s)", fmt.Sprintf("%.2f", AverageCustomApplyTimePerUser.Seconds()/float64(numberOfUsers))},
+		}
+	}
 
 	// validate params
 	if numberOfUsers < 1 {
@@ -219,12 +237,8 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		)
 	}
 
-	// start gathering metrics
-	stopMetrics := metricsInstance.StartGathering()
-
-	uip := uiprogress.New()
-	uip.Start()
-
+	// redirect stdout and stderr to files due to issue with progress bars and client go logging for messages like
+	// I0619 11:12:22.620509   89316 request.go:601] Waited for 1.100053529s due to client-side throttling, not priority and fairness, request: POST:https://api.rajiv.devcluster.openshift.com:6443/apis/rbac.authorization.k8s.io/v1/namespaces/waffle4-0001-dev/rolebindings
 	tempStdout := os.Stdout
 	tempStderr := os.Stderr
 	stdOutFile, err := os.Create(cfg.StdOutFilepath())
@@ -237,6 +251,25 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	}
 	os.Stdout = stdOutFile
 	os.Stderr = stdErrFile
+	term.AddPreFatalExitHook(func() {
+		// restore stdout and stderr to originals
+		os.Stdout = tempStdout
+		os.Stderr = tempStderr
+	})
+
+	// start gathering metrics
+	stopMetrics := metricsInstance.StartGathering()
+
+	// gather and write results
+	resultsWriter := results.New(term)
+
+	// ensure metrics are dumped even if there's a fatal error
+	term.AddPreFatalExitHook(func() {
+		addAndOutputResults(term, resultsWriter, metricsInstance.ComputeResults, generalResultsInfo)
+	})
+
+	uip := uiprogress.New()
+	uip.Start()
 
 	// start the progress bars in go routines
 	var wg sync.WaitGroup
@@ -307,7 +340,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 					}
 				}
 				userTime := time.Since(startTime)
-				AverageTimePerUser += userTime
+				AverageDefaultApplyTimePerUser += userTime
 			}
 		}()
 	}
@@ -331,7 +364,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 					}
 				}
 				userTime := time.Since(startTime)
-				AverageTimePerUser += userTime
+				AverageCustomApplyTimePerUser += userTime
 			}
 		}()
 	}
@@ -353,12 +386,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		time.Sleep(additionalMetricsDuration)
 	}
 
-	term.Infof("\n📈 Results 📉")
-	idlerResults := [][]string{}
-	idlerResults = append(idlerResults, []string{"Average Idler Update Time (s)", fmt.Sprintf("%.2f", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))})
-	idlerResults = append(idlerResults, []string{"Average Time Per User (s)", fmt.Sprintf("%.2f", AverageTimePerUser.Seconds()/float64(numberOfUsers))})
-	metricsInstance.AddResults(idlerResults)
-	metricsInstance.OutputResults()
+	addAndOutputResults(term, resultsWriter, metricsInstance.ComputeResults, generalResultsInfo)
 	term.Infof("👋 have fun!")
 }
 
@@ -366,4 +394,13 @@ func usersWithinBounds(term terminal.Terminal, value int, templateType string) {
 	if value < 0 || value > numberOfUsers {
 		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid '%s' users value '%d'", templateType, value)
 	}
+}
+
+func addAndOutputResults(term terminal.Terminal, resultsWriter *results.Results, r ...func() [][]string) {
+	for _, result := range r {
+		resultsWriter.AddResults(result())
+	}
+
+	term.Infof("\n📈 Results 📉")
+	resultsWriter.OutputResults()
 }

@@ -41,6 +41,7 @@ const (
 var (
 	HostOperatorNamespace   string
 	MemberOperatorNamespace string
+	Testname                string
 
 	DefaultRetryInterval = time.Millisecond * 200
 	DefaultTimeout       = time.Minute * 5
@@ -66,9 +67,12 @@ func init() {
 		os.Exit(1)
 	}
 	resultsDir = resultsDirectory
-	resultsFilepath = resultsDir + startedTimestamp + ".csv"
-	stdOutFilepath = resultsDir + startedTimestamp + "-stdout.log"
-	stdErrFilepath = resultsDir + startedTimestamp + "-stderr.log"
+	if len(Testname) > 0 && Testname[0] != '-' {
+		Testname = "-" + Testname
+	}
+	resultsFilepath = fmt.Sprintf("%s%s%s.csv", resultsDir, startedTimestamp, Testname)
+	stdOutFilepath = fmt.Sprintf("%s%s%s-stdout.log", resultsDir, startedTimestamp, Testname)
+	stdErrFilepath = fmt.Sprintf("%s%s%s-stderr.log", resultsDir, startedTimestamp, Testname)
 }
 
 // NewClient returns a new client to the cluster defined by the current context in

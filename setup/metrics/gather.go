@@ -1,10 +1,8 @@
 package metrics
 
 import (
-	"encoding/csv"
 	"fmt"
 	"math"
-	"os"
 	"strings"
 	"time"
 
@@ -101,9 +99,6 @@ func (g *Gatherer) StartGathering() chan struct{} {
 		return nil
 	}
 
-	// ensure metrics are dumped if there's a fatal error
-	g.term.AddPreFatalExitHook(g.OutputResults)
-
 	stop := make(chan struct{})
 	go func() {
 		k8sutil.Until(func() {
@@ -153,18 +148,8 @@ func (g *Gatherer) sample(q queries.Query) error {
 	return nil
 }
 
-// OutputResults outputs the aggregated results to the terminal and a csv file
-func (g *Gatherer) OutputResults() {
-
-	csvWriter := g.newCSVWriter(cfg.ResultsFilepath())
-
-	g.writeResults(terminalWriter{g.term}, csvWriter)
-
-	g.term.Infof("\nResults file: " + csvWriter.path)
-}
-
 // Results iterates through each query and aggregates the results
-func (g *Gatherer) computeResults() [][]string {
+func (g *Gatherer) ComputeResults() [][]string {
 	var tuples [][]string
 	for _, q := range g.mqueries {
 		result := g.results[q.Name()]
@@ -183,65 +168,4 @@ func (g *Gatherer) computeResults() [][]string {
 		}
 	}
 	return tuples
-}
-
-func (g *Gatherer) AddResults(otherResults [][]string) {
-	g.otherResults = append(g.otherResults, otherResults...)
-}
-
-type resultsWriter interface {
-	Write([][]string) error
-	Close() error
-}
-
-func (g *Gatherer) writeResults(writers ...resultsWriter) error {
-	results := [][]string{}
-	results = append(results, []string{"Item", "Value"})
-	results = append(results, g.computeResults()...)
-	results = append(results, g.otherResults...)
-	for _, w := range writers {
-		if err := w.Write(results); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (g *Gatherer) newCSVWriter(resultsFilepath string) *csvWriter {
-	csvFile, err := os.Create(resultsFilepath)
-	if err != nil {
-		g.term.Infof("failed creating file: %s", err)
-		os.Exit(1)
-	}
-
-	return &csvWriter{resultsFilepath, csvFile}
-}
-
-type csvWriter struct {
-	path string
-	f    *os.File
-}
-
-func (w csvWriter) Write(results [][]string) error {
-	writer := csv.NewWriter(w.f)
-	return writer.WriteAll(results)
-}
-
-func (w csvWriter) Close() error {
-	return w.f.Close()
-}
-
-type terminalWriter struct {
-	t terminal.Terminal
-}
-
-func (w terminalWriter) Write(results [][]string) error {
-	for _, result := range results {
-		w.t.Infof("%s: %s", result[0], result[1])
-	}
-	return nil
-}
-
-func (w terminalWriter) Close() error {
-	return nil
 }
