@@ -8,14 +8,14 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 )
 
-type ResultsWriter interface {
+type Writer interface {
 	Write([][]string) error
 	Close() error
 }
 
 type Results struct {
-	stdOutWriter ResultsWriter
-	csvWriter    ResultsWriter
+	stdOutWriter Writer
+	csvWriter    Writer
 	results      [][]string
 	term         terminal.Terminal
 }
@@ -37,7 +37,7 @@ func New(term terminal.Terminal) *Results {
 }
 
 func (r *Results) writeResults() error {
-	for _, w := range []ResultsWriter{r.stdOutWriter, r.csvWriter} {
+	for _, w := range []Writer{r.stdOutWriter, r.csvWriter} {
 		if err := w.Write(r.results); err != nil {
 			return err
 		}
@@ -79,7 +79,9 @@ func (w terminalWriter) Close() error {
 
 // OutputResults outputs the aggregated results to the terminal and a csv file
 func (r *Results) OutputResults() {
-	r.writeResults()
+	if err := r.writeResults(); err != nil {
+		r.term.Fatalf(err, "failed to write results")
+	}
 
 	r.term.Infof("\nResults file: " + cfg.ResultsFilepath())
 }

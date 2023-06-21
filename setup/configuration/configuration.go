@@ -62,7 +62,7 @@ func Init() {
 		os.Exit(1)
 	}
 	resultsDirectory := pwd + "/tmp/results/"
-	if os.MkdirAll(resultsDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(resultsDir, os.ModePerm); err != nil {
 		fmt.Printf("error creating results directory %s", err)
 		os.Exit(1)
 	}
