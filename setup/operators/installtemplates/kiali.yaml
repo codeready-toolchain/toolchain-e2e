@@ -1,4 +1,3 @@
-# OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:

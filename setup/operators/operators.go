@@ -28,15 +28,12 @@ const (
 //   - sandbox operators installation is a prerequisite for the tests so they are not included here
 var Templates = []string{
 	"devspaces.yaml",
-	"camel-k-operator.yaml",
-	"cluster-logging-operator.yaml",
-	"image-puller-operator.yaml",
-	"intel-aikit.yaml",
-	"intel-openvino.yaml",
+	"aikit.yaml",
+	"openvino.yaml",
 	// "devworkspace-operator.yaml", // included with DevSpaces install
-	"pipelines.yaml",
+	"rhoas.yaml",
 	"rhods.yaml",
-	"service-binding-operator.yaml", // also included when rhoda is installed
+	"sbo.yaml", // included when rhoda is installed
 	"serverless-operator.yaml",
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
