@@ -55,7 +55,7 @@ var (
 	startedTimestamp = time.Now().Format("2006-01-02_15:04:05")
 )
 
-func init() {
+func Init() {
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Printf("error getting current working directory %s", err)

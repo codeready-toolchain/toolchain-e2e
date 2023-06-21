@@ -1,0 +1,23 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-pipelines-operator
+objects:
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: openshift-pipelines-operator-rh
+      namespace: ${PIPELINES_OPERATOR_NAMESPACE}
+    spec:
+      channel: pipelines-1.11
+      installPlanApproval: Automatic
+      name: openshift-pipelines-operator-rh
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+      config:
+        env:
+        - name: AUTOINSTALL_COMPONENTS
+          value: "false"
+parameters:
+  - name: PIPELINES_OPERATOR_NAMESPACE
+    value: openshift-operators

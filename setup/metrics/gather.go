@@ -33,7 +33,6 @@ type Gatherer struct {
 	queryInterval time.Duration
 	mqueries      []queries.Query
 	results       map[string]aggregateResult
-	otherResults  [][]string
 	term          terminal.Terminal
 }
 
@@ -148,7 +147,7 @@ func (g *Gatherer) sample(q queries.Query) error {
 	return nil
 }
 
-// Results iterates through each query and aggregates the results
+// ComputeResults iterates through each query and aggregates the results
 func (g *Gatherer) ComputeResults() [][]string {
 	var tuples [][]string
 	for _, q := range g.mqueries {

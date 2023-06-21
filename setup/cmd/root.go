@@ -98,6 +98,9 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	cmd.SilenceUsage = true
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
 
+	// call cfg.Init() to initialize variables that are dependent on any flags eg. testname
+	cfg.Init()
+
 	term.Infof("Number of Users:           '%d'", numberOfUsers)
 	term.Infof("Default Template Users:    '%d'", defaultTemplateUsers)
 	term.Infof("Custom Template Users:     '%d'", customTemplateUsers)

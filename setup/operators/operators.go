@@ -23,14 +23,20 @@ const (
 	memberSubscriptionName = "subscription-toolchain-member-operator"
 )
 
+// Templates are the operator install templates, this list should be kept in sync with prod install templates with some exceptions:
+//   - prometheus is excluded because it is not needed for the tests because it is not an 'onboarded operator' so it could just introduce noise
+//   - sandbox operators installation is a prerequisite for the tests so they are not included here
 var Templates = []string{
 	"devspaces.yaml",
-	"aikit.yaml",
-	"openvino.yaml",
+	"camel-k-operator.yaml",
+	"cluster-logging-operator.yaml",
+	"image-puller-operator.yaml",
+	"intel-aikit.yaml",
+	"intel-openvino.yaml",
 	// "devworkspace-operator.yaml", // included with DevSpaces install
-	"rhoas.yaml",
+	"pipelines.yaml",
 	"rhods.yaml",
-	"sbo.yaml", // included when rhoda is installed
+	"service-binding-operator.yaml", // also included when rhoda is installed
 	"serverless-operator.yaml",
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
