@@ -619,7 +619,7 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 				Param("watch", "true").
 				Do(withTimeout).
 				Get()
-			t.Logf("stopping the watch after %s", time.Now().Sub(started))
+			t.Logf("stopping the watch after %s", time.Since(started))
 
 			assert.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
 			assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
