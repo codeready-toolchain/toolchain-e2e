@@ -2,6 +2,7 @@ package configuration
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,12 +41,39 @@ const (
 var (
 	HostOperatorNamespace   string
 	MemberOperatorNamespace string
+	Testname                string
 
 	DefaultRetryInterval = time.Millisecond * 200
 	DefaultTimeout       = time.Minute * 5
 
 	UserSpaceTier = "base1ns"
+
+	resultsDir       string
+	resultsFilepath  string
+	stdOutFilepath   string
+	stdErrFilepath   string
+	startedTimestamp = time.Now().Format("2006-01-02_15:04:05")
 )
+
+func Init() {
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("error getting current working directory %s", err)
+		os.Exit(1)
+	}
+	resultsDirectory := pwd + "/tmp/results/"
+	if err := os.MkdirAll(resultsDir, os.ModePerm); err != nil {
+		fmt.Printf("error creating results directory %s", err)
+		os.Exit(1)
+	}
+	resultsDir = resultsDirectory
+	if len(Testname) > 0 && Testname[0] != '-' {
+		Testname = "-" + Testname
+	}
+	resultsFilepath = fmt.Sprintf("%s%s%s.csv", resultsDir, startedTimestamp, Testname)
+	stdOutFilepath = fmt.Sprintf("%s%s%s-stdout.log", resultsDir, startedTimestamp, Testname)
+	stdErrFilepath = fmt.Sprintf("%s%s%s-stderr.log", resultsDir, startedTimestamp, Testname)
+}
 
 // NewClient returns a new client to the cluster defined by the current context in
 // the KUBECONFIG
@@ -81,6 +110,7 @@ func NewScheme() (*runtime.Scheme, error) {
 		toolchainv1alpha1.AddToScheme,
 		quotav1.Install,
 		operatorsv1alpha1.AddToScheme,
+		operatorsv1.AddToScheme,
 		templatev1.Install,
 		routev1.Install,
 		appsv1.AddToScheme,
@@ -102,6 +132,21 @@ func ConfigureDefaultSpaceTier(cl client.Client) error {
 
 	toolchainCfg.Spec.Host.Tiers.DefaultSpaceTier = &UserSpaceTier
 	return cl.Update(context.TODO(), toolchainCfg)
+}
+
+// DisableCopiedCSVs disables OLM's CopiedCSVs feature, since OpenShift 4.13 the console no longer relies on CSVs to know which operators are installed
+func DisableCopiedCSVs(cl client.Client) error {
+	olmConfig := &operatorsv1.OLMConfig{}
+	if err := cl.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, olmConfig); err != nil {
+		return err
+	}
+	val := true
+	spec := &olmConfig.Spec
+	if spec.Features == nil {
+		spec.Features = &operatorsv1.Features{}
+	}
+	spec.Features.DisableCopiedCSVs = &val
+	return cl.Update(context.TODO(), olmConfig)
 }
 
 // GetKubeconfigFile returns a file reader on (by order of match):
@@ -133,4 +178,24 @@ func homeDir() string {
 		return h
 	}
 	return os.Getenv("USERPROFILE") // windows
+}
+
+func ResultsDir() string {
+	return resultsDir
+}
+
+func ResultsFilepath() string {
+	return resultsFilepath
+}
+
+func StdOutFilepath() string {
+	return stdOutFilepath
+}
+
+func StdErrFilepath() string {
+	return stdErrFilepath
+}
+
+func StartedTimestamp() string {
+	return startedTimestamp
 }

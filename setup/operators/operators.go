@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/templates"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
 
@@ -22,6 +23,9 @@ const (
 	memberSubscriptionName = "subscription-toolchain-member-operator"
 )
 
+// Templates are the operator install templates, this list should be kept in sync with prod install templates with some exceptions:
+//   - prometheus is excluded because it is not needed for the tests because it is not an 'onboarded operator' so it could just introduce noise
+//   - sandbox operators installation is a prerequisite for the tests so they are not included here
 var Templates = []string{
 	"devspaces.yaml",
 	"aikit.yaml",
@@ -96,7 +100,14 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 		var csverr error
 		var currentCSV string
 		var lastCSVs []string
-		err = wait.ForSubscriptionWithCriteria(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), func(subscription *v1alpha1.Subscription) bool {
+		timeout := configuration.DefaultTimeout
+
+		// longer timeout just for subscriptions in the redhat-ods-operator namespace since installation can take significantly longer than other operators
+		if subscriptionResource.GetNamespace() == "redhat-ods-operator" {
+			timeout = 15 * time.Minute
+		}
+
+		err = wait.ForSubscriptionWithCriteria(cl, subscriptionResource.GetName(), subscriptionResource.GetNamespace(), timeout, func(subscription *v1alpha1.Subscription) bool {
 			currentCSV = subscription.Status.CurrentCSV
 			if currentCSV == "" {
 				return false
