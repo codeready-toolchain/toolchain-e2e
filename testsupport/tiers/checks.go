@@ -1308,8 +1308,10 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.Reso
 		Match: func(actual *quotav1.ClusterResourceQuota) bool {
 			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
 				Selector: quotav1.ClusterResourceQuotaSelector{
-					AnnotationSelector: map[string]string{
-						"openshift.io/requester": userName,
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							toolchainv1alpha1.SpaceLabelKey: userName,
+						},
 					},
 				},
 				Quota: corev1.ResourceQuotaSpec{
