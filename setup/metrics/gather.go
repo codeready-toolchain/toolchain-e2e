@@ -42,6 +42,10 @@ type aggregateResult struct {
 	sum         float64
 }
 
+func (r aggregateResult) avg() float64 {
+	return r.sum / float64(r.sampleCount)
+}
+
 // New creates a new gatherer with default queries
 func New(t terminal.Terminal, cl client.Client, token string, interval time.Duration) *Gatherer {
 	g := &Gatherer{
@@ -94,9 +98,6 @@ func (g *Gatherer) StartGathering() chan struct{} {
 		return nil
 	}
 
-	// ensure metrics are dumped if there's a fatal error
-	g.term.AddPreFatalExitHook(g.PrintResults)
-
 	stop := make(chan struct{})
 	go func() {
 		k8sutil.Until(func() {
@@ -146,36 +147,24 @@ func (g *Gatherer) sample(q queries.Query) error {
 	return nil
 }
 
-// PrintResults iterates through each query and prints the aggregated results to the terminal
-func (g *Gatherer) PrintResults() {
+// ComputeResults iterates through each query and aggregates the results
+func (g *Gatherer) ComputeResults() [][]string {
+	var tuples [][]string
 	for _, q := range g.mqueries {
+		result := g.results[q.Name()]
 		switch q.ResultType() {
 		case "percentage":
-			PrintPercentage(g.term, q.Name(), g.results[q.Name()])
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s (%%)", q.Name()), percentage(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s (%%)", q.Name()), percentage(result.max)})
 		case "memory":
-			PrintMemory(g.term, q.Name(), g.results[q.Name()])
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s (MB)", q.Name()), bytesToMBString(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s (MB)", q.Name()), bytesToMBString(result.max)})
 		case "simple":
-			PrintSimple(g.term, q.Name(), g.results[q.Name()])
+			tuples = append(tuples, []string{fmt.Sprintf("Average %s", q.Name()), simple(result.avg())})
+			tuples = append(tuples, []string{fmt.Sprintf("Max %s", q.Name()), simple(result.max)})
 		default:
 			g.term.Fatalf(fmt.Errorf("query %s is missing a result type", q.Name()), "invalid query")
 		}
 	}
-}
-
-func PrintPercentage(t terminal.Terminal, name string, r aggregateResult) {
-	avg := r.sum / float64(r.sampleCount)
-	t.Infof("Average %s: %.2f %%", name, avg*100)
-	t.Infof("Max %s: %.2f %%", name, r.max*100)
-}
-
-func PrintMemory(t terminal.Terminal, name string, r aggregateResult) {
-	avg := r.sum / float64(r.sampleCount)
-	t.Infof("Average %s: %s", name, bytesToMBString(avg))
-	t.Infof("Max %s: %s", name, bytesToMBString(r.max))
-}
-
-func PrintSimple(t terminal.Terminal, name string, r aggregateResult) {
-	avg := r.sum / float64(r.sampleCount)
-	t.Infof("Average %s: %s", name, simple(avg))
-	t.Infof("Max %s: %s", name, simple(r.max))
+	return tuples
 }
