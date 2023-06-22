@@ -1,7 +1,7 @@
 kind: Template
-apiVersion: v1
+apiVersion: template.openshift.io/v1
 metadata:
-  name: nodejs-sample
+  name: user-workloads
 objects:
   - apiVersion: apps/v1
     kind: Deployment
