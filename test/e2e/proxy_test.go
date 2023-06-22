@@ -24,6 +24,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gofrs/uuid"
@@ -128,6 +129,12 @@ func TestProxyFlow(t *testing.T) {
 	setStoneSoupConfig(t, hostAwait, memberAwait)
 
 	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
+
+	waitForWatcher := runWatcher(t, awaitilities)
+	defer func() {
+		t.Log("wait until the watcher is stopped")
+		waitForWatcher.Wait()
+	}()
 
 	users := []*proxyUser{
 		{
@@ -550,6 +557,75 @@ func TestProxyFlow(t *testing.T) {
 	// Verify provisioned Identity
 	_, err = memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
 	assert.NoError(t, err)
+}
+
+// this test will:
+//  1. provision a watcher user
+//  2. run a goroutine which will:
+//     I. create a long-running GET call with a watch=true parameter
+//     II. the call will be terminated via a context timeout
+//     III. check the expected error that it was terminated via a context and not on the server side
+func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
+
+	// ======================================================
+	// let's define two timeouts
+
+	// contextTimeout defines the time after which the GET (watch) call will be terminated (via the context)
+	// this one is the expected timeout and should be bigger than the default one that was originally set
+	// for OpenShift Route and the RoundTripper inside proxy to make sure that the call is terminated
+	// via the context and not by the server.
+	contextTimeout := 40 * time.Second
+
+	// this timeout will be set when initializing the go client - just to be sure that
+	// there is no other value set by default and is bigger than the contextTimeout.
+	clientConfigTimeout := 50 * time.Second
+	// ======================================================
+
+	t.Log("provisioning the watcher")
+	watchUser := &proxyUser{
+		expectedMemberCluster: awaitilities.Member1(),
+		username:              "watcher",
+		identityID:            uuid.Must(uuid.NewV4()),
+	}
+	createAppStudioUser(t, awaitilities, watchUser)
+
+	proxyConfig := awaitilities.Host().CreateAPIProxyConfig(t, watchUser.token, awaitilities.Host().APIProxyURL)
+	proxyConfig.Timeout = clientConfigTimeout
+	watcherClient, err := kubernetes.NewForConfig(proxyConfig)
+	require.NoError(t, err)
+
+	// we need to get a list of ConfigMaps, so we can use the resourceVersion
+	// of the list resource in the watch call
+	t.Log("getting the first list of ConfigMaps")
+	list, err := watcherClient.CoreV1().
+		ConfigMaps(tenantNsName(watchUser.compliantUsername)).
+		List(context.Background(), metav1.ListOptions{})
+	require.NoError(t, err)
+
+	var waitForWatcher sync.WaitGroup
+	waitForWatcher.Add(1)
+	// run the watch in a goroutine because it will take 40 seconds until the call is terminated
+	go func() {
+		t.Run("running the watcher", func(t *testing.T) {
+			defer waitForWatcher.Done()
+			withTimeout, cancelFunc := context.WithTimeout(context.Background(), contextTimeout)
+			defer cancelFunc()
+
+			started := time.Now()
+			t.Log("starting the watch call")
+			_, err := watcherClient.RESTClient().Get().
+				AbsPath(fmt.Sprintf("/api/v1/namespaces/%s/configmaps", tenantNsName(watchUser.compliantUsername))).
+				Param("resourceVersion", list.GetResourceVersion()).
+				Param("watch", "true").
+				Do(withTimeout).
+				Get()
+			t.Logf("stopping the watch after %s", time.Now().Sub(started))
+
+			assert.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
+			assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
+		})
+	}()
+	return &waitForWatcher
 }
 
 func TestSpaceLister(t *testing.T) {
