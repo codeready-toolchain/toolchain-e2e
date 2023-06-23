@@ -1527,15 +1527,15 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Verbs:     []string{"*"},
 				},
 				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"buildpipelineselectors"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+				{
 					APIGroups:     []string{""},
 					Resources:     []string{"serviceaccounts"},
 					ResourceNames: []string{"appstudio-pipeline"},
 					Verbs:         []string{"get", "list", "watch", "update", "patch"},
-				},
-				{
-					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"buildpipelineselectors"},
-					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 			},
 		}
