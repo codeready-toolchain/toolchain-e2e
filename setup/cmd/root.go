@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,9 +18,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/setup/metrics/queries"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/operators"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/resources"
+	"github.com/codeready-toolchain/toolchain-e2e/setup/results"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/users"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
+
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -37,8 +40,9 @@ var (
 	userBatches          int
 	defaultTemplateUsers int
 	customTemplateUsers  int
-	skipCSVGen           bool
+	skipAdditionalWait   bool
 	skipIdlerSetup       bool
+	skipInstallOperators bool
 	interactive          bool
 	operatorsLimit       int
 	idlerTimeout         string
@@ -47,8 +51,9 @@ var (
 )
 
 var (
-	AverageIdlerUpdateTime time.Duration
-	AverageTimePerUser     time.Duration
+	AverageIdlerUpdateTime         time.Duration
+	AverageDefaultApplyTimePerUser time.Duration
+	AverageCustomApplyTimePerUser  time.Duration
 )
 
 // Execute the setup command to fill a cluster with as many users as requested.
@@ -73,11 +78,13 @@ func Execute() {
 	cmd.Flags().StringSliceVar(&customTemplatePaths, "template", []string{}, "the path to the OpenShift template to apply for each custom user")
 	cmd.Flags().IntVarP(&defaultTemplateUsers, cfg.DefaultTemplateUsersParam, "d", 2000, "how many users will have the default user workloads template applied")
 	cmd.Flags().IntVarP(&customTemplateUsers, cfg.CustomTemplateUsersParam, "c", 2000, "how many users will have the custom user workloads template applied")
-	cmd.Flags().BoolVar(&skipCSVGen, "skip-csvgen", false, "if an all-namespaces operator should be installed to generate a CSV resource in each namespace")
+	cmd.Flags().BoolVar(&skipAdditionalWait, "skip-wait", false, "skip the additional wait time after the setup is complete to allow the cluster to settle, primarily used for debugging")
 	cmd.Flags().BoolVar(&skipIdlerSetup, "skip-idler", false, "if the idler timeout should be modified for each user")
+	cmd.Flags().BoolVar(&skipInstallOperators, "skip-install-operators", false, "skip the installation of operators")
 	cmd.Flags().BoolVar(&interactive, "interactive", true, "if user is prompted to confirm all actions")
 	cmd.Flags().IntVar(&operatorsLimit, "operators-limit", len(operators.Templates), "can be specified to limit the number of additional operators to install (by default all operators are installed to simulate cluster load in production)")
 	cmd.Flags().StringVarP(&idlerTimeout, "idler-timeout", "i", "15s", "overrides the default idler timeout")
+	cmd.Flags().StringVar(&cfg.Testname, "testname", "", "a name that is added as a suffix to the result file names")
 	cmd.Flags().StringVarP(&token, "token", "t", "", "Openshift API token")
 	cmd.Flags().StringSliceVar(&workloads, "workloads", []string{}, "workload namespace:name pairs that should have metrics collected during the setup. all values are comma-separated eg. \"--workloads service-binding-operator:service-binding-operator,rhoas-operator:rhoas-operator\"")
 
@@ -91,12 +98,29 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	cmd.SilenceUsage = true
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
 
+	// call cfg.Init() to initialize variables that are dependent on any flags eg. testname
+	cfg.Init()
+
 	term.Infof("Number of Users:           '%d'", numberOfUsers)
 	term.Infof("Default Template Users:    '%d'", defaultTemplateUsers)
 	term.Infof("Custom Template Users:     '%d'", customTemplateUsers)
 	term.Infof("User Batch Size:           '%d'", userBatches)
 	term.Infof("Host Operator Namespace:   '%s'", cfg.HostOperatorNamespace)
 	term.Infof("Member Operator Namespace: '%s'\n", cfg.MemberOperatorNamespace)
+
+	var generalResultsInfo = func() [][]string {
+		return [][]string{
+			{"Number of Users", strconv.Itoa(numberOfUsers)},
+			{"Number of Default Template Users", strconv.Itoa(defaultTemplateUsers)},
+			{"Number of Custom Template Users", strconv.Itoa(customTemplateUsers)},
+			{"User Batch Size", strconv.Itoa(userBatches)},
+			{"Host Operator Namespace", cfg.HostOperatorNamespace},
+			{"Member Operator Namespace", cfg.MemberOperatorNamespace},
+			{"Average Idler Update Time (s)", fmt.Sprintf("%.2f", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))},
+			{"Average Time Per User - default (s)", fmt.Sprintf("%.2f", AverageDefaultApplyTimePerUser.Seconds()/float64(numberOfUsers))},
+			{"Average Time Per User - custom (s)", fmt.Sprintf("%.2f", AverageCustomApplyTimePerUser.Seconds()/float64(numberOfUsers))},
+		}
+	}
 
 	// validate params
 	if numberOfUsers < 1 {
@@ -172,12 +196,18 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
 	}
 
+	term.Infof("Configuring default space tier...")
 	if err := cfg.ConfigureDefaultSpaceTier(cl); err != nil {
 		term.Fatalf(err, "unable to set default space tier")
 	}
 
-	if !skipCSVGen {
-		term.Infof("⏳ preparing cluster for setup...")
+	term.Infof("Disabling copied CSVs feature...")
+	if err := cfg.DisableCopiedCSVs(cl); err != nil {
+		term.Fatalf(err, "unable to disable OLM copy CSVs feature")
+	}
+
+	if !skipInstallOperators {
+		term.Infof("⏳ installing operators...")
 		// install operators for member clusters
 		templatePaths := []string{}
 		for i := 0; i < operatorsLimit; i++ {
@@ -210,8 +240,36 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		)
 	}
 
+	// redirect stdout and stderr to files due to issue with progress bars and client go logging for messages like
+	// I0619 11:12:22.620509   89316 request.go:601] Waited for 1.100053529s due to client-side throttling, not priority and fairness, request: POST:https://api.rajiv.devcluster.openshift.com:6443/apis/rbac.authorization.k8s.io/v1/namespaces/waffle4-0001-dev/rolebindings
+	tempStdout := os.Stdout
+	tempStderr := os.Stderr
+	stdOutFile, err := os.Create(cfg.StdOutFilepath())
+	if err != nil {
+		term.Fatalf(err, "failed creating stdout file: %s", cfg.StdOutFilepath())
+	}
+	stdErrFile, err := os.Create(cfg.StdErrFilepath())
+	if err != nil {
+		term.Fatalf(err, "failed creating stderr file: %s", cfg.StdErrFilepath())
+	}
+	os.Stdout = stdOutFile
+	os.Stderr = stdErrFile
+	term.AddPreFatalExitHook(func() {
+		// restore stdout and stderr to originals
+		os.Stdout = tempStdout
+		os.Stderr = tempStderr
+	})
+
 	// start gathering metrics
 	stopMetrics := metricsInstance.StartGathering()
+
+	// gather and write results
+	resultsWriter := results.New(term)
+
+	// ensure metrics are dumped even if there's a fatal error
+	term.AddPreFatalExitHook(func() {
+		addAndOutputResults(term, resultsWriter, metricsInstance.ComputeResults, generalResultsInfo)
+	})
 
 	uip := uiprogress.New()
 	uip.Start()
@@ -285,7 +343,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 					}
 				}
 				userTime := time.Since(startTime)
-				AverageTimePerUser += userTime
+				AverageDefaultApplyTimePerUser += userTime
 			}
 		}()
 	}
@@ -302,14 +360,14 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 
 				startTime := time.Now()
 
-				// create resources for every nth user
+				// create resources for users that should have the custom template applied
 				if customUserSetupBar.Current() <= customTemplateUsers {
 					if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, customTemplatePaths); err != nil {
 						term.Fatalf(err, "failed to create resources for user '%s'", username)
 					}
 				}
 				userTime := time.Since(startTime)
-				AverageTimePerUser += userTime
+				AverageCustomApplyTimePerUser += userTime
 			}
 		}()
 	}
@@ -318,17 +376,20 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	wg.Wait()
 	uip.Stop()
 
+	// restore stdout and stderr to originals
+	os.Stdout = tempStdout
+	os.Stderr = tempStderr
+
 	term.Infof("🏁 done provisioning users")
 
 	// continue gathering metrics for some time after creating all users and resources since memory usage was observed to continue changing
-	additionalMetricsDuration := 15 * time.Minute
-	term.Infof("Continuing to gather metrics for %s...", additionalMetricsDuration)
-	time.Sleep(additionalMetricsDuration)
+	if !skipAdditionalWait {
+		additionalMetricsDuration := 15 * time.Minute
+		term.Infof("Continuing to gather metrics for %s...", additionalMetricsDuration)
+		time.Sleep(additionalMetricsDuration)
+	}
 
-	term.Infof("\n📈 Results 📉")
-	term.Infof("Average Idler Update Time: %.2f s", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))
-	term.Infof("Average Time Per User: %.2f s", AverageTimePerUser.Seconds()/float64(numberOfUsers))
-	metricsInstance.PrintResults()
+	addAndOutputResults(term, resultsWriter, metricsInstance.ComputeResults, generalResultsInfo)
 	term.Infof("👋 have fun!")
 }
 
@@ -336,4 +397,13 @@ func usersWithinBounds(term terminal.Terminal, value int, templateType string) {
 	if value < 0 || value > numberOfUsers {
 		term.Fatalf(fmt.Errorf("value must be between 0 and %d", numberOfUsers), "invalid '%s' users value '%d'", templateType, value)
 	}
+}
+
+func addAndOutputResults(term terminal.Terminal, resultsWriter *results.Results, r ...func() [][]string) {
+	for _, result := range r {
+		resultsWriter.AddResults(result())
+	}
+
+	term.Infof("\n📈 Results 📉")
+	resultsWriter.OutputResults()
 }

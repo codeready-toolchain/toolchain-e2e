@@ -122,7 +122,7 @@ Note: If for some reason the provisioning users step does not complete (eg. time
 +
 . After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.
 +
-Copy these values to the Onboarding Performance Checklist spreadsheet. Add the results to the `Onboarding Operator 2k users` column.
+Copy these values to the Onboarding Performance Checklist spreadsheet. Add the results to the `Onboarding Operator 2k users` column. The results are saved to a .csv file to make it easier to copy the results into the spreadsheet.
 
 === Evaluate the Cluster and Operator(s)
 

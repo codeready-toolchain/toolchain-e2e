@@ -50,8 +50,8 @@ func HasSubscriptionWithCriteria(cl client.Client, name, namespace string, crite
 	return true, nil
 }
 
-func ForSubscriptionWithCriteria(cl client.Client, name, namespace string, criteria ...subCriteria) error {
-	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
+func ForSubscriptionWithCriteria(cl client.Client, name, namespace string, timeout time.Duration, criteria ...subCriteria) error {
+	if err := k8swait.Poll(configuration.DefaultRetryInterval, timeout, func() (bool, error) {
 		return HasSubscriptionWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
 		return errors.Wrapf(err, "could not find a Subscription with name '%s' in namespace '%s' that meets the expected criteria", name, namespace)

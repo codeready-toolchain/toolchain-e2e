@@ -82,10 +82,10 @@ func (t DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
 // Fatalf prints a message with the red color and exits the program with a `1` return code
 func (t DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
 	defer os.Exit(1)
-	t.Errorf(err, msg, args...)
 	for _, hook := range t.fatalExitHooks {
 		hook()
 	}
+	t.Errorf(err, msg, args...)
 }
 
 // PromptBoolf prints a message and waits for the user's boolean response
