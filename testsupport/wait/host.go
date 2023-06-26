@@ -1660,22 +1660,27 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 	return pods.Items[0], nil
 }
 
-// CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
-func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, usertoken, proxyURL string) (client.Client, error) {
+// CreateAPIProxyConfig creates a config for the proxy API using the given user token
+func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL string) *rest.Config {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(t, err)
 	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
 	require.NoError(t, err)
 
-	s := scheme.Scheme
-	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
-	require.NoError(t, builder.AddToScheme(s))
-
-	proxyKubeConfig := &rest.Config{
+	return &rest.Config{
 		Host:            proxyURL,
 		TLSClientConfig: defaultConfig.TLSClientConfig,
 		BearerToken:     usertoken,
 	}
+}
+
+// CreateAPIProxyClient creates a client to the appstudio api proxy using the given user token
+func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, userToken, proxyURL string) (client.Client, error) {
+	proxyKubeConfig := a.CreateAPIProxyConfig(t, userToken, proxyURL)
+
+	s := scheme.Scheme
+	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
+	require.NoError(t, builder.AddToScheme(s))
 
 	// Getting the proxy client can fail from time to time if the proxy's informer cache has not been
 	// updated yet and we try to create the client too quickly so retry to reduce flakiness.
