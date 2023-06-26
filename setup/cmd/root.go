@@ -99,7 +99,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	term := terminal.New(cmd.InOrStdin, cmd.OutOrStdout, verbose)
 
 	// call cfg.Init() to initialize variables that are dependent on any flags eg. testname
-	cfg.Init()
+	cfg.Init(term)
 
 	term.Infof("Number of Users:           '%d'", numberOfUsers)
 	term.Infof("Default Template Users:    '%d'", defaultTemplateUsers)
@@ -108,18 +108,11 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	term.Infof("Host Operator Namespace:   '%s'", cfg.HostOperatorNamespace)
 	term.Infof("Member Operator Namespace: '%s'\n", cfg.MemberOperatorNamespace)
 
-	var generalResultsInfo = func() [][]string {
-		return [][]string{
-			{"Number of Users", strconv.Itoa(numberOfUsers)},
-			{"Number of Default Template Users", strconv.Itoa(defaultTemplateUsers)},
-			{"Number of Custom Template Users", strconv.Itoa(customTemplateUsers)},
-			{"User Batch Size", strconv.Itoa(userBatches)},
-			{"Host Operator Namespace", cfg.HostOperatorNamespace},
-			{"Member Operator Namespace", cfg.MemberOperatorNamespace},
-			{"Average Idler Update Time (s)", fmt.Sprintf("%.2f", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))},
-			{"Average Time Per User - default (s)", fmt.Sprintf("%.2f", AverageDefaultApplyTimePerUser.Seconds()/float64(numberOfUsers))},
-			{"Average Time Per User - custom (s)", fmt.Sprintf("%.2f", AverageCustomApplyTimePerUser.Seconds()/float64(numberOfUsers))},
-		}
+	generalResultsInfo := [][]string{
+		{"Number of Users", strconv.Itoa(numberOfUsers)},
+		{"Number of Default Template Users", strconv.Itoa(defaultTemplateUsers)},
+		{"Number of Custom Template Users", strconv.Itoa(customTemplateUsers)},
+		{"User Batch Size", strconv.Itoa(userBatches)},
 	}
 
 	// validate params
@@ -196,6 +189,9 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		term.Fatalf(err, "ensure the sandbox host and member operators are installed successfully before running the setup")
 	}
 
+	// =====================
+	// begin configuration
+	// =====================
 	term.Infof("Configuring default space tier...")
 	if err := cfg.ConfigureDefaultSpaceTier(cl); err != nil {
 		term.Fatalf(err, "unable to set default space tier")
@@ -205,6 +201,14 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	if err := cfg.DisableCopiedCSVs(cl); err != nil {
 		term.Fatalf(err, "unable to disable OLM copy CSVs feature")
 	}
+	// =====================
+	// end configuration
+	// =====================
+
+	// =====================
+	// begin setup
+	// =====================
+	setupStartTime := time.Now()
 
 	if !skipInstallOperators {
 		term.Infof("⏳ installing operators...")
@@ -266,10 +270,11 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 	// gather and write results
 	resultsWriter := results.New(term)
 
+	outputResults := func() {
+		addAndOutputResults(term, resultsWriter, func() [][]string { return generalResultsInfo }, metricsInstance.ComputeResults)
+	}
 	// ensure metrics are dumped even if there's a fatal error
-	term.AddPreFatalExitHook(func() {
-		addAndOutputResults(term, resultsWriter, metricsInstance.ComputeResults, generalResultsInfo)
-	})
+	term.AddPreFatalExitHook(outputResults)
 
 	uip := uiprogress.New()
 	uip.Start()
@@ -389,7 +394,19 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		time.Sleep(additionalMetricsDuration)
 	}
 
-	addAndOutputResults(term, resultsWriter, metricsInstance.ComputeResults, generalResultsInfo)
+	// =====================
+	// end of setup
+	// =====================
+
+	totalRunningTime := time.Since(setupStartTime)
+	generalResultsInfo = append(generalResultsInfo,
+		[]string{"Average Idler Update Time (s)", fmt.Sprintf("%.2f", AverageIdlerUpdateTime.Seconds()/float64(numberOfUsers))},
+		[]string{"Average Time Per User - default (s)", fmt.Sprintf("%.2f", AverageDefaultApplyTimePerUser.Seconds()/float64(numberOfUsers))},
+		[]string{"Average Time Per User - custom (s)", fmt.Sprintf("%.2f", AverageCustomApplyTimePerUser.Seconds()/float64(numberOfUsers))},
+		[]string{"Total Running Time (m)", fmt.Sprintf("%f", totalRunningTime.Minutes())},
+	)
+
+	outputResults()
 	term.Infof("👋 have fun!")
 }
 
@@ -400,6 +417,11 @@ func usersWithinBounds(term terminal.Terminal, value int, templateType string) {
 }
 
 func addAndOutputResults(term terminal.Terminal, resultsWriter *results.Results, r ...func() [][]string) {
+	// add header row
+	resultsWriter.AddResults([][]string{
+		{"Item", "Value"},
+	})
+	// add results
 	for _, result := range r {
 		resultsWriter.AddResults(result())
 	}

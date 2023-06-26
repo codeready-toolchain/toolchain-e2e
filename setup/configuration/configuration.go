@@ -55,16 +55,14 @@ var (
 	startedTimestamp = time.Now().Format("2006-01-02_15:04:05")
 )
 
-func Init() {
+func Init(term terminal.Terminal) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("error getting current working directory %s", err)
-		os.Exit(1)
+		term.Fatalf(err, "error getting current working directory")
 	}
 	resultsDir = pwd + "/tmp/results/"
 	if err := os.MkdirAll(resultsDir, os.ModePerm); err != nil {
-		fmt.Println("error creating results directory ", resultsDir, err)
-		os.Exit(1)
+		term.Fatalf(err, "error creating results directory %s", resultsDir)
 	}
 	if len(Testname) > 0 && Testname[0] != '-' {
 		Testname = "-" + Testname
