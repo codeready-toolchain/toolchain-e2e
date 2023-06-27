@@ -1790,7 +1790,7 @@ func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
 
 func namespaceManagerSaAdditionalArgocdReadRoleBinding() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rb, err := memberAwait.WaitForRoleBinding(t, ns, toolchainv1alpha1.AdminServiceAccountName, toolchainLabelsWaitCriterion(owner)...)
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, "additional-argocd-read", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
 		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
