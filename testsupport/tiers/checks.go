@@ -569,8 +569,8 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 	}
 	// count the roles, rolebindings
 	return []spaceRoleObjectsCheck{
-		numberOfToolchainRoles(0),
-		numberOfToolchainRoleBindings(1), // 1 for `namespace-manager`
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2), // 2 for `namespace-manager`
 	}, nil
 }
 
@@ -1808,8 +1808,18 @@ func additionalArgocdReadRole() namespaceObjectsCheck {
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
+					APIGroups: []string{"authorization.openshift.io", "rbac.authorization.k8s.io"},
+					Resources: []string{"roles"},
+					Verbs:     []string{"view", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"networking.k8s.io"},
+					Resources: []string{"ingressclasses"},
+					Verbs:     []string{"view", "list", "watch"},
+				},
+				{
 					APIGroups: []string{""},
-					Resources: []string{"role", "persistentvolume", "ingressclass"},
+					Resources: []string{"persistentvolumes"},
 					Verbs:     []string{"view", "list", "watch"},
 				},
 			},
