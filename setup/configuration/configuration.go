@@ -61,12 +61,11 @@ func Init() {
 		fmt.Printf("error getting current working directory %s", err)
 		os.Exit(1)
 	}
-	resultsDirectory := pwd + "/tmp/results/"
+	resultsDir = pwd + "/tmp/results/"
 	if err := os.MkdirAll(resultsDir, os.ModePerm); err != nil {
-		fmt.Printf("error creating results directory %s", err)
+		fmt.Println("error creating results directory ", resultsDir, err)
 		os.Exit(1)
 	}
-	resultsDir = resultsDirectory
 	if len(Testname) > 0 && Testname[0] != '-' {
 		Testname = "-" + Testname
 	}

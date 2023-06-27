@@ -16,4 +16,4 @@ objects:
       sourceNamespace: openshift-marketplace
 parameters:
   - name: WTO_NAMESPACE
-    value: openshift-operators
+    value: crw
