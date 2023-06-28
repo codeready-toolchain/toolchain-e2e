@@ -4,8 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -15,20 +17,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func ForNamespace(cl client.Client, namespace string) error {
-	ns := &corev1.Namespace{}
+func ForSpace(cl client.Client, space string) error {
+	sp := &toolchainv1alpha1.Space{}
+	expectedConditions := []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.ConditionReady,
+			Status: corev1.ConditionTrue,
+			Reason: "Provisioned",
+		},
+	}
+
 	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
 		err := cl.Get(context.TODO(), types.NamespacedName{
-			Name: namespace,
-		}, ns)
+			Name:      space,
+			Namespace: configuration.HostOperatorNamespace,
+		}, sp)
 		if k8serrors.IsNotFound(err) {
 			return false, nil
 		} else if err != nil {
 			return false, err
+		} else if !test.ConditionsMatch(sp.Status.Conditions, expectedConditions...) {
+			return false, nil
 		}
 		return true, nil
 	}); err != nil {
-		return errors.Wrapf(err, "namespace '%s' does not exist", namespace)
+		return errors.Wrapf(err, "space '%s' is not ready yet", space)
 	}
 	return nil
 }

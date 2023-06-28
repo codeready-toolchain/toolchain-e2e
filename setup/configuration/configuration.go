@@ -94,6 +94,11 @@ func NewClient(term terminal.Terminal, kubeconfigPath string) (client.Client, *r
 		term.Fatalf(err, "cannot create client config")
 	}
 
+	// Set QPS and Burst to higher values to avoid client-side throttling issues
+	// prometheus uses these QPS and Burst values so it shouldn't be an issue, see https://github.com/prometheus-operator/prometheus-operator/blob/9d68ecf289d711c66bef39d2f83429265abc6986/pkg/k8sutil/k8sutil.go#L96-L97
+	clientConfig.QPS = 100
+	clientConfig.Burst = 100
+
 	cl, err := client.New(clientConfig, client.Options{Scheme: s})
 	term.Infof("API endpoint: %s", clientConfig.Host)
 	return cl, clientConfig, s, err
