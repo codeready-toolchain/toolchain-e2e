@@ -543,6 +543,8 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		namespaceManagerSA(),
+		additionalArgocdReadRole(),
+		namespaceManagerSaAdditionalArgocdReadRoleBinding(),
 		namespaceManagerSaEditRoleBinding(),
 		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
@@ -567,8 +569,8 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 	}
 	// count the roles, rolebindings
 	return []spaceRoleObjectsCheck{
-		numberOfToolchainRoles(0),
-		numberOfToolchainRoleBindings(1), // 1 for `namespace-manager`
+		numberOfToolchainRoles(1),
+		numberOfToolchainRoleBindings(2), // 2 for `namespace-manager`
 	}, nil
 }
 
@@ -1783,6 +1785,47 @@ func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "edit", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+}
+
+func namespaceManagerSaAdditionalArgocdReadRoleBinding() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, "additional-argocd-read", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "ServiceAccount", rb.Subjects[0].Kind)
+		assert.Equal(t, toolchainv1alpha1.AdminServiceAccountName, rb.Subjects[0].Name)
+		assert.Equal(t, "additional-argocd-read", rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+}
+
+func additionalArgocdReadRole() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "additional-argocd-read", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"authorization.openshift.io", "rbac.authorization.k8s.io"},
+					Resources: []string{"roles"},
+					Verbs:     []string{"view", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"networking.k8s.io"},
+					Resources: []string{"ingressclasses"},
+					Verbs:     []string{"view", "list", "watch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"persistentvolumes"},
+					Verbs:     []string{"view", "list", "watch"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
 
