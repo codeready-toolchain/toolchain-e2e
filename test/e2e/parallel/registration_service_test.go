@@ -519,8 +519,8 @@ func TestPhoneVerification(t *testing.T) {
 	// Call get signup endpoint with a valid token and make sure it's pending approval
 	mp, mpStatus = ParseResponse(t, InvokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
 	assert.Equal(t, "", mp["compliantUsername"])
-	assert.Equal(t, "", mp["defaultUserNamespace"])
-	assert.Equal(t, "", mp["rhodsMemberURL"])
+	assert.Empty(t, mp["defaultUserNamespace"])
+	assert.Empty(t, mp["rhodsMemberURL"])
 	assert.Equal(t, identity0.Username, mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
