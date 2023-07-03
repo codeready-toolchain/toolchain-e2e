@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -518,6 +519,8 @@ func TestPhoneVerification(t *testing.T) {
 	// Call get signup endpoint with a valid token and make sure it's pending approval
 	mp, mpStatus = ParseResponse(t, InvokeEndpoint(t, "GET", route+"/api/v1/signup", token0, "", http.StatusOK))
 	assert.Equal(t, "", mp["compliantUsername"])
+	assert.Empty(t, mp["defaultUserNamespace"])
+	assert.Empty(t, mp["rhodsMemberURL"])
 	assert.Equal(t, identity0.Username, mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
@@ -781,12 +784,16 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	require.True(t, found)
 	assert.Equal(t, memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])
 	assert.Equal(t, hostAwait.APIProxyURL, mp["proxyURL"])
+	assert.Equal(t, fmt.Sprintf("%s-dev", transformedUsername), mp["defaultUserNamespace"])
+	assertRHODSClusterURL(t, memberAwait, mp)
 }
 
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
 	mp, mpStatus := ParseResponse(t, InvokeEndpoint(t, "GET", route+"/api/v1/signup", bearerToken, "", http.StatusOK))
 	assert.Equal(t, username, mp["username"])
+	assert.Empty(t, mp["defaultUserNamespace"])
+	assert.Empty(t, mp["rhodsMemberURL"])
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
@@ -795,6 +802,13 @@ func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities,
 func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
 	InvokeEndpoint(t, "GET", route+"/api/v1/signup", bearerToken, "", http.StatusNotFound)
+}
+
+func assertRHODSClusterURL(t *testing.T, memberAwait *wait.MemberAwaitility, response map[string]interface{}) {
+	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps.", "expected to find .apps. in the console URL %s", memberAwait.GetConsoleURL(t))
+	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps.")
+	appsURL := memberAwait.GetConsoleURL(t)[index:]
+	assert.Equal(t, fmt.Sprintf("https://%s%s", "rhods-dashboard-redhat-ods-applications", appsURL), response["rhodsMemberURL"])
 }
 
 // waitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
