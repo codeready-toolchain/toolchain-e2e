@@ -12,6 +12,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	esv1beta1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -934,6 +935,31 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(t *testing.T, namespace *corev1.
 		t.Logf("failed to wait for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
 	}
 	return np, err
+}
+
+// WaitForExternalSecret waits until a ExternalSecret with the given name exists in the given namespace
+func (a *MemberAwaitility) WaitForExternalSecret(t *testing.T, namespace *corev1.Namespace, name string) (*esv1beta1.ExternalSecret, error) {
+	t.Logf("waiting for ExternalSecret '%s' in namespace '%s'", name, namespace.Name)
+	es := &esv1beta1.ExternalSecret{}
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &esv1beta1.ExternalSecret{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				allESs := &esv1beta1.ExternalSecretList{}
+				if err := a.Client.List(context.TODO(), allESs, client.InNamespace(namespace)); err != nil {
+					return false, err
+				}
+				return false, nil
+			}
+			return false, err
+		}
+		es = obj
+		return true, nil
+	})
+	if err != nil {
+		t.Logf("failed to wait for ExternalSecret '%s' in namespace '%s'", name, namespace.Name)
+	}
+	return es, err
 }
 
 // WaitForRole waits until a Role with the given name exists in the given namespace

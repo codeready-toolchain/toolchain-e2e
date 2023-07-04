@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	esv1beta1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/davecgh/go-spew/spew"
@@ -27,6 +28,7 @@ const (
 	// tier names
 	advanced           = "advanced"
 	appstudio          = "appstudio"
+	appstudioRedhat    = "appstudio-redhat"
 	appstudioEnv       = "appstudio-env"
 	base               = "base"
 	base1ns            = "base1ns"
@@ -77,6 +79,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
+
+	case appstudioRedhat:
+		return &appstudioRedhatTierChecks{tierName: appstudio-redhat}, nil
 
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
@@ -382,6 +387,12 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	}
 }
 
+func externalSecretChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
+		externalSecretSnykSharedToken(),
+	}
+}
+
 type advancedTierChecks struct {
 	baseTierChecks
 }
@@ -531,6 +542,107 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		pipelineRunnerClusterRole())
 }
 
+type appstudioRedhatTierChecks struct {
+	tierName string
+}
+
+func (a *appstudioRedhatTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("60", "64Gi", "6", "32Gi"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
+		limitRange("2", "2Gi", "10m", "256Mi"),
+		numberOfLimitRanges(1),
+		toolchainSaReadRole(),
+		memberOperatorSaReadRoleBinding(),
+		gitOpsServiceLabel(),
+		redhatInternalTenantLabel(),
+		appstudioWorkSpaceNameLabel(),
+		environment("development"),
+		resourceQuotaAppstudioCrds("512", "512", "512"),
+		resourceQuotaAppstudioCrdsBuild("512"),
+		resourceQuotaAppstudioCrdsGitops("512", "512", "512", "512", "512"),
+		resourceQuotaAppstudioCrdsIntegration("512", "512", "512"),
+		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
+		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
+		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
+		pipelineServiceAccount(),
+		pipelineRunnerRoleBinding(),
+	}
+
+	checks = append(checks, append(commonNetworkPolicyChecks(), externalSecretChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	return checks
+}
+
+func (a *appstudioRedhatTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
+	checks := []spaceRoleObjectsCheck{}
+	roles := 0
+	rolebindings := 0
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
+			checks = append(checks, appstudioRedhatUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioRedhatUserActionsRoleBinding(userName, "admin"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		case "maintainer":
+			checks = append(checks, appstudioRedhatMaintainerUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioRedhatUserActionsRoleBinding(userName, "maintainer"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		case "contributor":
+			checks = append(checks, appstudioRedhatContributorUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioRedhatUserActionsRoleBinding(userName, "contributor"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		default:
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
+		}
+	}
+	// also count the roles, rolebindings and service accounts
+	checks = append(checks,
+		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
+		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `member-operator-sa-read` and `appstudio-pipelines-runner-rolebinding`
+	)
+	return checks, nil
+}
+
+func (a *appstudioRedhatTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
+	verifyNsTypes(t, a.tierName, templateRefs, "tenant")
+	return templateRefs
+}
+
+func (a *appstudioRedhatTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeployments("150"),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServices(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(0, ""),
+		pipelineRunnerClusterRole())
+}
+
 type appstudioEnvTierChecks struct {
 	tierName string
 }
@@ -542,6 +654,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
+		additionalArgocdReadRole(),
 		namespaceManagerSA(),
 		additionalArgocdReadRole(),
 		namespaceManagerSaAdditionalArgocdReadRoleBinding(),
@@ -957,6 +1070,38 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 	}
 }
 
+func externalSecretSnykSharedToken() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		es, err := memberAwait.WaitForExternalSecret(t, ns, "snyk-shared-token")
+		require.NoError(t, err)
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, es.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		expected := &esv1beta1.ExternalSecret{
+				Annotations: map[string]string{
+					"argocd.argoproj.io/sync-options": "SkipDryRunOnMissingResource=true",
+					"argocd.argoproj.io/sync-wave": "-1",
+				},
+			},
+			Spec: esv1beta1.ExternalSecretSpec{
+				DataFrom: []esv1beta1.ExternalSecretDataFromRemoteRef{
+					{
+						Extract: &esv1beta1.ExternalSecretDataRemoteRef{
+							Key: "snyk-shared-secret",
+						},
+					},
+				},
+				SecretStoreRef: esv1beta1.SecretStoreRef{
+					Name: "appsre-redhat-tenant-vault",
+				},
+				Target: esv1beta1.ExternalSecretTarget{
+					Name: "snyk-secret",
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, es.Spec)
+	}
+}
+
 func networkPolicySameNamespace() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-same-namespace")
@@ -1314,6 +1459,8 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.Reso
 						MatchLabels: map[string]string{
 							toolchainv1alpha1.SpaceLabelKey: userName,
 						},
+					AnnotationSelector: map[string]string{
+						"openshift.io/requester": userName,
 					},
 				},
 				Quota: corev1.ResourceQuotaSpec{
@@ -1456,6 +1603,17 @@ func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
 	}
 }
 
+func redhatInternalTenantLabel() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+
+		labelWaitCriterion := []wait.LabelWaitCriterion{}
+		labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("redhat-internal-tenent/label", "true"))
+
+		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
+		require.NoError(t, err)
+	}
+}
+
 func environment(name string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		_, err := memberAwait.WaitForEnvironment(t, ns.Name, name, toolchainLabelsWaitCriterion(owner)...)
@@ -1540,6 +1698,97 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Resources:     []string{"serviceaccounts"},
 					ResourceNames: []string{"appstudio-pipeline"},
 					Verbs:         []string{"get", "list", "watch", "update", "patch"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+	}
+}
+
+func appstudioRedhatUserActionsRole() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-redhat-user-actions", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 15)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records", "logs"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaseplans", "releaseplanadmissions"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests", "spiaccesstokendataupdates"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"secrets"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"buildpipelineselectors"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+				{
+					APIGroups:     []string{""},
+					Resources:     []string{"serviceaccounts"},
+					ResourceNames: []string{"appstudio-pipeline"},
+					Verbs:         []string{"get", "list", "watch", "update", "patch"},
+				},
+				{
+					APIGroups:     []string{"external-secrets.io"},
+					Resources:     []string{"externalsecrets"},
+					ResourceNames: []string{"snyk-shared-token"},
+					Verbs:         []string{"get", "list"},
 				},
 			},
 		}
@@ -1635,6 +1884,100 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
+
+func appstudioRedhatMaintainerUserActionsRole() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-redhat-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 16)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records", "logs"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"integrationtestscenarios"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releases", "releasestrategies", "releaseplans"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releaseplanadmissions"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests", "spiaccesstokendataupdates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"buildpipelineselectors"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups:     []string{"external-secrets.io"},
+					Resources:     []string{"externalsecrets"},
+					ResourceNames: []string{"snyk-shared-token"},
+					Verbs:         []string{"get", "list"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+	}
 }
 
 func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
@@ -1724,6 +2067,100 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
+
+func appstudioRedhatContributorUserActionsRole() spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-redhat-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, role.Rules, 15)
+		expected := &rbacv1.Role{
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"managed-gitops.redhat.com"},
+					Resources: []string{"gitopsdeployments", "gitopsdeploymentmanagedenvironments", "gitopsdeploymentrepositorycredentials", "gitopsdeploymentsyncruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"tekton.dev"},
+					Resources: []string{"pipelineruns"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"results.tekton.dev"},
+					Resources: []string{"results", "records", "logs"},
+					Verbs:     []string{"get", "list"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"integrationtestscenarios"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"enterprisecontractpolicies"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releases", "releasestrategies", "releaseplans"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"releaseplanadmissions"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"jvmbuildservice.io"},
+					Resources: []string{"jbsconfigs", "artifactbuilds"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"remotesecrets"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"configmaps"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"appstudio.redhat.com"},
+					Resources: []string{"buildpipelineselectors"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups:     []string{"external-secrets.io"},
+					Resources:     []string{"externalsecrets"},
+					ResourceNames: []string{"snyk-shared-token"},
+					Verbs:         []string{"get", "list"},
+				},
+			},
+		}
+
+		assert.Equal(t, expected.Rules, role.Rules)
+	}
 }
 
 func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObjectsCheck {
@@ -1736,6 +2173,27 @@ func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObje
 		} else {
 			roleName = fmt.Sprintf("appstudio-%s-user-actions", role)
 			rbName = fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
+		}
+		rb, err := memberAwait.WaitForRoleBinding(t, ns, rbName, toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+		assert.Len(t, rb.Subjects, 1)
+		assert.Equal(t, "User", rb.Subjects[0].Kind)
+		assert.Equal(t, userName, rb.Subjects[0].Name)
+		assert.Equal(t, roleName, rb.RoleRef.Name)
+		assert.Equal(t, "Role", rb.RoleRef.Kind)
+		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
+	}
+
+func appstudioRedhatUserActionsRoleBinding(userName string, role string) spaceRoleObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		rbName := ""
+		roleName := ""
+		if role == "admin" {
+			roleName = "appstudio-redhat-user-actions"
+			rbName = fmt.Sprintf("appstudio-redhat-%s-actions-user", userName)
+		} else {
+			roleName = fmt.Sprintf("appstudio-redhat-%s-user-actions", role)
+			rbName = fmt.Sprintf("appstudio-redhat-%s-%s-actions-user", role, userName)
 		}
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, rbName, toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
