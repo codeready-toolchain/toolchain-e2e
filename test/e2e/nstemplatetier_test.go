@@ -9,7 +9,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -211,14 +211,10 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 // 1. creating a new tier with the provided tierName and using the TemplateRefs of the provided tier.
 // 2. creating `count` number of spaces
 func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []string {
-	hash, err := testtier.ComputeTemplateRefsHash(tier.NSTemplateTier) // we can assume the JSON marshalling will always work
-	require.NoError(t, err)
-	t.Logf("NSTemplateTier hash is: %s", hash)
-
 	var spaces []string
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf(nameFmt, i)
-		s, _, _ := CreateSpace(t, awaitilities, WithName(name), WithTierNameAndHashLabel(tier.Name, hash), WithTargetCluster(targetCluster.ClusterName))
+		s, _, _ := CreateSpace(t, awaitilities, testspace.WithName(name), testspace.WithTierNameAndHashLabelFor(tier.NSTemplateTier), testspace.WithSpecTargetCluster(targetCluster.ClusterName))
 		spaces = append(spaces, s.Name)
 	}
 	return spaces

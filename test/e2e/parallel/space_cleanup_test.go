@@ -7,8 +7,10 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,8 +22,8 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	// let's create the spaces for the deletion here so they have older creation timestamp and we don't have to wait entire 30 seconds for the deletion
-	space1, _, binding1 := CreateSpace(t, awaitilities, WithTierName("base"))
-	space2, signup2, binding2 := CreateSpace(t, awaitilities, WithTierName("base"))
+	space1, _, binding1 := CreateSpace(t, awaitilities, testspace.WithTierName("base"))
+	space2, signup2, binding2 := CreateSpace(t, awaitilities, testspace.WithTierName("base"))
 
 	// TODO: needs to be changed as soon as we start creating objects in namespaces for SpaceRoles - we need to verify that it also automatically updates NSTemplateSet and the resources in the namespaces
 	t.Run("for SpaceBinding", func(t *testing.T) {
@@ -76,7 +78,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// when
 			parentSpace, err := hostAwait.WaitForSpace(t, space1.Name)
 			require.NoError(t, err)
-			subSpace := CreateSubSpace(t, awaitilities, WithParentSpace(parentSpace.Name))
+			subSpace := CreateSubSpace(t, awaitilities, testspace.WithSpecParentSpace(parentSpace.Name))
 
 			// then
 			// parent-space should be provisioned
@@ -136,7 +138,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 }
 
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
-	space, owner, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(targetMember.ClusterName), WithName(spaceName))
+	space, owner, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(targetMember.ClusterName), testspace.WithName(spaceName))
 	// at this point, just make sure the space exists so we can bind it to our user
 	userSignup, mur := NewSignupRequest(awaitilities).
 		Username(murName).

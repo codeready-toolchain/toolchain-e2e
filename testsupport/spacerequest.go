@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +44,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
 	// let's first create a parentSpace
-	parentSpace, _, _ := CreateSpace(t, awaitilities, WithTierName("appstudio"), WithTargetCluster(memberAwait.ClusterName))
+	parentSpace, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 	// wait for the namespace to be provisioned since we will be creating the spacerequest into it.
 	parentSpace, err = awaitilities.Host().WaitForSpace(t, parentSpace.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)

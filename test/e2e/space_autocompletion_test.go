@@ -7,8 +7,10 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -54,11 +56,11 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist1"))
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-waitinglist1"))
 
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-waitinglist2"))
+		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-waitinglist2"))
 
 		// then
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
@@ -104,7 +106,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// when
-		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithTierName(""))
+		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithTierName(""))
 
 		// then
 		space = waitUntilSpaceIsPendingCluster(t, hostAwait, space.Name)
@@ -138,7 +140,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-1"))
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-1"))
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
@@ -157,14 +159,14 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(memberLimits...))
 
 			// when
-			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-2"))
+			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-2"))
 
 			// then
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
-				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-multimember-3"), WithTargetCluster(memberAwait1.ClusterName))
+				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-3"), testspace.WithSpecTargetCluster(memberAwait1.ClusterName))
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space3.Name)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
@@ -189,8 +191,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-clusterole-tenant"),
-			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant"),
+			testspace.WithSpecTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
@@ -213,8 +215,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-clusterole-tenant-pending"),
-			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant-pending"),
+			testspace.WithSpecTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
 
 		// then
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
@@ -236,8 +238,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, WithName("space-required-tenant"),
-			WithTargetClusterRoles([]string{cluster.RoleLabel("workspace")}), WithTargetCluster(memberAwait1.ClusterName)) // request that specific cluster role and preferred cluster which will have priority on the roles
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-required-tenant"),
+			testspace.WithSpecTargetClusterRoles([]string{cluster.RoleLabel("workspace")}), testspace.WithSpecTargetCluster(memberAwait1.ClusterName)) // request that specific cluster role and preferred cluster which will have priority on the roles
 
 		// then
 		// space should end up on the required cluster even if it doesn't have the specified cluster roles
