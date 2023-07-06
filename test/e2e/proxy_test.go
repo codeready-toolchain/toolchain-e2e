@@ -82,8 +82,14 @@ func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, w
 	proxyCl := u.createProxyClient(t, hostAwait)
 
 	workspace := &toolchainv1alpha1.Workspace{}
-	err := proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
-	return workspace, err
+	var cause error
+	pollErr := kubewait.Poll(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+		cause = proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
+		return cause == nil, nil
+	})
+	require.NoError(t, pollErr, cause)
+
+	return workspace, pollErr
 }
 
 func (u *proxyUser) getApplication(t *testing.T, proxyClient client.Client, applicationName string) *appstudiov1.Application {
