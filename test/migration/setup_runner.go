@@ -8,10 +8,12 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,7 +66,7 @@ func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace(t *testing.T)
 
 func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierName string, targetCluster *wait.MemberAwaitility) {
 	hostAwait := r.Awaitilities.Host()
-	space := testsupport.NewSpace(t, r.Awaitilities, testsupport.WithName(name), testsupport.WithTierName(tierName), testsupport.WithTargetCluster(targetCluster.ClusterName))
+	space := testspace.NewSpace(r.Awaitilities.Host().Namespace, name, testspace.WithTierName(tierName), testspace.WithSpecTargetCluster(targetCluster.ClusterName))
 	err := hostAwait.Client.Create(context.TODO(), space)
 	require.NoError(t, err)
 

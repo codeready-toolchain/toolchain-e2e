@@ -7,7 +7,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +41,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-			UntilSpaceRequestHasConditions(wait.Provisioned()),
+			UntilSpaceRequestHasConditions(Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
@@ -127,7 +126,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
-			UntilSpaceRequestHasConditions(wait.Provisioned()),
+			UntilSpaceRequestHasConditions(Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)

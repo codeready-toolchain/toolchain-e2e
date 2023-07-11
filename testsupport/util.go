@@ -2,6 +2,7 @@ package testsupport
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -12,6 +13,8 @@ import (
 func GenerateName(prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, uuid.Must(uuid.NewV4()).String())
 }
+
+var notAllowedChars = regexp.MustCompile("[^-a-z0-9]")
 
 // NewObjectNamePrefix creates a namePrefix to be used as .ObjectMeta.GenerateName field.
 // The name prefix is based on the name of the test using this function.

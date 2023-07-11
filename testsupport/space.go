@@ -2,84 +2,23 @@ package testsupport
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-var notAllowedChars = regexp.MustCompile("[^-a-z0-9]")
-
-// NewSpace initializes a new Space object with the given options. By default, it doesn't set anything in the spec.
-func NewSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
-	namePrefix := NewObjectNamePrefix(t)
-
-	space := &toolchainv1alpha1.Space{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    awaitilities.Host().Namespace,
-			GenerateName: namePrefix + "-",
-		},
-	}
-	for _, apply := range opts {
-		apply(space)
-	}
-	return space
-}
-
-type SpaceOption func(*toolchainv1alpha1.Space)
-
-func WithTargetCluster(clusterName string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = clusterName
-	}
-}
-
-func WithTargetClusterRoles(clusterRoles []string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetClusterRoles = clusterRoles
-	}
-}
-
-func WithParentSpace(name string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.ParentSpace = name
-	}
-}
-
-func WithTierName(tierName string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.TierName = tierName
-	}
-}
-
-func WithName(name string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Name = name
-		s.GenerateName = ""
-	}
-}
-
-func WithTierNameAndHashLabel(tierName, hash string) SpaceOption {
-	return func(s *toolchainv1alpha1.Space) {
-		s.Spec.TierName = tierName
-		if s.Labels == nil {
-			s.Labels = map[string]string{}
-		}
-		s.Labels[testtier.TemplateTierHashLabelKey(tierName)] = hash
-	}
-}
 
 // CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
-func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	username := uuid.Must(uuid.NewV4()).String()
 	signup, mur := NewSignupRequest(awaitilities).
@@ -92,7 +31,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 
 	// create the actual space
-	space := NewSpace(t, awaitilities, opts...)
+	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, NewObjectNamePrefix(t), opts...)
 	space, _, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin")
 	require.NoError(t, err)
 	space, err = awaitilities.Host().WaitForSpace(t, space.Name,
@@ -123,8 +62,8 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOpti
 
 // CreateSpaceWithBinding initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically creates SpaceBinding for it and for the given MasterUserRecord
-func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, opts ...SpaceOption) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
-	space := NewSpace(t, awaitilities, opts...)
+func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
+	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, NewObjectNamePrefix(t), opts...)
 
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
@@ -136,8 +75,8 @@ func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *t
 }
 
 // CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
-func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...SpaceOption) *toolchainv1alpha1.Space {
-	space := NewSpace(t, awaitilities, opts...)
+func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace.Option) *toolchainv1alpha1.Space {
+	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, NewObjectNamePrefix(t), opts...)
 
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
