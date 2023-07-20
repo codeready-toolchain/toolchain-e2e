@@ -87,7 +87,7 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 . Run the setup with a single user to verify all the operators can be installed and capture metrics after installing all operators but before provisioning the 2000 users.
 +
 ```
-go run setup/main.go --users 1 --default 1 --custom 0 --username setup -b 1
+go run setup/main.go --users 1 --default 1 --custom 0 --username setup
 ```
 +
 After the command completes it will print performance metrics that can be used for comparison against the baseline metrics.  The results are saved to a .csv file to make it easier to copy the results into the spreadsheet.
@@ -144,7 +144,7 @@ make clean-e2e-resources
 
 1. Install operators
 ```
-go run setup/main.go --users 1 --default 1 --custom 0 --username setup -b 1
+go run setup/main.go --users 1 --default 1 --custom 0 --username setup
 ```
 
 2. Run setup for 2000 users
