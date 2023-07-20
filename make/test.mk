@@ -347,7 +347,7 @@ create-host-resources:
 		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true},\"environment\":\"${ENVIRONMENT}\"}}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
-	echo "Restart host operator pods so it can get the ToolchainConfig CRs while it's starting up".
+	echo "Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup"
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 ifneq ($(E2E_TEST_EXECUTION),true)
 	# if it's not part of e2e test execution, then delete registration-service pods in case they already exist so that the ToolchainConfig will be reloaded
