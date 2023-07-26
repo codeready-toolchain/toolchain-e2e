@@ -324,7 +324,7 @@ func TestProxyFlow(t *testing.T) {
 					applicationName := user.getApplicationName(i)
 					componentName := user.getComponentName(i)
 
-					expectedComponent := newComponent(applicationName, tenantNsName(user.compliantUsername), componentName, true)
+					expectedComponent := newComponent(applicationName, tenantNsName(user.compliantUsername), componentName)
 
 					// when
 					err := proxyCl.Create(context.TODO(), expectedComponent)
@@ -406,7 +406,7 @@ func TestProxyFlow(t *testing.T) {
 						applicationName := user.getApplicationName(i)
 						componentName := user.getComponentName(i)
 
-						expectedComponent := newComponent(applicationName, tenantNsName(user.compliantUsername), componentName, true)
+						expectedComponent := newComponent(applicationName, tenantNsName(user.compliantUsername), componentName)
 
 						// when
 						err := proxyCl.Delete(context.TODO(), expectedComponent)
@@ -1034,10 +1034,10 @@ type wsWatcher struct {
 }
 
 // start creates a new WebSocket connection. The method returns a function which is to be used to close the connection when done.
-func (w *wsWatcher) Start(resource_optional ...string) func() {
+func (w *wsWatcher) Start(resourceOptional ...string) func() {
 	resource := "applications"
-	if len(resource_optional) > 0 {
-		resource = resource_optional[0]
+	if len(resourceOptional) > 0 {
+		resource = resourceOptional[0]
 	}
 	w.done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
 	w.interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
@@ -1133,7 +1133,8 @@ func (w *wsWatcher) receiveHandler() {
 		err = json.Unmarshal(msg, &message)
 		require.NoError(w.t, err)
 		result := make(map[string]interface{})
-		json.Unmarshal([]byte(message.MessageLoad), &result)
+		err = json.Unmarshal([]byte(message.MessageLoad), &result)
+		require.NoError(w.t, err)
 		switch result["kind"] {
 		case "Application":
 			copyApp := &appstudiov1.Application{}
@@ -1217,7 +1218,7 @@ func newApplication(applicationName, namespace string) *appstudiov1.Application 
 	}
 }
 
-func newComponent(applicationName, namespace string, componentName string, skipInitialChecks bool) *appstudiov1.Component {
+func newComponent(applicationName, namespace string, componentName string) *appstudiov1.Component {
 	return &appstudiov1.Component{ObjectMeta: metav1.ObjectMeta{
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},

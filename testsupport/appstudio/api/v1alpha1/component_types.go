@@ -88,7 +88,7 @@ type ComponentSpec struct {
 	Application string `json:"application"`
 
 	// Secret describes the name of a Kubernetes secret containing either:
-	// 1. A Personal Access Token to access the Component's git repostiory (if using a Git-source component) or
+	// 1. A Personal Access Token to access the Component's git repository (if using a Git-source component) or
 	// 2. An Image Pull Secret to access the Component's container image (if using an Image-source component).
 	// Optional.
 	// +optional
