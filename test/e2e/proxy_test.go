@@ -224,9 +224,6 @@ func TestProxyFlow(t *testing.T) {
 					proxyApp := user.getApplication(t, proxyCl, applicationName)
 					assert.NotEmpty(t, proxyApp)
 
-					newApp := user.getApplication(t, proxyCl, applicationName)
-					assert.NotEmpty(t, newApp)
-
 					// Double check that the Application does exist using a regular client (non-proxy)
 					noProxyApp := user.getApplicationWithoutProxy(t, applicationName)
 					assert.Equal(t, expectedApp.Spec, noProxyApp.Spec)
@@ -1196,7 +1193,6 @@ func (w *wsWatcher) WaitForComponent(expectedCompName string) (*appstudiov1.Comp
 }
 
 func (w *wsWatcher) WaitForComponentDeletion(expectedAppName string) error {
-	//var foundApp *appstudiov1.Application
 	err := kubewait.PollImmediate(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
