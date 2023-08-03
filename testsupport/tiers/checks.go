@@ -442,8 +442,6 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
-		toolchainSaReadRole(),
-		memberOperatorSaReadRoleBinding(),
 		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
 		environment("development"),
@@ -504,8 +502,8 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	}
 	// also count the roles, rolebindings and service accounts
 	checks = append(checks,
-		numberOfToolchainRoles(roles+1),               // +1 for `toolchain-sa-read`
-		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `member-operator-sa-read` and `appstudio-pipelines-runner-rolebinding`
+		numberOfToolchainRoles(roles),
+		numberOfToolchainRoleBindings(rolebindings+1), // +1 for `appstudio-pipelines-runner-rolebinding`
 	)
 	return checks, nil
 }
@@ -1761,20 +1759,6 @@ func appstudioViewRoleBinding(userName string) spaceRoleObjectsCheck {
 	}
 }
 
-func memberOperatorSaReadRoleBinding() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rb, err := memberAwait.WaitForRoleBinding(t, ns, "member-operator-sa-read", toolchainLabelsWaitCriterion(owner)...)
-		require.NoError(t, err)
-		assert.Len(t, rb.Subjects, 1)
-		assert.Equal(t, "Group", rb.Subjects[0].Kind)
-		assert.Equal(t, "system:serviceaccounts:"+memberAwait.Namespace, rb.Subjects[0].Name)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.Subjects[0].APIGroup)
-		assert.Equal(t, "toolchain-sa-read", rb.RoleRef.Name)
-		assert.Equal(t, "Role", rb.RoleRef.Kind)
-		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-	}
-}
-
 func namespaceManagerSaEditRoleBinding() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, toolchainv1alpha1.AdminServiceAccountName, toolchainLabelsWaitCriterion(owner)...)
@@ -1821,29 +1805,6 @@ func additionalArgocdReadRole() namespaceObjectsCheck {
 					APIGroups: []string{""},
 					Resources: []string{"persistentvolumes"},
 					Verbs:     []string{"view", "list", "watch"},
-				},
-			},
-		}
-
-		assert.Equal(t, expected.Rules, role.Rules)
-	}
-}
-
-func toolchainSaReadRole() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		role, err := memberAwait.WaitForRole(t, ns, "toolchain-sa-read", toolchainLabelsWaitCriterion(owner)...)
-		require.NoError(t, err)
-		expected := &rbacv1.Role{
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{""},
-					Resources: []string{"secrets", "serviceaccounts"},
-					Verbs:     []string{"get", "list"},
-				},
-				{
-					APIGroups: []string{""},
-					Resources: []string{"serviceaccounts/token"},
-					Verbs:     []string{"create"},
 				},
 			},
 		}
