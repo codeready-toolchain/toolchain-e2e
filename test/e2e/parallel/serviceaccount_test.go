@@ -18,8 +18,6 @@ import (
 
 func TestDoNotOverrideServiceAccount(t *testing.T) {
 	// given
-	// Skipping the TestDoNotOverrideServiceAccount test instead of deleting it because we will need to create SAs as part
-	// of the environment sub-workspaces so the test & logic will be useful to keep.
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	member := awaitilities.Member1()
@@ -68,26 +66,31 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		sa, err := member.WaitForServiceAccount(t, fmt.Sprintf("%s-env", mur.Name), "namespace-manager")
 		require.NoError(t, err)
 		assert.Equal(t, "stay", sa.Annotations["should"])
-	secrets:
-		for j := 0; j < i; j++ {
-			expName := fmt.Sprintf("dummy-secret-%d", j)
-			for _, secretRef := range sa.Secrets {
-				if secretRef.Name == fmt.Sprintf("dummy-secret-%d", j) {
-					continue secrets
-				}
-			}
-			assert.Fail(t, fmt.Sprintf("secret '%s' not found", expName))
-		}
 
-	pullSecrets:
-		for j := 0; j < i; j++ {
-			expName := fmt.Sprintf("dummy-pull-secret-%d", j)
-			for _, pullSecretRef := range sa.ImagePullSecrets {
-				if pullSecretRef.Name == fmt.Sprintf("dummy-pull-secret-%d", j) {
-					continue pullSecrets
+		for j := 0; j <= i; j++ {
+			expSecretName := fmt.Sprintf("dummy-secret-%d", j)
+			secretFound := false
+			for _, secretRef := range sa.Secrets {
+				if secretRef.Name == expSecretName {
+					secretFound = true
+					break
 				}
 			}
-			assert.Fail(t, fmt.Sprintf("pull secret '%s' not found", expName))
+			if !secretFound {
+				assert.Fail(t, fmt.Sprintf("secret '%s' not found", expSecretName))
+			}
+
+			expPullSecretName := fmt.Sprintf("dummy-pull-secret-%d", j)
+			pullSecretFound := false
+			for _, pullSecretRef := range sa.ImagePullSecrets {
+				if pullSecretRef.Name == expPullSecretName {
+					pullSecretFound = true
+					break
+				}
+			}
+			if !pullSecretFound {
+				assert.Fail(t, fmt.Sprintf("pull secret '%s' not found", expPullSecretName))
+			}
 		}
 
 		// verify that the secrets created for SA is the same
