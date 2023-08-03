@@ -1854,19 +1854,15 @@ func toolchainSaReadRole() namespaceObjectsCheck {
 
 func namespaceManagerSA() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, toolchainv1alpha1.AdminServiceAccountName)
+		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, toolchainv1alpha1.AdminServiceAccountName, toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		// fixme: decide if we want to check labels also on serviceaccounts
-		//assertExpectedToolchainLabels(t, sa, owner)
 	}
 }
 
 func pipelineServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline")
+		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		// fixme: decide if we want to check labels also on serviceaccounts
-		//assertExpectedToolchainLabels(t, sa, owner)
 	}
 }
 

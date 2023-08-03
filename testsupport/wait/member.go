@@ -865,7 +865,7 @@ func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(t *testing.T, namespace *
 	})
 }
 
-func (a *MemberAwaitility) WaitForServiceAccount(t *testing.T, namespace string, name string) (*corev1.ServiceAccount, error) {
+func (a *MemberAwaitility) WaitForServiceAccount(t *testing.T, namespace string, name string, criteria ...LabelWaitCriterion) (*corev1.ServiceAccount, error) {
 	t.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace)
 	serviceAccount := &corev1.ServiceAccount{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
@@ -877,7 +877,7 @@ func (a *MemberAwaitility) WaitForServiceAccount(t *testing.T, namespace string,
 			return false, err
 		}
 		serviceAccount = obj
-		return true, nil
+		return matchLabelWaitCriteria(obj.ObjectMeta, criteria...), nil
 	})
 	if err != nil {
 		t.Logf("failed to wait for ServiceAccount '%s' in namespace '%s'.", name, namespace)
@@ -1271,6 +1271,27 @@ func (a *MemberAwaitility) UpdateNSTemplateSet(t *testing.T, spaceName string, m
 		return true, nil
 	})
 	return nsTmplSet, err
+}
+
+// UpdateServiceAccount tries to update the given ServiceAccount
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated ServiceAccount
+func (a *MemberAwaitility) UpdateServiceAccount(t *testing.T, namespace, saName string, modifySA func(sa *corev1.ServiceAccount)) (*corev1.ServiceAccount, error) {
+	var sa *corev1.ServiceAccount
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshSA := &corev1.ServiceAccount{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: saName}, freshSA); err != nil {
+			return true, err
+		}
+		modifySA(freshSA)
+		if err := a.Client.Update(context.TODO(), freshSA); err != nil {
+			t.Logf("error updating ServiceAccount '%s': %s. Will retry again...", saName, err.Error())
+			return false, nil
+		}
+		sa = freshSA
+		return true, nil
+	})
+	return sa, err
 }
 
 // UpdateSpaceRequest tries to update the Spec of the given SpaceRequest
