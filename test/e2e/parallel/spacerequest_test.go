@@ -20,6 +20,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
+	memberAwait2 := awaitilities.Member2()
 	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
@@ -131,6 +132,65 @@ func TestCreateSpaceRequest(t *testing.T) {
 			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+
+		t.Run("delete space request", func(t *testing.T) {
+			// now, delete the SpaceRequest and expect that the Space will be deleted as well,
+			// along with its associated namespace
+
+			// when
+			err := memberAwait.Client.Delete(context.TODO(), spaceRequest)
+
+			// then
+			// subSpace should be deleted as well
+			require.NoError(t, err)
+			// check that created namespaces secret access are deleted
+			err = memberAwait.WaitUntilSecretsDeleted(t, spaceRequest.Namespace,
+				client.MatchingLabels{
+					toolchainv1alpha1.SpaceRequestLabelKey: spaceRequest.GetName(),
+				},
+			)
+			require.NoError(t, err)
+			// provisioned namespace should be deleted
+			// and all the other subspace related resources as well.
+			err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("subSpace target cluster is different from spacerequest cluster", func(t *testing.T) {
+		// when
+		// we add a custom cluster-role for member2
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
+		require.NoError(t, err)
+		require.True(t, found)
+		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Labels[cluster.RoleLabel("member-2")] = "" // add a new cluster-role label, the value is blank since only key matters.
+		})
+		require.NoError(t, err)
+		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+			WithSpecTierName("appstudio-env"),
+			WithSpecTargetClusterRoles([]string{cluster.RoleLabel("member-2")}), // the target cluster is member-2 while the spacerequest is on member-1
+		)
+
+		// then
+		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+			UntilSpaceHasTargetClusterRoles([]string{cluster.RoleLabel("member-2")}), // member-2 target cluster roles
+			UntilSpaceHasStatusTargetCluster(memberCluster2.Name),                    // subSpace should have member-2 target cluster
+			UntilSpaceHasTier("appstudio-env"),
+			UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
+		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster2.Spec.APIEndpoint),
+			UntilSpaceRequestHasNamespaceAccess(subSpace))
+		require.NoError(t, err)
+		VerifyNamespaceAccessForSpaceRequest(t, memberAwait2.Client, spaceRequest) // space request has access to ns on member2
 
 		t.Run("delete space request", func(t *testing.T) {
 			// now, delete the SpaceRequest and expect that the Space will be deleted as well,
