@@ -35,11 +35,12 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	// and move the user to appstudio tier
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), mur.Name, "appstudio-env")
 	VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)
+	nsName := fmt.Sprintf("%s-env", mur.Name)
 
-	expectedSecrets := getSASecrets(t, member, mur.Name, "namespace-manager")
+	expectedSecrets := getSASecrets(t, member, nsName, "namespace-manager")
 
 	for i := 0; i < 10; i++ {
-		_, err := member.UpdateServiceAccount(t, fmt.Sprintf("%s-env", mur.Name), "namespace-manager", func(sa *corev1.ServiceAccount) {
+		_, err := member.UpdateServiceAccount(t, nsName, "namespace-manager", func(sa *corev1.ServiceAccount) {
 
 			// when we add an annotation to the SA resource then it should stay there
 			sa.Annotations = map[string]string{
@@ -63,7 +64,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)
-		sa, err := member.WaitForServiceAccount(t, fmt.Sprintf("%s-env", mur.Name), "namespace-manager")
+		sa, err := member.WaitForServiceAccount(t, nsName, "namespace-manager")
 		require.NoError(t, err)
 		assert.Equal(t, "stay", sa.Annotations["should"])
 
@@ -94,7 +95,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		}
 
 		// verify that the secrets created for SA is the same
-		assert.Equal(t, expectedSecrets, getSASecrets(t, member, mur.Name, sa.Name))
+		assert.Equal(t, expectedSecrets, getSASecrets(t, member, nsName, sa.Name))
 	}
 
 }
