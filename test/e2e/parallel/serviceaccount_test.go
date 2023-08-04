@@ -60,7 +60,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		require.NoError(t, err)
 
 		// Update the namespace annotations & labels to trigger the reconciliation
-		_, err = member.UpdateNamespace(t, mur.Name, func(ns *corev1.Namespace) {
+		_, err = member.UpdateNamespace(t, nsName, func(ns *corev1.Namespace) {
 			// drop the last-applied-space-roles annotation, so we are sure that the content of the roles are re-applied
 			delete(ns.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
 			// change the tier name, so we are sure that the content of the tier template is re-applied
