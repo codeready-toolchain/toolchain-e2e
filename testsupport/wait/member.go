@@ -1252,25 +1252,25 @@ func (a *MemberAwaitility) UpdateIdlerSpec(t *testing.T, idler *toolchainv1alpha
 	return result, err
 }
 
-// UpdateNSTemplateSet tries to update the Spec of the given NSTemplateSet
+// UpdateNamespace tries to update the Spec of the given Namespace
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated NSTemplateSet
-func (a *MemberAwaitility) UpdateNSTemplateSet(t *testing.T, spaceName string, modifyNSTemplateSet func(nsTmplSet *toolchainv1alpha1.NSTemplateSet)) (*toolchainv1alpha1.NSTemplateSet, error) {
-	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
+// Returns the updated Namespace
+func (a *MemberAwaitility) UpdateNamespace(t *testing.T, nsName string, modifyNamespace func(ns *corev1.Namespace)) (*corev1.Namespace, error) {
+	var ns *corev1.Namespace
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		freshNSTmplSet := &toolchainv1alpha1.NSTemplateSet{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceName}, freshNSTmplSet); err != nil {
+		freshNs := &corev1.Namespace{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: nsName}, freshNs); err != nil {
 			return true, err
 		}
-		modifyNSTemplateSet(freshNSTmplSet)
-		if err := a.Client.Update(context.TODO(), freshNSTmplSet); err != nil {
-			t.Logf("error updating NSTemplateSet '%s': %s. Will retry again...", spaceName, err.Error())
+		modifyNamespace(freshNs)
+		if err := a.Client.Update(context.TODO(), freshNs); err != nil {
+			t.Logf("error updating Namespace '%s': %s. Will retry again...", nsName, err.Error())
 			return false, nil
 		}
-		nsTmplSet = freshNSTmplSet
+		ns = freshNs
 		return true, nil
 	})
-	return nsTmplSet, err
+	return ns, err
 }
 
 // UpdateServiceAccount tries to update the given ServiceAccount
