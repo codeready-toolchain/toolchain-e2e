@@ -56,6 +56,8 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 				Name: fmt.Sprintf("dummy-pull-secret-%d", i),
 			})
 
+			// also delete the space label key as we expect that this change should be reverted by the next reconcile loop
+			delete(sa.Labels, v1alpha1.SpaceLabelKey)
 		})
 		require.NoError(t, err)
 
