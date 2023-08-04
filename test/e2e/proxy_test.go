@@ -252,10 +252,11 @@ func TestProxyFlow(t *testing.T) {
 						Path:  "/spec/displayName",
 						Value: patchString,
 					}}
-					patchPayloadBytes, _ := json.Marshal(patchPayload)
+					patchPayloadBytes, err := json.Marshal(patchPayload)
+					require.NoError(t, err)
 
 					// Appply Patch
-					err := proxyCl.Patch(context.TODO(), proxyApp, client.RawPatch(types.JSONPatchType, patchPayloadBytes))
+					err = proxyCl.Patch(context.TODO(), proxyApp, client.RawPatch(types.JSONPatchType, patchPayloadBytes))
 					require.NoError(t, err)
 
 					// Get patched app and verify patched DisplayName
