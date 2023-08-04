@@ -40,12 +40,15 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	expectedSecrets := getSASecrets(t, member, nsName, "namespace-manager")
 
 	for i := 0; i < 10; i++ {
+		// update the ServiceAccount values so we can verify that some parts will stay and some will be reverted to the needed values
 		_, err := member.UpdateServiceAccount(t, nsName, "namespace-manager", func(sa *corev1.ServiceAccount) {
 
 			// when we add an annotation to the SA resource then it should stay there
 			sa.Annotations = map[string]string{
 				"should": "stay",
 			}
+			// add secret and ImagePullSecret refs and expect that they will stay there.
+			// the actual secrets don't exist, but that's fine - we need to check only if the refs stay in the SA resource
 			sa.Secrets = append(sa.Secrets, corev1.ObjectReference{
 				Name: fmt.Sprintf("dummy-secret-%d", i),
 			})
