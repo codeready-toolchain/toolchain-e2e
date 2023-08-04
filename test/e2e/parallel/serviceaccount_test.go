@@ -106,8 +106,6 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 
 }
 
-// TODO: remove the nolint:unused once the test is not skipped anymore
-// nolint:unused
 func getSASecrets(t *testing.T, member *wait.MemberAwaitility, ns, saName string) []string {
 	var saSecrets []string
 	secrets := &corev1.SecretList{}
