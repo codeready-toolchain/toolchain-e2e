@@ -303,7 +303,7 @@ func TestSubSpaces(t *testing.T) {
 	appstudioTier, err := hostAwait.WaitForNSTemplateTier(t, "appstudio")
 	require.NoError(t, err)
 
-	t.Run("we create subSpaces in the parentSpace tree and expect same roles and usernames to be inherited in NSTemplateSet", func(t *testing.T) {
+	t.Run("we create subSpaces in the parentSpace tree and expect roles and usernames to be inherited in NSTemplateSet", func(t *testing.T) {
 		// when
 		// we have a parentSpace
 		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
@@ -379,7 +379,7 @@ func TestSubSpaces(t *testing.T) {
 				),
 			)
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSpace(t, awaitilities, subSubSpace.Name)
+			VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 			// ....user should be maintainer also in the subSubSpace
 			require.NoError(t, err)
 			subSubSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSubSpaceNSTemplateSet.Name,
