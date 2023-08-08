@@ -4,6 +4,7 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
 
 == Prereqs
 
+. Ensure your go version matches the specified version in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/go.mod
 . Provision the *latest available* GA version of *OCP 4.13.x* on AWS with sufficient resources: 3 `m5.8xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
 +
 The latest version of openshift-install can be downloaded from https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
