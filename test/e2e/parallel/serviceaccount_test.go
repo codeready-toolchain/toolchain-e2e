@@ -18,8 +18,6 @@ import (
 
 func TestDoNotOverrideServiceAccount(t *testing.T) {
 	// given
-	// Skipping the TestDoNotOverrideServiceAccount test instead of deleting it because we will need to create SAs as part
-	// of the environment sub-workspaces so the test & logic will be useful to keep.
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	member := awaitilities.Member1()
@@ -37,67 +35,98 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	// and move the user to appstudio tier
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), mur.Name, "appstudio-env")
 	VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)
+	nsName := fmt.Sprintf("%s-env", mur.Name)
 
-	expectedSecrets := getSASecrets(t, member, mur.Name, "namespace-manager")
+	expectedSecrets := getSASecrets(t, member, nsName, "namespace-manager")
+	sa, err := member.WaitForServiceAccount(t, nsName, "namespace-manager")
+	require.NoError(t, err)
+	expSecretRefs := sa.Secrets
+	expPullSecretRefs := sa.ImagePullSecrets
 
 	for i := 0; i < 10; i++ {
-		_, err := member.UpdateServiceAccount(t, fmt.Sprintf("%s-env", mur.Name), "namespace-manager", func(sa *corev1.ServiceAccount) {
+		dummySecretRefName := fmt.Sprintf("dummy-secret-%d", i)
+		dummyPullSecretRefName := fmt.Sprintf("dummy-pull-secret-%d", i)
+
+		// update the ServiceAccount values so we can verify that some parts will stay and some will be reverted to the needed values
+		_, err := member.UpdateServiceAccount(t, nsName, "namespace-manager", func(sa *corev1.ServiceAccount) {
 
 			// when we add an annotation to the SA resource then it should stay there
 			sa.Annotations = map[string]string{
 				"should": "stay",
 			}
+			// add secret and ImagePullSecret refs and expect that they will stay there.
+			// the actual secrets don't exist, but that's fine - we need to check only if the refs stay in the SA resource
 			sa.Secrets = append(sa.Secrets, corev1.ObjectReference{
-				Name: fmt.Sprintf("dummy-secret-%d", i),
+				Name: dummySecretRefName,
 			})
 			sa.ImagePullSecrets = append(sa.ImagePullSecrets, corev1.LocalObjectReference{
-				Name: fmt.Sprintf("dummy-pull-secret-%d", i),
+				Name: dummyPullSecretRefName,
 			})
 
+			// also delete the space label key as we expect that this change should be reverted by the next reconcile loop
+			delete(sa.Labels, v1alpha1.SpaceLabelKey)
 		})
 		require.NoError(t, err)
 
-		// drop the SpaceRoles annotation from the namespace to trigger the reconciliation
-		_, err = member.UpdateNSTemplateSet(t, mur.Name, func(nsTmplSet *v1alpha1.NSTemplateSet) {
-			delete(nsTmplSet.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
+		// add the generated secret refs to the expected ones
+		expSecretRefs = append(expSecretRefs, corev1.ObjectReference{
+			Name: dummySecretRefName,
+		})
+		expPullSecretRefs = append(expPullSecretRefs, corev1.LocalObjectReference{
+			Name: dummyPullSecretRefName,
+		})
+
+		// Update the namespace annotations & labels to trigger the reconciliation
+		_, err = member.UpdateNamespace(t, nsName, func(ns *corev1.Namespace) {
+			// drop the last-applied-space-roles annotation, so we are sure that the content of the roles are re-applied
+			delete(ns.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
+			// change the tier name, so we are sure that the content of the tier template is re-applied
+			ns.Labels[v1alpha1.TierLabelKey] = "appstudio"
 		})
 		require.NoError(t, err)
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)
-		sa, err := member.WaitForServiceAccount(t, fmt.Sprintf("%s-env", mur.Name), "namespace-manager")
+		sa, err := member.WaitForServiceAccount(t, nsName, "namespace-manager")
 		require.NoError(t, err)
 		assert.Equal(t, "stay", sa.Annotations["should"])
-	secrets:
-		for j := 0; j < i; j++ {
-			expName := fmt.Sprintf("dummy-secret-%d", j)
+
+		// verify that the expected secret refs are present
+		assert.NotEmpty(t, sa.Secrets)
+		for _, expSecret := range expSecretRefs {
+			secretFound := false
 			for _, secretRef := range sa.Secrets {
-				if secretRef.Name == fmt.Sprintf("dummy-secret-%d", j) {
-					continue secrets
+				if secretRef.Name == expSecret.Name {
+					secretFound = true
+					break
 				}
 			}
-			assert.Fail(t, fmt.Sprintf("secret '%s' not found", expName))
+			if !secretFound {
+				assert.Fail(t, fmt.Sprintf("secret '%s' not found", expSecret.Name))
+			}
 		}
 
-	pullSecrets:
-		for j := 0; j < i; j++ {
-			expName := fmt.Sprintf("dummy-pull-secret-%d", j)
+		// verify that the expected pull secret refs are present
+		assert.NotEmpty(t, sa.ImagePullSecrets)
+		for _, expPullSecret := range expPullSecretRefs {
+			pullSecretFound := false
 			for _, pullSecretRef := range sa.ImagePullSecrets {
-				if pullSecretRef.Name == fmt.Sprintf("dummy-pull-secret-%d", j) {
-					continue pullSecrets
+				if pullSecretRef.Name == expPullSecret.Name {
+					pullSecretFound = true
+					break
 				}
 			}
-			assert.Fail(t, fmt.Sprintf("pull secret '%s' not found", expName))
+			if !pullSecretFound {
+				assert.Fail(t, fmt.Sprintf("pull secret '%s' not found", expPullSecret.Name))
+			}
 		}
 
 		// verify that the secrets created for SA is the same
-		assert.Equal(t, expectedSecrets, getSASecrets(t, member, mur.Name, sa.Name))
+		assert.Equal(t, expectedSecrets, getSASecrets(t, member, nsName, sa.Name))
 	}
 
 }
 
-// TODO: remove the nolint:unused once the test is not skipped anymore
-// nolint:unused
 func getSASecrets(t *testing.T, member *wait.MemberAwaitility, ns, saName string) []string {
 	var saSecrets []string
 	secrets := &corev1.SecretList{}
