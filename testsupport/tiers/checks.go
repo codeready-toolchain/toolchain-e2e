@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -442,7 +441,6 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
-		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
 		environment("development"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
@@ -544,7 +542,6 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		additionalArgocdReadRole(),
 		namespaceManagerSaAdditionalArgocdReadRoleBinding(),
 		namespaceManagerSaEditRoleBinding(),
-		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
 	}
 
@@ -1430,18 +1427,6 @@ func numberOfClusterResourceQuotas(number int) clusterObjectsCheckCreator {
 }
 
 // Appstudio tier specific objects
-
-func gitOpsServiceLabel() namespaceObjectsCheck {
-	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
-		// TODO fix for migration/existing namespaces cases
-		labelWaitCriterion := []wait.LabelWaitCriterion{}
-		if !strings.HasPrefix(ns.Name, "migration-") {
-			labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("argocd.argoproj.io/managed-by", "gitops-service-argocd"))
-		}
-		_, err := memberAwait.WaitForNamespaceWithName(t, ns.Name, labelWaitCriterion...)
-		require.NoError(t, err)
-	}
-}
 
 func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
