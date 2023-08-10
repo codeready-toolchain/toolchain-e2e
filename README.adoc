@@ -162,3 +162,4 @@ NOTE: If running in CodeReady Containers `eval $(crc oc-env)` is required.
 * Go to the registration-service link and sign in
 * Click on the `Get Started With CodeReady Toolchain` button
 * Approve your usersignup found on the `<username>-host-operator` namespace
+
