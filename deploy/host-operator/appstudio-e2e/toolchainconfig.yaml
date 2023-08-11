@@ -17,6 +17,7 @@ spec:
       deactivationDomainsExcluded: '@redhat.com'
     spaceConfig:
       spaceRequestEnabled: true
+      spaceBindingRequestEnabled: true
     environment: 'e2e-tests'
     notifications:
       durationBeforeNotificationDeletion: '5s'
