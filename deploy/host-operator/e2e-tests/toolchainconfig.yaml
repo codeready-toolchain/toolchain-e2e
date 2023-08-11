@@ -26,6 +26,7 @@ spec:
           twilioFromNumber: 'twilio.from_number'
     spaceConfig:
       spaceRequestEnabled: true
+      spaceBindingRequestEnabled: true
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
     toolchainStatus:
