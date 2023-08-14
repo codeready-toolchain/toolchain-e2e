@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/gofrs/uuid"
@@ -43,7 +44,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				// a new SpaceBinding is created
 				// with the same name but creation timestamp should be greater (more recent).
 				require.NoError(t, err)
-				spaceBinding, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
+				spaceBinding, err = hostAwait.WithRetryOptions(TimeoutOption(time.Second*5), RetryInterval(time.Second*2)).WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
 					UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
 					UntilSpaceBindingHasSpaceName(space.Name),
 					UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
