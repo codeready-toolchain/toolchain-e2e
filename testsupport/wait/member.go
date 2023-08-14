@@ -419,6 +419,104 @@ func (a *MemberAwaitility) printSpaceRequestWaitCriterionDiffs(t *testing.T, act
 	t.Log(buf.String())
 }
 
+// SpaceBindingRequestWaitCriterion a struct to compare with a given SpaceBindingRequest
+type SpaceBindingRequestWaitCriterion struct {
+	Match func(request *toolchainv1alpha1.SpaceBindingRequest) bool
+	Diff  func(request *toolchainv1alpha1.SpaceBindingRequest) string
+}
+
+// WaitForSpaceBindingRequest waits until there is a SpaceBindingRequest available with the given name, namespace, spec and the set of status conditions
+func (a *MemberAwaitility) WaitForSpaceBindingRequest(t *testing.T, namespacedName types.NamespacedName, criteria ...SpaceBindingRequestWaitCriterion) (*toolchainv1alpha1.SpaceBindingRequest, error) {
+	var spaceBindingRequest *toolchainv1alpha1.SpaceBindingRequest
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		obj := &toolchainv1alpha1.SpaceBindingRequest{}
+		if err := a.Client.Get(context.TODO(), namespacedName, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		spaceBindingRequest = obj
+		return matchSpaceBindingRequestWaitCriterion(obj, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printSpaceBindingRequestWaitCriterionDiffs(t, spaceBindingRequest, criteria...)
+	}
+	return spaceBindingRequest, err
+}
+
+// UntilSpaceBindingRequestHasConditions returns a `SpaceBindingRequestWaitCriterion` which checks that the given
+// SpaceBindingRequest has exactly all the given status conditions
+func UntilSpaceBindingRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceBindingRequestWaitCriterion {
+	return SpaceBindingRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBindingRequest) bool {
+			return test.ConditionsMatch(actual.Status.Conditions, expected...)
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBindingRequest) string {
+			return fmt.Sprintf("expected conditions to match:\n%s", Diff(expected, actual.Status.Conditions))
+		},
+	}
+}
+
+// UntilSpaceBindingRequestHasSpecSpaceRole returns a `SpaceBindingRequestWaitCriterion` which checks that the given
+// SpaceBindingRequest has a specific .Spec.SpaceRole
+func UntilSpaceBindingRequestHasSpecSpaceRole(expected string) SpaceBindingRequestWaitCriterion {
+	return SpaceBindingRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBindingRequest) bool {
+			return actual.Spec.SpaceRole == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBindingRequest) string {
+			return fmt.Sprintf("expected SpaceRole to be '%s'\nbut it was '%s'", expected, actual.Spec.SpaceRole)
+		},
+	}
+}
+
+// UntilSpaceBindingRequestHasSpecMUR returns a `SpaceBindingRequestWaitCriterion` which checks that the given
+// SpaceBindingRequest has a specific .Spec.MasterUserRecord
+func UntilSpaceBindingRequestHasSpecMUR(expected string) SpaceBindingRequestWaitCriterion {
+	return SpaceBindingRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBindingRequest) bool {
+			return actual.Spec.MasterUserRecord == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBindingRequest) string {
+			return fmt.Sprintf("expected MasterUserRecord to be '%s'\nbut it was '%s'", expected, actual.Spec.MasterUserRecord)
+		},
+	}
+}
+
+func matchSpaceBindingRequestWaitCriterion(actual *toolchainv1alpha1.SpaceBindingRequest, criteria ...SpaceBindingRequestWaitCriterion) bool {
+	for _, c := range criteria {
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *MemberAwaitility) printSpaceBindingRequestWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.SpaceBindingRequest, criteria ...SpaceBindingRequestWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find SpaceBindingRequest\n")
+		buf.WriteString(a.listAndReturnContent("SpaceBindingRequest", a.Namespace, &toolchainv1alpha1.SpaceBindingRequestList{}))
+	} else {
+		buf.WriteString("failed to find SpaceBindingRequest with matching criteria:\n")
+		buf.WriteString("----\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) && c.Diff != nil {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	t.Log(buf.String())
+}
+
 // NSTemplateSetWaitCriterion a struct to compare with a given NSTemplateSet
 type NSTemplateSetWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateSet) bool
@@ -1310,6 +1408,27 @@ func (a *MemberAwaitility) UpdateSpaceRequest(t *testing.T, spaceRequestNamespac
 			return false, nil
 		}
 		sr = freshSpaceRequest
+		return true, nil
+	})
+	return sr, err
+}
+
+// UpdateSpaceBindingRequest tries to update the Spec of the given SpaceBindingRequest
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated SpaceBindingRequest
+func (a *MemberAwaitility) UpdateSpaceBindingRequest(t *testing.T, spaceBindingRequestNamespacedName types.NamespacedName, modifySpaceBindingRequest func(s *toolchainv1alpha1.SpaceBindingRequest)) (*toolchainv1alpha1.SpaceBindingRequest, error) {
+	var sr *toolchainv1alpha1.SpaceBindingRequest
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		freshSpaceBindingRequest := &toolchainv1alpha1.SpaceBindingRequest{}
+		if err := a.Client.Get(context.TODO(), spaceBindingRequestNamespacedName, freshSpaceBindingRequest); err != nil {
+			return true, err
+		}
+		modifySpaceBindingRequest(freshSpaceBindingRequest)
+		if err := a.Client.Update(context.TODO(), freshSpaceBindingRequest); err != nil {
+			t.Logf("error updating SpaceBindingRequest '%s' in namespace '%s': %s. Will retry again...", spaceBindingRequestNamespacedName.Name, spaceBindingRequestNamespacedName.Name, err.Error())
+			return false, nil
+		}
+		sr = freshSpaceBindingRequest
 		return true, nil
 	})
 	return sr, err

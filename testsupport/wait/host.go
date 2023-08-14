@@ -2206,6 +2206,35 @@ func UntilSpaceBindingHasSpaceRole(expected string) SpaceBindingWaitCriterion {
 	}
 }
 
+// UntilSpaceBindingHasCreationTimestampGreaterThan returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding was created after a given creationTimestamp
+func UntilSpaceBindingHasCreationTimestampGreaterThan(creationTimestamp time.Time) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.CreationTimestamp.Time.After(creationTimestamp)
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected SpaceBinding to be created after %s; Actual creation timestamp %s", creationTimestamp.String(), actual.CreationTimestamp.String())
+		},
+	}
+}
+
+// UntilSpaceBindingHasLabel returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has a `key` equal to the given `value`
+func UntilSpaceBindingHasLabel(key, value string) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.Labels != nil && actual.Labels[key] == value
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			if len(actual.Labels) == 0 {
+				return fmt.Sprintf("expected to have a label with key '%s' and value '%s'", key, value)
+			}
+			return fmt.Sprintf("expected value of label '%s' to equal '%s'. Actual: '%s'", key, value, actual.Labels[key])
+		},
+	}
+}
+
 type SocialEventWaitCriterion struct {
 	Match func(*toolchainv1alpha1.SocialEvent) bool
 	Diff  func(*toolchainv1alpha1.SocialEvent) string
