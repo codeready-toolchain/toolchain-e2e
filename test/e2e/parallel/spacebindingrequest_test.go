@@ -9,6 +9,8 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/gofrs/uuid"
 
+	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
+
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -44,7 +46,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				// a new SpaceBinding is created
 				// with the same name but creation timestamp should be greater (more recent).
 				require.NoError(t, err)
-				spaceBinding, err = hostAwait.WithRetryOptions(TimeoutOption(time.Second*5), RetryInterval(time.Second*2)).WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
+				spaceBinding, err = hostAwait.WithRetryOptions(TimeoutOption(time.Second*10), RetryInterval(time.Second*2)).WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
 					UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
 					UntilSpaceBindingHasSpaceName(space.Name),
 					UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
@@ -119,7 +121,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			require.NoError(t, err)
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-				UntilSpaceBindingRequestHasConditions(ProvisioningFailed(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
+				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
 			)
 			require.NoError(t, err)
 		})
@@ -140,7 +142,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			require.NoError(t, err)
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-				UntilSpaceBindingRequestHasConditions(ProvisioningFailed("unable to get MUR: MasterUserRecord.toolchain.dev.openshift.com \"invalidMUR\" not found")),
+				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding("unable to get MUR: MasterUserRecord.toolchain.dev.openshift.com \"invalidMUR\" not found")),
 			)
 			require.NoError(t, err)
 		})
@@ -168,7 +170,7 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same SpaceRole
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-			UntilSpaceBindingRequestHasConditions(Provisioned()),
+			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 			UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
 			UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord),
 		)
@@ -207,7 +209,7 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same MUR
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-			UntilSpaceBindingRequestHasConditions(Provisioned()),
+			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 			UntilSpaceBindingRequestHasSpecSpaceRole(spaceBindingRequest.Spec.SpaceRole),
 			UntilSpaceBindingRequestHasSpecMUR(newmur.GetName()), // new MUR
 		)
@@ -255,7 +257,7 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	require.NoError(t, err)
 	// wait for spacebinding request status
 	spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-		UntilSpaceBindingRequestHasConditions(Provisioned()),
+		UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 	)
 	require.NoError(t, err)
 	return space, spaceBindingRequest, spaceBinding
