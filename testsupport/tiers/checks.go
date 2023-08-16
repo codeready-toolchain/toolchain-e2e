@@ -1456,17 +1456,17 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"applications", "components", "componentdetectionqueries"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"promotionruns", "snapshotenvironmentbindings", "snapshots", "environments"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"deploymenttargets", "deploymenttargetclaims"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"managed-gitops.redhat.com"},
@@ -1476,7 +1476,7 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"tekton.dev"},
 					Resources: []string{"pipelineruns"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"results.tekton.dev"},
@@ -1486,32 +1486,32 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"enterprisecontractpolicies", "integrationtestscenarios", "releases", "releasestrategies", "releaseplans", "releaseplanadmissions"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"jvmbuildservice.io"},
 					Resources: []string{"jbsconfigs", "artifactbuilds"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"spiaccesstokenbindings", "spiaccesschecks", "spiaccesstokens", "spifilecontentrequests", "spiaccesstokendataupdates"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"remotesecrets"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{""},
 					Resources: []string{"secrets"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{""},
 					Resources: []string{"configmaps"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
@@ -1571,7 +1571,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"integrationtestscenarios"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
@@ -1581,12 +1581,12 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"releases", "releasestrategies", "releaseplans"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"releaseplanadmissions"},
-					Verbs:     []string{"*"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 				{
 					APIGroups: []string{"jvmbuildservice.io"},
