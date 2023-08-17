@@ -38,6 +38,8 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				//
 				// save the creation timestamp that will be used to ensure that a new SpaceBinding was created with the same name.
 				oldSpaceCreationTimeStamp := spaceBinding.CreationTimestamp
+				// save the old UID that will be used to ensure that a new SpaceBinding was created with the same name but new UID
+				oldUID := spaceBinding.UID
 
 				// when
 				err := hostAwait.Client.Delete(context.TODO(), spaceBinding)
@@ -51,6 +53,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 					UntilSpaceBindingHasSpaceName(space.Name),
 					UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
 					UntilSpaceBindingHasCreationTimestampGreaterThan(oldSpaceCreationTimeStamp.Time),
+					UntilSpaceBindingHasDifferentUID(oldUID),
 					UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
 					UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
 				)

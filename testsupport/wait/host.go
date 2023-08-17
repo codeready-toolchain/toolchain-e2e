@@ -2206,6 +2206,19 @@ func UntilSpaceBindingHasSpaceRole(expected string) SpaceBindingWaitCriterion {
 	}
 }
 
+// UntilSpaceBindingHasDifferentUID returns a `SpaceBindingWaitCriterion` which checks that the given
+// SpaceBinding has different UID (even if it has same name)
+func UntilSpaceBindingHasDifferentUID(uid types.UID) SpaceBindingWaitCriterion {
+	return SpaceBindingWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
+			return actual.UID != uid
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
+			return fmt.Sprintf("expected SpaceBinding to not have UID %s; Actual UID %s", uid, actual.UID)
+		},
+	}
+}
+
 // UntilSpaceBindingHasCreationTimestampGreaterThan returns a `SpaceBindingWaitCriterion` which checks that the given
 // SpaceBinding was created after a given creationTimestamp
 func UntilSpaceBindingHasCreationTimestampGreaterThan(creationTimestamp time.Time) SpaceBindingWaitCriterion {
