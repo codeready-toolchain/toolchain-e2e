@@ -448,7 +448,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
 		resourceQuotaAppstudioCrdsGitops("512", "512", "512", "512", "512"),
-		resourceQuotaAppstudioCrdsIntegration("512", "512", "512"),
+		resourceQuotaAppstudioCrdsIntegration("512", "1024", "512"),
 		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
