@@ -127,6 +127,9 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
 			)
 			require.NoError(t, err)
+			bindings, err := hostAwait.ListSpaceBindings(space.Name)
+			require.NoError(t, err)
+			assert.Len(t, bindings, 1)
 		})
 
 		t.Run("unable create space binding request with invalid MasterUserRecord", func(t *testing.T) {
