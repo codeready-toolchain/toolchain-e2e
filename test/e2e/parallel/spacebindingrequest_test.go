@@ -151,6 +151,9 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding("unable to get MUR: MasterUserRecord.toolchain.dev.openshift.com \"invalidMUR\" not found")),
 			)
 			require.NoError(t, err)
+			bindings, err := hostAwait.ListSpaceBindings(space.Name)
+			require.NoError(t, err)
+			assert.Len(t, bindings, 1)
 		})
 	})
 }
