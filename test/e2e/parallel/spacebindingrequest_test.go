@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -269,9 +270,11 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
 	require.NoError(t, err)
 	if spaceRole == "admin" {
+		usernamesSorted := []string{firstUserSignup.Status.CompliantUsername, secondUserMUR.Name}
+		sort.Strings(usernamesSorted)
 		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
 			UntilNSTemplateSetHasSpaceRoles(
-				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, firstUserSignup.Status.CompliantUsername, secondUserMUR.Name)))
+				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, usernamesSorted[0], usernamesSorted[1])))
 		require.NoError(t, err)
 	} else {
 		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
