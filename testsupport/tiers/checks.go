@@ -1463,7 +1463,7 @@ func environment(name string) namespaceObjectsCheck {
 
 func appstudioUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions", toolchainLabelsWaitCriterion(owner)...)
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
 		assert.Len(t, role.Rules, 14)
 		expected := &rbacv1.Role{
@@ -1726,15 +1726,8 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 
 func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rbName := ""
-		roleName := ""
-		if role == "admin" {
-			roleName = "appstudio-user-actions"
-			rbName = fmt.Sprintf("appstudio-%s-actions-user", userName)
-		} else {
-			roleName = fmt.Sprintf("appstudio-%s-user-actions", role)
-			rbName = fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
-		}
+		rbName := fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
+		roleName := fmt.Sprintf("appstudio-%s-user-actions", role)
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, rbName, toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
