@@ -467,7 +467,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	for role, usernames := range spaceRoles {
 		switch role {
 		case "admin":
-			checks = append(checks, appstudioUserActionsRole())
+			checks = append(checks, appstudioAdminUserActionsRole())
 			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
@@ -1461,11 +1461,11 @@ func environment(name string) namespaceObjectsCheck {
 	}
 }
 
-func appstudioUserActionsRole() spaceRoleObjectsCheck {
+func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 14)
+		assert.Len(t, role.Rules, 15)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1538,6 +1538,11 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Resources:     []string{"serviceaccounts"},
 					ResourceNames: []string{"appstudio-pipeline"},
 					Verbs:         []string{"get", "list", "watch", "update", "patch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods/exec"},
+					Verbs:     []string{"create"},
 				},
 			},
 		}
