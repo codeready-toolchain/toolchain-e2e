@@ -2,7 +2,6 @@ package parallel
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -18,11 +17,6 @@ import (
 )
 
 func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
-	os.Setenv("MEMBER_NS", "toolchain-member-25163146")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-25163146")
-	os.Setenv("HOST_NS", "toolchain-host-25163146")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-25163146")
-	os.Setenv("KUBECONFIG", "/Users/fmuntean/aws-cluster-test/fmuntean-devsandbox1/auth/kubeconfig")
 	// given
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
