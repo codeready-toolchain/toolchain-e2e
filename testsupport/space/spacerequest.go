@@ -21,27 +21,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type RequestOption func(request *toolchainv1alpha1.SpaceRequest)
+type SpaceRequestOption func(request *toolchainv1alpha1.SpaceRequest) // nolint:revive
 
-func WithSpecTargetClusterRoles(clusterRoles []string) RequestOption {
+func WithSpecTargetClusterRoles(clusterRoles []string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
 		s.Spec.TargetClusterRoles = clusterRoles
 	}
 }
 
-func WithSpecTierName(tierName string) RequestOption {
+func WithSpecTierName(tierName string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
 		s.Spec.TierName = tierName
 	}
 }
 
-func WithNamespace(namespace string) RequestOption {
+func WithNamespace(namespace string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
 		s.ObjectMeta.Namespace = namespace
 	}
 }
 
-func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...RequestOption) (*toolchainv1alpha1.SpaceRequest, *toolchainv1alpha1.Space) {
+func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceRequestOption) (*toolchainv1alpha1.SpaceRequest, *toolchainv1alpha1.Space) {
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
 	// let's first create a parentSpace
@@ -61,7 +61,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 
 // NewSpaceRequest initializes a new SpaceRequest object with the given options.
 // By default sets appstudio tier and tenant roles for the cluster to use
-func NewSpaceRequest(t *testing.T, opts ...RequestOption) *toolchainv1alpha1.SpaceRequest {
+func NewSpaceRequest(t *testing.T, opts ...SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
 	namePrefix := util.NewObjectNamePrefix(t)
 
 	spaceRequest := &toolchainv1alpha1.SpaceRequest{
