@@ -1,4 +1,4 @@
-package testsupport
+package space
 
 import (
 	"fmt"
@@ -8,7 +8,10 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
@@ -21,7 +24,7 @@ import (
 func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	username := uuid.Must(uuid.NewV4()).String()
-	signup, mur := NewSignupRequest(awaitilities).
+	signup, mur := testsupport.NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
@@ -31,7 +34,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 
 	// create the actual space
-	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, NewObjectNamePrefix(t), opts...)
+	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t), opts...)
 	space, _, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin")
 	require.NoError(t, err)
 	space, err = awaitilities.Host().WaitForSpace(t, space.Name,
@@ -63,20 +66,20 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 // CreateSpaceWithBinding initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically creates SpaceBinding for it and for the given MasterUserRecord
 func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
-	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, NewObjectNamePrefix(t), opts...)
+	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t), opts...)
 
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
 
 	// we need to  create the SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
-	spaceBinding := CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 
 	return space, spaceBinding
 }
 
 // CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
 func CreateSubSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace.Option) *toolchainv1alpha1.Space {
-	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, NewObjectNamePrefix(t), opts...)
+	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t), opts...)
 
 	err := awaitilities.Host().CreateWithCleanup(t, space)
 	require.NoError(t, err)
@@ -164,7 +167,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 
 func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space, cleanup bool) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.SpaceBinding) {
 	username := space.Name
-	builder := NewSignupRequest(awaitilities).
+	builder := testsupport.NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
@@ -178,9 +181,9 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 	var binding *toolchainv1alpha1.SpaceBinding
 	if cleanup {
-		binding = CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+		binding = testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 	} else {
-		binding = CreateSpaceBindingWithoutCleanup(t, awaitilities.Host(), mur, space, "admin")
+		binding = testsupportsb.CreateSpaceBindingWithoutCleanup(t, awaitilities.Host(), mur, space, "admin")
 	}
 	t.Logf("The SpaceBinding %s was created", binding.Name)
 	return signup, mur, binding

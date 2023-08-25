@@ -23,6 +23,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"

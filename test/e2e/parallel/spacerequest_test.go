@@ -7,6 +7,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"

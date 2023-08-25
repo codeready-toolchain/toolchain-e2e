@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -202,7 +203,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
 	require.NoError(t, err)
 
-	VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
+	testsupportsb.VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
 
 	bindings, err := hostAwait.ListSpaceBindings(space.Name)
 	require.NoError(t, err)

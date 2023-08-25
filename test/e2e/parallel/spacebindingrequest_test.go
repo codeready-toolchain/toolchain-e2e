@@ -14,6 +14,8 @@ import (
 
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	tsspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -97,7 +99,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		t.Run("unable create space binding request with invalid SpaceRole", func(t *testing.T) {
-			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+			space, _, _ := tsspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 			space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 			require.NoError(t, err)
@@ -115,7 +117,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 				WithSpecSpaceRole("invalid"), // set invalid spacerole
 				WithSpecMasterUserRecord(mur.GetName()),
-				WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
+				WithNamespace(tsspace.GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 			)
 
 			// then
@@ -131,7 +133,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 		})
 
 		t.Run("unable create space binding request with invalid MasterUserRecord", func(t *testing.T) {
-			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+			space, _, _ := tsspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 			space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 			require.NoError(t, err)
@@ -139,7 +141,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 				WithSpecSpaceRole("admin"),
 				WithSpecMasterUserRecord("invalidMUR"), // we set an invalid MUR
-				WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
+				WithNamespace(tsspace.GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 			)
 
 			// then
@@ -231,7 +233,7 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 }
 
 func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait *MemberAwaitility, hostAwait *HostAwaitility, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
-	space, firstUserSignup, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+	space, firstUserSignup, _ := tsspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 	// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 	space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
@@ -249,7 +251,7 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		WithSpecSpaceRole(spaceRole),
 		WithSpecMasterUserRecord(secondUserMUR.GetName()),
-		WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
+		WithNamespace(tsspace.GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 	)
 
 	// then
@@ -283,6 +285,6 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, secondUserMUR.Name)))
 		require.NoError(t, err)
 	}
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+	tsspace.VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	return space, spaceBindingRequest, spaceBinding
 }
