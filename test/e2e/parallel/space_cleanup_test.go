@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -17,6 +18,11 @@ import (
 )
 
 func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
+	os.Setenv("MEMBER_NS", "toolchain-member-25163146")
+	os.Setenv("MEMBER_NS_2", "toolchain-member2-25163146")
+	os.Setenv("HOST_NS", "toolchain-host-25163146")
+	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-25163146")
+	os.Setenv("KUBECONFIG", "/Users/fmuntean/aws-cluster-test/fmuntean-devsandbox1/auth/kubeconfig")
 	// given
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
@@ -64,11 +70,11 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// given
 			// we have a space
 			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithName("for-john"))
-			// and we have also have a user that gets admin access to the Space but using SpaceBindingRequest mechanism
+			// and we also have a user that gets admin access to the Space but using SpaceBindingRequest mechanism
 			userSignup, spaceBindingRequest, spaceBinding := setupForSpaceBindingCleanupWithSBRTest(t, awaitilities, memberAwait, space, hostAwait, "jack", "admin")
 
 			// when
-			// we deactivate the UserSignup as well so that the MUR will be deleted
+			// we deactivate the UserSignup so that the MUR will be deleted
 			userSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(us, true)

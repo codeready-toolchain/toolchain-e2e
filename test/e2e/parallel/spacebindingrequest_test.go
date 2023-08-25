@@ -3,11 +3,14 @@ package parallel
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/gofrs/uuid"
+	"github.com/stretchr/testify/assert"
+
+	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -34,21 +37,21 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				// now, delete the SpaceBinding,
 				// a new SpaceBinding will be provisioned by the SpaceBindingRequest.
 				//
-				// save the creation timestamp that will be used to ensure that a new SpaceBinding was created with the same name.
-				oldSpaceCreationTimeStamp := spaceBinding.CreationTimestamp
+				// save the old UID that will be used to ensure that a new SpaceBinding was created with the same name but new UID
+				oldUID := spaceBinding.UID
 
 				// when
 				err := hostAwait.Client.Delete(context.TODO(), spaceBinding)
 
 				// then
 				// a new SpaceBinding is created
-				// with the same name but creation timestamp should be greater (more recent).
+				// with the same name but different UID.
 				require.NoError(t, err)
-				spaceBinding, err = hostAwait.WithRetryOptions(TimeoutOption(time.Second*5), RetryInterval(time.Second*2)).WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
+				spaceBinding, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
 					UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
 					UntilSpaceBindingHasSpaceName(space.Name),
 					UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
-					UntilSpaceBindingHasCreationTimestampGreaterThan(oldSpaceCreationTimeStamp.Time),
+					UntilSpaceBindingHasDifferentUID(oldUID),
 					UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
 					UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
 				)
@@ -119,9 +122,12 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			require.NoError(t, err)
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-				UntilSpaceBindingRequestHasConditions(ProvisioningFailed(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
+				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
 			)
 			require.NoError(t, err)
+			bindings, err := hostAwait.ListSpaceBindings(space.Name)
+			require.NoError(t, err)
+			assert.Len(t, bindings, 1)
 		})
 
 		t.Run("unable create space binding request with invalid MasterUserRecord", func(t *testing.T) {
@@ -140,9 +146,12 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			require.NoError(t, err)
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-				UntilSpaceBindingRequestHasConditions(ProvisioningFailed("unable to get MUR: MasterUserRecord.toolchain.dev.openshift.com \"invalidMUR\" not found")),
+				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding("unable to get MUR: MasterUserRecord.toolchain.dev.openshift.com \"invalidMUR\" not found")),
 			)
 			require.NoError(t, err)
+			bindings, err := hostAwait.ListSpaceBindings(space.Name)
+			require.NoError(t, err)
+			assert.Len(t, bindings, 1)
 		})
 	})
 }
@@ -168,7 +177,7 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same SpaceRole
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-			UntilSpaceBindingRequestHasConditions(Provisioned()),
+			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 			UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
 			UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord),
 		)
@@ -207,7 +216,7 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same MUR
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-			UntilSpaceBindingRequestHasConditions(Provisioned()),
+			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 			UntilSpaceBindingRequestHasSpecSpaceRole(spaceBindingRequest.Spec.SpaceRole),
 			UntilSpaceBindingRequestHasSpecMUR(newmur.GetName()), // new MUR
 		)
@@ -222,13 +231,13 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 }
 
 func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait *MemberAwaitility, hostAwait *HostAwaitility, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+	space, firstUserSignup, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 	// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 	space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 	// let's create a new MUR that will have access to the space
 	username := uuid.Must(uuid.NewV4()).String()
-	_, mur := NewSignupRequest(awaitilities).
+	_, secondUserMUR := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
@@ -239,7 +248,7 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	// create the spacebinding request
 	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		WithSpecSpaceRole(spaceRole),
-		WithSpecMasterUserRecord(mur.GetName()),
+		WithSpecMasterUserRecord(secondUserMUR.GetName()),
 		WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 	)
 
@@ -255,8 +264,25 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	require.NoError(t, err)
 	// wait for spacebinding request status
 	spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-		UntilSpaceBindingRequestHasConditions(Provisioned()),
+		UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 	)
 	require.NoError(t, err)
+	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
+	require.NoError(t, err)
+	if spaceRole == "admin" {
+		usernamesSorted := []string{firstUserSignup.Status.CompliantUsername, secondUserMUR.Name}
+		sort.Strings(usernamesSorted)
+		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
+			UntilNSTemplateSetHasSpaceRoles(
+				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, usernamesSorted[0], usernamesSorted[1])))
+		require.NoError(t, err)
+	} else {
+		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
+			UntilNSTemplateSetHasSpaceRoles(
+				SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, firstUserSignup.Status.CompliantUsername),
+				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, secondUserMUR.Name)))
+		require.NoError(t, err)
+	}
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 	return space, spaceBindingRequest, spaceBinding
 }
