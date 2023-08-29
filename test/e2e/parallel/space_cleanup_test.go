@@ -64,12 +64,15 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// given
 			// we have a space
 			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithName("for-john"))
+			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
+			space, err := hostAwait.WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
+
 			// and we also have a user that gets admin access to the Space but using SpaceBindingRequest mechanism
 			userSignup, spaceBindingRequest, spaceBinding := setupForSpaceBindingCleanupWithSBRTest(t, awaitilities, memberAwait, space, hostAwait, "jack", "admin")
 
 			// when
 			// we deactivate the UserSignup so that the MUR will be deleted
-			userSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
+			userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(us, true)
 				})
