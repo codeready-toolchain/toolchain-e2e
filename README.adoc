@@ -150,6 +150,7 @@ By default these targets deploy resources to `toolchain-host-operator` and `tool
 
 NOTE: If running in CodeReady Containers `eval $(crc oc-env)` is required.
 
+
 == How to Test Mailgun/Twilio Notifications in a Dev Environment
 * Get a cluster and setup the following env vars
 ** `export QUAY_NAMESPACE=<your-quay-namespace>`
