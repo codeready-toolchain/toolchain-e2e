@@ -445,9 +445,10 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
 		environment("development"),
+		resourceQuotaToolchainCrds("32"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
-		resourceQuotaAppstudioCrdsGitops("512", "512", "512", "512", "512"),
+		resourceQuotaAppstudioCrdsGitops("512", "512", "32", "32", "32"),
 		resourceQuotaAppstudioCrdsIntegration("512", "1024", "512"),
 		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
@@ -783,6 +784,21 @@ func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs
 
 		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "storage", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaToolchainCrds(spaceRequestLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity(spaceRequestLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "toolchain-crds", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "toolchain-crds", criteria)
 		require.NoError(t, err)
 	}
 }
