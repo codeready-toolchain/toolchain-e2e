@@ -66,6 +66,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithName("for-john"))
 			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 			space, err := hostAwait.WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
+			require.NoError(t, err)
 
 			// and we also have a user that gets admin access to the Space but using SpaceBindingRequest mechanism
 			userSignup, spaceBindingRequest, spaceBinding := setupForSpaceBindingCleanupWithSBRTest(t, awaitilities, memberAwait, space, hostAwait, "jack", "admin")
