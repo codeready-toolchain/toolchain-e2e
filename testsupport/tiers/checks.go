@@ -1481,7 +1481,7 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
+		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1559,6 +1559,11 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 					APIGroups: []string{""},
 					Resources: []string{"pods/exec"},
 					Verbs:     []string{"create"},
+				},
+				{
+					APIGroups: []string{"toolchain.dev.openshift.com"},
+					Resources: []string{"spacebindingrequests"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 			},
 		}
