@@ -60,7 +60,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		t.Run("when mur is deleted with SpaceBindingRequest", func(t *testing.T) {
+		t.Run("when mur is deleted and SpaceBinding was created via SpaceBindingRequest", func(t *testing.T) {
 			// given
 			// we have a space
 			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithName("for-john"))
