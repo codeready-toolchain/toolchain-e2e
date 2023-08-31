@@ -54,13 +54,23 @@ make appstudio-dev-deploy-latest
 If you want to install a local version of any of the Sandbox operators in dev mode then:
 
 . link:quay.adoc[Configure your quay account for dev deployment]
-. Run the following: +
-```
-make dev-deploy-e2e
+. Run any from the following commands:
+```bash
+# To deploy local versions of all repositories:
+make dev-deploy-e2e-local
+
+# To deploy local version only of the host-operator repo:
+make dev-deploy-e2e-host-local
+
+# To deploy local version only of the member-operator repo:
+make dev-deploy-e2e-member-local
+
+# To deploy local version only of the registration-service repo:
+make dev-deploy-e2e-registration-local
 ```
 
 === ToolchainStatus
-. Run `oc get toolchainstatus -n <quay-io-username>-host-operator` and ensure the Ready status is `True`
+. Run `oc get toolchainstatus -n toolchain-host-operator` and ensure the Ready status is `True`
 +
 ```
 NAME               MURS   READY   LAST UPDATED
