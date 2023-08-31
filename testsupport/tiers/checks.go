@@ -443,9 +443,10 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		numberOfLimitRanges(1),
 		appstudioWorkSpaceNameLabel(),
 		environment("development"),
+		resourceQuotaToolchainCrds("32"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
-		resourceQuotaAppstudioCrdsGitops("512", "512", "512", "512", "512"),
+		resourceQuotaAppstudioCrdsGitops("512", "512", "32", "32", "32"),
 		resourceQuotaAppstudioCrdsIntegration("512", "1024", "512"),
 		resourceQuotaAppstudioCrdsRelease("512", "512", "512", "512", "512"),
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
@@ -465,7 +466,7 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	for role, usernames := range spaceRoles {
 		switch role {
 		case "admin":
-			checks = append(checks, appstudioUserActionsRole())
+			checks = append(checks, appstudioAdminUserActionsRole())
 			roles++
 			for _, userName := range usernames {
 				checks = append(checks,
@@ -780,6 +781,21 @@ func resourceQuotaStorage(ephemeralLimit, storageRequest, ephemeralRequest, pvcs
 
 		criteria := resourceQuotaMatches(ns.Name, "storage", spec)
 		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "storage", criteria)
+		require.NoError(t, err)
+	}
+}
+
+func resourceQuotaToolchainCrds(spaceRequestLimit string) namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, _ string) {
+		var err error
+		spec := corev1.ResourceQuotaSpec{
+			Hard: make(map[corev1.ResourceName]resource.Quantity),
+		}
+		spec.Hard["count/spacerequests.toolchain.dev.openshift.com"], err = resource.ParseQuantity(spaceRequestLimit)
+		require.NoError(t, err)
+
+		criteria := resourceQuotaMatches(ns.Name, "toolchain-crds", spec)
+		_, err = memberAwait.WaitForResourceQuota(t, ns.Name, "toolchain-crds", criteria)
 		require.NoError(t, err)
 	}
 }
@@ -1446,11 +1462,11 @@ func environment(name string) namespaceObjectsCheck {
 	}
 }
 
-func appstudioUserActionsRole() spaceRoleObjectsCheck {
+func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		role, err := memberAwait.WaitForRole(t, ns, "appstudio-user-actions", toolchainLabelsWaitCriterion(owner)...)
+		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 14)
+		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1523,6 +1539,16 @@ func appstudioUserActionsRole() spaceRoleObjectsCheck {
 					Resources:     []string{"serviceaccounts"},
 					ResourceNames: []string{"appstudio-pipeline"},
 					Verbs:         []string{"get", "list", "watch", "update", "patch"},
+				},
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods/exec"},
+					Verbs:     []string{"create"},
+				},
+				{
+					APIGroups: []string{"toolchain.dev.openshift.com"},
+					Resources: []string{"spacebindingrequests"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 			},
 		}
@@ -1711,15 +1737,8 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 
 func appstudioUserActionsRoleBinding(userName string, role string) spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-		rbName := ""
-		roleName := ""
-		if role == "admin" {
-			roleName = "appstudio-user-actions"
-			rbName = fmt.Sprintf("appstudio-%s-actions-user", userName)
-		} else {
-			roleName = fmt.Sprintf("appstudio-%s-user-actions", role)
-			rbName = fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
-		}
+		rbName := fmt.Sprintf("appstudio-%s-%s-actions-user", role, userName)
+		roleName := fmt.Sprintf("appstudio-%s-user-actions", role)
 		rb, err := memberAwait.WaitForRoleBinding(t, ns, rbName, toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
 		assert.Len(t, rb.Subjects, 1)
