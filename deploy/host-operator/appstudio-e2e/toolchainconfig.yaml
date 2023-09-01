@@ -23,14 +23,6 @@ spec:
       durationBeforeNotificationDeletion: '5s'
     registrationService:
       environment: 'e2e-tests'
-      verification:
-        enabled: true
-        excludedEmailDomains: 'redhat.com'
-        secret:
-          ref: 'host-operator-secret'
-          twilioAccountSID: 'twilio.account.sid'
-          twilioAuthToken: 'twilio.auth.token'
-          twilioFromNumber: 'twilio.from_number'
     toolchainStatus:
       toolchainStatusRefreshTime: '1s'
   members:
