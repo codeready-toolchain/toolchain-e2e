@@ -1,18 +1,10 @@
-package testsupport
+package util
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"testing"
-
-	"github.com/gofrs/uuid"
 )
-
-// GenerateName appends generated UUID to the given string
-func GenerateName(prefix string) string {
-	return fmt.Sprintf("%s-%s", prefix, uuid.Must(uuid.NewV4()).String())
-}
 
 var notAllowedChars = regexp.MustCompile("[^-a-z0-9]")
 
