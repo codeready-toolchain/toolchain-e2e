@@ -178,10 +178,10 @@ func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awai
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 	//... that gets access to the space but using SpaceBindingRequests
-	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
-		WithSpecSpaceRole(spaceRole),
-		WithSpecMasterUserRecord(mur2.GetName()),
-		WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
+	spaceBindingRequest := testsupportsb.CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
+		testsupportsb.WithSpecSpaceRole(spaceRole),
+		testsupportsb.WithSpecMasterUserRecord(mur2.GetName()),
+		testsupportsb.WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 	)
 	// check for the spaceBinding creation
 	spaceBinding, err := hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
