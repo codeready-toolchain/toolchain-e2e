@@ -11,6 +11,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"

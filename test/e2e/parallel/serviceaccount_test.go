@@ -8,6 +8,7 @@ import (
 
 	"github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"

@@ -1,16 +1,17 @@
-package testsupport
+package spacebinding
 
 import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type SpaceBindingRequestOption func(request *toolchainv1alpha1.SpaceBindingRequest)
+type SpaceBindingRequestOption func(request *toolchainv1alpha1.SpaceBindingRequest) //nolint:revive
 
 func WithSpecSpaceRole(spaceRole string) SpaceBindingRequestOption {
 	return func(s *toolchainv1alpha1.SpaceBindingRequest) {
@@ -33,7 +34,7 @@ func WithNamespace(ns string) SpaceBindingRequestOption {
 func CreateSpaceBindingRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceBindingRequestOption) *toolchainv1alpha1.SpaceBindingRequest {
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
-	namePrefix := NewObjectNamePrefix(t)
+	namePrefix := util.NewObjectNamePrefix(t)
 
 	spaceBindingRequest := &toolchainv1alpha1.SpaceBindingRequest{
 		ObjectMeta: metav1.ObjectMeta{
