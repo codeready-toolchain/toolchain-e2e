@@ -1,4 +1,4 @@
-package testsupport
+package spacebinding
 
 import (
 	"context"
