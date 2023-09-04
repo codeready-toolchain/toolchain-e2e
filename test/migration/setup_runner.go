@@ -11,6 +11,7 @@ import (
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	tsspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -70,7 +71,7 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 	err := hostAwait.Client.Create(context.TODO(), space)
 	require.NoError(t, err)
 
-	_, _, binding := testsupport.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, r.WithCleanup)
+	_, _, binding := tsspace.CreateMurWithAdminSpaceBindingForSpace(t, r.Awaitilities, space, r.WithCleanup)
 
 	tier, err := hostAwait.WaitForNSTemplateTier(t, tierName)
 	require.NoError(t, err)

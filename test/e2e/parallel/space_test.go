@@ -8,6 +8,8 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
+	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -169,7 +171,7 @@ func TestSpaceRoles(t *testing.T) {
 			Resources()
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
+		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
 
 		// then
 		require.NoError(t, err)
@@ -432,7 +434,7 @@ func TestSubSpaces(t *testing.T) {
 					// when
 					// we create spaceBinding for subSpace
 					// override the parentMUR and give him admin role (was maintainer previously)
-					CreateSpaceBinding(t, awaitilities.Host(), parentMUR, subSpace, "admin")
+					testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), parentMUR, subSpace, "admin")
 
 					// then
 					// subSpace should have usernames and roles from parentSpaceBindings+subSpaceBindings
