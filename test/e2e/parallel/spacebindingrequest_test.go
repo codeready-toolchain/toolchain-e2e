@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/gofrs/uuid"
@@ -192,10 +193,10 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("update space binding request MasterUserRecord", func(t *testing.T) {
+	t.Run("update space binding request MasterUserRecord is denied", func(t *testing.T) {
 		// when
 		space, spaceBindingRequest, _ := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "admin")
-		// let's create another MUR that will have access to the space
+		// let's create another MUR that will be used for the update request
 		username := uuid.Must(uuid.NewV4()).String()
 		_, newmur := NewSignupRequest(awaitilities).
 			Username(username).
@@ -205,24 +206,26 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			NoSpace().
 			WaitForMUR().Execute(t).Resources()
-		// and we update the MUR in the SBR
-		_, err := memberAwait.UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
+		// and we try to update the MUR in the SBR
+		// with lower timeout since it will fail as expected
+		_, err := memberAwait.WithRetryOptions(TimeoutOption(time.Second*2)).UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
 			func(s *toolchainv1alpha1.SpaceBindingRequest) {
 				s.Spec.MasterUserRecord = newmur.GetName() // set to the new MUR
 			},
 		)
-		require.NoError(t, err)
+		require.Error(t, err) // an error from the validating webhook is expected when trying to update the MUR field
+		require.EqualError(t, err, "admission webhook \"users.spacebindingrequests.webhook.sandbox\" denied the request: SpaceBindingRequest.MasterUserRecord field cannot be updated. Consider deleting and recreating the SpaceBindingRequest resource")
 
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same MUR
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
 			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 			UntilSpaceBindingRequestHasSpecSpaceRole(spaceBindingRequest.Spec.SpaceRole),
-			UntilSpaceBindingRequestHasSpecMUR(newmur.GetName()), // new MUR
+			UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord), // MUR should be the same
 		)
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-			UntilSpaceBindingHasMurName(newmur.GetName()), // has new MUR
+			UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord), // MUR should be the same
 			UntilSpaceBindingHasSpaceName(space.Name),
 			UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
 		)
