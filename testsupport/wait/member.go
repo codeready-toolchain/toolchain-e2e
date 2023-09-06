@@ -1434,6 +1434,21 @@ func (a *MemberAwaitility) UpdateSpaceBindingRequest(t *testing.T, spaceBindingR
 	return sr, err
 }
 
+// WaitUntilSpaceBindingRequestDeleted waits until a SpaceBindingRequest with the given name does not exist anymore in the given namespace
+func (a *MemberAwaitility) WaitUntilSpaceBindingRequestDeleted(t *testing.T, spaceBindingRequest *toolchainv1alpha1.SpaceBindingRequest) error {
+	t.Logf("waiting for SpaceBindingRequest '%s' in namespace '%s' to be deleted", spaceBindingRequest.GetName(), spaceBindingRequest.GetNamespace())
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		sbr := &toolchainv1alpha1.SpaceBindingRequest{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: spaceBindingRequest.GetName(), Namespace: spaceBindingRequest.GetNamespace()}, sbr); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
 // Create tries to create the object until success
 // Workaround for https://github.com/kubernetes/kubernetes/issues/67761
 func (a *MemberAwaitility) Create(t *testing.T, obj client.Object) error {

@@ -12,6 +12,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,34 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 			// then
+			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
+			require.NoError(t, err)
+		})
+
+		t.Run("when mur is deleted and SpaceBinding was created via SpaceBindingRequest", func(t *testing.T) {
+			// given
+			// we have a space
+			space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithName("for-john"))
+			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
+			space, err := hostAwait.WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
+			require.NoError(t, err)
+
+			// and we also have a user that gets admin access to the Space but using SpaceBindingRequest mechanism
+			userSignup, spaceBindingRequest, spaceBinding := setupForSpaceBindingCleanupWithSBRTest(t, awaitilities, memberAwait, space, hostAwait, "jack", "admin")
+
+			// when
+			// we deactivate the UserSignup so that the MUR will be deleted
+			userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
+			require.NoError(t, err)
+			t.Logf("user signup '%s' set to deactivated", userSignup.Name)
+
+			// then
+			// spaceBindingRequest and spaceBindings should be deleted
+			err = memberAwait.WaitUntilSpaceBindingRequestDeleted(t, spaceBindingRequest)
+			require.NoError(t, err)
 			err = hostAwait.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
 			require.NoError(t, err)
 		})
@@ -139,6 +168,38 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	})
 }
 
+func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility, space *toolchainv1alpha1.Space, hostAwait *wait.HostAwaitility, username, spaceRole string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
+	userSignup2, mur2 := NewSignupRequest(awaitilities).
+		Username(username).
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		EnsureMUR().
+		NoSpace().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t).Resources()
+	//... that gets access to the space but using SpaceBindingRequests
+	spaceBindingRequest := testsupportsb.CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
+		testsupportsb.WithSpecSpaceRole(spaceRole),
+		testsupportsb.WithSpecMasterUserRecord(mur2.GetName()),
+		testsupportsb.WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
+	)
+	// check for the spaceBinding creation
+	spaceBinding, err := hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
+		wait.UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
+		wait.UntilSpaceBindingHasSpaceName(space.Name),
+		wait.UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
+		wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
+		wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
+	)
+	require.NoError(t, err)
+	// wait for spacebinding request status
+	spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
+		wait.UntilSpaceBindingRequestHasConditions(wait.Provisioned()),
+	)
+	require.NoError(t, err)
+	return userSignup2, spaceBindingRequest, spaceBinding
+}
+
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space, owner, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(targetMember.ClusterName), testspace.WithName(spaceName))
 	// at this point, just make sure the space exists so we can bind it to our user
@@ -159,6 +220,6 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 			wait.SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, owner.Status.CompliantUsername, murName)))
 	require.NoError(t, err)
 	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName))
+	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName), wait.UntilSpaceHasAnyProvisionedNamespaces())
 	return space, userSignup, spaceBinding
 }
