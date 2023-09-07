@@ -216,7 +216,7 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 			},
 		)
 		require.Error(t, err) // an error from the validating webhook is expected when trying to update the MUR field
-		require.EqualError(t, err, "admission webhook \"users.spacebindingrequests.webhook.sandbox\" denied the request: SpaceBindingRequest.MasterUserRecord field cannot be updated. Consider deleting and recreating the SpaceBindingRequest resource")
+		require.EqualError(t, err, "admission webhook \"users.spacebindingrequests.webhook.sandbox\" denied the request: SpaceBindingRequest.MasterUserRecord field cannot be changed. Consider deleting and creating a new SpaceBindingRequest resource")
 
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same MUR
