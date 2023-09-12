@@ -439,7 +439,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("60", "64Gi", "6", "32Gi"),
-		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "12"),
+		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "30"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
