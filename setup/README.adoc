@@ -109,6 +109,8 @@ Note 2: The `--workloads` flag tells the tool to capture the CPU and memory of a
 +
 Note 3: CSV resources are automatically created for each default user as well. An all-namespaces scoped operator will be installed as part of the 'preparing' step. This operator will create a CSV resource in each namespace to mimic the behaviour observed in the production cluster. This operator install step can be skipped with the `--skip-csvgen` flag but should not be skipped without good reason.
 +
+Note 4: If your workload is provisioning pods into the user's namespaces the Sandbox operator will delete the pod after an idle timeout of 15 seconds by default. This idle timeout can be configured by setting the `--idler-timeout` parameter like `--idler-timeout 5m` if you want your pods to remain active for longer.
++
 Use `go run setup/main.go --help` to see the full set of options. +
 . Grab some coffee ☕️, populating the cluster with 2000 users usually takes about an hour but can take longer depending on network latency +
 Note: If for some reason the provisioning users step does not complete (eg. timeout), note down how many users were created and rerun the command with the remaining number of users to be created and a different username prefix. eg. `go run setup/main.go --template=<path to a custom user-workloads.yaml file> --username zorro --users <number_of_users_left_to_create> --default <num_users_default_user_workloads_template> --custom <num_users_custom_user_workloads_template>`
