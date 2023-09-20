@@ -224,6 +224,10 @@ func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.Us
 		UserID:      userID,
 		Disabled:    false,
 		OriginalSub: originalSub,
+		PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
+			UserID:      userID,
+			OriginalSub: originalSub,
+		},
 	}
 }
 
