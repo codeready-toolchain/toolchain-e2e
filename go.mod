@@ -122,4 +122,4 @@ require (
 
 go 1.19
 
-replace github.com/codeready-toolchain/toolchain-common => /Users/fmuntean/go/src/github.com/codeready-toolchain/toolchain-common
+replace github.com/codeready-toolchain/toolchain-common => github.com/mfrancisc/toolchain-common v0.0.0-20230920161730-cbaf858a894d
