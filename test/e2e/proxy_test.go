@@ -665,7 +665,7 @@ func TestSpaceLister(t *testing.T) {
 			identityID:            uuid.Must(uuid.NewV4()),
 		},
 	}
-	appStudioTierRolesWSoption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer"})
+	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer"})
 
 	// create the users before the subtests, so they exist for the duration of the whole test
 	for _, user := range users {
@@ -693,7 +693,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], true, appStudioTierRolesWSoption), *workspace)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], true, appStudioTierRolesWSOption), *workspace)
 		})
 
 		t.Run("cannot get bus workspace", func(t *testing.T) {
@@ -724,7 +724,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], true, appStudioTierRolesWSoption), *busWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], true, appStudioTierRolesWSOption), *busWS)
 		})
 
 		t.Run("can get car workspace", func(t *testing.T) {
@@ -733,7 +733,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false, appStudioTierRolesWSoption), *carWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false, appStudioTierRolesWSOption), *carWS)
 		})
 	})
 
@@ -756,7 +756,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], false, appStudioTierRolesWSoption), *busWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], false, appStudioTierRolesWSOption), *busWS)
 		})
 
 		t.Run("can get car workspace", func(t *testing.T) {
@@ -765,7 +765,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false, appStudioTierRolesWSoption), *carWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false, appStudioTierRolesWSOption), *carWS)
 		})
 
 		t.Run("can get bicycle workspace", func(t *testing.T) {
@@ -774,7 +774,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], true, appStudioTierRolesWSoption), *bicycleWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], true, appStudioTierRolesWSOption), *bicycleWS)
 		})
 	})
 
