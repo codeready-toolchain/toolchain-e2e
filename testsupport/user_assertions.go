@@ -61,7 +61,8 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(t, mur.Name,
 		wait.UntilUserAccountHasConditions(wait.Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.OriginalSub)),
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.Userid,
+			userSignup.Spec.OriginalSub, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
 		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 		wait.UntilUserAccountMatchesMur(hostAwait))
@@ -219,7 +220,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
 }
 
-func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.UserAccountSpec {
+func ExpectedUserAccount(sub, userID, originalSub, email string) toolchainv1alpha1.UserAccountSpec {
 	return toolchainv1alpha1.UserAccountSpec{
 		UserID:      userID,
 		Disabled:    false,
@@ -227,6 +228,8 @@ func ExpectedUserAccount(userID string, originalSub string) toolchainv1alpha1.Us
 		PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
 			UserID:      userID,
 			OriginalSub: originalSub,
+			Sub:         sub,
+			Email:       email,
 		},
 	}
 }
