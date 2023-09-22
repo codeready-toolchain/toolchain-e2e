@@ -375,6 +375,7 @@ func TestSignupOK(t *testing.T) {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
+		require.NoError(t, hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, identity.Username))
 
 		// Now check that the reg-service treats the deactivated usersignup as nonexistent and returns 404
 		assertGetSignupReturnsNotFound(t, await, token)
