@@ -647,6 +647,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(t, err)
+		require.NoError(t, hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername))
 
 		t.Run("unban the banned user", func(t *testing.T) {
 			// Unban the user
