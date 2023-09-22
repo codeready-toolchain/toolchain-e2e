@@ -61,9 +61,11 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(t, mur.Name,
 		wait.UntilUserAccountHasConditions(wait.Provisioned()),
-		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.Userid, userSignup.Spec.Userid,
+		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.IdentityClaims.Sub,
+			userSignup.Spec.IdentityClaims.UserID,
 			userSignup.Spec.IdentityClaims.AccountID,
-			userSignup.Spec.OriginalSub, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])),
+			userSignup.Spec.OriginalSub,
+			userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
 		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 		wait.UntilUserAccountMatchesMur(hostAwait))
