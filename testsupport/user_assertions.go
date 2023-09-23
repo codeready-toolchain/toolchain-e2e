@@ -225,7 +225,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 func ExpectedUserAccount(sub, userID, accountID, originalSub, email string) toolchainv1alpha1.UserAccountSpec {
 	return toolchainv1alpha1.UserAccountSpec{
-		UserID:      userID,
+		UserID:      sub,
 		Disabled:    false,
 		OriginalSub: originalSub,
 		PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
