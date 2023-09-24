@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"testing"
 	"time"
 
@@ -238,6 +239,7 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			WaitForMUR().
+			UserID(uuid.Must(uuid.NewV4()).String()).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
 			Execute(t).
@@ -263,7 +265,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(t, usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(wait.Provisioned()),
-			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.Userid, usersignup.Spec.Userid,
+			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.Sub, usersignup.Spec.Userid,
 				usersignup.Spec.IdentityClaims.AccountID,
 				usersignup.Spec.OriginalSub, usersignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])),
 			UntilUserAccountMatchesMur(hostAwait))
