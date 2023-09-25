@@ -8,8 +8,12 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testcommonspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/redhat-cop/operator-utils/pkg/util"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -526,6 +530,73 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Confirm the MUR was created and target cluster was set
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+func (s *userSignupIntegrationTest) TestTransformUsernameWithSpaceConflict() {
+	// given
+	conflictingSpace, _, _ := CreateSpace(s.T(), s.Awaitilities, testcommonspace.WithName("conflicting"))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username(conflictingSpace.Name).
+		TargetCluster(s.Member1()).
+		ManuallyApprove().
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(s.T()).Resources()
+
+	// then
+	compliantUsername := userSignup.Status.CompliantUsername
+	require.Equal(s.T(), fmt.Sprintf("%s-2", conflictingSpace.Name), compliantUsername)
+
+	s.T().Run("when signup is deactivated, Space is stuck in terminating state, and when it reactivates then it should generate a new name", func(t *testing.T) {
+		// given
+		// let's get a namespace of the space
+		space, err := s.Host().WaitForSpace(t, compliantUsername, wait.UntilSpaceHasAnyProvisionedNamespaces())
+		require.NoError(t, err)
+		namespaceName := space.Status.ProvisionedNamespaces[0].Name
+		// and add a dummy finalizer there so it will get stuck
+		_, err = s.Member1().UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
+			util.AddFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
+		})
+		require.NoError(t, err)
+
+		// don't forget to clean the finalizer up
+		defer func() {
+			t.Log("cleaning up the finalizer")
+			_, err = s.Member1().UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
+				util.RemoveFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
+			})
+			require.NoError(t, err)
+		}()
+
+		// now deactivate the usersignup
+		_, err = s.Host().UpdateUserSignup(t, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetDeactivated(us, true)
+		})
+		require.NoError(t, err)
+
+		// wait until it is deactivated, SpaceBinding is gone, and Space is in terminating state
+		_, err = s.Host().WaitForUserSignup(t, userSignup.Name,
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
+		require.NoError(t, err)
+		err = s.Host().WaitUntilSpaceBindingsWithLabelDeleted(t, toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey, compliantUsername)
+		require.NoError(t, err)
+		_, err = s.Host().WaitForSpace(t, compliantUsername, wait.UntilSpaceIsBeingDeleted())
+		require.NoError(t, err)
+
+		// when
+		userSignup, err = s.Host().UpdateUserSignup(t, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			states.SetApprovedManually(us, true)
+		})
+		require.NoError(t, err)
+
+		// then
+		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30")
+		VerifySpaceRelatedResources(t, s.Awaitilities, userSignup, "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)
+	})
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsername() {

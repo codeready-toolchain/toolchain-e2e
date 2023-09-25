@@ -375,6 +375,7 @@ func TestSignupOK(t *testing.T) {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutPreDeactivation())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
+		require.NoError(t, hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, userSignup.Status.CompliantUsername))
 
 		// Now check that the reg-service treats the deactivated usersignup as nonexistent and returns 404
 		assertGetSignupReturnsNotFound(t, await, token)
@@ -805,8 +806,8 @@ func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, beare
 }
 
 func assertRHODSClusterURL(t *testing.T, memberAwait *wait.MemberAwaitility, response map[string]interface{}) {
-	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps.", "expected to find .apps. in the console URL %s", memberAwait.GetConsoleURL(t))
-	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps.")
+	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps", "expected to find .apps in the console URL %s", memberAwait.GetConsoleURL(t))
+	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps")
 	appsURL := memberAwait.GetConsoleURL(t)[index:]
 	assert.Equal(t, fmt.Sprintf("https://%s%s", "rhods-dashboard-redhat-ods-applications", appsURL), response["rhodsMemberURL"])
 }
