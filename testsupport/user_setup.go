@@ -65,6 +65,19 @@ func NewUserSignup(namespace, username string, email string) *toolchainv1alpha1.
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			Username: username,
 			Userid:   name,
+			IdentityClaims: toolchainv1alpha1.IdentityClaimsEmbedded{
+				PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
+					Sub:         name,
+					UserID:      uuid.Must(uuid.NewV4()).String(),
+					AccountID:   uuid.Must(uuid.NewV4()).String(),
+					OriginalSub: "original-sub-" + name,
+					Email:       email,
+				},
+				PreferredUsername: username,
+				GivenName:         "Reginald",
+				FamilyName:        "Smith",
+				Company:           "Alpha Bravo",
+			},
 		},
 	}
 }
