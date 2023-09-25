@@ -64,7 +64,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.IdentityClaims.Sub,
 			userSignup.Spec.IdentityClaims.UserID,
 			userSignup.Spec.IdentityClaims.AccountID,
-			userSignup.Spec.OriginalSub,
+			userSignup.Spec.IdentityClaims.OriginalSub,
 			userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
 		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
