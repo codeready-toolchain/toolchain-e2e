@@ -265,9 +265,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(t, usersignup.Status.CompliantUsername,
 			UntilUserAccountHasConditions(wait.Provisioned()),
-			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.Sub, usersignup.Spec.IdentityClaims.UserID,
-				usersignup.Spec.IdentityClaims.AccountID,
-				usersignup.Spec.OriginalSub, usersignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])),
+			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.PropagatedClaims)),
 			UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
