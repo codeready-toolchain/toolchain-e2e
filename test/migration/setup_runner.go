@@ -2,6 +2,7 @@ package migration
 
 import (
 	"context"
+	"github.com/gofrs/uuid"
 	"sync"
 	"testing"
 	"time"
@@ -150,6 +151,9 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser(t *testing.T) {
 func (r *SetupMigrationRunner) prepareUser(t *testing.T, name string, targetCluster *wait.MemberAwaitility) *toolchainv1alpha1.UserSignup {
 	requestBuilder := testsupport.NewSignupRequest(r.Awaitilities).
 		Username(name).
+		UserID(uuid.Must(uuid.NewV4()).String()).
+		AccountID(uuid.Must(uuid.NewV4()).String()).
+		OriginalSub("original_sub_" + name).
 		ManuallyApprove().
 		TargetCluster(targetCluster)
 	if !r.WithCleanup {
