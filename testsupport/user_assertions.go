@@ -224,13 +224,7 @@ func ExpectedUserAccount(claims toolchainv1alpha1.PropagatedClaims) toolchainv1a
 		UserID:      claims.Sub,
 		Disabled:    false,
 		OriginalSub: claims.OriginalSub,
-		PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
-			UserID:      claims.UserID,
-			AccountID:   claims.AccountID,
-			OriginalSub: claims.OriginalSub,
-			Sub:         claims.Sub,
-			Email:       claims.Email,
-		},
+		PropagatedClaims: claims,
 	}
 }
 
