@@ -683,7 +683,7 @@ func TestSpaceLister(t *testing.T) {
 		// then
 		// car should see only car's workspace
 		require.Len(t, workspaces, 1)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], true), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], commonproxy.WithType("home")), workspaces...)
 	})
 
 	t.Run("car gets workspaces", func(t *testing.T) {
@@ -693,7 +693,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], true, appStudioTierRolesWSOption), *workspace)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], commonproxy.WithType("home"), appStudioTierRolesWSOption), *workspace)
 		})
 
 		t.Run("cannot get bus workspace", func(t *testing.T) {
@@ -713,8 +713,8 @@ func TestSpaceLister(t *testing.T) {
 		// then
 		// bus should see both its own and car's workspace
 		require.Len(t, workspaces, 2)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], true), workspaces...)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], commonproxy.WithType("home")), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"]), workspaces...)
 	})
 
 	t.Run("bus gets workspaces", func(t *testing.T) {
@@ -724,7 +724,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], true, appStudioTierRolesWSOption), *busWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], commonproxy.WithType("home"), appStudioTierRolesWSOption), *busWS)
 		})
 
 		t.Run("can get car workspace", func(t *testing.T) {
@@ -733,7 +733,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false, appStudioTierRolesWSOption), *carWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], appStudioTierRolesWSOption), *carWS)
 		})
 	})
 
@@ -744,9 +744,9 @@ func TestSpaceLister(t *testing.T) {
 		// then
 		// car should see only car's workspace
 		require.Len(t, workspaces, 3)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], true), workspaces...)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false), workspaces...)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], false), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], commonproxy.WithType("home")), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"]), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"]), workspaces...)
 	})
 
 	t.Run("bicycle gets workspaces", func(t *testing.T) {
@@ -756,7 +756,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], false, appStudioTierRolesWSOption), *busWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], appStudioTierRolesWSOption), *busWS)
 		})
 
 		t.Run("can get car workspace", func(t *testing.T) {
@@ -765,7 +765,7 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], false, appStudioTierRolesWSOption), *carWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], appStudioTierRolesWSOption), *carWS)
 		})
 
 		t.Run("can get bicycle workspace", func(t *testing.T) {
@@ -774,14 +774,14 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], true, appStudioTierRolesWSOption), *bicycleWS)
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], commonproxy.WithType("home"), appStudioTierRolesWSOption), *bicycleWS)
 		})
 	})
 
 	t.Run("other workspace actions not permitted", func(t *testing.T) {
 		t.Run("create not allowed", func(t *testing.T) {
 			// given
-			workspaceToCreate := expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], false)
+			workspaceToCreate := expectedWorkspaceFor(t, awaitilities.Host(), users["bus"])
 			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
 			require.NoError(t, err)
 
@@ -809,7 +809,7 @@ func TestSpaceLister(t *testing.T) {
 
 		t.Run("update not allowed", func(t *testing.T) {
 			// when
-			workspaceToUpdate := expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], true)
+			workspaceToUpdate := expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], commonproxy.WithType("home"))
 			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
 			require.NoError(t, err)
 
@@ -1056,7 +1056,7 @@ func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha
 	t.Errorf("expected workspace %s not found", expectedWorkspace.Name)
 }
 
-func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *proxyUser, isHomeWorkspace bool, additionalWSOptions ...commonproxy.WorkspaceOption) toolchainv1alpha1.Workspace {
+func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *proxyUser, additionalWSOptions ...commonproxy.WorkspaceOption) toolchainv1alpha1.Workspace {
 	space, err := hostAwait.WaitForSpace(t, user.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
 	require.NoError(t, err)
 
@@ -1074,10 +1074,6 @@ func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *pr
 	ws := commonproxy.NewWorkspace(user.compliantUsername,
 		append(commonWSoptions, additionalWSOptions...)...,
 	)
-	// if the user is the same as the one who created the workspace, then expect type should be "home"
-	if isHomeWorkspace {
-		ws.Status.Type = "home"
-	}
 	return *ws
 }
 
