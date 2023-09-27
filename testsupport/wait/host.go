@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -1664,7 +1665,12 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL string) *rest.Config {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(t, err)
-	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	configOverrides := clientcmd.ConfigOverrides{
+		ClusterDefaults: api.Cluster{
+			InsecureSkipTLSVerify: true,
+		},
+	}
+	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &configOverrides).ClientConfig()
 	require.NoError(t, err)
 
 	return &rest.Config{
