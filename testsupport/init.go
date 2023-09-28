@@ -11,10 +11,10 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
@@ -54,12 +54,8 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 		require.NoError(t, err)
-		configOverrides := clientcmd.ConfigOverrides{
-			ClusterDefaults: api.Cluster{
-				InsecureSkipTLSVerify: true,
-			},
-		}
-		kubeconfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &configOverrides).ClientConfig()
+
+		kubeconfig, err := util.BuildKubernetesClient(*apiConfig)
 		require.NoError(t, err)
 
 		cl, err := client.New(kubeconfig, client.Options{

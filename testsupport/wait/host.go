@@ -18,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
@@ -31,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -1665,12 +1665,8 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL string) *rest.Config {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(t, err)
-	configOverrides := clientcmd.ConfigOverrides{
-		ClusterDefaults: api.Cluster{
-			InsecureSkipTLSVerify: true,
-		},
-	}
-	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &configOverrides).ClientConfig()
+
+	defaultConfig, err := testutil.BuildKubernetesClient(*apiConfig)
 	require.NoError(t, err)
 
 	return &rest.Config{

@@ -106,13 +106,9 @@ func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretN
 	require.False(t, api.IsConfigEmpty(apiConfig))
 
 	// create a new client with the given kubeconfig
-	configOverrides := clientcmd.ConfigOverrides{
-		ClusterDefaults: api.Cluster{
-			InsecureSkipTLSVerify: true,
-		},
-	}
-	kubeconfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &configOverrides).ClientConfig()
+	kubeconfig, err := util.BuildKubernetesClient(*apiConfig)
 	require.NoError(t, err)
+
 	s := scheme.Scheme
 	builder := append(runtime.SchemeBuilder{},
 		corev1.AddToScheme,
