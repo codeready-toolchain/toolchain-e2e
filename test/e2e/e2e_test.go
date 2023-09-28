@@ -541,7 +541,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// Wait until the UserSignup is deactivated
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.ManuallyDeactivated())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ManuallyDeactivated())...))
 		require.NoError(t, err)
 
 		// Ensure the first identity is deleted

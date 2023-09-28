@@ -230,6 +230,12 @@ func DeactivatedWithoutPreDeactivation() []toolchainv1alpha1.Condition {
 			Status: corev1.ConditionTrue,
 			Reason: "NotificationCRCreated",
 		},
+		{
+			Type:    toolchainv1alpha1.UserSignupApproved,
+			Status:  corev1.ConditionFalse,
+			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+
 	}
 }
 
@@ -259,6 +265,11 @@ func ManuallyDeactivated() []toolchainv1alpha1.Condition {
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
 			Status: corev1.ConditionTrue,
 			Reason: "NotificationCRCreated",
+		},
+		{
+			Type:    toolchainv1alpha1.UserSignupApproved,
+			Status:  corev1.ConditionFalse,
+			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 	}
 }

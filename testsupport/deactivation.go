@@ -40,7 +40,7 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	// We wait for the "Approved()" condition status here because it doesn't specify a reason for the approval,
 	// and the reason should not be necessary for the purpose of this test.
 	userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutPreDeactivation())...),
+		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 	require.NoError(t, err)
 	require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")
