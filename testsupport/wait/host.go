@@ -18,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
@@ -1664,7 +1665,8 @@ func (a *HostAwaitility) GetHostOperatorPod() (corev1.Pod, error) {
 func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL string) *rest.Config {
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(t, err)
-	defaultConfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+
+	defaultConfig, err := testutil.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
 	return &rest.Config{
