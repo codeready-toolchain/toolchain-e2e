@@ -106,7 +106,7 @@ func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretN
 	require.False(t, api.IsConfigEmpty(apiConfig))
 
 	// create a new client with the given kubeconfig
-	kubeconfig, err := util.BuildKubernetesClient(*apiConfig)
+	kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
 	s := scheme.Scheme

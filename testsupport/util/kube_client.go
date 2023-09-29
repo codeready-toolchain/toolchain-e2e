@@ -10,7 +10,7 @@ import (
 
 const EnvDisableKubeClientTLSVerify string = "DISABLE_KUBE_CLIENT_TLS_VERIFY"
 
-func BuildKubernetesClient(apiConfig api.Config) (*rest.Config, error) {
+func BuildKubernetesRESTConfig(apiConfig api.Config) (*rest.Config, error) {
 	if os.Getenv(EnvDisableKubeClientTLSVerify) == "true" {
 		apiConfig = setInsecureSkipTLSVerify(apiConfig)
 	}

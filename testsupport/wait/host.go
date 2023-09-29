@@ -1666,7 +1666,7 @@ func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL 
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	require.NoError(t, err)
 
-	defaultConfig, err := testutil.BuildKubernetesClient(*apiConfig)
+	defaultConfig, err := testutil.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
 	return &rest.Config{

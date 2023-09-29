@@ -55,7 +55,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 		require.NoError(t, err)
 
-		kubeconfig, err := util.BuildKubernetesClient(*apiConfig)
+		kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 		require.NoError(t, err)
 
 		cl, err := client.New(kubeconfig, client.Options{
