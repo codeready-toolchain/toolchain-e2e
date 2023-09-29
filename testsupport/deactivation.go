@@ -37,8 +37,6 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	assert.Equal(t, "userdeactivated", notification.Spec.Template)
 	assert.Equal(t, userSignup.Spec.Userid, notification.Spec.Context["UserID"])
 
-	// We wait for the "Approved()" condition status here because it doesn't specify a reason for the approval,
-	// and the reason should not be necessary for the purpose of this test.
 	userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
