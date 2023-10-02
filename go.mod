@@ -2,7 +2,7 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20230918195153-739e8fb09a33
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20230823084119-693476668406
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20231002120847-bf3a59c8351b
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
@@ -122,4 +122,4 @@ require (
 
 go 1.19
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/mfrancisc/toolchain-common v0.0.0-20230929083126-a3a39b0b6fee
+replace github.com/codeready-toolchain/toolchain-common => github.com/mfrancisc/toolchain-common v0.0.0-20231002145157-94054ae52f2e
