@@ -713,6 +713,7 @@ func TestSpaceLister(t *testing.T) {
 				testspace.WithSpecTargetCluster(memberAwait.ClusterName),
 				testspace.WithLabel(toolchainv1alpha1.SpaceCreatorLabelKey, "car"), // atm this label is used by the spacelister to set the owner of the workspace.
 			)
+			subSpace, _ = testsupportspace.VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 			// override username so that it uses the name of the sub-space when creating the expected workspace.
 			carUser := *users["car"]
 			carUser.compliantUsername = subSpace.GetName()
