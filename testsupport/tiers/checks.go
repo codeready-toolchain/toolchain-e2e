@@ -159,7 +159,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	case "stage":
 		otherNamespaceKind = "dev"
 	}
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(7))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(8))
 
 	return checks
 }
@@ -229,7 +229,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		crtadminViewRoleBinding(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), numberOfNetworkPolicies(7))
 	return checks
 }
 
@@ -1040,6 +1040,10 @@ func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
 
 func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
 	return networkPolicyIngressFromPolicyGroup("allow-from-console-namespaces", "console")
+}
+
+func networkPolicyAllowFromVirtualizationNamespaces() namespaceObjectsCheck {
+	return networkPolicyIngress("allow-from-openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-virtualization-os-images")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
