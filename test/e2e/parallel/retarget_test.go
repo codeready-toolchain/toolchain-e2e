@@ -25,7 +25,6 @@ func TestRetargetUserByChangingSpaceTargetCluster(t *testing.T) {
 		TargetCluster(member1Await).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		DisableCleanup().
 		Execute(t).Resources()
 
 	space, err := hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
