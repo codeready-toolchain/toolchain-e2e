@@ -86,7 +86,7 @@ func (u *ProxyUser) ShareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility,
 }
 
 func (u *ProxyUser) ListWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility) []toolchainv1alpha1.Workspace {
-	proxyCl := u.createProxyClient(t, hostAwait)
+	proxyCl := u.CreateProxyClient(t, hostAwait)
 
 	workspaces := &toolchainv1alpha1.WorkspaceList{}
 	err := proxyCl.List(context.TODO(), workspaces)
@@ -94,14 +94,14 @@ func (u *ProxyUser) ListWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility)
 	return workspaces.Items
 }
 
-func (u *ProxyUser) createProxyClient(t *testing.T, hostAwait *wait.HostAwaitility) client.Client {
+func (u *ProxyUser) CreateProxyClient(t *testing.T, hostAwait *wait.HostAwaitility) client.Client {
 	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.Token, hostAwait.APIProxyURL)
 	require.NoError(t, err)
 	return proxyCl
 }
 
 func (u *ProxyUser) GetWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, workspaceName string) (*toolchainv1alpha1.Workspace, error) {
-	proxyCl := u.createProxyClient(t, hostAwait)
+	proxyCl := u.CreateProxyClient(t, hostAwait)
 
 	workspace := &toolchainv1alpha1.Workspace{}
 	var cause error
@@ -132,12 +132,6 @@ func (u *ProxyUser) GetApplicationWithoutProxy(t *testing.T, applicationName str
 	require.NoError(t, err)
 	require.NotEmpty(t, app)
 	return app
-}
-
-func (u *ProxyUser) CreateProxyClient(t *testing.T, hostAwait *wait.HostAwaitility) client.Client {
-	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.Token, hostAwait.APIProxyURL)
-	require.NoError(t, err)
-	return proxyCl
 }
 
 func (u *ProxyUser) GetApplicationName(i int) string {

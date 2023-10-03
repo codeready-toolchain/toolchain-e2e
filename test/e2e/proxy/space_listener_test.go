@@ -107,7 +107,7 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], commonproxy.WithType("home"), appStudioTierRolesWSOption), *busWS)
 		})
 
-		t.Run("can get car workspace", func(t *testing.T) {
+		t.Run("can get car workspace(bus)", func(t *testing.T) {
 			// when
 			carWS, err := users["bus"].GetWorkspace(t, hostAwait, users["car"].CompliantUsername)
 
@@ -139,7 +139,7 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], appStudioTierRolesWSOption), *busWS)
 		})
 
-		t.Run("can get car workspace", func(t *testing.T) {
+		t.Run("can get car workspace(bicycle)", func(t *testing.T) {
 			// when
 			carWS, err := users["bicycle"].GetWorkspace(t, hostAwait, users["car"].CompliantUsername)
 

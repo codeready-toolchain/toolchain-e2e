@@ -265,9 +265,10 @@ func TestProxyApplicationsFlow(t *testing.T) {
 
 			t.Run("successful workspace context request with proxy plugin", func(t *testing.T) {
 				// we are going to repurpose a well known, always running route as a proxy plugin to contact through the registration service
-				CreateProxyPluginWithCleanup(t, hostAwait, "openshift-console", "openshift-console", "console")
-				VerifyProxyPlugin(t, hostAwait, "openshift-console")
-				proxyPluginWorkspaceURL := hostAwait.PluginProxyURLWithWorkspaceContext("openshift-console", user.CompliantUsername)
+				openshiftConsoleString := "openshift-console"
+				CreateProxyPluginWithCleanup(t, hostAwait, openshiftConsoleString, openshiftConsoleString, "console")
+				VerifyProxyPlugin(t, hostAwait, openshiftConsoleString)
+				proxyPluginWorkspaceURL := hostAwait.PluginProxyURLWithWorkspaceContext(openshiftConsoleString, user.CompliantUsername)
 				client := http.Client{
 					Timeout: 30 * time.Second,
 					Transport: &http.Transport{
