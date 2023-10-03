@@ -220,7 +220,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		},
 		UserAccountStatus: userAccount.Status,
 	}
-	mur, err = hostAwait.WaitForMasterUserRecord(t, mur.Name,
+	_, err = hostAwait.WaitForMasterUserRecord(t, mur.Name,
 		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
