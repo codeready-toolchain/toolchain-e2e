@@ -478,7 +478,7 @@ func UntilMasterUserRecordHasAnyUserAccountStatus() MasterUserRecordWaitCriterio
 			return len(actual.Status.UserAccounts) > 0
 		},
 		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
-			return fmt.Sprintf("expected to be at least one embedded UserAccount status present, but is empty")
+			return "expected to be at least one embedded UserAccount status present, but is empty"
 		},
 	}
 }
