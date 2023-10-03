@@ -68,7 +68,7 @@ clean-all-toolchain-resources:
 		CRD_NAME=`oc get $${CRD} --template '{{.metadata.name}}'`; \
 		oc delete $${CRD_NAME} --all --all-namespaces; \
 	done
-	$(Q)oc get clusterresourcequotas -l "toolchain.dev.openshift.com/provider"=codeready-toolchain --all --all-namespaces
+	$(Q)oc get clusterresourcequotas -l "toolchain.dev.openshift.com/provider"=codeready-toolchain --all-namespaces
 
 .PHONY: clean-toolchain-crds
 ## Delete all Toolchain CRDs
