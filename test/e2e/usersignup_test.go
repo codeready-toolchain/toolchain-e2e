@@ -197,7 +197,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			Execute(s.T()).Resources()
 
 		// then
-		require.NotEqual(t, mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
+		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
@@ -592,7 +592,7 @@ func (s *userSignupIntegrationTest) TestTransformUsernameWithSpaceConflict() {
 		require.NoError(t, err)
 
 		// then
-		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30")
+		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30", ExpectAnyUserAccount())
 		VerifySpaceRelatedResources(t, s.Awaitilities, userSignup, "base")
 		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)

@@ -27,12 +27,13 @@ func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups
 }
 
 func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, userTierName, spaceTierName string) {
-	VerifyUserRelatedResources(t, awaitilities, signup, userTierName)
-	VerifySpaceRelatedResources(t, awaitilities, signup, spaceTierName)
+	space := VerifySpaceRelatedResources(t, awaitilities, signup, spaceTierName)
+	spaceMember := GetSpaceTargetMember(t, awaitilities, space)
+	VerifyUserRelatedResources(t, awaitilities, signup, userTierName, ExpectUserAccountIn(spaceMember))
 }
 
 func VerifyResourcesProvisionedForSignupWithoutSpace(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, userTierName string) {
-	VerifyUserRelatedResources(t, awaitilities, signup, userTierName)
+	VerifyUserRelatedResources(t, awaitilities, signup, userTierName, NoUserAccount())
 
 	// verify space does not exist
 	space, err := awaitilities.Host().WithRetryOptions(wait.TimeoutOption(3*time.Second)).WaitForSpace(t, signup.Status.CompliantUsername)
@@ -40,7 +41,29 @@ func VerifyResourcesProvisionedForSignupWithoutSpace(t *testing.T, awaitilities 
 	require.Nil(t, space)
 }
 
-func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+type UserAccountOption struct {
+	expectUserAccount bool
+	targetCluster     *wait.MemberAwaitility
+}
+
+func NoUserAccount() UserAccountOption {
+	return UserAccountOption{}
+}
+
+func ExpectAnyUserAccount() UserAccountOption {
+	return UserAccountOption{
+		expectUserAccount: true,
+	}
+}
+
+func ExpectUserAccountIn(targetCluster *wait.MemberAwaitility) UserAccountOption {
+	return UserAccountOption{
+		expectUserAccount: true,
+		targetCluster:     targetCluster,
+	}
+}
+
+func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string, userAccountOption UserAccountOption) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 
 	hostAwait := awaitilities.Host()
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
@@ -50,28 +73,57 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		wait.ContainsCondition(wait.Complete()))
 	require.NoError(t, err)
 
+	userAccountStatusWaitCriterion := wait.UntilMasterUserRecordHasUserAccountStatusesInClusters()
+	if userAccountOption.expectUserAccount {
+		userAccountStatusWaitCriterion = wait.UntilMasterUserRecordHasAnyUserAccountStatus()
+		if userAccountOption.targetCluster != nil {
+			userAccountStatusWaitCriterion = wait.UntilMasterUserRecordHasUserAccountStatusesInClusters(userAccountOption.targetCluster.ClusterName)
+		}
+	}
+
 	// First, wait for the MasterUserRecord to exist, no matter what status
 	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasTierName(tierName),
-		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
+		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()),
+		userAccountStatusWaitCriterion)
 	require.NoError(t, err)
 
-	memberAwait := GetMurTargetMember(t, awaitilities, mur)
+	// Verify last target cluster annotation is set
+	lastCluster, foundLastCluster := userSignup.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey]
+	require.True(t, foundLastCluster)
+	// todo - change that as soon as we set the last-target-cluster annotation based on the "home" Space location
+	// todo - and as soon as we drop the embedded UserAccounts from MUR
+	require.Equal(t, mur.Spec.UserAccounts[0].TargetCluster, lastCluster)
+
+	if userAccountOption.expectUserAccount {
+		verifyUserAccount(t, awaitilities, userSignup, mur, userAccountOption)
+	} else {
+		for _, memberAwait := range awaitilities.AllMembers() {
+			// let's verify that the UserAccounts from all members are gone
+			err := memberAwait.WaitUntilUserDeleted(t, mur.Name)
+			require.NoError(t, err)
+		}
+	}
+
+	return userSignup, mur
+}
+
+func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, mur *toolchainv1alpha1.MasterUserRecord, userAccountOption UserAccountOption) {
+	hostAwait := awaitilities.Host()
+	memberAwait := userAccountOption.targetCluster
+	if memberAwait == nil {
+		memberAwait = GetMurTargetMember(t, awaitilities, mur)
+	}
 
 	// Then wait for the associated UserAccount to be provisioned
 	userAccount, err := memberAwait.WaitForUserAccount(t, mur.Name,
 		wait.UntilUserAccountHasConditions(wait.Provisioned()),
 		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.IdentityClaims.PropagatedClaims)),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
-		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
+		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
-
-	// Verify last target cluster annotation is set
-	lastCluster, foundLastCluster := userSignup.Annotations[toolchainv1alpha1.UserSignupLastTargetClusterAnnotationKey]
-	require.True(t, foundLastCluster)
-	require.Equal(t, memberAwait.ClusterName, lastCluster)
 
 	// Check the originalSub identity
 	originalSubIdentityName := ""
@@ -94,7 +146,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
+			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
 		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
 		userID, found := userSignup.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
@@ -162,7 +214,7 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
 	expectedEmbeddedUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
 		Cluster: toolchainv1alpha1.Cluster{
-			Name:        mur.Spec.UserAccounts[0].TargetCluster,
+			Name:        memberCluster.Name,
 			APIEndpoint: memberCluster.Spec.APIEndpoint,
 			ConsoleURL:  memberAwait.GetConsoleURL(t),
 		},
@@ -172,11 +224,9 @@ func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, si
 		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
 	assert.NoError(t, err)
-
-	return userSignup, mur
 }
 
-func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, spaceTierName string) {
+func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, spaceTierName string) *toolchainv1alpha1.Space {
 
 	hostAwait := awaitilities.Host()
 
@@ -185,22 +235,23 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 		wait.ContainsCondition(wait.Complete()))
 	require.NoError(t, err)
 
-	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
-	require.NoError(t, err)
-
 	tier, err := hostAwait.WaitForNSTemplateTier(t, spaceTierName)
 	require.NoError(t, err)
 	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
-	space, err := hostAwait.WaitForSpace(t, mur.Name,
+	space, err := hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
 		wait.UntilSpaceHasTier(spaceTierName),
 		wait.UntilSpaceHasLabelWithValue(toolchainv1alpha1.SpaceCreatorLabelKey, userSignup.Name),
 		wait.UntilSpaceHasLabelWithValue(fmt.Sprintf("toolchain.dev.openshift.com/%s-tier-hash", spaceTierName), hash),
 		wait.UntilSpaceHasConditions(wait.Provisioned()),
 		wait.UntilSpaceHasStateLabel(toolchainv1alpha1.SpaceStateLabelValueClusterAssigned),
-		wait.UntilSpaceHasStatusTargetCluster(mur.Spec.UserAccounts[0].TargetCluster))
+		wait.UntilSpaceHasAnyTargetClusterSet())
+	require.NoError(t, err)
+
+	mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
+		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()),
+		wait.UntilMasterUserRecordHasUserAccountStatusesInClusters(space.Spec.TargetCluster))
 	require.NoError(t, err)
 
 	testsupportsb.VerifySpaceBinding(t, hostAwait, mur.Name, space.Name, "admin")
@@ -217,6 +268,8 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	tierChecks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
 	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
+
+	return space
 }
 
 func ExpectedUserAccount(claims toolchainv1alpha1.PropagatedClaims) toolchainv1alpha1.UserAccountSpec {
@@ -230,14 +283,25 @@ func ExpectedUserAccount(claims toolchainv1alpha1.PropagatedClaims) toolchainv1a
 
 func GetMurTargetMember(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord) *wait.MemberAwaitility {
 	for _, member := range awaitilities.AllMembers() {
-		for _, ua := range mur.Spec.UserAccounts {
-			if ua.TargetCluster == member.ClusterName {
+		for _, ua := range mur.Status.UserAccounts {
+			if ua.Cluster.Name == member.ClusterName {
 				return member
 			}
 		}
 	}
 
 	require.FailNowf(t, "Unable to find a target member cluster", "MasterUserRecord: %+v", mur)
+	return nil
+}
+
+func GetSpaceTargetMember(t *testing.T, awaitilities wait.Awaitilities, space *toolchainv1alpha1.Space) *wait.MemberAwaitility {
+	for _, member := range awaitilities.AllMembers() {
+		if space.Spec.TargetCluster == member.ClusterName {
+			return member
+		}
+	}
+
+	require.FailNowf(t, "Unable to find a target member cluster", "Space: %+v", space)
 	return nil
 }
 

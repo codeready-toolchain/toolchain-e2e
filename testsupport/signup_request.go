@@ -290,9 +290,12 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		if hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier != nil {
 			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}
-		VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30")
 		if !r.noSpace {
-			VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
+			space := VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
+			spaceMember := GetSpaceTargetMember(t, r.awaitilities, space)
+			VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30", ExpectUserAccountIn(spaceMember))
+		} else {
+			VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30", NoUserAccount())
 		}
 		mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername)
 		require.NoError(t, err)

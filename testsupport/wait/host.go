@@ -471,6 +471,46 @@ func UntilMasterUserRecordHasUserAccountStatuses(expected ...toolchainv1alpha1.U
 	}
 }
 
+// UntilMasterUserRecordHasAnyUserAccountStatus checks if MasterUserRecord status has any embedded UserAccount status
+func UntilMasterUserRecordHasAnyUserAccountStatus() MasterUserRecordWaitCriterion {
+	return MasterUserRecordWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
+			return len(actual.Status.UserAccounts) > 0
+		},
+		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+			return fmt.Sprintf("expected to be at least one embedded UserAccount status present, but is empty")
+		},
+	}
+}
+
+// UntilMasterUserRecordHasUserAccountStatusesInClusters checks if MasterUserRecord status has a set of UserAccounts provisioned in the given set of clusters
+func UntilMasterUserRecordHasUserAccountStatusesInClusters(expectedClusters ...string) MasterUserRecordWaitCriterion {
+	return MasterUserRecordWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
+			if len(actual.Status.UserAccounts) != len(expectedClusters) {
+				return false
+			}
+			for _, expectedCluster := range expectedClusters {
+				found := false
+				for _, ua := range actual.Status.UserAccounts {
+					if ua.Cluster.Name == expectedCluster {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+			return fmt.Sprintf("expected that the status has a list of UserAccounts provisioned in clusters '%s', the actual:\n%v",
+				expectedClusters, actual.Status.UserAccounts)
+		},
+	}
+}
+
 func UntilMasterUserRecordHasTierName(expected string) MasterUserRecordWaitCriterion {
 	return MasterUserRecordWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
