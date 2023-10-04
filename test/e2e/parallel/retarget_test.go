@@ -1,7 +1,6 @@
 package parallel
 
 import (
-	"os"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -54,10 +53,6 @@ func TestRetargetUserByChangingSpaceTargetClusterWhenSpaceIsNotShared(t *testing
 func TestRetargetUserByChangingSpaceTargetClusterWhenSpaceIsShared(t *testing.T) {
 	// given
 	t.Parallel()
-	os.Setenv("MEMBER_NS", "toolchain-member-04105016")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-04105016")
-	os.Setenv("HOST_NS", "toolchain-host-04105016")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-04105016")
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	member1Await := awaitilities.Member1()
