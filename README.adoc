@@ -70,6 +70,8 @@ NOTE: you can override the default namespace names where the end-to-end tests ar
 
 NOTE: you can disable SSL/TLS certificate verification in tests setting the `DISABLE_KUBE_CLIENT_TLS_VERIFY` variable to `true` - eg.: `make test-e2e DISABLE_KUBE_CLIENT_TLS_VERIFY=true`. This flag helps when you test in clusters using Self-Signed Certificates.
 
+NOTE: you can specify a regular expression to selectively run particular test cases by setting the `TESTS_RUN_FILTER_REGEXP` variable. eg.: `make test-e2e TESTS_RUN_FILTER_REGEXP="TestSetupMigration"`. For more information see the https://pkg.go.dev/cmd/go#hdr-Testing_flags[go test -run documentation].
+
 === Running/Debugging e2e tests from your IDE
 
 In order to run/debug tests from your IDE you'll need to export some required env variables, those will be used by the test framework to interact with the operator namespaces and the other toolchain resources in you cluster.
