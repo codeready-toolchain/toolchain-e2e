@@ -9,6 +9,7 @@ import (
 
 func TestSetupMigration(t *testing.T) {
 	// given
+	t.Setenv("skip-mutating-webhook-check-on-setup", "true")
 	awaitilities := WaitForDeployments(t)
 
 	runner := migration.SetupMigrationRunner{
