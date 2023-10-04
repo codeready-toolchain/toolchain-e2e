@@ -28,9 +28,9 @@ import (
 // full flow from usersignup with approval down to namespaces creation and cleanup
 //
 // !!! Additional context !!!
-// The test uses a dummy HAS API type called Application. The reason is that the regular
-// user doesn't have full permission for the standard types like ConfigMap. This means
-// that we could do create/read operations on that resource from this test.
+// The test uses a dummy HAS API type called Application. The reason for creating the dummy
+// Application CRD instead of using the real one is that we want to reduce the adherence
+// to 3rd party operators (we don't want to have to install the operator for our e2e tests).
 // To work around this limitation, we created a dummy HAS API type that has the same name
 // and the same group as the actual one. The CRD is created as part of the test setup
 // and since the CRD name & group name matches, then RBAC allow us to execute create/read
@@ -89,16 +89,18 @@ func TestProxyApplicationsFlow(t *testing.T) {
 				}
 
 				t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
-					// Update application
+					// given
 					applicationName := user.GetApplicationName(0)
-					// Get application
 					proxyApp := user.GetApplication(t, proxyCl, applicationName)
+
+					// when
 					// Update DisplayName
 					changedDisplayName := fmt.Sprintf("Proxy test for user %s - updated application", TenantNsName(user.CompliantUsername))
 					proxyApp.Spec.DisplayName = changedDisplayName
 					err := proxyCl.Update(context.TODO(), proxyApp)
 					require.NoError(t, err)
 
+					// then
 					// Find application and check, if it is updated
 					updatedApp := user.GetApplication(t, proxyCl, applicationName)
 					assert.Equal(t, proxyApp.Spec.DisplayName, updatedApp.Spec.DisplayName)
@@ -109,12 +111,16 @@ func TestProxyApplicationsFlow(t *testing.T) {
 				})
 
 				t.Run("use proxy to list a HAS Application CR in the user appstudio namespace", func(t *testing.T) {
+					// given
 					// Get List of applications.
 					err := proxyCl.List(context.TODO(), applicationList, &client.ListOptions{Namespace: TenantNsName(user.CompliantUsername)})
-					// User should be able to list applications
 					require.NoError(t, err)
+
+					// when
+					// User should be able to list applications
 					assert.NotEmpty(t, applicationList.Items)
 
+					// then
 					// Check that the applicationList using a regular client (non-proxy)
 					applicationListWS := &appstudiov1.ApplicationList{}
 					err = user.ExpectedMemberCluster.Client.List(context.TODO(), applicationListWS, &client.ListOptions{Namespace: TenantNsName(user.CompliantUsername)})
@@ -124,11 +130,12 @@ func TestProxyApplicationsFlow(t *testing.T) {
 				})
 
 				t.Run("use proxy to patch a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
-					// Patch application
+					// given
 					applicationName := user.GetApplicationName(1)
 					patchString := "Patched application for proxy test"
-					// Get application
 					proxyApp := user.GetApplication(t, proxyCl, applicationName)
+
+					// when
 					// Patch for DisplayName
 					patchPayload := []PatchStringValue{{
 						Op:    "replace",
@@ -138,10 +145,11 @@ func TestProxyApplicationsFlow(t *testing.T) {
 					patchPayloadBytes, err := json.Marshal(patchPayload)
 					require.NoError(t, err)
 
-					// Appply Patch
+					// Apply Patch
 					err = proxyCl.Patch(context.TODO(), proxyApp, client.RawPatch(types.JSONPatchType, patchPayloadBytes))
 					require.NoError(t, err)
 
+					// then
 					// Get patched app and verify patched DisplayName
 					patchedApp := user.GetApplication(t, proxyCl, applicationName)
 					assert.Equal(t, patchString, patchedApp.Spec.DisplayName)
@@ -154,8 +162,10 @@ func TestProxyApplicationsFlow(t *testing.T) {
 				t.Run("use proxy to delete a HAS Application CR in the user appstudio namespace via proxy API and use websocket to watch it deleted", func(t *testing.T) {
 					// Delete applications
 					for i := 0; i < len(applicationList.Items); i++ {
-						// Get application
+						// given
 						proxyApp := applicationList.Items[i].DeepCopy()
+
+						// when
 						// Delete
 						err := proxyCl.Delete(context.TODO(), proxyApp)
 						require.NoError(t, err)
@@ -164,6 +174,7 @@ func TestProxyApplicationsFlow(t *testing.T) {
 						)
 						require.NoError(t, err)
 
+						// then
 						// Check that the Application is deleted using a regular client (non-proxy)
 						namespacedName := types.NamespacedName{Namespace: TenantNsName(user.CompliantUsername), Name: proxyApp.Name}
 						originalApp := &appstudiov1.Application{}
@@ -279,12 +290,10 @@ func TestProxyApplicationsFlow(t *testing.T) {
 				require.NoError(t, err)
 
 				request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", user.Token))
-				var resp *http.Response
-				resp, err = client.Do(request)
+				resp, err := client.Do(request)
 				require.NoError(t, err)
 				defer resp.Body.Close()
-				var body []byte
-				body, err = io.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
 				bodyStr := string(body)
 				if resp.StatusCode != http.StatusOK {
