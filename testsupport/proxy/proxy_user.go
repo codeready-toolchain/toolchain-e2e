@@ -1,4 +1,4 @@
-package appstudio
+package proxy
 
 import (
 	"context"
@@ -30,50 +30,6 @@ type ProxyUser struct {
 	IdentityID            uuid.UUID
 	Signup                *toolchainv1alpha1.UserSignup
 	CompliantUsername     string
-}
-
-func CreateAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *ProxyUser) {
-	// Create and approve signup
-	req := testsupport.NewSignupRequest(awaitilities).
-		Username(user.Username).
-		IdentityID(user.IdentityID).
-		ManuallyApprove().
-		TargetCluster(user.ExpectedMemberCluster).
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
-	user.Signup, _ = req.Resources()
-	user.Token = req.GetToken()
-	testsupport.VerifyResourcesProvisionedForSignup(t, awaitilities, user.Signup, "deactivate30", "appstudio")
-	user.CompliantUsername = user.Signup.Status.CompliantUsername
-	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.CompliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
-	require.NoError(t, err)
-}
-
-func CreatePreexistingUserAndIdentity(t *testing.T, user ProxyUser) (*userv1.User, *userv1.Identity) {
-	preexistingUser := &userv1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: user.Username,
-		},
-		Identities: []string{
-			identitypkg.NewIdentityNamingStandard(user.IdentityID.String(), "rhd").IdentityName(),
-		},
-	}
-	require.NoError(t, user.ExpectedMemberCluster.CreateWithCleanup(t, preexistingUser))
-
-	preexistingIdentity := &userv1.Identity{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: identitypkg.NewIdentityNamingStandard(user.IdentityID.String(), "rhd").IdentityName(),
-		},
-		ProviderName:     "rhd",
-		ProviderUserName: user.Username,
-		User: corev1.ObjectReference{
-			Name: preexistingUser.Name,
-			UID:  preexistingUser.UID,
-		},
-	}
-	require.NoError(t, user.ExpectedMemberCluster.CreateWithCleanup(t, preexistingIdentity))
-	return preexistingUser, preexistingIdentity
 }
 
 func (u *ProxyUser) ShareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility, guestUser *ProxyUser) {
@@ -161,4 +117,48 @@ func CreateProxyUsersForTest(t *testing.T, awaitilities wait.Awaitilities) []*Pr
 		CreateAppStudioUser(t, awaitilities, user)
 	}
 	return users
+}
+
+func CreateAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *ProxyUser) {
+	// Create and approve signup
+	req := testsupport.NewSignupRequest(awaitilities).
+		Username(user.Username).
+		IdentityID(user.IdentityID).
+		ManuallyApprove().
+		TargetCluster(user.ExpectedMemberCluster).
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t)
+	user.Signup, _ = req.Resources()
+	user.Token = req.GetToken()
+	testsupport.VerifyResourcesProvisionedForSignup(t, awaitilities, user.Signup, "deactivate30", "appstudio")
+	user.CompliantUsername = user.Signup.Status.CompliantUsername
+	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.CompliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
+	require.NoError(t, err)
+}
+
+func CreatePreexistingUserAndIdentity(t *testing.T, user ProxyUser) (*userv1.User, *userv1.Identity) {
+	preexistingUser := &userv1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: user.Username,
+		},
+		Identities: []string{
+			identitypkg.NewIdentityNamingStandard(user.IdentityID.String(), "rhd").IdentityName(),
+		},
+	}
+	require.NoError(t, user.ExpectedMemberCluster.CreateWithCleanup(t, preexistingUser))
+
+	preexistingIdentity := &userv1.Identity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: identitypkg.NewIdentityNamingStandard(user.IdentityID.String(), "rhd").IdentityName(),
+		},
+		ProviderName:     "rhd",
+		ProviderUserName: user.Username,
+		User: corev1.ObjectReference{
+			Name: preexistingUser.Name,
+			UID:  preexistingUser.UID,
+		},
+	}
+	require.NoError(t, user.ExpectedMemberCluster.CreateWithCleanup(t, preexistingIdentity))
+	return preexistingUser, preexistingIdentity
 }

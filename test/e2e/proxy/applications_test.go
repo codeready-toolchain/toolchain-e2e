@@ -12,8 +12,8 @@ import (
 	"time"
 
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/proxy"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -35,7 +35,7 @@ import (
 // and the same group as the actual one. The CRD is created as part of the test setup
 // and since the CRD name & group name matches, then RBAC allow us to execute create/read
 // operations on that resource using the user permissions.
-func TestProxyApplicationsFlow(t *testing.T) {
+func TestProxyFlow(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()

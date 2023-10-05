@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/proxy"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,6 @@ import (
 )
 
 func TestSharedWorkspaces(t *testing.T) {
-	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()

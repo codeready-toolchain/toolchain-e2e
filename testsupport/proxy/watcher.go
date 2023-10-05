@@ -1,4 +1,4 @@
-package appstudio
+package proxy
 
 import (
 	"context"

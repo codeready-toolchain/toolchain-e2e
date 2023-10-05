@@ -1,4 +1,4 @@
-package proxy
+package parallel
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/proxy"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
