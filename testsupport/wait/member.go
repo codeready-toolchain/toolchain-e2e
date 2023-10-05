@@ -2257,15 +2257,17 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 	}
 
 	tests := map[string]struct {
-		Index int
-		Name  string
-		Path  string
-		Rule  Rule
+		Index         int
+		Name          string
+		Path          string
+		FailurePolicy admv1.FailurePolicyType
+		Rule          Rule
 	}{
 		"users pods webhook": {
-			Index: 0,
-			Name:  "users.pods.webhook.sandbox",
-			Path:  "/mutate-users-pods",
+			Index:         0,
+			Name:          "users.pods.webhook.sandbox",
+			Path:          "/mutate-users-pods",
+			FailurePolicy: admv1.Ignore,
 			Rule: Rule{
 				Operations:  []admv1.OperationType{"CREATE"},
 				APIGroups:   []string{""},
@@ -2274,9 +2276,10 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 			},
 		},
 		"virtual machine webhook": {
-			Index: 1,
-			Name:  "users.virtualmachines.webhook.sandbox",
-			Path:  "/mutate-virtual-machines",
+			Index:         1,
+			Name:          "users.virtualmachines.webhook.sandbox",
+			Path:          "/mutate-virtual-machines",
+			FailurePolicy: admv1.Fail,
 			Rule: Rule{
 				Operations:  []admv1.OperationType{"CREATE"},
 				APIGroups:   []string{"kubevirt.io"},
@@ -2293,7 +2296,7 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 			assert.Equal(t, admv1.SideEffectClassNone, *webhook.SideEffects)
 			assert.Equal(t, int32(5), *webhook.TimeoutSeconds)
 			assert.Equal(t, admv1.NeverReinvocationPolicy, *webhook.ReinvocationPolicy)
-			assert.Equal(t, admv1.Ignore, *webhook.FailurePolicy)
+			assert.Equal(t, tc.FailurePolicy, *webhook.FailurePolicy)
 			assert.Equal(t, admv1.Equivalent, *webhook.MatchPolicy)
 			assert.Equal(t, codereadyToolchainProviderLabel, webhook.NamespaceSelector.MatchLabels)
 			assert.Equal(t, ca, webhook.ClientConfig.CABundle)
@@ -2347,7 +2350,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"v1"}, checlusterWebhook.AdmissionReviewVersions)
 	assert.Equal(t, admv1.SideEffectClassNone, *checlusterWebhook.SideEffects)
 	assert.Equal(t, int32(5), *checlusterWebhook.TimeoutSeconds)
-	assert.Equal(t, admv1.Ignore, *checlusterWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Fail, *checlusterWebhook.FailurePolicy)
 	assert.Equal(t, admv1.Equivalent, *checlusterWebhook.MatchPolicy)
 	assert.Equal(t, codereadyToolchainProviderLabel, checlusterWebhook.NamespaceSelector.MatchLabels)
 	assert.Equal(t, ca, checlusterWebhook.ClientConfig.CABundle)
