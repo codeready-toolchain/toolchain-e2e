@@ -1,4 +1,4 @@
-package parallel
+package proxy
 
 import (
 	"context"
@@ -17,7 +17,6 @@ import (
 )
 
 func TestSpaceLister(t *testing.T) {
-	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
