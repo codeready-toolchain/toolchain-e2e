@@ -2323,7 +2323,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"v1"}, spacebindingrequestWebhook.AdmissionReviewVersions)
 	assert.Equal(t, admv1.SideEffectClassNone, *spacebindingrequestWebhook.SideEffects)
 	assert.Equal(t, int32(5), *spacebindingrequestWebhook.TimeoutSeconds)
-	assert.Equal(t, admv1.Fail, *spacebindingrequestWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Ignore, *spacebindingrequestWebhook.FailurePolicy)
 	assert.Equal(t, admv1.Equivalent, *spacebindingrequestWebhook.MatchPolicy)
 	assert.Equal(t, codereadyToolchainProviderLabel, spacebindingrequestWebhook.NamespaceSelector.MatchLabels)
 	assert.Equal(t, ca, spacebindingrequestWebhook.ClientConfig.CABundle)
