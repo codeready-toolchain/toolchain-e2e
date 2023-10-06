@@ -2240,6 +2240,7 @@ func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
 func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) {
 	if val := os.Getenv("skip-mutating-webhook-check-on-setup"); val == "true" {
 		// skipped temporarily only for setup migration test but applies for after migration test
+		// This should be removed after the PR is merged
 		return
 	}
 
