@@ -11,6 +11,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/tools/clientcmd"
@@ -53,7 +54,8 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 		require.NoError(t, err)
-		kubeconfig, err := clientcmd.NewDefaultClientConfig(*apiConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+
+		kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 		require.NoError(t, err)
 
 		cl, err := client.New(kubeconfig, client.Options{
