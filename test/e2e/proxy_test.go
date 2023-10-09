@@ -57,13 +57,18 @@ type patchStringValue struct {
 	Value string `json:"value"`
 }
 
-func (u *proxyUser) shareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility, guestUser *proxyUser) {
+func (u *proxyUser) shareSpaceWith(t *testing.T, awaitilities wait.Awaitilities, guestUser *proxyUser) *toolchainv1alpha1.SpaceBindingRequest {
 	// share primaryUser space with guestUser
-	guestUserMur, err := hostAwait.GetMasterUserRecord(guestUser.compliantUsername)
+	guestUserMur, err := awaitilities.Host().GetMasterUserRecord(guestUser.compliantUsername)
 	require.NoError(t, err)
-	primaryUserSpace, err := hostAwait.WaitForSpace(t, u.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+	primaryUserSpace, err := awaitilities.Host().WaitForSpace(t, u.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet(), wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
-	CreateSpaceBinding(t, hostAwait, guestUserMur, primaryUserSpace, "admin") // creating a spacebinding gives guestUser access to primaryUser's space
+	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, primaryUserSpace.Spec.TargetCluster,
+		WithSpecSpaceRole("admin"),
+		WithSpecMasterUserRecord(guestUserMur.GetName()),
+		WithNamespace(testsupportspace.GetDefaultNamespace(primaryUserSpace.Status.ProvisionedNamespaces)),
+	)
+	return spaceBindingRequest
 }
 
 func (u *proxyUser) listWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility) []toolchainv1alpha1.Workspace {
@@ -505,7 +510,7 @@ func TestProxyFlow(t *testing.T) {
 			// given
 
 			// share primaryUser space with guestUser
-			primaryUser.shareSpaceWith(t, hostAwait, guestUser)
+			primaryUser.shareSpaceWith(t, awaitilities, guestUser)
 
 			// VerifySpaceRelatedResources will verify the roles and rolebindings are updated to include guestUser's SpaceBinding
 			VerifySpaceRelatedResources(t, awaitilities, primaryUser.signup, "appstudio")
@@ -674,9 +679,9 @@ func TestSpaceLister(t *testing.T) {
 		createAppStudioUser(t, awaitilities, user)
 	}
 
-	users["car"].shareSpaceWith(t, hostAwait, users["bus"])
-	users["car"].shareSpaceWith(t, hostAwait, users["bicycle"])
-	users["bus"].shareSpaceWith(t, hostAwait, users["bicycle"])
+	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
+	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
+	bicycleSBROnBusSpace := users["bus"].shareSpaceWith(t, awaitilities, users["bicycle"])
 
 	t.Run("car lists workspaces", func(t *testing.T) {
 		// when
@@ -685,7 +690,7 @@ func TestSpaceLister(t *testing.T) {
 		// then
 		// car should see only car's workspace
 		require.Len(t, workspaces, 1)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], commonproxy.WithType("home")), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", commonproxy.WithType("home")), workspaces...)
 	})
 
 	t.Run("car gets workspaces", func(t *testing.T) {
@@ -695,11 +700,18 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], commonproxy.WithType("home"), appStudioTierRolesWSOption,
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}}},
+					{MasterUserRecord: "bus", Role: "admin",
+						AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+							Name:      busSBROnCarSpace.GetName(),
+							Namespace: busSBROnCarSpace.GetNamespace(),
+						}},
+					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // no actions since this is system generated binding
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      bicycleSBROnCarSpace.GetName(),
+						Namespace: bicycleSBROnCarSpace.GetNamespace(),
+					}}},
 				)),
 				*workspace)
 		})
@@ -714,24 +726,42 @@ func TestSpaceLister(t *testing.T) {
 				testspace.WithLabel(toolchainv1alpha1.SpaceCreatorLabelKey, "car"), // atm this label is used by the spacelister to set the owner of the workspace.
 			)
 			subSpace, _ = testsupportspace.VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
-			// override username so that it uses the name of the sub-space when creating the expected workspace.
-			carUser := *users["car"]
-			carUser.compliantUsername = subSpace.GetName()
 
 			// when
-			workspace, err := users["car"].getWorkspace(t, hostAwait, subSpace.GetName())
+			workspaceForCarUser, err := users["car"].getWorkspace(t, hostAwait, subSpace.GetName())
+			require.NoError(t, err)
+			workspaceForBicycleUser, err := users["bicycle"].getWorkspace(t, hostAwait, subSpace.GetName())
+			require.NoError(t, err)
+			workspaceForBusUser, err := users["bus"].getWorkspace(t, hostAwait, subSpace.GetName())
+			require.NoError(t, err)
 
 			// then
 			// the spacebindings are inherited from the parent space
-			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), &carUser, appStudioTierRolesWSOption,
+			// for car user
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), subSpace.GetName(), commonproxy.WithOwner("car"), appStudioTierRolesWSOption,
 				commonproxy.WithType("home"),
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"override"}},
 					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"override"}},
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"override"}}},
 				)),
-				*workspace)
+				*workspaceForCarUser)
+			// for bicycle user
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), subSpace.GetName(), commonproxy.WithOwner("car"), appStudioTierRolesWSOption,
+				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"override"}},           // bus has SBR on parentSpace, so the binding can only be overridden
+					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"override"}},           // car is owner of the parentSpace, so it can only be overridden
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"override"}}}, // bicycle has SBR on parentSpace, so the binding can only be overridden
+				)),
+				*workspaceForBicycleUser)
+			// for bus user
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), subSpace.GetName(), commonproxy.WithOwner("car"), appStudioTierRolesWSOption,
+				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"override"}},
+					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"override"}},
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"override"}}},
+				)),
+				*workspaceForBusUser)
 		})
 
 		t.Run("cannot get bus workspace", func(t *testing.T) {
@@ -751,8 +781,8 @@ func TestSpaceLister(t *testing.T) {
 		// then
 		// bus should see both its own and car's workspace
 		require.Len(t, workspaces, 2)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], commonproxy.WithType("home")), workspaces...)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"]), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", commonproxy.WithType("home")), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car"), workspaces...)
 	})
 
 	t.Run("bus gets workspaces", func(t *testing.T) {
@@ -762,10 +792,13 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], commonproxy.WithType("home"), appStudioTierRolesWSOption,
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}}})),
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      bicycleSBROnBusSpace.GetName(),
+						Namespace: bicycleSBROnBusSpace.GetNamespace(),
+					}}})),
 				*busWS)
 		})
 
@@ -775,11 +808,17 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], appStudioTierRolesWSOption,
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}}},
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      busSBROnCarSpace.GetName(),
+						Namespace: busSBROnCarSpace.GetNamespace(),
+					}},
+					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      bicycleSBROnCarSpace.GetName(),
+						Namespace: bicycleSBROnCarSpace.GetNamespace(),
+					}}},
 				),
 			), *carWS)
 		})
@@ -792,9 +831,9 @@ func TestSpaceLister(t *testing.T) {
 		// then
 		// car should see only car's workspace
 		require.Len(t, workspaces, 3)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], commonproxy.WithType("home")), workspaces...)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"]), workspaces...)
-		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"]), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "road-bicycle", commonproxy.WithOwner(users["bicycle"].signup.Name), commonproxy.WithType("home")), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car"), workspaces...)
+		verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus"), workspaces...)
 	})
 
 	t.Run("bicycle gets workspaces", func(t *testing.T) {
@@ -804,10 +843,13 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bus"], appStudioTierRolesWSOption,
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}}},
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      bicycleSBROnBusSpace.GetName(),
+						Namespace: bicycleSBROnBusSpace.GetNamespace(),
+					}}},
 				),
 			), *busWS)
 		})
@@ -818,11 +860,17 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["car"], appStudioTierRolesWSOption,
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"update", "delete"}},
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}}},
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      busSBROnCarSpace.GetName(),
+						Namespace: busSBROnCarSpace.GetNamespace(),
+					}},
+					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						Name:      bicycleSBROnCarSpace.GetName(),
+						Namespace: bicycleSBROnCarSpace.GetNamespace(),
+					}}}, // this is system generated so no actions for the user
 				),
 			), *carWS)
 		})
@@ -833,9 +881,9 @@ func TestSpaceLister(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], commonproxy.WithType("home"), appStudioTierRolesWSOption,
+			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "road-bicycle", commonproxy.WithOwner(users["bicycle"].signup.Name), commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}}},
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string(nil)}}, // this is system generated so no actions for the user
 				),
 			), *bicycleWS)
 		})
@@ -844,7 +892,7 @@ func TestSpaceLister(t *testing.T) {
 	t.Run("other workspace actions not permitted", func(t *testing.T) {
 		t.Run("create not allowed", func(t *testing.T) {
 			// given
-			workspaceToCreate := expectedWorkspaceFor(t, awaitilities.Host(), users["bus"])
+			workspaceToCreate := expectedWorkspaceFor(t, awaitilities.Host(), "bus")
 			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
 			require.NoError(t, err)
 
@@ -872,7 +920,7 @@ func TestSpaceLister(t *testing.T) {
 
 		t.Run("update not allowed", func(t *testing.T) {
 			// when
-			workspaceToUpdate := expectedWorkspaceFor(t, awaitilities.Host(), users["bicycle"], commonproxy.WithType("home"))
+			workspaceToUpdate := expectedWorkspaceFor(t, awaitilities.Host(), "road-bicycle", commonproxy.WithOwner(users["bicycle"].signup.Name), commonproxy.WithType("home"))
 			bicycleCl, err := hostAwait.CreateAPIProxyClient(t, users["bicycle"].token, hostAwait.APIProxyURL)
 			require.NoError(t, err)
 
@@ -1119,22 +1167,22 @@ func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha
 	t.Errorf("expected workspace %s not found", expectedWorkspace.Name)
 }
 
-func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *proxyUser, additionalWSOptions ...commonproxy.WorkspaceOption) toolchainv1alpha1.Workspace {
-	space, err := hostAwait.WaitForSpace(t, user.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
+func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, spaceName string, additionalWSOptions ...commonproxy.WorkspaceOption) toolchainv1alpha1.Workspace {
+	space, err := hostAwait.WaitForSpace(t, spaceName, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
 	require.NoError(t, err)
 
 	commonWSoptions := []commonproxy.WorkspaceOption{
 		commonproxy.WithObjectMetaFrom(space.ObjectMeta),
 		commonproxy.WithNamespaces([]toolchainv1alpha1.SpaceNamespace{
 			{
-				Name: user.compliantUsername + "-tenant",
+				Name: spaceName + "-tenant",
 				Type: "default",
 			},
 		}),
-		commonproxy.WithOwner(user.signup.Name),
+		commonproxy.WithOwner(spaceName),
 		commonproxy.WithRole("admin"),
 	}
-	ws := commonproxy.NewWorkspace(user.compliantUsername,
+	ws := commonproxy.NewWorkspace(spaceName,
 		append(commonWSoptions, additionalWSOptions...)...,
 	)
 	return *ws
