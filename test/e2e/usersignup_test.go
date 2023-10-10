@@ -289,6 +289,39 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
+func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaimsModified() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-resources-updated").
+		Email("test-user-resources-updated@redhat.com").
+		UserID("43215432").
+		AccountID("ppqnnn00099").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+
+	// Update the UserSignup
+	userSignup, err := hostAwait.UpdateUserSignup(s.T(), userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		// Modify the user's AccountID
+		us.Spec.IdentityClaims.AccountID = "nnnbbb111234"
+	})
+	require.NoError(s.T(), err)
+
+	// Confirm the AccountID is updated
+	require.Equal(s.T(), "nnnbbb111234", userSignup.Spec.IdentityClaims.AccountID)
+
+	// Verify that the resources are updated with the propagated claim
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
 // TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub tests the case where:
 //
 // 1. sub claim set manually by test
