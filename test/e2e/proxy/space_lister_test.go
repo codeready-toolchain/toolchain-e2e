@@ -27,7 +27,7 @@ func TestSpaceLister(t *testing.T) {
 
 	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
 
-	users := map[string]*ProxyUser{
+	users := map[string]*UserProxy{
 		"car": {
 			ExpectedMemberCluster: memberAwait,
 			Username:              "car",
@@ -201,7 +201,7 @@ func TestSpaceLister(t *testing.T) {
 	})
 }
 
-func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *ProxyUser, additionalWSOptions ...commonproxy.WorkspaceOption) toolchainv1alpha1.Workspace {
+func expectedWorkspaceFor(t *testing.T, hostAwait *wait.HostAwaitility, user *UserProxy, additionalWSOptions ...commonproxy.WorkspaceOption) toolchainv1alpha1.Workspace {
 	space, err := hostAwait.WaitForSpace(t, user.CompliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet())
 	require.NoError(t, err)
 

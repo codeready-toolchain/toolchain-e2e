@@ -30,7 +30,7 @@ func TestSharedWorkspaces(t *testing.T) {
 		waitForWatcher.Wait()
 	}()
 
-	users := CreateProxyUsersForTest(t, awaitilities)
+	users := CreateUsersProxyForTest(t, awaitilities)
 
 	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
 	preexistingUser, preexistingIdentity := CreatePreexistingUserAndIdentity(t, *users[0])

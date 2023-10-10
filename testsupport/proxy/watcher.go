@@ -35,7 +35,7 @@ type WsWatcher struct {
 	done         chan interface{}
 	interrupt    chan os.Signal
 	t            *testing.T
-	user         ProxyUser
+	user         UserProxy
 	namespace    string
 	connection   *websocket.Conn
 	proxyBaseURL string
@@ -67,7 +67,7 @@ func RunWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 	// ======================================================
 
 	t.Log("provisioning the watcher")
-	watchUser := &ProxyUser{
+	watchUser := &UserProxy{
 		ExpectedMemberCluster: awaitilities.Member1(),
 		Username:              "watcher",
 		IdentityID:            uuid.Must(uuid.NewV4()),
@@ -113,7 +113,7 @@ func RunWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 	return &waitForWatcher
 }
 
-func NewWsWatcher(t *testing.T, user ProxyUser, namespace, proxyURL string) *WsWatcher {
+func NewWsWatcher(t *testing.T, user UserProxy, namespace, proxyURL string) *WsWatcher {
 	_, err := url.Parse(proxyURL)
 	require.NoError(t, err)
 	return &WsWatcher{

@@ -50,7 +50,7 @@ func TestProxyFlow(t *testing.T) {
 		t.Log("wait until the watcher is stopped")
 		waitForWatcher.Wait()
 	}()
-	users := CreateProxyUsersForTest(t, awaitilities)
+	users := CreateUsersProxyForTest(t, awaitilities)
 	for index, user := range users {
 		t.Run(user.Username, func(t *testing.T) {
 			// Start a new websocket watcher

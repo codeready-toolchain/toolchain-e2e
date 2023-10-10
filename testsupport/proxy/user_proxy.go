@@ -23,7 +23,7 @@ import (
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
 )
 
-type ProxyUser struct {
+type UserProxy struct {
 	ExpectedMemberCluster *wait.MemberAwaitility
 	Username              string
 	Token                 string
@@ -32,7 +32,7 @@ type ProxyUser struct {
 	CompliantUsername     string
 }
 
-func (u *ProxyUser) ShareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility, guestUser *ProxyUser) {
+func (u *UserProxy) ShareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility, guestUser *UserProxy) {
 	// share primaryUser space with guestUser
 	guestUserMur, err := hostAwait.GetMasterUserRecord(guestUser.CompliantUsername)
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func (u *ProxyUser) ShareSpaceWith(t *testing.T, hostAwait *wait.HostAwaitility,
 	spacebinding.CreateSpaceBinding(t, hostAwait, guestUserMur, primaryUserSpace, "admin") // creating a spacebinding gives guestUser access to primaryUser's space
 }
 
-func (u *ProxyUser) ListWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility) []toolchainv1alpha1.Workspace {
+func (u *UserProxy) ListWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility) []toolchainv1alpha1.Workspace {
 	proxyCl := u.CreateProxyClient(t, hostAwait)
 
 	workspaces := &toolchainv1alpha1.WorkspaceList{}
@@ -50,13 +50,13 @@ func (u *ProxyUser) ListWorkspaces(t *testing.T, hostAwait *wait.HostAwaitility)
 	return workspaces.Items
 }
 
-func (u *ProxyUser) CreateProxyClient(t *testing.T, hostAwait *wait.HostAwaitility) client.Client {
+func (u *UserProxy) CreateProxyClient(t *testing.T, hostAwait *wait.HostAwaitility) client.Client {
 	proxyCl, err := hostAwait.CreateAPIProxyClient(t, u.Token, hostAwait.APIProxyURL)
 	require.NoError(t, err)
 	return proxyCl
 }
 
-func (u *ProxyUser) GetWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, workspaceName string) (*toolchainv1alpha1.Workspace, error) {
+func (u *UserProxy) GetWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, workspaceName string) (*toolchainv1alpha1.Workspace, error) {
 	proxyCl := u.CreateProxyClient(t, hostAwait)
 
 	workspace := &toolchainv1alpha1.Workspace{}
@@ -71,7 +71,7 @@ func (u *ProxyUser) GetWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, w
 	return workspace, cause
 }
 
-func (u *ProxyUser) GetApplication(t *testing.T, proxyClient client.Client, applicationName string) *appstudiov1.Application {
+func (u *UserProxy) GetApplication(t *testing.T, proxyClient client.Client, applicationName string) *appstudiov1.Application {
 	app := &appstudiov1.Application{}
 	namespacedName := types.NamespacedName{Namespace: TenantNsName(u.CompliantUsername), Name: applicationName}
 	// Get Application
@@ -81,7 +81,7 @@ func (u *ProxyUser) GetApplication(t *testing.T, proxyClient client.Client, appl
 	return app
 }
 
-func (u *ProxyUser) GetApplicationWithoutProxy(t *testing.T, applicationName string) *appstudiov1.Application {
+func (u *UserProxy) GetApplicationWithoutProxy(t *testing.T, applicationName string) *appstudiov1.Application {
 	namespacedName := types.NamespacedName{Namespace: TenantNsName(u.CompliantUsername), Name: applicationName}
 	app := &appstudiov1.Application{}
 	err := u.ExpectedMemberCluster.Client.Get(context.TODO(), namespacedName, app)
@@ -90,12 +90,12 @@ func (u *ProxyUser) GetApplicationWithoutProxy(t *testing.T, applicationName str
 	return app
 }
 
-func (u *ProxyUser) GetApplicationName(i int) string {
+func (u *UserProxy) GetApplicationName(i int) string {
 	return fmt.Sprintf("%s-test-app-%d", u.CompliantUsername, i)
 }
 
-func CreateProxyUsersForTest(t *testing.T, awaitilities wait.Awaitilities) []*ProxyUser {
-	users := []*ProxyUser{
+func CreateUsersProxyForTest(t *testing.T, awaitilities wait.Awaitilities) []*UserProxy {
+	users := []*UserProxy{
 		{
 			ExpectedMemberCluster: awaitilities.Member1(),
 			Username:              "proxymember1",
@@ -119,7 +119,7 @@ func CreateProxyUsersForTest(t *testing.T, awaitilities wait.Awaitilities) []*Pr
 	return users
 }
 
-func CreateAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *ProxyUser) {
+func CreateAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *UserProxy) {
 	// Create and approve signup
 	req := testsupport.NewSignupRequest(awaitilities).
 		Username(user.Username).
@@ -137,7 +137,7 @@ func CreateAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *Pro
 	require.NoError(t, err)
 }
 
-func CreatePreexistingUserAndIdentity(t *testing.T, user ProxyUser) (*userv1.User, *userv1.Identity) {
+func CreatePreexistingUserAndIdentity(t *testing.T, user UserProxy) (*userv1.User, *userv1.Identity) {
 	preexistingUser := &userv1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: user.Username,
