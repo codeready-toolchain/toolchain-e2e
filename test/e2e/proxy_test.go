@@ -68,6 +68,8 @@ func (u *proxyUser) shareSpaceWith(t *testing.T, awaitilities wait.Awaitilities,
 		WithSpecMasterUserRecord(guestUserMur.GetName()),
 		WithNamespace(testsupportspace.GetDefaultNamespace(primaryUserSpace.Status.ProvisionedNamespaces)),
 	)
+	_, err = awaitilities.Host().WaitForSpaceBinding(t, guestUserMur.GetName(), primaryUserSpace.GetName())
+	require.NoError(t, err)
 	return spaceBindingRequest
 }
 
