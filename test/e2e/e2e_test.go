@@ -106,7 +106,6 @@ func TestE2EFlow(t *testing.T) {
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		DisableCleanup().
 		Execute(t).Resources()
 
 	extrajohnName := "extrajohn"
@@ -146,10 +145,10 @@ func TestE2EFlow(t *testing.T) {
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "deactivate30", "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base")
 
-	johnsmithMur, err := hostAwait.GetMasterUserRecord(johnsmithName)
+	johnsmithSpace, err := hostAwait.WaitForSpace(t, johnsmithName, wait.UntilSpaceHasAnyTargetClusterSet())
 	require.NoError(t, err)
 
-	targetedJohnMur, err := hostAwait.GetMasterUserRecord(targetedJohnName)
+	targetedJohnSpace, err := hostAwait.WaitForSpace(t, targetedJohnName, wait.UntilSpaceHasAnyTargetClusterSet())
 	require.NoError(t, err)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -272,8 +271,8 @@ func TestE2EFlow(t *testing.T) {
 		_, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
 			wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 multiple signups + johnSignup + johnExtraSignup + targetedJohnName + originalSubJohnSignup +
-			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+8),
-			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
+			wait.UntilHasSpaceCount(johnsmithSpace.Spec.TargetCluster, originalMemberStatuses[johnsmithSpace.Spec.TargetCluster].SpaceCount+8),
+			wait.UntilHasSpaceCount(targetedJohnSpace.Spec.TargetCluster, originalMemberStatuses[targetedJohnSpace.Spec.TargetCluster].SpaceCount+1),
 		)
 		require.NoError(t, err)
 	})
@@ -494,8 +493,8 @@ func TestE2EFlow(t *testing.T) {
 			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
 			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8),
-			wait.UntilHasSpaceCount(johnsmithMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[johnsmithMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+7),
-			wait.UntilHasSpaceCount(targetedJohnMur.Spec.UserAccounts[0].TargetCluster, originalMemberStatuses[targetedJohnMur.Spec.UserAccounts[0].TargetCluster].SpaceCount+1),
+			wait.UntilHasSpaceCount(johnsmithSpace.Spec.TargetCluster, originalMemberStatuses[johnsmithSpace.Spec.TargetCluster].SpaceCount+7),
+			wait.UntilHasSpaceCount(targetedJohnSpace.Spec.TargetCluster, originalMemberStatuses[targetedJohnSpace.Spec.TargetCluster].SpaceCount+1),
 		)
 		require.NoError(t, err)
 	})
