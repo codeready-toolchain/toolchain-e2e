@@ -106,9 +106,9 @@ func ApprovedByAdmin() []toolchainv1alpha1.Condition {
 func ApprovedDeactivated() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
-			Type:    toolchainv1alpha1.UserSignupApproved,
-			Status:  corev1.ConditionFalse,
-			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 	}
 }
@@ -241,9 +241,9 @@ func DeactivatedWithoutPreDeactivation() []toolchainv1alpha1.Condition {
 			Reason: "NotificationCRCreated",
 		},
 		{
-			Type:    toolchainv1alpha1.UserSignupApproved,
-			Status:  corev1.ConditionFalse,
-			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 	}
 }
@@ -261,9 +261,9 @@ func DeactivatedWithoutNotification() []toolchainv1alpha1.Condition {
 			Reason: "UserIsActive",
 		},
 		{
-			Type:    toolchainv1alpha1.UserSignupApproved,
-			Status:  corev1.ConditionFalse,
-			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 	}
 }
@@ -281,9 +281,9 @@ func ManuallyDeactivated() []toolchainv1alpha1.Condition {
 			Reason: "NotificationCRCreated",
 		},
 		{
-			Type:    toolchainv1alpha1.UserSignupApproved,
-			Status:  corev1.ConditionFalse,
-			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 	}
 }
@@ -306,9 +306,9 @@ func Deactivated() []toolchainv1alpha1.Condition {
 			Reason: "NotificationCRCreated",
 		},
 		{
-			Type:    toolchainv1alpha1.UserSignupApproved,
-			Status:  corev1.ConditionFalse,
-			Reason:  toolchainv1alpha1.UserSignupUserDeactivatedReason,
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
 		},
 	}
 }
