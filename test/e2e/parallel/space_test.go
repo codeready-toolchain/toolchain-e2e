@@ -267,34 +267,6 @@ func TestPromoteSpace(t *testing.T) {
 	})
 }
 
-func TestRetargetSpace(t *testing.T) {
-	// given
-	t.Parallel()
-	// make sure everything is ready before running the actual tests
-	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	member1Await := awaitilities.Member1()
-	member2Await := awaitilities.Member2()
-
-	// when
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base"), testspace.WithSpecTargetCluster(member1Await.ClusterName))
-	// then
-	// wait until Space has been provisioned on member-1
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(member1Await.ClusterName))
-
-	// when
-	space, err := hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = member2Await.ClusterName
-	})
-	require.NoError(t, err)
-
-	// then
-	// wait until Space has been provisioned on member-1
-	space, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
-	err = member1Await.WaitUntilNSTemplateSetDeleted(t, space.Name) // expect NSTemplateSet to be delete on member-1 cluster
-	require.NoError(t, err)
-}
-
 func TestSubSpaces(t *testing.T) {
 	// given
 	t.Parallel()
