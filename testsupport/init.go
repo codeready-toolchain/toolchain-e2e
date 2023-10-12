@@ -10,6 +10,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	vmapiv1 "github.com/codeready-toolchain/toolchain-common/pkg/virtualmachine/api/v1"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -172,6 +173,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		corev1.AddToScheme,
 		metrics.AddToScheme,
 		appstudiov1.AddToScheme,
+		vmapiv1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
