@@ -2240,9 +2240,9 @@ func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
 }
 
 func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) {
-	if val := os.Getenv("skip-mutating-webhook-check-on-setup"); val == "true" {
+	if val := os.Getenv("skip-webhook-checks-on-setup"); val == "true" {
 		// skipped temporarily only for setup migration test but applies for after migration test
-		// This should be removed after the PR is merged
+		// This should be removed after PR https://github.com/codeready-toolchain/toolchain-e2e/pull/809 is merged
 		return
 	}
 
@@ -2320,6 +2320,11 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 }
 
 func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte) {
+	if val := os.Getenv("skip-webhook-checks-on-setup"); val == "true" {
+		// skipped temporarily only for setup migration test but applies for after migration test
+		// This should be removed after PR https://github.com/codeready-toolchain/toolchain-e2e/pull/809 is merged
+		return
+	}
 	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
 	a.waitForResource(t, "", "member-operator-validating-webhook", actualValWbhConf)
