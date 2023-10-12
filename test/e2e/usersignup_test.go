@@ -197,7 +197,12 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			Execute(s.T()).Resources()
 
 		// then
-		require.NotEqual(t, mur1.Spec.UserAccounts[0].TargetCluster, mur2.Spec.UserAccounts[0].TargetCluster)
+		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
+		space1, err := hostAwait.WaitForSpace(t, mur1.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+		require.NoError(t, err)
+		space2, err := hostAwait.WaitForSpace(t, mur2.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+		require.NoError(t, err)
+		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
@@ -281,6 +286,39 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		Execute(s.T()).Resources()
 
 	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaimsModified() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-resources-updated").
+		Email("test-user-resources-updated@redhat.com").
+		UserID("43215432").
+		AccountID("ppqnnn00099").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+
+	// Update the UserSignup
+	userSignup, err := hostAwait.UpdateUserSignup(s.T(), userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		// Modify the user's AccountID
+		us.Spec.IdentityClaims.AccountID = "nnnbbb111234"
+	})
+	require.NoError(s.T(), err)
+
+	// Confirm the AccountID is updated
+	require.Equal(s.T(), "nnnbbb111234", userSignup.Spec.IdentityClaims.AccountID)
+
+	// Verify that the resources are updated with the propagated claim
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
@@ -592,7 +630,7 @@ func (s *userSignupIntegrationTest) TestTransformUsernameWithSpaceConflict() {
 		require.NoError(t, err)
 
 		// then
-		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30")
+		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30", ExpectAnyUserAccount())
 		VerifySpaceRelatedResources(t, s.Awaitilities, userSignup, "base")
 		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)

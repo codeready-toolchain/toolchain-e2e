@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -652,6 +653,7 @@ func UntilNSTemplateSetHasAnySpaceRoles() NSTemplateSetWaitCriterion {
 }
 
 func SpaceRole(templateRef string, usernames ...string) toolchainv1alpha1.NSTemplateSetSpaceRole {
+	sort.Strings(usernames)
 	return toolchainv1alpha1.NSTemplateSetSpaceRole{
 		TemplateRef: templateRef,
 		Usernames:   usernames,
