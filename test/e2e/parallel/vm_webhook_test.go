@@ -1,11 +1,15 @@
 package parallel
 
 import (
+	"context"
 	"testing"
 
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-	vmapi "github.com/codeready-toolchain/toolchain-common/pkg/virtualmachine/api"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -19,6 +23,11 @@ func TestCreateVirtualMachine(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
+
+	client, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	if err != nil {
+		panic(err)
+	}
 
 	// Provision a user to create the vm
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
@@ -37,20 +46,59 @@ func TestCreateVirtualMachine(t *testing.T) {
 		vmNamespace := "test-vm-dev"
 
 		// when
-		err := createVM(t, memberAwait, vmName, vmNamespace, vmapi.WithRequests(vmapi.ResourceList("1", "2Gi"))) // only requests are set, no limits set
+		// create VM
+		vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
+		vm := vmResourceWithRequests(t, memberAwait, vmName, vmNamespace)
+		_, err := client.Resource(vmRes).Namespace(vmNamespace).Create(context.TODO(), vm, metav1.CreateOptions{})
 
 		// then
-
 		// verify no error creating VM
 		require.NoError(t, err)
 
 		// verify webhook has set limits to same value as requests
-		_, err = memberAwait.WaitForVM(t, vmName, vmNamespace, wait.UntilVMHasRequests(vmapi.ResourceList("1", "2Gi")), wait.UntilVMHasLimits(vmapi.ResourceList("1", "2Gi")))
-		require.NoError(t, err)
+		result, getErr := client.Resource(vmRes).Namespace(vmNamespace).Get(context.TODO(), vmName, metav1.GetOptions{})
+		require.NoError(t, getErr)
+
+		// verify requests are still set
+		requests, found, requestsErr := unstructured.NestedStringMap(result.Object, "spec", "template", "spec", "domain", "resources", "requests")
+		require.NoError(t, requestsErr)
+		require.True(t, found)
+		require.Equal(t, requests["memory"], "2Gi")
+		require.Equal(t, requests["cpu"], "1")
+
+		// verify limits are set
+		limits, found, limitsErr := unstructured.NestedStringMap(result.Object, "spec", "template", "spec", "domain", "resources", "limits")
+		require.NoError(t, limitsErr)
+		require.True(t, found)
+		require.Equal(t, limits["memory"], "2Gi")
+		require.Equal(t, limits["cpu"], "1")
 	})
 }
-
-func createVM(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, options ...vmapi.VMOption) error {
-	vm := vmapi.NewVM(name, namespace, options...)
-	return memberAwait.Create(t, vm)
+func vmResourceWithRequests(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "kubevirt.io/v1",
+			"kind":       "VirtualMachine",
+			"metadata": map[string]interface{}{
+				"name": name,
+			},
+			"spec": map[string]interface{}{
+				"template": map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name": name,
+					},
+					"spec": map[string]interface{}{
+						"domain": map[string]interface{}{
+							"resources": map[string]interface{}{
+								"requests": map[string]interface{}{
+									"memory": "2Gi",
+									"cpu":    "1",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }

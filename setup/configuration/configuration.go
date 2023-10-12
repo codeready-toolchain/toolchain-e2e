@@ -9,7 +9,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	vmapiv1 "github.com/codeready-toolchain/toolchain-common/pkg/virtualmachine/api/v1"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/terminal"
 
 	quotav1 "github.com/openshift/api/quota/v1"
@@ -117,7 +116,6 @@ func NewScheme() (*runtime.Scheme, error) {
 		templatev1.Install,
 		routev1.Install,
 		appsv1.AddToScheme,
-		vmapiv1.AddToScheme,
 	)
 	err := builder.AddToScheme(s)
 	return s, err

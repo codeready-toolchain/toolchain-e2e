@@ -2819,8 +2819,6 @@ spec:
                                   and "cpu".
                                 type: object
                             type: object
-                        required:
-                        - devices
                         type: object
                       evictionStrategy:
                         description: EvictionStrategy can be set to "LiveMigrate"

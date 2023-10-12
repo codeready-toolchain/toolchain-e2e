@@ -13,7 +13,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
-	vmapiv1 "github.com/codeready-toolchain/toolchain-common/pkg/virtualmachine/api/v1"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
@@ -26,7 +25,6 @@ import (
 	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
@@ -2581,80 +2579,80 @@ containers:
 }
 
 // VMWaitCriterion a struct to compare with a given VirtualMachine
-type VMWaitCriterion struct {
-	Match func(*vmapiv1.VirtualMachine) bool
-	Diff  func(*vmapiv1.VirtualMachine) string
-}
+// type VMWaitCriterion struct {
+// 	Match func(*vmapiv1.VirtualMachine) bool
+// 	Diff  func(*vmapiv1.VirtualMachine) string
+// }
 
-func matchVMWaitCriterion(actual *vmapiv1.VirtualMachine, criteria ...VMWaitCriterion) bool {
-	for _, c := range criteria {
-		if !c.Match(actual) {
-			return false
-		}
-	}
-	return true
-}
+// func matchVMWaitCriterion(actual *vmapiv1.VirtualMachine, criteria ...VMWaitCriterion) bool {
+// 	for _, c := range criteria {
+// 		if !c.Match(actual) {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
 
-func (a *MemberAwaitility) printVMWaitCriterionDiffs(t *testing.T, actual *vmapiv1.VirtualMachine, criteria ...VMWaitCriterion) {
-	buf := &strings.Builder{}
-	if actual == nil {
-		buf.WriteString("failed to find VirtualMachine\n")
-		buf.WriteString(a.listAndReturnContent("VirtualMachine", a.Namespace, &vmapiv1.VirtualMachineList{}))
-	} else {
-		buf.WriteString("failed to find VirtualMachine with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
-		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
-		for _, c := range criteria {
-			if !c.Match(actual) && c.Diff != nil {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
-			}
-		}
-	}
-	t.Log(buf.String())
-}
+// func (a *MemberAwaitility) printVMWaitCriterionDiffs(t *testing.T, actual *vmapiv1.VirtualMachine, criteria ...VMWaitCriterion) {
+// 	buf := &strings.Builder{}
+// 	if actual == nil {
+// 		buf.WriteString("failed to find VirtualMachine\n")
+// 		buf.WriteString(a.listAndReturnContent("VirtualMachine", a.Namespace, &vmapiv1.VirtualMachineList{}))
+// 	} else {
+// 		buf.WriteString("failed to find VirtualMachine with matching criteria:\n")
+// 		buf.WriteString("----\n")
+// 		buf.WriteString("actual:\n")
+// 		y, _ := StringifyObject(actual)
+// 		buf.Write(y)
+// 		buf.WriteString("\n----\n")
+// 		buf.WriteString("diffs:\n")
+// 		for _, c := range criteria {
+// 			if !c.Match(actual) && c.Diff != nil {
+// 				buf.WriteString(c.Diff(actual))
+// 				buf.WriteString("\n")
+// 			}
+// 		}
+// 	}
+// 	t.Log(buf.String())
+// }
 
-// UntilVMHasLimits returns a `VMWaitCriterion` which checks that the given
-// VirtualMachine has limits set matching the given resources
-func UntilVMHasLimits(resources v1.ResourceList) VMWaitCriterion {
-	return VMWaitCriterion{
-		Match: func(actual *vmapiv1.VirtualMachine) bool {
-			return reflect.DeepEqual(actual.Spec.Template.Spec.Domain.Resources.Limits, resources)
-		},
-	}
-}
+// // UntilVMHasLimits returns a `VMWaitCriterion` which checks that the given
+// // VirtualMachine has limits set matching the given resources
+// func UntilVMHasLimits(resources v1.ResourceList) VMWaitCriterion {
+// 	return VMWaitCriterion{
+// 		Match: func(actual *vmapiv1.VirtualMachine) bool {
+// 			return reflect.DeepEqual(actual.Spec.Template.Spec.Domain.Resources.Limits, resources)
+// 		},
+// 	}
+// }
 
-// UntilVMHasRequests returns a `VMWaitCriterion` which checks that the given
-// VirtualMachine has requests set matching the given resources
-func UntilVMHasRequests(resources v1.ResourceList) VMWaitCriterion {
-	return VMWaitCriterion{
-		Match: func(actual *vmapiv1.VirtualMachine) bool {
-			return reflect.DeepEqual(actual.Spec.Template.Spec.Domain.Resources.Requests, resources)
-		},
-	}
-}
+// // UntilVMHasRequests returns a `VMWaitCriterion` which checks that the given
+// // VirtualMachine has requests set matching the given resources
+// func UntilVMHasRequests(resources v1.ResourceList) VMWaitCriterion {
+// 	return VMWaitCriterion{
+// 		Match: func(actual *vmapiv1.VirtualMachine) bool {
+// 			return reflect.DeepEqual(actual.Spec.Template.Spec.Domain.Resources.Requests, resources)
+// 		},
+// 	}
+// }
 
-// WaitForVM waits until there is a VirtualMachine available with the given name, expected spec and the set of wait criteria (if any)
-func (a *MemberAwaitility) WaitForVM(t *testing.T, name, namespace string, criteria ...VMWaitCriterion) (*vmapiv1.VirtualMachine, error) {
-	var vm *vmapiv1.VirtualMachine
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &vmapiv1.VirtualMachine{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		vm = obj
-		return matchVMWaitCriterion(obj, criteria...), nil
-	})
-	// no match found, print the diffs
-	if err != nil {
-		a.printVMWaitCriterionDiffs(t, vm, criteria...)
-	}
-	return vm, err
-}
+// // WaitForVM waits until there is a VirtualMachine available with the given name, expected spec and the set of wait criteria (if any)
+// func (a *MemberAwaitility) WaitForVM(t *testing.T, name, namespace string, criteria ...VMWaitCriterion) (*vmapiv1.VirtualMachine, error) {
+// 	var vm *vmapiv1.VirtualMachine
+// 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+// 		obj := &vmapiv1.VirtualMachine{}
+// 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
+// 			if errors.IsNotFound(err) {
+// 				return false, nil
+// 			}
+// 			return false, err
+// 		}
+// 		vm = obj
+// 		return matchVMWaitCriterion(obj, criteria...), nil
+// 	})
+// 	// no match found, print the diffs
+// 	if err != nil {
+// 		a.printVMWaitCriterionDiffs(t, vm, criteria...)
+// 	}
+// 	return vm, err
+// }
