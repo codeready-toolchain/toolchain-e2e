@@ -265,7 +265,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		userSignupMember1, err = hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedByAdmin(), wait.Deactivated())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Deactivated())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
 		require.True(t, states.Deactivated(userSignupMember1), "usersignup should be deactivated")
@@ -502,7 +502,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// Since the config for retention days is set to 0, the account should be deactivated again immediately
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutNotification())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutNotification())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
 		require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")

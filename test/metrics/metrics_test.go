@@ -295,7 +295,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			// when reactivating the user
 			InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
 			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
-				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired(), wait.ApprovedDeactivated())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 
 			// then
