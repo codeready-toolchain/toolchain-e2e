@@ -705,12 +705,12 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin",
-						AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+						AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 							Name:      busSBROnCarSpace.GetName(),
 							Namespace: busSBROnCarSpace.GetNamespace(),
 						}},
 					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // no actions since this is system generated binding
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnCarSpace.GetName(),
 						Namespace: bicycleSBROnCarSpace.GetNamespace(),
 					}}},
@@ -797,7 +797,7 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
 					}}})),
@@ -812,12 +812,12 @@ func TestSpaceLister(t *testing.T) {
 			require.NoError(t, err)
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      busSBROnCarSpace.GetName(),
 						Namespace: busSBROnCarSpace.GetNamespace(),
 					}},
 					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnCarSpace.GetName(),
 						Namespace: bicycleSBROnCarSpace.GetNamespace(),
 					}}},
@@ -848,7 +848,7 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
 					}}},
@@ -864,12 +864,12 @@ func TestSpaceLister(t *testing.T) {
 			require.NoError(t, err)
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "car", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      busSBROnCarSpace.GetName(),
 						Namespace: busSBROnCarSpace.GetNamespace(),
 					}},
 					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
-					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: toolchainv1alpha1.BindingRequest{
+					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnCarSpace.GetName(),
 						Namespace: bicycleSBROnCarSpace.GetNamespace(),
 					}}}, // this is system generated so no actions for the user
