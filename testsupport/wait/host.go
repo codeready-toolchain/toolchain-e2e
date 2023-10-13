@@ -69,93 +69,6 @@ func (a *HostAwaitility) WithRetryOptions(options ...RetryOption) *HostAwaitilit
 	}
 }
 
-func (a *HostAwaitility) sprintAllResources() string {
-	all, err := a.allResources()
-	buf := &strings.Builder{}
-	if err != nil {
-		buf.WriteString("unable to list other resources in the host namespace:\n")
-		buf.WriteString(err.Error())
-		buf.WriteString("\n")
-	} else {
-		buf.WriteString("other resources in the host namespace:\n")
-		for _, r := range all {
-			y, _ := yaml.Marshal(r)
-			buf.Write(y)
-			buf.WriteString("\n")
-		}
-	}
-	return buf.String()
-}
-
-// list all relevant resources in the host namespace, in case of test failure and for faster troubleshooting.
-func (a *HostAwaitility) allResources() ([]runtime.Object, error) {
-	all := []runtime.Object{}
-	// usersignups
-	usersignups := &toolchainv1alpha1.UserSignupList{}
-	if err := a.Client.List(context.TODO(), usersignups, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range usersignups.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	// masteruserrecords
-	masteruserrecords := &toolchainv1alpha1.MasterUserRecordList{}
-	if err := a.Client.List(context.TODO(), masteruserrecords, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range masteruserrecords.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	// notifications
-	notifications := &toolchainv1alpha1.NotificationList{}
-	if err := a.Client.List(context.TODO(), notifications, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range notifications.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	// nstemplatetiers
-	nstemplatetiers := &toolchainv1alpha1.NSTemplateTierList{}
-	if err := a.Client.List(context.TODO(), nstemplatetiers, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range nstemplatetiers.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	// usertiers
-	usertiers := &toolchainv1alpha1.UserTierList{}
-	if err := a.Client.List(context.TODO(), usertiers, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range usertiers.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	// toolchainconfig
-	toolchainconfigs := &toolchainv1alpha1.ToolchainConfigList{}
-	if err := a.Client.List(context.TODO(), toolchainconfigs, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range toolchainconfigs.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	// toolchainstatus
-	toolchainstatuses := &toolchainv1alpha1.ToolchainStatusList{}
-	if err := a.Client.List(context.TODO(), toolchainstatuses, client.InNamespace(a.Namespace)); err != nil {
-		return nil, err
-	}
-	for _, i := range usersignups.Items {
-		copied := i
-		all = append(all, &copied)
-	}
-	return all, nil
-}
-
 // WaitForMetricsService verifies that there is a service called `host-operator-metrics-service`
 // in the host namespace.
 func (a *HostAwaitility) WaitForMetricsService(t *testing.T) {
@@ -568,8 +481,8 @@ func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(t *testing.T, actual 
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
+	// include also all UserSignups in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "UserSignups", a.Namespace, &toolchainv1alpha1.UserSignupList{})
 
 	t.Log(buf.String())
 }
@@ -1121,8 +1034,8 @@ func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(t *testing.T, act
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
+	// include also all NSTemplateTiers in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "NSTemplateTiers", a.Namespace, &toolchainv1alpha1.NSTemplateTierList{})
 
 	t.Log(buf.String())
 }
@@ -1229,8 +1142,8 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(t *testing.T, actua
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
+	// include also all Notifications in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "Notifications", a.Namespace, &toolchainv1alpha1.NotificationList{})
 
 	t.Log(buf.String())
 }
@@ -1356,8 +1269,8 @@ func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(t *testing.T, ac
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
+	// include also all ToolchainStatuses in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "ToolchainStatuses", a.Namespace, &toolchainv1alpha1.ToolchainStatusList{})
 
 	t.Log(buf.String())
 }
@@ -1562,8 +1475,8 @@ func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(t *testing.T, ac
 			}
 		}
 	}
-	// also include other resources relevant in the host namespace, to help troubleshooting
-	buf.WriteString(a.sprintAllResources())
+	// include also all ToolchainConfigs in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "ToolchainConfigs", a.Namespace, &toolchainv1alpha1.ToolchainConfigList{})
 
 	t.Log(buf.String())
 }
