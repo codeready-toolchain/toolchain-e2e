@@ -48,7 +48,7 @@ func TestCreateVirtualMachine(t *testing.T) {
 		// when
 		// create VM
 		vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
-		vm := vmResourceWithRequests(vmName, vmNamespace)
+		vm := vmResourceWithRequests(vmName)
 		_, err := client.Resource(vmRes).Namespace(vmNamespace).Create(context.TODO(), vm, metav1.CreateOptions{})
 
 		// then
@@ -74,7 +74,7 @@ func TestCreateVirtualMachine(t *testing.T) {
 		require.Equal(t, limits["cpu"], "1")
 	})
 }
-func vmResourceWithRequests(name, namespace string) *unstructured.Unstructured {
+func vmResourceWithRequests(name string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "kubevirt.io/v1",
