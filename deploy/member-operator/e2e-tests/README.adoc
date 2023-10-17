@@ -1,3 +1,7 @@
 = HOW-TO
 
+== appstudio CRDs
 Copy/paste relevant definitions from https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
+
+== virtualmachines CRD
+Copy from a cluster with CNV operator installed
