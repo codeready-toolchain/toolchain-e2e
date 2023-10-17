@@ -87,6 +87,10 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		assert.Equal(t, "24h", apiRoute.Annotations["haproxy.router.openshift.io/timeout"])
 		initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
 
+		// wait for proxy metrics service
+		_, err = initHostAwait.WaitForService(t, "proxy-metrics-service")
+		require.NoError(t, err, "failed to find proxy metrics service")
+
 		// wait for member operators to be ready
 		initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
 
