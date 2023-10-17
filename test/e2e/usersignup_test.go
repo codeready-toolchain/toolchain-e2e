@@ -4,6 +4,7 @@ import (
 	"fmt"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -290,6 +291,9 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	req.Close = true
 	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
 	require.NoError(s.T(), err)
+	b, err := io.ReadAll(resp.Body)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode, "unexpected status, body: %s", string(b))
+
 	defer Close(s.T(), resp)
 
 	// Reload the UserSignup
