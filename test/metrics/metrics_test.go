@@ -239,7 +239,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		// when
 		// Create UserSignup with verification required
-		InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+		NewHTTPRequest(t).InvokeEndpoint("POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
 
 		// Wait for the UserSignup to be created and in verification required status
 		userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
@@ -260,7 +260,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		t.Run("no change to metric when verification initiated", func(t *testing.T) {
 			// when
 			// Initiate the verification process
-			InvokeEndpoint(t, "PUT", route+"/api/v1/signup/verification", token0,
+			NewHTTPRequest(t).InvokeEndpoint("PUT", route+"/api/v1/signup/verification", token0,
 				`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusNoContent)
 
 			// then
@@ -271,7 +271,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			verificationCode := userSignup.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey]
 			require.NotEmpty(t, verificationCode)
 			// Attempt to verify with an incorrect verification code
-			InvokeEndpoint(t, "GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1) // no change after verification initiated
 		})
 
@@ -293,7 +293,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		t.Run("metric incremented when user reactivated", func(t *testing.T) {
 			// when reactivating the user
-			InvokeEndpoint(t, "POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
+			NewHTTPRequest(t).InvokeEndpoint("POST", route+"/api/v1/signup", token0, "", http.StatusAccepted)
 			userSignup, err = hostAwait.WaitForUserSignup(t, identity0.Username,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired(), wait.ApprovedDeactivated())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
