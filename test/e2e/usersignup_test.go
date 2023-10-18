@@ -266,7 +266,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	// Create a token and identity to invoke the GetSignup endpoint with
 	userIdentity := &commonauth.Identity{
 		ID:       id,
-		Username: userSignup.Spec.Username,
+		Username: "test-user-identityclaims",
 	}
 	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim("test-user-updated@redhat.com")}
 	claims = append(claims, commonauth.WithOriginalSubClaim("updated-original-sub"))
@@ -279,7 +279,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	token, err := authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(s.T(), err)
 
-	InvokeEndpoint(s.T(), "GET", "/api/v1/signup", token, "", 200)
+	InvokeEndpoint(s.T(), "GET", hostAwait.RegistrationServiceURL+"/api/v1/signup", token, "", 200)
 
 	// Reload the UserSignup
 	userSignup, err = hostAwait.WaitForUserSignupByUserIDAndUsername(s.T(), userIdentity.ID.String(), userIdentity.Username)
