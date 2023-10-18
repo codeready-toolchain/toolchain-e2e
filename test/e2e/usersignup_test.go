@@ -4,8 +4,6 @@ import (
 	"fmt"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
-	"io"
-	"net/http"
 	"testing"
 	"time"
 
@@ -282,20 +280,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	token, err := authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(s.T(), err)
 
-	url := hostAwait.RegistrationServiceURL + "/api/v1/signup"
-	// Call the GET signup endpoint - we don't care about the response, we just want it to update the UserSignup
-	req, err := http.NewRequest("GET", url, nil)
-	require.NoError(s.T(), err)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("content-type", "application/json")
-
-	req.Close = true
-	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
-	require.NoError(s.T(), err)
-	b, err := io.ReadAll(resp.Body)
-	require.Equal(s.T(), http.StatusOK, resp.StatusCode, "unexpected status when invoking %s, response body: %s", url, string(b))
-
-	defer Close(s.T(), resp)
+	InvokeEndpoint(s.T(), "GET", "/api/v1/signup", token, "", 200)
 
 	// Reload the UserSignup
 	userSignup, err = hostAwait.WaitForUserSignupByUserIDAndUsername(s.T(), userIdentity.ID.String(), userIdentity.Username)
