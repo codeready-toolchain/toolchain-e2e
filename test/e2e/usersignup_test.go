@@ -279,7 +279,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	token, err := authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(s.T(), err)
 
-	InvokeEndpoint(s.T(), "GET", hostAwait.RegistrationServiceURL+"/api/v1/signup", token, "", 200)
+	NewHTTPRequest(s.T()).InvokeEndpoint("GET", hostAwait.RegistrationServiceURL+"/api/v1/signup", token, "", 200)
 
 	// Reload the UserSignup
 	userSignup, err = hostAwait.WaitForUserSignupByUserIDAndUsername(s.T(), userIdentity.ID.String(), userIdentity.Username)
