@@ -34,7 +34,10 @@ func (h HTTPRequest) InvokeEndpoint(method, path, authToken, requestBody string,
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("content-type", "application/json")
 	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer.Close(...)`
-	h.t.Logf("response status code: %d", resp.StatusCode)
+
+	if resp != nil {
+		h.t.Logf("response status code: %d", resp.StatusCode)
+	}
 	require.NoError(h.t, err)
 	defer Close(h.t, resp)
 

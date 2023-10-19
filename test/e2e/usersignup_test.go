@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"fmt"
+	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"testing"
 	"time"
 
@@ -236,6 +238,62 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 
 	// then
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+}
+
+func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	id, err := uuid.NewV4()
+	require.NoError(s.T(), err)
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user-identityclaims").
+		Email("test-user-identityclaims@redhat.com").
+		IdentityID(id).
+		UserID("000999").
+		AccountID("111999").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+
+	// Create a token and identity to invoke the GetSignup endpoint with
+	userIdentity := &commonauth.Identity{
+		ID:       id,
+		Username: "test-user-identityclaims",
+	}
+	claims := []commonauth.ExtraClaim{commonauth.WithEmailClaim("test-user-updated@redhat.com")}
+	claims = append(claims, commonauth.WithOriginalSubClaim("updated-original-sub"))
+	claims = append(claims, commonauth.WithUserIDClaim("111222"))
+	claims = append(claims, commonauth.WithAccountIDClaim("999111"))
+	claims = append(claims, commonauth.WithGivenNameClaim("Jane"))
+	claims = append(claims, commonauth.WithFamilyNameClaim("Turner"))
+	claims = append(claims, commonauth.WithCompanyClaim("Acme"))
+
+	token, err := authsupport.NewTokenFromIdentity(userIdentity, claims...)
+	require.NoError(s.T(), err)
+
+	NewHTTPRequest(s.T()).InvokeEndpoint("GET", hostAwait.RegistrationServiceURL+"/api/v1/signup", token, "", 200)
+
+	// Reload the UserSignup
+	userSignup, err = hostAwait.WaitForUserSignupByUserIDAndUsername(s.T(), userIdentity.ID.String(), userIdentity.Username)
+	require.NoError(s.T(), err)
+
+	// Confirm the IdentityClaims properties have been updated
+	require.Equal(s.T(), "test-user-updated@redhat.com", userSignup.Spec.IdentityClaims.Email)
+	require.Equal(s.T(), "updated-original-sub", userSignup.Spec.IdentityClaims.OriginalSub)
+	require.Equal(s.T(), "111222", userSignup.Spec.IdentityClaims.UserID)
+	require.Equal(s.T(), "999111", userSignup.Spec.IdentityClaims.AccountID)
+	require.Equal(s.T(), "Jane", userSignup.Spec.IdentityClaims.GivenName)
+	require.Equal(s.T(), "Turner", userSignup.Spec.IdentityClaims.FamilyName)
+	require.Equal(s.T(), "Acme", userSignup.Spec.IdentityClaims.Company)
+
 }
 
 // TestUserResourcesCreatedWhenUserIDIsSet tests the case where:
