@@ -517,7 +517,7 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("150"),
+		clusterResourceQuotaDeployments("300"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
