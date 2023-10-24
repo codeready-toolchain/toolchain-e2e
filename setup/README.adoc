@@ -45,7 +45,11 @@ platform:
 publish: External
 ----
 
-. Log in to the cluster using `oc login`, this is required for the tool to interact with the cluster and gather metrics during the run.
+. Log in to the cluster using `oc login --token=<token> --server=<server>`, this is required for the tool to interact with the cluster and gather metrics during the run.
+.. Login to the cluster's OpenShift console using `kubeadmin` user
+.. Click the user dropdown menu on the top right of the screen
+.. Select "Copy login command"
+.. Copy the oc login command with token and run the command in your terminal before proceeding running the setup tool
 
 . Install the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.adoc[required tools].
 
@@ -84,6 +88,8 @@ toolchain-status   0      True    2021-03-24T22:39:36Z
 == Provisioning Test Users And Capturing Metrics
 
 *IMPORTANT: Performance results may be skewed when a fresh cluster is not used. Results for performance comparison and operator onboarding purposes should be captured using a fresh cluster.*
+
+. Log in to the cluster using the `kubeadmin` user via `oc login --token=<token> --server=<server>` if you haven't already done so.
 
 . Run the setup with a single user to verify all the operators can be installed and capture metrics after installing all operators but before provisioning the 2000 users.
 +
