@@ -8,6 +8,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	commoncluster "github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -28,6 +29,8 @@ const (
 
 	ProvisionedAppStudioSpace    = "mig-appst-space"
 	SecondMemberProvisionedSpace = "mig-m2-space"
+	ProvisionedSpaceRequest      = "mig-space-request"
+	ProvisionedParentSpace       = "mig-parent-space"
 )
 
 type SetupMigrationRunner struct {
@@ -41,6 +44,7 @@ func (r *SetupMigrationRunner) Run(t *testing.T) {
 	toRun := []func(t *testing.T){
 		r.prepareAppStudioProvisionedSpace,
 		r.prepareSecondMemberProvisionedSpace,
+		r.prepareProvisionedSubspace,
 		r.prepareProvisionedUser,
 		r.prepareSecondMemberProvisionedUser,
 		r.prepareDeactivatedUser,
@@ -89,6 +93,29 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 	if r.WithCleanup {
 		cleanup.AddCleanTasks(t, r.Awaitilities.Host().Client, space)
 	}
+}
+
+func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
+	memberAwait := r.Awaitilities.Member2()
+	r.createAndWaitForSpace(t, ProvisionedParentSpace, "base", memberAwait)
+
+	srClusterRoles := []string{commoncluster.RoleLabel(commoncluster.Tenant)}
+	t.Logf("creating space request %v for parent space %v", ProvisionedSpaceRequest, ProvisionedParentSpace)
+	spaceRequest := tsspace.CreateSpaceRequestForParentSpace(t,
+		r.Awaitilities,
+		memberAwait.ClusterName,
+		ProvisionedParentSpace,
+		tsspace.WithName(ProvisionedSpaceRequest),
+		tsspace.WithSpecTargetClusterRoles(srClusterRoles),
+		tsspace.WithSpecTierName("base"))
+
+	_, err := r.Awaitilities.Host().WaitForSubSpace(t,
+		spaceRequest.GetName(),
+		spaceRequest.GetNamespace(),
+		ProvisionedParentSpace,
+		wait.UntilSpaceHasConditions(wait.Provisioned()),
+		wait.UntilSpaceHasAnyProvisionedNamespaces())
+	require.NoError(t, err)
 }
 
 func (r *SetupMigrationRunner) prepareProvisionedUser(t *testing.T) {

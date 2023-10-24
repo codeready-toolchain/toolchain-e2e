@@ -8,6 +8,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-e2e/test/migration"
@@ -15,6 +16,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -83,6 +85,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		// Spaces
 		func() { verifyAppStudioProvisionedSpace(t, awaitilities) },
 		func() { verifySecondMemberProvisionedSpace(t, awaitilities) },
+		func() { verifyProvisionedSubSpace(t, awaitilities) },
 		// UserSignups
 		func() { verifyProvisionedSignup(t, awaitilities, provisionedSignup) },
 		func() { verifySecondMemberProvisionedSignup(t, awaitilities, secondMemberProvisionedSignup) },
@@ -116,6 +119,43 @@ func verifySecondMemberProvisionedSpace(t *testing.T, awaitilities wait.Awaitili
 	space, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.SecondMemberProvisionedSpace)
 	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), migration.SecondMemberProvisionedSpace)
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, space)
+	cleanup.AddCleanTasks(t, awaitilities.Host().Client, userSignupForSpace)
+}
+
+func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
+	parentSpace, _ := VerifyResourcesProvisionedForSpace(t, awaitilities, migration.ProvisionedParentSpace)
+	userSignupForSpace := checkMURMigratedAndGetSignup(t, awaitilities.Host(), migration.ProvisionedParentSpace)
+	targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member2()
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	require.NoError(t, err)
+	require.True(t, found)
+
+	subSpace, err := awaitilities.Host().WaitForSubSpace(t,
+		migration.ProvisionedSpaceRequest,
+		memberAwait.Namespace,
+		parentSpace.GetName(),
+		wait.UntilSpaceHasTargetClusterRoles(targetClusterRoles),
+		wait.UntilSpaceHasTier("base"),
+		wait.UntilSpaceHasAnyProvisionedNamespaces())
+	require.NoError(t, err)
+
+	spaceRequest, err := memberAwait.WaitForSpaceRequest(t,
+		types.NamespacedName{
+			Namespace: memberAwait.Namespace,
+			Name:      migration.ProvisionedSpaceRequest,
+		},
+		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
+		wait.UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+		wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
+	)
+	require.NoError(t, err)
+	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+
+	cleanup.AddCleanTasks(t, awaitilities.Host().Client, subSpace)
+	cleanup.AddCleanTasks(t, awaitilities.Member1().Client, spaceRequest)
+	cleanup.AddCleanTasks(t, awaitilities.Host().Client, parentSpace)
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, userSignupForSpace)
 }
 

@@ -41,6 +41,12 @@ func WithNamespace(namespace string) SpaceRequestOption {
 	}
 }
 
+func WithName(name string) SpaceRequestOption {
+	return func(s *toolchainv1alpha1.SpaceRequest) {
+		s.ObjectMeta.Name = name
+	}
+}
+
 func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceRequestOption) (*toolchainv1alpha1.SpaceRequest, *toolchainv1alpha1.Space) {
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
@@ -57,6 +63,25 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 	require.NoError(t, err)
 
 	return spaceRequest, parentSpace
+}
+
+func CreateSpaceRequestForParentSpace(t *testing.T, awaitilities wait.Awaitilities, memberName, parent string, opts ...SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
+	memberAwait, err := awaitilities.Member(memberName)
+	require.NoError(t, err)
+
+	// wait for the namespace to be provisioned since we will be creating the spacerequest into it.
+	parentSpace, err := awaitilities.Host().WaitForSpace(t, parent, wait.UntilSpaceHasAnyProvisionedNamespaces())
+	require.NoError(t, err)
+
+	// create the space request in the "default" namespace provisioned by the parentSpace
+	namespace := GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
+	t.Logf("creating space request in namespace %s", namespace)
+	spaceRequest := NewSpaceRequest(t, append(opts, WithNamespace(namespace))...)
+	require.NotEmpty(t, spaceRequest)
+
+	err = memberAwait.Create(t, spaceRequest)
+	require.NoError(t, err)
+	return spaceRequest
 }
 
 // NewSpaceRequest initializes a new SpaceRequest object with the given options.
