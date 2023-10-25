@@ -37,8 +37,7 @@ const (
 	testTier           = "test"
 
 	// common CPU limits
-	defaultCPULimit = "1"
-	cpuLimit        = "20000m" // All tiers
+	baseCpuLimit = "40000m"
 )
 
 var (
@@ -146,7 +145,7 @@ type baseTierChecks struct {
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		numberOfLimitRanges(1),
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+		limitRange("1", "1024Mi", "10m", "64Mi"),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
@@ -200,7 +199,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "28Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -222,7 +221,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		resourceQuotaComputeDeploy("20", "14Gi", "3", "14Gi"),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
 		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
-		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
+		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
@@ -323,7 +322,7 @@ type baselargeTierChecks struct {
 
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "32Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -342,7 +341,7 @@ type baseextendedidlingTierChecks struct {
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "28Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -388,7 +387,7 @@ type advancedTierChecks struct {
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "32Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -1132,7 +1131,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 			require.NoError(t, err)
 			hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 			require.NoError(t, err)
-			hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+			hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 			require.NoError(t, err)
 			hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
 			require.NoError(t, err)
@@ -1140,7 +1139,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 			require.NoError(t, err)
 			hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity(storageLimit)
 			require.NoError(t, err)
-			hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+			hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 			require.NoError(t, err)
