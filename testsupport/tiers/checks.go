@@ -438,7 +438,7 @@ type appstudioTierChecks struct {
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("60", "64Gi", "6", "32Gi"),
+		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
 		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "30"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
@@ -517,7 +517,7 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("150"),
+		clusterResourceQuotaDeployments("300"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
