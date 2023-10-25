@@ -8,3 +8,5 @@ spec:
   - templateRef: base-stage-000000a
   clusterResources:
     templateRef: base-clusterresources-000000a
+  spaceRequestConfig:
+    serviceAccountName: namespace-manager
