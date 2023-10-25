@@ -37,7 +37,7 @@ const (
 	testTier           = "test"
 
 	// common CPU limits
-	baseCpuLimit = "40000m"
+	baseCPULimit = "40000m"
 )
 
 var (
@@ -199,7 +199,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "28Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -322,7 +322,7 @@ type baselargeTierChecks struct {
 
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "32Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -341,7 +341,7 @@ type baseextendedidlingTierChecks struct {
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "28Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -387,7 +387,7 @@ type advancedTierChecks struct {
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCpuLimit, "6000m", "32Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
