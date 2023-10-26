@@ -1035,7 +1035,7 @@ func networkPolicyAllowFromMonitoring() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
 }
 
 func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
@@ -1043,7 +1043,7 @@ func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromVirtualizationNamespaces() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-virtualization-os-images")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-openshift-virtualization-namespaces", "kubernetes.io/metadata.name", "openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-cnv")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
@@ -1051,30 +1051,37 @@ func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 }
 
 func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
-	return networkPolicyIngress(name, "network.openshift.io/policy-group", group)
+	return assertNetworkPolicyIngressForNamespaces(name, "network.openshift.io/policy-group", group)
 }
 
-func networkPolicyIngress(name, labelName, labelValue string) namespaceObjectsCheck {
+func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ...string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		require.True(t, len(labelNameValuePairs)%2 == 0, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
 		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+
+		ingressRules := []netv1.NetworkPolicyIngressRule{}
+		for labelNameValuePairsIndex := 0; labelNameValuePairsIndex < len(labelNameValuePairs); labelNameValuePairsIndex += 2 {
+			labelName := labelNameValuePairs[labelNameValuePairsIndex]
+			labelValue := labelNameValuePairs[labelNameValuePairsIndex+1]
+			ingressRules = append(ingressRules, ingressRuleFromNamespace(labelName, labelValue))
+		}
+
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
-				Ingress: []netv1.NetworkPolicyIngressRule{
-					{
-						From: []netv1.NetworkPolicyPeer{
-							{
-								NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelName: labelValue}},
-							},
-						},
-					},
-				},
+				Ingress:     ingressRules,
 				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
 			},
 		}
 
 		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func ingressRuleFromNamespace(labelName, labelValue string) netv1.NetworkPolicyIngressRule {
+	return netv1.NetworkPolicyIngressRule{
+		From: []netv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelName: labelValue}}}},
 	}
 }
 
