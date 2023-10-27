@@ -145,7 +145,7 @@ type baseTierChecks struct {
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		numberOfLimitRanges(1),
-		limitRange("1", "1024Mi", "10m", "64Mi"),
+		limitRange("1", "1Gi", "10m", "64Mi"),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
