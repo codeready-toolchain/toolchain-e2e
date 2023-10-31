@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -45,11 +46,11 @@ func TestCreateVirtualMachine(t *testing.T) {
 
 	t.Run("create virtual machine", func(t *testing.T) {
 		// given
-		vmName := "test-vm"
 		vmNamespace := "test-vm-dev"
 		vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 		for _, cloudInitType := range []string{cloudInitNoCloud, cloudInitConfigDrive} {
+			vmName := fmt.Sprintf("test-vm-%s", cloudInitType)
 			t.Run(cloudInitType, func(t *testing.T) {
 				vm := vmResourceWithRequestsAndCloudInitVolume(vmName, cloudInitVolume(cloudInitType))
 
@@ -60,6 +61,12 @@ func TestCreateVirtualMachine(t *testing.T) {
 				// then
 				// verify no error creating VM
 				require.NoError(t, err)
+
+				// cleanup
+				t.Cleanup(func() {
+					err := client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), vmName, metav1.DeleteOptions{})
+					require.NoError(t, err)
+				})
 
 				// verify webhook has set limits to same value as requests
 				result, getErr := client.Resource(vmRes).Namespace(vmNamespace).Get(context.TODO(), vmName, metav1.GetOptions{})
