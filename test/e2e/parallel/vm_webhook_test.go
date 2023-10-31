@@ -97,7 +97,7 @@ func TestCreateVirtualMachine(t *testing.T) {
 				require.Equal(t, volName, "cloudinitdisk")
 
 				// verify cloud-init user data
-				userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), "cloudInitNoCloud", "userData")
+				userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), cloudInitType, "userData")
 				require.NoError(t, userDataErr)
 				require.True(t, userDataFound, "user data not found")
 				require.Equal(t, userData, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa tmpkey human@machine\nuser: cloud-user\n")
