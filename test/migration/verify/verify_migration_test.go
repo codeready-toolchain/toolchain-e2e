@@ -131,10 +131,11 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
+	subSpaceNamespace := GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
 
 	subSpace, err := awaitilities.Host().WaitForSubSpace(t,
 		migration.ProvisionedSpaceRequest,
-		memberAwait.Namespace,
+		subSpaceNamespace,
 		parentSpace.GetName(),
 		wait.UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 		wait.UntilSpaceHasTier("base"),
@@ -143,7 +144,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 
 	spaceRequest, err := memberAwait.WaitForSpaceRequest(t,
 		types.NamespacedName{
-			Namespace: memberAwait.Namespace,
+			Namespace: subSpaceNamespace,
 			Name:      migration.ProvisionedSpaceRequest,
 		},
 		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
@@ -154,7 +155,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, subSpace)
-	cleanup.AddCleanTasks(t, awaitilities.Member1().Client, spaceRequest)
+	cleanup.AddCleanTasks(t, awaitilities.Member2().Client, spaceRequest)
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, parentSpace)
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, userSignupForSpace)
 }
