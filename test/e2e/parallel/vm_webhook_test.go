@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -50,7 +51,7 @@ func TestCreateVirtualMachine(t *testing.T) {
 		vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 		for _, cloudInitType := range []string{cloudInitNoCloud, cloudInitConfigDrive} {
-			vmName := fmt.Sprintf("test-vm-%s", cloudInitType)
+			vmName := fmt.Sprintf("test-vm-%s", strings.ToLower(cloudInitType))
 			t.Run(cloudInitType, func(t *testing.T) {
 				vm := vmResourceWithRequestsAndCloudInitVolume(vmName, cloudInitVolume(cloudInitType))
 
