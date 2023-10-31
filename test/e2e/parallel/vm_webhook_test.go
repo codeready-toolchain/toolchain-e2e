@@ -121,12 +121,7 @@ func vmResourceWithRequestsAndCloudInitVolume(name string, volume map[string]int
 							},
 						},
 						"volumes": []map[string]interface{}{
-							{
-								"cloudInitNoCloud": map[string]interface{}{
-									"userData": "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nuser: cloud-user\n",
-								},
-								"name": "cloudinitdisk",
-							},
+							volume,
 						},
 					},
 				},
