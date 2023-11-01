@@ -50,6 +50,7 @@ publish: External
 .. Click the user dropdown menu on the top right of the screen
 .. Select "Copy login command"
 .. Copy the oc login command with token and run the command in your terminal before proceeding running the setup tool
+.. Note: You may need to include `--insecure-skip-tls-verify=true` when running the oc login command.
 
 . Install the https://github.com/codeready-toolchain/toolchain-e2e/blob/master/required_tools.adoc[required tools].
 
