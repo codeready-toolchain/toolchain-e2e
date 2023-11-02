@@ -27,6 +27,7 @@ const (
 	// tier names
 	advanced           = "advanced"
 	appstudio          = "appstudio"
+	appstudiolarge     = "appstudiolarge"
 	appstudioEnv       = "appstudio-env"
 	base               = "base"
 	base1ns            = "base1ns"
@@ -76,6 +77,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
+
+	case appstudiolarge:
+		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
 
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
@@ -524,6 +528,25 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(0, ""),
+		pipelineRunnerClusterRole())
+}
+
+type appstudiolargeTierChecks struct {
+	appstudioTierChecks
+}
+
+func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeploymentCount("300", "100"),
+		clusterResourceQuotaReplicaCount("100"),
+		clusterResourceQuotaRouteCount("100"),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServiceCount("100"),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecretCount("300"),
+		clusterResourceQuotaConfigMapCount("300"),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
 		pipelineRunnerClusterRole())
@@ -1180,15 +1203,19 @@ func crqToolchainLabelsWaitCriterion(userName string) wait.ClusterResourceQuotaW
 }
 
 func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
+	return clusterResourceQuotaDeploymentCount(pods, "30")
+}
+
+func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("deployments.apps")], err = resource.ParseQuantity("30")
+			hard[count("deployments.apps")], err = resource.ParseQuantity(deploymentCount)
 			require.NoError(t, err)
-			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
+			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity(deploymentCount)
 			require.NoError(t, err)
-			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(pods)
+			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
@@ -1201,13 +1228,17 @@ func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
+	return clusterResourceQuotaReplicaCount("30")
+}
+
+func clusterResourceQuotaReplicaCount(replicaCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
+			hard[count("replicasets.apps")], err = resource.ParseQuantity(replicaCount)
 			require.NoError(t, err)
-			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
+			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity(replicaCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName),
@@ -1220,13 +1251,17 @@ func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
+	return clusterResourceQuotaRouteCount("30")
+}
+
+func clusterResourceQuotaRouteCount(routeCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("30")
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity(routeCount)
 			require.NoError(t, err)
-			hard[count("ingresses.extensions")], err = resource.ParseQuantity("30")
+			hard[count("ingresses.extensions")], err = resource.ParseQuantity(routeCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName),
@@ -1262,11 +1297,15 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaServices() clusterObjectsCheckCreator {
+	return clusterResourceQuotaServiceCount("30")
+}
+
+func clusterResourceQuotaServiceCount(serviceCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("30")
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity(serviceCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
@@ -1296,11 +1335,15 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
+	return clusterResourceQuotaSecretCount("100")
+}
+
+func clusterResourceQuotaSecretCount(secretCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
+			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity(secretCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName),
@@ -1313,11 +1356,15 @@ func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
+	return clusterResourceQuotaConfigMapCount("100")
+}
+
+func clusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
+			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity(configMapCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName),
