@@ -43,6 +43,7 @@ func WithNamespace(namespace string) SpaceRequestOption {
 
 func WithName(name string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
+		s.ObjectMeta.GenerateName = ""
 		s.ObjectMeta.Name = name
 	}
 }
@@ -75,10 +76,10 @@ func CreateSpaceRequestForParentSpace(t *testing.T, awaitilities wait.Awaitiliti
 
 	// create the space request in the "default" namespace provisioned by the parentSpace
 	namespace := GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
-	t.Logf("creating space request in namespace %s", namespace)
 	spaceRequest := NewSpaceRequest(t, append(opts, WithNamespace(namespace))...)
 	require.NotEmpty(t, spaceRequest)
 
+	// don't cleanup the new spacerequest, since we need it for migration testing
 	err = memberAwait.Create(t, spaceRequest)
 	require.NoError(t, err)
 	return spaceRequest
