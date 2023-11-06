@@ -124,7 +124,7 @@ func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
 		wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 
-	spaceRequest, err = memberAwait.WaitForSpaceRequest(t,
+	_, err = memberAwait.WaitForSpaceRequest(t,
 		types.NamespacedName{
 			Namespace: spaceRequest.Namespace,
 			Name:      spaceRequest.Name,
