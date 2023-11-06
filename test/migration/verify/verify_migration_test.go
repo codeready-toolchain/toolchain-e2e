@@ -154,8 +154,6 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	require.NoError(t, err)
 	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
-	cleanup.AddCleanTasks(t, hostAwait.Client, subSpace)
-	cleanup.AddCleanTasks(t, memberAwait.Client, spaceRequest)
 	cleanup.AddCleanTasks(t, hostAwait.Client, parentSpace)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignupForSpace)
 }

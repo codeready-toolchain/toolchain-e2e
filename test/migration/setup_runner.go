@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	commoncluster "github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
@@ -99,12 +98,8 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 }
 
 func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
-	hostAwait := r.Awaitilities.Host()
 	memberAwait := r.Awaitilities.Member2()
 	r.createAndWaitForSpace(t, ProvisionedParentSpace, "appstudio-env", memberAwait)
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
-	require.NoError(t, err)
-	require.True(t, found)
 
 	srClusterRoles := []string{commoncluster.RoleLabel(commoncluster.Tenant)}
 	t.Logf("creating space request %v for parent space %v", ProvisionedSpaceRequest, ProvisionedParentSpace)
@@ -116,21 +111,11 @@ func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
 		tsspace.WithSpecTargetClusterRoles(srClusterRoles),
 		tsspace.WithSpecTierName("appstudio-env"))
 
-	subSpace, err := hostAwait.WaitForSubSpace(t,
-		spaceRequest.GetName(),
-		spaceRequest.GetNamespace(),
-		ProvisionedParentSpace,
-		wait.UntilSpaceHasConditions(wait.Provisioned()),
-		wait.UntilSpaceHasAnyProvisionedNamespaces())
-	require.NoError(t, err)
-
-	_, err = memberAwait.WaitForSpaceRequest(t,
+	_, err := memberAwait.WaitForSpaceRequest(t,
 		types.NamespacedName{
 			Namespace: spaceRequest.Namespace,
 			Name:      spaceRequest.Name,
 		},
-		wait.UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
-		wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
 	)
 	require.NoError(t, err)
