@@ -101,7 +101,7 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
 	hostAwait := r.Awaitilities.Host()
 	memberAwait := r.Awaitilities.Member2()
-	r.createAndWaitForSpace(t, ProvisionedParentSpace, "base", memberAwait)
+	r.createAndWaitForSpace(t, ProvisionedParentSpace, "appstudio-env", memberAwait)
 	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
@@ -114,7 +114,7 @@ func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
 		ProvisionedParentSpace,
 		tsspace.WithName(ProvisionedSpaceRequest),
 		tsspace.WithSpecTargetClusterRoles(srClusterRoles),
-		tsspace.WithSpecTierName("base"))
+		tsspace.WithSpecTierName("appstudio-env"))
 
 	subSpace, err := hostAwait.WaitForSubSpace(t,
 		spaceRequest.GetName(),

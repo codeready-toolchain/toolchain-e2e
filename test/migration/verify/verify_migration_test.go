@@ -138,7 +138,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 		subSpaceNamespace,
 		parentSpace.GetName(),
 		wait.UntilSpaceHasTargetClusterRoles(targetClusterRoles),
-		wait.UntilSpaceHasTier("base"),
+		wait.UntilSpaceHasTier("appstudio-env"),
 		wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 
@@ -154,10 +154,10 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	require.NoError(t, err)
 	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, subSpace)
-	cleanup.AddCleanTasks(t, awaitilities.Member2().Client, spaceRequest)
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, parentSpace)
-	cleanup.AddCleanTasks(t, awaitilities.Host().Client, userSignupForSpace)
+	cleanup.AddCleanTasks(t, hostAwait.Client, subSpace)
+	cleanup.AddCleanTasks(t, memberAwait.Client, spaceRequest)
+	cleanup.AddCleanTasks(t, hostAwait.Client, parentSpace)
+	cleanup.AddCleanTasks(t, hostAwait.Client, userSignupForSpace)
 }
 
 func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
