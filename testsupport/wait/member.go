@@ -518,6 +518,14 @@ func (a *MemberAwaitility) printSpaceBindingRequestWaitCriterionDiffs(t *testing
 	t.Log(buf.String())
 }
 
+func (a *MemberAwaitility) ListSpaceBindingRequests(namespace string) ([]toolchainv1alpha1.SpaceBindingRequest, error) {
+	bindings := &toolchainv1alpha1.SpaceBindingRequestList{}
+	if err := a.Client.List(context.TODO(), bindings, client.InNamespace(namespace)); err != nil {
+		return nil, err
+	}
+	return bindings.Items, nil
+}
+
 // NSTemplateSetWaitCriterion a struct to compare with a given NSTemplateSet
 type NSTemplateSetWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateSet) bool

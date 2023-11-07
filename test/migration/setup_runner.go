@@ -68,7 +68,7 @@ func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace(t *testing.T)
 
 func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierName string, targetCluster *wait.MemberAwaitility) {
 	hostAwait := r.Awaitilities.Host()
-	space := testspace.NewSpace(r.Awaitilities.Host().Namespace, name, testspace.WithTierName(tierName), testspace.WithSpecTargetCluster(targetCluster.ClusterName))
+	space := testspace.NewSpace(r.Awaitilities.Host().Namespace, name, testspace.WithTierName(tierName), testspace.WithSpecTargetCluster(targetCluster.ClusterName), testspace.WithLabel(toolchainv1alpha1.SpaceCreatorLabelKey, name))
 	err := hostAwait.Client.Create(context.TODO(), space)
 	require.NoError(t, err)
 
