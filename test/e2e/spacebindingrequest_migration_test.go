@@ -75,6 +75,7 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 		wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
 		wait.UntilSpaceBindingRequestHasSpecMUR(spaceGuestMURwithSBR.Name),
 	)
+	require.NoError(t, err)
 	require.Equal(t, guestSBR.UID, guestSBRfound.UID)
 
 	// we check everything matches on the second space
