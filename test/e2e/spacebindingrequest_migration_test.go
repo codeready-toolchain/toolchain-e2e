@@ -105,10 +105,10 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	// check that the expected number of SBRs matches
 	sbrsFound, err := awaitilities.Member1().ListSpaceBindingRequests(testsupportspace.GetDefaultNamespace(primarySpace.Status.ProvisionedNamespaces))
 	require.NoError(t, err)
-	require.Equal(t, len(sbrsFound), 2)
+	require.Equal(t, 2, len(sbrsFound))
 	sbrsFound1, err := awaitilities.Member2().ListSpaceBindingRequests(testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces))
 	require.NoError(t, err)
-	require.Equal(t, len(sbrsFound1), 2)
+	require.Equal(t, 2, len(sbrsFound1))
 }
 
 func shareSpaceWith(t *testing.T, awaitilities wait.Awaitilities, spaceToShare *toolchainv1alpha1.Space, guestUserMur *toolchainv1alpha1.MasterUserRecord) *toolchainv1alpha1.SpaceBindingRequest {
