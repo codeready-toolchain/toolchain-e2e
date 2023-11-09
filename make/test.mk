@@ -309,13 +309,14 @@ endif
 ###########################################################
 
 .PHONY: prepare-projects
-prepare-projects: create-host-project create-member1 create-member2 create-appstudio-crds
+prepare-projects: create-host-project create-member1 create-member2 create-thirdparty-crds
 
 .PHONY: create-member1
 create-member1:
 	@echo "Preparing namespace for member operator: $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
+	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS}
 
 .PHONY: create-member2
 create-member2:
@@ -323,6 +324,7 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
+	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2}
 endif
 
 .PHONY: deploy-host
@@ -356,9 +358,9 @@ ifneq ($(E2E_TEST_EXECUTION),true)
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 endif
 
-.PHONY: create-appstudio-crds
-create-appstudio-crds:
-	oc apply -f deploy/member-operator/e2e-tests/
+.PHONY: create-thirdparty-crds
+create-thirdparty-crds:
+	oc apply -f deploy/crds/
 
 .PHONY: create-project
 create-project:
