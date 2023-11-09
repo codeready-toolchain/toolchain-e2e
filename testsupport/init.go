@@ -36,12 +36,11 @@ var (
 	initOnce         sync.Once
 )
 
-// WaitForDeployments initializes test context, registers schemes and waits until both operators (host, member)
-// and corresponding ToolchainCluster CRDs are present, running and ready. It also waits for all member Webhooks and
-// autoscaling buffer app. Based on the given cluster type that represents the current operator that is the target of
+// WaitForOperators initializes test context, registers schemes and waits until both operators (host, member)
+// and corresponding ToolchainCluster CRDs are present, running and ready. Based on the given cluster type that represents the current operator that is the target of
 // the e2e test it retrieves namespace names. Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForDeployments(t *testing.T) wait.Awaitilities {
+func WaitForOperators(t *testing.T) wait.Awaitilities {
 	initOnce.Do(func() {
 		memberNs := os.Getenv(wait.MemberNsVar)
 		memberNs2 := os.Getenv(wait.MemberNsVar2)
@@ -118,16 +117,6 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
 
-		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
-		// (we can't deploy the same webhook multiple times on the same cluster)
-		// Also verify the autoscaling buffer in both members
-
-		webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
-		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
-		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
-		initMemberAwait.WaitForAutoscalingBufferApp(t)
-		initMember2Await.WaitForAutoscalingBufferApp(t)
-
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 		err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
@@ -142,6 +131,30 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	})
 
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
+}
+
+// WaitForDeployments waits for all member Webhooks and autoscaling buffer apps in addition to waiting for
+// host and member operators and the registration service to be ready.
+//
+// The primary reason for separation is because the migration tests are for testing host operator and member operator changes related to Spaces, NSTemplateTiers, etc.
+// Webhooks and autoscaling buffers do not deal with the same set of resources so they can be verified independently of migration tests
+func WaitForDeployments(t *testing.T) wait.Awaitilities {
+
+	// wait for host and member operators to be ready
+	awaitilities := WaitForOperators(t)
+
+	// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
+	// (we can't deploy the same webhook multiple times on the same cluster)
+	// Also verify the autoscaling buffer in both members
+	webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
+	require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
+	initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
+
+	// wait for autoscaler buffer apps
+	initMemberAwait.WaitForAutoscalingBufferApp(t)
+	initMember2Await.WaitForAutoscalingBufferApp(t)
+
+	return awaitilities
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
