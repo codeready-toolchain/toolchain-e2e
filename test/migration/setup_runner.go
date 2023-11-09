@@ -2,16 +2,20 @@ package migration
 
 import (
 	"context"
-	"github.com/gofrs/uuid"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
+	"k8s.io/apimachinery/pkg/types"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	commoncluster "github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	tsspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -28,6 +32,8 @@ const (
 
 	ProvisionedAppStudioSpace    = "mig-appst-space"
 	SecondMemberProvisionedSpace = "mig-m2-space"
+	ProvisionedSpaceRequest      = "mig-space-request"
+	ProvisionedParentSpace       = "mig-parent-space"
 )
 
 type SetupMigrationRunner struct {
@@ -41,6 +47,7 @@ func (r *SetupMigrationRunner) Run(t *testing.T) {
 	toRun := []func(t *testing.T){
 		r.prepareAppStudioProvisionedSpace,
 		r.prepareSecondMemberProvisionedSpace,
+		r.prepareProvisionedSubspace,
 		r.prepareProvisionedUser,
 		r.prepareSecondMemberProvisionedUser,
 		r.prepareDeactivatedUser,
@@ -89,6 +96,49 @@ func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierNam
 	if r.WithCleanup {
 		cleanup.AddCleanTasks(t, r.Awaitilities.Host().Client, space)
 	}
+}
+
+func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
+	memberAwait := r.Awaitilities.Member2()
+	r.createAndWaitForSpace(t, ProvisionedParentSpace, "appstudio-env", memberAwait)
+
+	srClusterRoles := []string{commoncluster.RoleLabel(commoncluster.Tenant)}
+	t.Logf("creating space request %v for parent space %v", ProvisionedSpaceRequest, ProvisionedParentSpace)
+	spaceRequest := createSpaceRequestForParentSpace(t,
+		r.Awaitilities,
+		memberAwait.ClusterName,
+		ProvisionedParentSpace,
+		tsspace.WithName(ProvisionedSpaceRequest),
+		tsspace.WithSpecTargetClusterRoles(srClusterRoles),
+		tsspace.WithSpecTierName("appstudio-env"))
+
+	_, err := memberAwait.WaitForSpaceRequest(t,
+		types.NamespacedName{
+			Namespace: spaceRequest.Namespace,
+			Name:      spaceRequest.Name,
+		},
+		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
+	)
+	require.NoError(t, err)
+}
+
+func createSpaceRequestForParentSpace(t *testing.T, awaitilities wait.Awaitilities, memberName, parent string, opts ...space.SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
+	memberAwait, err := awaitilities.Member(memberName)
+	require.NoError(t, err)
+
+	// wait for the namespace to be provisioned since we will be creating the spacerequest into it.
+	parentSpace, err := awaitilities.Host().WaitForSpace(t, parent, wait.UntilSpaceHasAnyProvisionedNamespaces())
+	require.NoError(t, err)
+
+	// create the space request in the "default" namespace provisioned by the parentSpace
+	namespace := space.GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
+	spaceRequest := space.NewSpaceRequest(t, append(opts, space.WithNamespace(namespace))...)
+	require.NotEmpty(t, spaceRequest)
+
+	// don't cleanup the new spacerequest, since we need it for migration testing
+	err = memberAwait.Create(t, spaceRequest)
+	require.NoError(t, err)
+	return spaceRequest
 }
 
 func (r *SetupMigrationRunner) prepareProvisionedUser(t *testing.T) {
