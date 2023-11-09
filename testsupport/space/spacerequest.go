@@ -41,6 +41,13 @@ func WithNamespace(namespace string) SpaceRequestOption {
 	}
 }
 
+func WithName(name string) SpaceRequestOption {
+	return func(s *toolchainv1alpha1.SpaceRequest) {
+		s.ObjectMeta.GenerateName = ""
+		s.ObjectMeta.Name = name
+	}
+}
+
 func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceRequestOption) (*toolchainv1alpha1.SpaceRequest, *toolchainv1alpha1.Space) {
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
