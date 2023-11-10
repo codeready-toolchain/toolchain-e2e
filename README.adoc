@@ -7,7 +7,7 @@ This repo contains e2e tests for https://github.com/codeready-toolchain/host-ope
 
 == Build
 
-Requires Go version 1.19.x (1.19.7 or higher) - download for your development environment https://golang.org/dl/[here].
+Requires Go version 1.20.x (1.20.11 or higher) - download for your development environment https://golang.org/dl/[here].
 
 This repository uses https://github.com/golang/go/wiki/Modules[Go modules].
 
