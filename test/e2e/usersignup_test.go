@@ -85,7 +85,7 @@ func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return fmt.Sprintf("expected UserSignup to have IdentityClaims migrated")
+			return "expected UserSignup to have IdentityClaims migrated"
 		},
 	}
 
