@@ -47,15 +47,7 @@ func (s *userSignupIntegrationTest) TearDownTest() {
 
 func (s *userSignupIntegrationTest) TestUserSignupMigration() {
 	hostAwait := s.Host()
-	memberAwait := s.Member1()
-	// Create user signup
-	hostAwait.UpdateToolchainConfig(s.T(),
-		testconfig.AutomaticApproval().Enabled(true),
-		testconfig.CapacityThresholds().
-			MaxNumberOfSpaces(
-				testconfig.PerMemberCluster(memberAwait.ClusterName, 1000),
-			).
-			ResourceCapacityThreshold(80))
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	// Create a new UserSignup
 	userSignup := NewUserSignup(hostAwait.Namespace, "migration-test@acme.com", "migration-test@acme.com")
