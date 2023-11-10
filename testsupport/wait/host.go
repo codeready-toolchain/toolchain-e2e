@@ -1822,6 +1822,19 @@ func UntilSpaceHasTargetClusterRoles(expected []string) SpaceWaitCriterion {
 	}
 }
 
+// UntilSpaceHasTargetClusterRoles returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected target cluster roles set in its Spec
+func UntilSpaceHasDisableInheritance(expected bool) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return reflect.DeepEqual(actual.Spec.DisableInheritance, expected)
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected target cluster roles to match:\n%s", Diff(expected, actual.Spec.TargetClusterRoles))
+		},
+	}
+}
+
 // UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
 // Space has exactly all the given status conditions
 func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitCriterion {
