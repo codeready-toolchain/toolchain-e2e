@@ -78,7 +78,7 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, guestSBR.UID, guestSBRfound.UID)
 
-	// we check everything matches on the second space
+	// we check everything matches in m2
 	// the spacebinding for the primary user is still there
 	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR1.Name, primarySpace1.Name, "admin")
 	// there should be a spacebinding request for guestMUR1
