@@ -80,16 +80,6 @@ func WaitForOperators(t *testing.T) wait.Awaitilities {
 		}
 		initHostAwait.RegistrationServiceURL = registrationServiceURL
 
-		// set api proxy values
-		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "api", "/proxyhealth")
-		require.NoError(t, err)
-		assert.Equal(t, "24h", apiRoute.Annotations["haproxy.router.openshift.io/timeout"])
-		initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
-
-		// wait for proxy metrics service
-		_, err = initHostAwait.WaitForService(t, "proxy-metrics-service")
-		require.NoError(t, err, "failed to find proxy metrics service")
-
 		// wait for member operators to be ready
 		initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
 
@@ -100,16 +90,6 @@ func WaitForOperators(t *testing.T) wait.Awaitilities {
 		hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
 		require.NoError(t, err)
 		initHostAwait.RestConfig = hostConfig.RestConfig
-
-		// setup host metrics route for metrics verification in tests
-		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
-		require.NoError(t, err)
-		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
-
-		// setup member metrics route for metrics verification in tests
-		memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
-		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
-		initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
 		_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 		require.NoError(t, err)
@@ -142,6 +122,27 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 	// wait for host and member operators to be ready
 	awaitilities := WaitForOperators(t)
+	registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
+
+	// set api proxy values
+	apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "api", "/proxyhealth")
+	require.NoError(t, err)
+	assert.Equal(t, "24h", apiRoute.Annotations["haproxy.router.openshift.io/timeout"])
+	initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
+
+	// wait for proxy metrics service
+	_, err = initHostAwait.WaitForService(t, "proxy-metrics-service")
+	require.NoError(t, err, "failed to find proxy metrics service")
+
+	// setup host metrics route for metrics verification in tests
+	hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
+	require.NoError(t, err)
+	initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
+
+	// setup member metrics route for metrics verification in tests
+	memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
+	require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
+	initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
 	// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
 	// (we can't deploy the same webhook multiple times on the same cluster)
