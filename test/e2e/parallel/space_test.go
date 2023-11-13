@@ -489,7 +489,7 @@ func TestSubSpaces(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		// we also have a subSpace with same tier but with disbale inheritance
+		// we also have a subSpace with same tier but with disable inheritance
 		subSpace := CreateSubSpace(t, awaitilities, testspace.WithSpecParentSpace(parentSpace.Name), testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithDisableInheritance(true))
 
 		// wait until subSpace has been provisioned
