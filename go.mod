@@ -1,7 +1,9 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
+replace github.com/codeready-toolchain/toolchain-common => github.com/mmulholla/toolchain-common v0.0.0-20231113172419-7984c8ddb116
+
 require (
-	github.com/codeready-toolchain/api v0.0.0-20231013094356-24443ff2aa9a
+	github.com/codeready-toolchain/api v0.0.0-20231110023259-430f79b80551
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20231012065805-a23f3cfa676d
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0

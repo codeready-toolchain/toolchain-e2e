@@ -478,6 +478,29 @@ func TestSubSpaces(t *testing.T) {
 			})
 		})
 	})
+	t.Run("we create a subSpace, with disable inheritance and do not expect roles and usernames from the parent to be inherited in NSTemplateSet", func(t *testing.T) {
+		// when
+		// we have a parentSpace
+		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
+		// then
+		// wait until MUR and Space have been provisioned
+		VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+		_, err := hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
+		require.NoError(t, err)
+
+		// when
+		// we also have a subSpace with same tier but with disbale inheritance
+		subSpace := CreateSubSpace(t, awaitilities, testspace.WithSpecParentSpace(parentSpace.Name), testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithDisableInheritance(true))
+
+		// wait until subSpace has been provisioned
+		_, subSpaceNSTemplateSet := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
+		// check that username and role from parentSpace was not inherited in the subSpace NSTemplateSet
+		_, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
+			UntilNSTemplateSetHasConditions(Provisioned()),
+			UntilNSTemplateSetHasNoSpaceRoles(),
+		)
+		require.NoError(t, err)
+	})
 }
 
 func ProvisioningFailed(msg string) toolchainv1alpha1.Condition {
