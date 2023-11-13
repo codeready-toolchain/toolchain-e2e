@@ -39,10 +39,6 @@ spec:
         deploy: true
       memberStatus:
         refreshPeriod: "1s"
-      webhook:
-        secret:
-          ref: 'member-operator-secret'
-          virtualMachineAccessKey: 'vm.access'
       webConsolePlugin:
         deploy: true
       environment: 'e2e-tests'
