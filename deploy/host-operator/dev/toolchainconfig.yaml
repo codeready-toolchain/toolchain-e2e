@@ -17,3 +17,7 @@ spec:
       memberStatus:
         refreshPeriod: "1s"
       environment: 'dev'
+      webhook:
+        secret:
+          ref: 'member-operator-secret'
+          virtualMachineAccessKey: 'vm.access'
