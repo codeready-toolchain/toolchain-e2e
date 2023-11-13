@@ -613,7 +613,7 @@ func UntilNSTemplateSetHasSpaceRoles(expected ...toolchainv1alpha1.NSTemplateSet
 func UntilNSTemplateSetHasNoSpaceRoles() NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
-			return len(actual.Spec.SpaceRoles)==0
+			return len(actual.Spec.SpaceRoles) == 0
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
 			return fmt.Sprintf("expected no owner space roles : %v", actual.Spec.SpaceRoles)
