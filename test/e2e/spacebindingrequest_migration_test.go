@@ -47,7 +47,7 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	require.NoError(t, err)
 	_, err = awaitilities.Member1().WaitForNSTmplSet(t, primarySpace1.Name,
 		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR1.Name, guestMUR1.Name)))
+			wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR1.Name, guestMUR1.Name, spaceGuestMURwithSBR1.Name)))
 	require.NoError(t, err)
 	// the spacebinding for the primary user is still there
 	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR1.Name, primarySpace1.Name, "admin")
