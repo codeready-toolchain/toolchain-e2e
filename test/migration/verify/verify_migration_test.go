@@ -24,7 +24,7 @@ import (
 
 func TestAfterMigration(t *testing.T) {
 	// given
-	awaitilities := WaitForOperators(t)
+	awaitilities := WaitForDeployments(t)
 	// increase timeout to be sure that the operators had enough time to properly initialize and reconcile all present resources
 	awaitilities = wait.NewAwaitilities(
 		awaitilities.Host().WithRetryOptions(wait.TimeoutOption(wait.DefaultTimeout*2)),
