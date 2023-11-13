@@ -23,13 +23,13 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	// configure default space tier to appstudio
 	awaitilities.Host().UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 	// setup some users and spaces on m1
-	primaryMUR, primarySpace := createUser(t, awaitilities, "space-owner", awaitilities.Member1()) // we provision one space on m1 that will be shared with other users in the same cluster
-	guestMUR, _ := createUser(t, awaitilities, "space-guest", awaitilities.Member1())
-	spaceGuestMURwithSBR, _ := createUser(t, awaitilities, "space-guest-sbr", awaitilities.Member1())
+	primaryMUR1, primarySpace1 := createUser(t, awaitilities, "space-owner", awaitilities.Member1()) // we provision one space on m1 that will be shared with other users in the same cluster
+	guestMUR1, _ := createUser(t, awaitilities, "space-guest", awaitilities.Member1())
+	spaceGuestMURwithSBR1, _ := createUser(t, awaitilities, "space-guest-sbr", awaitilities.Member1())
 	// setup some users and spaces on m2
-	primaryMUR1, primarySpace1 := createUser(t, awaitilities, "space-owner1", awaitilities.Member2()) // we provision one space on m2 that will be shared with other users in the same cluster
-	guestMUR1, _ := createUser(t, awaitilities, "space-guest1", awaitilities.Member2())
-	guestMUR2, _ := createUser(t, awaitilities, "space-guest2", awaitilities.Member2())
+	primaryMUR2, primarySpace2 := createUser(t, awaitilities, "space-owner1", awaitilities.Member2()) // we provision one space on m2 that will be shared with other users in the same cluster
+	guestMUR2a, _ := createUser(t, awaitilities, "space-guest1", awaitilities.Member2())
+	guestMUR2b, _ := createUser(t, awaitilities, "space-guest2", awaitilities.Member2())
 
 	// when
 	// we add the spaceGuests to the primarySpace using a spacebinding
