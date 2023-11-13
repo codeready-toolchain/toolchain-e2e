@@ -56,7 +56,7 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 
 	// then
 	//
-	// we check everything matches on the first space
+	// we check everything matches in m1
 	// the spacebinding for the primary user is still there
 	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR.Name, primarySpace.Name, "admin")
 	// there should be a spacebinding request for guestMUR
