@@ -23,92 +23,92 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	// configure default space tier to appstudio
 	awaitilities.Host().UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 	// setup some users and spaces on m1
-	primaryMUR1, primarySpace1 := createUser(t, awaitilities, "space-owner", awaitilities.Member1()) // we provision one space on m1 that will be shared with other users in the same cluster
-	guestMUR1, _ := createUser(t, awaitilities, "space-guest", awaitilities.Member1())
-	spaceGuestMURwithSBR1, _ := createUser(t, awaitilities, "space-guest-sbr", awaitilities.Member1())
+	primaryMUR1, primarySpace1 := createUser(t, awaitilities, "space-owner1", awaitilities.Member1()) // we provision one space on m1 that will be shared with other users in the same cluster
+	guestMUR1, _ := createUser(t, awaitilities, "space-guest1", awaitilities.Member1())
+	spaceGuestMURwithSBR1, _ := createUser(t, awaitilities, "space-guest-sbr1", awaitilities.Member1())
 	// setup some users and spaces on m2
-	primaryMUR2, primarySpace2 := createUser(t, awaitilities, "space-owner1", awaitilities.Member2()) // we provision one space on m2 that will be shared with other users in the same cluster
-	guestMUR2a, _ := createUser(t, awaitilities, "space-guest1", awaitilities.Member2())
-	guestMUR2b, _ := createUser(t, awaitilities, "space-guest2", awaitilities.Member2())
+	primaryMUR2, primarySpace2 := createUser(t, awaitilities, "space-owner2", awaitilities.Member2()) // we provision one space on m2 that will be shared with other users in the same cluster
+	guestMUR2a, _ := createUser(t, awaitilities, "space-guest2a", awaitilities.Member2())
+	guestMUR2b, _ := createUser(t, awaitilities, "space-guest2b", awaitilities.Member2())
 
 	// when
 	// we add the spaceGuests to the primarySpace using a spacebinding
-	guestSpaceBinding := testsupportspacebinding.CreateSpaceBinding(t, awaitilities.Host(), guestMUR, primarySpace, "admin")
-	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace.Spec.TierName)
-	require.NoError(t, err)
-	_, err = awaitilities.Member1().WaitForNSTmplSet(t, primarySpace.Name,
-		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR.Name, guestMUR.Name)))
-	require.NoError(t, err)
+	guestSpaceBinding1 := testsupportspacebinding.CreateSpaceBinding(t, awaitilities.Host(), guestMUR1, primarySpace1, "admin")
 	// we add the spaceGuestWithSBR to the spaceSpace using spacebindingrequests
-	guestSBR := shareSpaceWith(t, awaitilities, primarySpace, spaceGuestMURwithSBR)
+	guestSBR1 := shareSpaceWith(t, awaitilities, primarySpace1, spaceGuestMURwithSBR1)
 	// we have a second space where we add a bunch of users with different roles
-	guestSpaceBinding1 := testsupportspacebinding.CreateSpaceBinding(t, awaitilities.Host(), guestMUR1, primarySpace1, "contributor")
-	guestSpaceBinding2 := testsupportspacebinding.CreateSpaceBinding(t, awaitilities.Host(), guestMUR2, primarySpace1, "maintainer")
-	tier1, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace1.Spec.TierName)
-	require.NoError(t, err)
-	_, err = awaitilities.Member2().WaitForNSTmplSet(t, primarySpace1.Name,
-		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(tier1.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR1.Name),
-			wait.SpaceRole(tier1.Spec.SpaceRoles["contributor"].TemplateRef, guestMUR1.Name),
-			wait.SpaceRole(tier1.Spec.SpaceRoles["maintainer"].TemplateRef, guestMUR2.Name)))
-	require.NoError(t, err)
+	guestSpaceBinding2a := testsupportspacebinding.CreateSpaceBinding(t, awaitilities.Host(), guestMUR2a, primarySpace2, "contributor")
+	guestSpaceBinding2b := testsupportspacebinding.CreateSpaceBinding(t, awaitilities.Host(), guestMUR2b, primarySpace2, "maintainer")
 
 	// then
 	//
 	// we check everything matches in m1
-	// the spacebinding for the primary user is still there
-	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR.Name, primarySpace.Name, "admin")
-	// there should be a spacebinding request for guestMUR
-	_, err = awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace.Status.ProvisionedNamespaces), Name: guestMUR.GetName() + "-admin"},
-		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
-		wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
-		wait.UntilSpaceBindingRequestHasSpecMUR(guestMUR.Name),
-	)
+	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace1.Spec.TierName)
 	require.NoError(t, err)
-	// the spacebinding is gone, since was converted into a spacebindingrequest
-	err = awaitilities.Host().WaitUntilSpaceBindingDeleted(guestSpaceBinding.GetName())
+	_, err = awaitilities.Member1().WaitForNSTmplSet(t, primarySpace1.Name,
+		wait.UntilNSTemplateSetHasSpaceRoles(
+			wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR1.Name, guestMUR1.Name)))
 	require.NoError(t, err)
-	// there should be a spacebindingrequest for the guestSBR , and should be the one that was created initially
-	guestSBRfound, err := awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace.Status.ProvisionedNamespaces), Name: guestSBR.GetName()},
-		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
-		wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
-		wait.UntilSpaceBindingRequestHasSpecMUR(spaceGuestMURwithSBR.Name),
-	)
-	require.NoError(t, err)
-	require.Equal(t, guestSBR.UID, guestSBRfound.UID)
-
-	// we check everything matches in m2
 	// the spacebinding for the primary user is still there
 	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR1.Name, primarySpace1.Name, "admin")
 	// there should be a spacebinding request for guestMUR1
-	_, err = awaitilities.Member2().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces), Name: guestMUR1.GetName() + "-contributor"},
+	_, err = awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces), Name: guestMUR1.GetName() + "-admin"},
 		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
-		wait.UntilSpaceBindingRequestHasSpecSpaceRole("contributor"), // has contributor role
+		wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
 		wait.UntilSpaceBindingRequestHasSpecMUR(guestMUR1.Name),
 	)
 	require.NoError(t, err)
 	// the spacebinding is gone, since was converted into a spacebindingrequest
 	err = awaitilities.Host().WaitUntilSpaceBindingDeleted(guestSpaceBinding1.GetName())
 	require.NoError(t, err)
-	// there should be a spacebinding request for guestMUR2
-	_, err = awaitilities.Member2().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces), Name: guestMUR2.GetName() + "-maintainer"},
+	// there should be a spacebindingrequest for the guestSBR1, and should be the one that was created initially
+	guestSBRfound, err := awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces), Name: guestSBR1.GetName()},
 		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
-		wait.UntilSpaceBindingRequestHasSpecSpaceRole("maintainer"), // has maintainer role
-		wait.UntilSpaceBindingRequestHasSpecMUR(guestMUR2.Name),
+		wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
+		wait.UntilSpaceBindingRequestHasSpecMUR(spaceGuestMURwithSBR1.Name),
+	)
+	require.NoError(t, err)
+	require.Equal(t, guestSBR1.UID, guestSBRfound.UID)
+
+	// we check everything matches in m2
+	tier1, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace2.Spec.TierName)
+	require.NoError(t, err)
+	_, err = awaitilities.Member2().WaitForNSTmplSet(t, primarySpace2.Name,
+		wait.UntilNSTemplateSetHasSpaceRoles(
+			wait.SpaceRole(tier1.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR2.Name),
+			wait.SpaceRole(tier1.Spec.SpaceRoles["contributor"].TemplateRef, guestMUR2a.Name),
+			wait.SpaceRole(tier1.Spec.SpaceRoles["maintainer"].TemplateRef, guestMUR2b.Name)))
+	require.NoError(t, err)
+	// the spacebinding for the primary user is still there
+	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR2.Name, primarySpace2.Name, "admin")
+	// there should be a spacebinding request for guestMUR2a
+	_, err = awaitilities.Member2().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace2.Status.ProvisionedNamespaces), Name: guestMUR2a.GetName() + "-contributor"},
+		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
+		wait.UntilSpaceBindingRequestHasSpecSpaceRole("contributor"), // has contributor role
+		wait.UntilSpaceBindingRequestHasSpecMUR(guestMUR2a.Name),
 	)
 	require.NoError(t, err)
 	// the spacebinding is gone, since was converted into a spacebindingrequest
-	err = awaitilities.Host().WaitUntilSpaceBindingDeleted(guestSpaceBinding2.GetName())
+	err = awaitilities.Host().WaitUntilSpaceBindingDeleted(guestSpaceBinding2a.GetName())
+	require.NoError(t, err)
+	// there should be a spacebinding request for guestMUR2b
+	_, err = awaitilities.Member2().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace2.Status.ProvisionedNamespaces), Name: guestMUR2b.GetName() + "-maintainer"},
+		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
+		wait.UntilSpaceBindingRequestHasSpecSpaceRole("maintainer"), // has maintainer role
+		wait.UntilSpaceBindingRequestHasSpecMUR(guestMUR2b.Name),
+	)
+	require.NoError(t, err)
+	// the spacebinding is gone, since was converted into a spacebindingrequest
+	err = awaitilities.Host().WaitUntilSpaceBindingDeleted(guestSpaceBinding2b.GetName())
 	require.NoError(t, err)
 
 	// check that the expected number of SBRs matches
-	sbrsFound, err := awaitilities.Member1().ListSpaceBindingRequests(testsupportspace.GetDefaultNamespace(primarySpace.Status.ProvisionedNamespaces))
-	require.NoError(t, err)
-	require.Equal(t, 2, len(sbrsFound))
-	sbrsFound1, err := awaitilities.Member2().ListSpaceBindingRequests(testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces))
+	sbrsFound1, err := awaitilities.Member1().ListSpaceBindingRequests(testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces))
 	require.NoError(t, err)
 	require.Equal(t, 2, len(sbrsFound1))
+	sbrsFound2, err := awaitilities.Member2().ListSpaceBindingRequests(testsupportspace.GetDefaultNamespace(primarySpace2.Status.ProvisionedNamespaces))
+	require.NoError(t, err)
+	require.Equal(t, 2, len(sbrsFound2))
 }
 
 func shareSpaceWith(t *testing.T, awaitilities wait.Awaitilities, spaceToShare *toolchainv1alpha1.Space, guestUserMur *toolchainv1alpha1.MasterUserRecord) *toolchainv1alpha1.SpaceBindingRequest {
