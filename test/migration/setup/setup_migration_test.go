@@ -9,7 +9,7 @@ import (
 
 func TestSetupMigration(t *testing.T) {
 	// given
-	awaitilities := WaitForDeployments(t)
+	awaitilities := WaitForOperators(t)
 
 	runner := migration.SetupMigrationRunner{
 		Awaitilities: awaitilities,
