@@ -478,6 +478,16 @@ func TestSubSpaces(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestSubSpaceInheritance(t *testing.T) {
+	// given
+	t.Parallel()
+	// make sure everything is ready before running the actual tests
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
 	t.Run("we create a subSpace, with disable inheritance and do not expect roles and usernames from the parent to be inherited in NSTemplateSet", func(t *testing.T) {
 		// when
 		// we have a parentSpace
@@ -485,21 +495,21 @@ func TestSubSpaces(t *testing.T) {
 		// then
 		// wait until MUR and Space have been provisioned
 		VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
-		_, err := hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
+		mur, err := hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
 		require.NoError(t, err)
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
 		subSpace := CreateSubSpace(t, awaitilities, testspace.WithSpecParentSpace(parentSpace.Name), testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithDisableInheritance(true))
+		testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, subSpace, "viewer")
 
 		// wait until subSpace has been provisioned
-		_, subSpaceNSTemplateSet := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
 		// check that username and role from parentSpace was not inherited in the subSpace NSTemplateSet
-		_, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-			UntilNSTemplateSetHasConditions(Provisioned()),
-			UntilNSTemplateSetHasNoSpaceRoles(),
-		)
+		spaceBindings, err := hostAwait.ListSpaceBindings(subSpace.Name)
 		require.NoError(t, err)
+		require.Equal(t,len(spaceBindings),1)
+		require.Equal(t,spaceBindings[0].Spec.SpaceRole, "viewer")
 	})
 }
 
