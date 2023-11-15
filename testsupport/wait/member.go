@@ -2349,27 +2349,27 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"rolebindings"}, rolebindingRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *rolebindingRule.Scope)
 
-	checlusterWebhook := actualValWbhConf.Webhooks[1]
-	assert.Equal(t, "users.checlusters.webhook.sandbox", checlusterWebhook.Name)
-	assert.Equal(t, []string{"v1"}, checlusterWebhook.AdmissionReviewVersions)
-	assert.Equal(t, admv1.SideEffectClassNone, *checlusterWebhook.SideEffects)
-	assert.Equal(t, int32(5), *checlusterWebhook.TimeoutSeconds)
-	assert.Equal(t, admv1.Fail, *checlusterWebhook.FailurePolicy)
-	assert.Equal(t, admv1.Equivalent, *checlusterWebhook.MatchPolicy)
-	assert.Equal(t, codereadyToolchainProviderLabel, checlusterWebhook.NamespaceSelector.MatchLabels)
-	assert.Equal(t, ca, checlusterWebhook.ClientConfig.CABundle)
-	assert.Equal(t, "member-operator-webhook", checlusterWebhook.ClientConfig.Service.Name)
-	assert.Equal(t, a.Namespace, checlusterWebhook.ClientConfig.Service.Namespace)
-	assert.Equal(t, "/validate-users-checlusters", *checlusterWebhook.ClientConfig.Service.Path)
-	assert.Equal(t, int32(443), *checlusterWebhook.ClientConfig.Service.Port)
-	require.Len(t, checlusterWebhook.Rules, 1)
+	k8sImagePullerWebhook := actualValWbhConf.Webhooks[1]
+	assert.Equal(t, "users.kubernetesimagepullers.webhook.sandbox", k8sImagePullerWebhook.Name)
+	assert.Equal(t, []string{"v1"}, k8sImagePullerWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *k8sImagePullerWebhook.SideEffects)
+	assert.Equal(t, int32(5), *k8sImagePullerWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Fail, *k8sImagePullerWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *k8sImagePullerWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, k8sImagePullerWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, k8sImagePullerWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", k8sImagePullerWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, k8sImagePullerWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-users-kubernetesimagepullers", *k8sImagePullerWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *k8sImagePullerWebhook.ClientConfig.Service.Port)
+	require.Len(t, k8sImagePullerWebhook.Rules, 1)
 
-	checlusterRule := checlusterWebhook.Rules[0]
-	assert.Equal(t, []admv1.OperationType{admv1.Create}, checlusterRule.Operations)
-	assert.Equal(t, []string{"org.eclipse.che"}, checlusterRule.APIGroups)
-	assert.Equal(t, []string{"v2"}, checlusterRule.APIVersions)
-	assert.Equal(t, []string{"checlusters"}, checlusterRule.Resources)
-	assert.Equal(t, admv1.NamespacedScope, *checlusterRule.Scope)
+	k8sImagePullerRule := k8sImagePullerWebhook.Rules[0]
+	assert.Equal(t, []admv1.OperationType{admv1.Create}, k8sImagePullerRule.Operations)
+	assert.Equal(t, []string{"che.eclipse.org"}, k8sImagePullerRule.APIGroups)
+	assert.Equal(t, []string{"v1alpha1"}, k8sImagePullerRule.APIVersions)
+	assert.Equal(t, []string{"kubernetesimagepullers"}, k8sImagePullerRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *k8sImagePullerRule.Scope)
 
 	spacebindingrequestWebhook := actualValWbhConf.Webhooks[2]
 	assert.Equal(t, "users.spacebindingrequests.webhook.sandbox", spacebindingrequestWebhook.Name)
