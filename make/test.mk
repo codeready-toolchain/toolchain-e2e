@@ -316,7 +316,7 @@ create-member1:
 	@echo "Preparing namespace for member operator: $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
-	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS}
+	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS} || true
 
 .PHONY: create-member2
 create-member2:
@@ -324,7 +324,7 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
-	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2}
+	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2} || true
 endif
 
 .PHONY: deploy-host

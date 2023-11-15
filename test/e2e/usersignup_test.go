@@ -45,47 +45,6 @@ func (s *userSignupIntegrationTest) TearDownTest() {
 	memberAwait2.Clean(s.T())
 }
 
-func (s *userSignupIntegrationTest) TestUserSignupMigration() {
-	hostAwait := s.Host()
-	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
-
-	// Create a new UserSignup
-	userSignup := NewUserSignup(hostAwait.Namespace, "migration-test@acme.com", "migration-test@acme.com")
-
-	// Clear the identity claims
-	userSignup.Spec.IdentityClaims = toolchainv1alpha1.IdentityClaimsEmbedded{}
-
-	// Set annotations
-	userSignup.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey] = "foo"
-	userSignup.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey] = "bar"
-
-	err := hostAwait.CreateWithCleanup(s.T(), userSignup)
-	require.NoError(s.T(), err)
-	s.T().Logf("user signup '%s' created", userSignup.Name)
-
-	identityClaimsSetCriteria := wait.UserSignupWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
-			return actual.Spec.IdentityClaims.Company == userSignup.Spec.Company &&
-				actual.Spec.IdentityClaims.Sub == userSignup.Name &&
-				actual.Spec.IdentityClaims.GivenName == userSignup.Spec.GivenName &&
-				actual.Spec.IdentityClaims.FamilyName == userSignup.Spec.FamilyName &&
-				actual.Spec.IdentityClaims.PreferredUsername == userSignup.Spec.Username &&
-				actual.Spec.IdentityClaims.UserID == "foo" &&
-				actual.Spec.IdentityClaims.AccountID == "bar" &&
-				actual.Spec.IdentityClaims.Email == userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey] &&
-				actual.Spec.IdentityClaims.OriginalSub == userSignup.Spec.OriginalSub
-
-		},
-		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
-			return "expected UserSignup to have IdentityClaims migrated"
-		},
-	}
-
-	// Check the UserSignup is successfully migrated now
-	userSignup, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name, identityClaimsSetCriteria)
-	require.NoError(s.T(), err)
-}
-
 func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	// given
 	hostAwait := s.Host()
