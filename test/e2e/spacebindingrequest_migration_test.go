@@ -43,16 +43,9 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	// then
 	//
 	// we check everything matches in m1
-	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace1.Spec.TierName)
-	require.NoError(t, err)
-	_, err = awaitilities.Member1().WaitForNSTmplSet(t, primarySpace1.Name,
-		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR1.Name, guestMUR1.Name, spaceGuestMURwithSBR1.Name)))
-	require.NoError(t, err)
-	// the spacebinding for the primary user is still there
-	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR1.Name, primarySpace1.Name, "admin")
+	// we verify that the expected SB were replaced by the new one manage via SBR
 	// there should be a spacebinding request for guestMUR1
-	_, err = awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces), Name: guestMUR1.GetName() + "-admin"},
+	_, err := awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace1.Status.ProvisionedNamespaces), Name: guestMUR1.GetName() + "-admin"},
 		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 		wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
 		wait.UntilSpaceBindingRequestHasSpecMUR(guestMUR1.Name),
@@ -69,18 +62,18 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, guestSBR1.UID, guestSBRfound.UID)
+	// the spacebinding for the primary user is still there
+	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR1.Name, primarySpace1.Name, "admin")
+	// the NSTemplateSet has the expected roles and users
+	tier1, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace1.Spec.TierName)
+	require.NoError(t, err)
+	_, err = awaitilities.Member1().WaitForNSTmplSet(t, primarySpace1.Name,
+		wait.UntilNSTemplateSetHasSpaceRoles(
+			wait.SpaceRole(tier1.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR1.Name, guestMUR1.Name, spaceGuestMURwithSBR1.Name)))
+	require.NoError(t, err)
 
 	// we check everything matches in m2
-	tier1, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace2.Spec.TierName)
-	require.NoError(t, err)
-	_, err = awaitilities.Member2().WaitForNSTmplSet(t, primarySpace2.Name,
-		wait.UntilNSTemplateSetHasSpaceRoles(
-			wait.SpaceRole(tier1.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR2.Name),
-			wait.SpaceRole(tier1.Spec.SpaceRoles["contributor"].TemplateRef, guestMUR2a.Name),
-			wait.SpaceRole(tier1.Spec.SpaceRoles["maintainer"].TemplateRef, guestMUR2b.Name)))
-	require.NoError(t, err)
-	// the spacebinding for the primary user is still there
-	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR2.Name, primarySpace2.Name, "admin")
+	// we verify that the expected SB were replaced by the new one manage via SBR
 	// there should be a spacebinding request for guestMUR2a
 	_, err = awaitilities.Member2().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: testsupportspace.GetDefaultNamespace(primarySpace2.Status.ProvisionedNamespaces), Name: guestMUR2a.GetName() + "-contributor"},
 		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
@@ -100,6 +93,17 @@ func TestMigrateSpaceBindingToSBR(t *testing.T) {
 	require.NoError(t, err)
 	// the spacebinding is gone, since was converted into a spacebindingrequest
 	err = awaitilities.Host().WaitUntilSpaceBindingDeleted(guestSpaceBinding2b.GetName())
+	require.NoError(t, err)
+	// the spacebinding for the primary user is still there
+	testsupportspacebinding.VerifySpaceBinding(t, awaitilities.Host(), primaryMUR2.Name, primarySpace2.Name, "admin")
+	// the NSTemplateSet has the expected roles and users
+	tier2, err := awaitilities.Host().WaitForNSTemplateTier(t, primarySpace2.Spec.TierName)
+	require.NoError(t, err)
+	_, err = awaitilities.Member2().WaitForNSTmplSet(t, primarySpace2.Name,
+		wait.UntilNSTemplateSetHasSpaceRoles(
+			wait.SpaceRole(tier2.Spec.SpaceRoles["admin"].TemplateRef, primaryMUR2.Name),
+			wait.SpaceRole(tier2.Spec.SpaceRoles["contributor"].TemplateRef, guestMUR2a.Name),
+			wait.SpaceRole(tier2.Spec.SpaceRoles["maintainer"].TemplateRef, guestMUR2b.Name)))
 	require.NoError(t, err)
 
 	// check that the expected number of SBRs matches
