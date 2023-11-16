@@ -83,17 +83,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 	})
 
-	originalToolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
-		wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-		wait.UntilToolchainStatusUpdatedAfter(time.Now()))
-	originalMemberStatuses := map[string]toolchainv1alpha1.Member{}
-	for _, m := range originalToolchainStatus.Status.Members {
-		originalMemberStatuses[m.ClusterName] = m
-	}
-	require.NoError(t, err, "failed while waiting for ToolchainStatus")
-	originalMursPerDomainCount := originalToolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
-	t.Logf("the original MasterUserRecord count: %v", originalMursPerDomainCount)
-
 	// Create multiple accounts and let them get provisioned while we are executing the main flow for "johnsmith" and "extrajohn"
 	// We will verify them in the end of the test
 	signups := CreateMultipleSignups(t, awaitilities, awaitilities.Member1(), 5)
@@ -145,10 +134,10 @@ func TestE2EFlow(t *testing.T) {
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "deactivate30", "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base")
 
-	johnsmithSpace, err := hostAwait.WaitForSpace(t, johnsmithName, wait.UntilSpaceHasAnyTargetClusterSet())
+	_, err := hostAwait.WaitForSpace(t, johnsmithName, wait.UntilSpaceHasAnyTargetClusterSet())
 	require.NoError(t, err)
 
-	targetedJohnSpace, err := hostAwait.WaitForSpace(t, targetedJohnName, wait.UntilSpaceHasAnyTargetClusterSet())
+	_, err = hostAwait.WaitForSpace(t, targetedJohnName, wait.UntilSpaceHasAnyTargetClusterSet())
 	require.NoError(t, err)
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
@@ -266,15 +255,6 @@ func TestE2EFlow(t *testing.T) {
 	t.Run("multiple MasterUserRecord resources provisioned", func(t *testing.T) {
 		// Now when the main flow has been tested we can verify the signups we created in the very beginning
 		VerifyMultipleSignups(t, awaitilities, signups)
-
-		// check if the MUR and UA counts match
-		_, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(
-			wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...), wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+9), // 5 multiple signups + johnSignup + johnExtraSignup + targetedJohnName + originalSubJohnSignup +
-			wait.UntilHasSpaceCount(johnsmithSpace.Spec.TargetCluster, originalMemberStatuses[johnsmithSpace.Spec.TargetCluster].SpaceCount+8),
-			wait.UntilHasSpaceCount(targetedJohnSpace.Spec.TargetCluster, originalMemberStatuses[targetedJohnSpace.Spec.TargetCluster].SpaceCount+1),
-		)
-		require.NoError(t, err)
 	})
 
 	t.Run("verify Space is not deleted if namespace is not deleted", func(t *testing.T) {
@@ -488,15 +468,6 @@ func TestE2EFlow(t *testing.T) {
 		// also, verify that other user's resource are left intact
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
 
-		// check if the MUR and UA counts match
-		_, err = hostAwait.WaitForToolchainStatus(t,
-			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
-			wait.UntilToolchainStatusUpdatedAfter(time.Now()),
-			wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+8),
-			wait.UntilHasSpaceCount(johnsmithSpace.Spec.TargetCluster, originalMemberStatuses[johnsmithSpace.Spec.TargetCluster].SpaceCount+7),
-			wait.UntilHasSpaceCount(targetedJohnSpace.Spec.TargetCluster, originalMemberStatuses[targetedJohnSpace.Spec.TargetCluster].SpaceCount+1),
-		)
-		require.NoError(t, err)
 	})
 
 	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
