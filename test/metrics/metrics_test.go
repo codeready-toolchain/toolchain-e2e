@@ -78,7 +78,8 @@ func TestOperatorVersionMetrics(t *testing.T) {
 }
 
 // TestMetricsWhenUsersManuallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
-// (also verifies `UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged after deactivation)
+// (also verifies `UsersPerActivationsAndDomainMetric` gauge and `UserSignupsApprovedMetric` counter remain unchanged after deactivation).
+// it also verifies the changes in the ToolchainStatus counters
 func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	// given
 	awaitilities := WaitForDeployments(t)
@@ -87,18 +88,27 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	memberAwait2 := awaitilities.Member2()
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
+
+	toolchainStatus, err := hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
+	originalMemberStatuses := map[string]toolchainv1alpha1.Member{}
+	for _, m := range toolchainStatus.Status.Members {
+		originalMemberStatuses[m.ClusterName] = m
+	}
+	originalMursPerDomainCount := toolchainStatus.Status.Metrics[toolchainv1alpha1.MasterUserRecordsPerDomainMetricKey]
+
 	t.Cleanup(func() {
 		// wait until metrics are back to their respective baselines
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait.ClusterName)
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait2.ClusterName)
 	})
 
-	usersignups := map[string]*toolchainv1alpha1.UserSignup{}
+	signupsMember2 := map[string]*toolchainv1alpha1.UserSignup{}
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
 
 		// Create UserSignup
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		signupsMember2[username], _ = NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@redhat.com").
 			ManuallyApprove().
@@ -108,19 +118,38 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 			Execute(t).
 			Resources()
 	}
+	NewSignupRequest(awaitilities).
+		Username("member1").
+		Email("member1@acme.com").
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(memberAwait).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t).
+		Resources()
+
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                                                            // all signups
-	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all activated
-	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 2)                                                    // all activated
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3)                                                            // all signups
+	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // two activated
+	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // one incremented
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 3)                                                    // all activated
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")                   // not automatically approved
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "manual")                      // both manually approved
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 3, "method", "manual")                      // all manually approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
-	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
-	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName) // 2 spaces created on member-2
+	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space created on member-1
+	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces created on member-2
+
+	// check if the MUR and Space counts match in ToolchainStatus
+	_, err = hostAwait.WaitForToolchainStatus(t,
+		wait.UntilHasMurCount("internal", originalMursPerDomainCount["internal"]+2),
+		wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+1),
+		wait.UntilHasSpaceCount(memberAwait.ClusterName, originalMemberStatuses[memberAwait.ClusterName].SpaceCount+1),
+		wait.UntilHasSpaceCount(memberAwait2.ClusterName, originalMemberStatuses[memberAwait2.ClusterName].SpaceCount+2),
+	)
+	require.NoError(t, err)
 
 	// when deactivating the users
-	for username, usersignup := range usersignups {
+	for username, usersignup := range signupsMember2 {
 		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
 			func(usersignup *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(usersignup, true)
@@ -135,16 +164,24 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	}
 
 	// then verify the value of the `sandbox_users_per_activations` metric
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                                                            // all signups (even if deactivated)
-	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // all deactivated (but this metric is never decremented)
-	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // never incremented
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 2)                                                    // all deactivated (but counters are never decremented)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3)                                                            // all signups (even if deactivated)
+	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "1", "domain", "internal") // two deactivated (but this metric is never decremented)
+	hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // one incremented
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 3)                                                    // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic")                   // all deactivated (but counters are never decremented)
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "manual")                      // all deactivated (but counters are never decremented)
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
-	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // 2 spaces deleted from member-2
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 3, "method", "manual")                      // all deactivated (but counters are never decremented)
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // two deactivated
+	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space still in member-1
+	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces deleted from member-2
 
+	// check if the MUR and Space counts match in ToolchainStatus
+	_, err = hostAwait.WaitForToolchainStatus(t,
+		wait.UntilHasMurCount("internal", originalMursPerDomainCount["internal"]),
+		wait.UntilHasMurCount("external", originalMursPerDomainCount["external"]+1),
+		wait.UntilHasSpaceCount(memberAwait.ClusterName, originalMemberStatuses[memberAwait.ClusterName].SpaceCount+1),
+		wait.UntilHasSpaceCount(memberAwait2.ClusterName, originalMemberStatuses[memberAwait2.ClusterName].SpaceCount),
+	)
+	require.NoError(t, err)
 }
 
 // TestMetricsWhenUsersAutomaticallyApproved verifies that `UserSignupsApprovedMetric` and `UserSignupsApprovedWithMethodMetric` counters are increased when users are approved
