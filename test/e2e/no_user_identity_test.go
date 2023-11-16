@@ -23,7 +23,7 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	// member cluster configured to skip user creation to mimic stonesoup configuration where user & identity resources are not created
+	// member cluster configured to skip user creation to mimic appstudio configuration where user & identity resources are not created
 	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
 	// configure default space tier to appstudio and apply the member configuration
 	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
