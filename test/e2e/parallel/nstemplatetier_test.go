@@ -48,9 +48,14 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
-	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
+	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, len(tiersToCheck)) // temporarily remove this check because migration tests create basedeactivationdisabled, baseextended and hackathon tiers
+	notCreatedByE2e := client.MatchingLabelsSelector{
+		Selector: labels.NewSelector().Add(*e2eProducer),
+	}
+	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
+	require.NoError(t, err)
+	assert.Len(t, allTiers.Items, len(tiersToCheck))
 
 	for _, tier := range allTiers.Items {
 		assert.Contains(t, tiersToCheck, tier.Name)
