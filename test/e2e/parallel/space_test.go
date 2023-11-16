@@ -489,27 +489,50 @@ func TestSubSpaceInheritance(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	t.Run("we create a subSpace, with disable inheritance and do not expect roles and usernames from the parent to be inherited in NSTemplateSet", func(t *testing.T) {
+		// given
+		appstudioTier, err := hostAwait.WaitForNSTemplateTier(t, "appstudio")
+		require.NoError(t, err)
+
 		// when
 		// we have a parentSpace
+		t.Logf("Create parent space")
 		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
 		// then
 		// wait until MUR and Space have been provisioned
+		t.Logf("Wait for space to be provisioned")
 		VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
-		mur, err := hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
+		_, err = hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
 		require.NoError(t, err)
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
-		subSpace := CreateSubSpace(t, awaitilities, testspace.WithSpecParentSpace(parentSpace.Name), testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithDisableInheritance(true))
-		testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, subSpace, "viewer")
+		t.Logf("Create sub space with role: contributor")
+		subSpace, _, subSpaceBindings := CreateSpaceWithRole(t, awaitilities, "contributor",
+			testspace.WithSpecParentSpace(parentSpace.Name),
+			testspace.WithTierName("appstudio"),
+			testspace.WithSpecTargetCluster(memberAwait.ClusterName),
+			testspace.WithDisableInheritance(true))
 
-		// wait until subSpace has been provisioned
-		VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
-		// check that username and role from parentSpace was not inherited in the subSpace NSTemplateSet
-		spaceBindings, err := hostAwait.ListSpaceBindings(subSpace.Name)
+		// then
+		t.Logf("Verify sub space resources")
+		_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+			UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
+			UntilSpaceHasTier("appstudio"),
+		)
+
+		t.Logf("Wait for master user")
+		subMur, err := hostAwait.WaitForMasterUserRecord(t, subSpaceBindings.Spec.MasterUserRecord)
 		require.NoError(t, err)
-		require.Equal(t,len(spaceBindings),1)
-		require.Equal(t,spaceBindings[0].Spec.SpaceRole, "viewer")
+
+
+		t.Logf("Wait for NS template")
+		require.NoError(t, err)
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
+			UntilNSTemplateSetHasSpaceRoles(
+				SpaceRole(appstudioTier.Spec.SpaceRoles["contributor"].TemplateRef, subMur.Name)),
+		)
+		require.NoError(t, err)
+
 	})
 }
 

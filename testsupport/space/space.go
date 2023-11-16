@@ -19,9 +19,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+	return CreateSpaceWithRole(t, awaitilities, "admin", opts...)
+}
+
 // CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
-func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	username := uuid.Must(uuid.NewV4()).String()
 	signup, mur := testsupport.NewSignupRequest(awaitilities).
@@ -35,7 +39,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 
 	// create the actual space
 	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t), opts...)
-	space, _, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, "admin")
+	space, _, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, space, role)
 	require.NoError(t, err)
 	space, err = awaitilities.Host().WaitForSpace(t, space.Name,
 		wait.UntilSpaceHasAnyTargetClusterSet(),
@@ -45,7 +49,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 	spaceBinding, err := awaitilities.Host().WaitForSpaceBinding(t, mur.Name, space.Name,
 		wait.UntilSpaceBindingHasMurName(mur.Name),
 		wait.UntilSpaceBindingHasSpaceName(space.Name),
-		wait.UntilSpaceBindingHasSpaceRole("admin"),
+		wait.UntilSpaceBindingHasSpaceRole(role),
 	)
 	require.NoError(t, err)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
@@ -56,7 +60,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 		// if member is `unknown` or invalid (depending on the test case), then don't try to check the associated NSTemplateSet
 		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
 			wait.UntilNSTemplateSetHasSpaceRoles(
-				wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, mur.Name)))
+				wait.SpaceRole(tier.Spec.SpaceRoles[role].TemplateRef, mur.Name)))
 		require.NoError(t, err)
 	}
 
