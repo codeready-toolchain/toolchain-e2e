@@ -1,15 +1,15 @@
-package e2e
+package parallel
 
 import (
 	"context"
 	"fmt"
-	"github.com/gofrs/uuid"
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
@@ -29,14 +29,13 @@ const (
 )
 
 func TestNSTemplateTiers(t *testing.T) {
+	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	// Create and approve "testingtiers" signups
-	testingTiersName := "testingtiers"
 	testingtiers, _ := NewSignupRequest(awaitilities).
-		Username(testingTiersName).
+		Username("testnstemplatetiers").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
@@ -49,9 +48,14 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
-	err := hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace))
+	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
-	assert.Len(t, allTiers.Items, len(tiersToCheck)) // temporarily remove this check because migration tests create basedeactivationdisabled, baseextended and hackathon tiers
+	notCreatedByE2e := client.MatchingLabelsSelector{
+		Selector: labels.NewSelector().Add(*e2eProducer),
+	}
+	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
+	require.NoError(t, err)
+	assert.Len(t, allTiers.Items, len(tiersToCheck))
 
 	for _, tier := range allTiers.Items {
 		assert.Contains(t, tiersToCheck, tier.Name)
@@ -67,9 +71,9 @@ func TestNSTemplateTiers(t *testing.T) {
 			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
 
-		t.Run(fmt.Sprintf("promote %s space to %s tier", testingTiersName, tierToCheck), func(t *testing.T) {
+		t.Run(fmt.Sprintf("promote %s space to %s tier", testingtiers.Status.CompliantUsername, tierToCheck), func(t *testing.T) {
 			// when
-			tiers.MoveSpaceToTier(t, hostAwait, testingTiersName, tierToCheck)
+			tiers.MoveSpaceToTier(t, hostAwait, testingtiers.Status.CompliantUsername, tierToCheck)
 
 			// then
 			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
@@ -77,39 +81,8 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 }
 
-func TestSetDefaultTier(t *testing.T) {
-	// given
-	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member1()
-
-	t.Run("original default tier", func(t *testing.T) {
-		// Create and approve a new user that should be provisioned to the base tier
-		NewSignupRequest(awaitilities).
-			Username("defaulttier").
-			ManuallyApprove().
-			TargetCluster(memberAwait).
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
-	})
-
-	t.Run("changed default tier configuration", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
-		// Create and approve a new user that should be provisioned to the advanced tier
-		NewSignupRequest(awaitilities).
-			Username("defaulttierchanged").
-			ManuallyApprove().
-			TargetCluster(memberAwait).
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
-	})
-}
-
 func TestUpdateNSTemplateTier(t *testing.T) {
+	t.Parallel()
 	// in this test, we have 2 groups of users, configured with their own tier (both using the "base" tier templates)
 	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
 	// finally, all user namespaces are verified.
@@ -178,6 +151,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
+	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
@@ -289,6 +263,7 @@ func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *HostAwaitility, tar
 }
 
 func TestTierTemplates(t *testing.T) {
+	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
