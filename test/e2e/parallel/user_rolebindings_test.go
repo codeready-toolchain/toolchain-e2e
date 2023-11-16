@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 )
 
 func TestUserCreatingRoleBindings(t *testing.T) {
+	t.Parallel()
 
 	awaitilities := testsupport.WaitForDeployments(t)
 	memberAwait := awaitilities.Member1()
