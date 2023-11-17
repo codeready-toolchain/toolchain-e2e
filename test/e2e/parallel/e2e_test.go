@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -26,6 +26,7 @@ import (
 )
 
 func TestE2EFlow(t *testing.T) {
+	t.Parallel()
 	// given
 	// full flow from usersignup with approval down to namespaces creation
 	awaitilities := WaitForDeployments(t)
