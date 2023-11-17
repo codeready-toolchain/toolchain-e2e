@@ -2122,7 +2122,6 @@ func (a *HostAwaitility) ListSpaceBindings(spaceName string) ([]toolchainv1alpha
 	return bindings.Items, nil
 }
 
-
 // UntilSpaceBindingHasMurName returns a `SpaceBindingWaitCriterion` which checks that the given
 // SpaceBinding has the expected MUR name set in its Spec
 func UntilSpaceBindingHasMurName(expected string) SpaceBindingWaitCriterion {

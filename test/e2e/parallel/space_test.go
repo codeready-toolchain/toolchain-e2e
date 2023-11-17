@@ -524,7 +524,6 @@ func TestSubSpaceInheritance(t *testing.T) {
 		subMur, err := hostAwait.WaitForMasterUserRecord(t, subSpaceBindings.Spec.MasterUserRecord)
 		require.NoError(t, err)
 
-
 		t.Logf("Wait for NS template")
 		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
