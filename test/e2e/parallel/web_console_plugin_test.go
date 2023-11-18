@@ -21,6 +21,7 @@ import (
 
 func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 	// given
+	t.Parallel()
 	await := WaitForDeployments(t)
 
 	for i, memberAwait := range await.AllMembers() {
