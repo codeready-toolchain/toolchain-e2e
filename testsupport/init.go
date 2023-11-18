@@ -42,75 +42,77 @@ var (
 // Returns the test context and an instance of Awaitility that contains all necessary information
 func WaitForOperators(t *testing.T) wait.Awaitilities {
 	initOnce.Do(func() {
-		memberNs := os.Getenv(wait.MemberNsVar)
-		memberNs2 := os.Getenv(wait.MemberNsVar2)
-		hostNs := os.Getenv(wait.HostNsVar)
-		registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
-		t.Logf("Host Operator namespace: %s", hostNs)
-		t.Logf("Member1 Operator namespace: %s", memberNs)
-		t.Logf("Member2 Operator namespace: %s", memberNs2)
-		t.Logf("Registration Service namespace: %s", registrationServiceNs)
-
-		apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-		require.NoError(t, err)
-
-		kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
-		require.NoError(t, err)
-
-		cl, err := client.New(kubeconfig, client.Options{
-			Scheme: schemeWithAllAPIs(t),
-		})
-		require.NoError(t, err)
-
-		initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
-
-		// wait for host operator to be ready
-		initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
-
-		// wait for registration service to be ready
-		initHostAwait.WaitForDeploymentToGetReady(t, "registration-service", 2)
-
-		// set registration service values
-		registrationServiceRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "registration-service", "/")
-		require.NoError(t, err, "failed while waiting for registration service route")
-
-		registrationServiceURL := "http://" + registrationServiceRoute.Spec.Host
-		if registrationServiceRoute.Spec.TLS != nil {
-			registrationServiceURL = "https://" + registrationServiceRoute.Spec.Host
-		}
-		initHostAwait.RegistrationServiceURL = registrationServiceURL
-
-		// wait for member operators to be ready
-		initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
-
-		initMember2Await = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
-
-		hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
-		require.NoError(t, err)
-		hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
-		require.NoError(t, err)
-		initHostAwait.RestConfig = hostConfig.RestConfig
-
-		_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
-		require.NoError(t, err)
-
-		_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
-		require.NoError(t, err)
-
-		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
-		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
-		require.NoError(t, err)
-
-		// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
-		// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
-		err = initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
-		require.NoError(t, err)
-
-		t.Log("all operators are ready and in running state")
+		waitForOperators(t)
 	})
-
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
+}
+func waitForOperators(t *testing.T) {
+	memberNs := os.Getenv(wait.MemberNsVar)
+	memberNs2 := os.Getenv(wait.MemberNsVar2)
+	hostNs := os.Getenv(wait.HostNsVar)
+	registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
+	t.Logf("Host Operator namespace: %s", hostNs)
+	t.Logf("Member1 Operator namespace: %s", memberNs)
+	t.Logf("Member2 Operator namespace: %s", memberNs2)
+	t.Logf("Registration Service namespace: %s", registrationServiceNs)
+
+	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	require.NoError(t, err)
+
+	kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
+	require.NoError(t, err)
+
+	cl, err := client.New(kubeconfig, client.Options{
+		Scheme: schemeWithAllAPIs(t),
+	})
+	require.NoError(t, err)
+
+	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
+
+	// wait for host operator to be ready
+	initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
+
+	// wait for registration service to be ready
+	initHostAwait.WaitForDeploymentToGetReady(t, "registration-service", 2)
+
+	// set registration service values
+	registrationServiceRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "registration-service", "/")
+	require.NoError(t, err, "failed while waiting for registration service route")
+
+	registrationServiceURL := "http://" + registrationServiceRoute.Spec.Host
+	if registrationServiceRoute.Spec.TLS != nil {
+		registrationServiceURL = "https://" + registrationServiceRoute.Spec.Host
+	}
+	initHostAwait.RegistrationServiceURL = registrationServiceURL
+
+	// wait for member operators to be ready
+	initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
+
+	initMember2Await = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
+
+	hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+	hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
+	require.NoError(t, err)
+	initHostAwait.RestConfig = hostConfig.RestConfig
+
+	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+
+	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
+	require.NoError(t, err)
+
+	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
+	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
+	err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
+	require.NoError(t, err)
+
+	// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
+	// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
+	err = initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
+	require.NoError(t, err)
+
+	t.Log("all operators are ready and in running state")
 }
 
 // WaitForDeployments waits for all member Webhooks and autoscaling buffer apps in addition to waiting for
@@ -119,43 +121,44 @@ func WaitForOperators(t *testing.T) wait.Awaitilities {
 // The primary reason for separation is because the migration tests are for testing host operator and member operator changes related to Spaces, NSTemplateTiers, etc.
 // Webhooks and autoscaling buffers do not deal with the same set of resources so they can be verified independently of migration tests
 func WaitForDeployments(t *testing.T) wait.Awaitilities {
+	initOnce.Do(func() {
+		waitForOperators(t)
+		// wait for host and member operators to be ready
+		registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
 
-	// wait for host and member operators to be ready
-	awaitilities := WaitForOperators(t)
-	registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
+		// set api proxy values
+		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "api", "/proxyhealth")
+		require.NoError(t, err)
+		assert.Equal(t, "24h", apiRoute.Annotations["haproxy.router.openshift.io/timeout"])
+		initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
 
-	// set api proxy values
-	apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "api", "/proxyhealth")
-	require.NoError(t, err)
-	assert.Equal(t, "24h", apiRoute.Annotations["haproxy.router.openshift.io/timeout"])
-	initHostAwait.APIProxyURL = strings.TrimSuffix(fmt.Sprintf("https://%s/%s", apiRoute.Spec.Host, apiRoute.Spec.Path), "/")
+		// wait for proxy metrics service
+		_, err = initHostAwait.WaitForService(t, "proxy-metrics-service")
+		require.NoError(t, err, "failed to find proxy metrics service")
 
-	// wait for proxy metrics service
-	_, err = initHostAwait.WaitForService(t, "proxy-metrics-service")
-	require.NoError(t, err, "failed to find proxy metrics service")
+		// setup host metrics route for metrics verification in tests
+		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
+		require.NoError(t, err)
+		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
-	// setup host metrics route for metrics verification in tests
-	hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
-	require.NoError(t, err)
-	initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
+		// setup member metrics route for metrics verification in tests
+		memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
+		require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
+		initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
 
-	// setup member metrics route for metrics verification in tests
-	memberMetricsRoute, err := initMemberAwait.SetupRouteForService(t, "member-operator-metrics-service", "/metrics")
-	require.NoError(t, err, "failed while setting up or waiting for the route to the 'member-operator-metrics' service to be available")
-	initMemberAwait.MetricsURL = memberMetricsRoute.Status.Ingress[0].Host
+		// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
+		// (we can't deploy the same webhook multiple times on the same cluster)
+		// Also verify the autoscaling buffer in both members
+		webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
+		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
+		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 
-	// Wait for the webhooks in Member 1 only because we do not deploy webhooks for Member 2
-	// (we can't deploy the same webhook multiple times on the same cluster)
-	// Also verify the autoscaling buffer in both members
-	webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
-	require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
-	initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
+		// wait for autoscaler buffer apps
+		initMemberAwait.WaitForAutoscalingBufferApp(t)
+		initMember2Await.WaitForAutoscalingBufferApp(t)
+	})
 
-	// wait for autoscaler buffer apps
-	initMemberAwait.WaitForAutoscalingBufferApp(t)
-	initMember2Await.WaitForAutoscalingBufferApp(t)
-
-	return awaitilities
+	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
