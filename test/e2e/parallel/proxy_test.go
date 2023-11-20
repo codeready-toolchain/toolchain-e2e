@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -135,6 +135,7 @@ func (u *proxyUser) getApplicationName(i int) string {
 // and since the CRD name & group name matches, then RBAC allow us to execute create/read
 // operations on that resource using the user permissions.
 func TestProxyFlow(t *testing.T) {
+	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -632,6 +633,7 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 }
 
 func TestSpaceLister(t *testing.T) {
+	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
