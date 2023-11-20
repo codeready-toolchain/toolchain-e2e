@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) {
+func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) *toolchainv1alpha1.NSTemplateSet {
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
 	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
@@ -75,8 +75,9 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	// Once all concurrent checks are done, and the expected list of namespaces for the NSTemplateSet is generated,
 	// let's verify NSTemplateSet.Status.ProvisionedNamespaces is populated as expected.
 	expectedProvisionedNamespaces := getExpectedProvisionedNamespaces(actualNamespaces)
-	_, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, wait.UntilNSTemplateSetHasProvisionedNamespaces(expectedProvisionedNamespaces))
+	nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, wait.UntilNSTemplateSetHasProvisionedNamespaces(expectedProvisionedNamespaces))
 	require.NoError(t, err)
+	return nsTmplSet
 }
 
 // getExpectedProvisionedNamespaces returns a list of provisioned namespaces from the given slice containing namespaces of the template tier.
