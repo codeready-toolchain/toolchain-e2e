@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -40,11 +41,11 @@ func GetTemplateFromContent(content []byte) (*templatev1.Template, error) {
 }
 
 // ApplyObjects applies the given objects in order
-func ApplyObjects(cl runtimeclient.Client, objsToApply []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+func ApplyObjects(ctx context.Context, cl runtimeclient.Client, objsToApply []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
 	applycl := applyclientlib.NewApplyClient(cl)
 	for _, obj := range objsToApply {
 		fmt.Printf("Applying %s object with name '%s' in namespace '%s'\n", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetName(), obj.GetNamespace())
-		if err := applyObject(applycl, obj, modifiers...); err != nil {
+		if err := applyObject(ctx, applycl, obj, modifiers...); err != nil {
 			return err
 		}
 	}
@@ -52,11 +53,11 @@ func ApplyObjects(cl runtimeclient.Client, objsToApply []runtimeclient.Object, m
 }
 
 // ApplyObjectsConcurrently applies multiple objects concurrently
-func ApplyObjectsConcurrently(cl runtimeclient.Client, combinedObjsToProcess []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+func ApplyObjectsConcurrently(ctx context.Context, cl runtimeclient.Client, combinedObjsToProcess []runtimeclient.Object, modifiers ...ClientObjectModifier) error {
 	var objProcessors []<-chan error
 	objChannel := distribute(combinedObjsToProcess)
 	for i := 0; i < len(combinedObjsToProcess); i++ {
-		objProcessors = append(objProcessors, startObjectProcessor(cl, objChannel, modifiers...))
+		objProcessors = append(objProcessors, startObjectProcessor(ctx, cl, objChannel, modifiers...))
 		time.Sleep(100 * time.Millisecond) // wait for a short time before starting each object processor to avoid hitting rate limits
 	}
 
@@ -106,12 +107,12 @@ func combineResults(results ...<-chan error) <-chan error {
 	return out
 }
 
-func startObjectProcessor(cl runtimeclient.Client, objSource <-chan runtimeclient.Object, modifiers ...ClientObjectModifier) <-chan error {
+func startObjectProcessor(ctx context.Context, cl runtimeclient.Client, objSource <-chan runtimeclient.Object, modifiers ...ClientObjectModifier) <-chan error {
 	out := make(chan error)
 	go func() {
 		applycl := applyclientlib.NewApplyClient(cl)
 		for obj := range objSource {
-			out <- applyObject(applycl, obj, modifiers...)
+			out <- applyObject(ctx, applycl, obj, modifiers...)
 			time.Sleep(100 * time.Millisecond)
 		}
 		close(out)
@@ -129,7 +130,7 @@ func NamespaceModifier(userNS string) ClientObjectModifier {
 	}
 }
 
-func applyObject(applycl *applyclientlib.ApplyClient, obj runtimeclient.Object, modifiers ...ClientObjectModifier) error {
+func applyObject(ctx context.Context, applycl *applyclientlib.ApplyClient, obj runtimeclient.Object, modifiers ...ClientObjectModifier) error {
 
 	// apply any modifiers before applying the object
 	for _, modifier := range modifiers {
@@ -141,7 +142,7 @@ func applyObject(applycl *applyclientlib.ApplyClient, obj runtimeclient.Object, 
 	// retry the apply in case it fails due to errors like the following:
 	// unable to create resource of kind: Deployment, version: v1: Operation cannot be fulfilled on clusterresourcequotas.quota.openshift.io "for-zippy-1882-deployments": the object has been modified; please apply your changes to the latest version and try again
 	if err := k8swait.Poll(cfg.DefaultRetryInterval, 30*time.Second, func() (bool, error) {
-		if _, applyErr := applycl.ApplyObject(obj); applyErr != nil {
+		if _, applyErr := applycl.ApplyObject(ctx, obj); applyErr != nil {
 			return false, applyErr
 		}
 		return true, nil
