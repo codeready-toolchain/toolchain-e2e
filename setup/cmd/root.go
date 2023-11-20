@@ -212,7 +212,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		for i := 0; i < operatorsLimit; i++ {
 			templatePaths = append(templatePaths, "setup/operators/installtemplates/"+operators.Templates[i])
 		}
-		if err := operators.EnsureOperatorsInstalled(cl, scheme, templatePaths); err != nil {
+		if err := operators.EnsureOperatorsInstalled(cmd.Context(), cl, scheme, templatePaths); err != nil {
 			term.Fatalf(err, "failed to ensure all operators are installed")
 		}
 	}
@@ -311,7 +311,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		defaultUserSetupBar = addProgressBar(uip, "setup default template users", defaultTemplateUsers)
 		setupDefaultUsersFunc := func(cl client.Client, curUserNum int, username string) {
 			if curUserNum <= defaultTemplateUsers {
-				if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, []string{defaultTemplatePath}); err != nil {
+				if err := resources.CreateUserResourcesFromTemplateFiles(cmd.Context(), cl, scheme, username, []string{defaultTemplatePath}); err != nil {
 					term.Fatalf(err, "failed to create default template resources for user '%s'", username)
 				}
 			}
@@ -325,7 +325,7 @@ func setup(cmd *cobra.Command, _ []string) { // nolint:gocyclo
 		customUserSetupBar = addProgressBar(uip, "setup custom template users", customTemplateUsers)
 		setupCustomUsersFunc := func(cl client.Client, curUserNum int, username string) {
 			if curUserNum <= customTemplateUsers {
-				if err := resources.CreateUserResourcesFromTemplateFiles(cl, scheme, username, customTemplatePaths); err != nil {
+				if err := resources.CreateUserResourcesFromTemplateFiles(cmd.Context(), cl, scheme, username, customTemplatePaths); err != nil {
 					term.Fatalf(err, "failed to create custom template resources for user '%s'", username)
 				}
 			}
