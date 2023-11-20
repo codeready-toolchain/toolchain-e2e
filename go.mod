@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20231013094356-24443ff2aa9a
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20231012065805-a23f3cfa676d
+	github.com/codeready-toolchain/api v0.0.0-20231107202930-b028ae440a26
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20231117145902-3e7430ae48bb
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
