@@ -89,5 +89,6 @@ var HTTPClient = &http.Client{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, // nolint:gosec
 		},
+		DisableKeepAlives: true,
 	},
 }
