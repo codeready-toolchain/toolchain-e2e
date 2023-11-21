@@ -154,7 +154,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
-	tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
+	nsTmplSet = tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
 
 	// Wait for space to have list of provisioned namespaces in Space status.
 	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
