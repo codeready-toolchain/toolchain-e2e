@@ -38,7 +38,7 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 		templatePath := "user-workloads.yaml"
 
 		// when
-		err := CreateUserResourcesFromTemplateFiles(cl, s, username, []string{templatePath})
+		err := CreateUserResourcesFromTemplateFiles(context.TODO(), cl, s, username, []string{templatePath})
 
 		// then
 		require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 				templatePath := "not-found.yaml"
 
 				// when
-				err := CreateUserResourcesFromTemplateFiles(cl, s, username, []string{templatePath})
+				err := CreateUserResourcesFromTemplateFiles(context.TODO(), cl, s, username, []string{templatePath})
 
 				// then
 				require.Error(t, err)
@@ -94,7 +94,7 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 				_, _ = tmpFile.WriteString(deployment)
 
 				// when
-				err = CreateUserResourcesFromTemplateFiles(cl, s, username, []string{tmpFile.Name()})
+				err = CreateUserResourcesFromTemplateFiles(context.TODO(), cl, s, username, []string{tmpFile.Name()})
 
 				// then
 				require.Error(t, err)
