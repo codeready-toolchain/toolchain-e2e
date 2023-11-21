@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"context"
 	"fmt"
 
 	ctemplate "github.com/codeready-toolchain/toolchain-common/pkg/template"
@@ -17,7 +18,7 @@ const userNSParam = "CURRENT_USER_NAMESPACE"
 
 var tmpls map[string]*templatev1.Template = make(map[string]*templatev1.Template)
 
-func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Scheme, username string, templatePaths []string) error {
+func CreateUserResourcesFromTemplateFiles(ctx context.Context, cl runtimeclient.Client, s *runtime.Scheme, username string, templatePaths []string) error {
 	userNS := fmt.Sprintf("%s-dev", username)
 	combinedObjsToProcess := []runtimeclient.Object{}
 	for _, templatePath := range templatePaths {
@@ -48,5 +49,5 @@ func CreateUserResourcesFromTemplateFiles(cl runtimeclient.Client, s *runtime.Sc
 		return fmt.Errorf("no objects found in templates %v", templatePaths)
 	}
 
-	return templates.ApplyObjectsConcurrently(cl, combinedObjsToProcess, templates.NamespaceModifier(userNS))
+	return templates.ApplyObjectsConcurrently(ctx, cl, combinedObjsToProcess, templates.NamespaceModifier(userNS))
 }
