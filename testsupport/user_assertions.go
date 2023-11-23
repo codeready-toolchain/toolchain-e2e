@@ -215,9 +215,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 	// Then finally check again the MasterUserRecord with the expected (embedded) UserAccount status, on top of the other criteria
 	expectedEmbeddedUaStatus := toolchainv1alpha1.UserAccountStatusEmbedded{
 		Cluster: toolchainv1alpha1.Cluster{
-			Name:        memberCluster.Name,
-			APIEndpoint: memberCluster.Spec.APIEndpoint,
-			ConsoleURL:  memberAwait.GetConsoleURL(t),
+			Name: memberCluster.Name,
 		},
 		UserAccountStatus: userAccount.Status,
 	}
