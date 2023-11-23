@@ -128,7 +128,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 	// Check the originalSub identity
 	originalSubIdentityName := ""
 	if userAccount.Spec.OriginalSub != "" {
-		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.OriginalSub, "rhd").IdentityName()
+		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.OriginalSub, "rhd").IdentityName()
 	}
 
 	// Check the UserID identity
@@ -146,25 +146,26 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
+			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey,
+				userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
 		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
-		userID, found := userSignup.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
-		if found {
-			accountID, found := userSignup.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey]
-			if found && userID != "" && accountID != "" {
+		userID := userSignup.Spec.IdentityClaims.UserID
+		if userID != "" {
+			accountID := userSignup.Spec.IdentityClaims.AccountID
+			if accountID != "" {
 				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey])
 				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey])
 			}
 		}
 
-		if !found {
+		if userID == "" {
 			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOUserIDAnnotationKey)
 			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOAccountIDAnnotationKey)
 		}
 
 		// Verify provisioned Identity
-		identityName := identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()
+		identityName := identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.Sub, "rhd").IdentityName()
 
 		_, err = memberAwait.WaitForIdentity(t, identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
@@ -191,7 +192,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		// This can be removed as soon as we don't create UserAccounts in AppStudio environment.
 		err := memberAwait.WaitUntilUserDeleted(t, userAccount.Name)
 		assert.NoError(t, err)
-		err = memberAwait.WaitUntilIdentityDeleted(t, identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName())
+		err = memberAwait.WaitUntilIdentityDeleted(t, identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.Sub, "rhd").IdentityName())
 		assert.NoError(t, err)
 		// Verify the originalSub identity
 		if originalSubIdentityName != "" {
