@@ -69,7 +69,7 @@ func (s *userManagementTestSuite) TestVerifyUserTiers() {
 		},
 		{
 			name:                    "deactivate30",
-			deactivationTimeoutDays: 30,
+			deactivationTimeoutDays: 100,
 		},
 		{
 			name:                    "deactivate80",
