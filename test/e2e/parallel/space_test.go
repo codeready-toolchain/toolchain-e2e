@@ -171,7 +171,7 @@ func TestSpaceRoles(t *testing.T) {
 			Resources()
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
+		testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
 
 		// then
 		require.NoError(t, err)
@@ -189,21 +189,22 @@ func TestSpaceRoles(t *testing.T) {
 		require.NoError(t, err)
 		VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name)
 
-		t.Run("remove admin binding", func(t *testing.T) {
-			// when
-			err := hostAwait.Client.Delete(context.TODO(), guestBinding)
-
-			// then
-			require.NoError(t, err)
-			nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
-				UntilNSTemplateSetHasConditions(Provisioned()),
-				UntilNSTemplateSetHasSpaceRoles(
-					SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"), // "spaceguest" was removed
-				),
-			)
-			require.NoError(t, err)
-			VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name)
-		})
+		// FIXME: temporarily disabled since the SpaceBindingRequest migration controller will replace SBs with SBRs, so deleting the SpaceBinding directly will not work anymore, since the SBR controller will put that back
+		//t.Run("remove admin binding", func(t *testing.T) {
+		//	// when
+		//	err := hostAwait.Client.Delete(context.TODO(), guestBinding)
+		//
+		//	// then
+		//	require.NoError(t, err)
+		//	nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
+		//		UntilNSTemplateSetHasConditions(Provisioned()),
+		//		UntilNSTemplateSetHasSpaceRoles(
+		//			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, "spaceowner"), // "spaceguest" was removed
+		//		),
+		//	)
+		//	require.NoError(t, err)
+		//	VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name)
+		//})
 	})
 
 	t.Run("set owner user as maintainer instead", func(t *testing.T) {
@@ -439,41 +440,42 @@ func TestSubSpaces(t *testing.T) {
 					require.NoError(t, err)
 					VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
 
-					t.Run("we remove a user from subSpace only", func(t *testing.T) {
-						// when
-						err = hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
-
-						// then
-						// subSpace should have one user less
-						require.NoError(t, err)
-						subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
-							UntilNSTemplateSetHasConditions(Provisioned()),
-							UntilNSTemplateSetHasSpaceRoles(
-								SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
-							),
-						)
-						require.NoError(t, err)
-						VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
-						// ... also subSubSpace should have one user less
-						require.NoError(t, err)
-						subSubSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSubSpaceNSTemplateSet.Name,
-							UntilNSTemplateSetHasConditions(Provisioned()),
-							UntilNSTemplateSetHasSpaceRoles(
-								SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
-							),
-						)
-						require.NoError(t, err)
-						VerifyResourcesProvisionedForSpace(t, awaitilities, subSubSpace.Name)
-						// parentSpace should not be affected by the change in sub-space
-						parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
-							UntilNSTemplateSetHasConditions(Provisioned()),
-							UntilNSTemplateSetHasSpaceRoles(
-								SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
-							),
-						)
-						require.NoError(t, err)
-						VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
-					})
+					// FIXME: temporarily disabled since the SpaceBindingRequest migration controller will replace SBs with SBRs, so deleting the SpaceBinding directly will not work anymore, since the SBR controller will put that back
+					//t.Run("we remove a user from subSpace only", func(t *testing.T) {
+					//	// when
+					//	err = hostAwait.Client.Delete(context.TODO(), subSpaceBinding)
+					//
+					//	// then
+					//	// subSpace should have one user less
+					//	require.NoError(t, err)
+					//	subSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSpaceNSTemplateSet.Name,
+					//		UntilNSTemplateSetHasConditions(Provisioned()),
+					//		UntilNSTemplateSetHasSpaceRoles(
+					//			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
+					//		),
+					//	)
+					//	require.NoError(t, err)
+					//	VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name)
+					//	// ... also subSubSpace should have one user less
+					//	require.NoError(t, err)
+					//	subSubSpaceNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, subSubSpaceNSTemplateSet.Name,
+					//		UntilNSTemplateSetHasConditions(Provisioned()),
+					//		UntilNSTemplateSetHasSpaceRoles(
+					//			SpaceRole(appstudioTier.Spec.SpaceRoles["admin"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // removed admin role user anymore
+					//		),
+					//	)
+					//	require.NoError(t, err)
+					//	VerifyResourcesProvisionedForSpace(t, awaitilities, subSubSpace.Name)
+					//	// parentSpace should not be affected by the change in sub-space
+					//	parentNSTemplateSet, err = memberAwait.WaitForNSTmplSet(t, parentNSTemplateSet.Name,
+					//		UntilNSTemplateSetHasConditions(Provisioned()),
+					//		UntilNSTemplateSetHasSpaceRoles(
+					//			SpaceRole(appstudioTier.Spec.SpaceRoles["maintainer"].TemplateRef, parentSpaceBindings.Spec.MasterUserRecord), // unchanged
+					//		),
+					//	)
+					//	require.NoError(t, err)
+					//	VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name)
+					//})
 				})
 			})
 		})
