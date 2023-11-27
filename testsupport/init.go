@@ -102,6 +102,16 @@ func waitForOperators(t *testing.T) {
 	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
+	// check that the tier exists, and all its namespace other cluster-scoped resource revisions
+	// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
+	err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
+	require.NoError(t, err)
+
+	// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
+	// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
+	err = initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
+	require.NoError(t, err)
+
 	t.Log("all operators are ready and in running state")
 }
 
@@ -146,16 +156,6 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// wait for autoscaler buffer apps
 		initMemberAwait.WaitForAutoscalingBufferApp(t)
 		initMember2Await.WaitForAutoscalingBufferApp(t)
-
-		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
-		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
-		err = initHostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
-		require.NoError(t, err)
-
-		// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
-		// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
-		err = initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
-		require.NoError(t, err)
 	})
 
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
