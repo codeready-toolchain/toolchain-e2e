@@ -916,7 +916,7 @@ func UntilUserTierHasDeactivationTimeoutDays(expected int) UserTierWaitCriterion
 }
 
 func (a *HostAwaitility) WaitUntilBaseUserTierIsUpdated(t *testing.T) error {
-	_, err := a.WaitForUserTier(t, "deactivate30", UntilUserTierHasDeactivationTimeoutDays(100))
+	_, err := a.WaitForUserTier(t, "deactivate30", UntilUserTierHasDeactivationTimeoutDays(30))
 	return err
 }
 
