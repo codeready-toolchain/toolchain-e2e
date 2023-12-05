@@ -539,7 +539,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		resourceQuotaComputeBuild("", "512Gi", "24", "128Gi"),
+		resourceQuotaComputeBuild("0", "512Gi", "24", "128Gi"),
 		clusterResourceQuotaDeploymentCount("300", "100"),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
