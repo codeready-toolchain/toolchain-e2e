@@ -528,7 +528,7 @@ func TestSubSpaceInheritance(t *testing.T) {
 
 		t.Logf("Wait for NS template")
 		require.NoError(t, err)
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
+		_, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasSpaceRoles(
 				SpaceRole(appstudioTier.Spec.SpaceRoles["contributor"].TemplateRef, subMur.Name)),
 		)
