@@ -274,7 +274,6 @@ func ExpectedUserAccount(claims toolchainv1alpha1.PropagatedClaims) toolchainv1a
 	return toolchainv1alpha1.UserAccountSpec{
 		UserID:           claims.Sub,
 		Disabled:         false,
-		OriginalSub:      claims.OriginalSub,
 		PropagatedClaims: claims,
 	}
 }
