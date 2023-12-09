@@ -173,6 +173,11 @@ func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signu
 
 func verifySecondMemberProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
+
+	// TODO These two lines will break the e2e tests! Remove these immediately after they have been merged with master,
+	// along with the associated code in user_assertions.go
+	SetInMigrationTests(true)
+	defer SetInMigrationTests(false)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
 	CreateBannedUser(t, awaitilities.Host(), signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
 }
