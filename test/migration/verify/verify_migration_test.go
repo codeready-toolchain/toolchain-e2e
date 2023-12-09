@@ -36,8 +36,8 @@ func TestAfterMigration(t *testing.T) {
 
 	// TODO These two lines will break the e2e tests! Remove these immediately after they have been merged with master,
 	// along with the associated code in user_assertions.go
-	SetInMigrationTests(true)
-	defer SetInMigrationTests(false)
+	//SetInMigrationTests(true)
+	//defer SetInMigrationTests(false)
 
 	runVerifyFunctions(t, awaitilities)
 
