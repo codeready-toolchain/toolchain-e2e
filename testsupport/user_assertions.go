@@ -20,14 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO Remove this Var and the SetInMigrationTests function, plus remove the first block from ExpectedUserAccount()
-// function below
-var InMigrationTests = false
-
-func SetInMigrationTests(val bool) {
-	InMigrationTests = val
-}
-
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
@@ -279,15 +271,6 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 }
 
 func ExpectedUserAccount(claims toolchainv1alpha1.PropagatedClaims) toolchainv1alpha1.UserAccountSpec {
-	if InMigrationTests {
-		return toolchainv1alpha1.UserAccountSpec{
-			Disabled:         false,
-			PropagatedClaims: claims,
-			OriginalSub:      claims.OriginalSub,
-			UserID:           claims.Sub,
-		}
-	}
-
 	return toolchainv1alpha1.UserAccountSpec{
 		Disabled:         false,
 		PropagatedClaims: claims,

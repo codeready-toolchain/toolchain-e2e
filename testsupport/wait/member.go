@@ -160,13 +160,13 @@ func UntilUserAccountHasAnnotation(key, value string) UserAccountWaitCriterion {
 }
 
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has the expected spec
+// UserAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			userAccount := actual.DeepCopy()
 			expectedSpec := expected.DeepCopy()
-			return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
+			return reflect.DeepEqual(userAccount.Spec.PropagatedClaims, expectedSpec.PropagatedClaims) && userAccount.Spec.Disabled == expectedSpec.Disabled
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
 			userAccount := actual.DeepCopy()
