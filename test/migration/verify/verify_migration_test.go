@@ -33,12 +33,6 @@ func TestAfterMigration(t *testing.T) {
 
 	// run all the verify functions concurrently
 	// to ensure that the objects provisioned with the "old" operator versions are not altered in an unexpected way by the new operator version (the changes are backward compatible)
-
-	// TODO These two lines will break the e2e tests! Remove these immediately after they have been merged with master,
-	// along with the associated code in user_assertions.go
-	//SetInMigrationTests(true)
-	//defer SetInMigrationTests(false)
-
 	runVerifyFunctions(t, awaitilities)
 
 	t.Run("run migration setup with new operator versions for compatibility", func(t *testing.T) {
