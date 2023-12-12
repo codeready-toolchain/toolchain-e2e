@@ -17,11 +17,12 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
 	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
-	var nsTmplSetCheck wait.NSTemplateSetWaitCriterion
-	if !space.Spec.DisableInheritance {
-		nsTmplSetCheck = UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs)
+	var err error
+	if space.Spec.DisableInheritance {
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
+	} else {
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs),wait.UntilNSTemplateSetHasAnySpaceRoles())
 	}
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), nsTmplSetCheck)
 	require.NoError(t, err)
 
 	// save the names of the namespaces provisioned by the NSTemplateSet,
