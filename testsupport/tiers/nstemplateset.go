@@ -21,7 +21,7 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 	if space.Spec.DisableInheritance {
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	} else {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs),wait.UntilNSTemplateSetHasAnySpaceRoles())
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
 	}
 	require.NoError(t, err)
 
