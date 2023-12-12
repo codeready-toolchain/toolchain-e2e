@@ -2330,7 +2330,7 @@ func EncodeUserIdentifier(subject string) string {
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 	var spaceCreated *toolchainv1alpha1.Space
-	t.Logf("Creating Space %s and SpaceBinding for %s", space.Name, mur.Name)
+	t.Logf("Creating Space %s and SpaceBinding with role %s for %s", space.Name, spaceRole, mur.Name)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		spaceToCreate := space.DeepCopy()
@@ -2340,7 +2340,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			}
 		}
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole)
+		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
 		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
