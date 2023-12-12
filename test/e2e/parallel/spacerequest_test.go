@@ -138,6 +138,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			UntilSpaceRequestHasConditions(Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
+			UntilSpaceRequestHasDisableInheritance(true),
 		)
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)

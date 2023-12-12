@@ -13,11 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, checks TierChecks) *toolchainv1alpha1.NSTemplateSet {
+func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility, nsTmplSet *toolchainv1alpha1.NSTemplateSet, space *toolchainv1alpha1.Space, checks TierChecks) *toolchainv1alpha1.NSTemplateSet {
 	t.Logf("verifying NSTemplateSet '%s' and its resources", nsTmplSet.Name)
 	expectedTemplateRefs := checks.GetExpectedTemplateRefs(t, hostAwait)
 
-	nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
+	var nsTmplSetCheck wait.NSTemplateSetWaitCriterion
+	if !space.Spec.DisableInheritance {
+		nsTmplSetCheck = UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs)
+	}
+	nsTmplSet, err := memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), nsTmplSetCheck)
 	require.NoError(t, err)
 
 	// save the names of the namespaces provisioned by the NSTemplateSet,
