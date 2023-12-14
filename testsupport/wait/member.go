@@ -166,7 +166,7 @@ func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAcc
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			userAccount := actual.DeepCopy()
 			expectedSpec := expected.DeepCopy()
-			return reflect.DeepEqual(userAccount.Spec.PropagatedClaims, expectedSpec.PropagatedClaims) && userAccount.Spec.Disabled == expectedSpec.Disabled
+			return reflect.DeepEqual(userAccount.Spec, expectedSpec)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
 			userAccount := actual.DeepCopy()
