@@ -2,11 +2,10 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20231129193441-f6c9b7feee01
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20231207224104-aee8d2b7fe98
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20231213000011-5c6d88fc1c64
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/websocket v1.4.2
@@ -50,6 +49,7 @@ require (
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect

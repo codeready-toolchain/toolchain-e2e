@@ -120,7 +120,6 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		wait.UntilUserAccountHasConditions(wait.Provisioned()),
 		wait.UntilUserAccountHasSpec(ExpectedUserAccount(userSignup.Spec.IdentityClaims.PropagatedClaims)),
 		wait.UntilUserAccountHasLabelWithValue(toolchainv1alpha1.TierLabelKey, mur.Spec.TierName),
-		wait.UntilUserAccountHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
 		wait.UntilUserAccountMatchesMur(hostAwait))
 	require.NoError(t, err)
 	require.NotNil(t, userAccount)
@@ -273,9 +272,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 func ExpectedUserAccount(claims toolchainv1alpha1.PropagatedClaims) toolchainv1alpha1.UserAccountSpec {
 	return toolchainv1alpha1.UserAccountSpec{
-		UserID:           claims.Sub,
 		Disabled:         false,
-		OriginalSub:      claims.OriginalSub,
 		PropagatedClaims: claims,
 	}
 }
