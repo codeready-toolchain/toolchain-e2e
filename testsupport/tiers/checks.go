@@ -443,7 +443,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaComputeDeploy("0", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("0", "128Gi", "12", "64Gi"),
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
-		limitRange("0", "2Gi", "10m", "256Mi"),
+		limitRange("0", "2Gi", "200m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
