@@ -452,7 +452,7 @@ func commonAppstudioTierChecks() []namespaceObjectsCheck {
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
-		pipelineRunnerRoleBinding()
+		pipelineRunnerRoleBinding(),
 	}
 }
 
@@ -463,10 +463,11 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
 		limitRange("0", "2Gi", "200m", "256Mi"),
 		numberOfLimitRanges(1),
-		environment("development")
+		environment("development"),
 	}
 
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6), commonAppstudioTierChecks())...)
+	checks = append(checks, commonAppstudioTierChecks()...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
 }
 
@@ -565,10 +566,12 @@ func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespac
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
 		limitRange("0", "2Gi", "200m", "256Mi"),
 		numberOfLimitRanges(1),
-		environment("development")
+		environment("development"),
 	}
 
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6), commonAppstudioTierChecks())...)
+
+	checks = append(checks, commonAppstudioTierChecks()...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
 }
 
