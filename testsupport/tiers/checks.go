@@ -438,16 +438,11 @@ type appstudioTierChecks struct {
 	tierName string
 }
 
-func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("0", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("0", "128Gi", "12", "64Gi"),
-		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
-		limitRange("0", "2Gi", "200m", "256Mi"),
-		numberOfLimitRanges(1),
+
+func commonAppstudioTierChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
 		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
-		environment("development"),
 		resourceQuotaToolchainCrds("32"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
@@ -457,10 +452,21 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsEnterpriseContract("512"),
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
-		pipelineRunnerRoleBinding(),
+		pipelineRunnerRoleBinding()
+	}
+}
+
+func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("0", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("0", "128Gi", "12", "64Gi"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
+		limitRange("0", "2Gi", "200m", "256Mi"),
+		numberOfLimitRanges(1),
+		environment("development")
 	}
 
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6), commonAppstudioTierChecks())...)
 	return checks
 }
 
@@ -552,27 +558,22 @@ func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		pipelineRunnerClusterRole())
 }
 
-type appstudioEnvTierChecks struct {
-	tierName string
-}
-
-func (a *appstudioLargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("0", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("0", "512Gi", "24", "128Gi"),
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
 		limitRange("0", "2Gi", "200m", "256Mi"),
 		numberOfLimitRanges(1),
-		namespaceManagerSA(),
-		additionalArgocdReadRole(),
-		namespaceManagerSaAdditionalArgocdReadRoleBinding(),
-		namespaceManagerSaEditRoleBinding(),
-		gitOpsServiceLabel(),
-		appstudioWorkSpaceNameLabel(),
+		environment("development")
 	}
 
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6), commonAppstudioTierChecks())...)
 	return checks
+}
+
+type appstudioEnvTierChecks struct {
+	tierName string
 }
 
 func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
