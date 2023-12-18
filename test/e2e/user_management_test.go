@@ -154,14 +154,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Delete the user's email and set them to deactivated
 		userSignup, err := hostAwait.UpdateUserSignup(t, userNoEmail.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
-				delete(us.Annotations, toolchainv1alpha1.UserSignupUserEmailAnnotationKey)
+				us.Spec.IdentityClaims.Email = ""
 				states.SetDeactivated(us, true)
 			})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedByAdmin(), wait.UserSignupMissingEmailAnnotation())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedByAdmin(), wait.UserSignupMissingEmail())...))
 		require.NoError(t, err)
 	})
 
