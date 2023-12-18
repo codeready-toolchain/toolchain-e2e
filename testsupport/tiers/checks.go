@@ -438,7 +438,6 @@ type appstudioTierChecks struct {
 	tierName string
 }
 
-
 func commonAppstudioTierChecks() []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{
 		gitOpsServiceLabel(),
@@ -458,10 +457,10 @@ func commonAppstudioTierChecks() []namespaceObjectsCheck {
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("0", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("0", "128Gi", "12", "64Gi"),
+		resourceQuotaComputeDeploy("", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("", "128Gi", "12", "64Gi"),
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
-		limitRange("0", "2Gi", "200m", "256Mi"),
+		limitRange("", "2Gi", "200m", "256Mi"),
 		numberOfLimitRanges(1),
 		environment("development"),
 	}
@@ -561,10 +560,10 @@ func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 
 func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("0", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("0", "512Gi", "24", "128Gi"),
+		resourceQuotaComputeDeploy("", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("", "512Gi", "24", "128Gi"),
 		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
-		limitRange("0", "2Gi", "200m", "256Mi"),
+		limitRange("", "2Gi", "200m", "256Mi"),
 		numberOfLimitRanges(1),
 		environment("development"),
 	}
@@ -755,8 +754,10 @@ func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
-		require.NoError(t, err)
+		if cpuLimit != "" {
+			spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+			require.NoError(t, err)
+		}
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
@@ -777,8 +778,10 @@ func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest 
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
-		require.NoError(t, err)
+		if cpuLimit != "" {
+			spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+			require.NoError(t, err)
+		}
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
@@ -990,6 +993,10 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 		lr, err := memberAwait.WaitForLimitRange(t, ns, "resource-limits")
 		require.NoError(t, err)
 		def := make(map[corev1.ResourceName]resource.Quantity)
+		if cpuLimit != "" {
+			def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
+			require.NoError(t, err)
+		}
 		def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
 		require.NoError(t, err)
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)

@@ -210,7 +210,7 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUserLarge(t *testing.T
 	usersignup := r.prepareUser(t, AppStudioProvisionedUserLarge, r.Awaitilities.Member1())
 	hostAwait := r.Awaitilities.Host()
 
-	// promote to appstudio
+	// promote to appstudiolarge
 	tiers.MoveSpaceToTier(t, hostAwait, usersignup.Status.CompliantUsername, "appstudiolarge")
 
 	t.Logf("user %s was promoted to appstudiolarge tier", AppStudioProvisionedUserLarge)
