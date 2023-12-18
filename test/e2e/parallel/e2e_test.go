@@ -139,7 +139,8 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete identity and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(johnSignup.Spec.Userid, "rhd").IdentityName()}, identity)
+			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(
+				johnSignup.Spec.IdentityClaims.Sub, "rhd").IdentityName()}, identity)
 			require.NoError(t, err)
 
 			// when
@@ -170,7 +171,8 @@ func TestE2EFlow(t *testing.T) {
 		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
 			// given
 			identity := &userv1.Identity{}
-			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(johnSignup.Spec.Userid, "rhd").IdentityName()}, identity)
+			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(
+				johnSignup.Spec.IdentityClaims.Sub, "rhd").IdentityName()}, identity)
 			require.NoError(t, err)
 			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 

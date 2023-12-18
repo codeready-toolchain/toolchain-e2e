@@ -538,7 +538,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 
 		// Confirm that a MasterUserRecord is deleted
-		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.Username)
+		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.IdentityClaims.PreferredUsername)
 		require.Error(t, err)
 		// confirm usersignup
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -640,7 +640,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 
 		// Confirm that a MasterUserRecord is deleted
-		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.Username)
+		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.IdentityClaims.PreferredUsername)
 		require.Error(t, err)
 		// confirm usersignup
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -700,7 +700,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.NoError(s.T(), err)
 
 	// Wait until the MUR status is disabled
-	mur, err = hostAwait.WaitForMasterUserRecord(s.T(), userSignup.Spec.Username,
+	mur, err = hostAwait.WaitForMasterUserRecord(s.T(), userSignup.Spec.IdentityClaims.PreferredUsername,
 		wait.UntilMasterUserRecordHasConditions(wait.Disabled(), wait.ProvisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
