@@ -389,7 +389,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 			// reactivate the user
 			usersignups[username], _ = NewSignupRequest(awaitilities).
-				IdentityID(uuid.Must(uuid.FromString(usersignups[username].Spec.Userid))).
+				IdentityID(uuid.Must(uuid.FromString(usersignups[username].Spec.IdentityClaims.Sub))).
 				Username(username).
 				ManuallyApprove().
 				TargetCluster(memberAwait).

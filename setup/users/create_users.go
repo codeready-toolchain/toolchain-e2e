@@ -34,9 +34,13 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 			},
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
-			Username:      username,
-			Userid:        username,
 			TargetCluster: memberClusterName,
+			IdentityClaims: toolchainv1alpha1.IdentityClaimsEmbedded{
+				PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
+					Sub: username,
+				},
+				PreferredUsername: username,
+			},
 		},
 	}
 	states.SetApprovedManually(usersignup, true)

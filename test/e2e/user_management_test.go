@@ -154,14 +154,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// Delete the user's email and set them to deactivated
 		userSignup, err := hostAwait.UpdateUserSignup(t, userNoEmail.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
-				delete(us.Annotations, toolchainv1alpha1.UserSignupUserEmailAnnotationKey)
+				us.Spec.IdentityClaims.Email = ""
 				states.SetDeactivated(us, true)
 			})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedByAdmin(), wait.UserSignupMissingEmailAnnotation())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedByAdmin(), wait.UserSignupMissingEmail())...))
 		require.NoError(t, err)
 	})
 
@@ -538,7 +538,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 
 		// Confirm that a MasterUserRecord is deleted
-		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.Username)
+		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.IdentityClaims.PreferredUsername)
 		require.Error(t, err)
 		// confirm usersignup
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -640,7 +640,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 
 		// Confirm that a MasterUserRecord is deleted
-		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.Username)
+		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(t, userSignup.Spec.IdentityClaims.PreferredUsername)
 		require.Error(t, err)
 		// confirm usersignup
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -700,7 +700,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	require.NoError(s.T(), err)
 
 	// Wait until the MUR status is disabled
-	mur, err = hostAwait.WaitForMasterUserRecord(s.T(), userSignup.Spec.Username,
+	mur, err = hostAwait.WaitForMasterUserRecord(s.T(), userSignup.Spec.IdentityClaims.PreferredUsername,
 		wait.UntilMasterUserRecordHasConditions(wait.Disabled(), wait.ProvisionedNotificationCRCreated()))
 	require.NoError(s.T(), err)
 
