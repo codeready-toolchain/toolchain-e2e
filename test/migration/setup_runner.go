@@ -28,11 +28,9 @@ const (
 	DeactivatedUser             = "mig-deact"
 	BannedUser                  = "mig-banned"
 	AppStudioProvisionedUser    = "mig-appst"
-	AppStudioProvisionedUserLarge = "mig-appst-large"
 	SecondMemberProvisionedUser = "mig-m2-user"
 
 	ProvisionedAppStudioSpace    = "mig-appst-space"
-	ProvisionedAppStudioSpaceLarge    = "mig-appst-large-space"
 	SecondMemberProvisionedSpace = "mig-m2-space"
 	ProvisionedSpaceRequest      = "mig-space-request"
 	ProvisionedParentSpace       = "mig-parent-space"
@@ -48,15 +46,13 @@ func (r *SetupMigrationRunner) Run(t *testing.T) {
 
 	toRun := []func(t *testing.T){
 		r.prepareAppStudioProvisionedSpace,
-		r.prepareAppStudioProvisionedSpaceLarge,
 		r.prepareSecondMemberProvisionedSpace,
 		r.prepareProvisionedSubspace,
 		r.prepareProvisionedUser,
 		r.prepareSecondMemberProvisionedUser,
 		r.prepareDeactivatedUser,
 		r.prepareBannedUser,
-		r.prepareAppStudioProvisionedUser,
-		r.prepareAppStudioProvisionedUserLarge}
+		r.prepareAppStudioProvisionedUser}
 
 	for _, funcToRun := range toRun {
 		wg.Add(1)
@@ -71,10 +67,6 @@ func (r *SetupMigrationRunner) Run(t *testing.T) {
 
 func (r *SetupMigrationRunner) prepareAppStudioProvisionedSpace(t *testing.T) {
 	r.createAndWaitForSpace(t, ProvisionedAppStudioSpace, "appstudio", r.Awaitilities.Member1())
-}
-
-func (r *SetupMigrationRunner) prepareAppStudioProvisionedSpaceLarge(t *testing.T) {
-	r.createAndWaitForSpace(t, ProvisionedAppStudioSpaceLarge, "appstudiolarge", r.Awaitilities.Member1())
 }
 
 func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace(t *testing.T) {
@@ -199,21 +191,6 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedUser(t *testing.T) {
 	tiers.MoveSpaceToTier(t, hostAwait, usersignup.Status.CompliantUsername, "appstudio")
 
 	t.Logf("user %s was promoted to appstudio tier", AppStudioProvisionedUser)
-
-	// verify that it's promoted
-	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(t, usersignup.Status.CompliantUsername,
-		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
-	require.NoError(t, err)
-}
-
-func (r *SetupMigrationRunner) prepareAppStudioProvisionedUserLarge(t *testing.T) {
-	usersignup := r.prepareUser(t, AppStudioProvisionedUserLarge, r.Awaitilities.Member1())
-	hostAwait := r.Awaitilities.Host()
-
-	// promote to appstudiolarge
-	tiers.MoveSpaceToTier(t, hostAwait, usersignup.Status.CompliantUsername, "appstudiolarge")
-
-	t.Logf("user %s was promoted to appstudiolarge tier", AppStudioProvisionedUserLarge)
 
 	// verify that it's promoted
 	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(t, usersignup.Status.CompliantUsername,
