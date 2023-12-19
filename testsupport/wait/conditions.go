@@ -313,13 +313,13 @@ func Deactivated() []toolchainv1alpha1.Condition {
 	}
 }
 
-func UserSignupMissingEmailAnnotation() []toolchainv1alpha1.Condition {
+func UserSignupMissingEmail() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
 			Type:    toolchainv1alpha1.UserSignupComplete,
 			Status:  corev1.ConditionFalse,
-			Reason:  toolchainv1alpha1.UserSignupMissingUserEmailAnnotationReason,
-			Message: "missing annotation at usersignup",
+			Reason:  toolchainv1alpha1.UserSignupMissingUserEmailReason,
+			Message: "missing email at usersignup",
 		},
 		{
 			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
