@@ -568,7 +568,6 @@ func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespac
 		environment("development"),
 	}
 
-
 	checks = append(checks, commonAppstudioTierChecks()...)
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
@@ -997,8 +996,6 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 			def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
 			require.NoError(t, err)
 		}
-		def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
-		require.NoError(t, err)
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		defReq := make(map[corev1.ResourceName]resource.Quantity)
