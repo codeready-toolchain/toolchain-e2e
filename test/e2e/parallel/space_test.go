@@ -25,7 +25,7 @@ func TestCreateSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	t.Run("create space", func(t *testing.T) {
+	t.Run("create appstudio tier space", func(t *testing.T) {
 		// when
 		space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 		// then
@@ -45,6 +45,30 @@ func TestCreateSpace(t *testing.T) {
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, space.Name)
 			require.NoError(t, err)
 			err = memberAwait.WaitUntilNamespaceDeleted(t, space.Name, "appstudio")
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("create appstudiolarge tier space", func(t *testing.T) {
+		// when
+		space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudiolarge"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+		// then
+		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+
+		t.Run("delete space", func(t *testing.T) {
+			// now, delete the Space and expect that the NSTemplateSet will be deleted as well,
+			// along with its associated namespace
+
+			// when
+			err := hostAwait.Client.Delete(context.TODO(), space)
+
+			// then
+			require.NoError(t, err)
+			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, space.Name)
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, space.Name)
+			require.NoError(t, err)
+			err = memberAwait.WaitUntilNamespaceDeleted(t, space.Name, "appstudiolarge")
 			require.NoError(t, err)
 		})
 	})
