@@ -26,18 +26,16 @@ func Create(cl client.Client, username, hostOperatorNamespace, memberOperatorNam
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: hostOperatorNamespace,
 			Name:      username,
-			Annotations: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: fmt.Sprintf("%s@test.com", username),
-			},
 			Labels: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: hash.EncodeString(fmt.Sprintf("%s@test.com", username)),
+				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: hash.EncodeString(fmt.Sprintf("%s@fake.test", username)),
 			},
 		},
 		Spec: toolchainv1alpha1.UserSignupSpec{
 			TargetCluster: memberClusterName,
 			IdentityClaims: toolchainv1alpha1.IdentityClaimsEmbedded{
 				PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
-					Sub: username,
+					Email: fmt.Sprintf("%s@fake.test", username),
+					Sub:   username,
 				},
 				PreferredUsername: username,
 			},
