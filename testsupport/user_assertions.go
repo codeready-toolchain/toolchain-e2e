@@ -126,15 +126,14 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 
 	// Check the originalSub identity
 	originalSubIdentityName := ""
-	if userAccount.Spec.OriginalSub != "" {
+	if userAccount.Spec.PropagatedClaims.OriginalSub != "" {
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.OriginalSub, "rhd").IdentityName()
 	}
 
 	// Check the UserID identity
 	userIDIdentityName := ""
-	val, ok := userAccount.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
-	if ok {
-		userIDIdentityName = identitypkg.NewIdentityNamingStandard(val, "rhd").IdentityName()
+	if userAccount.Spec.PropagatedClaims.UserID != "" {
+		userIDIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.UserID, "rhd").IdentityName()
 	}
 
 	memberConfiguration := memberAwait.GetMemberOperatorConfig(t)
