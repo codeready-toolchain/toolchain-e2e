@@ -144,22 +144,22 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey,
-				userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
+			wait.UntilUserHasAnnotation(toolchainv1alpha1.EmailUserAnnotationKey,
+				userSignup.Spec.IdentityClaims.Email))
 		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
 		userID := userSignup.Spec.IdentityClaims.UserID
 		if userID != "" {
 			accountID := userSignup.Spec.IdentityClaims.AccountID
 			if accountID != "" {
-				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey])
-				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey])
+				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.UserIDUserAnnotationKey])
+				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.AccountIDUserAnnotationKey])
 			}
 		}
 
 		if userID == "" {
-			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOUserIDAnnotationKey)
-			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOAccountIDAnnotationKey)
+			require.NotContains(t, user.Annotations, toolchainv1alpha1.UserIDUserAnnotationKey)
+			require.NotContains(t, user.Annotations, toolchainv1alpha1.AccountIDUserAnnotationKey)
 		}
 
 		// Verify provisioned Identity
