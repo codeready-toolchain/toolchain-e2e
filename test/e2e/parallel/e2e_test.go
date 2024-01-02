@@ -106,7 +106,7 @@ func TestE2EFlow(t *testing.T) {
 		Execute(t).Resources()
 
 	// Confirm the originalSub property has been set during signup
-	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.OriginalSub)
+	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.IdentityClaims.OriginalSub)
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
@@ -190,7 +190,7 @@ func TestE2EFlow(t *testing.T) {
 			namespaces := make([]*corev1.Namespace, 0, 2)
 			templateRefs := tiers.GetTemplateRefs(t, hostAwait, "base")
 			for _, ref := range templateRefs.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
+				ns, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.IdentityClaims.PreferredUsername, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
 				namespaces = append(namespaces, ns)
 			}
@@ -203,7 +203,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			// wait for the namespaces to be re-created before validating all other resources to avoid race condition
 			for _, ref := range templateRefs.Namespaces {
-				_, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
+				_, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.IdentityClaims.PreferredUsername, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
 			}
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")

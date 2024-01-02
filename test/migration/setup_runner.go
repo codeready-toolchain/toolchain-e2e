@@ -171,7 +171,7 @@ func (r *SetupMigrationRunner) prepareBannedUser(t *testing.T) {
 	hostAwait := r.Awaitilities.Host()
 
 	// Create the BannedUser
-	bannedUser := testsupport.NewBannedUser(hostAwait, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+	bannedUser := testsupport.NewBannedUser(hostAwait, userSignup.Spec.IdentityClaims.Email)
 	err := hostAwait.Client.Create(context.TODO(), bannedUser)
 	require.NoError(t, err)
 

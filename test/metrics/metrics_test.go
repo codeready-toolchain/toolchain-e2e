@@ -512,7 +512,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		Execute(t).Resources()
 
 	// when creating the BannedUser resource
-	bannedUser := banUser(t, hostAwait, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+	bannedUser := banUser(t, hostAwait, userSignup.Spec.IdentityClaims.Email)
 
 	// then
 	// confirm the user is banned
