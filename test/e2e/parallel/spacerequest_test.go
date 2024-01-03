@@ -78,7 +78,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 
 				// when
 				subSpace, err = hostAwait.UpdateSpace(t, subSpace.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TierName = "base" // let's change the tier
+					s.Spec.TierName = "base1ns" // let's change the tier
 				})
 				require.NoError(t, err)
 
@@ -265,7 +265,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 //		// when
 //		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
 //			func(s *toolchainv1alpha1.SpaceRequest) {
-//				s.Spec.TierName = "base"
+//				s.Spec.TierName = "base1ns"
 //			},
 //		)
 //		require.NoError(t, err)
@@ -273,13 +273,13 @@ func TestCreateSpaceRequest(t *testing.T) {
 //		//then
 //		// wait for both spaceRequest and subSpace to have same tierName
 //		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-//			UntilSpaceRequestHasTierName("base"),
+//			UntilSpaceRequestHasTierName("base1ns"),
 //			UntilSpaceRequestHasConditions(wait.Provisioned()),
 //			UntilSpaceRequestHasNamespaceAccess(subSpace),
 //		)
 //		require.NoError(t, err)
 //		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
-//			UntilSpaceHasTier("base"),
+//			UntilSpaceHasTier("base1ns"),
 //			UntilSpaceHasConditions(wait.Provisioned()))
 //		require.NoError(t, err)
 //	})

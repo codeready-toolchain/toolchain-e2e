@@ -112,7 +112,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
 
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
 			s.userIsNotProvisioned(t, waitlinglist2)
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
@@ -131,7 +131,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(t, err)
 
-				VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+				VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
 			})
 		})
 	})
@@ -165,7 +165,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
 		})
 	})
 
@@ -237,7 +237,7 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 		Execute(s.T()).Resources()
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 }
 
 func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
@@ -261,7 +261,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 		Execute(s.T()).Resources()
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 
 	// Create a token and identity to invoke the GetSignup endpoint with
 	userIdentity := &commonauth.Identity{
@@ -320,7 +320,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDIsSet() {
 		Execute(s.T()).Resources()
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 }
 
 // TestUserResourcesCreatedWhenOriginalSubIsSet tests the case where:
@@ -344,7 +344,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		Execute(s.T()).Resources()
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 }
 
 func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaimsModified() {
@@ -364,7 +364,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 		Execute(s.T()).Resources()
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 
 	// Update the UserSignup
 	userSignup, err := hostAwait.UpdateUserSignup(s.T(), userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
@@ -377,7 +377,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 	require.Equal(s.T(), "nnnbbb111234", userSignup.Spec.IdentityClaims.AccountID)
 
 	// Verify that the resources are updated with the propagated claim
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 }
 
 // TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub tests the case where:
@@ -409,7 +409,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		Execute(s.T()).Resources()
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
@@ -525,7 +525,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
 		})
 	})
 
@@ -559,7 +559,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
 		})
 	})
 
@@ -625,7 +625,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
 }
 
 func (s *userSignupIntegrationTest) TestTransformUsernameWithSpaceConflict() {
@@ -689,8 +689,8 @@ func (s *userSignupIntegrationTest) TestTransformUsernameWithSpaceConflict() {
 
 		// then
 		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30", ExpectAnyUserAccount())
-		VerifySpaceRelatedResources(t, s.Awaitilities, userSignup, "base")
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+		VerifySpaceRelatedResources(t, s.Awaitilities, userSignup, "base1ns")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
 		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)
 	})
 }

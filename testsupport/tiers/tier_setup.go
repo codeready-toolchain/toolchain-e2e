@@ -17,7 +17,7 @@ import (
 type TierModifier func(tier *toolchainv1alpha1.NSTemplateTier) error
 
 type CustomNSTemplateTier struct {
-	// the "base" NSTemplateTier
+	// the "base1ns" NSTemplateTier
 	*toolchainv1alpha1.NSTemplateTier
 	// name of the tier used to set the cluster resources (by default, the name of the NSTemplateTier used to create this custom one)
 	ClusterResourcesTier *toolchainv1alpha1.NSTemplateTier

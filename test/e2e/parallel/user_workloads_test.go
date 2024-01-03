@@ -8,6 +8,8 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/stretchr/testify/require"
@@ -28,14 +30,18 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	memberAwait := await.Member1()
 	// Provision a user to idle with a short idling timeout
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
-	NewSignupRequest(await).
+	userSignup, _ := NewSignupRequest(await).
 		Username("test-idler").
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
+		Execute(t).Resources()
+
+	// let's move it to base to have to namespaces to monitor
+	tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, "base")
+	space.VerifyResourcesProvisionedForSpace(t, await, userSignup.Status.CompliantUsername)
 
 	idler, err := memberAwait.WaitForIdler(t, "test-idler-dev", wait.IdlerConditions(wait.Running()))
 	require.NoError(t, err)

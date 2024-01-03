@@ -6,6 +6,7 @@ import (
 	"time"
 
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
@@ -76,6 +77,9 @@ func TestE2EFlow(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).Resources()
 
+	tiers.MoveSpaceToTier(t, hostAwait, johnSignup.Status.CompliantUsername, "base")
+	space.VerifyResourcesProvisionedForSpace(t, awaitilities, johnSignup.Status.CompliantUsername)
+
 	extrajohnName := "extrajohn"
 	johnExtraSignup, _ := NewSignupRequest(awaitilities).
 		Username(extrajohnName).
@@ -109,9 +113,9 @@ func TestE2EFlow(t *testing.T) {
 	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.OriginalSub)
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
-	VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
-	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "deactivate30", "base")
-	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base1ns")
 
 	_, err := hostAwait.WaitForSpace(t, johnsmithName, wait.UntilSpaceHasAnyTargetClusterSet())
 	require.NoError(t, err)
@@ -133,7 +137,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
-			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 		})
 
 		t.Run("delete identity and wait until recreated", func(t *testing.T) {
@@ -149,7 +153,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
-			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 		})
 
 		t.Run("delete user mapping and wait until recreated", func(t *testing.T) {
@@ -165,7 +169,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
-			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 		})
 
 		t.Run("delete identity mapping and wait until recreated", func(t *testing.T) {
@@ -182,7 +186,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
-			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 		})
 
 		t.Run("delete namespaces and wait until recreated", func(t *testing.T) {
@@ -207,7 +211,7 @@ func TestE2EFlow(t *testing.T) {
 				require.NoError(t, err)
 			}
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
-			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 		})
 
 		t.Run("delete useraccount and expect recreation", func(t *testing.T) {
@@ -255,7 +259,7 @@ func TestE2EFlow(t *testing.T) {
 
 		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
 
-		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "deactivate30", "base1ns")
 
 		VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
 
@@ -346,6 +350,10 @@ func TestE2EFlow(t *testing.T) {
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).Resources()
+
+		tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, "base")
+		space.VerifyResourcesProvisionedForSpace(t, awaitilities, userSignup.Status.CompliantUsername)
+
 		devNs := corev1.Namespace{}
 		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
 		require.NoError(t, err)
@@ -447,7 +455,7 @@ func TestE2EFlow(t *testing.T) {
 		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
-		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 
 	})
 

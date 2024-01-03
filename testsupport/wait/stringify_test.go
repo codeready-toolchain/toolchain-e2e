@@ -31,7 +31,7 @@ func TestStringifyObject(t *testing.T) {
 			},
 		},
 		Spec: toolchainv1alpha1.SpaceSpec{
-			TierName: "base",
+			TierName: "base1ns",
 		},
 	}
 	// whenever
@@ -70,7 +70,7 @@ func TestStringifyObjects(t *testing.T) {
 					},
 				},
 				Spec: toolchainv1alpha1.SpaceSpec{
-					TierName: "base",
+					TierName: "base1ns",
 				},
 			},
 			{
