@@ -43,7 +43,7 @@ metadata:
   creationTimestamp: "2021-12-16T10:45:30Z"
   name: oddity-1
 spec:
-  tierName: base
+  tierName: base1ns
 status: {}
 `, string(result))
 }
@@ -103,7 +103,7 @@ func TestStringifyObjects(t *testing.T) {
     creationTimestamp: "2021-12-16T10:45:30Z"
     name: oddity-1
   spec:
-    tierName: base
+    tierName: base1ns
   status: {}
 - kind: Space
   metadata:
