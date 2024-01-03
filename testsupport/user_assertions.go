@@ -267,6 +267,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	require.NoError(t, err)
 	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
 
+	require.Equal(t, space.Name, userSignup.Status.HomeSpace)
 	return space
 }
 
