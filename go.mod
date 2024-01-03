@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20231129193441-f6c9b7feee01
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20231213000011-5c6d88fc1c64
+	github.com/codeready-toolchain/api v0.0.0-20231217224957-34f7cb3fcbf7
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20231218221155-9d1179b6a349
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
@@ -96,12 +96,12 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
