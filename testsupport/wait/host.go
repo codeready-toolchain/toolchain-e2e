@@ -1175,9 +1175,10 @@ func (a *HostAwaitility) WaitForNotifications(t *testing.T, username, notificati
 // WaitForNotificationWithName waits until there is an expected Notifications available with the provided name and with the notification type and which match the conditions (if provided).
 func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
 	t.Logf("waiting for notification with name '%s'", notificationName)
-	var notification toolchainv1alpha1.Notification
+	notification := &toolchainv1alpha1.Notification{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, &notification); err != nil {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
 			return false, err
 		}
 		if typeFound, found := notification.GetLabels()[toolchainv1alpha1.NotificationTypeLabelKey]; !found {
@@ -1186,13 +1187,13 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 			return false, fmt.Errorf("notification found with name does not have the expected type")
 		}
 
-		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{notification}, criteria...), nil
+		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{*notification}, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{notification}, criteria...)
+		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{*notification}, criteria...)
 	}
-	return notification, err
+	return *notification, err
 }
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
