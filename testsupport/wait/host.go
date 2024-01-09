@@ -1210,8 +1210,9 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(t *testing.T, username, n
 	})
 }
 
-// WaitUntilNotificationWithNameDeleted waits until the Notification with the given name is deleted (ie, not found)
-func (a *HostAwaitility) WaitUntilNotificationWithNameDeleted(t *testing.T, notificationName string) error {
+// WaitUntilNotificationWithNameDeletedOrNotCreated  1. waits until the Notification with the given name is deleted (ie, not found) or
+// 2. waits and checks if the notification with the name is not created
+func (a *HostAwaitility) WaitUntilNotificationWithNameDeletedOrNotCreated(t *testing.T, notificationName string) error {
 	t.Logf("waiting for notification with name '%s' to get deleted", notificationName)
 	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		notification := &toolchainv1alpha1.Notification{}

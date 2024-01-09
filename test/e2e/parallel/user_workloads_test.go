@@ -71,11 +71,11 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForPods(t, "workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
 	require.NoError(t, err)
+	err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitUntilNotificationWithNameDeletedOrNotCreated(t, "test-idler-stage-idled")
+	require.True(t, errors.IsNotFound(err))
 
 	// Check if notification has been deleted before creating another pod
-	err = hostAwait.WaitUntilNotificationWithNameDeleted(t, "test-idler-dev-idled")
-	require.NoError(t, err)
-	err = hostAwait.WaitUntilNotificationWithNameDeleted(t, "test-idler-stage-idled")
+	err = hostAwait.WaitUntilNotificationWithNameDeletedOrNotCreated(t, "test-idler-dev-idled")
 	require.NoError(t, err)
 
 	// Create another pod and make sure it's deleted.
@@ -88,7 +88,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = memberAwait.WaitUntilPodDeleted(t, pod.Namespace, pod.Name)
 	require.NoError(t, err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
+	err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitUntilNotificationWithNameDeletedOrNotCreated(t, "test-idler-dev-idled")
 	require.True(t, errors.IsNotFound(err))
 
 	// There should not be any pods left in the namespace
