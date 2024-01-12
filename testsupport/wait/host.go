@@ -1199,16 +1199,14 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 // WaitForNotificationToBeNotCreated waits and checks that notification is NOT created.
 func (a *HostAwaitility) WaitForNotificationToBeNotCreated(t *testing.T, notificationName string) error {
 	t.Logf("waiting to check notification with name '%s' is NOT created", notificationName)
-	return wait.Poll(a.RetryInterval, 10*time.Second, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, 10*time.Second, func() (done bool, err error) {
 		notification := &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
 			return false, err
 		}
-		return false, nil
+		return true, err
 	})
+	return err
 }
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
