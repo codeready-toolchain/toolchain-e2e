@@ -163,10 +163,6 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 }
 
 func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
-	// memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition(t, "e2e", namespace, wait.ReadyToolchainCluster)
-	// require.NoError(t, err)
-	// memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
-	// require.NoError(t, err)
 
 	memberClient, err := client.New(restconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
@@ -179,7 +175,7 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberAwait := wait.NewMemberAwaitility(restconfig, memberClient, namespace, clusterName)
 
 	memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
-	fmt.Print("done with member cluster")
+
 	return memberAwait
 }
 
