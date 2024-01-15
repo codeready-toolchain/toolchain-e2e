@@ -237,14 +237,6 @@ setup-toolchainclusters:
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
 
-# .PHONY: e2e-service-account
-# e2e-service-account:
-# ifeq ($(E2E_TEST_EXECUTION),true)
-# 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-# 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-# 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-# endif
-
 ###########################################################
 #
 # Fetching and building Member and Host Operators
