@@ -6,10 +6,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -87,15 +85,9 @@ func waitForOperators(t *testing.T) {
 	initHostAwait.RegistrationServiceURL = registrationServiceURL
 
 	// wait for member operators to be ready
-	initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, kubeconfig, memberNs)
+	initMemberAwait = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs)
 
-	initMember2Await = getMemberAwaitility(t, cl, initHostAwait, kubeconfig, memberNs2)
-
-	hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
-	require.NoError(t, err)
-	hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
-	require.NoError(t, err)
-	initHostAwait.RestConfig = hostConfig.RestConfig
+	initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
 
 	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
@@ -162,7 +154,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
 
-func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
+func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
 
 	memberClient, err := client.New(restconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
