@@ -51,7 +51,7 @@ test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: verify-migration-and-deploy-e2e
-verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
 .PHONY: e2e-migration-setup
 e2e-migration-setup:
@@ -74,7 +74,7 @@ prepare-e2e: build clean-e2e-files
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: prepare-projects get-publish-install-and-register-operators e2e-service-account
+deploy-e2e: prepare-projects get-publish-install-and-register-operators 
 	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
@@ -237,13 +237,13 @@ setup-toolchainclusters:
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
 
-.PHONY: e2e-service-account
-e2e-service-account:
-ifeq ($(E2E_TEST_EXECUTION),true)
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-endif
+# .PHONY: e2e-service-account
+# e2e-service-account:
+# ifeq ($(E2E_TEST_EXECUTION),true)
+# 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
+# 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
+# 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
+# endif
 
 ###########################################################
 #

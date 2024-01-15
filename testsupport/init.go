@@ -14,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
 
@@ -86,9 +87,9 @@ func waitForOperators(t *testing.T) {
 	initHostAwait.RegistrationServiceURL = registrationServiceURL
 
 	// wait for member operators to be ready
-	initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
+	initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, kubeconfig, memberNs)
 
-	initMember2Await = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
+	initMember2Await = getMemberAwaitility(t, cl, initHostAwait, kubeconfig, memberNs2)
 
 	hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
@@ -161,13 +162,13 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
 
-func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
-	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition(t, "e2e", namespace, wait.ReadyToolchainCluster)
-	require.NoError(t, err)
-	memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
-	require.NoError(t, err)
+func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
+	// memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition(t, "e2e", namespace, wait.ReadyToolchainCluster)
+	// require.NoError(t, err)
+	// memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
+	// require.NoError(t, err)
 
-	memberClient, err := client.New(memberConfig.RestConfig, client.Options{
+	memberClient, err := client.New(restconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
@@ -175,10 +176,10 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, "member", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
-	memberAwait := wait.NewMemberAwaitility(memberConfig.RestConfig, memberClient, namespace, clusterName)
+	memberAwait := wait.NewMemberAwaitility(restconfig, memberClient, namespace, clusterName)
 
 	memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
-
+	fmt.Print("done with member cluster")
 	return memberAwait
 }
 
