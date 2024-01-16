@@ -1179,6 +1179,9 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		notification = &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
 		if typeFound, found := notification.GetLabels()[toolchainv1alpha1.NotificationTypeLabelKey]; !found {
@@ -1199,13 +1202,23 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 // WaitForNotificationToBeNotCreated waits and checks that notification is NOT created.
 func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notificationName string) error {
 	t.Logf("waiting to check notification with name '%s' is NOT created", notificationName)
+	notification := &toolchainv1alpha1.Notification{}
 	err := wait.Poll(a.RetryInterval, 10*time.Second, func() (done bool, err error) {
-		notification := &toolchainv1alpha1.Notification{}
+		notification = &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
-		return true, err
+		return true, nil
 	})
+	if err == nil {
+		return fmt.Errorf("notification '%s' was found, but it was expected to not be created/present: \n %v", notificationName, notification)
+	}
+	if err == wait.ErrWaitTimeout {
+		return nil
+	}
 	return err
 }
 
