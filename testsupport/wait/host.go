@@ -19,9 +19,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
+	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -1216,7 +1216,7 @@ func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notific
 	if err == nil {
 		return fmt.Errorf("notification '%s' was found, but it was expected to not be created/present: \n %v", notificationName, notification)
 	}
-	if err == wait.ErrWaitTimeout {
+	if goerr.Is(err, wait.ErrWaitTimeout) {
 		return nil
 	}
 	return err
