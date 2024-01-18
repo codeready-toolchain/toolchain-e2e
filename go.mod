@@ -6,7 +6,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/gofrs/uuid v4.0.0+incompatible
+	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/websocket v1.4.2
 	github.com/gosuri/uiprogress v0.0.1
@@ -27,7 +27,6 @@ require (
 	k8s.io/apimachinery v0.25.0
 	k8s.io/client-go v0.25.0
 	k8s.io/kubectl v0.25.0
-	k8s.io/kubernetes v1.25.0
 	k8s.io/metrics v0.25.0
 	sigs.k8s.io/controller-runtime v0.13.0
 )

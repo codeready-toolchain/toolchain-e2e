@@ -492,14 +492,14 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			return false, nil // nolint:nilerr
 		}
-		fmt.Println("one1")
+
 		deployment = &appsv1.Deployment{}
 		require.NoError(t, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
 		if int(deployment.Status.AvailableReplicas) != replicas {
 			return false, nil
 		}
 		pods := &corev1.PodList{}
-		fmt.Println("two")
+
 		require.NoError(t, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(deployment.Spec.Selector.MatchLabels)))
 		if len(pods.Items) != replicas {
 			return false, nil
@@ -509,7 +509,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 				return false, nil
 			}
 		}
-		fmt.Println("three")
+
 		for _, criteriaMatch := range criteria {
 			if !criteriaMatch(deployment) {
 				return false, nil

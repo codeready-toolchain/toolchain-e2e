@@ -21,12 +21,12 @@ import (
 	"github.com/stretchr/testify/require"
 	auth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
-	rbacv1 "k8s.io/kubernetes/pkg/apis/rbac"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -71,12 +71,12 @@ func waitForOperators(t *testing.T) {
 
 	cl.Create(context.TODO(), &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "e2e_test",
+			Name:      "e2e-test",
 			Namespace: hostNs}})
 
 	crb := rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "e2e_test:admin",
+			Name: "e2e-test:admin",
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
@@ -86,7 +86,7 @@ func waitForOperators(t *testing.T) {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      "e2e_test",
+				Name:      "e2e-test",
 				Namespace: hostNs,
 			},
 		},
@@ -97,8 +97,7 @@ func waitForOperators(t *testing.T) {
 	}
 
 	bt := &auth.TokenRequest{}
-	kubeconfig.BearerToken = bt.Status.Token
-	fmt.Printf("bearer token : %v", kubeconfig.BearerToken)
+	kubeconfig.BearerToken = bt.String()
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 	// wait for host operator to be ready
