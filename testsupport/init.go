@@ -217,6 +217,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		corev1.AddToScheme,
 		metrics.AddToScheme,
 		appstudiov1.AddToScheme,
+		rbacv1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
