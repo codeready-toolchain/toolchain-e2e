@@ -2,7 +2,6 @@ package parallel
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -22,10 +21,7 @@ import (
 
 func TestIdlerAndPriorityClass(t *testing.T) {
 	t.Parallel()
-	os.Setenv("MEMBER_NS", "toolchain-member-18155319")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-18155319")
-	os.Setenv("HOST_NS", "toolchain-host-18155319")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-18155319")
+
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
