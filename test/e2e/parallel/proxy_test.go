@@ -862,6 +862,10 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					{MasterUserRecord: "car", Role: "invalidRole", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
+						Name:      failingSBR.GetName(),
+						Namespace: failingSBR.GetNamespace(),
+					}},
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
