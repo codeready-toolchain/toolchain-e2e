@@ -69,10 +69,12 @@ func waitForOperators(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	cl.Create(context.TODO(), &corev1.ServiceAccount{
+	if err := cl.Create(context.TODO(), &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "e2e-test",
-			Namespace: hostNs}})
+			Namespace: hostNs}}); err != nil {
+		fmt.Printf("error in creating service account %s", err)
+	}
 
 	crb := rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -81,7 +83,7 @@ func waitForOperators(t *testing.T) {
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     "admin",
+			Name:     "cluster-admin",
 		},
 		Subjects: []rbacv1.Subject{
 			{
