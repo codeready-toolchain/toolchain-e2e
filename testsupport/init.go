@@ -93,12 +93,12 @@ func waitForOperators(t *testing.T) {
 	}
 
 	if err := cl.Create(context.TODO(), &crb); err != nil {
-		return
+		fmt.Printf("error in creating rbac for service account %s", err)
 	}
 
 	bt := &auth.TokenRequest{}
 	kubeconfig.BearerToken = bt.Status.Token
-
+	fmt.Printf("bearer token : %v", kubeconfig.BearerToken)
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 	// wait for host operator to be ready
