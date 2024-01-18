@@ -311,7 +311,6 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 			if err != nil {
 				return false, err
 			}
-			fmt.Printf("bearer token in kubeconfig %s", a.RestConfig.BearerToken)
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
 
 		} else {
@@ -332,13 +331,11 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 			_ = resp.Body.Close()
 		}()
 
-		fmt.Println("status code", resp.StatusCode)
 		if resp.StatusCode != http.StatusOK {
 			return false, nil
 		}
 		return true, nil
 	})
-	fmt.Println("route:", route)
 	return route, err
 }
 

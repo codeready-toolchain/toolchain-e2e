@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	toolchaincommon "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -19,11 +20,11 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	auth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
@@ -69,6 +70,14 @@ func waitForOperators(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	namespacedName := types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}
+	rclient, err := rest.RESTClientFor(kubeconfig)
+	if err != nil {
+		bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, namespacedName, 86400)
+		if err != nil {
+			kubeconfig.BearerToken = bt
+		}
+	}
 	if err := cl.Create(context.TODO(), &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "e2e-test",
@@ -78,7 +87,7 @@ func waitForOperators(t *testing.T) {
 
 	crb := rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "e2e-test:admin",
+			Name: "e2e-test-cluster-admin",
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
@@ -98,8 +107,6 @@ func waitForOperators(t *testing.T) {
 		fmt.Printf("error in creating rbac for service account %s", err)
 	}
 
-	bt := &auth.TokenRequest{}
-	kubeconfig.BearerToken = bt.String()
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 	// wait for host operator to be ready
