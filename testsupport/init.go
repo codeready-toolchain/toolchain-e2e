@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -11,19 +12,21 @@ import (
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/scheme"
-
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	auth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
+	rbacv1 "k8s.io/kubernetes/pkg/apis/rbac"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -65,6 +68,36 @@ func waitForOperators(t *testing.T) {
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
+
+	cl.Create(context.TODO(), &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "e2e_test",
+			Namespace: hostNs}})
+
+	crb := rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "e2e_test:admin",
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "admin",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "e2e_test",
+				Namespace: hostNs,
+			},
+		},
+	}
+
+	if err := cl.Create(context.TODO(), &crb); err != nil {
+		return
+	}
+
+	bt := &auth.TokenRequest{}
+	kubeconfig.BearerToken = bt.Status.Token
 
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
@@ -121,6 +154,8 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		// setup host metrics route for metrics verification in tests
 		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
+		fmt.Println("hostMetricsRoute:", hostMetricsRoute)
+		fmt.Println("errors in route:", err)
 		require.NoError(t, err)
 		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
