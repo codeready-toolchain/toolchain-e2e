@@ -72,9 +72,9 @@ func waitForOperators(t *testing.T) {
 
 	namespacedName := types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}
 	rclient, err := rest.RESTClientFor(kubeconfig)
-	if err != nil {
+	if err == nil {
 		bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, namespacedName, 86400)
-		if err != nil {
+		if err == nil {
 			kubeconfig.BearerToken = bt
 		}
 	}
@@ -162,8 +162,6 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		// setup host metrics route for metrics verification in tests
 		hostMetricsRoute, err := initHostAwait.SetupRouteForService(t, "host-operator-metrics-service", "/metrics")
-		fmt.Println("hostMetricsRoute:", hostMetricsRoute)
-		fmt.Println("errors in route:", err)
 		require.NoError(t, err)
 		initHostAwait.MetricsURL = hostMetricsRoute.Status.Ingress[0].Host
 
