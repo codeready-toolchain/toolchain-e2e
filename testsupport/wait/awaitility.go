@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/predicates"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -26,6 +28,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -657,4 +661,90 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 	}
 	content, _ := StringifyObjects(list)
 	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
+}
+
+// Waiter is a helper struct for `wait.For()` that provides functions to query the cluster waiting
+// for the results.
+type Waiter[T client.Object] struct {
+	await *Awaitility
+	t     *testing.T
+	gvk   schema.GroupVersionKind
+}
+
+// AtLeast merely waits for the given amount of time ensuring that "wait.For" (from which it is called) is
+// happening at least the duration needed.
+func (w *Waiter[T]) AtLeast(dur time.Duration) *Waiter[T] {
+	time.Sleep(dur)
+	return w
+}
+
+// FirstThat uses the provided predicates to filter the objects of the type provided to `wait.For()` and
+// repeatedly tries to find the first one that satisfies all the predicates.
+func (w *Waiter[T]) FirstThat(predicates ...predicates.Predicate[client.Object]) (T, bool, error) {
+	w.t.Logf("waiting for objects of GVK '%s' in namespace '%s' to match criteria", w.gvk, w.await.Namespace)
+
+	var returnedObject T
+	found := false
+
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		// because there is no generic way of figuring out the list type for some client.Object type, we need to go
+		// down the low level route and use unstructured to get the list generically and unmarshal and cast the list
+		// items.
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+			return false, err
+		}
+		for _, obj := range list.Items {
+			raw, err := obj.MarshalJSON()
+			if err != nil {
+				return false, fmt.Errorf("failed to obtain the raw JSON of object when getting objects of type %v: %w", w.gvk, err)
+			}
+
+			typed, err := w.await.Client.Scheme().New(w.gvk)
+			if err != nil {
+				return false, fmt.Errorf("failed to create a new empty object of type %v: %w", w.gvk, err)
+			}
+
+			err = json.Unmarshal(raw, typed)
+			if err != nil {
+				return false, fmt.Errorf("failed to unmarshal the raw JSON to the go structure of object type: %v: %w", w.gvk, err)
+			}
+
+			object := typed.(T)
+
+			matches := true
+			for _, p := range predicates {
+				if !p.Matches(object) {
+					matches = false
+					break
+				}
+			}
+
+			if matches {
+				found = true
+				returnedObject = object
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	return returnedObject, found, err
+}
+
+// For returns an struct using which one can wait for the objects with the same type as the one provided.
+//
+// Note that this is a recent addition to the utility functions and therefore is not used much. It could
+// be used to cut down the line count of the new utility functions dramatically though.
+func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
+	gvks, _, err := a.Client.Scheme().ObjectKinds(obj)
+	require.NoError(t, err, "failed to get the GVK of object %v", obj)
+
+	require.Len(t, gvks, 1, "multiple versions of a single GK not supported but found multiple for object %v", obj)
+
+	return &Waiter[T]{
+		await: a,
+		t:     t,
+		gvk:   gvks[0],
+	}
 }
