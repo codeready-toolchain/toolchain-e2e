@@ -30,21 +30,15 @@ func ReferencingToolchainCluster(name string) CreateOption {
 }
 
 func Ready() predicates.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig] {
-	// Go's type inference is a bit lacking so we have to help it realize that we want
-	// to use the function as a predicate
-	var f predicate = func(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
+	return predicate(func(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
 		return condition.IsTrue(spc.Status.Conditions, toolchainv1alpha1.ConditionReady)
-	}
-	return f
+	})
 }
 
 func NotReady() predicates.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig] {
-	// Go's type inference is a bit lacking so we have to help it realize that we want
-	// to use the function as a predicate
-	var f predicate = func(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
+	return predicate(func(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
 		return condition.IsFalse(spc.Status.Conditions, toolchainv1alpha1.ConditionReady)
-	}
-	return f
+	})
 }
 
 func CreateSpaceProvisionerConfig(t *testing.T, await *wait.Awaitility, opts ...CreateOption) *toolchainv1alpha1.SpaceProvisionerConfig {
