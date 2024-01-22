@@ -69,44 +69,59 @@ func waitForOperators(t *testing.T) {
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
+	list := &corev1.ServiceAccountList{}
+	if err := cl.List(context.TODO(), list, client.InNamespace(hostNs)); err != nil {
+		fmt.Printf("Failed to list the SA %+v", err)
 
+	}
+	if len(list.Items) > 0 {
+		sa := &list.Items[0]
+		fmt.Printf("sanme: %+v", sa.Name)
+		if sa.Name == "e2e-test" {
+			fmt.Printf("SA:  %+v", sa.Name)
+			fmt.Println("Service Account found")
+		}
+	}
+	if len(list.Items) == 0 {
+		fmt.Printf("No Service Account fount proceeding to create it")
+		if err := cl.Create(context.TODO(), &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "e2e-test",
+				Namespace: hostNs}}); err != nil {
+			fmt.Printf("error in creating service account %s", err)
+		}
+
+		crb := rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "e2e-test-cluster-admin",
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "ClusterRole",
+				Name:     "cluster-admin",
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "ServiceAccount",
+					Name:      "e2e-test",
+					Namespace: hostNs,
+				},
+			},
+		}
+
+		if err := cl.Create(context.TODO(), &crb); err != nil {
+			fmt.Printf("error in creating rbac for service account %s", err)
+		}
+	}
 	namespacedName := types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}
 	rclient, err := rest.RESTClientFor(kubeconfig)
 	if err == nil {
 		bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, namespacedName, 86400)
 		if err == nil {
 			kubeconfig.BearerToken = bt
+			fmt.Printf("bt %+v", kubeconfig.BearerToken)
 		}
 	}
-	if err := cl.Create(context.TODO(), &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "e2e-test",
-			Namespace: hostNs}}); err != nil {
-		fmt.Printf("error in creating service account %s", err)
-	}
-
-	crb := rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "e2e-test-cluster-admin",
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "ClusterRole",
-			Name:     "cluster-admin",
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      "e2e-test",
-				Namespace: hostNs,
-			},
-		},
-	}
-
-	if err := cl.Create(context.TODO(), &crb); err != nil {
-		fmt.Printf("error in creating rbac for service account %s", err)
-	}
-
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 	// wait for host operator to be ready
