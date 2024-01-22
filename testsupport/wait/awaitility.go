@@ -311,7 +311,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 			if err != nil {
 				return false, err
 			}
-			fmt.Printf("Token : %+v", a.RestConfig.BearerToken)
+			fmt.Printf("Token: %+v", a.RestConfig.BearerToken)
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
 
 		} else {
@@ -331,7 +331,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 		defer func() {
 			_ = resp.Body.Close()
 		}()
-		fmt.Printf("resp.StatusCode : %+v", resp.StatusCode)
+		fmt.Printf("\n responseStatusCode : %+v", resp.StatusCode)
 		if resp.StatusCode != http.StatusOK {
 			return false, nil
 		}

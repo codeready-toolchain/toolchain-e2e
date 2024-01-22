@@ -20,8 +20,10 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -65,31 +67,24 @@ func waitForOperators(t *testing.T) {
 	kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
+	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
+	require.NoError(t, err)
+
 	cl, err := client.New(kubeconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
-	list := &corev1.ServiceAccountList{}
-	if err := cl.List(context.TODO(), list, client.InNamespace(hostNs)); err != nil {
-		fmt.Printf("Failed to list the SA %+v", err)
 
-	}
-	if len(list.Items) > 0 {
-		sa := &list.Items[0]
-		fmt.Printf("sanme: %+v", sa.Name)
-		if sa.Name == "e2e-test" {
-			fmt.Printf("SA:  %+v", sa.Name)
-			fmt.Println("Service Account found")
-		}
-	}
-	if len(list.Items) == 0 {
-		fmt.Printf("No Service Account fount proceeding to create it")
-		if err := cl.Create(context.TODO(), &corev1.ServiceAccount{
+	sa := &corev1.ServiceAccount{}
+	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sa)
+
+	if errors.IsNotFound(err) {
+		fmt.Printf("No Service Account found proceeding to create it")
+		err := cl.Create(context.TODO(), &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "e2e-test",
-				Namespace: hostNs}}); err != nil {
-			fmt.Printf("error in creating service account %s", err)
-		}
+				Namespace: hostNs}})
+		require.NoError(t, err, "Error in creating Service account for e2e test")
 
 		crb := rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
@@ -109,20 +104,30 @@ func waitForOperators(t *testing.T) {
 			},
 		}
 
-		if err := cl.Create(context.TODO(), &crb); err != nil {
-			fmt.Printf("error in creating rbac for service account %s", err)
-		}
+		err = cl.Create(context.TODO(), &crb)
+		require.NoError(t, err, "Error in Creating Cluster role binding")
+	} else if err != nil {
+		require.NoError(t, err, "Error geting service accounts")
 	}
-	namespacedName := types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}
-	rclient, err := rest.RESTClientFor(kubeconfig)
-	if err == nil {
-		bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, namespacedName, 86400)
-		if err == nil {
-			kubeconfig.BearerToken = bt
-			fmt.Printf("bt %+v", kubeconfig.BearerToken)
+
+	restkubeconfig.ContentConfig =
+		rest.ContentConfig{
+			GroupVersion:         &authv1.SchemeGroupVersion,
+			NegotiatedSerializer: scheme.Codecs,
 		}
-	}
+
+	rclient, err := rest.RESTClientFor(restkubeconfig)
+	require.NoError(t, err, "Error in creating restclient")
+
+	bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, 86400)
+	fmt.Printf("bt created %+v", bt)
+	require.NoError(t, err, "Error in creating Token")
+
+	kubeconfig.BearerToken = bt
+
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
+
+	//initHostAwait.CreateWithCleanup(t, &rbacv1.ClusterRoleBinding{})
 
 	// wait for host operator to be ready
 	initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
