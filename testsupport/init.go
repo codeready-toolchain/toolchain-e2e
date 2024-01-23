@@ -67,6 +67,8 @@ func waitForOperators(t *testing.T) {
 	kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
+	// creating another config which is used for creating resclient only,
+	//so that the main kubeconfig is not altered
 	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
@@ -75,11 +77,13 @@ func waitForOperators(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// Check if there is already a service account present for e2e test
 	sa := &corev1.ServiceAccount{}
 	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sa)
 
+	// If not found proceed to create the e2e service account and the cluster role binding
 	if errors.IsNotFound(err) {
-		fmt.Printf("No Service Account found proceeding to create it")
+		fmt.Printf("No Service Account for e2e test found, proceeding to create it")
 		err := cl.Create(context.TODO(), &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "e2e-test",
@@ -103,31 +107,32 @@ func waitForOperators(t *testing.T) {
 				},
 			},
 		}
-
+		fmt.Printf("Proceeding to create Cluster Role Binding for the Service Account")
 		err = cl.Create(context.TODO(), &crb)
 		require.NoError(t, err, "Error in Creating Cluster role binding")
 	} else if err != nil {
-		require.NoError(t, err, "Error geting service accounts")
+		require.NoError(t, err, "Error fetching service accounts")
 	}
 
+	//upating the restkubeconfig ,which requires groupversion to create restclient
 	restkubeconfig.ContentConfig =
 		rest.ContentConfig{
 			GroupVersion:         &authv1.SchemeGroupVersion,
 			NegotiatedSerializer: scheme.Codecs,
 		}
 
+	//Creating a Restclient to be used in creation and checking of bearer token required for authentication
 	rclient, err := rest.RESTClientFor(restkubeconfig)
 	require.NoError(t, err, "Error in creating restclient")
 
+	//Creating a bearer token to be used for authentication(which is valid for 24 hrs)
 	bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, 86400)
-	fmt.Printf("bt created %+v", bt)
 	require.NoError(t, err, "Error in creating Token")
 
+	//updating the kubeconfig with the bearer token created
 	kubeconfig.BearerToken = bt
 
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
-
-	//initHostAwait.CreateWithCleanup(t, &rbacv1.ClusterRoleBinding{})
 
 	// wait for host operator to be ready
 	initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
