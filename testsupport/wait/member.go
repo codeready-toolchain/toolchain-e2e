@@ -2371,6 +2371,27 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"spacebindingrequests"}, spacebindingrequestRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *spacebindingrequestRule.Scope)
 
+	ssprequestWebhook := actualValWbhConf.Webhooks[2]
+	assert.Equal(t, "users.virtualmachines.ssp.webhook.sandbox", ssprequestWebhook.Name)
+	assert.Equal(t, []string{"v1"}, ssprequestWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *ssprequestWebhook.SideEffects)
+	assert.Equal(t, int32(5), *ssprequestWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Fail, *ssprequestWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *ssprequestWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, ssprequestWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, ssprequestWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", ssprequestWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, ssprequestWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-ssprequests", *ssprequestWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *ssprequestWebhook.ClientConfig.Service.Port)
+	require.Len(t, ssprequestWebhook.Rules, 1)
+
+	ssprequestRule := ssprequestWebhook.Rules[0]
+	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, ssprequestRule.Operations)
+	assert.Equal(t, []string{"ssp.kubevirt.io"}, ssprequestRule.APIGroups)
+	assert.Equal(t, []string{"*"}, ssprequestRule.APIVersions)
+	assert.Equal(t, []string{"ssps"}, ssprequestRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
