@@ -67,70 +67,13 @@ func waitForOperators(t *testing.T) {
 	kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
-	// creating another config which is used for creating resclient only,
-	//so that the main kubeconfig is not altered
-	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
-	require.NoError(t, err)
-
 	cl, err := client.New(kubeconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
 
-	// Check if there is already a service account present for e2e test
-	sa := &corev1.ServiceAccount{}
-	err = cl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sa)
-
-	// If not found proceed to create the e2e service account and the cluster role binding
-	if errors.IsNotFound(err) {
-		fmt.Printf("No Service Account for e2e test found, proceeding to create it")
-		err := cl.Create(context.TODO(), &corev1.ServiceAccount{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "e2e-test",
-				Namespace: hostNs}})
-		require.NoError(t, err, "Error in creating Service account for e2e test")
-
-		crb := rbacv1.ClusterRoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "e2e-test-cluster-admin",
-			},
-			RoleRef: rbacv1.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
-				Kind:     "ClusterRole",
-				Name:     "cluster-admin",
-			},
-			Subjects: []rbacv1.Subject{
-				{
-					Kind:      "ServiceAccount",
-					Name:      "e2e-test",
-					Namespace: hostNs,
-				},
-			},
-		}
-		fmt.Printf("Proceeding to create Cluster Role Binding for the Service Account")
-		err = cl.Create(context.TODO(), &crb)
-		require.NoError(t, err, "Error in Creating Cluster role binding")
-	} else if err != nil {
-		require.NoError(t, err, "Error fetching service accounts")
-	}
-
-	//upating the restkubeconfig ,which requires groupversion to create restclient
-	restkubeconfig.ContentConfig =
-		rest.ContentConfig{
-			GroupVersion:         &authv1.SchemeGroupVersion,
-			NegotiatedSerializer: scheme.Codecs,
-		}
-
-	//Creating a Restclient to be used in creation and checking of bearer token required for authentication
-	rclient, err := rest.RESTClientFor(restkubeconfig)
-	require.NoError(t, err, "Error in creating restclient")
-
-	//Creating a bearer token to be used for authentication(which is valid for 24 hrs)
-	bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, 86400)
-	require.NoError(t, err, "Error in creating Token")
-
 	//updating the kubeconfig with the bearer token created
-	kubeconfig.BearerToken = bt
+	kubeconfig.BearerToken = getE2EServiceAccountToken(t)
 
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
@@ -162,6 +105,76 @@ func waitForOperators(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
+}
+
+func getE2EServiceAccountToken(t *testing.T) string {
+	hostNs := os.Getenv(wait.HostNsVar)
+
+	apiConfigsa, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	require.NoError(t, err)
+
+	// creating another config which is used for creating resclient , client, for SA
+	//so that the main kubeconfig is not altered
+	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
+	require.NoError(t, err)
+
+	sacl, err := client.New(restkubeconfig, client.Options{
+		Scheme: schemeWithAllAPIs(t),
+	})
+	require.NoError(t, err)
+
+	// Check if there is already a service account present for e2e test
+	sa := &corev1.ServiceAccount{}
+	err = sacl.Get(context.TODO(), types.NamespacedName{Namespace: WaitForDeployments(t).Host().Namespace, Name: "e2e-test"}, sa)
+
+	// If not found proceed to create the e2e service account and the cluster role binding
+	if errors.IsNotFound(err) {
+		t.Logf("No Service Account for e2e test found, proceeding to create it")
+		err := sacl.Create(context.TODO(), &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "e2e-test",
+				Namespace: hostNs}})
+		require.NoError(t, err, "Error in creating Service account for e2e test")
+
+		crb := rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "e2e-test-cluster-admin",
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "ClusterRole",
+				Name:     "cluster-admin",
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "ServiceAccount",
+					Name:      "e2e-test",
+					Namespace: hostNs,
+				},
+			},
+		}
+		t.Logf("Proceeding to create Cluster Role Binding for the Service Account")
+		err = sacl.Create(context.TODO(), &crb)
+		require.NoError(t, err, "Error in Creating Cluster role binding")
+	} else if err != nil {
+		require.NoError(t, err, "Error fetching service accounts")
+	}
+
+	//upating the restkubeconfig ,which requires groupversion to create restclient
+	restkubeconfig.ContentConfig =
+		rest.ContentConfig{
+			GroupVersion:         &authv1.SchemeGroupVersion,
+			NegotiatedSerializer: scheme.Codecs,
+		}
+
+	//Creating a Restclient to be used in creation and checking of bearer token required for authentication
+	rclient, err := rest.RESTClientFor(restkubeconfig)
+	require.NoError(t, err, "Error in creating restclient")
+
+	//Creating a bearer token to be used for authentication(which is valid for 24 hrs)
+	bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, 86400)
+	require.NoError(t, err, "Error in creating Token")
+	return bt
 }
 
 // WaitForDeployments waits for all member Webhooks and autoscaling buffer apps in addition to waiting for
