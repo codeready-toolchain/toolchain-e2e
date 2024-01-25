@@ -125,7 +125,7 @@ func getE2EServiceAccountToken(t *testing.T) string {
 
 	// Check if there is already a service account present for e2e test
 	sa := &corev1.ServiceAccount{}
-	err = sacl.Get(context.TODO(), types.NamespacedName{Namespace: WaitForDeployments(t).Host().Namespace, Name: "e2e-test"}, sa)
+	err = sacl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sa)
 
 	// If not found proceed to create the e2e service account and the cluster role binding
 	if errors.IsNotFound(err) {
