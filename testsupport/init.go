@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -73,7 +74,7 @@ func waitForOperators(t *testing.T) {
 	require.NoError(t, err)
 
 	//updating the kubeconfig with the bearer token created
-	kubeconfig.BearerToken = getE2EServiceAccountToken(t)
+	kubeconfig.BearerToken = getE2EServiceAccountToken(t, hostNs, apiConfig, cl)
 
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
@@ -107,20 +108,11 @@ func waitForOperators(t *testing.T) {
 	t.Log("all operators are ready and in running state")
 }
 
-func getE2EServiceAccountToken(t *testing.T) string {
-	hostNs := os.Getenv(wait.HostNsVar)
+func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Config, sacl client.Client) string {
 
-	apiConfigsa, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-	require.NoError(t, err)
-
-	// creating another config which is used for creating resclient , client, for SA
+	// creating another config which is used for creating only resclient,
 	//so that the main kubeconfig is not altered
 	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
-	require.NoError(t, err)
-
-	sacl, err := client.New(restkubeconfig, client.Options{
-		Scheme: schemeWithAllAPIs(t),
-	})
 	require.NoError(t, err)
 
 	// Check if there is already a service account present for e2e test
