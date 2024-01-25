@@ -4,55 +4,17 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/predicates"
+	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type (
-	CreateOption func(*toolchainv1alpha1.SpaceProvisionerConfig)
-	predicate    func(*toolchainv1alpha1.SpaceProvisionerConfig) bool
-)
-
-var _ predicates.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig] = (predicate)(nil)
-
-func (f predicate) Matches(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
-	return f(spc)
-}
-
-func ReferencingToolchainCluster(name string) CreateOption {
-	return func(spc *toolchainv1alpha1.SpaceProvisionerConfig) {
-		spc.Spec.ToolchainCluster = name
-	}
-}
-
-func Ready() predicates.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig] {
-	return predicate(func(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
-		return condition.IsTrue(spc.Status.Conditions, toolchainv1alpha1.ConditionReady)
-	})
-}
-
-func NotReady() predicates.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig] {
-	return predicate(func(spc *toolchainv1alpha1.SpaceProvisionerConfig) bool {
-		return condition.IsFalse(spc.Status.Conditions, toolchainv1alpha1.ConditionReady)
-	})
-}
-
-func CreateSpaceProvisionerConfig(t *testing.T, await *wait.Awaitility, opts ...CreateOption) *toolchainv1alpha1.SpaceProvisionerConfig {
+func CreateSpaceProvisionerConfig(t *testing.T, await *wait.Awaitility, opts ...testSpc.CreateOption) *toolchainv1alpha1.SpaceProvisionerConfig {
 	namePrefix := util.NewObjectNamePrefix(t)
 
-	spc := &toolchainv1alpha1.SpaceProvisionerConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: namePrefix + "-",
-			Namespace:    await.Namespace,
-		},
-	}
-	for _, apply := range opts {
-		apply(spc)
-	}
+	spc := testSpc.NewSpaceProvisionerConfig("", await.Namespace, opts...)
+	spc.GenerateName = namePrefix
 	err := await.CreateWithCleanup(t, spc)
 	require.NoError(t, err)
 

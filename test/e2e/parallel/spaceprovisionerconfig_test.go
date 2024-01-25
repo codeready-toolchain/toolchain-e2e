@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	. "github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
+	. "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/predicates"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
+	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestSpaceProvisionerConfig(t *testing.T) {
@@ -32,27 +32,27 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		spc := spaceprovisionerconfig.CreateSpaceProvisionerConfig(t, host.Awaitility, spaceprovisionerconfig.ReferencingToolchainCluster(cluster.Name))
+		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
 
 		// then
 		_, _, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			FirstThat(
-				predicates.Is(spaceprovisionerconfig.Ready()),
-				predicates.Is(predicates.WithObjectKey(client.ObjectKeyFromObject(spc))))
+				Is(Ready()),
+				Has(Name(spc.Name)))
 		assert.NoError(t, err)
 	})
 
 	t.Run("not ready without existing cluster", func(t *testing.T) {
 		// when
-		spc := spaceprovisionerconfig.CreateSpaceProvisionerConfig(t, host.Awaitility, spaceprovisionerconfig.ReferencingToolchainCluster("invalid%@@name"))
+		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster("invalid%@@name"))
 
 		// then
 		_, _, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			FirstThat(
-				predicates.Is(spaceprovisionerconfig.NotReady()),
-				predicates.Is(predicates.WithObjectKey(client.ObjectKeyFromObject(spc))))
+				Is(NotReady()),
+				Has(Name(spc.Name)))
 		assert.NoError(t, err)
 	})
 
@@ -61,14 +61,14 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
 
 		// when
-		spc := spaceprovisionerconfig.CreateSpaceProvisionerConfig(t, host.Awaitility, spaceprovisionerconfig.ReferencingToolchainCluster(clusterName))
+		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
 		_, _, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			FirstThat(
-				predicates.Is(spaceprovisionerconfig.NotReady()),
-				predicates.Is(predicates.WithObjectKey(client.ObjectKeyFromObject(spc))))
+				Is(NotReady()),
+				Has(Name(spc.Name)))
 		assert.NoError(t, err)
 
 		// when
@@ -84,8 +84,8 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, _, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			FirstThat(
-				predicates.Is(spaceprovisionerconfig.Ready()),
-				predicates.Is(predicates.WithObjectKey(client.ObjectKeyFromObject(spc))))
+				Is(Ready()),
+				Has(Name(spc.Name)))
 		assert.NoError(t, err)
 	})
 
@@ -101,14 +101,14 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		assert.NoError(t, host.CreateWithCleanup(t, cluster))
 
 		// when
-		spc := spaceprovisionerconfig.CreateSpaceProvisionerConfig(t, host.Awaitility, spaceprovisionerconfig.ReferencingToolchainCluster(clusterName))
+		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
 		_, _, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			FirstThat(
-				predicates.Is(spaceprovisionerconfig.Ready()),
-				predicates.Is(predicates.WithObjectKey(client.ObjectKeyFromObject(spc))))
+				Is(Ready()),
+				Has(Name(spc.Name)))
 		assert.NoError(t, err)
 
 		// when
@@ -118,8 +118,8 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, _, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			FirstThat(
-				predicates.Is(spaceprovisionerconfig.NotReady()),
-				predicates.Is(predicates.WithObjectKey(client.ObjectKeyFromObject(spc))))
+				Is(NotReady()),
+				Has(Name(spc.Name)))
 		assert.NoError(t, err)
 	})
 }

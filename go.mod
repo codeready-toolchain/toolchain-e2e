@@ -1,5 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
+replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240125174611-654ac7c7e9a7
+
 require (
 	github.com/codeready-toolchain/api v0.0.0-20240116164228-8d18c9262420
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20240115235114-36095a5f2acc

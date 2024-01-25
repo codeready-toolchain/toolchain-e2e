@@ -16,9 +16,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/predicates"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -680,7 +680,7 @@ func (w *Waiter[T]) AtLeast(dur time.Duration) *Waiter[T] {
 
 // FirstThat uses the provided predicates to filter the objects of the type provided to `wait.For()` and
 // repeatedly tries to find the first one that satisfies all the predicates.
-func (w *Waiter[T]) FirstThat(predicates ...predicates.Predicate[client.Object]) (T, bool, error) {
+func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
 	w.t.Logf("waiting for objects of GVK '%s' in namespace '%s' to match criteria", w.gvk, w.await.Namespace)
 
 	var returnedObject T
@@ -730,6 +730,13 @@ func (w *Waiter[T]) FirstThat(predicates ...predicates.Predicate[client.Object])
 		return false, nil
 	})
 	return returnedObject, found, err
+}
+
+// ObjectWithNameThat is just a simple "override" of the FirstThat function that turns the provided name into
+// a predicate. Provided so that one doesn't forget to add the name predicate when looking for a concrete object.
+func (w *Waiter[T]) ObjectWithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
+	predicates = append(predicates, assertions.Name(name))
+	return w.FirstThat(predicates...)
 }
 
 // For returns an struct using which one can wait for the objects with the same type as the one provided.
