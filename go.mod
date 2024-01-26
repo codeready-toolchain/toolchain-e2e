@@ -4,7 +4,7 @@ replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/too
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20240116164228-8d18c9262420
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20240115235114-36095a5f2acc
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20240125161658-0594a843cd4e
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
