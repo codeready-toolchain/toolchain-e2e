@@ -696,32 +696,12 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 			return false, err
 		}
 		for _, obj := range list.Items {
-			raw, err := obj.MarshalJSON()
+			object, err := w.cast(&obj)
 			if err != nil {
-				return false, fmt.Errorf("failed to obtain the raw JSON of object when getting objects of type %v: %w", w.gvk, err)
+				return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
 			}
 
-			typed, err := w.await.Client.Scheme().New(w.gvk)
-			if err != nil {
-				return false, fmt.Errorf("failed to create a new empty object of type %v: %w", w.gvk, err)
-			}
-
-			err = json.Unmarshal(raw, typed)
-			if err != nil {
-				return false, fmt.Errorf("failed to unmarshal the raw JSON to the go structure of object type: %v: %w", w.gvk, err)
-			}
-
-			object := typed.(T)
-
-			matches := true
-			for _, p := range predicates {
-				if !p.Matches(object) {
-					matches = false
-					break
-				}
-			}
-
-			if matches {
+			if w.matches(object, predicates) {
 				found = true
 				returnedObject = object
 				return true, nil
@@ -732,11 +712,63 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 	return returnedObject, found, err
 }
 
-// ObjectWithNameThat is just a simple "override" of the FirstThat function that turns the provided name into
-// a predicate. Provided so that one doesn't forget to add the name predicate when looking for a concrete object.
+// ObjectWithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
+// matches the provided predicates.
 func (w *Waiter[T]) ObjectWithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
-	predicates = append(predicates, assertions.Name(name))
-	return w.FirstThat(predicates...)
+	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to match additional criteria", w.gvk, name, w.await.Namespace)
+
+	var returnedObject T
+	found := false
+
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			return false, err
+		}
+		object, err := w.cast(obj)
+		if err != nil {
+			return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
+		}
+
+		if w.matches(object, predicates) {
+			found = true
+			returnedObject = object
+			return true, nil
+		}
+
+		return false, nil
+	})
+	return returnedObject, found, err
+}
+
+func (w *Waiter[T]) cast(obj *unstructured.Unstructured) (T, error) {
+	var empty T
+	raw, err := obj.MarshalJSON()
+	if err != nil {
+		return empty, fmt.Errorf("failed to obtain the raw JSON of the object: %w", err)
+	}
+
+	typed, err := w.await.Client.Scheme().New(w.gvk)
+	if err != nil {
+		return empty, fmt.Errorf("failed to create a new empty object from the scheme: %w", err)
+	}
+
+	err = json.Unmarshal(raw, typed)
+	if err != nil {
+		return empty, fmt.Errorf("failed to unmarshal the raw JSON to the go structure: %w", err)
+	}
+
+	return typed.(T), nil
+}
+
+func (w *Waiter[T]) matches(obj T, predicates []assertions.Predicate[client.Object]) bool {
+	for _, p := range predicates {
+		if !p.Matches(obj) {
+			return false
+		}
+	}
+	return true
 }
 
 // For returns an struct using which one can wait for the objects with the same type as the one provided.
