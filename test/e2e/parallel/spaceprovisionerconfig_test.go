@@ -37,7 +37,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// then
 		_, _, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			ObjectWithNameThat(spc.Name, Is(Ready()))
+			WithNameThat(spc.Name, Is(Ready()))
 		assert.NoError(t, err)
 	})
 
@@ -48,7 +48,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// then
 		_, _, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			ObjectWithNameThat(spc.Name, Is(NotReady()))
+			WithNameThat(spc.Name, Is(NotReady()))
 		assert.NoError(t, err)
 	})
 
@@ -62,7 +62,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// then
 		_, _, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			ObjectWithNameThat(spc.Name, Is(NotReady()))
+			WithNameThat(spc.Name, Is(NotReady()))
 		assert.NoError(t, err)
 
 		// when
@@ -77,7 +77,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// then
 		_, _, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			ObjectWithNameThat(spc.Name, Is(Ready()))
+			WithNameThat(spc.Name, Is(Ready()))
 		assert.NoError(t, err)
 	})
 
@@ -98,7 +98,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// then
 		_, _, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			ObjectWithNameThat(spc.Name, Is(Ready()))
+			WithNameThat(spc.Name, Is(Ready()))
 		assert.NoError(t, err)
 
 		// when
@@ -107,7 +107,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// then
 		_, _, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			ObjectWithNameThat(spc.Name, Is(NotReady()))
+			WithNameThat(spc.Name, Is(NotReady()))
 		assert.NoError(t, err)
 	})
 }

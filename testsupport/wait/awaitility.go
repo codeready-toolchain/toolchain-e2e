@@ -712,9 +712,9 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 	return returnedObject, found, err
 }
 
-// ObjectWithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
+// WithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
 // matches the provided predicates.
-func (w *Waiter[T]) ObjectWithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
+func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
 	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to match additional criteria", w.gvk, name, w.await.Namespace)
 
 	var returnedObject T
