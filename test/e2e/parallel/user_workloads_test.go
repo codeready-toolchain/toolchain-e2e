@@ -14,7 +14,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -71,8 +70,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForPods(t, "workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
 	require.NoError(t, err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(t, "test-idler-stage-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.True(t, errors.IsNotFound(err))
+	err = hostAwait.WaitForNotificationToNotBeCreated(t, "test-idler-stage-idled")
+	require.NoError(t, err)
 
 	// Check if notification has been deleted before creating another pod
 	err = hostAwait.WaitUntilNotificationWithNameDeleted(t, "test-idler-dev-idled")
@@ -88,8 +87,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = memberAwait.WaitUntilPodDeleted(t, pod.Namespace, pod.Name)
 	require.NoError(t, err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.True(t, errors.IsNotFound(err))
+	err = hostAwait.WaitForNotificationToNotBeCreated(t, "test-idler-dev-idled")
+	require.NoError(t, err)
 
 	// There should not be any pods left in the namespace
 	err = memberAwait.WaitUntilPodsDeleted(t, idler.Name, wait.WithPodLabel("idler", "idler"))
@@ -247,7 +246,7 @@ func podSpec() corev1.PodSpec {
 		TerminationGracePeriodSeconds: &zero,
 		Containers: []corev1.Container{{
 			Name:    "sleep",
-			Image:   "busybox",
+			Image:   "quay.io/prometheus/busybox:latest",
 			Command: []string{"sleep", "36000"}, // 10 hours
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
