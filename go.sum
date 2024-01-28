@@ -241,8 +241,8 @@ github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zV
 github.com/gogo/protobuf v1.3.1/go.mod h1:SlYgWuQ5SjCEi6WLHjHCa1yvBfUnHcTbrrZtXPKa29o=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cvc58UF3b5XjBnZv7+opcTcQFZebYjWzi34vdm4Q=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
-github.com/golang-jwt/jwt v3.2.2+incompatible h1:IfV12K8xAKAnZqdXVzCZ+TOjboZ2keLg81eXfW3O+oY=
-github.com/golang-jwt/jwt v3.2.2+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
+github.com/golang-jwt/jwt/v5 v5.2.0 h1:d/ix8ftRUorsN+5eMIlF4T6J8CAt9rch3My2winC1Jw=
+github.com/golang-jwt/jwt/v5 v5.2.0/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/glog v1.0.0/go.mod h1:EWib/APOK0SL3dFbYqvxE3UYd8E6s1ouQ7iEp/0LWV4=
 github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
@@ -591,10 +591,10 @@ github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
-github.com/sbryzak/api v0.0.0-20240102042357-82134b76d69e h1:1p4jHPdkwSARcFuJw2o2uQgfZExsm84kuzr+fb9wCLg=
-github.com/sbryzak/api v0.0.0-20240102042357-82134b76d69e/go.mod h1:FO7kgXH1x1LqkF327D5a36u0WIrwjVCbeijPkzgwaZc=
-github.com/sbryzak/toolchain-common v0.0.0-20240107055000-3d9023112235 h1:VRdgqqhAy55aJqzfzonjs+KyPeZuiijcsaRd6VYGIyk=
-github.com/sbryzak/toolchain-common v0.0.0-20240107055000-3d9023112235/go.mod h1:s76M4eSzRUx7cL/Mvch2gx0fb5jTW+xYqFlfX+aSuME=
+github.com/sbryzak/api v0.0.0-20240122043958-5766c6177c5f h1:Yy4DgctB2UhAtKdCTJlNSs0eOlMlrcOFEaGlO7NGY9E=
+github.com/sbryzak/api v0.0.0-20240122043958-5766c6177c5f/go.mod h1:FO7kgXH1x1LqkF327D5a36u0WIrwjVCbeijPkzgwaZc=
+github.com/sbryzak/toolchain-common v0.0.0-20240127001349-e2601d8aaca0 h1:+M6r5HekZ3z5N/v1aZEjlkhwumlZAtvCBZEEEsnV3Tk=
+github.com/sbryzak/toolchain-common v0.0.0-20240127001349-e2601d8aaca0/go.mod h1:vuxDx4HKxnb8xJV21OufzRhh/6qNP46stTkn2ni06UY=
 github.com/scylladb/go-set v1.0.2/go.mod h1:DkpGd78rljTxKAnTDPFqXSGxvETQnJyuSOQwsHycqfs=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=

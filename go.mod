@@ -55,7 +55,7 @@ require (
 	github.com/go-openapi/swag v0.19.14 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
@@ -122,6 +122,6 @@ require (
 
 go 1.20
 
-replace github.com/codeready-toolchain/api => github.com/sbryzak/api v0.0.0-20240102042357-82134b76d69e
+replace github.com/codeready-toolchain/api => github.com/sbryzak/api v0.0.0-20240122043958-5766c6177c5f
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/sbryzak/toolchain-common v0.0.0-20240107055000-3d9023112235
+replace github.com/codeready-toolchain/toolchain-common => github.com/sbryzak/toolchain-common v0.0.0-20240127001349-e2601d8aaca0
