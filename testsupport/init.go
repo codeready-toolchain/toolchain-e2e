@@ -115,12 +115,8 @@ func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Con
 	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
 	require.NoError(t, err)
 
-	// Check if there is already a service account present for e2e test
 	sa := &corev1.ServiceAccount{}
 	err = sacl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sa)
-
-	sacrb := &rbacv1.ClusterRoleBinding{}
-	err1 := sacl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sacrb)
 	// If not found proceed to create the e2e service account and the cluster role binding
 	if errors.IsNotFound(err) {
 		t.Logf("No Service Account for e2e test found, proceeding to create it")
@@ -129,7 +125,14 @@ func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Con
 				Name:      "e2e-test",
 				Namespace: hostNs}})
 		require.NoError(t, err, "Error in creating Service account for e2e test")
+	} else if err != nil {
+		require.NoError(t, err, "Error fetching service accounts")
+	}
 
+	sacrb := &rbacv1.ClusterRoleBinding{}
+	err = sacl.Get(context.TODO(), types.NamespacedName{Name: "e2e-test-cluster-admin"}, sacrb)
+	// check if there are any clusterrolebinding present from the previous run of e2e test
+	if errors.IsNotFound(err) {
 		crb := rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "e2e-test-cluster-admin",
@@ -147,16 +150,11 @@ func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Con
 				},
 			},
 		}
-		// check if there are any clusterrolebinding present from the previous run of e2e test
-		if errors.IsNotFound(err1) {
-			t.Logf("Proceeding to create Cluster Role Binding for the Service Account")
-			err = sacl.Create(context.TODO(), &crb)
-			require.NoError(t, err, "Error in Creating Cluster role binding")
-		}
-		t.Logf("There is already a ClusterroleBinding for e2e-test")
-
+		t.Logf("Proceeding to create Cluster Role Binding for the Service Account")
+		err = sacl.Create(context.TODO(), &crb)
+		require.NoError(t, err, "Error in Creating Cluster role binding")
 	} else if err != nil {
-		require.NoError(t, err, "Error fetching service accounts")
+		require.NoError(t, err, "Error fetching clusterrolebinding")
 	}
 
 	//upating the restkubeconfig ,which requires groupversion to create restclient

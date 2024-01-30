@@ -19,7 +19,7 @@ clean-users:
 ## Delete all cluster-wide configuration resources like PriorityClass, MutatingWebhookConfiguration, and ClusterRoleBinding for e2e SA
 clean-cluster-wide-config:
 	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-service-account | xargs oc delete
-	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-test-cluster-admin | xargs oc delete
+	$(Q)-oc delete ClusterRoleBinding e2e-test-cluster-admin
 	$(Q)-oc get ClusterRole -o jsonpath="{range .items[*]}{.metadata.name} {.metadata.labels.olm\.owner}{'\n'}{end}" | grep "toolchain-" | awk '{print $$1}' | xargs oc delete ClusterRole
 	$(Q)-oc get ClusterRoleBinding -o jsonpath="{range .items[*]}{.metadata.name} {.metadata.labels.olm\.owner}{'\n'}{end}" | grep "toolchain-" | awk '{print $$1}' | xargs oc delete ClusterRoleBinding
 	$(Q)-oc delete PriorityClass -l='toolchain.dev.openshift.com/provider=codeready-toolchain'
