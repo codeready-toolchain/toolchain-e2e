@@ -35,7 +35,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
 
 		// then
-		_, _, err = wait.
+		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(Ready()))
 		assert.NoError(t, err)
@@ -46,7 +46,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster("invalid%@@name"))
 
 		// then
-		_, _, err := wait.
+		_, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
 		assert.NoError(t, err)
@@ -60,7 +60,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
-		_, _, err := wait.
+		_, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
 		assert.NoError(t, err)
@@ -75,7 +75,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		assert.NoError(t, host.CreateWithCleanup(t, cluster))
 
 		// then
-		_, _, err = wait.
+		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(Ready()))
 		assert.NoError(t, err)
@@ -96,7 +96,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
-		_, _, err := wait.
+		_, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(Ready()))
 		assert.NoError(t, err)
@@ -105,7 +105,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		assert.NoError(t, host.Client.Delete(context.TODO(), cluster))
 
 		// then
-		_, _, err = wait.
+		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
 		assert.NoError(t, err)

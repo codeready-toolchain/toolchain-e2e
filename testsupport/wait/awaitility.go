@@ -680,11 +680,10 @@ func (w *Waiter[T]) AtLeast(dur time.Duration) *Waiter[T] {
 
 // FirstThat uses the provided predicates to filter the objects of the type provided to `wait.For()` and
 // repeatedly tries to find the first one that satisfies all the predicates.
-func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
+func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object]) (T, error) {
 	w.t.Logf("waiting for objects of GVK '%s' in namespace '%s' to match criteria", w.gvk, w.await.Namespace)
 
 	var returnedObject T
-	found := false
 
 	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
 		// because there is no generic way of figuring out the list type for some client.Object type, we need to go
@@ -703,23 +702,21 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 			}
 
 			if w.matches(object, predicates) {
-				found = true
 				returnedObject = object
 				return true, nil
 			}
 		}
 		return false, nil
 	})
-	return returnedObject, found, err
+	return returnedObject, err
 }
 
 // WithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
 // matches the provided predicates.
-func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, bool, error) {
+func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, error) {
 	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to match additional criteria", w.gvk, name, w.await.Namespace)
 
 	var returnedObject T
-	found := false
 
 	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
 		obj := &unstructured.Unstructured{}
@@ -733,14 +730,13 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 		}
 
 		if w.matches(object, predicates) {
-			found = true
 			returnedObject = object
 			return true, nil
 		}
 
 		return false, nil
 	})
-	return returnedObject, found, err
+	return returnedObject, err
 }
 
 func (w *Waiter[T]) cast(obj *unstructured.Unstructured) (T, error) {
