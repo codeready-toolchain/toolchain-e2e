@@ -239,7 +239,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 
 	// Wait for the UserSignup to be created
 	userSignup, err := hostAwait.WaitForUserSignup(t, userIdentity.Username)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to find UserSignup %s", userIdentity.Username)
 
 	if r.targetCluster != nil && hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled != nil {
 		require.False(t, *hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled,
