@@ -671,13 +671,6 @@ type Waiter[T client.Object] struct {
 	gvk   schema.GroupVersionKind
 }
 
-// AtLeast merely waits for the given amount of time ensuring that "wait.For" (from which it is called) is
-// happening at least the duration needed.
-func (w *Waiter[T]) AtLeast(dur time.Duration) *Waiter[T] {
-	time.Sleep(dur)
-	return w
-}
-
 // FirstThat uses the provided predicates to filter the objects of the type provided to `wait.For()` and
 // repeatedly tries to find the first one that satisfies all the predicates.
 func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object]) (T, error) {
