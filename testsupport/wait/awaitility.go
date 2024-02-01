@@ -485,7 +485,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 	t.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 	deployment := &appsv1.Deployment{}
 	err := wait.Poll(a.RetryInterval, 6*a.Timeout, func() (done bool, err error) {
-		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
+		deploymentConditions := status.GetDeploymentStatusConditions(context.TODO(), a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			return false, nil // nolint:nilerr
 		}
