@@ -1,0 +1,28 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-ansible-automation-platform
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${AAP_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: aap-operator-group
+      namespace: ${AAP_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: aap-operator
+      namespace: ${AAP_NAMESPACE}
+    spec:
+      channel: stable-2.4-cluster-scoped
+      installPlanApproval: Automatic
+      name: ansible-automation-platform-operator
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+parameters:
+  - name: AAP_NAMESPACE
+    value: ansible-automation-platform

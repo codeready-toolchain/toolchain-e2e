@@ -1,30 +1,36 @@
 package testsupport
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	toolchaincommon "github.com/codeready-toolchain/toolchain-common/pkg/client"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/scheme"
-
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	quotav1 "github.com/openshift/api/quota/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/kubectl/pkg/scheme"
 	metrics "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -67,6 +73,9 @@ func waitForOperators(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	//updating the kubeconfig with the bearer token created
+	kubeconfig.BearerToken = getE2EServiceAccountToken(t, hostNs, apiConfig, cl)
+
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
 
 	// wait for host operator to be ready
@@ -86,15 +95,9 @@ func waitForOperators(t *testing.T) {
 	initHostAwait.RegistrationServiceURL = registrationServiceURL
 
 	// wait for member operators to be ready
-	initMemberAwait = getMemberAwaitility(t, cl, initHostAwait, memberNs)
+	initMemberAwait = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs)
 
-	initMember2Await = getMemberAwaitility(t, cl, initHostAwait, memberNs2)
-
-	hostToolchainCluster, err := initMemberAwait.WaitForToolchainClusterWithCondition(t, "e2e", hostNs, wait.ReadyToolchainCluster)
-	require.NoError(t, err)
-	hostConfig, err := cluster.NewClusterConfig(cl, &hostToolchainCluster, 6*time.Second)
-	require.NoError(t, err)
-	initHostAwait.RestConfig = hostConfig.RestConfig
+	initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
 
 	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
@@ -103,6 +106,72 @@ func waitForOperators(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
+}
+
+func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Config, sacl client.Client) string {
+
+	// creating another config which is used for creating only resclient,
+	//so that the main kubeconfig is not altered
+	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
+	require.NoError(t, err)
+
+	sa := &corev1.ServiceAccount{}
+	err = sacl.Get(context.TODO(), types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, sa)
+	// If not found proceed to create the e2e service account and the cluster role binding
+	if errors.IsNotFound(err) {
+		t.Logf("No Service Account for e2e test found, proceeding to create it")
+		err := sacl.Create(context.TODO(), &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "e2e-test",
+				Namespace: hostNs}})
+		require.NoError(t, err, "Error in creating Service account for e2e test")
+	} else if err != nil {
+		require.NoError(t, err, "Error fetching service accounts")
+	}
+
+	sacrb := &rbacv1.ClusterRoleBinding{}
+	err = sacl.Get(context.TODO(), types.NamespacedName{Name: "e2e-test-cluster-admin"}, sacrb)
+	// check if there are any clusterrolebinding present from the previous run of e2e test
+	if errors.IsNotFound(err) {
+		crb := rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "e2e-test-cluster-admin",
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "ClusterRole",
+				Name:     "cluster-admin",
+			},
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      "ServiceAccount",
+					Name:      "e2e-test",
+					Namespace: hostNs,
+				},
+			},
+		}
+		t.Logf("Proceeding to create Cluster Role Binding for the Service Account")
+		err = sacl.Create(context.TODO(), &crb)
+		require.NoError(t, err, "Error in Creating Cluster role binding")
+	} else if err != nil {
+		require.NoError(t, err, "Error fetching clusterrolebinding")
+	}
+
+	//upating the restkubeconfig ,which requires groupversion to create restclient
+	restkubeconfig.ContentConfig =
+		rest.ContentConfig{
+			GroupVersion:         &authv1.SchemeGroupVersion,
+			NegotiatedSerializer: scheme.Codecs,
+		}
+
+	//Creating a Restclient to be used in creation and checking of bearer token required for authentication
+	rclient, err := rest.RESTClientFor(restkubeconfig)
+	require.NoError(t, err, "Error in creating restclient")
+
+	//Creating a bearer token to be used for authentication(which is valid for 24 hrs)
+	bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, 86400)
+	require.NoError(t, err, "Error in creating Token")
+	return bt
 }
 
 // WaitForDeployments waits for all member Webhooks and autoscaling buffer apps in addition to waiting for
@@ -161,13 +230,9 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
 
-func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwaitility, namespace string) *wait.MemberAwaitility {
-	memberClusterE2e, err := hostAwait.WaitForToolchainClusterWithCondition(t, "e2e", namespace, wait.ReadyToolchainCluster)
-	require.NoError(t, err)
-	memberConfig, err := cluster.NewClusterConfig(cl, &memberClusterE2e, 6*time.Second)
-	require.NoError(t, err)
+func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
 
-	memberClient, err := client.New(memberConfig.RestConfig, client.Options{
+	memberClient, err := client.New(restconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
@@ -175,7 +240,7 @@ func getMemberAwaitility(t *testing.T, cl client.Client, hostAwait *wait.HostAwa
 	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, "member", namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
-	memberAwait := wait.NewMemberAwaitility(memberConfig.RestConfig, memberClient, namespace, clusterName)
+	memberAwait := wait.NewMemberAwaitility(restconfig, memberClient, namespace, clusterName)
 
 	memberAwait.WaitForDeploymentToGetReady(t, "member-operator-controller-manager", 1)
 
@@ -193,6 +258,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		corev1.AddToScheme,
 		metrics.AddToScheme,
 		appstudiov1.AddToScheme,
+		rbacv1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s

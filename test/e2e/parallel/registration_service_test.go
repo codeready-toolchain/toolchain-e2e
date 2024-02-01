@@ -193,7 +193,7 @@ func TestSignupFails(t *testing.T) {
 
 		// Check token error.
 		tokenErr := mp["error"]
-		require.Equal(t, "token contains an invalid number of segments", tokenErr.(string))
+		require.Equal(t, "token is malformed: token contains an invalid number of segments", tokenErr.(string))
 	})
 	t.Run("post signup exp token 401 Unauthorized", func(t *testing.T) {
 		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
@@ -208,7 +208,7 @@ func TestSignupFails(t *testing.T) {
 
 		// Check token error.
 		tokenErr := mp["error"]
-		require.Contains(t, tokenErr.(string), "token is expired by ")
+		require.Contains(t, tokenErr.(string), "token has invalid claims: token is expired")
 	})
 	t.Run("get signup error no token 401 Unauthorized", func(t *testing.T) {
 		// Call signup endpoint without a token.
@@ -243,7 +243,7 @@ func TestSignupFails(t *testing.T) {
 
 		// Check token error.
 		tokenErr := mp["error"]
-		require.Equal(t, "token contains an invalid number of segments", tokenErr.(string))
+		require.Equal(t, "token is malformed: token contains an invalid number of segments", tokenErr.(string))
 	})
 	t.Run("get signup exp token 401 Unauthorized", func(t *testing.T) {
 		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
@@ -258,7 +258,7 @@ func TestSignupFails(t *testing.T) {
 
 		// Check token error.
 		tokenErr := mp["error"]
-		require.Contains(t, tokenErr.(string), "token is expired by ")
+		require.Contains(t, tokenErr.(string), "token has invalid claims: token is expired")
 	})
 	t.Run("get signup 404 NotFound", func(t *testing.T) {
 		// Get valid generated token for e2e tests. IAT claim is overridden

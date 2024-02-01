@@ -19,9 +19,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
+	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -1175,9 +1175,13 @@ func (a *HostAwaitility) WaitForNotifications(t *testing.T, username, notificati
 // WaitForNotificationWithName waits until there is an expected Notifications available with the provided name and with the notification type and which match the conditions (if provided).
 func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
 	t.Logf("waiting for notification with name '%s'", notificationName)
-	var notification toolchainv1alpha1.Notification
+	notification := &toolchainv1alpha1.Notification{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, &notification); err != nil {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
 		if typeFound, found := notification.GetLabels()[toolchainv1alpha1.NotificationTypeLabelKey]; !found {
@@ -1186,13 +1190,36 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 			return false, fmt.Errorf("notification found with name does not have the expected type")
 		}
 
-		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{notification}, criteria...), nil
+		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{*notification}, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{notification}, criteria...)
+		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{*notification}, criteria...)
 	}
-	return notification, err
+	return *notification, err
+}
+
+// WaitForNotificationToBeNotCreated waits and checks that notification is NOT created.
+func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notificationName string) error {
+	t.Logf("waiting to check notification with name '%s' is NOT created", notificationName)
+	notification := &toolchainv1alpha1.Notification{}
+	err := wait.Poll(a.RetryInterval, 10*time.Second, func() (done bool, err error) {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	if err == nil {
+		return fmt.Errorf("notification '%s' was found, but it was expected to not be created/present: \n %v", notificationName, notification)
+	}
+	if goerr.Is(err, wait.ErrWaitTimeout) {
+		return nil
+	}
+	return err
 }
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
