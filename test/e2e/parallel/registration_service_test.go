@@ -875,7 +875,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", bearerToken, "", http.StatusOK).UnmarshalMap())
-	assert.Equal(t, username, mp["username"])
+	assert.Equal(t, username, mp["username"], "unexpected username in response", mp, mpStatus)
 	assert.Empty(t, mp["defaultUserNamespace"])
 	assert.Empty(t, mp["rhodsMemberURL"])
 	require.IsType(t, false, mpStatus["ready"])
