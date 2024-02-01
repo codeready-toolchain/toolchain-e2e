@@ -1,0 +1,17 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: default-network-policies
+objects:
+  - apiVersion: toolchain.dev.openshift.com/v1alpha1
+    kind: SpaceProvisionerConfig
+    metadata:
+      name: ${SPACEPROVISIONERCONFIG_NAME}
+      namespace: ${SPACEPROVISIONERCONFIG_NS}
+    spec:
+      toolchainCluster: ${TOOLCHAINCLUSTER_NAME}
+      enabled: true
+parameters:
+  - name: SPACEPROVISIONERCONFIG_NAME
+  - name: SPACEPROVISIONERCONFIG_NS
+  - name: TOOLCHAINCLUSTER_NAME
