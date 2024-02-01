@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/martian/log"
 	"io"
 	"net/http"
 	"strings"
@@ -380,7 +379,7 @@ func TestSignupOK(t *testing.T) {
 		// Signup a new user
 		userSignup := signupUser(token, emailAddress, identity.Username, identity)
 
-		log.Infof("Signed up new user %+v", userSignup)
+		t.Logf("Signed up new user %+v", userSignup)
 
 		// Deactivate the usersignup
 		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
