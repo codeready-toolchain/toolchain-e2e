@@ -81,7 +81,8 @@ func TestCreateSpaceRequest(t *testing.T) {
 
 				// when
 				subSpace, err = hostAwait.UpdateSpace(t, subSpace.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TierName = "base" // let's change the tier
+					s.Spec.TierName = "base"         // let's change the tier
+					s.Spec.DisableInheritance = true // let's change also the disableInheritance field
 				})
 				require.NoError(t, err)
 
@@ -90,7 +91,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 				_, err = awaitilities.Host().WaitForSpace(t, subSpace.GetName(),
 					UntilSpaceHasTier("appstudio-env"), // tierName is back as the one on spaceRequest
 					UntilSpaceHasTargetClusterRoles(targetClusterRoles),
-					UntilSpaceHasDisableInheritance(false),
+					UntilSpaceHasDisableInheritance(false), // disable inheritance flag is reset
 					UntilSpaceHasAnyProvisionedNamespaces(),
 				)
 				require.NoError(t, err)
@@ -142,69 +143,6 @@ func TestCreateSpaceRequest(t *testing.T) {
 		)
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
-
-		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
-			// now, delete the subSpace, along with its associated namespace,
-			// but a new Space will be provisioned by the SpaceRequest.
-			//
-			// save the creation timestamp that will be used to ensure that a new subSpace was created with the same name.
-			oldSpaceCreationTimeStamp := subSpace.CreationTimestamp
-
-			// when
-			err := hostAwait.Client.Delete(context.TODO(), subSpace)
-
-			// then
-			// a new subSpace is created
-			// with the same name but creation timestamp should be greater (more recent).
-			require.NoError(t, err)
-			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
-				UntilSpaceHasTargetClusterRoles(targetClusterRoles),
-				UntilSpaceHasTier("appstudio-env"),
-				UntilSpaceHasDisableInheritance(true),
-				UntilSpaceHasAnyProvisionedNamespaces(),
-				UntilSpaceHasCreationTimestampGreaterThan(oldSpaceCreationTimeStamp.Time),
-			)
-			require.NoError(t, err)
-
-			t.Run("subSpace always reflects values from spaceRequest ", func(t *testing.T) {
-				// given
-				// something/someone updates the tierName directly on the Space object
-
-				// when
-				subSpace, err = hostAwait.UpdateSpace(t, subSpace.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TierName = "base" // let's change the tier
-				})
-				require.NoError(t, err)
-
-				// then
-				// spaceRequest should reset back the tierName
-				_, err = awaitilities.Host().WaitForSpace(t, subSpace.GetName(),
-					UntilSpaceHasTier("appstudio-env"), // tierName is back as the one on spaceRequest
-					UntilSpaceHasTargetClusterRoles(targetClusterRoles),
-					UntilSpaceHasDisableInheritance(true),
-					UntilSpaceHasAnyProvisionedNamespaces(),
-				)
-				require.NoError(t, err)
-
-				t.Run("delete space request", func(t *testing.T) {
-					// now, delete the SpaceRequest and expect that the Space will be deleted as well,
-					// along with its associated namespace
-
-					// when
-					err := memberAwait.Client.Delete(context.TODO(), spaceRequest)
-
-					// then
-					// subSpace should be deleted as well
-					require.NoError(t, err)
-					err = memberAwait.WaitUntilNamespaceDeleted(t, subSpace.Name, "appstudio-env")
-					require.NoError(t, err)
-					err = memberAwait.WaitUntilNSTemplateSetDeleted(t, subSpace.Name)
-					require.NoError(t, err)
-					err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
-					require.NoError(t, err)
-				})
-			})
-		})
 	})
 
 	t.Run("subSpace has parentSpace target cluster when target roles are empty", func(t *testing.T) {
