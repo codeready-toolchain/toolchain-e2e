@@ -1850,7 +1850,7 @@ func UntilSpaceHasTargetClusterRoles(expected []string) SpaceWaitCriterion {
 }
 
 // UntilSpaceHasTargetClusterRoles returns a `SpaceWaitCriterion` which checks that the given
-// Space has the expected target cluster roles set in its Spec
+// Space has the expected Spec.DisableInheritance value
 func UntilSpaceHasDisableInheritance(expected bool) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
