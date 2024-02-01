@@ -3,11 +3,9 @@ package testsupport
 import (
 	"encoding/json"
 	"fmt"
-	"hash/crc32"
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -24,13 +22,6 @@ import (
 )
 
 var httpClient = HTTPClient
-
-const (
-	DNS1123NameMaximumLength         = 63
-	DNS1123NotAllowedCharacters      = "[^-a-z0-9]"
-	DNS1123NotAllowedStartCharacters = "^[^a-z0-9]+"
-	DNS1123NotAllowedEndCharacters   = "[^a-z0-9]+$"
-)
 
 // NewSignupRequest creates a new signup request for the registration service
 func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
@@ -247,7 +238,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
-	userSignup, err := hostAwait.WaitForUserSignup(t, EncodeUserIdentifier(userIdentity.Username))
+	userSignup, err := hostAwait.WaitForUserSignup(t, wait.EncodeUserIdentifier(userIdentity.Username))
 	require.NoError(t, err, "failed to find UserSignup %s", userIdentity.Username)
 
 	if r.targetCluster != nil && hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled != nil {
@@ -361,33 +352,4 @@ func Close(t *testing.T, resp *http.Response) {
 	require.NoError(t, err)
 	err = resp.Body.Close()
 	require.NoError(t, err)
-}
-
-func EncodeUserIdentifier(subject string) string {
-	// Convert to lower case
-	encoded := strings.ToLower(subject)
-
-	// Remove all invalid characters
-	nameNotAllowedChars := regexp.MustCompile(DNS1123NotAllowedCharacters)
-	encoded = nameNotAllowedChars.ReplaceAllString(encoded, "")
-
-	// Remove invalid start characters
-	nameNotAllowedStartChars := regexp.MustCompile(DNS1123NotAllowedStartCharacters)
-	encoded = nameNotAllowedStartChars.ReplaceAllString(encoded, "")
-
-	// Remove invalid end characters
-	nameNotAllowedEndChars := regexp.MustCompile(DNS1123NotAllowedEndCharacters)
-	encoded = nameNotAllowedEndChars.ReplaceAllString(encoded, "")
-
-	// Add a checksum prefix if the encoded value is different to the original subject value
-	if encoded != subject {
-		encoded = fmt.Sprintf("%x-%s", crc32.Checksum([]byte(subject), crc32.IEEETable), encoded)
-	}
-
-	// Trim if the length exceeds the maximum
-	if len(encoded) > DNS1123NameMaximumLength {
-		encoded = encoded[0:DNS1123NameMaximumLength]
-	}
-
-	return encoded
 }
