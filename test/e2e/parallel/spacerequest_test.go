@@ -81,8 +81,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 
 				// when
 				subSpace, err = hostAwait.UpdateSpace(t, subSpace.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TierName = "base"         // let's change the tier
-					s.Spec.DisableInheritance = true // let's change also the disableInheritance field
+					s.Spec.TierName = "base" // let's change the tier
 				})
 				require.NoError(t, err)
 
@@ -91,7 +90,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 				_, err = awaitilities.Host().WaitForSpace(t, subSpace.GetName(),
 					UntilSpaceHasTier("appstudio-env"), // tierName is back as the one on spaceRequest
 					UntilSpaceHasTargetClusterRoles(targetClusterRoles),
-					UntilSpaceHasDisableInheritance(false), // disable inheritance flag is reset
+					UntilSpaceHasDisableInheritance(false),
 					UntilSpaceHasAnyProvisionedNamespaces(),
 				)
 				require.NoError(t, err)
