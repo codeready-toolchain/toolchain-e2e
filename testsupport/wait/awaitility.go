@@ -722,6 +722,9 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 		obj := &unstructured.Unstructured{}
 		obj.SetGroupVersionKind(w.gvk)
 		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
 		object, err := w.cast(obj)
