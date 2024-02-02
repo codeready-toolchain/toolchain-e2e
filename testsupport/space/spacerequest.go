@@ -35,9 +35,22 @@ func WithSpecTierName(tierName string) SpaceRequestOption {
 	}
 }
 
+func WithSpecDisableInheritance(disableInheritance bool) SpaceRequestOption {
+	return func(s *toolchainv1alpha1.SpaceRequest) {
+		s.Spec.DisableInheritance = disableInheritance
+	}
+}
+
 func WithNamespace(namespace string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
 		s.ObjectMeta.Namespace = namespace
+	}
+}
+
+func WithName(name string) SpaceRequestOption {
+	return func(s *toolchainv1alpha1.SpaceRequest) {
+		s.ObjectMeta.GenerateName = ""
+		s.ObjectMeta.Name = name
 	}
 }
 

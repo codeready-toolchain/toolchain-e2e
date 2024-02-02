@@ -40,6 +40,7 @@ var Templates = []string{
 	"serverless-operator.yaml",
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
+	"ansible-automation-platform.yaml",
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
@@ -66,7 +67,7 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 	return fmt.Errorf("the sandbox host and/or member operators were not found")
 }
 
-func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths []string) error {
+func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
 	for _, templatePath := range templatePaths {
 
 		tmpl, err := templates.GetTemplateFromFile(templatePath)
@@ -93,7 +94,7 @@ func EnsureOperatorsInstalled(cl client.Client, s *runtime.Scheme, templatePaths
 			return fmt.Errorf("a subscription was not found in template file '%s'", templatePath)
 		}
 
-		if err := templates.ApplyObjects(cl, objsToProcess); err != nil {
+		if err := templates.ApplyObjects(ctx, cl, objsToProcess); err != nil {
 			return err
 		}
 

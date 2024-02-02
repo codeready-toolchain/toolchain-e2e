@@ -1,5 +1,5 @@
 == Required Pre-installed Tools
-* go 1.19.x (1.19.7 or higher)
+* go 1.20.x (1.20.11 or higher)
 * git
 * operator-sdk 1.25.0
 * sed

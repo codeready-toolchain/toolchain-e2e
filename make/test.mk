@@ -51,7 +51,7 @@ test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: verify-migration-and-deploy-e2e
-verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
 .PHONY: e2e-migration-setup
 e2e-migration-setup:
@@ -74,7 +74,7 @@ prepare-e2e: build clean-e2e-files
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: prepare-projects get-publish-install-and-register-operators e2e-service-account
+deploy-e2e: prepare-projects get-publish-install-and-register-operators 
 	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
@@ -237,14 +237,6 @@ setup-toolchainclusters:
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
 
-.PHONY: e2e-service-account
-e2e-service-account:
-ifeq ($(E2E_TEST_EXECUTION),true)
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-endif
-
 ###########################################################
 #
 # Fetching and building Member and Host Operators
@@ -309,13 +301,14 @@ endif
 ###########################################################
 
 .PHONY: prepare-projects
-prepare-projects: create-host-project create-member1 create-member2 create-appstudio-crds
+prepare-projects: create-host-project create-member1 create-member2 create-thirdparty-crds
 
 .PHONY: create-member1
 create-member1:
 	@echo "Preparing namespace for member operator: $(MEMBER_NS)..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
+	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS} || true
 
 .PHONY: create-member2
 create-member2:
@@ -323,6 +316,7 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
+	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2} || true
 endif
 
 .PHONY: deploy-host
@@ -356,9 +350,9 @@ ifneq ($(E2E_TEST_EXECUTION),true)
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 endif
 
-.PHONY: create-appstudio-crds
-create-appstudio-crds:
-	oc apply -f deploy/member-operator/e2e-tests/
+.PHONY: create-thirdparty-crds
+create-thirdparty-crds:
+	oc apply -f deploy/crds/
 
 .PHONY: create-project
 create-project:

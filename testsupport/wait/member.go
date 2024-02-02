@@ -160,13 +160,13 @@ func UntilUserAccountHasAnnotation(key, value string) UserAccountWaitCriterion {
 }
 
 // UntilUserAccountHasSpec returns a `UserAccountWaitCriterion` which checks that the given
-// USerAccount has the expected spec
+// UserAccount has the expected spec
 func UntilUserAccountHasSpec(expected toolchainv1alpha1.UserAccountSpec) UserAccountWaitCriterion {
 	return UserAccountWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserAccount) bool {
 			userAccount := actual.DeepCopy()
 			expectedSpec := expected.DeepCopy()
-			return reflect.DeepEqual(userAccount.Spec, *expectedSpec)
+			return reflect.DeepEqual(&userAccount.Spec, expectedSpec)
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
 			userAccount := actual.DeepCopy()
@@ -375,6 +375,19 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 	}
 }
 
+// UntilSpaceRequestHasDisableInheritance returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has the expected Spec.DisableInheritance value
+func UntilSpaceRequestHasDisableInheritance(expected bool) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return expected == actual.Spec.DisableInheritance
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected DisableInheritance to match:\n%s", Diff(expected, actual.Spec.DisableInheritance))
+		},
+	}
+}
+
 // UntilSpaceRequestHasConditions returns a `SpaceRequestWaitCriterion` which checks that the given
 // SpaceRequest has exactly all the given status conditions
 func UntilSpaceRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceRequestWaitCriterion {
@@ -516,6 +529,14 @@ func (a *MemberAwaitility) printSpaceBindingRequestWaitCriterionDiffs(t *testing
 		}
 	}
 	t.Log(buf.String())
+}
+
+func (a *MemberAwaitility) ListSpaceBindingRequests(namespace string) ([]toolchainv1alpha1.SpaceBindingRequest, error) {
+	bindings := &toolchainv1alpha1.SpaceBindingRequestList{}
+	if err := a.Client.List(context.TODO(), bindings, client.InNamespace(namespace)); err != nil {
+		return nil, err
+	}
+	return bindings.Items, nil
 }
 
 // NSTemplateSetWaitCriterion a struct to compare with a given NSTemplateSet
@@ -2341,29 +2362,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"rolebindings"}, rolebindingRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *rolebindingRule.Scope)
 
-	checlusterWebhook := actualValWbhConf.Webhooks[1]
-	assert.Equal(t, "users.checlusters.webhook.sandbox", checlusterWebhook.Name)
-	assert.Equal(t, []string{"v1"}, checlusterWebhook.AdmissionReviewVersions)
-	assert.Equal(t, admv1.SideEffectClassNone, *checlusterWebhook.SideEffects)
-	assert.Equal(t, int32(5), *checlusterWebhook.TimeoutSeconds)
-	assert.Equal(t, admv1.Fail, *checlusterWebhook.FailurePolicy)
-	assert.Equal(t, admv1.Equivalent, *checlusterWebhook.MatchPolicy)
-	assert.Equal(t, codereadyToolchainProviderLabel, checlusterWebhook.NamespaceSelector.MatchLabels)
-	assert.Equal(t, ca, checlusterWebhook.ClientConfig.CABundle)
-	assert.Equal(t, "member-operator-webhook", checlusterWebhook.ClientConfig.Service.Name)
-	assert.Equal(t, a.Namespace, checlusterWebhook.ClientConfig.Service.Namespace)
-	assert.Equal(t, "/validate-users-checlusters", *checlusterWebhook.ClientConfig.Service.Path)
-	assert.Equal(t, int32(443), *checlusterWebhook.ClientConfig.Service.Port)
-	require.Len(t, checlusterWebhook.Rules, 1)
-
-	checlusterRule := checlusterWebhook.Rules[0]
-	assert.Equal(t, []admv1.OperationType{admv1.Create}, checlusterRule.Operations)
-	assert.Equal(t, []string{"org.eclipse.che"}, checlusterRule.APIGroups)
-	assert.Equal(t, []string{"v2"}, checlusterRule.APIVersions)
-	assert.Equal(t, []string{"checlusters"}, checlusterRule.Resources)
-	assert.Equal(t, admv1.NamespacedScope, *checlusterRule.Scope)
-
-	spacebindingrequestWebhook := actualValWbhConf.Webhooks[2]
+	spacebindingrequestWebhook := actualValWbhConf.Webhooks[1]
 	assert.Equal(t, "users.spacebindingrequests.webhook.sandbox", spacebindingrequestWebhook.Name)
 	assert.Equal(t, []string{"v1"}, spacebindingrequestWebhook.AdmissionReviewVersions)
 	assert.Equal(t, admv1.SideEffectClassNone, *spacebindingrequestWebhook.SideEffects)
@@ -2385,6 +2384,27 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"spacebindingrequests"}, spacebindingrequestRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *spacebindingrequestRule.Scope)
 
+	ssprequestWebhook := actualValWbhConf.Webhooks[2]
+	assert.Equal(t, "users.virtualmachines.ssp.webhook.sandbox", ssprequestWebhook.Name)
+	assert.Equal(t, []string{"v1"}, ssprequestWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *ssprequestWebhook.SideEffects)
+	assert.Equal(t, int32(5), *ssprequestWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Fail, *ssprequestWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *ssprequestWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, ssprequestWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, ssprequestWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", ssprequestWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, ssprequestWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-ssprequests", *ssprequestWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *ssprequestWebhook.ClientConfig.Service.Port)
+	require.Len(t, ssprequestWebhook.Rules, 1)
+
+	ssprequestRule := ssprequestWebhook.Rules[0]
+	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, ssprequestRule.Operations)
+	assert.Equal(t, []string{"ssp.kubevirt.io"}, ssprequestRule.APIGroups)
+	assert.Equal(t, []string{"*"}, ssprequestRule.APIVersions)
+	assert.Equal(t, []string{"ssps"}, ssprequestRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {

@@ -35,7 +35,7 @@ func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	assert.Contains(t, notification.Name, userSignup.Status.CompliantUsername+"-deactivated-")
 	assert.Equal(t, userSignup.Namespace, notification.Namespace)
 	assert.Equal(t, "userdeactivated", notification.Spec.Template)
-	assert.Equal(t, userSignup.Spec.Userid, notification.Spec.Context["UserID"])
+	assert.Equal(t, userSignup.Spec.IdentityClaims.Sub, notification.Spec.Context["Sub"])
 
 	userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 		wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),

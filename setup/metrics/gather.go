@@ -102,9 +102,14 @@ func (g *Gatherer) StartGathering() chan struct{} {
 	go func() {
 		k8sutil.Until(func() {
 			for _, q := range g.mqueries {
-				err := g.sample(q)
+				var metricsErr error
+				// added retry mechanism since temporary metrics errors have been observed, poll until the query returns a non-error result or the poll times out
+				err := k8sutil.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (bool, error) {
+					metricsErr = g.sample(q)
+					return metricsErr == nil, nil
+				})
 				if err != nil {
-					g.term.Fatalf(err, "metrics error")
+					g.term.Fatalf(metricsErr, "metrics error")
 				}
 			}
 		}, g.queryInterval, stop)

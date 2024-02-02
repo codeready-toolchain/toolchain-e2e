@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -18,21 +18,19 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
-	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -137,13 +135,12 @@ func (u *proxyUser) getApplicationName(i int) string {
 // and since the CRD name & group name matches, then RBAC allow us to execute create/read
 // operations on that resource using the user permissions.
 func TestProxyFlow(t *testing.T) {
+	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-
-	setStoneSoupConfig(t, hostAwait, memberAwait)
 
 	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
 
@@ -174,9 +171,6 @@ func TestProxyFlow(t *testing.T) {
 	for _, user := range users {
 		createAppStudioUser(t, awaitilities, user)
 	}
-
-	// if there is an identity & user resources already present, but don't contain "owner" label, then they shouldn't be deleted
-	preexistingUser, preexistingIdentity := createPreexistingUserAndIdentity(t, *users[0])
 
 	for index, user := range users {
 		t.Run(user.username, func(t *testing.T) {
@@ -567,14 +561,6 @@ func TestProxyFlow(t *testing.T) {
 
 	})
 
-	// preexisting user & identity are still there
-	// Verify provisioned User
-	_, err := memberAwait.WaitForUser(t, preexistingUser.Name)
-	assert.NoError(t, err)
-
-	// Verify provisioned Identity
-	_, err = memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
-	assert.NoError(t, err)
 }
 
 // this test will:
@@ -647,13 +633,12 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 }
 
 func TestSpaceLister(t *testing.T) {
+	t.Parallel()
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-
-	setStoneSoupConfig(t, hostAwait, memberAwait)
 
 	t.Logf("Proxy URL: %s", hostAwait.APIProxyURL)
 
@@ -951,36 +936,11 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		Execute(t)
 	user.signup, _ = req.Resources()
 	user.token = req.GetToken()
+	tiers.MoveSpaceToTier(t, awaitilities.Host(), user.signup.Status.CompliantUsername, "appstudio")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
-}
-
-func createPreexistingUserAndIdentity(t *testing.T, user proxyUser) (*userv1.User, *userv1.Identity) {
-	preexistingUser := &userv1.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: user.username,
-		},
-		Identities: []string{
-			identitypkg.NewIdentityNamingStandard(user.identityID.String(), "rhd").IdentityName(),
-		},
-	}
-	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(t, preexistingUser))
-
-	preexistingIdentity := &userv1.Identity{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: identitypkg.NewIdentityNamingStandard(user.identityID.String(), "rhd").IdentityName(),
-		},
-		ProviderName:     "rhd",
-		ProviderUserName: user.username,
-		User: corev1.ObjectReference{
-			Name: preexistingUser.Name,
-			UID:  preexistingUser.UID,
-		},
-	}
-	require.NoError(t, user.expectedMemberCluster.CreateWithCleanup(t, preexistingIdentity))
-	return preexistingUser, preexistingIdentity
 }
 
 func newWsWatcher(t *testing.T, user proxyUser, namespace, proxyURL string) *wsWatcher {
@@ -1145,14 +1105,6 @@ func newApplication(applicationName, namespace string) *appstudiov1.Application 
 			DisplayName: fmt.Sprintf("Proxy test for user %s", namespace),
 		},
 	}
-}
-
-// setStoneSoupConfig applies toolchain configuration for stone soup scenarios
-func setStoneSoupConfig(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
-	// member cluster configured to skip user creation to mimic stonesoup configuration where user & identity resources are not created
-	memberConfigurationWithSkipUserCreation := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.SkipUserCreation(true))
-	// configure default space tier to appstudio
-	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 }
 
 func verifyHasExpectedWorkspace(t *testing.T, expectedWorkspace toolchainv1alpha1.Workspace, actualWorkspaces ...toolchainv1alpha1.Workspace) {

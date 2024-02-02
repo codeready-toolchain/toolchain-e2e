@@ -1,4 +1,4 @@
-package e2e
+package parallel
 
 import (
 	"context"
@@ -11,134 +11,120 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestUserWorkloads(t *testing.T) {
-	suite.Run(t, &userWorkloadsTestSuite{})
-}
+func TestIdlerAndPriorityClass(t *testing.T) {
+	t.Parallel()
 
-type userWorkloadsTestSuite struct {
-	suite.Suite
-	wait.Awaitilities
-}
-
-func (s *userWorkloadsTestSuite) SetupSuite() {
-	s.Awaitilities = WaitForDeployments(s.T())
-}
-
-func (s *userWorkloadsTestSuite) TestIdlerAndPriorityClass() {
-	hostAwait := s.Host()
-	memberAwait := s.Member1()
+	await := WaitForDeployments(t)
+	hostAwait := await.Host()
+	memberAwait := await.Member1()
 	// Provision a user to idle with a short idling timeout
-	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
-	NewSignupRequest(s.Awaitilities).
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+	NewSignupRequest(await).
 		Username("test-idler").
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T())
+		Execute(t)
 
-	idler, err := memberAwait.WaitForIdler(s.T(), "test-idler-dev", wait.IdlerConditions(wait.Running()))
-	require.NoError(s.T(), err)
+	idler, err := memberAwait.WaitForIdler(t, "test-idler-dev", wait.IdlerConditions(wait.Running()))
+	require.NoError(t, err)
 
 	// Noise
-	idlerNoise, err := memberAwait.WaitForIdler(s.T(), "test-idler-stage", wait.IdlerConditions(wait.Running()))
-	require.NoError(s.T(), err)
+	idlerNoise, err := memberAwait.WaitForIdler(t, "test-idler-stage", wait.IdlerConditions(wait.Running()))
+	require.NoError(t, err)
 
 	// Create payloads for both users
-	podsToIdle := s.prepareWorkloads(idler.Name, wait.WithSandboxPriorityClass())
-	podsNoise := s.prepareWorkloads(idlerNoise.Name, wait.WithSandboxPriorityClass())
+	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
+	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
 
 	// Create another noise pods in non-user namespace
-	memberAwait.CreateNamespace(s.T(), "workloads-noise")
-	externalNsPodsNoise := s.prepareWorkloads("workloads-noise", wait.WithOriginalPriorityClass())
+	memberAwait.CreateNamespace(t, "workloads-noise")
+	externalNsPodsNoise := prepareWorkloads(t, await.Member1(), "workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	idler.Spec.TimeoutSeconds = 5
-	idler, err = memberAwait.UpdateIdlerSpec(s.T(), idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
-	require.NoError(s.T(), err)
+	idler, err = memberAwait.UpdateIdlerSpec(t, idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
+	require.NoError(t, err)
 
 	// Wait for the pods to be deleted
 	for _, p := range podsToIdle {
-		err := memberAwait.WaitUntilPodsDeleted(s.T(), p.Namespace, wait.WithPodName(p.Name))
-		require.NoError(s.T(), err)
+		err := memberAwait.WaitUntilPodsDeleted(t, p.Namespace, wait.WithPodName(p.Name))
+		require.NoError(t, err)
 	}
 	// check notification was created
-	_, err = hostAwait.WaitForNotificationWithName(s.T(), "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.NoError(s.T(), err)
+	_, err = hostAwait.WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
+	require.NoError(t, err)
 
 	// make sure that "noise" pods are still there, and notification is not created for stage namespace
-	_, err = memberAwait.WaitForPods(s.T(), idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
-	require.NoError(s.T(), err)
-	_, err = memberAwait.WaitForPods(s.T(), "workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
-	require.NoError(s.T(), err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(s.T(), "test-idler-stage-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.True(s.T(), errors.IsNotFound(err))
+	_, err = memberAwait.WaitForPods(t, idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
+	require.NoError(t, err)
+	_, err = memberAwait.WaitForPods(t, "workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
+	require.NoError(t, err)
+	err = hostAwait.WaitForNotificationToNotBeCreated(t, "test-idler-stage-idled")
+	require.NoError(t, err)
 
 	// Check if notification has been deleted before creating another pod
-	err = hostAwait.WaitUntilNotificationWithNameDeleted(s.T(), "test-idler-dev-idled")
-	require.NoError(s.T(), err)
+	err = hostAwait.WaitUntilNotificationWithNameDeleted(t, "test-idler-dev-idled")
+	require.NoError(t, err)
 
 	// Create another pod and make sure it's deleted.
 	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
 	// Notification shouldn't be created again.
-	pod := s.createStandalonePod(idler.Name, "idler-test-pod-2")           // create just one standalone pod. No need to create all possible pod controllers which may own pods.
-	_, err = memberAwait.WaitForPod(s.T(), idler.Name, "idler-test-pod-2") // pod was created
-	require.NoError(s.T(), err)
+	pod := createStandalonePod(t, await.Member1(), idler.Name, "idler-test-pod-2") // create just one standalone pod. No need to create all possible pod controllers which may own pods.
+	_, err = memberAwait.WaitForPod(t, idler.Name, "idler-test-pod-2")             // pod was created
+	require.NoError(t, err)
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
-	err = memberAwait.WaitUntilPodDeleted(s.T(), pod.Namespace, pod.Name)
-	require.NoError(s.T(), err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(s.T(), "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.True(s.T(), errors.IsNotFound(err))
+	err = memberAwait.WaitUntilPodDeleted(t, pod.Namespace, pod.Name)
+	require.NoError(t, err)
+	err = hostAwait.WaitForNotificationToNotBeCreated(t, "test-idler-dev-idled")
+	require.NoError(t, err)
 
 	// There should not be any pods left in the namespace
-	err = memberAwait.WaitUntilPodsDeleted(s.T(), idler.Name, wait.WithPodLabel("idler", "idler"))
-	require.NoError(s.T(), err)
+	err = memberAwait.WaitUntilPodsDeleted(t, idler.Name, wait.WithPodLabel("idler", "idler"))
+	require.NoError(t, err)
 }
 
-func (s *userWorkloadsTestSuite) prepareWorkloads(namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
-	memberAwait := s.Member1()
-	s.createStandalonePod(namespace, "idler-test-pod-1")
-	d := s.createDeployment(namespace)
+func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
+	createStandalonePod(t, memberAwait, namespace, "idler-test-pod-1")
+	d := createDeployment(t, memberAwait, namespace)
 	n := 1 + int(*d.Spec.Replicas) // total number of created pods
 
-	rs := s.createReplicaSet(namespace)
+	rs := createReplicaSet(t, memberAwait, namespace)
 	n = n + int(*rs.Spec.Replicas)
 
-	s.createDaemonSet(namespace)
+	createDaemonSet(t, memberAwait, namespace)
 	nodes := &corev1.NodeList{}
 	err := memberAwait.Client.List(context.TODO(), nodes, client.MatchingLabels(map[string]string{"node-role.kubernetes.io/worker": ""}))
-	require.NoError(s.T(), err)
+	require.NoError(t, err)
 	n = n + len(nodes.Items) // DaemonSet creates N pods where N is the number of worker nodes in the cluster
 
-	s.createJob(namespace)
+	createJob(t, memberAwait, namespace)
 	n++
 
-	dc := s.createDeploymentConfig(namespace)
+	dc := createDeploymentConfig(t, memberAwait, namespace)
 	n = n + int(dc.Spec.Replicas)
 
-	rc := s.createReplicationController(namespace)
+	rc := createReplicationController(t, memberAwait, namespace)
 	n = n + int(*rc.Spec.Replicas)
 
-	pods, err := memberAwait.WaitForPods(s.T(), namespace, n, append(additionalPodCriteria, wait.PodRunning(),
+	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
 		wait.WithPodLabel("idler", "idler"))...)
-	require.NoError(s.T(), err)
+	require.NoError(t, err)
 	return pods
 }
 
-func (s *userWorkloadsTestSuite) createDeployment(namespace string) *appsv1.Deployment {
-	memberAwait := s.Member1()
+func createDeployment(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *appsv1.Deployment {
 	// Create a Deployment with two pods
 	replicas := int32(3)
 	deployment := &appsv1.Deployment{
@@ -149,14 +135,13 @@ func (s *userWorkloadsTestSuite) createDeployment(namespace string) *appsv1.Depl
 			Template: podTemplateSpec("idler-deployment"),
 		},
 	}
-	err := memberAwait.Create(s.T(), deployment)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, deployment)
+	require.NoError(t, err)
 
 	return deployment
 }
 
-func (s *userWorkloadsTestSuite) createReplicaSet(namespace string) *appsv1.ReplicaSet {
-	memberAwait := s.Member1()
+func createReplicaSet(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *appsv1.ReplicaSet {
 	// Standalone ReplicaSet
 	replicas := int32(2)
 	rs := &appsv1.ReplicaSet{
@@ -167,14 +152,13 @@ func (s *userWorkloadsTestSuite) createReplicaSet(namespace string) *appsv1.Repl
 			Template: podTemplateSpec("idler-rs"),
 		},
 	}
-	err := memberAwait.Create(s.T(), rs)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, rs)
+	require.NoError(t, err)
 
 	return rs
 }
 
-func (s *userWorkloadsTestSuite) createDaemonSet(namespace string) *appsv1.DaemonSet {
-	memberAwait := s.Member1()
+func createDaemonSet(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *appsv1.DaemonSet {
 	// Standalone ReplicaSet
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-daemonset", Namespace: namespace},
@@ -183,14 +167,13 @@ func (s *userWorkloadsTestSuite) createDaemonSet(namespace string) *appsv1.Daemo
 			Template: podTemplateSpec("idler-ds"),
 		},
 	}
-	err := memberAwait.Create(s.T(), ds)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, ds)
+	require.NoError(t, err)
 
 	return ds
 }
 
-func (s *userWorkloadsTestSuite) createJob(namespace string) *batchv1.Job {
-	memberAwait := s.Member1()
+func createJob(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *batchv1.Job {
 	// Job
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-job", Namespace: namespace},
@@ -199,14 +182,13 @@ func (s *userWorkloadsTestSuite) createJob(namespace string) *batchv1.Job {
 		},
 	}
 	job.Spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
-	err := memberAwait.Create(s.T(), job)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, job)
+	require.NoError(t, err)
 
 	return job
 }
 
-func (s *userWorkloadsTestSuite) createDeploymentConfig(namespace string) *openshiftappsv1.DeploymentConfig {
-	memberAwait := s.Member1()
+func createDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *openshiftappsv1.DeploymentConfig {
 	// Create a Deployment with two pods
 	spec := podTemplateSpec("idler-dc")
 	replicas := int32(2)
@@ -218,14 +200,13 @@ func (s *userWorkloadsTestSuite) createDeploymentConfig(namespace string) *opens
 			Template: &spec,
 		},
 	}
-	err := memberAwait.Create(s.T(), dc)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, dc)
+	require.NoError(t, err)
 
 	return dc
 }
 
-func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *corev1.ReplicationController {
-	memberAwait := s.Member1()
+func createReplicationController(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *corev1.ReplicationController {
 	// Standalone ReplicationController
 	spec := podTemplateSpec("idler-rc")
 	replicas := int32(2)
@@ -237,14 +218,13 @@ func (s *userWorkloadsTestSuite) createReplicationController(namespace string) *
 			Template: &spec,
 		},
 	}
-	err := memberAwait.Create(s.T(), rc)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, rc)
+	require.NoError(t, err)
 
 	return rc
 }
 
-func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *corev1.Pod {
-	memberAwait := s.Member1()
+func createStandalonePod(t *testing.T, memberAwait *wait.MemberAwaitility, namespace, name string) *corev1.Pod {
 	// Create a Deployment with two pods
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -255,8 +235,8 @@ func (s *userWorkloadsTestSuite) createStandalonePod(namespace, name string) *co
 		Spec: podSpec(),
 	}
 	pod.Spec.PriorityClassName = "system-cluster-critical"
-	err := memberAwait.Create(s.T(), pod)
-	require.NoError(s.T(), err)
+	err := memberAwait.Create(t, pod)
+	require.NoError(t, err)
 	return pod
 }
 
@@ -266,7 +246,7 @@ func podSpec() corev1.PodSpec {
 		TerminationGracePeriodSeconds: &zero,
 		Containers: []corev1.Container{{
 			Name:    "sleep",
-			Image:   "busybox",
+			Image:   "quay.io/prometheus/busybox:latest",
 			Command: []string{"sleep", "36000"}, // 10 hours
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{

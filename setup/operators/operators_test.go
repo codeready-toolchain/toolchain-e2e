@@ -41,7 +41,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err = EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
 			require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err := EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
 			require.EqualError(t, err, "could not apply resource 'kiali-ossm' in namespace 'openshift-operators': unable to create resource of kind: Subscription, version: v1alpha1: Test client error")
@@ -83,7 +83,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err := EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
 			require.EqualError(t, err, "failed to verify installation of operator with subscription 'kiali-ossm': could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
@@ -105,7 +105,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err := EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
 			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
@@ -129,7 +129,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			}
 
 			// when
-			err = EnsureOperatorsInstalled(cl, scheme, []string{"installtemplates/kiali.yaml"})
+			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
 			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
@@ -140,7 +140,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			cl := test.NewFakeClient(t)
 
 			// when
-			err := EnsureOperatorsInstalled(cl, scheme, []string{"../test/installtemplates/badoperator.yaml"})
+			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"../test/installtemplates/badoperator.yaml"})
 
 			// then
 			require.EqualError(t, err, "a subscription was not found in template file '../test/installtemplates/badoperator.yaml'")

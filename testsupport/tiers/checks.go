@@ -27,6 +27,7 @@ const (
 	// tier names
 	advanced           = "advanced"
 	appstudio          = "appstudio"
+	appstudiolarge     = "appstudiolarge"
 	appstudioEnv       = "appstudio-env"
 	base               = "base"
 	base1ns            = "base1ns"
@@ -37,8 +38,7 @@ const (
 	testTier           = "test"
 
 	// common CPU limits
-	defaultCPULimit = "1"
-	cpuLimit        = "20000m" // All tiers
+	baseCPULimit = "40000m"
 )
 
 var (
@@ -77,6 +77,9 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
+
+	case appstudiolarge:
+		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
 
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
@@ -146,7 +149,7 @@ type baseTierChecks struct {
 func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		numberOfLimitRanges(1),
-		limitRange(defaultCPULimit, "750Mi", "10m", "64Mi"),
+		limitRange("1", "1Gi", "10m", "64Mi"),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
 		crtadminViewRoleBinding(),
@@ -200,7 +203,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -222,7 +225,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		resourceQuotaComputeDeploy("20", "14Gi", "3", "14Gi"),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
 		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
-		limitRange(defaultCPULimit, "1000Mi", "10m", "64Mi"),
+		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
 		crtadminPodsRoleBinding(),
@@ -323,7 +326,7 @@ type baselargeTierChecks struct {
 
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -342,7 +345,7 @@ type baseextendedidlingTierChecks struct {
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "7Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -388,7 +391,7 @@ type advancedTierChecks struct {
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(cpuLimit, "1750m", "16Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
 		clusterResourceQuotaDeployments("50"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -439,7 +442,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
-		resourceQuotaStorage("50Gi", "50Gi", "50Gi", "30"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
@@ -525,6 +528,25 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(0, ""),
+		pipelineRunnerClusterRole())
+}
+
+type appstudiolargeTierChecks struct {
+	appstudioTierChecks
+}
+
+func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeploymentCount("300", "100"),
+		clusterResourceQuotaReplicaCount("100"),
+		clusterResourceQuotaRouteCount("100"),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServiceCount("100"),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecretCount("300"),
+		clusterResourceQuotaConfigMapCount("300"),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
 		pipelineRunnerClusterRole())
@@ -1035,7 +1057,7 @@ func networkPolicyAllowFromMonitoring() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
 }
 
 func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
@@ -1043,7 +1065,7 @@ func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromVirtualizationNamespaces() namespaceObjectsCheck {
-	return networkPolicyIngress("allow-from-openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-virtualization-os-images")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-openshift-virtualization-namespaces", "kubernetes.io/metadata.name", "openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-cnv")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
@@ -1051,30 +1073,37 @@ func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 }
 
 func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
-	return networkPolicyIngress(name, "network.openshift.io/policy-group", group)
+	return assertNetworkPolicyIngressForNamespaces(name, "network.openshift.io/policy-group", group)
 }
 
-func networkPolicyIngress(name, labelName, labelValue string) namespaceObjectsCheck {
+func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ...string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		require.True(t, len(labelNameValuePairs)%2 == 0, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
 		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+
+		ingressRules := []netv1.NetworkPolicyIngressRule{}
+		for labelNameValuePairsIndex := 0; labelNameValuePairsIndex < len(labelNameValuePairs); labelNameValuePairsIndex += 2 {
+			labelName := labelNameValuePairs[labelNameValuePairsIndex]
+			labelValue := labelNameValuePairs[labelNameValuePairsIndex+1]
+			ingressRules = append(ingressRules, ingressRuleFromNamespace(labelName, labelValue))
+		}
+
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
-				Ingress: []netv1.NetworkPolicyIngressRule{
-					{
-						From: []netv1.NetworkPolicyPeer{
-							{
-								NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelName: labelValue}},
-							},
-						},
-					},
-				},
+				Ingress:     ingressRules,
 				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
 			},
 		}
 
 		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func ingressRuleFromNamespace(labelName, labelValue string) netv1.NetworkPolicyIngressRule {
+	return netv1.NetworkPolicyIngressRule{
+		From: []netv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelName: labelValue}}}},
 	}
 }
 
@@ -1132,7 +1161,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 			require.NoError(t, err)
 			hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 			require.NoError(t, err)
-			hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+			hard[corev1.ResourceLimitsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 			require.NoError(t, err)
 			hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
 			require.NoError(t, err)
@@ -1140,7 +1169,7 @@ func clusterResourceQuotaCompute(cpuLimit, cpuRequest, memoryLimit, storageLimit
 			require.NoError(t, err)
 			hard[corev1.ResourceRequestsStorage], err = resource.ParseQuantity(storageLimit)
 			require.NoError(t, err)
-			hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("7Gi")
+			hard[corev1.ResourceRequestsEphemeralStorage], err = resource.ParseQuantity("15Gi")
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePersistentVolumeClaims)], err = resource.ParseQuantity("5")
 			require.NoError(t, err)
@@ -1174,15 +1203,19 @@ func crqToolchainLabelsWaitCriterion(userName string) wait.ClusterResourceQuotaW
 }
 
 func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
+	return clusterResourceQuotaDeploymentCount(pods, "30")
+}
+
+func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("deployments.apps")], err = resource.ParseQuantity("30")
+			hard[count("deployments.apps")], err = resource.ParseQuantity(deploymentCount)
 			require.NoError(t, err)
-			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity("30")
+			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity(deploymentCount)
 			require.NoError(t, err)
-			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(pods)
+			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
@@ -1195,13 +1228,17 @@ func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
+	return clusterResourceQuotaReplicaCount("30")
+}
+
+func clusterResourceQuotaReplicaCount(replicaCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("replicasets.apps")], err = resource.ParseQuantity("30")
+			hard[count("replicasets.apps")], err = resource.ParseQuantity(replicaCount)
 			require.NoError(t, err)
-			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity("30")
+			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity(replicaCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName),
@@ -1214,13 +1251,17 @@ func clusterResourceQuotaReplicas() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaRoutes() clusterObjectsCheckCreator {
+	return clusterResourceQuotaRouteCount("30")
+}
+
+func clusterResourceQuotaRouteCount(routeCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity("30")
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity(routeCount)
 			require.NoError(t, err)
-			hard[count("ingresses.extensions")], err = resource.ParseQuantity("30")
+			hard[count("ingresses.extensions")], err = resource.ParseQuantity(routeCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName),
@@ -1256,11 +1297,15 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaServices() clusterObjectsCheckCreator {
+	return clusterResourceQuotaServiceCount("30")
+}
+
+func clusterResourceQuotaServiceCount(serviceCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity("30")
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity(serviceCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
@@ -1290,11 +1335,15 @@ func clusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
+	return clusterResourceQuotaSecretCount("100")
+}
+
+func clusterResourceQuotaSecretCount(secretCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity("100")
+			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity(secretCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName),
@@ -1307,11 +1356,15 @@ func clusterResourceQuotaSecrets() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
+	return clusterResourceQuotaConfigMapCount("100")
+}
+
+func clusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
-			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity("100")
+			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity(configMapCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName),
