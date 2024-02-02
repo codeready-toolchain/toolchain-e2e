@@ -1,7 +1,7 @@
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
-  name: default-network-policies
+  name: default-spaceprovisionerconfigs
 objects:
   - apiVersion: toolchain.dev.openshift.com/v1alpha1
     kind: SpaceProvisionerConfig
