@@ -31,13 +31,15 @@ func TestCreateSpaceRequest(t *testing.T) {
 		targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
 		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
 			WithSpecTierName("appstudio-env"),
-			WithSpecTargetClusterRoles(targetClusterRoles))
+			WithSpecTargetClusterRoles(targetClusterRoles),
+			WithSpecDisableInheritance(false))
 
 		// then
 		// check for the subSpace creation
 		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
 			UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 			UntilSpaceHasTier("appstudio-env"),
+			UntilSpaceHasDisableInheritance(false),
 			UntilSpaceHasAnyProvisionedNamespaces(),
 		)
 		require.NoError(t, err)
@@ -67,6 +69,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			subSpace, err = awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
 				UntilSpaceHasTargetClusterRoles(targetClusterRoles),
 				UntilSpaceHasTier("appstudio-env"),
+				UntilSpaceHasDisableInheritance(false),
 				UntilSpaceHasAnyProvisionedNamespaces(),
 				UntilSpaceHasCreationTimestampGreaterThan(oldSpaceCreationTimeStamp.Time),
 			)
@@ -87,6 +90,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 				_, err = awaitilities.Host().WaitForSpace(t, subSpace.GetName(),
 					UntilSpaceHasTier("appstudio-env"), // tierName is back as the one on spaceRequest
 					UntilSpaceHasTargetClusterRoles(targetClusterRoles),
+					UntilSpaceHasDisableInheritance(false),
 					UntilSpaceHasAnyProvisionedNamespaces(),
 				)
 				require.NoError(t, err)
@@ -112,10 +116,39 @@ func TestCreateSpaceRequest(t *testing.T) {
 		})
 	})
 
+	t.Run("create space request with DisableInheritance", func(t *testing.T) {
+		// when
+		targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
+		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+			WithSpecTierName("appstudio-env"),
+			WithSpecTargetClusterRoles(targetClusterRoles),
+			WithSpecDisableInheritance(true))
+
+		// then
+		// check for the subSpace creation
+		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+			UntilSpaceHasTargetClusterRoles(targetClusterRoles),
+			UntilSpaceHasTier("appstudio-env"),
+			UntilSpaceHasDisableInheritance(true),
+			UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
+		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
+			UntilSpaceRequestHasDisableInheritance(true),
+		)
+		require.NoError(t, err)
+		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+	})
+
 	t.Run("subSpace has parentSpace target cluster when target roles are empty", func(t *testing.T) {
 		// when
 		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
-			WithSpecTierName("appstudio-env"))
+			WithSpecTierName("appstudio-env"),
+			WithSpecDisableInheritance(false))
 
 		// then
 		// check for the subSpace creation with same target cluster as parent one
@@ -123,6 +156,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			UntilSpaceHasTargetClusterRoles([]string(nil)),                     // empty target cluster roles
 			UntilSpaceHasStatusTargetCluster(parentSpace.Status.TargetCluster), // subSpace should have same target cluster as parent space
 			UntilSpaceHasTier("appstudio-env"),
+			UntilSpaceHasDisableInheritance(false),
 			UntilSpaceHasAnyProvisionedNamespaces(),
 		)
 		require.NoError(t, err)
