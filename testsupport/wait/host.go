@@ -1854,7 +1854,7 @@ func UntilSpaceHasTargetClusterRoles(expected []string) SpaceWaitCriterion {
 func UntilSpaceHasDisableInheritance(expected bool) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
-			return reflect.DeepEqual(actual.Spec.DisableInheritance, expected)
+			return actual.Spec.DisableInheritance == expected
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected disableInheritance to match:\n%s", Diff(expected, actual.Spec.DisableInheritance))
