@@ -24,11 +24,11 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 
 	awaitilities := WaitForDeployments(t)
 	host := awaitilities.Host()
-	member := awaitilities.Member1()
 
 	t.Run("ready with existing cluster", func(t *testing.T) {
 		// given
-		cluster, err := member.WaitForToolchainCluster(t)
+		// any ToolchainCluster in th host namespace will do. We don't really care...
+		cluster, err := host.WaitForToolchainCluster(t)
 		require.NoError(t, err)
 
 		// when
