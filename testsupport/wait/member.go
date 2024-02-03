@@ -376,6 +376,19 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 	}
 }
 
+// UntilSpaceRequestHasDisableInheritance returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has the expected Spec.DisableInheritance value
+func UntilSpaceRequestHasDisableInheritance(expected bool) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return expected == actual.Spec.DisableInheritance
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected DisableInheritance to match:\n%s", Diff(expected, actual.Spec.DisableInheritance))
+		},
+	}
+}
+
 // UntilSpaceRequestHasConditions returns a `SpaceRequestWaitCriterion` which checks that the given
 // SpaceRequest has exactly all the given status conditions
 func UntilSpaceRequestHasConditions(expected ...toolchainv1alpha1.Condition) SpaceRequestWaitCriterion {
