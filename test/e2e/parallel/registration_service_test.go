@@ -439,7 +439,7 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	require.NoError(t, err)
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", token0, "", http.StatusOK).UnmarshalMap())
 	assert.Equal(t, "", mp["compliantUsername"])
-	assert.Equal(t, "arnold", mp["username"])
+	assert.Equal(t, "arnold", mp["username"], "got response %+v", mp)
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
