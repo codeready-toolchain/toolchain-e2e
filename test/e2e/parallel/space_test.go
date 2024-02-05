@@ -254,7 +254,7 @@ func TestPromoteSpace(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// when
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base1ns"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 	// then
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
 

@@ -110,7 +110,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
-			event.Spec.SpaceTier = "base"
+			event.Spec.SpaceTier = "base1ns"
 
 			// when
 			err := hostAwait.Client.Update(context.TODO(), event)

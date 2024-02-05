@@ -29,6 +29,7 @@ spec:
       spaceBindingRequestEnabled: true
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
+      defaultSpaceTier: 'base1ns'
     toolchainStatus:
       toolchainStatusRefreshTime: '1s'
   members:

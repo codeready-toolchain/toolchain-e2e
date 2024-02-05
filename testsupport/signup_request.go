@@ -286,7 +286,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 	}
 
 	if r.ensureMUR {
-		expectedSpaceTier := "base"
+		expectedSpaceTier := "base1ns"
 		if hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier != nil {
 			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}

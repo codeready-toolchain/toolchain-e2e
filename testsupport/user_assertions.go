@@ -22,7 +22,7 @@ import (
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
-		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base1ns")
 	}
 }
 
