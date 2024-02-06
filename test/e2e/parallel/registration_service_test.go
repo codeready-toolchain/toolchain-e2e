@@ -429,8 +429,6 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	email := userSignup.Spec.IdentityClaims.Email
 	assert.Equal(t, emailAddress, email)
 
-	t.Logf("UserSignup created: %+v", userSignup)
-
 	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
 	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
 	_, token0, err = authsupport.NewToken(
