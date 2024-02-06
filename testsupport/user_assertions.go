@@ -126,15 +126,14 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 
 	// Check the originalSub identity
 	originalSubIdentityName := ""
-	if userAccount.Spec.OriginalSub != "" {
+	if userAccount.Spec.PropagatedClaims.OriginalSub != "" {
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.OriginalSub, "rhd").IdentityName()
 	}
 
 	// Check the UserID identity
 	userIDIdentityName := ""
-	val, ok := userAccount.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
-	if ok {
-		userIDIdentityName = identitypkg.NewIdentityNamingStandard(val, "rhd").IdentityName()
+	if userAccount.Spec.PropagatedClaims.UserID != "" {
+		userIDIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.UserID, "rhd").IdentityName()
 	}
 
 	memberConfiguration := memberAwait.GetMemberOperatorConfig(t)
@@ -145,8 +144,8 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey,
-				userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
+			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserSignupUserEmailAnnotationKey,
+				userSignup.Spec.IdentityClaims.Email))
 		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
 		userID := userSignup.Spec.IdentityClaims.UserID

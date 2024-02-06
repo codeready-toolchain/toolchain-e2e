@@ -414,7 +414,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
 	hostAwait := s.Host()
-	hostAwait.CheckMasterUserRecordIsDeleted(t, userSignup.Spec.Username)
+	hostAwait.CheckMasterUserRecordIsDeleted(t, userSignup.Spec.IdentityClaims.PreferredUsername)
 	currentUserSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name)
 	require.NoError(t, err)
 	assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValuePending, currentUserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])

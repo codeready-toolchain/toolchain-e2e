@@ -173,7 +173,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		require.NoError(t, err)
 
 		// Move the MUR to the user tier with longer deactivation time
-		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.Username, "deactivate90")
+		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.IdentityClaims.PreferredUsername, "deactivate90")
 
 		// Ensure the deactivating state is reset after promotion
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(t, updatedUserSignup.Name)
