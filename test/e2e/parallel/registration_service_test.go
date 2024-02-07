@@ -338,7 +338,7 @@ func TestSignupOK(t *testing.T) {
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 		require.NoError(t, err)
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-		emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
+		emailAnnotation := userSignup.Spec.IdentityClaims.Email
 		assert.Equal(t, email, emailAnnotation)
 
 		// Call get signup endpoint with a valid token and make sure it's pending approval
@@ -378,6 +378,8 @@ func TestSignupOK(t *testing.T) {
 
 		// Signup a new user
 		userSignup := signupUser(token, emailAddress, identity.Username, identity)
+
+		t.Logf("Signed up new user %+v", userSignup)
 
 		// Deactivate the usersignup
 		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
@@ -424,8 +426,8 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValuePending))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
-	assert.Equal(t, emailAddress, emailAnnotation)
+	email := userSignup.Spec.IdentityClaims.Email
+	assert.Equal(t, emailAddress, email)
 
 	// Call get signup endpoint with a valid token, however we will now override the claims to introduce the original
 	// sub claim and set username as a separate claim, then we will make sure the UserSignup is returned correctly
@@ -435,7 +437,7 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	require.NoError(t, err)
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", token0, "", http.StatusOK).UnmarshalMap())
 	assert.Equal(t, "", mp["compliantUsername"])
-	assert.Equal(t, "arnold", mp["username"])
+	assert.Equal(t, "arnold", mp["username"], "got response %+v", mp)
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
@@ -464,8 +466,8 @@ func TestPhoneVerification(t *testing.T) {
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
-	assert.Equal(t, emailAddress, emailAnnotation)
+	email := userSignup.Spec.IdentityClaims.Email
+	assert.Equal(t, emailAddress, email)
 
 	// Call get signup endpoint with a valid token and make sure verificationRequired is true
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", token0, "", http.StatusOK).UnmarshalMap())
@@ -550,7 +552,7 @@ func TestPhoneVerification(t *testing.T) {
 			states.SetApprovedManually(instance, true)
 		})
 	require.NoError(t, err)
-	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.Username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.IdentityClaims.PreferredUsername, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	// Confirm the MasterUserRecord is provisioned
 	_, err = hostAwait.WaitForMasterUserRecord(t, transformedUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
@@ -575,7 +577,7 @@ func TestPhoneVerification(t *testing.T) {
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, otherUserSignup)
-	otherEmailAnnotation := otherUserSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
+	otherEmailAnnotation := otherUserSignup.Spec.IdentityClaims.Email
 	assert.Equal(t, otherEmailValue, otherEmailAnnotation)
 
 	// Initiate the verification process using the same phone number as previously
@@ -850,8 +852,8 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 		wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueNotReady))
 	require.NoError(t, err)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
-	emailAnnotation := userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]
-	assert.Equal(t, emailValue, emailAnnotation)
+	email := userSignup.Spec.IdentityClaims.Email
+	assert.Equal(t, emailValue, email)
 	return userSignup, token
 }
 
@@ -875,7 +877,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", bearerToken, "", http.StatusOK).UnmarshalMap())
-	assert.Equal(t, username, mp["username"])
+	assert.Equal(t, username, mp["username"], "unexpected username in response", mp, mpStatus)
 	assert.Empty(t, mp["defaultUserNamespace"])
 	assert.Empty(t, mp["rhodsMemberURL"])
 	require.IsType(t, false, mpStatus["ready"])
