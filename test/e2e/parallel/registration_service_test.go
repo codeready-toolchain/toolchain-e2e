@@ -379,6 +379,8 @@ func TestSignupOK(t *testing.T) {
 		// Signup a new user
 		userSignup := signupUser(token, emailAddress, identity.Username, identity)
 
+		t.Logf("Signed up new user %+v", userSignup)
+
 		// Deactivate the usersignup
 		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
@@ -435,7 +437,7 @@ func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	require.NoError(t, err)
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", token0, "", http.StatusOK).UnmarshalMap())
 	assert.Equal(t, "", mp["compliantUsername"])
-	assert.Equal(t, "arnold", mp["username"])
+	assert.Equal(t, "arnold", mp["username"], "got response %+v", mp)
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
@@ -875,7 +877,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	route := await.Host().RegistrationServiceURL
 	mp, mpStatus := ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", bearerToken, "", http.StatusOK).UnmarshalMap())
-	assert.Equal(t, username, mp["username"])
+	assert.Equal(t, username, mp["username"], "unexpected username in response", mp, mpStatus)
 	assert.Empty(t, mp["defaultUserNamespace"])
 	assert.Empty(t, mp["rhodsMemberURL"])
 	require.IsType(t, false, mpStatus["ready"])
