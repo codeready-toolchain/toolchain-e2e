@@ -329,7 +329,7 @@ create-host-project:
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
-create-host-resources:
+create-host-resources: create-spaceprovisionerconfigs-for-members
 	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
 	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
@@ -349,6 +349,12 @@ ifneq ($(E2E_TEST_EXECUTION),true)
 	# if it's not part of e2e test execution, then delete registration-service pods in case they already exist so that the ToolchainConfig will be reloaded
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 endif
+
+.PHONY: create-spaceprovisionerconfigs-for-members
+create-spaceprovisionerconfigs-for-members:
+	for member_name in `oc get toolchaincluster -l -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
+	  oc process -p TOOLCHAINCLUSTER_NAME=$${member_name} -p SPACEPROVISIONERCONFIG_NAME=$${member_name} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f ${PWD}/make/resources/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	done
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
