@@ -125,8 +125,6 @@ github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoC
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
 github.com/codeready-toolchain/api v0.0.0-20240207000013-661b63025269 h1:YS5Q6YsTYq9Fo8qA6NQOTWAcVg86VEwulT1UfNWknIQ=
 github.com/codeready-toolchain/api v0.0.0-20240207000013-661b63025269/go.mod h1:FO7kgXH1x1LqkF327D5a36u0WIrwjVCbeijPkzgwaZc=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20240207000544-9cd055b3a18c h1:WKjD9qRSLqQsi4XduuXjsaF8qFH4yj157qWdA5wOOtg=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20240207000544-9cd055b3a18c/go.mod h1:+COaw79DVTLSb2unqVwcBtYOg6sh7MbMHgXU1/ht2I8=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/etcd v3.3.13+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
@@ -183,6 +181,8 @@ github.com/fatih/color v1.9.0/go.mod h1:eQcE1qtQxscV5RaZvpXrrb8Drkc3/DdQ+uUYCNjL
 github.com/fatih/color v1.12.0 h1:mRhaKNwANqRgUBGKmnI5ZxEk7QXmjQeCcuYFMX2bfcc=
 github.com/fatih/color v1.12.0/go.mod h1:ELkj/draVOlAH/xkhN6mQ50Qd0MPOk5AAr3maGEBuJM=
 github.com/fatih/set v0.2.1/go.mod h1:+RKtMCH+favT2+3YecHGxcc0b4KyVWA1QWWJUs4E0CI=
+github.com/fbm3307/toolchain-common v0.0.0-20240206132615-b99c6fe1de9a h1:qupvVR1pLojBXk4NzdA5BnMCGqDbi53VWisgl2L7qLc=
+github.com/fbm3307/toolchain-common v0.0.0-20240206132615-b99c6fe1de9a/go.mod h1:f+h8e03UjCldtgI1NsZm/yXq2b/uZv2jsz5p8OK9Z+c=
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
 github.com/form3tech-oss/jwt-go v3.2.3+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
