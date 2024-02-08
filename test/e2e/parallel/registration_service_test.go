@@ -12,7 +12,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	commonsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
@@ -865,7 +864,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])

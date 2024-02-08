@@ -12,7 +12,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
@@ -51,7 +50,6 @@ func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrati
 			Client:        cl,
 			RestConfig:    cfg,
 			Namespace:     ns,
-			Type:          cluster.Host,
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},

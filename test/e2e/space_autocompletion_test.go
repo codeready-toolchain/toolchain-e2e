@@ -183,7 +183,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
 		))
 		// let's add a custom cluster-role for member2
-		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
@@ -208,7 +208,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),  // member2 is full
 		))
 		// let's add a custom cluster-role for member2
-		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
@@ -232,7 +232,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			testconfig.PerMemberCluster(memberAwait2.ClusterName, 500), // member2 has more room as well
 		))
 		// let's add a custom cluster-role for member2
-		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {

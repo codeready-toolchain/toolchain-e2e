@@ -3,8 +3,6 @@ package testsupport
 import (
 	"testing"
 
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
-
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +19,7 @@ func VerifyMemberStatus(t *testing.T, memberAwait *wait.MemberAwaitility, expect
 }
 
 func VerifyToolchainStatus(t *testing.T, hostAwait *wait.HostAwaitility, memberAwait *wait.MemberAwaitility) {
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
 	_, err = hostAwait.WaitForToolchainStatus(t, wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),

@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -206,7 +205,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, ok)
 

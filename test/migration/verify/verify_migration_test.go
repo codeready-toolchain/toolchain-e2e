@@ -128,7 +128,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member2()
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
 	subSpaceNamespace := GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)

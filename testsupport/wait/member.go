@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/davecgh/go-spew/spew"
@@ -61,7 +60,6 @@ func NewMemberAwaitility(cfg *rest.Config, cl client.Client, ns, clusterName str
 			RestConfig:    cfg,
 			ClusterName:   clusterName,
 			Namespace:     ns,
-			Type:          cluster.Member,
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
