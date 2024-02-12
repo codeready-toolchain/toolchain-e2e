@@ -438,16 +438,10 @@ type appstudioTierChecks struct {
 	tierName string
 }
 
-func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
-		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
-		limitRange("2", "2Gi", "10m", "256Mi"),
-		numberOfLimitRanges(1),
+func commonAppstudioTierChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
 		gitOpsServiceLabel(),
 		appstudioWorkSpaceNameLabel(),
-		environment("development"),
 		resourceQuotaToolchainCrds("32"),
 		resourceQuotaAppstudioCrds("512", "512", "512"),
 		resourceQuotaAppstudioCrdsBuild("512"),
@@ -459,7 +453,18 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		pipelineServiceAccount(),
 		pipelineRunnerRoleBinding(),
 	}
+}
+func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("", "128Gi", "12", "64Gi"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
+		limitRange("", "2Gi", "200m", "256Mi"),
+		numberOfLimitRanges(1),
+		environment("development"),
+	}
 
+	checks = append(checks, commonAppstudioTierChecks()...)
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
 }
@@ -550,6 +555,21 @@ func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
 		pipelineRunnerClusterRole())
+}
+
+func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("", "32Gi", "1750m", "32Gi"),
+		resourceQuotaComputeBuild("", "512Gi", "24", "128Gi"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
+		limitRange("", "2Gi", "200m", "256Mi"),
+		numberOfLimitRanges(1),
+		environment("development"),
+	}
+
+	checks = append(checks, commonAppstudioTierChecks()...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	return checks
 }
 
 type appstudioEnvTierChecks struct {
@@ -732,8 +752,10 @@ func resourceQuotaComputeDeploy(cpuLimit, memoryLimit, cpuRequest, memoryRequest
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeNotTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
-		require.NoError(t, err)
+		if cpuLimit != "" {
+			spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+			require.NoError(t, err)
+		}
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
@@ -754,8 +776,10 @@ func resourceQuotaComputeBuild(cpuLimit, memoryLimit, cpuRequest, memoryRequest 
 			Scopes: []corev1.ResourceQuotaScope{corev1.ResourceQuotaScopeTerminating},
 			Hard:   make(map[corev1.ResourceName]resource.Quantity),
 		}
-		spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
-		require.NoError(t, err)
+		if cpuLimit != "" {
+			spec.Hard[corev1.ResourceLimitsCPU], err = resource.ParseQuantity(cpuLimit)
+			require.NoError(t, err)
+		}
 		spec.Hard[corev1.ResourceLimitsMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		spec.Hard[corev1.ResourceRequestsCPU], err = resource.ParseQuantity(cpuRequest)
@@ -967,8 +991,10 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 		lr, err := memberAwait.WaitForLimitRange(t, ns, "resource-limits")
 		require.NoError(t, err)
 		def := make(map[corev1.ResourceName]resource.Quantity)
-		def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
-		require.NoError(t, err)
+		if cpuLimit != "" {
+			def[corev1.ResourceCPU], err = resource.ParseQuantity(cpuLimit)
+			require.NoError(t, err)
+		}
 		def[corev1.ResourceMemory], err = resource.ParseQuantity(memoryLimit)
 		require.NoError(t, err)
 		defReq := make(map[corev1.ResourceName]resource.Quantity)
