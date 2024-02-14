@@ -33,9 +33,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	require.NoError(t, err)
 	require.True(t, ok, "ToolchainCluster should exist")
 
-	t.Run("create new ToolchainCluster with correct data and expect to be ready for cluster ", func(t *testing.T) {
+	t.Run("create new ToolchainCluster with correct data and expect to be ready for cluster", func(t *testing.T) {
 		// given
-		name := "new-ready-"
+		name := "new-ready"
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
@@ -81,7 +81,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type ", func(t *testing.T) {
 		// given
-		name := "new-offline-"
+		name := "new-offline"
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
@@ -142,7 +142,6 @@ func newToolchainCluster(namespace, name string, options ...clusterOption) *tool
 			Namespace: namespace,
 			Name:      name,
 			Labels: map[string]string{
-				"type":             "member",
 				"ownerClusterName": "east",
 			},
 		},
