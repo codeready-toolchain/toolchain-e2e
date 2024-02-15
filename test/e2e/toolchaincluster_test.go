@@ -7,6 +7,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
@@ -21,13 +22,13 @@ func TestToolchainClusterE2E(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, "host")
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, "member")
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, ctrltype string) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, nil)
 	require.NoError(t, err)
@@ -109,6 +110,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 				Type:   toolchainv1alpha1.ToolchainClusterOffline,
 				Status: corev1.ConditionTrue,
 			}),
+			toolchainClusterWaitCriterionBasedOnControllerType(ctrltype),
 		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
@@ -118,15 +120,34 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 					"namespace": otherAwait.Namespace,
 				},
 			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnControllerType(ctrltype),
 		)
 		require.NoError(t, err)
 		_, err = otherAwait.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
 				"namespace": await.Namespace,
 			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			toolchainClusterWaitCriterionBasedOnControllerType(ctrltype),
 		)
 		require.NoError(t, err)
 	})
+}
+
+// toolchainClusterWaitCriterionBasedOnControllerType returns ToolchainClusterWaitCriterion based on toolchaincluster controller type (member or host)
+func toolchainClusterWaitCriterionBasedOnControllerType(ctrltype string) wait.ToolchainClusterWaitCriterion {
+	var clusterRoleTenantAssertion wait.ToolchainClusterWaitCriterion
+	if ctrltype == "host" {
+		// for toolchaincluster of  member in (host controller)  we check that cluster-role tenant label is set as expected
+		clusterRoleTenantAssertion = wait.UntilToolchainClusterHasLabels(
+			client.MatchingLabels{
+				// we use only the key so the value can be blank
+				cluster.RoleLabel(cluster.Tenant): "",
+			})
+	} else {
+		// for toolchaincluster of other types we check that cluster-role tenant label is missing as expected
+		clusterRoleTenantAssertion = wait.UntilToolchainClusterHasNoTenantLabel()
+	}
+	return clusterRoleTenantAssertion
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
