@@ -271,7 +271,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		)
 		require.NoError(t, err)
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
-		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+		_, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
 			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
