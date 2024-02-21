@@ -32,7 +32,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
+		spc := Create(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
 
 		// then
 		_, err = wait.
@@ -43,7 +43,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 
 	t.Run("not ready without existing cluster", func(t *testing.T) {
 		// when
-		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster("invalid%@@name"))
+		spc := Create(t, host.Awaitility, ReferencingToolchainCluster("invalid%@@name"))
 
 		// then
 		_, err := wait.
@@ -57,7 +57,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
 
 		// when
-		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
+		spc := Create(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
 		_, err := wait.
@@ -93,7 +93,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		assert.NoError(t, host.CreateWithCleanup(t, cluster))
 
 		// when
-		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
+		spc := Create(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
 		_, err := wait.

@@ -586,6 +586,8 @@ func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.ToolchainClust
 	}
 }
 
+// TODO: the following 2 functions need to start using the placement roles and SPC I assume
+
 // UntilToolchainClusterHasLabels checks if ToolchainCluster has the given labels
 func UntilToolchainClusterHasLabels(expected client.MatchingLabels) ToolchainClusterWaitCriterion {
 	return ToolchainClusterWaitCriterion{
