@@ -717,6 +717,7 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 		} else {
 			sb.WriteString("\nlisting the objects found in cluster with the differences from the expected state for each:")
 			for _, o := range list.Items {
+				o := o
 				obj, _ := w.cast(&o)
 				key := client.ObjectKeyFromObject(obj)
 

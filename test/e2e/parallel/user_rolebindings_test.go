@@ -42,7 +42,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
-	//create a non-sandbox user
+	// create a non-sandbox user
 	nonsandboxUser := userv1.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "joker",
@@ -114,6 +114,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		}
 		for k, tc := range tests {
+			tc := tc
 			t.Run(k, func(t *testing.T) {
 				// when
 				err = clientset.Create(context.TODO(), &tc.RoleBinding)
@@ -128,7 +129,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 	})
 
 	t.Run("service account trying to create a rolebinding giving access to all users should be allowed", func(t *testing.T) {
-		//using hostawailities which using e2e-service-account
+		// using hostawailities which using e2e-service-account
 		// get all the rolebindings for the test case
 		roleBindings := createRoleBindingsForTest("harleyquinn-dev", "e2e-sa")
 		require.Equal(t, 5, len(roleBindings))
@@ -159,8 +160,9 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		}
 		for k, tc := range tests {
+			tc := tc
 			t.Run(k, func(t *testing.T) {
-				//when
+				// when
 				err = awaitilities.Host().Client.Create(context.TODO(), &tc.RoleBinding)
 				// then
 				if tc.ExpectedError != "" {
@@ -207,6 +209,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		}
 		for k, tc := range tests {
+			tc := tc
 			t.Run(k, func(t *testing.T) {
 				// when
 				err = clientset.Create(context.TODO(), &tc.RoleBinding)
@@ -218,9 +221,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 				}
 			})
 		}
-
 	})
-
 }
 
 func deleteUser(t *testing.T, cl runtimeclient.Client, user userv1.User, rb rbacv1.RoleBinding) {
