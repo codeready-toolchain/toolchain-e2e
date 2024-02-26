@@ -2,8 +2,6 @@ package parallel
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
 
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -20,9 +18,13 @@ import (
 const cloudInitNoCloud = "cloudInitNoCloud"
 const cloudInitConfigDrive = "cloudInitConfigDrive"
 
+const vmNamespace = "test-vm-dev"
+
 func TestCreateVirtualMachine(t *testing.T) {
 	// given
 	t.Parallel()
+
+	vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
@@ -45,68 +47,82 @@ func TestCreateVirtualMachine(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
-	t.Run("create virtual machine", func(t *testing.T) {
-		// given
-		vmNamespace := "test-vm-dev"
-		vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
+	for tcname, tc := range map[string]struct {
+		vmName              string
+		domain              map[string]interface{}
+		cloudInitType       string
+		expectedMemoryLimit string
+		expectedCPULimit    string
+	}{
+		"vm-cloudInitNoCloud-domain-resource-requests": {
+			vmName:              "cloudinit-nocloud-domain-resources-req",
+			domain:              domainWithResourceRequests("2Gi", "1"),
+			cloudInitType:       cloudInitNoCloud,
+			expectedMemoryLimit: "2Gi",
+			expectedCPULimit:    "1",
+		},
+		"vm-cloudInitConfigDrive-domain-resource-requests": {
+			vmName:              "cloudinit-configdrive-domain-resources-req",
+			domain:              domainWithResourceRequests("3Gi", "2"),
+			cloudInitType:       cloudInitConfigDrive,
+			expectedMemoryLimit: "3Gi",
+			expectedCPULimit:    "2",
+		},
+		"vm-domain-memory-guest": {
+			vmName:              "domain-memory-guest",
+			domain:              domainWithMemoryGuest("4Gi"),
+			cloudInitType:       cloudInitNoCloud,
+			expectedMemoryLimit: "4Gi",
+			expectedCPULimit:    "",
+		},
+	} {
+		t.Run(tcname, func(t *testing.T) {
+			vm := vmResourceWithRequestsAndCloudInitVolume(tc.vmName, tc.domain, cloudInitVolume(tc.cloudInitType))
 
-		for _, cloudInitType := range []string{cloudInitNoCloud, cloudInitConfigDrive} {
-			vmName := fmt.Sprintf("test-vm-%s", strings.ToLower(cloudInitType))
-			t.Run(cloudInitType, func(t *testing.T) {
-				vm := vmResourceWithRequestsAndCloudInitVolume(vmName, cloudInitVolume(cloudInitType))
+			// when
+			// create VM
+			_, err := client.Resource(vmRes).Namespace(vmNamespace).Create(context.TODO(), vm, metav1.CreateOptions{})
 
-				// when
-				// create VM
-				_, err := client.Resource(vmRes).Namespace(vmNamespace).Create(context.TODO(), vm, metav1.CreateOptions{})
+			// then
+			// verify no error creating VM
+			require.NoError(t, err)
 
-				// then
-				// verify no error creating VM
+			// cleanup
+			t.Cleanup(func() {
+				err := client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), tc.vmName, metav1.DeleteOptions{})
 				require.NoError(t, err)
-
-				// cleanup
-				t.Cleanup(func() {
-					err := client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), vmName, metav1.DeleteOptions{})
-					require.NoError(t, err)
-				})
-
-				// verify webhook has set limits to same value as requests
-				result, getErr := client.Resource(vmRes).Namespace(vmNamespace).Get(context.TODO(), vmName, metav1.GetOptions{})
-				require.NoError(t, getErr)
-
-				// verify requests are still set
-				requests, requestsFound, requestsErr := unstructured.NestedStringMap(result.Object, "spec", "template", "spec", "domain", "resources", "requests")
-				require.NoError(t, requestsErr)
-				require.True(t, requestsFound)
-				require.Equal(t, requests["memory"], "2Gi")
-				require.Equal(t, requests["cpu"], "1")
-
-				// verify limits are set
-				limits, limitsFound, limitsErr := unstructured.NestedStringMap(result.Object, "spec", "template", "spec", "domain", "resources", "limits")
-				require.NoError(t, limitsErr)
-				require.True(t, limitsFound)
-				require.Equal(t, limits["memory"], "2Gi")
-				require.Equal(t, limits["cpu"], "1")
-
-				// verify volume
-				volumes, volumesFound, volumesErr := unstructured.NestedSlice(result.Object, "spec", "template", "spec", "volumes")
-				require.NoError(t, volumesErr)
-				require.True(t, volumesFound)
-				require.Len(t, volumes, 1)
-				volName, volNameExists := volumes[0].(map[string]interface{})["name"]
-				require.True(t, volNameExists, "volume name not found")
-				require.Equal(t, volName, "cloudinitdisk")
-
-				// verify cloud-init user data
-				userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), cloudInitType, "userData")
-				require.NoError(t, userDataErr)
-				require.True(t, userDataFound, "user data not found")
-				require.Equal(t, userData, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n")
 			})
-		}
-	})
 
+			// verify webhook has mutated the VM
+			result, getErr := client.Resource(vmRes).Namespace(vmNamespace).Get(context.TODO(), tc.vmName, metav1.GetOptions{})
+			require.NoError(t, getErr)
+
+			// verify limits are set to same value as requests
+			limits, limitsFound, limitsErr := unstructured.NestedStringMap(result.Object, "spec", "template", "spec", "domain", "resources", "limits")
+			require.NoError(t, limitsErr)
+			require.True(t, limitsFound)
+			require.Equal(t, limits["memory"], tc.expectedMemoryLimit)
+			require.Equal(t, limits["cpu"], tc.expectedCPULimit)
+
+			// verify volume exists
+			volumes, volumesFound, volumesErr := unstructured.NestedSlice(result.Object, "spec", "template", "spec", "volumes")
+			require.NoError(t, volumesErr)
+			require.True(t, volumesFound)
+			require.Len(t, volumes, 1)
+			volName, volNameExists := volumes[0].(map[string]interface{})["name"]
+			require.True(t, volNameExists, "volume name not found")
+			require.Equal(t, volName, "cloudinitdisk")
+
+			// verify cloud-init user data
+			userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), tc.cloudInitType, "userData")
+			require.NoError(t, userDataErr)
+			require.True(t, userDataFound, "user data not found")
+			require.Equal(t, userData, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n")
+		})
+	}
 }
-func vmResourceWithRequestsAndCloudInitVolume(name string, volume map[string]interface{}) *unstructured.Unstructured {
+
+func vmResourceWithRequestsAndCloudInitVolume(name string, domain map[string]interface{}, volume map[string]interface{}) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "kubevirt.io/v1",
@@ -120,19 +136,31 @@ func vmResourceWithRequestsAndCloudInitVolume(name string, volume map[string]int
 						"name": name,
 					},
 					"spec": map[string]interface{}{
-						"domain": map[string]interface{}{
-							"resources": map[string]interface{}{
-								"requests": map[string]interface{}{
-									"memory": "2Gi",
-									"cpu":    "1",
-								},
-							},
-						},
+						"domain": domain,
 						"volumes": []map[string]interface{}{
 							volume,
 						},
 					},
 				},
+			},
+		},
+	}
+}
+
+func domainWithMemoryGuest(mem string) map[string]interface{} {
+	return map[string]interface{}{
+		"memory": map[string]interface{}{
+			"guest": mem,
+		},
+	}
+}
+
+func domainWithResourceRequests(mem, cpu string) map[string]interface{} {
+	return map[string]interface{}{
+		"resources": map[string]interface{}{
+			"requests": map[string]interface{}{
+				"memory": mem,
+				"cpu":    cpu,
 			},
 		},
 	}
