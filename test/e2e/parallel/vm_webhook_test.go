@@ -163,6 +163,7 @@ func domainWithMemoryGuest(mem string) map[string]interface{} {
 		"memory": map[string]interface{}{
 			"guest": mem,
 		},
+		"devices": map[string]interface{}{},
 	}
 }
 
@@ -174,6 +175,7 @@ func domainWithResourceRequests(mem, cpu string) map[string]interface{} {
 				"cpu":    cpu,
 			},
 		},
+		"devices": map[string]interface{}{},
 	}
 }
 
