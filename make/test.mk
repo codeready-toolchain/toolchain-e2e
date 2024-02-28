@@ -358,7 +358,7 @@ create-spaceprovisionerconfigs-for-members:
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
-	oc apply -f deploy/crds/
+	oc create -f deploy/crds/ || true
 
 .PHONY: create-project
 create-project:
