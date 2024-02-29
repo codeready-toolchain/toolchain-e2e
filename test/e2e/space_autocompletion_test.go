@@ -47,7 +47,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("with no clusters to provision to expect that space won't be provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.Enabled(false))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.Enabled(false))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.Enabled(false))
 		// some short time to get the cache populated with the change
 		// sometimes the ToolchainConfig doesn't have the new values in the CapacityThresholds section before the creation of Spaces is issued
 		// so Spaces were still created while Capacity was updated with the above values.
@@ -67,7 +67,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		t.Run("increment the max number of spaces and expect that first space will be provisioned.", func(t *testing.T) {
 			// when
 			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.Enabled(true), spc.MaxNumberOfSpaces(2))
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.Enabled(false))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.Enabled(false))
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name)
@@ -76,7 +76,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			t.Run("reset the max number and expect the second space will be provisioned as well", func(t *testing.T) {
 				// when
 				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.Enabled(true), spc.MaxNumberOfSpaces(500))
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.Enabled(true), spc.MaxNumberOfSpaces(500))
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.Enabled(true), spc.MaxNumberOfSpaces(500))
 
 				// then
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space2.Name)
@@ -121,6 +121,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.MaxNumberOfSpaces(uint(m.SpaceCount+1)))
 			}
 		}
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-1"), testspace.WithTierName("appstudio"))
@@ -137,6 +139,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 					spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.MaxNumberOfSpaces(uint(m.SpaceCount)))
 				}
 			}
+			// some short time to get the cache populated with the change
+			time.Sleep(1 * time.Second)
 
 			// when
 			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-2"), testspace.WithTierName("appstudio"))
@@ -162,6 +166,10 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		// let's add a custom cluster-role for member2
 		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
+
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
+
 		require.True(t, found)
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
 			tc.Labels[cluster.RoleLabel("workspace")] = "" // add a new cluster-role label, the value is blank since only key matters.
@@ -180,18 +188,20 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("set cluster-role label only on member2 cluster but mark it as full so that no cluster will be available", func(t *testing.T) {
 		// given
 		// only member1 as room for spaces
-		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(
-			testconfig.PerMemberCluster(memberAwait1.ClusterName, 500), // member1 has more room
-			testconfig.PerMemberCluster(memberAwait2.ClusterName, -1),  // member2 is full
-		))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.MaxNumberOfSpaces(500))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.Enabled(false))
 		// let's add a custom cluster-role for member2
 		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
+
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
 			tc.Labels[cluster.RoleLabel("workspace")] = "" // add a new cluster-role label, the value is blank since only key matters.
 		})
 		require.NoError(t, err)
+
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant-pending"),
@@ -204,14 +214,16 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 	t.Run("provision space on the required cluster even if it doesn't match the specified cluster-role", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(t, testconfig.CapacityThresholds().MaxNumberOfSpaces(
-			testconfig.PerMemberCluster(memberAwait1.ClusterName, 500), // member1 has more room
-			testconfig.PerMemberCluster(memberAwait2.ClusterName, 500), // member2 has more room as well
-		))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, spc.MaxNumberOfSpaces(500))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, spc.MaxNumberOfSpaces(500))
 		// let's add a custom cluster-role for member2
 		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
+
+		// some short time to get the cache populated with the change
+		time.Sleep(1 * time.Second)
+
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
 			tc.Labels[cluster.RoleLabel("workspace")] = "" // add a new cluster-role label, the value is blank since only key matters.
 		})
