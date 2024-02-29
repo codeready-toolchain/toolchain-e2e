@@ -352,8 +352,8 @@ endif
 
 .PHONY: create-spaceprovisionerconfigs-for-members
 create-spaceprovisionerconfigs-for-members:
-	for member_name in `oc get toolchaincluster -l -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
-	  oc process -p TOOLCHAINCLUSTER_NAME=$${member_name} -p SPACEPROVISIONERCONFIG_NAME=$${member_name} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f ${PWD}/make/resources/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	for MEMBER_NAME in `oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
+	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f ${PWD}/make/resources/default-spaceprovisionerconfig.yaml | oc apply -f -; \
 	done
 
 .PHONY: create-thirdparty-crds
