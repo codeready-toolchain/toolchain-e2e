@@ -41,6 +41,7 @@ var Templates = []string{
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
 	"ansible-automation-platform.yaml",
+	"cnv.yaml",
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 

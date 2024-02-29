@@ -1,0 +1,32 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: install-openshift-cnv-operator
+objects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ${CNV_NAMESPACE}
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: openshift-cnv
+      namespace: ${CNV_NAMESPACE}
+    spec:
+      targetNamespaces:
+      - ${CNV_NAMESPACE}
+      upgradeStrategy: Default
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: kubevirt-hyperconverged
+      namespace: ${CNV_NAMESPACE}
+    spec:
+      channel: stable
+      installPlanApproval: Automatic
+      name: kubevirt-hyperconverged
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+parameters:
+  - name: CNV_NAMESPACE
+    value: openshift-cnv
