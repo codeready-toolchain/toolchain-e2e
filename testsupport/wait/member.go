@@ -381,6 +381,10 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 func UntilSpaceRequestHasNamespaceAccessWithoutSecretRef() SpaceRequestWaitCriterion {
 	return SpaceRequestWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			// check that there are namespace provisioned
+			if len(actual.Status.NamespaceAccess) == 0 {
+				return false
+			}
 			for _, nsAccess := range actual.Status.NamespaceAccess {
 				// check the secretRef is empty
 				if nsAccess.SecretRef != "" {
