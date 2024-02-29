@@ -5,7 +5,7 @@ This document describes how to use the setup tool to set up a Dev Sandbox enviro
 == Prereqs
 
 . Ensure your go version matches the specified version in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/go.mod
-. Provision the *latest available* GA version of *OCP 4.14.x* on AWS with sufficient resources: 3 `m5.8xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
+. Provision the *latest available* GA version of *OCP 4.15.x* on AWS with sufficient resources: 3 `m5.8xlarge` master nodes and 3 `m5.2xlarge` worker nodes.
 +
 The latest version of openshift-install can be downloaded from https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
 +
@@ -36,7 +36,7 @@ networking:
     hostPrefix: 23
   machineNetwork:
   - cidr: 10.0.0.0/16
-  networkType: OpenShiftSDN
+  networkType: OVNKubernetes
   serviceNetwork:
   - 172.30.0.0/16
 platform:
@@ -154,10 +154,10 @@ make clean-e2e-resources
 
 1. Install operators
 ```
-go run setup/main.go --users 1 --default 1 --custom 0 --username setup
+go run setup/main.go --users 1 --default 1 --custom 0 --username baseline --testname=baseline
 ```
 
 2. Run setup for 2000 users
 ```
-go run setup/main.go --users 2000 --default 2000 --custom 0 --username pizza
+go run setup/main.go --users 2000 --default 2000 --custom 0 --username cupcake --testname=run1
 ```
