@@ -266,7 +266,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		require.NoError(t, err)
 	}
 
-	t.Logf("user signup '%s' created", userSignup.Name)
+	t.Logf("user signup created: %+v", userSignup)
 
 	// If any required conditions have been specified, confirm the UserSignup has them
 	if len(r.conditions) > 0 {
