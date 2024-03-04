@@ -353,7 +353,7 @@ endif
 .PHONY: create-spaceprovisionerconfigs-for-members
 create-spaceprovisionerconfigs-for-members:
 	for MEMBER_NAME in `oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
-	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f ${PWD}/make/resources/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
 	done
 
 .PHONY: create-thirdparty-crds
@@ -365,7 +365,7 @@ create-project:
 	@-oc new-project ${PROJECT_NAME} 1>/dev/null
 	@-oc project ${PROJECT_NAME}
 	@echo "adding network policies in $(PROJECT_NAME) namespace"
-	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f deploy/default-network-policies.yaml | oc apply -f -
 	
 
 .PHONY: display-eval
