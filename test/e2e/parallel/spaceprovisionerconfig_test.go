@@ -38,7 +38,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(Ready()))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("not ready without existing cluster", func(t *testing.T) {
@@ -49,7 +49,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("becomes ready when cluster appears", func(t *testing.T) {
@@ -63,7 +63,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// when
 		cluster := &toolchainv1alpha1.ToolchainCluster{
@@ -78,7 +78,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(Ready()))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("becomes not ready when cluster disappears", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 				Namespace: host.Namespace,
 			},
 		}
-		assert.NoError(t, host.CreateWithCleanup(t, cluster))
+		require.NoError(t, host.CreateWithCleanup(t, cluster))
 
 		// when
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
@@ -99,7 +99,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, err := wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(Ready()))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// when
 		assert.NoError(t, host.Client.Delete(context.TODO(), cluster))
@@ -108,6 +108,6 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

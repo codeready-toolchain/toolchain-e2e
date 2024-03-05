@@ -97,7 +97,7 @@ func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {
 }
 
 // GetMetricLabels return all labels (indexed by key) for all metrics of the given `family`
-func GetMetricLabels(restConfig *rest.Config, url string, family string) ([]map[string]*string, error) {
+func GetMetricLabels(restConfig *rest.Config, url string, family string) ([]map[string]string, error) {
 	uri := fmt.Sprintf("https://%s/metrics", url)
 	var metrics []byte
 
@@ -131,15 +131,15 @@ func GetMetricLabels(restConfig *rest.Config, url string, family string) ([]map[
 		return nil, err
 	}
 
-	labels := make([]map[string]*string, 0, len(families))
+	labels := make([]map[string]string, 0, len(families))
 	for _, f := range families {
 		if f.GetName() == family {
-			lbls := map[string]*string{}
+			lbls := map[string]string{}
 			labels = append(labels, lbls)
 			for _, m := range f.GetMetric() {
-				for _, kv := range m.Label {
-					if kv.Name != nil {
-						lbls[*kv.Name] = kv.Value
+				for _, kv := range m.GetLabel() {
+					if kv.GetName() != "" {
+						lbls[kv.GetName()] = kv.GetValue()
 					}
 				}
 			}

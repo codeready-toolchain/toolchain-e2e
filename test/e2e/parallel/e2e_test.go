@@ -17,7 +17,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -326,10 +325,10 @@ func TestE2EFlow(t *testing.T) {
 
 			// then check remaining resources are deleted
 			err = memberAwait.WaitUntilNamespaceDeleted(t, laraUserName, "dev")
-			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
+			require.NoError(t, err, "laracroft-dev namespace is not deleted")
 
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, laraUserName)
-			assert.NoError(t, err, "NSTemplateSet is not deleted")
+			require.NoError(t, err, "NSTemplateSet is not deleted")
 
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, laraUserName)
 			require.NoError(t, err)
@@ -420,31 +419,31 @@ func TestE2EFlow(t *testing.T) {
 		t.Logf("usersignup '%s' deleted (resource name='%s')", johnsmithName, johnSignup.Name)
 
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, johnsmithName)
-		assert.NoError(t, err, "MasterUserRecord is not deleted")
+		require.NoError(t, err, "MasterUserRecord is not deleted")
 
 		err = memberAwait.WaitUntilUserAccountDeleted(t, johnsmithName)
-		assert.NoError(t, err, "UserAccount is not deleted")
+		require.NoError(t, err, "UserAccount is not deleted")
 
 		err = memberAwait.WaitUntilUserDeleted(t, johnsmithName)
-		assert.NoError(t, err, "User is not deleted")
+		require.NoError(t, err, "User is not deleted")
 
 		err = memberAwait.WaitUntilIdentityDeleted(t, johnsmithName)
-		assert.NoError(t, err, "Identity is not deleted")
+		require.NoError(t, err, "Identity is not deleted")
 
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, johnsmithName)
 		require.NoError(t, err)
 
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(t, johnsmithName)
-		assert.NoError(t, err, "NSTemplateSet is not deleted")
+		require.NoError(t, err, "NSTemplateSet is not deleted")
 
 		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(t, johnsmithName)
-		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
+		require.NoError(t, err, "ClusterResourceQuotas were not deleted")
 
 		err = memberAwait.WaitUntilNamespaceDeleted(t, johnsmithName, "dev")
-		assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
+		require.NoError(t, err, "johnsmith-dev namespace is not deleted")
 
 		err = memberAwait.WaitUntilNamespaceDeleted(t, johnsmithName, "stage")
-		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
+		require.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")

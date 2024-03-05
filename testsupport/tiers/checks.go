@@ -1078,7 +1078,7 @@ func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsChe
 
 func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ...string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		require.True(t, len(labelNameValuePairs)%2 == 0, "labelNameValuePairs must be a list of key-value pairs")
+		require.Equal(t, 0, len(labelNameValuePairs)%2, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
 		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])

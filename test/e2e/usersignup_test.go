@@ -2,10 +2,11 @@ package e2e
 
 import (
 	"fmt"
-	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
-	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"testing"
 	"time"
+
+	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -597,7 +598,7 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 			testconfig.CapacityThresholds().MaxNumberOfSpaces(testconfig.PerMemberCluster(memberAwait.ClusterName, 1000)).
 				ResourceCapacityThreshold(80))
 
-		t.Run("verification required set to true", func(t *testing.T) {
+		t.Run("verification required set to true", func(_ *testing.T) {
 			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
 		})
 	})
@@ -876,7 +877,7 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	// then
 
 	// annotation should be set
-	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
+	require.Equal(s.T(), "true", userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey])
 
 	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "deactivate30")
 }

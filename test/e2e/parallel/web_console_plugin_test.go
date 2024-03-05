@@ -96,7 +96,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		{ // #nosec G402
 			tr = &http.Transport{
 				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
+					InsecureSkipVerify: true, //nolint:gosec
 				},
 			}
 		}

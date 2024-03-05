@@ -123,7 +123,7 @@ func TestAnalytics(t *testing.T) {
 		require.Equal(t, expectedResponseValue, value)
 	}
 
-	t.Run("get devspaces segment write key 200 OK", func(t *testing.T) {
+	t.Run("get devspaces segment write key 200 OK", func(_ *testing.T) {
 		// Call segment write key endpoint.
 		assertNotSecuredGetResponseEquals("segment-write-key", "test devspaces segment write key")
 	})
@@ -290,7 +290,7 @@ func TestSignupFails(t *testing.T) {
 			UnmarshalMap()
 		require.Equal(t, "forbidden: failed to create usersignup for test-crtadmin", response["message"])
 		require.Equal(t, "error creating UserSignup resource", response["details"])
-		require.Equal(t, float64(403), response["code"])
+		require.InDelta(t, float64(403), response["code"], 0.01)
 
 		hostAwait := await.Host()
 		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
@@ -313,7 +313,7 @@ func TestSignupFails(t *testing.T) {
 			UnmarshalMap()
 		require.Equal(t, "forbidden: failed to create usersignup for longer-username-crtadmin", response["message"])
 		require.Equal(t, "error creating UserSignup resource", response["details"])
-		require.Equal(t, float64(403), response["code"])
+		require.InDelta(t, float64(403), response["code"], 0.01)
 
 		hostAwait := await.Host()
 		hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitAndVerifyThatUserSignupIsNotCreated(t, identity.ID.String())
@@ -586,7 +586,7 @@ func TestPhoneVerification(t *testing.T) {
 			`{ "country_code":"+61", "phone_number":"408999999" }`, http.StatusForbidden).UnmarshalMap()
 
 	require.NotEmpty(t, responseMap)
-	require.Equal(t, float64(http.StatusForbidden), responseMap["code"], "code not found in response body map %s", responseMap)
+	require.InDelta(t, float64(http.StatusForbidden), responseMap["code"], 0.01, "code not found in response body map %s", responseMap)
 
 	require.Equal(t, "Forbidden", responseMap["status"])
 	require.Equal(t, "phone number already in use: cannot register using phone number: +61408999999", responseMap["message"])
@@ -698,7 +698,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
-			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
 
 		t.Run("over capacity", func(t *testing.T) {
@@ -725,7 +725,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
-			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
 
 		t.Run("not opened yet", func(t *testing.T) {
@@ -744,7 +744,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
-			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
+			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
 
 		t.Run("already closed", func(t *testing.T) {
@@ -763,11 +763,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
 			require.NoError(t, err)
-			assert.Equal(t, userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey], "1")
-		})
-
-		t.Run("invalid code", func(t *testing.T) {
-
+			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
 	})
 }
