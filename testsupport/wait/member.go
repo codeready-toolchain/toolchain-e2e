@@ -185,7 +185,7 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return false
 			}
-			return actual.Spec.UserID == mur.Spec.UserID &&
+			return actual.Spec.PropagatedClaims.Sub == mur.Spec.PropagatedClaims.Sub &&
 				actual.Spec.Disabled == mur.Spec.Disabled
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
@@ -193,7 +193,8 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled)
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n",
+				actual.Spec.PropagatedClaims.Sub, mur.Spec.PropagatedClaims.Sub, actual.Spec.Disabled, mur.Spec.Disabled)
 		},
 	}
 }
@@ -371,6 +372,19 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
 			}
 			return fmt.Sprintf("could not match namespace names: \n%s ", Diff(expectedNames, actualNamespaces))
+		},
+	}
+}
+
+// UntilSpaceRequestHasDisableInheritance returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has the expected Spec.DisableInheritance value
+func UntilSpaceRequestHasDisableInheritance(expected bool) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return expected == actual.Spec.DisableInheritance
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected DisableInheritance to match:\n%s", Diff(expected, actual.Spec.DisableInheritance))
 		},
 	}
 }

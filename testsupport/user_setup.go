@@ -55,9 +55,6 @@ func NewUserSignup(namespace, username string, email string) *toolchainv1alpha1.
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
-			Annotations: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
-			},
 			Labels: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: hash.EncodeString(email),
 			},

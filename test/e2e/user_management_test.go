@@ -530,7 +530,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			Execute(t).Resources()
 
 		// Create the BannedUser
-		CreateBannedUser(t, s.Host(), userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+		CreateBannedUser(t, s.Host(), userSignup.Spec.IdentityClaims.Email)
 
 		// Confirm the user is banned
 		_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(t, userSignup.Name,
@@ -632,7 +632,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			Execute(t).Resources()
 
 		// Create the BannedUser
-		bannedUser := CreateBannedUser(t, s.Host(), userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+		bannedUser := CreateBannedUser(t, s.Host(), userSignup.Spec.IdentityClaims.Email)
 
 		// Confirm the user is banned
 		_, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -715,7 +715,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	// Check the Identity is deleted
 	identity := &userv1.Identity{}
-	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(userAccount.Spec.UserID, "rhd").IdentityName()}, identity)
+	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.UserID, "rhd").IdentityName()}, identity)
 	require.Error(s.T(), err)
 	assert.True(s.T(), apierrors.IsNotFound(err))
 

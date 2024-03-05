@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
 
@@ -26,6 +28,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -657,4 +661,197 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 	}
 	content, _ := StringifyObjects(list)
 	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
+}
+
+// Waiter is a helper struct for `wait.For()` that provides functions to query the cluster waiting
+// for the results.
+type Waiter[T client.Object] struct {
+	await *Awaitility
+	t     *testing.T
+	gvk   schema.GroupVersionKind
+}
+
+// FirstThat uses the provided predicates to filter the objects of the type provided to `wait.For()` and
+// repeatedly tries to find the first one that satisfies all the predicates.
+func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object]) (T, error) {
+	w.t.Logf("waiting for objects of GVK '%s' in namespace '%s' to match criteria", w.gvk, w.await.Namespace)
+
+	var returnedObject T
+	// match status of each predicate per object
+	latestResults := map[client.ObjectKey][]bool{}
+
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		// because there is no generic way of figuring out the list type for some client.Object type, we need to go
+		// down the low level route and use unstructured to get the list generically and unmarshal and cast the list
+		// items.
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+			return false, err
+		}
+		for _, obj := range list.Items {
+			obj := obj // required due to memory aliasing until we upgrade to Go 1.22 which fixes this.
+			object, err := w.cast(&obj)
+			if err != nil {
+				return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
+			}
+
+			matches, results := w.matches(object, predicates)
+			latestResults[client.ObjectKeyFromObject(object)] = results
+			if matches {
+				returnedObject = object
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("failed to find objects (of GVK '%s') in namespace '%s' matching the criteria")
+		args := []any{w.gvk, w.await.Namespace}
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			sb.WriteString("\nlisting the objects found in cluster with the differences from the expected state for each:")
+			for _, o := range list.Items {
+				o := o
+				obj, _ := w.cast(&o)
+				key := client.ObjectKeyFromObject(obj)
+
+				matches := true
+				objectResults := latestResults[key]
+				for _, res := range objectResults {
+					if !res {
+						matches = false
+						break
+					}
+				}
+
+				sb.WriteRune('\n')
+				sb.WriteString("object ")
+				sb.WriteString(key.String())
+				if matches {
+					sb.WriteString("matches all predicates")
+				} else {
+					sb.WriteString("was found to have the following differences:")
+					for i, res := range objectResults {
+						if !res {
+							sb.WriteRune('\n')
+							sb.WriteString(assertions.Explain(predicates[i], obj.DeepCopyObject().(T)))
+						}
+					}
+				}
+			}
+		}
+		w.t.Logf(sb.String(), args...)
+
+	}
+	return returnedObject, err
+}
+
+// WithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
+// matches the provided predicates.
+func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, error) {
+	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to match additional criteria", w.gvk, name, w.await.Namespace)
+
+	var returnedObject T
+	latestResults := []bool{}
+
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		object, err := w.cast(obj)
+		if err != nil {
+			return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
+		}
+
+		matches, results := w.matches(object, predicates)
+		latestResults = results
+		if matches {
+			returnedObject = object
+			return true, nil
+		}
+
+		return false, nil
+	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("couldn't match the object (GVK '%s') called '%s' in namespace '%s' with the criteria")
+		args := []any{w.gvk, name, w.await.Namespace}
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			o, _ := w.cast(obj)
+			sb.WriteString(" but the object exists in the cluster with the following differences:")
+			for i, p := range predicates {
+				if !latestResults[i] {
+					expl := assertions.Explain(p, o.DeepCopyObject().(T))
+					sb.WriteRune('\n')
+					sb.WriteString(expl)
+				}
+			}
+		}
+		w.t.Logf(sb.String(), args...)
+	}
+	return returnedObject, err
+}
+
+func (w *Waiter[T]) cast(obj *unstructured.Unstructured) (T, error) {
+	var empty T
+	raw, err := obj.MarshalJSON()
+	if err != nil {
+		return empty, fmt.Errorf("failed to obtain the raw JSON of the object: %w", err)
+	}
+
+	typed, err := w.await.Client.Scheme().New(w.gvk)
+	if err != nil {
+		return empty, fmt.Errorf("failed to create a new empty object from the scheme: %w", err)
+	}
+
+	err = json.Unmarshal(raw, typed)
+	if err != nil {
+		return empty, fmt.Errorf("failed to unmarshal the raw JSON to the go structure: %w", err)
+	}
+
+	return typed.(T), nil
+}
+
+func (w *Waiter[T]) matches(obj T, predicates []assertions.Predicate[client.Object]) (bool, []bool) {
+	matches := true
+	results := make([]bool, len(predicates))
+	for i, p := range predicates {
+		res := p.Matches(obj)
+		results[i] = res
+		matches = matches && res
+	}
+	return matches, results
+}
+
+// For returns an struct using which one can wait for the objects with the same type as the one provided.
+//
+// Note that this is a recent addition to the utility functions and therefore is not used much. It could
+// be used to cut down the line count of the new utility functions dramatically though.
+func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
+	gvks, _, err := a.Client.Scheme().ObjectKinds(obj)
+	require.NoError(t, err, "failed to get the GVK of object %v", obj)
+
+	require.Len(t, gvks, 1, "multiple versions of a single GK not supported but found multiple for object %v", obj)
+
+	return &Waiter[T]{
+		await: a,
+		t:     t,
+		gvk:   gvks[0],
+	}
 }

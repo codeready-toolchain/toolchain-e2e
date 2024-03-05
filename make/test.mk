@@ -51,7 +51,7 @@ test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: verify-migration-and-deploy-e2e
-verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-service-account e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
+verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
 .PHONY: e2e-migration-setup
 e2e-migration-setup:
@@ -74,7 +74,7 @@ prepare-e2e: build clean-e2e-files
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: prepare-projects get-publish-install-and-register-operators e2e-service-account
+deploy-e2e: prepare-projects get-publish-install-and-register-operators 
 	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
@@ -237,14 +237,6 @@ setup-toolchainclusters:
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
 
-.PHONY: e2e-service-account
-e2e-service-account:
-ifeq ($(E2E_TEST_EXECUTION),true)
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host -tn e2e -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -tn e2e -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-endif
-
 ###########################################################
 #
 # Fetching and building Member and Host Operators
@@ -337,7 +329,7 @@ create-host-project:
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
-create-host-resources:
+create-host-resources: create-spaceprovisionerconfigs-for-members
 	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
 	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
@@ -358,16 +350,22 @@ ifneq ($(E2E_TEST_EXECUTION),true)
 	oc delete pods --namespace ${HOST_NS} -l name=registration-service || true
 endif
 
+.PHONY: create-spaceprovisionerconfigs-for-members
+create-spaceprovisionerconfigs-for-members:
+	for MEMBER_NAME in `oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
+	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	done
+
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
-	oc apply -f deploy/crds/
+	oc create -f deploy/crds/ || true
 
 .PHONY: create-project
 create-project:
 	@-oc new-project ${PROJECT_NAME} 1>/dev/null
 	@-oc project ${PROJECT_NAME}
 	@echo "adding network policies in $(PROJECT_NAME) namespace"
-	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f deploy/default-network-policies.yaml | oc apply -f -
 	
 
 .PHONY: display-eval
