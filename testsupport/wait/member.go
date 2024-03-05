@@ -374,6 +374,29 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 	}
 }
 
+// UntilSpaceRequestHasNamespaceAccessWithoutSecretRef returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has `status.NamespaceAccess[*].SecretRef` empty, since generation of a secret is not expected for the given SpaceRequest.
+func UntilSpaceRequestHasNamespaceAccessWithoutSecretRef() SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			// check that there are namespace provisioned
+			if len(actual.Status.NamespaceAccess) == 0 {
+				return false
+			}
+			for _, nsAccess := range actual.Status.NamespaceAccess {
+				// check the secretRef is empty
+				if nsAccess.SecretRef != "" {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("namespace access has secret ref and it's not expected: \n%v ", actual.Status.NamespaceAccess)
+		},
+	}
+}
+
 // UntilSpaceRequestHasDisableInheritance returns a `SpaceRequestWaitCriterion` which checks that the given
 // SpaceRequest has the expected Spec.DisableInheritance value
 func UntilSpaceRequestHasDisableInheritance(expected bool) SpaceRequestWaitCriterion {
