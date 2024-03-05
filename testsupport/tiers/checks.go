@@ -458,6 +458,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
 		pipelineRunnerRoleBinding(),
+		caBundleConfigMap(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -1899,6 +1900,13 @@ func namespaceManagerSA() namespaceObjectsCheck {
 func pipelineServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+	}
+}
+
+func caBundleConfigMap() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		_, err := memberAwait.WaitForConfigMap(t, ns.Name, "trusted-ca")
 		require.NoError(t, err)
 	}
 }
