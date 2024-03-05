@@ -3,8 +3,8 @@ module github.com/codeready-toolchain/toolchain-e2e
 replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20240214113024-8aa8eb8cfe1d
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20240207000013-661b63025269
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20240207000544-9cd055b3a18c
+	github.com/codeready-toolchain/api v0.0.0-20240227210924-371ddb054d87
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20240227212148-b32711b41532
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0

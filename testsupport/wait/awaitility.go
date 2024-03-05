@@ -675,6 +675,8 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 	w.t.Logf("waiting for objects of GVK '%s' in namespace '%s' to match criteria", w.gvk, w.await.Namespace)
 
 	var returnedObject T
+	// match status of each predicate per object
+	latestResults := map[client.ObjectKey][]bool{}
 
 	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
 		// because there is no generic way of figuring out the list type for some client.Object type, we need to go
@@ -692,13 +694,59 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 				return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
 			}
 
-			if w.matches(object, predicates) {
+			matches, results := w.matches(object, predicates)
+			latestResults[client.ObjectKeyFromObject(object)] = results
+			if matches {
 				returnedObject = object
 				return true, nil
 			}
 		}
 		return false, nil
 	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("failed to find objects (of GVK '%s') in namespace '%s' matching the criteria")
+		args := []any{w.gvk, w.await.Namespace}
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			sb.WriteString("\nlisting the objects found in cluster with the differences from the expected state for each:")
+			for _, o := range list.Items {
+				o := o
+				obj, _ := w.cast(&o)
+				key := client.ObjectKeyFromObject(obj)
+
+				matches := true
+				objectResults := latestResults[key]
+				for _, res := range objectResults {
+					if !res {
+						matches = false
+						break
+					}
+				}
+
+				sb.WriteRune('\n')
+				sb.WriteString("object ")
+				sb.WriteString(key.String())
+				if matches {
+					sb.WriteString("matches all predicates")
+				} else {
+					sb.WriteString("was found to have the following differences:")
+					for i, res := range objectResults {
+						if !res {
+							sb.WriteRune('\n')
+							sb.WriteString(assertions.Explain(predicates[i], obj.DeepCopyObject().(T)))
+						}
+					}
+				}
+			}
+		}
+		w.t.Logf(sb.String(), args...)
+
+	}
 	return returnedObject, err
 }
 
@@ -708,6 +756,7 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to match additional criteria", w.gvk, name, w.await.Namespace)
 
 	var returnedObject T
+	latestResults := []bool{}
 
 	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
 		obj := &unstructured.Unstructured{}
@@ -723,13 +772,37 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 			return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
 		}
 
-		if w.matches(object, predicates) {
+		matches, results := w.matches(object, predicates)
+		latestResults = results
+		if matches {
 			returnedObject = object
 			return true, nil
 		}
 
 		return false, nil
 	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("couldn't match the object (GVK '%s') called '%s' in namespace '%s' with the criteria")
+		args := []any{w.gvk, name, w.await.Namespace}
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			o, _ := w.cast(obj)
+			sb.WriteString(" but the object exists in the cluster with the following differences:")
+			for i, p := range predicates {
+				if !latestResults[i] {
+					expl := assertions.Explain(p, o.DeepCopyObject().(T))
+					sb.WriteRune('\n')
+					sb.WriteString(expl)
+				}
+			}
+		}
+		w.t.Logf(sb.String(), args...)
+	}
 	return returnedObject, err
 }
 
@@ -753,13 +826,15 @@ func (w *Waiter[T]) cast(obj *unstructured.Unstructured) (T, error) {
 	return typed.(T), nil
 }
 
-func (w *Waiter[T]) matches(obj T, predicates []assertions.Predicate[client.Object]) bool {
-	for _, p := range predicates {
-		if !p.Matches(obj) {
-			return false
-		}
+func (w *Waiter[T]) matches(obj T, predicates []assertions.Predicate[client.Object]) (bool, []bool) {
+	matches := true
+	results := make([]bool, len(predicates))
+	for i, p := range predicates {
+		res := p.Matches(obj)
+		results[i] = res
+		matches = matches && res
 	}
-	return true
+	return matches, results
 }
 
 // For returns an struct using which one can wait for the objects with the same type as the one provided.

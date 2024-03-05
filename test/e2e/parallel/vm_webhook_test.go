@@ -113,6 +113,17 @@ func TestCreateVirtualMachine(t *testing.T) {
 			require.True(t, volNameExists, "volume name not found")
 			require.Equal(t, volName, "cloudinitdisk")
 
+			// verify sandbox toleration is set
+			tolerations, tolerationsFound, tolerationsErr := unstructured.NestedSlice(result.Object, "spec", "template", "spec", "tolerations")
+			require.NoError(t, tolerationsErr)
+			require.True(t, tolerationsFound)
+			require.Len(t, tolerations, 1)
+			tol, ok := tolerations[0].(map[string]interface{})
+			require.True(t, ok)
+			require.Equal(t, tol["effect"], "NoSchedule")
+			require.Equal(t, tol["key"], "sandbox-cnv")
+			require.Equal(t, tol["operator"], "Exists")
+
 			// verify cloud-init user data
 			userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), tc.cloudInitType, "userData")
 			require.NoError(t, userDataErr)
@@ -152,6 +163,7 @@ func domainWithMemoryGuest(mem string) map[string]interface{} {
 		"memory": map[string]interface{}{
 			"guest": mem,
 		},
+		"devices": map[string]interface{}{},
 	}
 }
 
@@ -163,6 +175,7 @@ func domainWithResourceRequests(mem, cpu string) map[string]interface{} {
 				"cpu":    cpu,
 			},
 		},
+		"devices": map[string]interface{}{},
 	}
 }
 

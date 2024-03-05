@@ -166,6 +166,7 @@ print-local-debug-info:
 	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true --tail=-1"
 	@echo ""
 	@echo "Add the following lines at the very beginning of the test/suite that you want to run/debug from your IDE:"
+	@echo 'os.Setenv("KUBECONFIG","$(or ${KUBECONFIG}, ${HOME}/.kube/config)")'
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
 	@echo 'os.Setenv("MEMBER_NS_2","${MEMBER_NS_2}")'
 	@echo 'os.Setenv("HOST_NS","${HOST_NS}")'
@@ -352,20 +353,20 @@ endif
 
 .PHONY: create-spaceprovisionerconfigs-for-members
 create-spaceprovisionerconfigs-for-members:
-	for member_name in `oc get toolchaincluster -l -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
-	  oc process -p TOOLCHAINCLUSTER_NAME=$${member_name} -p SPACEPROVISIONERCONFIG_NAME=$${member_name} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f ${PWD}/make/resources/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	for MEMBER_NAME in `oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
+	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
 	done
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
-	oc apply -f deploy/crds/
+	oc create -f deploy/crds/ || true
 
 .PHONY: create-project
 create-project:
 	@-oc new-project ${PROJECT_NAME} 1>/dev/null
 	@-oc project ${PROJECT_NAME}
 	@echo "adding network policies in $(PROJECT_NAME) namespace"
-	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f ${PWD}/make/resources/default-network-policies.yaml | oc apply -f -
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f deploy/default-network-policies.yaml | oc apply -f -
 	
 
 .PHONY: display-eval
