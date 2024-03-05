@@ -166,6 +166,7 @@ print-local-debug-info:
 	@echo "oc logs -l name=registration-service --namespace ${REGISTRATION_SERVICE_NS} --all-containers=true --prefix=true --tail=-1"
 	@echo ""
 	@echo "Add the following lines at the very beginning of the test/suite that you want to run/debug from your IDE:"
+	@echo 'os.Setenv("KUBECONFIG","$(or ${KUBECONFIG}, ${HOME}/.kube/config)")'
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
 	@echo 'os.Setenv("MEMBER_NS_2","${MEMBER_NS_2}")'
 	@echo 'os.Setenv("HOST_NS","${HOST_NS}")'
