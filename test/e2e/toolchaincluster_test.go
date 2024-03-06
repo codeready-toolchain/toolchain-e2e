@@ -21,13 +21,13 @@ func TestToolchainClusterE2E(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, "host")
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, "member")
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, ctrltype string) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, nil)
 	require.NoError(t, err)
