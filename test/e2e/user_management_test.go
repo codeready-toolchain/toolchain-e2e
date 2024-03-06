@@ -91,7 +91,7 @@ func (s *userManagementTestSuite) TestVerifyUserTiers() {
 	for _, expectedTier := range expectedTiers {
 		s.T().Run(fmt.Sprintf("verify UserTier '%s'", expectedTier.name), func(t *testing.T) {
 			userTier, err := hostAwait.WaitForUserTier(t, expectedTier.name)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, expectedTier.deactivationTimeoutDays, userTier.Spec.DeactivationTimeoutDays)
 		})
 	}

@@ -40,8 +40,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit := labels[0]["commit"]
-		require.NotNil(t, commit)
-		assert.Len(t, *commit, 7)
+		assert.Len(t, commit, 7)
 	})
 
 	t.Run("member-operators", func(t *testing.T) {
@@ -59,8 +58,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for the first Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit1 := labels[0]["commit"]
-		require.NotNil(t, commit1)
-		assert.Len(t, *commit1, 7)
+		assert.Len(t, commit1, 7)
 
 		// --- member2 ---
 		// when
@@ -69,11 +67,10 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for the second Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit2 := labels[0]["commit"]
-		require.NotNil(t, commit2)
-		assert.Len(t, *commit2, 7)
+		assert.Len(t, commit2, 7)
 
 		// expect the same version on member1 and member2
-		assert.Equal(t, *commit1, *commit2)
+		assert.Equal(t, commit1, commit2)
 	})
 }
 

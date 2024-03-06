@@ -280,5 +280,5 @@ func TestTierTemplates(t *testing.T) {
 	require.NoError(t, err)
 	// We have 27 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3)
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
-	assert.True(t, len(allTiers.Items) >= 27)
+	assert.GreaterOrEqual(t, len(allTiers.Items), 27)
 }
