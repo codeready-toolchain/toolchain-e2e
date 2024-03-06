@@ -358,7 +358,7 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return actual.Name == name
 		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+		Diff: func(_ *toolchainv1alpha1.MasterUserRecord) string {
 			return fmt.Sprintf("expected MasterUserRecord named '%s'", name)
 		},
 	}
@@ -390,7 +390,7 @@ func UntilMasterUserRecordHasAnyUserAccountStatus() MasterUserRecordWaitCriterio
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return len(actual.Status.UserAccounts) > 0
 		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+		Diff: func(_ *toolchainv1alpha1.MasterUserRecord) string {
 			return "expected to be at least one embedded UserAccount status present, but is empty"
 		},
 	}

@@ -1802,7 +1802,6 @@ func (a *MemberAwaitility) printUserWaitCriterionDiffs(t *testing.T, actual *use
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find User\n")
-		buf.WriteString(a.listAndReturnContent("User", actual.Namespace, &userv1.UserList{}))
 	} else {
 		buf.WriteString("failed to find User with matching criteria:\n")
 		for _, c := range criteria {

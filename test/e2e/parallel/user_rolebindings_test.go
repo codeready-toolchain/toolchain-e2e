@@ -86,7 +86,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 		require.NoError(t, err)
 		// get all the rolebindings for the test case
 		roleBindings := createRoleBindingsForTest("harleyquinn-dev", "sanbox-user")
-		require.Equal(t, 5, len(roleBindings))
+		require.Len(t, roleBindings, 5)
 		// map the test cases with the expected error
 		tests := map[string]struct {
 			RoleBinding   rbacv1.RoleBinding
@@ -132,7 +132,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 		// using hostawailities which using e2e-service-account
 		// get all the rolebindings for the test case
 		roleBindings := createRoleBindingsForTest("harleyquinn-dev", "e2e-sa")
-		require.Equal(t, 5, len(roleBindings))
+		require.Len(t, roleBindings, 5)
 		// map the test cases with the expected error
 		tests := map[string]struct {
 			RoleBinding   rbacv1.RoleBinding
@@ -181,7 +181,7 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 		clientset, err := runtimeclient.New(config, runtimeclient.Options{})
 		// get all the rolebindings for the test case
 		roleBindings := createRoleBindingsForTest("harleyquinn-dev", "non-sanbox-user")
-		require.Equal(t, 5, len(roleBindings))
+		require.Len(t, roleBindings, 5)
 		// map the test cases with the expected rolebinding and error
 		tests := map[string]struct {
 			RoleBinding   rbacv1.RoleBinding

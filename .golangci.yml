@@ -29,3 +29,10 @@ linters-settings:
     # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
     # with golangci-lint call it on a directory with the changed file.
     check-exported: true
+  testifylint:
+    disable:
+      - suite-dont-use-pkg
+  revive:
+    rules:
+      - name: dot-imports
+        disabled: true # we allow for dot-import
