@@ -230,10 +230,10 @@ print-operator-logs:
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters:
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS)   -hn $(HOST_NS) -s ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -s -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) ${LETS_ENCRYPT_PARAM}"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS) -hn $(HOST_NS) ${LETS_ENCRYPT_PARAM}"
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
