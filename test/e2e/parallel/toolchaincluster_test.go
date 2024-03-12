@@ -68,24 +68,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(
-				client.MatchingLabels{
-					"namespace": otherAwait.Namespace,
-					"type":      string(otherAwait.Type),
-				},
-			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
-			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
-		)
-		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
-				"namespace": await.Namespace,
-				"type":      string(await.Type),
-			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
-			toolchainClusterWaitCriterionBasedOnType(await.Type),
-		)
-		require.NoError(t, err)
+		toolchainClusterIsReady(t, await, otherAwait)
+		toolchainClusterIsReady(t, otherAwait, await)
+
 	})
 
 	t.Run("create new ToolchainCluster with incorrect data and expect to be offline for cluster type "+string(await.Type), func(t *testing.T) {
@@ -123,24 +108,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
-		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(
-				client.MatchingLabels{
-					"namespace": otherAwait.Namespace,
-					"type":      string(otherAwait.Type),
-				},
-			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
-			toolchainClusterWaitCriterionBasedOnType(otherAwait.Type),
-		)
-		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
-				"namespace": await.Namespace,
-				"type":      string(await.Type),
-			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
-			toolchainClusterWaitCriterionBasedOnType(await.Type),
-		)
-		require.NoError(t, err)
+		toolchainClusterIsReady(t, await, otherAwait)
+		toolchainClusterIsReady(t, otherAwait, await)
 	})
 }
 
@@ -235,4 +204,18 @@ func caBundle(bundle string) clusterOption {
 	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Spec.CABundle = bundle
 	}
+}
+
+// checks if ToolchainCluster is ready
+func toolchainClusterIsReady(t *testing.T, await, await2 *wait.Awaitility) {
+	_, err := await.WaitForToolchainCluster(t,
+		wait.UntilToolchainClusterHasLabels(
+			client.MatchingLabels{
+				"namespace": await2.Namespace,
+				"type":      string(await2.Type),
+			},
+		), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+		toolchainClusterWaitCriterionBasedOnType(await2.Type),
+	)
+	require.NoError(t, err)
 }
