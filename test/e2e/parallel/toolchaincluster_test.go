@@ -206,7 +206,7 @@ func caBundle(bundle string) clusterOption {
 	}
 }
 
-// checks if ToolchainCluster is ready
+// toolchainClusterIsReady checks if ToolchainCluster is ready
 func toolchainClusterIsReady(t *testing.T, await, await2 *wait.Awaitility) {
 	_, err := await.WaitForToolchainCluster(t,
 		wait.UntilToolchainClusterHasLabels(
