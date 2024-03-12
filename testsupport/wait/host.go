@@ -48,6 +48,7 @@ func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrati
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
+			ClusterName:   "host",
 			RestConfig:    cfg,
 			Namespace:     ns,
 			RetryInterval: DefaultRetryInterval,

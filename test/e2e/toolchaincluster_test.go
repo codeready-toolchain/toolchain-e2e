@@ -33,10 +33,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, ok, "ToolchainCluster should exist")
-
-	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", await.ClusterName), func(t *testing.T) {
+	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", string(await.ClusterName)), func(t *testing.T) {
 		// given
-		name := "new-ready-" + await.ClusterName
+		name := "new-ready-" + string(await.ClusterName)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
@@ -80,9 +79,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 	})
 
-	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", await.ClusterName), func(t *testing.T) {
+	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", string(await.ClusterName)), func(t *testing.T) {
 		// given
-		name := "new-offline-" + await.ClusterName
+		name := "new-offline-" + string(await.ClusterName)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
