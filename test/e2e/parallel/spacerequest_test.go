@@ -6,8 +6,10 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -202,10 +204,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
-		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
-			tc.Labels[cluster.RoleLabel("member-2")] = "" // add a new cluster-role label, the value is blank since only key matters.
-		})
-		require.NoError(t, err)
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberCluster2.Name, testSpc.WithPlacementRoles(cluster.RoleLabel("member-2")))
 		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
 			WithSpecTierName("appstudio-env"),
 			WithSpecTargetClusterRoles([]string{cluster.RoleLabel("member-2")}), // the target cluster is member-2 while the spacerequest is on member-1
