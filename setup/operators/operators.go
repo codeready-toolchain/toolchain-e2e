@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -83,7 +82,7 @@ func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.
 		}
 
 		// find the subscription resource
-		var subscriptionResource runtimeclient.Object
+		var subscriptionResource client.Object
 		foundSub := false
 		for _, obj := range objsToProcess {
 			if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
