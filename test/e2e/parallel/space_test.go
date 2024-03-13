@@ -174,7 +174,6 @@ func TestSpaceRoles(t *testing.T) {
 		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
 
 		// then
-		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
