@@ -54,13 +54,10 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 				Name:      "nginx-service",
 			},
 			&corev1.Service{}))
-
 	})
 
 	t.Run("failures", func(t *testing.T) {
-
 		t.Run("invalid template", func(t *testing.T) {
-
 			t.Run("file not found", func(t *testing.T) {
 				// given
 				ns := &corev1.Namespace{

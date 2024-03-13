@@ -316,7 +316,6 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 				return false, err
 			}
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
-
 		} else {
 			request, err = http.NewRequest("GET", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
 			if err != nil {
@@ -747,7 +746,6 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 			}
 		}
 		w.t.Logf(sb.String(), args...)
-
 	}
 	return returnedObject, err
 }

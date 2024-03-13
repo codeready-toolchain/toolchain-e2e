@@ -40,7 +40,6 @@ func TestForceMetricsSynchronization(t *testing.T) {
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 
 	t.Run("tampering activation-counter annotations", func(t *testing.T) {
-
 		// change the `toolchain.dev.openshift.com/activation-counter` annotation value
 		for _, userSignup := range userSignups {
 			// given
@@ -85,10 +84,8 @@ func TestForceMetricsSynchronization(t *testing.T) {
 			// metrics have been updated
 			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
 			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
-
 		})
 	})
-
 }
 
 func TestToolchainStatusUnready(t *testing.T) {

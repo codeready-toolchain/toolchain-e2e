@@ -531,7 +531,6 @@ func TestSubSpaceInheritance(t *testing.T) {
 				SpaceRole(appstudioTier.Spec.SpaceRoles["contributor"].TemplateRef, subMur.Name)),
 		)
 		require.NoError(t, err)
-
 	})
 }
 

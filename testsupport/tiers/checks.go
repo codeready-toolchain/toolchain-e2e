@@ -56,37 +56,26 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	switch tier.Name {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
-
 	case base1ns:
 		return &base1nsTierChecks{tierName: base1ns}, nil
-
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
-
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
-
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
-
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
-
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
-
 	case appstudiolarge:
 		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
-
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
-
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
-
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}

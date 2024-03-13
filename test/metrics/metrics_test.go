@@ -24,7 +24,6 @@ import (
 )
 
 func TestOperatorVersionMetrics(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 
@@ -242,7 +241,6 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-
 }
 
 // TestVerificationRequiredMetric verifies that `UserSignupVerificationRequiredMetric` counters are increased only once when users are created/reactivated
@@ -482,7 +480,6 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 // TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned
 func TestMetricsWhenUsersBanned(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -628,7 +625,6 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external") // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
-
 	})
 }
 

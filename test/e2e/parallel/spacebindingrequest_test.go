@@ -36,7 +36,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			// we create a space to share , a new MUR and a SpaceBindingRequest
 			space, spaceBindingRequest, spaceBinding := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "admin")
 
-			t.Run("spaceBinding is recreated if deleted ", func(t *testing.T) {
+			t.Run("spaceBinding is recreated if deleted", func(t *testing.T) {
 				// now, delete the SpaceBinding,
 				// a new SpaceBinding will be provisioned by the SpaceBindingRequest.
 				//
@@ -60,7 +60,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				)
 				require.NoError(t, err)
 
-				t.Run("SpaceBinding always reflects values from spaceBindingRequest ", func(t *testing.T) {
+				t.Run("SpaceBinding always reflects values from spaceBindingRequest", func(t *testing.T) {
 					// given
 					// something/someone updates the SpaceRole directly on the SpaceBinding object
 
