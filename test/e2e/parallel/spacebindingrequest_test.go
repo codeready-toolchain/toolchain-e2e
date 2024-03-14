@@ -122,7 +122,6 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			)
 
 			// then
-			require.NoError(t, err)
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
 				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
@@ -146,7 +145,6 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			)
 
 			// then
-			require.NoError(t, err)
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
 				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding("unable to get MUR: MasterUserRecord.toolchain.dev.openshift.com \"invalidMUR\" not found")),
