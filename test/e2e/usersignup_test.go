@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -11,12 +10,8 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-	testcommonspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/redhat-cop/operator-utils/pkg/util"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -54,12 +49,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	memberAwait2 := s.Member2()
 
 	// when & then
-	NewSignupRequest(s.Awaitilities).
+	_, mur1 := NewSignupRequest(s.Awaitilities).
 		Username("automatic1").
 		Email("automatic1@redhat.com").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T())
+		Execute(s.T()).Resources()
 
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
@@ -72,11 +67,22 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				),
 		)
 		// create additional user to reach max space limits on both members
-		NewSignupRequest(s.Awaitilities).
+		_, mur2 := NewSignupRequest(s.Awaitilities).
 			Username("automatic2").
 			Email("automatic2@redhat.com").
+			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(s.T())
+			Execute(s.T()).Resources()
+
+		// TestProvisionToOtherClusterWhenOneIsFull
+		// checks that users will be provisioned to the other member when one is full.
+		// if one cluster if full, then a new space will be placed in the another cluster.
+		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
+		space1, err := hostAwait.WaitForSpace(t, mur1.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+		require.NoError(t, err)
+		space2, err := hostAwait.WaitForSpace(t, mur2.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+		require.NoError(t, err)
+		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
 
 		// when
 		waitingList1, _ := NewSignupRequest(s.Awaitilities).
@@ -172,75 +178,6 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 }
 
-func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
-	hostAwait := s.Host()
-	memberAwait1 := s.Member1()
-	memberAwait2 := s.Member2()
-	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
-		// given
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().MaxNumberOfSpaces(
-				testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-				testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
-			))
-
-		// when
-		_, mur1 := NewSignupRequest(s.Awaitilities).
-			Username("multimember-1").
-			Email("multi1@redhat.com").
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(s.T()).Resources()
-
-		_, mur2 := NewSignupRequest(s.Awaitilities).
-			Username("multimember-2").
-			Email("multi2@redhat.com").
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(s.T()).Resources()
-
-		// then
-		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
-		space1, err := hostAwait.WaitForSpace(t, mur1.Name, wait.UntilSpaceHasAnyTargetClusterSet())
-		require.NoError(t, err)
-		space2, err := hostAwait.WaitForSpace(t, mur2.Name, wait.UntilSpaceHasAnyTargetClusterSet())
-		require.NoError(t, err)
-		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
-
-		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
-			// when
-			userSignupPending, _ := NewSignupRequest(s.Awaitilities).
-				Username("multimember-3").
-				Email("multi3@redhat.com").
-				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-				Execute(s.T()).Resources()
-
-			// then
-			s.userIsNotProvisioned(t, userSignupPending)
-		})
-	})
-}
-
-func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
-	hostAwait := s.Host()
-
-	// given
-	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
-
-	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
-		Username("test-user").
-		Email("test-user@redhat.com").
-		UserID("123456789").
-		AccountID("987654321").
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
-
-	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-}
-
 func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
 	hostAwait := s.Host()
 
@@ -297,33 +234,6 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 
 }
 
-// TestUserResourcesCreatedWhenUserIDIsSet tests the case where:
-//
-// 1. sub claim is generated automatically
-// 2. user ID is set by test
-// 3. no original sub claim is set
-//
-// This scenario is expected with the regular RHD SSO client
-func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenUserIDIsSet() {
-	hostAwait := s.Host()
-
-	// given
-	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
-
-	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
-		Username("test-user-with-userid").
-		Email("test-user-with-userid@redhat.com").
-		UserID("111222333").
-		AccountID("jnwww029837").
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
-
-	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-}
-
 // TestUserResourcesCreatedWhenOriginalSubIsSet tests the case where:
 //
 // 1. sub claim is generated automatically
@@ -355,6 +265,11 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	// when
+	// TestUserIDAndAccountIDClaimsPropagated and TestUserResourcesCreatedWhenUserIDIsSet
+	// 1. sub claim is generated automatically
+	// 2. user ID and account ID are set by test
+	// 3. no original sub claim is set
+	// This scenario is expected with the regular RHD SSO client
 	userSignup, _ := NewSignupRequest(s.Awaitilities).
 		Username("test-user-resources-updated").
 		Email("test-user-resources-updated@redhat.com").
@@ -627,202 +542,6 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 
 	// Confirm the MUR was created and target cluster was set
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
-}
-
-func (s *userSignupIntegrationTest) TestTransformUsernameWithSpaceConflict() {
-	// given
-	conflictingSpace, _, _ := CreateSpace(s.T(), s.Awaitilities, testcommonspace.WithName("conflicting"))
-
-	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
-		Username(conflictingSpace.Name).
-		TargetCluster(s.Member1()).
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
-
-	// then
-	compliantUsername := userSignup.Status.CompliantUsername
-	require.Equal(s.T(), fmt.Sprintf("%s-2", conflictingSpace.Name), compliantUsername)
-
-	s.T().Run("when signup is deactivated, Space is stuck in terminating state, and when it reactivates then it should generate a new name", func(t *testing.T) {
-		// given
-		// let's get a namespace of the space
-		space, err := s.Host().WaitForSpace(t, compliantUsername, wait.UntilSpaceHasAnyProvisionedNamespaces())
-		require.NoError(t, err)
-		namespaceName := space.Status.ProvisionedNamespaces[0].Name
-		// and add a dummy finalizer there so it will get stuck
-		_, err = s.Member1().UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
-			util.AddFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
-		})
-		require.NoError(t, err)
-
-		// don't forget to clean the finalizer up
-		defer func() {
-			t.Log("cleaning up the finalizer")
-			_, err = s.Member1().UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
-				util.RemoveFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
-			})
-			require.NoError(t, err)
-		}()
-
-		// now deactivate the usersignup
-		_, err = s.Host().UpdateUserSignup(t, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetDeactivated(us, true)
-		})
-		require.NoError(t, err)
-
-		// wait until it is deactivated, SpaceBinding is gone, and Space is in terminating state
-		_, err = s.Host().WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
-		require.NoError(t, err)
-		err = s.Host().WaitUntilSpaceBindingsWithLabelDeleted(t, toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey, compliantUsername)
-		require.NoError(t, err)
-		_, err = s.Host().WaitForSpace(t, compliantUsername, wait.UntilSpaceIsBeingDeleted())
-		require.NoError(t, err)
-
-		// when
-		userSignup, err = s.Host().UpdateUserSignup(t, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetApprovedManually(us, true)
-		})
-		require.NoError(t, err)
-
-		// then
-		userSignup, _ = VerifyUserRelatedResources(t, s.Awaitilities, userSignup, "deactivate30", ExpectAnyUserAccount())
-		VerifySpaceRelatedResources(t, s.Awaitilities, userSignup, "base")
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
-		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)
-	})
-}
-
-func (s *userSignupIntegrationTest) TestTransformUsername() {
-	// Create UserSignup with a username that we don't need to transform
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
-		Username("paul-no-transform").
-		Email("paulnotransform@hotel.com").
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
-
-	require.Equal(s.T(), "paul-no-transform", userSignup.Status.CompliantUsername)
-
-	// Create UserSignup with a username to transform
-	userSignup, _ = NewSignupRequest(s.Awaitilities).
-		Username("paul@hotel.com").
-		Email("paul@hotel.com").
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
-
-	require.Equal(s.T(), "paul", userSignup.Status.CompliantUsername)
-
-	// Create another UserSignup with the original username matching the transformed username of the existing signup
-	userSignup, _ = NewSignupRequest(s.Awaitilities).
-		Username("paul").
-		Email("paulathotel@hotel.com").
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
-
-	require.Equal(s.T(), "paul-2", userSignup.Status.CompliantUsername)
-
-	// Create another UserSignups with a forbidden prefix
-	for _, prefix := range []string{"kube", "openshift", "default", "redhat", "sandbox"} {
-		// prefix with hyphen
-		userSignup, _ = NewSignupRequest(s.Awaitilities).
-			Username(prefix + "-paul").
-			Email("paul@hotel.com").
-			ManuallyApprove().
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
-
-		require.Equal(s.T(), fmt.Sprintf("crt-%s-paul", prefix), userSignup.Status.CompliantUsername)
-
-		// prefix without delimiter
-		userSignup, _ = NewSignupRequest(s.Awaitilities).
-			Username(prefix + "paul").
-			Email("paul@hotel.com").
-			ManuallyApprove().
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
-
-		require.Equal(s.T(), fmt.Sprintf("crt-%spaul", prefix), userSignup.Status.CompliantUsername)
-
-		// prefix as a name
-		userSignup, _ = NewSignupRequest(s.Awaitilities).
-			Username(prefix).
-			Email("paul@hotel.com").
-			ManuallyApprove().
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
-
-		require.Equal(s.T(), fmt.Sprintf("crt-%s", prefix), userSignup.Status.CompliantUsername)
-	}
-
-	// Create another UserSignups with a forbidden suffix
-	for _, suffix := range []string{"admin"} {
-		// suffix with hyphen
-		userSignup, _ = NewSignupRequest(s.Awaitilities).
-			Username("paul-" + suffix).
-			Email("paul@hotel.com").
-			ManuallyApprove().
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
-
-		require.Equal(s.T(), fmt.Sprintf("paul-%s-crt", suffix), userSignup.Status.CompliantUsername)
-
-		// suffix without delimiter
-		userSignup, _ = NewSignupRequest(s.Awaitilities).
-			Username("paul" + suffix).
-			Email("paul@hotel.com").
-			ManuallyApprove().
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
-
-		require.Equal(s.T(), fmt.Sprintf("paul%s-crt", suffix), userSignup.Status.CompliantUsername)
-
-		// suffix as a name
-		userSignup, _ = NewSignupRequest(s.Awaitilities).
-			Username(suffix).
-			Email("paul@hotel.com").
-			ManuallyApprove().
-			EnsureMUR().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
-
-		require.Equal(s.T(), fmt.Sprintf("%s-crt", suffix), userSignup.Status.CompliantUsername)
-	}
-
-	// create a usersignup where the length of the username is greater than 20 chars, and is transformed by truncating
-	userSignup, _ = NewSignupRequest(s.Awaitilities).
-		Username("username-greater-than-20").
-		Email("paulathotel@hotel.com").
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
-
-	require.Equal(s.T(), "username-greater-tha", userSignup.Status.CompliantUsername)
-
-	// create a usersignup where the name is greater than 20 chars, but when truncating the username it has a forbidden suffix. Check the compliant username is replacing the suffix, instead of adding
-	userSignup, _ = NewSignupRequest(s.Awaitilities).
-		Username("username-with-admin-more-than-20-chars").
-		Email("paulathotel@hotel.com").
-		ManuallyApprove().
-		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
-
-	require.Equal(s.T(), "username-with-ad-crt", userSignup.Status.CompliantUsername)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {
