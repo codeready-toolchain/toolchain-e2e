@@ -114,13 +114,17 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
+		configured := 0
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait1.ClusterName == m.ClusterName {
 				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)), testSpc.Enabled(true))
+				configured += 1
 			} else if memberAwait2.ClusterName == m.ClusterName {
 				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1)), testSpc.Enabled(true))
+				configured += 1
 			}
 		}
+		require.Equal(t, 2, configured)
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-1"), testspace.WithTierName("appstudio"))
