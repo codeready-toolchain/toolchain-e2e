@@ -109,7 +109,6 @@ func waitForOperators(t *testing.T) {
 }
 
 func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Config, sacl client.Client) string {
-
 	// creating another config which is used for creating only resclient,
 	//so that the main kubeconfig is not altered
 	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
@@ -231,7 +230,6 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 }
 
 func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
-
 	memberClient, err := client.New(restconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})

@@ -1744,7 +1744,6 @@ func (a *HostAwaitility) WaitForProxyPlugin(t *testing.T, name string) (*toolcha
 		}
 		proxyPlugin = obj
 		return true, nil
-
 	})
 	return proxyPlugin, err
 }

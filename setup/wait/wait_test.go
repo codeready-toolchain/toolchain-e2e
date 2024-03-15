@@ -38,7 +38,6 @@ func TestForNamespace(t *testing.T) {
 	})
 
 	t.Run("failures", func(t *testing.T) {
-
 		t.Run("timeout", func(t *testing.T) {
 			// given
 			configuration.DefaultTimeout = time.Second * 1
@@ -51,7 +50,6 @@ func TestForNamespace(t *testing.T) {
 			require.Error(t, err)
 			assert.EqualError(t, err, "space 'user0001' does not exist: timed out waiting for the condition")
 		})
-
 	})
 }
 
