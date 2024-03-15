@@ -50,7 +50,6 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 
 		// update the ServiceAccount values so we can verify that some parts will stay and some will be reverted to the needed values
 		_, err := member.UpdateServiceAccount(t, nsName, "namespace-manager", func(sa *corev1.ServiceAccount) {
-
 			// when we add an annotation to the SA resource then it should stay there
 			sa.Annotations = map[string]string{
 				"should": "stay",
@@ -125,7 +124,6 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		// verify that the secrets created for SA is the same
 		assert.Equal(t, expectedSecrets, getSASecrets(t, member, nsName, sa.Name))
 	}
-
 }
 
 func getSASecrets(t *testing.T, member *wait.MemberAwaitility, ns, saName string) []string {

@@ -17,5 +17,4 @@ func TestSetupMigration(t *testing.T) {
 	}
 
 	runner.Run(t)
-
 }
