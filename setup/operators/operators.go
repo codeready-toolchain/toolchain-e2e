@@ -69,7 +69,6 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 
 func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
 	for _, templatePath := range templatePaths {
-
 		tmpl, err := templates.GetTemplateFromFile(templatePath)
 		if err != nil {
 			return errors.Wrapf(err, "invalid template file: '%s'", templatePath)

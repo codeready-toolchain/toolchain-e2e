@@ -54,7 +54,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
-		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
+		t.Run("subSpace is recreated if deleted", func(t *testing.T) {
 			// now, delete the subSpace, along with its associated namespace,
 			// but a new Space will be provisioned by the SpaceRequest.
 			//
@@ -77,7 +77,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			t.Run("subSpace always reflects values from spaceRequest ", func(t *testing.T) {
+			t.Run("subSpace always reflects values from spaceRequest", func(t *testing.T) {
 				// given
 				// something/someone updates the tierName directly on the Space object
 

@@ -404,7 +404,6 @@ type userProgressBar struct {
 }
 
 func addProgressBar(uip *uiprogress.Progress, description string, total int) *userProgressBar {
-
 	bar := uip.AddBar(total).AppendCompleted().PrependFunc(func(b *uiprogress.Bar) string {
 		return strutil.PadLeft(fmt.Sprintf("%s (%d/%d)", description, b.Current(), total), 40, ' ')
 	})

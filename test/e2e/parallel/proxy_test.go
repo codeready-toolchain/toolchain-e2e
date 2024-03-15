@@ -481,7 +481,6 @@ func TestProxyFlow(t *testing.T) {
 						assert.Contains(t, string(r), fmt.Sprintf(`nodes is forbidden: User \"%s\" cannot list resource \"nodes\" in API group \"\" at the cluster scope`, user.compliantUsername))
 					})
 				}
-
 			}) // end of invalid request headers
 		})
 	} // end users loop
@@ -578,9 +577,7 @@ func TestProxyFlow(t *testing.T) {
 				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (get applications.appstudio.redhat.com %s)`, primaryUserNamespace, workspaceName, applicationName))
 			})
 		})
-
 	})
-
 }
 
 // this test will:
@@ -590,7 +587,6 @@ func TestProxyFlow(t *testing.T) {
 //     II. the call will be terminated via a context timeout
 //     III. check the expected error that it was terminated via a context and not on the server side
 func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
-
 	// ======================================================
 	// let's define two timeouts
 
