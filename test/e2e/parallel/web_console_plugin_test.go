@@ -25,7 +25,6 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 	await := WaitForDeployments(t)
 
 	for i, memberAwait := range await.AllMembers() {
-
 		image := memberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBCONSOLEPLUGIN_IMAGE")
 		require.NotEmpty(t, image, "The value of the env var MEMBER_OPERATOR_WEBCONSOLEPLUGIN_IMAGE wasn't found in the deployment of the member operator.")
 

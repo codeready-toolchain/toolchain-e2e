@@ -19,7 +19,6 @@ import (
 
 // EnvironmentSpec defines the desired state of Environment
 type EnvironmentSpec struct {
-
 	// Type is whether the Environment is a POC or non-POC environment
 	Type EnvironmentType `json:"type"`
 
@@ -84,7 +83,6 @@ type UnstableEnvironmentConfiguration struct {
 // See this temporary URL for details on what values to provide for the APIURL and Secret:
 // https://github.com/redhat-appstudio/managed-gitops/tree/main/examples/m6-demo#gitopsdeploymentmanagedenvironment-resource
 type KubernetesClusterCredentials struct {
-
 	// TargetNamespace is the default destination target on the cluster for deployments. This Namespace will be used
 	// for any GitOps repository K8s resources where the `.metadata.Namespace` field is not specified.
 	TargetNamespace string `json:"targetNamespace"`
@@ -113,7 +111,6 @@ type EnvironmentConfiguration struct {
 
 // EnvVarPair describes environment variables to use for the component
 type EnvVarPair struct {
-
 	// Name is the environment variable name
 	Name string `json:"name"`
 

@@ -62,7 +62,6 @@ func ExpectUserAccountIn(targetCluster *wait.MemberAwaitility) UserAccountOption
 }
 
 func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string, userAccountOption UserAccountOption) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-
 	hostAwait := awaitilities.Host()
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
@@ -200,7 +199,6 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 			err = memberAwait.WaitUntilIdentityDeleted(t, userIDIdentityName)
 			require.NoError(t, err)
 		}
-
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
@@ -222,7 +220,6 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 }
 
 func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, spaceTierName string) *toolchainv1alpha1.Space {
-
 	hostAwait := awaitilities.Host()
 
 	userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,

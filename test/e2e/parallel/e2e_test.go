@@ -113,7 +113,6 @@ func TestE2EFlow(t *testing.T) {
 	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base")
 
 	t.Run("try to break UserAccount", func(t *testing.T) {
-
 		t.Run("delete user and wait until recreated", func(t *testing.T) {
 			// given
 			user := &userv1.User{}
@@ -327,7 +326,6 @@ func TestE2EFlow(t *testing.T) {
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, laraUserName)
 			require.NoError(t, err)
 		})
-
 	})
 
 	t.Run("delete namespaced scoped resources of users and expect recreation", func(t *testing.T) {
@@ -367,7 +365,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("namespace rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
-
 			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "crtadmin-pods")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")
@@ -393,7 +390,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("space rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
-
 			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "wonderwoman-rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")
@@ -441,11 +437,9 @@ func TestE2EFlow(t *testing.T) {
 
 		// also, verify that other user's resource are left intact
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base")
-
 	})
 
 	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
-
 		// First confirm that there are actually multiple identities for the UserSignup in question, using the
 		// owner label to locate them
 
@@ -500,7 +494,6 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilUserDeleted(t, userList.Items[0].Name)
 		require.NoError(t, err)
 	})
-
 }
 
 func listByOwnerLabel(owner string) client.ListOption {

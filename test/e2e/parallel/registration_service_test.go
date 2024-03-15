@@ -683,7 +683,6 @@ func TestActivationCodeVerification(t *testing.T) {
 	})
 
 	t.Run("verification failed", func(t *testing.T) {
-
 		t.Run("unknown code", func(t *testing.T) {
 			// given
 			userSignup, token := signup(t, hostAwait)
