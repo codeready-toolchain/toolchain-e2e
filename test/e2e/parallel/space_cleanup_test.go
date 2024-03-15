@@ -31,7 +31,6 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	// TODO: needs to be changed as soon as we start creating objects in namespaces for SpaceRoles - we need to verify that it also automatically updates NSTemplateSet and the resources in the namespaces
 	t.Run("for SpaceBinding", func(t *testing.T) {
 		t.Run("when space is deleted", func(t *testing.T) {
-
 			// given
 			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "for-redhat")
 
@@ -131,11 +130,9 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 				// check that sub-space was not recreated
 				assert.Equal(t, subSpace.UID, actualSubSpace.UID)
 			})
-
 		})
 
 		t.Run("when space is provisioned for more than 30 seconds, then it should not delete the Space when SpaceBinding still exists", func(t *testing.T) {
-
 			// when
 			space, err := hostAwait.WaitForSpace(t, space1.Name)
 			require.NoError(t, err)

@@ -44,7 +44,6 @@ func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {
 		}
 		// check the status conditions, wait until the idler is "Ready/True"
 		return test.ContainsCondition(idler.Status.Conditions, wait.Running()), nil
-
 	})
 	return idler, err
 }

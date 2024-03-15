@@ -131,7 +131,6 @@ func NamespaceModifier(userNS string) ClientObjectModifier {
 }
 
 func applyObject(ctx context.Context, applycl *applyclientlib.ApplyClient, obj runtimeclient.Object, modifiers ...ClientObjectModifier) error {
-
 	// apply any modifiers before applying the object
 	for _, modifier := range modifiers {
 		if err := modifier(obj); err != nil {

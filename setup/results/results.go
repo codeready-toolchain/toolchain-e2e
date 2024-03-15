@@ -21,7 +21,6 @@ type Results struct {
 }
 
 func New(term terminal.Terminal) *Results {
-
 	csvFile, err := os.Create(cfg.ResultsFilepath())
 	if err != nil {
 		term.Infof("failed creating file: %s", err)

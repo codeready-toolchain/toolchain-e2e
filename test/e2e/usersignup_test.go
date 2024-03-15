@@ -175,7 +175,6 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
-
 }
 
 func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
@@ -231,7 +230,6 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	require.Equal(s.T(), "Jane", userSignup.Spec.IdentityClaims.GivenName)
 	require.Equal(s.T(), "Turner", userSignup.Spec.IdentityClaims.FamilyName)
 	require.Equal(s.T(), "Acme", userSignup.Spec.IdentityClaims.Company)
-
 }
 
 // TestUserResourcesCreatedWhenOriginalSubIsSet tests the case where:
@@ -373,7 +371,6 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 			s.userIsNotProvisioned(t, userSignup)
 		})
 	})
-
 }
 
 func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {

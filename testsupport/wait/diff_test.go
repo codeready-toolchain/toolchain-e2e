@@ -11,7 +11,6 @@ import (
 )
 
 func TestDiff(t *testing.T) {
-
 	t.Run("on single condition", func(t *testing.T) {
 		now := metav1.NewTime(time.Now())
 		actual := toolchainv1alpha1.Condition{
