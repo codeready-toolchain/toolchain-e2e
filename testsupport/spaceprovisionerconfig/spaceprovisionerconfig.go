@@ -8,8 +8,8 @@ import (
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,11 +34,32 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 
 	spc := &spcs[idx]
 
+	originalSpc := spc.DeepCopy()
+
 	for _, opt := range opts {
 		opt(spc)
 	}
 
-	assert.NoError(t, await.Client.Update(context.TODO(), spc))
+	require.NoError(t, await.Client.Update(context.TODO(), spc))
+
+	t.Cleanup(func() {
+		currentSpc := &toolchainv1alpha1.SpaceProvisionerConfig{}
+		err := await.Client.Get(context.TODO(), client.ObjectKeyFromObject(originalSpc), currentSpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				require.NoError(t, await.Client.Create(context.TODO(), originalSpc))
+				return
+			}
+			require.Fail(t, err.Error())
+		}
+
+		// make the originalSpc look like we freshly obtained it from the server and updated its fields
+		// to look like the original.
+		originalSpc.Generation = currentSpc.Generation
+		originalSpc.ResourceVersion = currentSpc.ResourceVersion
+
+		require.NoError(t, await.Client.Update(context.TODO(), originalSpc))
+	})
 }
 
 func getAllSpcs(t *testing.T, await *wait.Awaitility) ([]toolchainv1alpha1.SpaceProvisionerConfig, error) {
