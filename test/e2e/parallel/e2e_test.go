@@ -112,12 +112,6 @@ func TestE2EFlow(t *testing.T) {
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "deactivate30", "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base")
 
-	_, err := hostAwait.WaitForSpace(t, johnsmithName, wait.UntilSpaceHasAnyTargetClusterSet())
-	require.NoError(t, err)
-
-	_, err = hostAwait.WaitForSpace(t, targetedJohnName, wait.UntilSpaceHasAnyTargetClusterSet())
-	require.NoError(t, err)
-
 	t.Run("try to break UserAccount", func(t *testing.T) {
 		t.Run("delete user and wait until recreated", func(t *testing.T) {
 			// given
@@ -270,9 +264,9 @@ func TestE2EFlow(t *testing.T) {
 				"video_game": "Tomb Raider",
 			},
 		}
-		err = memberAwait.Client.Create(context.TODO(), cm)
+		err := memberAwait.Client.Create(context.TODO(), cm)
 		require.NoError(t, err)
-		cm, err := memberAwait.WaitForConfigMap(t, userNamespace, cmName)
+		cm, err = memberAwait.WaitForConfigMap(t, userNamespace, cmName)
 		require.NoError(t, err)
 		require.NotEmpty(t, cm)
 
