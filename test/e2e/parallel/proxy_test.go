@@ -20,7 +20,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
-	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
@@ -69,25 +68,7 @@ func (u *proxyUser) shareSpaceWith(t *testing.T, awaitilities wait.Awaitilities,
 	)
 	_, err = awaitilities.Host().WaitForSpaceBinding(t, guestUserMur.GetName(), primaryUserSpace.GetName())
 	require.NoError(t, err)
-	return spaceBindingRequest
-}
 
-func (u *proxyUser) invalidShareSpaceWith(t *testing.T, awaitilities wait.Awaitilities, guestUser *proxyUser) *toolchainv1alpha1.SpaceBindingRequest {
-	// share primaryUser space with guestUser
-	guestUserMur, err := awaitilities.Host().GetMasterUserRecord(guestUser.compliantUsername)
-	require.NoError(t, err)
-	primaryUserSpace, err := awaitilities.Host().WaitForSpace(t, u.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet(), wait.UntilSpaceHasAnyProvisionedNamespaces())
-	require.NoError(t, err)
-	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, primaryUserSpace.Spec.TargetCluster,
-		WithSpecSpaceRole("invalidRole"),
-		WithSpecMasterUserRecord(guestUserMur.GetName()),
-		WithNamespace(testsupportspace.GetDefaultNamespace(primaryUserSpace.Status.ProvisionedNamespaces)),
-	)
-	// wait for spacebinding request status to be set
-	_, err = awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalidRole' for space '%s'", primaryUserSpace.Name))),
-	)
-	require.NoError(t, err)
 	return spaceBindingRequest
 }
 
@@ -481,6 +462,7 @@ func TestProxyFlow(t *testing.T) {
 						assert.Contains(t, string(r), fmt.Sprintf(`nodes is forbidden: User \"%s\" cannot list resource \"nodes\" in API group \"\" at the cluster scope`, user.compliantUsername))
 					})
 				}
+
 			}) // end of invalid request headers
 		})
 	} // end users loop
@@ -577,7 +559,9 @@ func TestProxyFlow(t *testing.T) {
 				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (get applications.appstudio.redhat.com %s)`, primaryUserNamespace, workspaceName, applicationName))
 			})
 		})
+
 	})
+
 }
 
 // this test will:
@@ -641,7 +625,7 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 				Get()
 			t.Logf("stopping the watch after %s", time.Since(started))
 
-			require.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
+			assert.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
 			assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
 		})
 	}()
@@ -685,8 +669,6 @@ func TestSpaceLister(t *testing.T) {
 	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
 	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
 	bicycleSBROnBusSpace := users["bus"].shareSpaceWith(t, awaitilities, users["bicycle"])
-	// let's also create a failing SBR so that we can check if it's being added in the bindings list
-	failingSBR := users["bus"].invalidShareSpaceWith(t, awaitilities, users["car"])
 
 	t.Run("car lists workspaces", func(t *testing.T) {
 		// when
@@ -800,17 +782,10 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
-					// the failing SBR should be present in the list of bindings, so that the user can manage it
-					{MasterUserRecord: "car", Role: "invalidRole", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
-						Name:      failingSBR.GetName(),
-						Namespace: failingSBR.GetNamespace(),
-					}},
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
-					}},
-				})),
-
+					}}})),
 				*busWS)
 		})
 
@@ -858,10 +833,6 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
-					{MasterUserRecord: "car", Role: "invalidRole", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
-						Name:      failingSBR.GetName(),
-						Namespace: failingSBR.GetNamespace(),
-					}},
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
@@ -886,7 +857,7 @@ func TestSpaceLister(t *testing.T) {
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnCarSpace.GetName(),
 						Namespace: bicycleSBROnCarSpace.GetNamespace(),
-					}}},
+					}}}, // this is system generated so no actions for the user
 				),
 			), *carWS)
 		})

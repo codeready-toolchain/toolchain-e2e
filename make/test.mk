@@ -38,6 +38,14 @@ E2E_PARALLELISM=1
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
+.PHONY: test-e2e-community
+test-e2e-community: prepare-e2e deploy-e2e e2e-run-community
+	@:
+
+.PHONY: test-e2e-community-local
+test-e2e-community-local: prepare-e2e deploy-e2e-local e2e-run-community
+	@:
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
@@ -116,14 +124,32 @@ test-e2e-registration-local:
 .PHONY: e2e-run-parallel
 e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
+	oc patch -n ${HOST_NS} toolchainconfigs.toolchain.dev.openshift.com config --patch='{"spec":{"global":{"publicViewer":{"enabled":false}}}}' --type=merge
+	oc delete -n ${HOST_NS} pods -l control-plane=controller-manager
+	oc delete -n ${HOST_NS} pod -l name=registration-service
+	oc rollout -n ${HOST_NS} status deployment
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
 	@echo "The parallel e2e tests successfully finished"
 
 .PHONY: e2e-run
 e2e-run:
 	@echo "Running e2e tests..."
+	oc patch -n ${HOST_NS} toolchainconfigs.toolchain.dev.openshift.com config --patch='{"spec":{"global":{"publicViewer":{"enabled":false}}}}' --type=merge
+	oc delete -n ${HOST_NS} pods -l control-plane=controller-manager
+	oc delete -n ${HOST_NS} pod -l name=registration-service
+	oc rollout -n ${HOST_NS} status deployment
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e ./test/metrics"
 	@echo "The e2e tests successfully finished"
+
+.PHONY: e2e-run-community
+e2e-run-community:
+	@echo "Running e2e community tests..."
+	oc patch -n ${HOST_NS} toolchainconfigs.toolchain.dev.openshift.com config --patch='{"spec":{"global":{"publicViewer":{"enabled":true,"username":"public-viewer"}}}}' --type=merge
+	oc delete -n ${HOST_NS} pods -l control-plane=controller-manager
+	oc delete -n ${HOST_NS} pod -l name=registration-service
+	oc rollout -n ${HOST_NS} status deployment
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/community"
+	@echo "The e2e community tests successfully finished"
 
 .PHONY: execute-tests
 execute-tests:

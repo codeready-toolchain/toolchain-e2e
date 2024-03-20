@@ -30,6 +30,13 @@ func CreateSpaceBinding(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolc
 	return spaceBinding
 }
 
+func CreateSpaceBindingStr(t *testing.T, hostAwait *wait.HostAwaitility, murName, spaceName, spaceNamespace, spaceRole string) *toolchainv1alpha1.SpaceBinding {
+	spaceBinding := NewSpaceBindingStr(murName, spaceName, spaceNamespace, spaceRole)
+	err := hostAwait.CreateWithCleanup(t, spaceBinding)
+	require.NoError(t, err)
+	return spaceBinding
+}
+
 // CreateSpaceBindingWithoutCleanup creates SpaceBinding resource for the given MUR & Space with the given space role; and doesn't mark the resource to be ready for cleanup
 func CreateSpaceBindingWithoutCleanup(t *testing.T, hostAwait *wait.HostAwaitility, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) *toolchainv1alpha1.SpaceBinding {
 	spaceBinding := NewSpaceBinding(mur, space, spaceRole)
@@ -57,6 +64,28 @@ func NewSpaceBinding(mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1
 		Spec: toolchainv1alpha1.SpaceBindingSpec{
 			MasterUserRecord: mur.Name,
 			Space:            space.Name,
+			SpaceRole:        spaceRole,
+		},
+	}
+}
+
+func NewSpaceBindingStr(murName, spaceName, spaceNamespace, spaceRole string) *toolchainv1alpha1.SpaceBinding {
+	namePrefix := fmt.Sprintf("%s-%s", murName, spaceName)
+	if len(namePrefix) > 50 {
+		namePrefix = namePrefix[0:50]
+	}
+	return &toolchainv1alpha1.SpaceBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: namePrefix + "-",
+			Namespace:    spaceNamespace,
+			Labels: map[string]string{
+				toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
+				toolchainv1alpha1.SpaceBindingSpaceLabelKey:            spaceName,
+			},
+		},
+		Spec: toolchainv1alpha1.SpaceBindingSpec{
+			MasterUserRecord: murName,
+			Space:            spaceName,
 			SpaceRole:        spaceRole,
 		},
 	}
