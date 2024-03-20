@@ -34,6 +34,11 @@ func WithNamespace(ns string) SpaceBindingRequestOption {
 func CreateSpaceBindingRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceBindingRequestOption) *toolchainv1alpha1.SpaceBindingRequest {
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
+
+	return CreateSpaceBindingRequestOnMember(t, memberAwait, opts...)
+}
+
+func CreateSpaceBindingRequestOnMember(t *testing.T, memberAwait *wait.MemberAwaitility, opts ...SpaceBindingRequestOption) *toolchainv1alpha1.SpaceBindingRequest {
 	namePrefix := util.NewObjectNamePrefix(t)
 
 	spaceBindingRequest := &toolchainv1alpha1.SpaceBindingRequest{
@@ -44,7 +49,7 @@ func CreateSpaceBindingRequest(t *testing.T, awaitilities wait.Awaitilities, mem
 	for _, apply := range opts {
 		apply(spaceBindingRequest)
 	}
-	err = memberAwait.CreateWithCleanup(t, spaceBindingRequest)
+	err := memberAwait.CreateWithCleanup(t, spaceBindingRequest)
 	require.NoError(t, err)
 
 	return spaceBindingRequest
