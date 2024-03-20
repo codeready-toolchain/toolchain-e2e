@@ -24,7 +24,6 @@ import (
 )
 
 func TestOperatorVersionMetrics(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 
@@ -40,8 +39,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit := labels[0]["commit"]
-		require.NotNil(t, commit)
-		assert.Len(t, *commit, 7)
+		assert.Len(t, commit, 7)
 	})
 
 	t.Run("member-operators", func(t *testing.T) {
@@ -59,8 +57,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for the first Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit1 := labels[0]["commit"]
-		require.NotNil(t, commit1)
-		assert.Len(t, *commit1, 7)
+		assert.Len(t, commit1, 7)
 
 		// --- member2 ---
 		// when
@@ -69,11 +66,10 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for the second Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit2 := labels[0]["commit"]
-		require.NotNil(t, commit2)
-		assert.Len(t, *commit2, 7)
+		assert.Len(t, commit2, 7)
 
 		// expect the same version on member1 and member2
-		assert.Equal(t, *commit1, *commit2)
+		assert.Equal(t, commit1, commit2)
 	})
 }
 
@@ -245,7 +241,6 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-
 }
 
 // TestVerificationRequiredMetric verifies that `UserSignupVerificationRequiredMetric` counters are increased only once when users are created/reactivated
@@ -485,7 +480,6 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 // TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned
 func TestMetricsWhenUsersBanned(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -631,7 +625,6 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external") // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
-
 	})
 }
 

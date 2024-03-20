@@ -202,5 +202,5 @@ func TestRetargetUserWithSBRByChangingSpaceTargetClusterWhenSpaceIsShared(t *tes
 	// no SBRs are present
 	sbrsFound, err := awaitilities.Member2().ListSpaceBindingRequests(GetDefaultNamespace(spaceToMove.Status.ProvisionedNamespaces))
 	require.NoError(t, err)
-	require.Equal(t, 0, len(sbrsFound))
+	require.Empty(t, sbrsFound)
 }

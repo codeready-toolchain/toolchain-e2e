@@ -38,7 +38,6 @@ func TestForNamespace(t *testing.T) {
 	})
 
 	t.Run("failures", func(t *testing.T) {
-
 		t.Run("timeout", func(t *testing.T) {
 			// given
 			configuration.DefaultTimeout = time.Second * 1
@@ -51,7 +50,6 @@ func TestForNamespace(t *testing.T) {
 			require.Error(t, err)
 			assert.EqualError(t, err, "space 'user0001' does not exist: timed out waiting for the condition")
 		})
-
 	})
 }
 
@@ -115,7 +113,7 @@ func TestHasSubscriptionWithCondition(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t) // csv does not exist
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+			cl.MockGet = func(_ context.Context, _ types.NamespacedName, _ client.Object, _ ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -186,7 +184,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+			cl.MockGet = func(_ context.Context, _ types.NamespacedName, _ client.Object, _ ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -259,7 +257,7 @@ func TestHasCSVWithPrefix(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t) // csv does not exist
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+			cl.MockGet = func(_ context.Context, _ types.NamespacedName, _ client.Object, _ ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 
@@ -329,7 +327,7 @@ func TestForCSVWithCriteria(t *testing.T) {
 		t.Run("client error", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+			cl.MockGet = func(_ context.Context, _ types.NamespacedName, _ client.Object, _ ...client.GetOption) error {
 				return fmt.Errorf("Test client error")
 			}
 

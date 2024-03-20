@@ -56,37 +56,26 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	switch tier.Name {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
-
 	case base1ns:
 		return &base1nsTierChecks{tierName: base1ns}, nil
-
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
-
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
-
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
-
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
-
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
-
 	case appstudiolarge:
 		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
-
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
-
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
-
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
@@ -458,6 +447,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
 		pipelineRunnerRoleBinding(),
+		caBundleConfigMap(),
 	}
 
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
@@ -520,7 +510,7 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("300"),
+		clusterResourceQuotaDeployments("600"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -539,7 +529,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeploymentCount("300", "100"),
+		clusterResourceQuotaDeploymentCount("600", "100"),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
@@ -1078,7 +1068,7 @@ func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsChe
 
 func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ...string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		require.True(t, len(labelNameValuePairs)%2 == 0, "labelNameValuePairs must be a list of key-value pairs")
+		require.Equal(t, 0, len(labelNameValuePairs)%2, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
 		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
@@ -1899,6 +1889,13 @@ func namespaceManagerSA() namespaceObjectsCheck {
 func pipelineServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+	}
+}
+
+func caBundleConfigMap() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		_, err := memberAwait.WaitForConfigMap(t, ns.Name, "trusted-ca")
 		require.NoError(t, err)
 	}
 }

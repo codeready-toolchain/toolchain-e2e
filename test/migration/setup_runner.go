@@ -15,7 +15,6 @@ import (
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	tsspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -122,7 +121,7 @@ func (r *SetupMigrationRunner) prepareProvisionedSubspace(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func createSpaceRequestForParentSpace(t *testing.T, awaitilities wait.Awaitilities, memberName, parent string, opts ...space.SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
+func createSpaceRequestForParentSpace(t *testing.T, awaitilities wait.Awaitilities, memberName, parent string, opts ...tsspace.SpaceRequestOption) *toolchainv1alpha1.SpaceRequest {
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
 
@@ -131,8 +130,8 @@ func createSpaceRequestForParentSpace(t *testing.T, awaitilities wait.Awaitiliti
 	require.NoError(t, err)
 
 	// create the space request in the "default" namespace provisioned by the parentSpace
-	namespace := space.GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
-	spaceRequest := space.NewSpaceRequest(t, append(opts, space.WithNamespace(namespace))...)
+	namespace := tsspace.GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
+	spaceRequest := tsspace.NewSpaceRequest(t, append(opts, tsspace.WithNamespace(namespace))...)
 	require.NotEmpty(t, spaceRequest)
 
 	// don't cleanup the new spacerequest, since we need it for migration testing

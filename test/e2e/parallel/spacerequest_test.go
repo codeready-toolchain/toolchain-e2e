@@ -22,7 +22,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -52,7 +52,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
-		t.Run("subSpace is recreated if deleted ", func(t *testing.T) {
+		t.Run("subSpace is recreated if deleted", func(t *testing.T) {
 			// now, delete the subSpace, along with its associated namespace,
 			// but a new Space will be provisioned by the SpaceRequest.
 			//
@@ -75,7 +75,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			t.Run("subSpace always reflects values from spaceRequest ", func(t *testing.T) {
+			t.Run("subSpace always reflects values from spaceRequest", func(t *testing.T) {
 				// given
 				// something/someone updates the tierName directly on the Space object
 
@@ -199,7 +199,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	t.Run("subSpace target cluster is different from spacerequest cluster", func(t *testing.T) {
 		// when
 		// we add a custom cluster-role for member2
-		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Type, memberAwait2.Namespace, nil)
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Namespace, nil)
 		require.NoError(t, err)
 		require.True(t, found)
 		_, err = hostAwait.UpdateToolchainCluster(t, memberCluster2.Name, func(tc *toolchainv1alpha1.ToolchainCluster) {
@@ -253,6 +253,31 @@ func TestCreateSpaceRequest(t *testing.T) {
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, subSpace.Name)
 			require.NoError(t, err)
 		})
+	})
+
+	t.Run("create space request without secret generation", func(t *testing.T) {
+		// when
+		targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
+		spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+			WithSpecTierName("base1ns"), // base1ns has no service account associated with the provisioned namespaces
+			WithSpecTargetClusterRoles(targetClusterRoles))
+
+		// then
+		// check for the subSpace creation
+		subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+			UntilSpaceHasTargetClusterRoles(targetClusterRoles),
+			UntilSpaceHasTier("base1ns"),
+			UntilSpaceHasAnyProvisionedNamespaces(),
+		)
+		require.NoError(t, err)
+		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
+		_, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
+			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
+			UntilSpaceRequestHasNamespaceAccessWithoutSecretRef(), // check that namespace access is present but without a SecretRef set
+		)
+		require.NoError(t, err)
 	})
 }
 

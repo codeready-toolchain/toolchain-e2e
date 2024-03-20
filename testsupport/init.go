@@ -99,17 +99,16 @@ func waitForOperators(t *testing.T) {
 
 	initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
 
-	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
+	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
-	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Type, initHostAwait.Namespace, wait.ReadyToolchainCluster)
+	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
 }
 
 func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Config, sacl client.Client) string {
-
 	// creating another config which is used for creating only resclient,
 	//so that the main kubeconfig is not altered
 	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
@@ -231,13 +230,12 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 }
 
 func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfig *rest.Config, namespace string) *wait.MemberAwaitility {
-
 	memberClient, err := client.New(restconfig, client.Options{
 		Scheme: schemeWithAllAPIs(t),
 	})
 	require.NoError(t, err)
 
-	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, "member", namespace, wait.ReadyToolchainCluster)
+	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
 	memberAwait := wait.NewMemberAwaitility(restconfig, memberClient, namespace, clusterName)

@@ -34,7 +34,6 @@ import (
 
 // ApplicationSpec defines the desired state of Application
 type ApplicationSpec struct {
-
 	// DisplayName refers to the name that an application will be deployed with in App Studio.
 	DisplayName string `json:"displayName,omitempty"`
 

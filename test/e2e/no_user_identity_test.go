@@ -70,13 +70,13 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 	// preexisting user & identity are still there and not modified
 	// Verify provisioned User
 	user, err := memberAwait.WaitForUser(t, preexistingUser.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, preexistingUser.UID, user.UID)
 	assert.NotEqual(t, toolchainv1alpha1.ProviderLabelValue, user.Labels[toolchainv1alpha1.ProviderLabelKey])
 
 	// Verify provisioned Identity
 	identity, err := memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, preexistingIdentity.UID, identity.UID)
 	assert.NotEqual(t, toolchainv1alpha1.ProviderLabelValue, identity.Labels[toolchainv1alpha1.ProviderLabelKey])
 
@@ -96,10 +96,10 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 		// then
 		// Verify provisioned User
 		_, err = memberAwait.WaitForUser(t, preexistingUser.Name)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Verify provisioned Identity
 		_, err = memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

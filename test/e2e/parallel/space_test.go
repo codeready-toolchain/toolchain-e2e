@@ -174,7 +174,6 @@ func TestSpaceRoles(t *testing.T) {
 		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
 
 		// then
-		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
@@ -531,7 +530,6 @@ func TestSubSpaceInheritance(t *testing.T) {
 				SpaceRole(appstudioTier.Spec.SpaceRoles["contributor"].TemplateRef, subMur.Name)),
 		)
 		require.NoError(t, err)
-
 	})
 }
 

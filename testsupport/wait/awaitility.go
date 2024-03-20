@@ -54,7 +54,6 @@ type Awaitility struct {
 	RestConfig     *rest.Config
 	ClusterName    string
 	Namespace      string
-	Type           cluster.Type
 	RetryInterval  time.Duration
 	Timeout        time.Duration
 	MetricsURL     string
@@ -162,8 +161,8 @@ func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, 
 // WaitForToolchainClusterWithCondition waits until there is a ToolchainCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
-func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
-	t.Logf("waiting for ToolchainCluster for cluster type '%s' in namespace '%s'", clusterType, namespace)
+func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
+	t.Logf("waiting for ToolchainCluster in namespace '%s'", namespace)
 	timeout := a.Timeout
 	if condition != nil {
 		timeout = ToolchainClusterConditionTimeout
@@ -171,7 +170,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, clusterT
 	var c toolchainv1alpha1.ToolchainCluster
 	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
 		var ready bool
-		if c, ready, err = a.GetToolchainCluster(t, clusterType, namespace, condition); ready {
+		if c, ready, err = a.GetToolchainCluster(t, namespace, condition); ready {
 			return true, nil
 		}
 		return false, err
@@ -204,16 +203,15 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, nam
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
-func (a *Awaitility) GetToolchainCluster(t *testing.T, clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
+func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
 	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
 		"namespace": namespace,
-		"type":      string(clusterType),
 	}); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
 	}
 	if len(clusters.Items) == 0 {
-		t.Logf("no toolchaincluster resource with expected labels: namespace='%s', type='%s'", namespace, string(clusterType))
+		t.Logf("no toolchaincluster resource with expected labels: namespace='%s'", namespace)
 	}
 	// assume there is zero or 1 match only
 	for _, cl := range clusters.Items {
@@ -316,7 +314,6 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 				return false, err
 			}
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
-
 		} else {
 			request, err = http.NewRequest("GET", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
 			if err != nil {
@@ -353,7 +350,7 @@ func (a *Awaitility) GetMetricValue(t *testing.T, family string, labelAndValues 
 
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
-func (a *Awaitility) GetMetricLabels(t *testing.T, family string) []map[string]*string {
+func (a *Awaitility) GetMetricLabels(t *testing.T, family string) []map[string]string {
 	labels, err := metrics.GetMetricLabels(a.RestConfig, a.MetricsURL, family)
 	require.NoError(t, err)
 	return labels
@@ -747,7 +744,6 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 			}
 		}
 		w.t.Logf(sb.String(), args...)
-
 	}
 	return returnedObject, err
 }

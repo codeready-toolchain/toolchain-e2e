@@ -70,7 +70,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := GetMetricValue(config, url, "sandbox_user_signups_total", []string{})
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, float64(7), result)
+			assert.InDelta(t, float64(7), result, 0.1)
 		})
 
 		t.Run("counter with single label", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := GetMetricValue(config, url, "workqueue_depth", []string{"name", "masteruserrecord-controller"})
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, float64(0), result)
+			assert.InDelta(t, float64(0), result, 0.1)
 		})
 
 		t.Run("counter with two labels", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := GetMetricValue(config, url, "controller_runtime_reconcile_total", []string{"controller", "usersignup-controller", "result", "success"})
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, float64(10), result)
+			assert.InDelta(t, float64(10), result, 0.1)
 		})
 
 		t.Run("gauge with no labels", func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestGetMetricValue(t *testing.T) {
 			result, err := GetMetricValue(config, url, "sandbox_master_user_record_current", []string{})
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, float64(7), result)
+			assert.InDelta(t, float64(7), result, 0.01)
 		})
 	})
 
@@ -105,7 +105,7 @@ func TestGetMetricValue(t *testing.T) {
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "metric 'non_existent_counter{[]}' not found")
-			assert.Equal(t, float64(0), result)
+			assert.InDelta(t, float64(0), result, 0.01)
 		})
 
 		t.Run("metric family exists but labels do not match", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestGetMetricValue(t *testing.T) {
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "metric 'workqueue_depth{[name non-existent-controller]}' not found")
-			assert.Equal(t, float64(0), result)
+			assert.InDelta(t, float64(0), result, 0.01)
 		})
 
 		t.Run("odd number of label parameters", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestGetMetricValue(t *testing.T) {
 			// then
 			require.Error(t, err)
 			require.EqualError(t, err, "received odd number of label arguments, labels must be key-value pairs")
-			assert.Equal(t, float64(-1), result)
+			assert.InDelta(t, float64(-1), result, 0.01)
 		})
 	})
 }

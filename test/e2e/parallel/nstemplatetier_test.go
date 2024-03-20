@@ -15,7 +15,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,12 +62,12 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// wait for the user to be provisioned for the first time
 	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", "base") // deactivate30 is the default UserTier and base is the default SpaceTier
-	for _, tierToCheck := range tiersToCheck {
 
+	for _, tierToCheck := range tiersToCheck {
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierToCheck,
-			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+			wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
 
 		t.Run(fmt.Sprintf("promote %s space to %s tier", testingtiers.Status.CompliantUsername, tierToCheck), func(t *testing.T) {
@@ -95,8 +94,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// we will have a lot of usersignups who are affected by the tier updates, so
 	// we need to increase the timeouts on assertions/awaitilities to allow for all resources to be updated
-	hostAwait = hostAwait.WithRetryOptions(TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
-	memberAwait = memberAwait.WithRetryOptions(TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
+	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
+	memberAwait = memberAwait.WithRetryOptions(wait.TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
 	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base")
 	require.NoError(t, err)
@@ -186,7 +185,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 // setupSpaces takes care of:
 // 1. creating a new tier with the provided tierName and using the TemplateRefs of the provided tier.
 // 2. creating `count` number of spaces
-func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []string {
+func setupSpaces(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *wait.MemberAwaitility, count int) []string {
 	var spaces []string
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf(nameFmt, i)
@@ -201,7 +200,7 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTe
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
+func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *wait.MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
 	hostAwait := awaitilities.Host()
 
@@ -229,22 +228,22 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 	return userSignups
 }
 
-func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expectedCount int) {
-	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+func verifyStatus(t *testing.T, hostAwait *wait.HostAwaitility, tierName string, expectedCount int) {
+	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierName, wait.UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
 }
 
-func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
+func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *wait.HostAwaitility, memberAwaitility *wait.MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(t, usersignup.Status.CompliantUsername,
-			UntilUserAccountHasConditions(wait.Provisioned()),
-			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.PropagatedClaims)),
-			UntilUserAccountMatchesMur(hostAwait))
+			wait.UntilUserAccountHasConditions(wait.Provisioned()),
+			wait.UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.PropagatedClaims)),
+			wait.UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tier.Name))
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, wait.UntilNSTemplateSetHasTier(tier.Name))
 		if err != nil {
 			t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
 		}
@@ -255,7 +254,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	}
 }
 
-func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *HostAwaitility, targetCluster *MemberAwaitility, spaces []string, tier *tiers.CustomNSTemplateTier) {
+func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaces []string, tier *tiers.CustomNSTemplateTier) {
 	// verify individual space updates
 	for _, spaceName := range spaces {
 		VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, targetCluster, spaceName, tier)
@@ -280,5 +279,5 @@ func TestTierTemplates(t *testing.T) {
 	require.NoError(t, err)
 	// We have 27 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3)
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
-	assert.True(t, len(allTiers.Items) >= 27)
+	assert.GreaterOrEqual(t, len(allTiers.Items), 27)
 }

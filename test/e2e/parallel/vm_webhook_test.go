@@ -101,8 +101,8 @@ func TestCreateVirtualMachine(t *testing.T) {
 			limits, limitsFound, limitsErr := unstructured.NestedStringMap(result.Object, "spec", "template", "spec", "domain", "resources", "limits")
 			require.NoError(t, limitsErr)
 			require.True(t, limitsFound)
-			require.Equal(t, limits["memory"], tc.expectedMemoryLimit)
-			require.Equal(t, limits["cpu"], tc.expectedCPULimit)
+			require.Equal(t, tc.expectedMemoryLimit, limits["memory"])
+			require.Equal(t, tc.expectedCPULimit, limits["cpu"])
 
 			// verify volume exists
 			volumes, volumesFound, volumesErr := unstructured.NestedSlice(result.Object, "spec", "template", "spec", "volumes")
@@ -111,13 +111,24 @@ func TestCreateVirtualMachine(t *testing.T) {
 			require.Len(t, volumes, 1)
 			volName, volNameExists := volumes[0].(map[string]interface{})["name"]
 			require.True(t, volNameExists, "volume name not found")
-			require.Equal(t, volName, "cloudinitdisk")
+			require.Equal(t, "cloudinitdisk", volName)
+
+			// verify sandbox toleration is set
+			tolerations, tolerationsFound, tolerationsErr := unstructured.NestedSlice(result.Object, "spec", "template", "spec", "tolerations")
+			require.NoError(t, tolerationsErr)
+			require.True(t, tolerationsFound)
+			require.Len(t, tolerations, 1)
+			tol, ok := tolerations[0].(map[string]interface{})
+			require.True(t, ok)
+			require.Equal(t, "NoSchedule", tol["effect"])
+			require.Equal(t, "sandbox-cnv", tol["key"])
+			require.Equal(t, "Exists", tol["operator"])
 
 			// verify cloud-init user data
 			userData, userDataFound, userDataErr := unstructured.NestedString(volumes[0].(map[string]interface{}), tc.cloudInitType, "userData")
 			require.NoError(t, userDataErr)
 			require.True(t, userDataFound, "user data not found")
-			require.Equal(t, userData, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n")
+			require.Equal(t, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n", userData)
 		})
 	}
 }
@@ -152,6 +163,7 @@ func domainWithMemoryGuest(mem string) map[string]interface{} {
 		"memory": map[string]interface{}{
 			"guest": mem,
 		},
+		"devices": map[string]interface{}{},
 	}
 }
 
@@ -163,6 +175,7 @@ func domainWithResourceRequests(mem, cpu string) map[string]interface{} {
 				"cpu":    cpu,
 			},
 		},
+		"devices": map[string]interface{}{},
 	}
 }
 

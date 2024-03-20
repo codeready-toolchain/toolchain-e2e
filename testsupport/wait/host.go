@@ -12,7 +12,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
@@ -49,9 +48,9 @@ func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrati
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
+			ClusterName:   "host",
 			RestConfig:    cfg,
 			Namespace:     ns,
-			Type:          cluster.Host,
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
@@ -358,7 +357,7 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return actual.Name == name
 		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+		Diff: func(_ *toolchainv1alpha1.MasterUserRecord) string {
 			return fmt.Sprintf("expected MasterUserRecord named '%s'", name)
 		},
 	}
@@ -390,7 +389,7 @@ func UntilMasterUserRecordHasAnyUserAccountStatus() MasterUserRecordWaitCriterio
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return len(actual.Status.UserAccounts) > 0
 		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+		Diff: func(_ *toolchainv1alpha1.MasterUserRecord) string {
 			return "expected to be at least one embedded UserAccount status present, but is empty"
 		},
 	}
@@ -1756,7 +1755,6 @@ func (a *HostAwaitility) WaitForProxyPlugin(t *testing.T, name string) (*toolcha
 		}
 		proxyPlugin = obj
 		return true, nil
-
 	})
 	return proxyPlugin, err
 }

@@ -2,10 +2,11 @@ package e2e
 
 import (
 	"fmt"
-	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
-	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"testing"
 	"time"
+
+	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -168,7 +169,6 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
-
 }
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
@@ -293,7 +293,6 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	require.Equal(s.T(), "Jane", userSignup.Spec.IdentityClaims.GivenName)
 	require.Equal(s.T(), "Turner", userSignup.Spec.IdentityClaims.FamilyName)
 	require.Equal(s.T(), "Acme", userSignup.Spec.IdentityClaims.Company)
-
 }
 
 // TestUserResourcesCreatedWhenUserIDIsSet tests the case where:
@@ -457,7 +456,6 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 			s.userIsNotProvisioned(t, userSignup)
 		})
 	})
-
 }
 
 func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
@@ -597,7 +595,7 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 			testconfig.CapacityThresholds().MaxNumberOfSpaces(testconfig.PerMemberCluster(memberAwait.ClusterName, 1000)).
 				ResourceCapacityThreshold(80))
 
-		t.Run("verification required set to true", func(t *testing.T) {
+		t.Run("verification required set to true", func(_ *testing.T) {
 			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
 		})
 	})
@@ -876,7 +874,7 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	// then
 
 	// annotation should be set
-	require.True(s.T(), userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey] == "true")
+	require.Equal(s.T(), "true", userSignup.Annotations[toolchainv1alpha1.SkipAutoCreateSpaceAnnotationKey])
 
 	VerifyResourcesProvisionedForSignupWithoutSpace(s.T(), s.Awaitilities, userSignup, "deactivate30")
 }

@@ -91,7 +91,7 @@ func (s *userManagementTestSuite) TestVerifyUserTiers() {
 	for _, expectedTier := range expectedTiers {
 		s.T().Run(fmt.Sprintf("verify UserTier '%s'", expectedTier.name), func(t *testing.T) {
 			userTier, err := hostAwait.WaitForUserTier(t, expectedTier.name)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, expectedTier.deactivationTimeoutDays, userTier.Spec.DeactivationTimeoutDays)
 		})
 	}
@@ -109,7 +109,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	require.Equal(s.T(), -1, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
-
 		// User on member cluster 1
 		userSignupMember1, _ := NewSignupRequest(s.Awaitilities).
 			Username("usertodeactivate").
@@ -140,7 +139,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("verify notification fails on user deactivation with no usersignup email", func(t *testing.T) {
-
 		// User on member cluster 1
 		userNoEmail, _ := NewSignupRequest(s.Awaitilities).
 			Username("usernoemail").
@@ -166,7 +164,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
-
 		_, murMember1 := NewSignupRequest(s.Awaitilities).
 			Username("usernodeactivate").
 			Email("usernodeactivate@redhat.com").
@@ -515,7 +512,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
-
 	s.T().Run("ban provisioned usersignup", func(t *testing.T) {
 		hostAwait := s.Host()
 		memberAwait := s.Member1()
