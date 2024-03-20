@@ -578,6 +578,17 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
+func UntilUserSignupHasScheduledDeactivationTime() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return !actual.Status.ScheduledDeactivationTimestamp.IsZero()
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected to have a value for '.Status.ScheduledDeactivationTimestamp'"
+		},
+	}
+}
+
 // UntilUserSignupHasCompliantUsername returns a `UserSignupWaitCriterion` which checks that the given
 // UserSignup has a `.Status.CompliantUsername` value
 func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {

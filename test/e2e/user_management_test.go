@@ -349,7 +349,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// Wait for the UserSignup to have the desired state
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
+			wait.UntilUserSignupHasScheduledDeactivationTime())
 		require.NoError(t, err)
 
 		s.T().Run("user set to deactivating when provisioned time set in past", func(t *testing.T) {
