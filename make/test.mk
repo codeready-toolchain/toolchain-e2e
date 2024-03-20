@@ -337,7 +337,7 @@ create-host-resources: create-spaceprovisionerconfigs-for-members
 	# since e2e environment has 2 member operators running in the same cluster
 	# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then \
-		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -l type=member -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name" | grep "2$$"`; \
+		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name" | grep "2$$"`; \
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		echo "ENVIRONMENT ${ENVIRONMENT}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
