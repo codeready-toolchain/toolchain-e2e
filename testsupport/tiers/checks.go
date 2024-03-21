@@ -431,7 +431,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
 		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
-		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
@@ -510,7 +510,7 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("300"),
+		clusterResourceQuotaDeployments("600"),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -529,7 +529,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeploymentCount("300", "100"),
+		clusterResourceQuotaDeploymentCount("600", "100"),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
