@@ -86,8 +86,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 	t.Run("set low capacity threshold and expect that space will have default tier, but won't have target cluster so it won't be provisioned", func(t *testing.T) {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.Enabled(true))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.Enabled(true))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
 		// some short time to get the cache populated with the change
 		time.Sleep(1 * time.Second)
 
@@ -100,8 +100,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 		t.Run("reset the threshold and expect the space will be have the targetCluster set and will be also provisioned", func(t *testing.T) {
 			// when
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80), testSpc.Enabled(true))
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80), testSpc.Enabled(true))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
 
 			// then
 			VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
@@ -114,17 +114,13 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
 			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
-		configured := 0
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait1.ClusterName == m.ClusterName {
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)), testSpc.Enabled(true))
-				configured += 1
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)))
 			} else if memberAwait2.ClusterName == m.ClusterName {
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1)), testSpc.Enabled(true))
-				configured += 1
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1)))
 			}
 		}
-		require.Equal(t, 2, configured)
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-1"), testspace.WithTierName("appstudio"))
@@ -135,11 +131,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		t.Run("after both members marking as full then the new space won't be provisioned", func(t *testing.T) {
 			// given
 			for _, m := range toolchainStatus.Status.Members {
-				if memberAwait1.ClusterName == m.ClusterName {
-					spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)), testSpc.Enabled(true))
-				} else if memberAwait2.ClusterName == m.ClusterName {
-					spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)), testSpc.Enabled(true))
-				}
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, m.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)))
 			}
 
 			// when
@@ -161,8 +153,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("set cluster-role label only on member2 cluster and expect it will be selected", func(t *testing.T) {
 		// given
 		// both cluster have room for more spaces ...
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.Enabled(true))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.Enabled(true), testSpc.WithPlacementRoles(cluster.RoleLabel("workspace")))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.WithPlacementRoles(testSpc.PlacementRole("workspace")))
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant"),
@@ -176,8 +168,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	t.Run("set cluster-role label only on member2 cluster but mark it as full so that no cluster will be available", func(t *testing.T) {
 		// given
 		// only member1 as room for spaces
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.Enabled(true))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false), testSpc.WithPlacementRoles(cluster.RoleLabel("workspace")))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false), testSpc.WithPlacementRoles(testSpc.PlacementRole("workspace")))
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant-pending"),
@@ -190,8 +182,8 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 	t.Run("provision space on the required cluster even if it doesn't match the specified cluster-role", func(t *testing.T) {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.Enabled(true))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.Enabled(true), testSpc.WithPlacementRoles(cluster.RoleLabel("workspace")))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.WithPlacementRoles(testSpc.PlacementRole("workspace")))
 
 		// when
 		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur,

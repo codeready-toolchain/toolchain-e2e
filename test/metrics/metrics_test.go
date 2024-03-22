@@ -11,11 +11,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
-	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/gofrs/uuid"
@@ -189,8 +187,6 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait.ClusterName, testSpc.Enabled(true), testSpc.MaxNumberOfSpaces(1))
-	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(true), testSpc.MaxNumberOfSpaces(1))
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)

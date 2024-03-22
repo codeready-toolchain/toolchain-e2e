@@ -29,10 +29,8 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 	spcs, err := getAllSpcs(t, await)
 	require.NoError(t, err)
 
-	idx := findIndexOfFirstSpaceProvisionerConfigReferencingCluster(spcs, referencedClusterName)
-	require.GreaterOrEqual(t, idx, 0, "could not find SpaceProvisionerConfig referencing the required cluster: %s", referencedClusterName)
-
-	spc := &spcs[idx]
+	spc := findSpcForCluster(spcs, referencedClusterName)
+	require.NotNil(t, spc, "could not find SpaceProvisionerConfig referencing the required cluster: %s", referencedClusterName)
 
 	originalSpc := spc.DeepCopy()
 
@@ -71,11 +69,11 @@ func getAllSpcs(t *testing.T, await *wait.Awaitility) ([]toolchainv1alpha1.Space
 	return list.Items, nil
 }
 
-func findIndexOfFirstSpaceProvisionerConfigReferencingCluster(spcs []toolchainv1alpha1.SpaceProvisionerConfig, clusterName string) int {
-	for i, spc := range spcs {
+func findSpcForCluster(spcs []toolchainv1alpha1.SpaceProvisionerConfig, clusterName string) *toolchainv1alpha1.SpaceProvisionerConfig {
+	for _, spc := range spcs {
 		if spc.Spec.ToolchainCluster == clusterName {
-			return i
+			return &spc
 		}
 	}
-	return -1
+	return nil
 }
