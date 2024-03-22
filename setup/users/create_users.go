@@ -55,7 +55,6 @@ func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperato
 		clusters := &toolchainv1alpha1.ToolchainClusterList{}
 		if err := cl.List(context.TODO(), clusters, client.InNamespace(hostOperatorNamespace), client.MatchingLabels{
 			"namespace": memberOperatorNamespace,
-			"type":      "member",
 		}); err != nil {
 			return false, err
 		}
