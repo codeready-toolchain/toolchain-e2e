@@ -32,7 +32,6 @@ func TestCreate(t *testing.T) {
 				Name:      "member-abcd",
 				Labels: map[string]string{
 					"namespace": memberOperatorNamespace,
-					"type":      "member",
 				},
 			},
 			Status: toolchainv1alpha1.ToolchainClusterStatus{
