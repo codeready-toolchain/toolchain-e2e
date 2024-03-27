@@ -529,7 +529,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeploymentCount("600", "100"),
+		clusterResourceQuotaDeploymentCount("600", "100", "2"),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
@@ -1193,10 +1193,10 @@ func crqToolchainLabelsWaitCriterion(userName string) wait.ClusterResourceQuotaW
 }
 
 func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
-	return clusterResourceQuotaDeploymentCount(pods, "30")
+	return clusterResourceQuotaDeploymentCount(pods, "30", "2")
 }
 
-func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clusterObjectsCheckCreator {
+func clusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
@@ -1206,6 +1206,8 @@ func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clust
 			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity(deploymentCount)
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
+			require.NoError(t, err)
+			hard[count("virtualmachines.kubevirt.io")], err = resource.ParseQuantity(vmCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
