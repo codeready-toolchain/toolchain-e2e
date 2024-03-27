@@ -529,7 +529,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeploymentCount("600", "100", "2"),
+		clusterResourceQuotaDeploymentCount("600", "100", ""),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
@@ -1207,8 +1207,10 @@ func clusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount stri
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
 			require.NoError(t, err)
-			hard[count("virtualmachines.kubevirt.io")], err = resource.ParseQuantity(vmCount)
-			require.NoError(t, err)
+			if vmCount != "" {
+				hard[count("virtualmachines.kubevirt.io")], err = resource.ParseQuantity(vmCount)
+				require.NoError(t, err)
+			}
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
 				crqToolchainLabelsWaitCriterion(userName),
