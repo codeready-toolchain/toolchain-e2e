@@ -87,12 +87,6 @@ func TestCreateVirtualMachine(t *testing.T) {
 			// verify no error creating VM
 			require.NoError(t, err)
 
-			// cleanup
-			t.Cleanup(func() {
-				err := client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), tc.vmName, metav1.DeleteOptions{})
-				require.NoError(t, err)
-			})
-
 			// verify webhook has mutated the VM
 			result, getErr := client.Resource(vmRes).Namespace(vmNamespace).Get(context.TODO(), tc.vmName, metav1.GetOptions{})
 			require.NoError(t, getErr)
@@ -129,6 +123,10 @@ func TestCreateVirtualMachine(t *testing.T) {
 			require.NoError(t, userDataErr)
 			require.True(t, userDataFound, "user data not found")
 			require.Equal(t, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n", userData)
+
+			// delete VM after verifying to avoid hitting VM quota limit
+			err = client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), tc.vmName, metav1.DeleteOptions{})
+			require.NoError(t, err)
 		})
 	}
 }
