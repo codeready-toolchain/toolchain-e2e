@@ -1532,7 +1532,7 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
+		assert.Len(t, role.Rules, 17)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1616,6 +1616,11 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"spacebindingrequests"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 
@@ -1627,7 +1632,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
+		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1705,6 +1710,11 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"buildpipelineselectors"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 
@@ -1716,7 +1726,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
+		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1792,6 +1802,11 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"buildpipelineselectors"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 			},
