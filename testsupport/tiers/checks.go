@@ -193,7 +193,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -261,7 +261,7 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wai
 
 func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -279,7 +279,7 @@ type base1nsnoidlingTierChecks struct {
 
 func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -297,7 +297,7 @@ type base1ns6didlerTierChecks struct {
 
 func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -316,7 +316,7 @@ type baselargeTierChecks struct {
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -335,7 +335,7 @@ type baseextendedidlingTierChecks struct {
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -381,7 +381,7 @@ type advancedTierChecks struct {
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -1192,8 +1192,8 @@ func crqToolchainLabelsWaitCriterion(userName string) wait.ClusterResourceQuotaW
 	}
 }
 
-func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
-	return clusterResourceQuotaDeploymentCount(pods, "30", "2")
+func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
+	return clusterResourceQuotaDeploymentCount("50", "30", "2")
 }
 
 func clusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount string) clusterObjectsCheckCreator {
