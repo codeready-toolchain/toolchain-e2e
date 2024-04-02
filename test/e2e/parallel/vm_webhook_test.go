@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -18,13 +19,11 @@ import (
 const cloudInitNoCloud = "cloudInitNoCloud"
 const cloudInitConfigDrive = "cloudInitConfigDrive"
 
-const vmNamespace = "test-vm-dev"
+var vmRes = schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 func TestCreateVirtualMachine(t *testing.T) {
 	// given
 	t.Parallel()
-
-	vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
@@ -38,14 +37,8 @@ func TestCreateVirtualMachine(t *testing.T) {
 
 	// Provision a user to create the vm
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
-	NewSignupRequest(awaitilities).
-		Username("test-vm").
-		Email("test-vm@redhat.com").
-		ManuallyApprove().
-		EnsureMUR().
-		TargetCluster(memberAwait).
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
+
+	userCounter := 1
 
 	for tcname, tc := range map[string]struct {
 		vmName              string
@@ -77,6 +70,23 @@ func TestCreateVirtualMachine(t *testing.T) {
 		},
 	} {
 		t.Run(tcname, func(t *testing.T) {
+
+			// create a user for each scenario to avoid vm quota limit
+			username := fmt.Sprintf("test-vm-%d", userCounter)
+			useremail := fmt.Sprintf("%s@redhat.com", username)
+			vmNamespace := fmt.Sprintf("%s-dev", username)
+			NewSignupRequest(awaitilities).
+				Username(username).
+				Email(useremail).
+				ManuallyApprove().
+				EnsureMUR().
+				TargetCluster(memberAwait).
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+				Execute(t)
+
+			userCounter++
+
+			// given
 			vm := vmResourceWithRequestsAndCloudInitVolume(tc.vmName, tc.domain, cloudInitVolume(tc.cloudInitType))
 
 			// when
