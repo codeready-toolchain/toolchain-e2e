@@ -309,7 +309,6 @@ create-member1-project:
 	@echo "Preparing namespace for member operator: $(MEMBER_NS)..."
 	@-oc new-project ${MEMBER_NS} 1>/dev/null
 	@-oc project ${MEMBER_NS}
-	@echo "adding network policies in $(MEMBER_NS) namespace"
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS} || true
 
