@@ -318,7 +318,6 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	@-oc new-project ${MEMBER_NS_2} 1>/dev/null
 	@-oc project ${MEMBER_NS_2}
-	@echo "adding network policies in $(MEMBER_NS_2) namespace"
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2} || true
 endif
