@@ -310,7 +310,6 @@ create-member1-project:
 	@-oc new-project ${MEMBER_NS} 1>/dev/null
 	@-oc project ${MEMBER_NS}
 	@echo "adding network policies in $(MEMBER_NS) namespace"
-	@-oc process -p NAMESPACE=$(MEMBER_NS) -f deploy/member-operator-network-policies.yaml | oc apply -f -
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS} || true
 
@@ -321,7 +320,6 @@ ifeq ($(SECOND_MEMBER_MODE),true)
 	@-oc new-project ${MEMBER_NS_2} 1>/dev/null
 	@-oc project ${MEMBER_NS_2}
 	@echo "adding network policies in $(MEMBER_NS_2) namespace"
-	@-oc process -p NAMESPACE=$(MEMBER_NS_2) -f deploy/member-operator-network-policies.yaml | oc apply -f -
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2} || true
 endif
