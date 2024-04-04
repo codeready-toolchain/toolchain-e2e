@@ -193,7 +193,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -261,7 +261,7 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wai
 
 func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -279,7 +279,7 @@ type base1nsnoidlingTierChecks struct {
 
 func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -297,7 +297,7 @@ type base1ns6didlerTierChecks struct {
 
 func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -316,7 +316,7 @@ type baselargeTierChecks struct {
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -335,7 +335,7 @@ type baseextendedidlingTierChecks struct {
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -381,7 +381,7 @@ type advancedTierChecks struct {
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -510,7 +510,7 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("600"),
+		clusterResourceQuotaDeploymentCount("600", "30", ""),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -529,7 +529,7 @@ type appstudiolargeTierChecks struct {
 
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeploymentCount("600", "100"),
+		clusterResourceQuotaDeploymentCount("600", "100", ""),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
@@ -593,7 +593,7 @@ func (a *appstudioEnvTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait
 
 func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("150"),
+		clusterResourceQuotaDeploymentCount("150", "30", ""),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -1192,11 +1192,11 @@ func crqToolchainLabelsWaitCriterion(userName string) wait.ClusterResourceQuotaW
 	}
 }
 
-func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
-	return clusterResourceQuotaDeploymentCount(pods, "30")
+func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
+	return clusterResourceQuotaDeploymentCount("50", "30", "2")
 }
 
-func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clusterObjectsCheckCreator {
+func clusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
@@ -1207,6 +1207,10 @@ func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clust
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
 			require.NoError(t, err)
+			if vmCount != "" {
+				hard[count("virtualmachines.kubevirt.io")], err = resource.ParseQuantity(vmCount)
+				require.NoError(t, err)
+			}
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
 				crqToolchainLabelsWaitCriterion(userName),
@@ -1528,7 +1532,7 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
+		assert.Len(t, role.Rules, 17)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1612,6 +1616,11 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"spacebindingrequests"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 
@@ -1623,7 +1632,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
+		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1701,6 +1710,11 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"buildpipelineselectors"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 
@@ -1712,7 +1726,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
+		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1788,6 +1802,11 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
 					Resources: []string{"buildpipelineselectors"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 			},
