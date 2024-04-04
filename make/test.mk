@@ -302,22 +302,20 @@ endif
 ###########################################################
 
 .PHONY: prepare-projects
-prepare-projects: create-host-project create-member1-project create-member2-project create-thirdparty-crds
+prepare-projects: create-host-project create-member1 create-member2 create-thirdparty-crds
 
-.PHONY: create-member1-project
-create-member1-project:
+.PHONY: create-member1
+create-member1:
 	@echo "Preparing namespace for member operator: $(MEMBER_NS)..."
-	@-oc new-project ${MEMBER_NS} 1>/dev/null
-	@-oc project ${MEMBER_NS}
+	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS}
 	-oc label ns --overwrite=true ${MEMBER_NS} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS} || true
 
-.PHONY: create-member2-project
-create-member2-project:
+.PHONY: create-member2
+create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
-	@-oc new-project ${MEMBER_NS_2} 1>/dev/null
-	@-oc project ${MEMBER_NS_2}
+	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2} || true
 endif
@@ -328,10 +326,7 @@ deploy-host: create-host-project get-and-publish-host-operator create-host-resou
 .PHONY: create-host-project
 create-host-project:
 	@echo "Preparing namespace for host operator ${HOST_NS}..."
-	@-oc new-project ${HOST_NS} 1>/dev/null
-	@-oc project ${HOST_NS}
-	@echo "adding network policies in $(HOST_NS) namespace"
-	@-oc process -p NAMESPACE=$(HOST_NS) -f deploy/host-operator-network-policies.yaml | oc apply -f -
+	$(MAKE) create-project PROJECT_NAME=${HOST_NS}
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
@@ -369,6 +364,14 @@ create-spaceprovisionerconfigs-for-members:
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
 	oc create -f deploy/crds/ || true
+
+.PHONY: create-project
+create-project:
+	@-oc new-project ${PROJECT_NAME} 1>/dev/null
+	@-oc project ${PROJECT_NAME}
+	@echo "adding network policies in $(PROJECT_NAME) namespace"
+	@-oc process -p NAMESPACE=$(PROJECT_NAME) -f deploy/default-network-policies.yaml | oc apply -f -
+	
 
 .PHONY: display-eval
 display-eval:
