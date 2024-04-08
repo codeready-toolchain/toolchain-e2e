@@ -2,12 +2,12 @@ module github.com/codeready-toolchain/toolchain-e2e
 
 replace (
 	github.com/codeready-toolchain/api => github.com/metlos/api v0.0.0-20240326131121-9509925cdd79
-	github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240326141456-07cbb3679832
+	github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240408103238-edb68ec6cfa8
 )
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20240322110702-5ab3840476e9
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20240322131000-8d44f7428e83
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20240404090512-046d250d7d78
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
