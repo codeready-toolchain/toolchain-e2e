@@ -2377,6 +2377,10 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 				return false, err
 			}
 		}
+
+		// temporary log due to SANDBOX-593
+		t.Logf("Space created: %v", spaceToCreate)
+
 		// create spacebinding request immediately after ...
 		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
 		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
@@ -2386,10 +2390,13 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		}
 		// let's see if space was provisioned as expected
 		spaceCreated = &toolchainv1alpha1.Space{}
-		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
+		err = a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: spaceToCreate.Namespace,
+			Name:      spaceToCreate.Name,
+		}, spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				t.Logf("The created Space %s is not present", spaceCreated.Name)
+				t.Logf("The created Space %s is not present", spaceToCreate.Name)
 				return false, nil
 			}
 			return false, err
