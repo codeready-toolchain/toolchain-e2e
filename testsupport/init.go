@@ -101,9 +101,11 @@ func waitForOperators(t *testing.T) {
 
 	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
+	initMemberAwait.WaitForToolchainClusterResources(t)
 
 	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, wait.ReadyToolchainCluster)
 	require.NoError(t, err)
+	initMember2Await.WaitForToolchainClusterResources(t)
 
 	t.Log("all operators are ready and in running state")
 }
