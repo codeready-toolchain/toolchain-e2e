@@ -2390,10 +2390,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		}
 		// let's see if space was provisioned as expected
 		spaceCreated = &toolchainv1alpha1.Space{}
-		err = a.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: spaceToCreate.Namespace,
-			Name:      spaceToCreate.Name,
-		}, spaceCreated)
+		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				t.Logf("The created Space %s is not present", spaceToCreate.Name)
