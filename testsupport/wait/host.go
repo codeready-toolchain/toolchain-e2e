@@ -22,8 +22,10 @@ import (
 	"github.com/ghodss/yaml"
 	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1454,6 +1456,52 @@ func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...Toolch
 		a.printToolchainStatusWaitCriterionDiffs(t, toolchainStatus, criteria...)
 	}
 	return toolchainStatus, err
+}
+
+func (a *HostAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	require.NoError(t, err)
+}
+
+func (a *HostAwaitility) WaitForToolchainClusterResources(t *testing.T) {
+	t.Logf("checking ToolchainCluster Resources")
+	actualSA := &corev1.ServiceAccount{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualSA)
+	expectedLabels := map[string]string{
+		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
+	}
+	assert.Equal(t, expectedLabels, actualSA.Labels)
+	actualRole := &v1.Role{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRole)
+	assert.Equal(t, expectedLabels, actualRole.Labels)
+	expectedRules := []v1.PolicyRule{
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualRole.Rules)
+	actualRB := &v1.RoleBinding{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRB)
+	assert.Equal(t, expectedLabels, actualRB.Labels)
+	assert.Equal(t, []v1.Subject{{
+		Kind: "ServiceAccount",
+		Name: "toolchaincluster-host",
+	}}, actualRB.Subjects)
+	assert.Equal(t, v1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "toolchaincluster-host",
+	}, actualRB.RoleRef)
 }
 
 // GetToolchainConfig returns ToolchainConfig instance, nil if not found
