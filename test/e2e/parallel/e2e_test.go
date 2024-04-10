@@ -2,7 +2,6 @@ package parallel
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
