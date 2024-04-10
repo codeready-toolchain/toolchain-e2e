@@ -2368,7 +2368,7 @@ func EncodeUserIdentifier(subject string) string {
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 	var spaceCreated *toolchainv1alpha1.Space
-	t.Logf("Creating Space %s (prefix: %s) and SpaceBinding with role %s for %s", space.Name, space.GenerateName, spaceRole, mur.Name)
+	testutil.LogWithTimestamp(t, fmt.Sprintf("Creating Space %s (prefix: %s) and SpaceBinding with role %s for %s", space.Name, space.GenerateName, spaceRole, mur.Name))
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		spaceToCreate := space.DeepCopy()
@@ -2379,8 +2379,8 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		}
 
 		// temporary log due to SANDBOX-593
-		t.Logf("Space created with name %s", spaceToCreate.Name)
-		t.Logf("Space created: %v", spaceToCreate)
+		testutil.LogWithTimestamp(t, fmt.Sprintf("Space created with name %s", spaceToCreate.Name))
+		testutil.LogWithTimestamp(t, fmt.Sprintf("Space created: %v", spaceToCreate))
 
 		// create spacebinding request immediately after ...
 		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
@@ -2394,7 +2394,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				t.Logf("The created Space %s is not present", spaceToCreate.Name)
+				testutil.LogWithTimestamp(t, fmt.Sprintf("The created Space %s is not present", spaceToCreate.Name))
 				return false, nil
 			}
 			return false, err
