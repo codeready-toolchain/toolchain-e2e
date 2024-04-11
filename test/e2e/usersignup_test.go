@@ -44,6 +44,8 @@ func (s *userSignupIntegrationTest) TearDownTest() {
 }
 
 func (s *userSignupIntegrationTest) TestAutomaticApproval() {
+	// DO NOT MERGE! Just testing the CI job.
+	
 	// given
 	hostAwait := s.Host()
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
