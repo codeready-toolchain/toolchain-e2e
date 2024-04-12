@@ -2615,13 +2615,13 @@ containers:
 func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 	t.Logf("checking ToolchainCluster Resources")
 	actualSA := &corev1.ServiceAccount{}
-	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualSA)
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualSA)
 	expectedLabels := map[string]string{
 		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
 	}
 	assert.Equal(t, expectedLabels, actualSA.Labels)
 	actualClusterRole := &rbacv1.ClusterRole{}
-	a.waitForResource(t, "", "toolchaincluster-host", actualClusterRole)
+	a.waitForResource(t, "", "toolchaincluster-member", actualClusterRole)
 	assert.Equal(t, expectedLabels, actualClusterRole.Labels)
 	expectedRules := []rbacv1.PolicyRule{
 		{
@@ -2692,16 +2692,16 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 	}
 	assert.Equal(t, expectedRules, actualClusterRole.Rules)
 	actualCRB := &rbacv1.ClusterRoleBinding{}
-	a.waitForResource(t, "", "toolchaincluster-host", actualCRB)
+	a.waitForResource(t, "", "toolchaincluster-member", actualCRB)
 	assert.Equal(t, expectedLabels, actualCRB.Labels)
 	assert.Equal(t, []rbacv1.Subject{{
 		Kind:      "ServiceAccount",
-		Name:      "toolchaincluster-host",
+		Name:      "toolchaincluster-member",
 		Namespace: a.Namespace,
 	}}, actualCRB.Subjects)
 	assert.Equal(t, rbacv1.RoleRef{
 		APIGroup: "rbac.authorization.k8s.io",
 		Kind:     "ClusterRole",
-		Name:     "toolchaincluster-host",
+		Name:     "toolchaincluster-member",
 	}, actualCRB.RoleRef)
 }
