@@ -2422,7 +2422,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
 
 		// schedules the cleanup of the Space and the SpaceBinding at the end of the current test
-		cleanup.AddCleanTasks(t, a.GetClient(), space)
+		cleanup.AddCleanTasks(t, a.GetClient(), spaceCreated)
 		cleanup.AddCleanTasks(t, a.GetClient(), spaceBinding)
 		return true, nil
 	})
