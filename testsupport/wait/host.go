@@ -2390,10 +2390,6 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			}
 		}
 
-		// schedules the cleanup of the Space and the SpaceBinding at the end of the current test
-		cleanup.AddCleanTasks(t, a.GetClient(), space)
-		cleanup.AddCleanTasks(t, a.GetClient(), spaceBinding)
-
 		// let's see if space was provisioned as expected
 		spaceCreated = &toolchainv1alpha1.Space{}
 		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
@@ -2424,6 +2420,10 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, a.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
 		}
 		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
+
+		// schedules the cleanup of the Space and the SpaceBinding at the end of the current test
+		cleanup.AddCleanTasks(t, a.GetClient(), space)
+		cleanup.AddCleanTasks(t, a.GetClient(), spaceBinding)
 		return true, nil
 	})
 	return spaceCreated, spaceBinding, err
