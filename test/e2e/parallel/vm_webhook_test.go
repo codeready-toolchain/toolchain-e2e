@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -18,13 +19,11 @@ import (
 const cloudInitNoCloud = "cloudInitNoCloud"
 const cloudInitConfigDrive = "cloudInitConfigDrive"
 
-const vmNamespace = "test-vm-dev"
+var vmRes = schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 func TestCreateVirtualMachine(t *testing.T) {
 	// given
 	t.Parallel()
-
-	vmRes := schema.GroupVersionResource{Group: "kubevirt.io", Version: "v1", Resource: "virtualmachines"}
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
@@ -38,14 +37,8 @@ func TestCreateVirtualMachine(t *testing.T) {
 
 	// Provision a user to create the vm
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
-	NewSignupRequest(awaitilities).
-		Username("test-vm").
-		Email("test-vm@redhat.com").
-		ManuallyApprove().
-		EnsureMUR().
-		TargetCluster(memberAwait).
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
+
+	userCounter := 1
 
 	for tcname, tc := range map[string]struct {
 		vmName              string
@@ -77,6 +70,23 @@ func TestCreateVirtualMachine(t *testing.T) {
 		},
 	} {
 		t.Run(tcname, func(t *testing.T) {
+
+			// create a user for each scenario to avoid vm quota limit
+			username := fmt.Sprintf("test-vm-%d", userCounter)
+			useremail := fmt.Sprintf("%s@redhat.com", username)
+			vmNamespace := fmt.Sprintf("%s-dev", username)
+			NewSignupRequest(awaitilities).
+				Username(username).
+				Email(useremail).
+				ManuallyApprove().
+				EnsureMUR().
+				TargetCluster(memberAwait).
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+				Execute(t)
+
+			userCounter++
+
+			// given
 			vm := vmResourceWithRequestsAndCloudInitVolume(tc.vmName, tc.domain, cloudInitVolume(tc.cloudInitType))
 
 			// when
@@ -86,12 +96,6 @@ func TestCreateVirtualMachine(t *testing.T) {
 			// then
 			// verify no error creating VM
 			require.NoError(t, err)
-
-			// cleanup
-			t.Cleanup(func() {
-				err := client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), tc.vmName, metav1.DeleteOptions{})
-				require.NoError(t, err)
-			})
 
 			// verify webhook has mutated the VM
 			result, getErr := client.Resource(vmRes).Namespace(vmNamespace).Get(context.TODO(), tc.vmName, metav1.GetOptions{})
@@ -129,6 +133,10 @@ func TestCreateVirtualMachine(t *testing.T) {
 			require.NoError(t, userDataErr)
 			require.True(t, userDataFound, "user data not found")
 			require.Equal(t, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n", userData)
+
+			// delete VM after verifying to avoid hitting VM quota limit
+			err = client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), tc.vmName, metav1.DeleteOptions{})
+			require.NoError(t, err)
 		})
 	}
 }
