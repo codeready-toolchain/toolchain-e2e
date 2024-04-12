@@ -2415,7 +2415,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, err
 		}
 		if spaceBinding == nil {
-			t.Logf("The created SpaceBinding %s is not present in namespace %s", spaceBinding.Name, spaceBinding.Namespace)
+			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBinding.Name, spaceBinding.Namespace))
 			return false, nil
 		}
 		if util.IsBeingDeleted(spaceBinding) {
