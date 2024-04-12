@@ -184,9 +184,6 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// wait for host and member operators to be ready
 		registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
 
-		// wait for host toolchaincluster resources to be deployed
-		initHostAwait.WaitForToolchainClusterResources(t)
-
 		// set api proxy values
 		apiRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "api", "/proxyhealth")
 		require.NoError(t, err)
