@@ -377,6 +377,13 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically(), wait.Deactivating())...))
 			require.NoError(t, err)
 
+			// The scheduled deactivation time should have also been updated, and should now expire in ~3 days
+			expected := time.Now().Add(3 * time.Hour * 24)
+			comparison := expected.Sub(userSignup.Status.ScheduledDeactivationTimestamp.Time)
+
+			// accept if we're within 1 hour of the expected deactivation time
+			require.Less(t, comparison, time.Hour)
+
 			// Verify resources have been provisioned
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 
@@ -440,6 +447,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedAutomatically(), wait.Deactivated())...))
 				require.NoError(t, err)
+
+				require.Nil(t, userSignup.Status.ScheduledDeactivationTimestamp)
 
 				// The MUR should also be deleted
 				err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, murName)
