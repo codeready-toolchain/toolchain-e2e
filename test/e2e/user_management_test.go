@@ -445,10 +445,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 				// The user should now be set to deactivated
 				userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedAutomatically(), wait.Deactivated())...))
+					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedAutomatically(), wait.Deactivated())...),
+					wait.UntilUserSignupHasNilScheduledDeactivationTime())
 				require.NoError(t, err)
-
-				require.Nil(t, userSignup.Status.ScheduledDeactivationTimestamp)
 
 				// The MUR should also be deleted
 				err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, murName)

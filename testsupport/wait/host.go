@@ -580,7 +580,18 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 func UntilUserSignupHasScheduledDeactivationTime() UserSignupWaitCriterion {
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
-			return !actual.Status.ScheduledDeactivationTimestamp.IsZero()
+			return actual.Status.ScheduledDeactivationTimestamp != nil
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected to have a value for '.Status.ScheduledDeactivationTimestamp'"
+		},
+	}
+}
+
+func UntilUserSignupHasNilScheduledDeactivationTime() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.ScheduledDeactivationTimestamp == nil
 		},
 		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
 			return "expected to have a value for '.Status.ScheduledDeactivationTimestamp'"
