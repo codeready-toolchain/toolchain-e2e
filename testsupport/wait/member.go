@@ -346,20 +346,13 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 				return false
 			}
 
-			for _, nsAccess := range actual.Status.NamespaceAccess {
-				// check the name of the namespaces are matching
-				for _, expectedNamespace := range expectedNames {
-					found := false
-					if expectedNamespace == nsAccess.Name {
-						found = true
-						break
-					}
-					if !found {
-						return false
-					}
-				}
+			// check if the name of namespaces matches
+			var actualNamespaces []string
+			for _, actualNamespace := range actual.Status.NamespaceAccess {
+				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
 			}
-			return true
+
+			return reflect.DeepEqual(expectedNames, actualNamespaces)
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
 			if len(actual.Status.NamespaceAccess) != len(subSpace.Status.ProvisionedNamespaces) {

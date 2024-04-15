@@ -279,3 +279,86 @@ func TestCreateSpaceRequest(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestUpdateSpaceRequest(t *testing.T) {
+	// given
+	t.Parallel()
+	// make sure everything is ready before running the actual tests
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	// when
+	spaceRequest, parentSpace := CreateSpaceRequest(t, awaitilities, memberAwait.ClusterName,
+		WithSpecTierName("appstudio"),
+		WithSpecTargetClusterRoles([]string{cluster.RoleLabel(cluster.Tenant)}))
+
+	// then
+	// check for the subSpace creation
+	subSpace, err := awaitilities.Host().WaitForSubSpace(t, spaceRequest.Name, spaceRequest.Namespace, parentSpace.GetName(),
+		UntilSpaceHasAnyTargetClusterSet(),
+		UntilSpaceHasTier("appstudio"),
+		UntilSpaceHasAnyProvisionedNamespaces(),
+	)
+	require.NoError(t, err)
+	VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name,
+		UntilSpaceHasAnyTargetClusterSet(),
+		UntilSpaceHasTier(spaceRequest.Spec.TierName),
+	)
+	spaceRequestNamespacedName := types.NamespacedName{Namespace: spaceRequest.Namespace, Name: spaceRequest.Name}
+	_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+		UntilSpaceRequestHasTierName("appstudio"),
+		UntilSpaceRequestHasConditions(Provisioned()),
+		UntilSpaceRequestHasNamespaceAccess(subSpace),
+	)
+	require.NoError(t, err)
+	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+
+	t.Run("update space request tierName", func(t *testing.T) {
+		// when
+		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
+			func(s *toolchainv1alpha1.SpaceRequest) {
+				s.Spec.TierName = "base"
+			},
+		)
+		require.NoError(t, err)
+
+		//then
+		// wait for both spaceRequest and subSpace to have same tierName
+		subSpace, err = hostAwait.WaitForSpace(t, subSpace.Name,
+			UntilSpaceHasTier("base"),
+			UntilSpaceHasConditions(Provisioned()))
+		require.NoError(t, err)
+
+		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+			UntilSpaceRequestHasTierName("base"),
+			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
+		)
+		require.NoError(t, err)
+	})
+
+	t.Run("update space request target cluster roles", func(t *testing.T) {
+		// when
+		newTargetClusterRoles := append(spaceRequest.Spec.TargetClusterRoles, cluster.RoleLabel("workload"))
+		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
+			func(s *toolchainv1alpha1.SpaceRequest) {
+				s.Spec.TargetClusterRoles = newTargetClusterRoles // let's assume we add a new cluster role label
+			},
+		)
+		require.NoError(t, err)
+
+		//then
+		// wait for both spaceRequest and subSpace to have same target cluster roles
+		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
+			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
+			UntilSpaceRequestHasConditions(Provisioned()),
+			UntilSpaceRequestHasNamespaceAccess(subSpace),
+		)
+		require.NoError(t, err)
+		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
+			UntilSpaceHasTargetClusterRoles(newTargetClusterRoles),
+			UntilSpaceHasConditions(Provisioned()))
+		require.NoError(t, err)
+	})
+}
