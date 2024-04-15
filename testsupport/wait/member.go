@@ -2717,10 +2717,10 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 		Kind:     "Role",
 		Name:     "toolchaincluster-member",
 	}, actualRB.RoleRef)
-	actualRole := &v1.Role{}
+	actualRole := &rbacv1.Role{}
 	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualRole)
 	assert.Equal(t, expectedLabels, actualRole.Labels)
-	expectedRules := []v1.PolicyRule{
+	expectedRules = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{"toolchain.dev.openshift.com"},
 			Resources: []string{"*"},
