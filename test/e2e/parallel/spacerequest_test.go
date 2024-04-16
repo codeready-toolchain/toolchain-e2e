@@ -327,7 +327,8 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		// wait for both spaceRequest and subSpace to have same tierName
 		subSpace, err = hostAwait.WaitForSpace(t, subSpace.Name,
 			UntilSpaceHasTier("base"),
-			UntilSpaceHasConditions(Provisioned()))
+			UntilSpaceHasConditions(Provisioned()),
+			UntilSpaceHasAnyProvisionedNamespaces())
 		require.NoError(t, err)
 
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
