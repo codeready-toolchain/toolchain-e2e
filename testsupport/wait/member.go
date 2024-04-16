@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -339,6 +340,8 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 	for _, expectedNamespace := range subSpace.Status.ProvisionedNamespaces {
 		expectedNames = append(expectedNames, expectedNamespace.Name)
 	}
+	slices.Sort(expectedNames)
+
 	return SpaceRequestWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
 			// check if expected number of namespaces matches
@@ -351,6 +354,7 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 			for _, actualNamespace := range actual.Status.NamespaceAccess {
 				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
 			}
+			slices.Sort(actualNamespaces)
 
 			return reflect.DeepEqual(expectedNames, actualNamespaces)
 		},
