@@ -480,6 +480,16 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 				)
 				rolebindings += 2
 			}
+		case "viewer":
+			checks = append(checks, appstudioViewerUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "viewer"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
 		case "contributor":
 			checks = append(checks, appstudioContributorUserActionsRole())
 			roles++
