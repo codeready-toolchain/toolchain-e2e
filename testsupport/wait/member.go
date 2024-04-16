@@ -2692,7 +2692,7 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 	}
 	assert.Equal(t, expectedRules, actualClusterRole.Rules)
 	actualCRB := &rbacv1.ClusterRoleBinding{}
-	a.waitForResource(t, "", "toolchaincluster-member", actualCRB)
+	a.waitForResource(t, "", "toolchaincluster-"+a.Namespace, actualCRB)
 	assert.Equal(t, expectedLabels, actualCRB.Labels)
 	assert.Equal(t, []rbacv1.Subject{{
 		Kind:      "ServiceAccount",
@@ -2702,7 +2702,7 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 	assert.Equal(t, rbacv1.RoleRef{
 		APIGroup: "rbac.authorization.k8s.io",
 		Kind:     "ClusterRole",
-		Name:     "toolchaincluster-member",
+		Name:     "toolchaincluster-" + a.Namespace,
 	}, actualCRB.RoleRef)
 	actualRB := &rbacv1.RoleBinding{}
 	a.waitForResource(t, "", "toolchaincluster-member", actualRB)
