@@ -2621,7 +2621,7 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 	}
 	assert.Equal(t, expectedLabels, actualSA.Labels)
 	actualClusterRole := &rbacv1.ClusterRole{}
-	a.waitForResource(t, "", "toolchaincluster-member", actualClusterRole)
+	a.waitForResource(t, "", "toolchaincluster-"+a.Namespace, actualClusterRole)
 	assert.Equal(t, expectedLabels, actualClusterRole.Labels)
 	expectedRules := []rbacv1.PolicyRule{
 		{
