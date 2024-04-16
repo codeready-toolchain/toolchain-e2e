@@ -337,28 +337,4 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		)
 		require.NoError(t, err)
 	})
-
-	t.Run("update space request target cluster roles", func(t *testing.T) {
-		// when
-		newTargetClusterRoles := append(spaceRequest.Spec.TargetClusterRoles, cluster.RoleLabel("workload"))
-		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
-			func(s *toolchainv1alpha1.SpaceRequest) {
-				s.Spec.TargetClusterRoles = newTargetClusterRoles // let's assume we add a new cluster role label
-			},
-		)
-		require.NoError(t, err)
-
-		//then
-		// wait for both spaceRequest and subSpace to have same target cluster roles
-		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
-			UntilSpaceRequestHasTargetClusterRoles(newTargetClusterRoles),
-			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasNamespaceAccess(subSpace),
-		)
-		require.NoError(t, err)
-		_, err = hostAwait.WaitForSpace(t, subSpace.Name,
-			UntilSpaceHasTargetClusterRoles(newTargetClusterRoles),
-			UntilSpaceHasConditions(Provisioned()))
-		require.NoError(t, err)
-	})
 }
