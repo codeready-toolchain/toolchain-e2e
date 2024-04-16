@@ -2635,22 +2635,22 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 			Verbs:     []string{"impersonate"},
 		},
 		{
-			APIGroups: []string{"toolchain.dev.openshift"},
+			APIGroups: []string{"toolchain.dev.openshift.com"},
 			Resources: []string{"spacerequests"},
 			Verbs:     []string{"*"},
 		},
 		{
-			APIGroups: []string{"toolchain.dev.openshift"},
+			APIGroups: []string{"toolchain.dev.openshift.com"},
 			Resources: []string{"spacerequests/finalizers"},
 			Verbs:     []string{"update"},
 		},
 		{
-			APIGroups: []string{"toolchain.dev.openshift"},
+			APIGroups: []string{"toolchain.dev.openshift.com"},
 			Resources: []string{"spacerequests/status"},
 			Verbs:     []string{"get", "patch", "update"},
 		},
 		{
-			APIGroups: []string{"toolchain.dev.openshift"},
+			APIGroups: []string{"toolchain.dev.openshift.com"},
 			Resources: []string{"spacerequests/status"},
 			Verbs:     []string{"get", "patch", "update"},
 		},
