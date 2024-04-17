@@ -17,13 +17,16 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1502,6 +1505,52 @@ func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...Toolch
 	return toolchainStatus, err
 }
 
+func (a *HostAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	require.NoError(t, err)
+}
+
+func (a *HostAwaitility) WaitForToolchainClusterResources(t *testing.T) {
+	t.Logf("checking ToolchainCluster Resources")
+	actualSA := &corev1.ServiceAccount{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualSA)
+	expectedLabels := map[string]string{
+		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
+	}
+	assert.Equal(t, expectedLabels, actualSA.Labels)
+	actualRole := &v1.Role{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRole)
+	assert.Equal(t, expectedLabels, actualRole.Labels)
+	expectedRules := []v1.PolicyRule{
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualRole.Rules)
+	actualRB := &v1.RoleBinding{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRB)
+	assert.Equal(t, expectedLabels, actualRB.Labels)
+	assert.Equal(t, []v1.Subject{{
+		Kind: "ServiceAccount",
+		Name: "toolchaincluster-host",
+	}}, actualRB.Subjects)
+	assert.Equal(t, v1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "toolchaincluster-host",
+	}, actualRB.RoleRef)
+}
+
 // GetToolchainConfig returns ToolchainConfig instance, nil if not found
 func (a *HostAwaitility) GetToolchainConfig(t *testing.T) *toolchainv1alpha1.ToolchainConfig {
 	config := &toolchainv1alpha1.ToolchainConfig{}
@@ -2414,28 +2463,33 @@ func EncodeUserIdentifier(subject string) string {
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 	var spaceCreated *toolchainv1alpha1.Space
-	t.Logf("Creating Space %s and SpaceBinding with role %s for %s", space.Name, spaceRole, mur.Name)
+	testutil.LogWithTimestamp(t, fmt.Sprintf("Creating Space %s (prefix: %s) and SpaceBinding with role %s for %s", space.Name, space.GenerateName, spaceRole, mur.Name))
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		spaceToCreate := space.DeepCopy()
-		if err := a.CreateWithCleanup(t, spaceToCreate); err != nil {
+		if err := a.Create(spaceToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
+
+		// temporary log due to SANDBOX-593
+		testutil.LogWithTimestamp(t, fmt.Sprintf("Space created with name %s, %s", spaceToCreate.Name, time.Now()))
+
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
-		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
+		spaceBindingToCreate := spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
+		if err := a.Create(spaceBindingToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
+
 		// let's see if space was provisioned as expected
 		spaceCreated = &toolchainv1alpha1.Space{}
 		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				t.Logf("The created Space %s is not present", spaceCreated.Name)
+				testutil.LogWithTimestamp(t, fmt.Sprintf("The created Space %s is not present in namespace %s", spaceToCreate.Name, spaceToCreate.Namespace))
 				return false, nil
 			}
 			return false, err
@@ -2451,7 +2505,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, err
 		}
 		if spaceBinding == nil {
-			t.Logf("The created SpaceBinding %s is not present", spaceCreated.Name)
+			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBindingToCreate.Name, spaceBindingToCreate.Namespace))
 			return false, nil
 		}
 		if util.IsBeingDeleted(spaceBinding) {
@@ -2460,6 +2514,10 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, a.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
 		}
 		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
+
+		// schedules the cleanup of the Space and the SpaceBinding at the end of the current test
+		cleanup.AddCleanTasks(t, a.GetClient(), spaceCreated)
+		cleanup.AddCleanTasks(t, a.GetClient(), spaceBinding)
 		return true, nil
 	})
 	return spaceCreated, spaceBinding, err
