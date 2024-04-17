@@ -639,6 +639,14 @@ func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...
 	return nil
 }
 
+// Create creates the given object via client.Client.Create()
+func (a *Awaitility) Create(obj client.Object, opts ...client.CreateOption) error {
+	if err := a.Client.Create(context.TODO(), obj, opts...); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Clean triggers cleanup of all resources that were marked to be cleaned before that
 func (a *Awaitility) Clean(t *testing.T) {
 	cleanup.ExecuteAllCleanTasks(t)
