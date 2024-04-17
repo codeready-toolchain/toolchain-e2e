@@ -2695,7 +2695,7 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 		Name:     "toolchaincluster-" + a.Namespace,
 	}, actualCRB.RoleRef)
 	actualRB := &rbacv1.RoleBinding{}
-	a.waitForResource(t, "", "toolchaincluster-member", actualRB)
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualRB)
 	assert.Equal(t, expectedLabels, actualRB.Labels)
 	assert.Equal(t, []rbacv1.Subject{{
 		Kind:      "ServiceAccount",
