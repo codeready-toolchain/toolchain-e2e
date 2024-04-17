@@ -1,6 +1,6 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20240417083716-70fbeef8e9da
+replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20240417132014-762118cab090
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20240322110702-5ab3840476e9
