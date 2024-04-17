@@ -507,7 +507,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		t.Logf("user signup '%s' reactivated", userSignup.Name)
 
 		// Since the config for retention days is set to 0, the account should be deactivated again immediately
-		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
+		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutNotification())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated),
 			wait.UntilUserSignupHasNilScheduledDeactivationTime(),
