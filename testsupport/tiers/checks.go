@@ -1639,7 +1639,7 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 }
 
 func appstudioViewerUserActionsRole() spaceRoleObjectsCheck {
-	return appstudioMaintainerUserActionsRole()
+	return appstudioContributorUserActionsRole()
 }
 
 func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
