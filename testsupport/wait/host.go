@@ -2383,8 +2383,8 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		testutil.LogWithTimestamp(t, fmt.Sprintf("Space created with name %s, %s", spaceToCreate.Name, time.Now()))
 
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
-		if err := a.Create(spaceBinding); err != nil {
+		spaceBindingToCreate := spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
+		if err := a.Create(spaceBindingToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
@@ -2411,7 +2411,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, err
 		}
 		if spaceBinding == nil {
-			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBinding.Name, spaceBinding.Namespace))
+			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBindingToCreate.Name, spaceBindingToCreate.Namespace))
 			return false, nil
 		}
 		if util.IsBeingDeleted(spaceBinding) {
