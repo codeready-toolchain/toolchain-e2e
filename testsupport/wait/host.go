@@ -23,8 +23,10 @@ import (
 	"github.com/ghodss/yaml"
 	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1457,6 +1459,52 @@ func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...Toolch
 	return toolchainStatus, err
 }
 
+func (a *HostAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	require.NoError(t, err)
+}
+
+func (a *HostAwaitility) WaitForToolchainClusterResources(t *testing.T) {
+	t.Logf("checking ToolchainCluster Resources")
+	actualSA := &corev1.ServiceAccount{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualSA)
+	expectedLabels := map[string]string{
+		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
+	}
+	assert.Equal(t, expectedLabels, actualSA.Labels)
+	actualRole := &v1.Role{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRole)
+	assert.Equal(t, expectedLabels, actualRole.Labels)
+	expectedRules := []v1.PolicyRule{
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualRole.Rules)
+	actualRB := &v1.RoleBinding{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRB)
+	assert.Equal(t, expectedLabels, actualRB.Labels)
+	assert.Equal(t, []v1.Subject{{
+		Kind: "ServiceAccount",
+		Name: "toolchaincluster-host",
+	}}, actualRB.Subjects)
+	assert.Equal(t, v1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "toolchaincluster-host",
+	}, actualRB.RoleRef)
+}
+
 // GetToolchainConfig returns ToolchainConfig instance, nil if not found
 func (a *HostAwaitility) GetToolchainConfig(t *testing.T) *toolchainv1alpha1.ToolchainConfig {
 	config := &toolchainv1alpha1.ToolchainConfig{}
@@ -2383,8 +2431,8 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		testutil.LogWithTimestamp(t, fmt.Sprintf("Space created with name %s, %s", spaceToCreate.Name, time.Now()))
 
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
-		if err := a.Create(spaceBinding); err != nil {
+		spaceBindingToCreate := spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
+		if err := a.Create(spaceBindingToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
@@ -2411,7 +2459,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, err
 		}
 		if spaceBinding == nil {
-			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBinding.Name, spaceBinding.Namespace))
+			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBindingToCreate.Name, spaceBindingToCreate.Namespace))
 			return false, nil
 		}
 		if util.IsBeingDeleted(spaceBinding) {
