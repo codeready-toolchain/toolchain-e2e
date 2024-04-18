@@ -2607,3 +2607,110 @@ containers:
 	}
 	return value
 }
+
+func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
+	t.Logf("checking ToolchainCluster Resources")
+	actualSA := &corev1.ServiceAccount{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualSA)
+	expectedLabels := map[string]string{
+		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
+	}
+	assert.Equal(t, expectedLabels, actualSA.Labels)
+	actualClusterRole := &rbacv1.ClusterRole{}
+	a.waitForResource(t, "", "toolchaincluster-"+a.Namespace, actualClusterRole)
+	assert.Equal(t, expectedLabels, actualClusterRole.Labels)
+	expectedRules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"authentication.k8s.io"},
+			Resources: []string{"tokenreviews"},
+			Verbs:     []string{"create"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"users", "groups"},
+			Verbs:     []string{"impersonate"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacerequests"},
+			Verbs:     []string{"*"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacerequests/finalizers"},
+			Verbs:     []string{"update"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacerequests/status"},
+			Verbs:     []string{"get", "patch", "update"},
+		},
+		{
+			APIGroups: []string{"route.openshift.io"},
+			Resources: []string{"routes"},
+			Verbs:     []string{"get", "list", "watch"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+			Verbs:     []string{"get", "list", "watch"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"secrets", "serviceaccounts/token"},
+			Verbs:     []string{"*"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacebindingrequests"},
+			Verbs:     []string{"*"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacebindingrequests/finalizers"},
+			Verbs:     []string{"update"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacebindingrequests/status"},
+			Verbs:     []string{"get", "patch", "update"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualClusterRole.Rules)
+	actualCRB := &rbacv1.ClusterRoleBinding{}
+	a.waitForResource(t, "", "toolchaincluster-"+a.Namespace, actualCRB)
+	assert.Equal(t, expectedLabels, actualCRB.Labels)
+	assert.Equal(t, []rbacv1.Subject{{
+		Kind:      "ServiceAccount",
+		Name:      "toolchaincluster-member",
+		Namespace: a.Namespace,
+	}}, actualCRB.Subjects)
+	assert.Equal(t, rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "ClusterRole",
+		Name:     "toolchaincluster-" + a.Namespace,
+	}, actualCRB.RoleRef)
+	actualRB := &rbacv1.RoleBinding{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualRB)
+	assert.Equal(t, expectedLabels, actualRB.Labels)
+	assert.Equal(t, []rbacv1.Subject{{
+		Kind: "ServiceAccount",
+		Name: "toolchaincluster-member",
+	}}, actualRB.Subjects)
+	assert.Equal(t, rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "toolchaincluster-member",
+	}, actualRB.RoleRef)
+	actualRole := &rbacv1.Role{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualRole)
+	assert.Equal(t, expectedLabels, actualRole.Labels)
+	expectedRules = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualRole.Rules)
+}
