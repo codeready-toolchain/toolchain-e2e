@@ -5,7 +5,9 @@ import (
 	"time"
 
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -59,13 +61,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
 		// update max number of spaces to current number of spaces provisioned
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().
-				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
-				),
-		)
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 		// create additional user to reach max space limits on both members
 		_, mur2 := NewSignupRequest(s.Awaitilities).
 			Username("automatic2").
@@ -105,13 +103,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		t.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
-				testconfig.CapacityThresholds().
-					MaxNumberOfSpaces(
-						testconfig.PerMemberCluster(memberAwait1.ClusterName, 2),
-						testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
-					),
-			)
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(2))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(t, waitingList1.Name,
@@ -124,13 +118,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
 				// when
-				hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true),
-					testconfig.CapacityThresholds().
-						MaxNumberOfSpaces(
-							testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
-							testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
-						),
-				)
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500))
+				hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 				// then
 				userSignup, err := hostAwait.WaitForUserSignup(t, waitlinglist2.Name,
@@ -145,10 +135,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(t,
-			testconfig.AutomaticApproval().Enabled(true),
-			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
-		)
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 		// when
 		userSignup, _ := NewSignupRequest(s.Awaitilities).
@@ -162,10 +151,9 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(t,
-				testconfig.AutomaticApproval().Enabled(true),
-				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
-			)
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -175,6 +163,73 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
+}
+
+func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
+	hostAwait := s.Host()
+	memberAwait1 := s.Member1()
+	memberAwait2 := s.Member2()
+	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
+		// given
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+		// when
+		_, mur1 := NewSignupRequest(s.Awaitilities).
+			Username("multimember-1").
+			Email("multi1@redhat.com").
+			EnsureMUR().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+			Execute(s.T()).Resources()
+
+		_, mur2 := NewSignupRequest(s.Awaitilities).
+			Username("multimember-2").
+			Email("multi2@redhat.com").
+			EnsureMUR().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+			Execute(s.T()).Resources()
+
+		// then
+		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
+		space1, err := hostAwait.WaitForSpace(t, mur1.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+		require.NoError(t, err)
+		space2, err := hostAwait.WaitForSpace(t, mur2.Name, wait.UntilSpaceHasAnyTargetClusterSet())
+		require.NoError(t, err)
+		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
+
+		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
+			// when
+			userSignupPending, _ := NewSignupRequest(s.Awaitilities).
+				Username("multimember-3").
+				Email("multi3@redhat.com").
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
+				Execute(s.T()).Resources()
+
+			// then
+			s.userIsNotProvisioned(t, userSignupPending)
+		})
+	})
+}
+
+func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
+	hostAwait := s.Host()
+
+	// given
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
+
+	// when
+	userSignup, _ := NewSignupRequest(s.Awaitilities).
+		Username("test-user").
+		Email("test-user@redhat.com").
+		UserID("123456789").
+		AccountID("987654321").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+		Execute(s.T()).Resources()
+
+	// then
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
@@ -339,13 +394,8 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 	memberAwait := s.Member1()
 	s.T().Run("default approval config - manual", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
-			testconfig.
-				CapacityThresholds().
-				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait.ClusterName, 1000),
-				).
-				ResourceCapacityThreshold(80))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxNumberOfSpaces(1000), testSpc.MaxMemoryUtilizationPercent(80))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
@@ -378,13 +428,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 	memberAwait1 := s.Member1()
 	memberAwait2 := s.Member2()
 	// given
-	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false),
-		testconfig.CapacityThresholds().
-			MaxNumberOfSpaces(
-				testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
-				testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
-			).
-			ResourceCapacityThreshold(80))
+	spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.MaxMemoryUtilizationPercent(80))
+	spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.MaxMemoryUtilizationPercent(80))
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
 	// when & then
 	NewSignupRequest(s.Awaitilities).
@@ -397,13 +443,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("set low max number of spaces and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
-			testconfig.CapacityThresholds().
-				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
-				),
-		)
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 		// create usersignup to reach max number of spaces on both members
 		NewSignupRequest(s.Awaitilities).
 			Username("manualwithcapacity2").
@@ -425,13 +467,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
-				testconfig.CapacityThresholds().
-					MaxNumberOfSpaces(
-						testconfig.PerMemberCluster(memberAwait1.ClusterName, 500),
-						testconfig.PerMemberCluster(memberAwait2.ClusterName, 500),
-					),
-			)
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500))
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -444,10 +482,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(t,
-			testconfig.AutomaticApproval().Enabled(false),
-			testconfig.CapacityThresholds().ResourceCapacityThreshold(1),
-		)
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		// when
 		userSignup, _ := NewSignupRequest(s.Awaitilities).
@@ -462,10 +499,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
-			hostAwait.UpdateToolchainConfig(t,
-				testconfig.AutomaticApproval().Enabled(false),
-				testconfig.CapacityThresholds().ResourceCapacityThreshold(80),
-			)
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 			// then
 			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -478,15 +514,9 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 
 	s.T().Run("when approved and set target cluster manually, then the limits will be ignored", func(t *testing.T) {
 		// given
-		hostAwait.UpdateToolchainConfig(t,
-			testconfig.AutomaticApproval().Enabled(false),
-			testconfig.CapacityThresholds().
-				ResourceCapacityThreshold(1).
-				MaxNumberOfSpaces(
-					testconfig.PerMemberCluster(memberAwait1.ClusterName, 1),
-					testconfig.PerMemberCluster(memberAwait2.ClusterName, 1),
-				),
-		)
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		// when & then
 		userSignup, _ := NewSignupRequest(s.Awaitilities).
@@ -506,9 +536,8 @@ func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
 	s.T().Run("automatic approval with verification required", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false),
-			testconfig.CapacityThresholds().MaxNumberOfSpaces(testconfig.PerMemberCluster(memberAwait.ClusterName, 1000)).
-				ResourceCapacityThreshold(80))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxMemoryUtilizationPercent(80), testSpc.MaxNumberOfSpaces(1000))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		t.Run("verification required set to true", func(_ *testing.T) {
 			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
@@ -520,13 +549,8 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
 	// Create user signup
-	hostAwait.UpdateToolchainConfig(s.T(),
-		testconfig.AutomaticApproval().Enabled(true),
-		testconfig.CapacityThresholds().
-			MaxNumberOfSpaces(
-				testconfig.PerMemberCluster(memberAwait.ClusterName, 1000),
-			).
-			ResourceCapacityThreshold(80))
+	spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxMemoryUtilizationPercent(80), testSpc.MaxNumberOfSpaces(1000))
+	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	userSignup := NewUserSignup(hostAwait.Namespace, "reginald@alpha.com", "reginald@alpha.com")
 	err := hostAwait.CreateWithCleanup(s.T(), userSignup)

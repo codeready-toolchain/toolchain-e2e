@@ -11,6 +11,8 @@ objects:
     spec:
       toolchainCluster: ${TOOLCHAINCLUSTER_NAME}
       enabled: true
+      placementRoles:
+        - cluster-role.toolchain.dev.openshift.com/tenant
 parameters:
   - name: SPACEPROVISIONERCONFIG_NAME
   - name: SPACEPROVISIONERCONFIG_NS
