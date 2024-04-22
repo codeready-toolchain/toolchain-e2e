@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 replace (
-	github.com/codeready-toolchain/api => github.com/metlos/api v0.0.0-20240326131121-9509925cdd79
-	github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240408103238-edb68ec6cfa8
+	github.com/codeready-toolchain/api => github.com/metlos/api v0.0.0-20240422113155-5603720d4a54
+	github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240422114216-5aa2ac24fd4e
 )
 
 require (
@@ -102,7 +102,7 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
