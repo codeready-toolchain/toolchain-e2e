@@ -7,7 +7,7 @@ replace (
 
 require (
 	github.com/codeready-toolchain/api v0.0.0-20240322110702-5ab3840476e9
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20240404090512-046d250d7d78
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20240422084400-e6d41ea74313
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
 	github.com/ghodss/yaml v1.0.0
