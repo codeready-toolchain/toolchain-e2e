@@ -72,6 +72,11 @@ e2e-deploy-latest:
 .PHONY: prepare-e2e
 prepare-e2e: build clean-e2e-files
 
+.PHONY: deploy-published-operators-e2e
+## Deploy operators that were already published
+deploy-published-operators-e2e: PUBLISH_OPERATOR=false
+deploy-published-operators-e2e: clean-e2e-files deploy-e2e
+
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
 deploy-e2e: prepare-projects get-publish-install-and-register-operators 
@@ -279,7 +284,12 @@ ifneq (${MEMBER_REPO_PATH},"")
 		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM}"
+ifneq (${FORCED_TAG},"")
+    ifneq (${FORCED_TAG},)
+		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
+    endif
+endif
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
 
 .PHONY: get-and-publish-host-operator
 get-and-publish-host-operator:
@@ -293,7 +303,12 @@ ifneq (${HOST_REPO_PATH},"")
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${REG_REPO_PATH_PARAM}"
+ifneq (${FORCED_TAG},"")
+    ifneq (${FORCED_TAG},)
+		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
+    endif
+endif
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
 
 ###########################################################
 #
