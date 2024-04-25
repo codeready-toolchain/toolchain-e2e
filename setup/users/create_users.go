@@ -69,7 +69,7 @@ func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperato
 	return memberCluster.Name, err
 }
 
-func containsClusterCondition(conditions []toolchainv1alpha1.ToolchainClusterCondition, contains *toolchainv1alpha1.ToolchainClusterCondition) bool {
+func containsClusterCondition(conditions []toolchainv1alpha1.Condition, contains *toolchainv1alpha1.Condition) bool {
 	if contains == nil {
 		return true
 	}

@@ -107,7 +107,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 		_, err = await.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
-			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterCondition{
+			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ToolchainClusterOffline,
 				Status: corev1.ConditionTrue,
 			}),

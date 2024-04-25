@@ -71,7 +71,7 @@ func (a *Awaitility) copy() *Awaitility {
 }
 
 // ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
-var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
+var ReadyToolchainCluster = &toolchainv1alpha1.Condition{
 	Type:   toolchainv1alpha1.ToolchainClusterReady,
 	Status: corev1.ConditionTrue,
 }
@@ -161,7 +161,7 @@ func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, 
 // WaitForToolchainClusterWithCondition waits until there is a ToolchainCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
-func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
+func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespace string, condition *toolchainv1alpha1.Condition) (toolchainv1alpha1.ToolchainCluster, error) {
 	t.Logf("waiting for ToolchainCluster in namespace '%s'", namespace)
 	timeout := a.Timeout
 	if condition != nil {
@@ -180,7 +180,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespac
 
 // WaitForNamedToolchainClusterWithCondition waits until there is a ToolchainCluster with the given name
 // and with the given ClusterCondition (if it the condition is nil, then it skips this check)
-func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, name string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
+func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, name string, condition *toolchainv1alpha1.Condition) (toolchainv1alpha1.ToolchainCluster, error) {
 	t.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have condition '%v'", name, a.Namespace, condition)
 	timeout := a.Timeout
 	if condition != nil {
@@ -203,7 +203,7 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, nam
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
 // and running in the given expected namespace. If the given condition is not nil, then it also checks
 // if the CR has the ClusterCondition
-func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
+func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, condition *toolchainv1alpha1.Condition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
 	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
 		"namespace": namespace,
@@ -222,7 +222,7 @@ func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, conditi
 	return toolchainv1alpha1.ToolchainCluster{}, false, nil
 }
 
-func containsClusterCondition(conditions []toolchainv1alpha1.ToolchainClusterCondition, contains *toolchainv1alpha1.ToolchainClusterCondition) bool {
+func containsClusterCondition(conditions []toolchainv1alpha1.Condition, contains *toolchainv1alpha1.Condition) bool {
 	if contains == nil {
 		return true
 	}
@@ -575,7 +575,7 @@ func UntilToolchainClusterHasName(expectedName string) ToolchainClusterWaitCrite
 }
 
 // UntilToolchainClusterHasCondition checks if ToolchainCluster has the given condition
-func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.ToolchainClusterCondition) ToolchainClusterWaitCriterion {
+func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.Condition) ToolchainClusterWaitCriterion {
 	return ToolchainClusterWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
 			return containsClusterCondition(actual.Status.Conditions, &expected)
