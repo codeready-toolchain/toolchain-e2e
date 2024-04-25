@@ -427,11 +427,9 @@ type appstudioTierChecks struct {
 	tierName string
 }
 
-func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
+func commonAppstudioTierChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
-		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
@@ -449,7 +447,14 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		pipelineRunnerRoleBinding(),
 		caBundleConfigMap(),
 	}
+}
 
+func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
+		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
+	}
+	checks = append(checks, commonAppstudioTierChecks()...)
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
 }
@@ -516,7 +521,7 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaJobs(),
 		clusterResourceQuotaServices(),
 		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaSecretCount("300"),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
@@ -527,6 +532,16 @@ type appstudiolargeTierChecks struct {
 	appstudioTierChecks
 }
 
+func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeBuild("480", "512Gi", "48", "128Gi"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "180"),
+	}
+	checks = append(checks, commonAppstudioTierChecks()...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	return checks
+}
+
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaDeploymentCount("600", "100", ""),
@@ -535,7 +550,7 @@ func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		clusterResourceQuotaJobs(),
 		clusterResourceQuotaServiceCount("100"),
 		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecretCount("300"),
+		clusterResourceQuotaSecretCount("900"),
 		clusterResourceQuotaConfigMapCount("300"),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
