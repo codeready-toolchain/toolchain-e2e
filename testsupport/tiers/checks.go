@@ -430,7 +430,6 @@ type appstudioTierChecks struct {
 func commonAppstudioTierChecks() []namespaceObjectsCheck {
 	return []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
-		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
@@ -452,6 +451,7 @@ func commonAppstudioTierChecks() []namespaceObjectsCheck {
 
 func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
 		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
@@ -535,6 +535,7 @@ type appstudiolargeTierChecks struct {
 func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeBuild("480", "512Gi", "48", "128Gi"),
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "180"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
