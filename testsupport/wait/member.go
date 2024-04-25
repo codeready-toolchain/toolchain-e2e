@@ -1710,13 +1710,13 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 	}
 }
 
-func WithSandboxPriorityClass() PodWaitCriterion {
+func WithSandboxPriorityClass(memberAwait *MemberAwaitility) PodWaitCriterion {
 	return PodWaitCriterion{
 		Match: func(actual *corev1.Pod) bool {
-			return checkPriorityClass(actual, "sandbox-users-pods", -3)
+			return checkPriorityClass(actual, "sandbox-users-pods-"+memberAwait.Namespace, -3)
 		},
 		Diff: func(actual *corev1.Pod) string {
-			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods'/'-3'\nbut it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
+			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods-%s'/'-3'\nbut it was '%s'/'%d'", memberAwait.Namespace, actual.Spec.PriorityClassName, actual.Spec.Priority)
 		},
 	}
 }
@@ -2194,11 +2194,10 @@ func (a *MemberAwaitility) WaitForMemberWebhooks(t *testing.T, image string) {
 }
 
 func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
-	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
+	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods-"+a.Namespace)
 	actualPrioClass := &schedulingv1.PriorityClass{}
-	a.waitForResource(t, "", "sandbox-users-pods", actualPrioClass)
-
-	assert.Equal(t, codereadyToolchainProviderLabel, actualPrioClass.Labels)
+	a.waitForResource(t, "", "sandbox-users-pods-"+a.Namespace, actualPrioClass)
+	assert.True(t, ContainsLabels(actualPrioClass.Labels, codereadyToolchainProviderLabel))
 	assert.Equal(t, int32(-3), actualPrioClass.Value)
 	assert.False(t, actualPrioClass.GlobalDefault)
 	assert.Equal(t, "Priority class for pods in users' namespaces", actualPrioClass.Description)
@@ -2279,8 +2278,8 @@ func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
 func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) {
 	t.Logf("checking MutatingWebhookConfiguration")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
-	a.waitForResource(t, "", "member-operator-webhook", actualMutWbhConf)
-	assert.Equal(t, bothWebhookLabels, actualMutWbhConf.Labels)
+	a.waitForResource(t, "", "member-operator-webhook-"+a.Namespace, actualMutWbhConf)
+	assert.True(t, ContainsLabels(actualMutWbhConf.Labels, bothWebhookLabels))
 	require.Len(t, actualMutWbhConf.Webhooks, 2)
 
 	type Rule struct {
@@ -2351,10 +2350,10 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 }
 
 func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte) {
-	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
+	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook"+a.Namespace)
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
-	a.waitForResource(t, "", "member-operator-validating-webhook", actualValWbhConf)
-	assert.Equal(t, bothWebhookLabels, actualValWbhConf.Labels)
+	a.waitForResource(t, "", "member-operator-validating-webhook-"+a.Namespace, actualValWbhConf)
+	assert.True(t, ContainsLabels(actualValWbhConf.Labels, bothWebhookLabels))
 	// require.Len(t, actualValWbhConf.Webhooks, 2)
 
 	rolebindingWebhook := actualValWbhConf.Webhooks[0]
@@ -2713,4 +2712,13 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedRules, actualRole.Rules)
+}
+
+func ContainsLabels(m, sub map[string]string) bool {
+	for k, vsub := range sub {
+		if vm, found := m[k]; !found || vm != vsub {
+			return false
+		}
+	}
+	return true
 }
