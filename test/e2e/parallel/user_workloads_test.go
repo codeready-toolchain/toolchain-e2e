@@ -44,8 +44,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create payloads for both users
-	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass(await.Member1()))
-	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass(await.Member1()))
+	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
+	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
 
 	// Create another noise pods in non-user namespace
 	memberAwait.CreateNamespace(t, "workloads-noise")
@@ -66,7 +66,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 
 	// make sure that "noise" pods are still there, and notification is not created for stage namespace
-	_, err = memberAwait.WaitForPods(t, idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass(memberAwait))
+	_, err = memberAwait.WaitForPods(t, idlerNoise.Name, len(podsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithSandboxPriorityClass())
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForPods(t, "workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
 	require.NoError(t, err)

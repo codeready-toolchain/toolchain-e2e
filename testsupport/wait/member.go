@@ -1710,13 +1710,13 @@ func WithPodLabel(key, value string) PodWaitCriterion {
 	}
 }
 
-func WithSandboxPriorityClass(memberAwait *MemberAwaitility) PodWaitCriterion {
+func WithSandboxPriorityClass() PodWaitCriterion {
 	return PodWaitCriterion{
 		Match: func(actual *corev1.Pod) bool {
-			return checkPriorityClass(actual, "sandbox-users-pods-"+memberAwait.Namespace, -3)
+			return checkPriorityClass(actual, "sandbox-users-pods", -3)
 		},
 		Diff: func(actual *corev1.Pod) string {
-			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods-%s'/'-3'\nbut it was '%s'/'%d'", memberAwait.Namespace, actual.Spec.PriorityClassName, actual.Spec.Priority)
+			return fmt.Sprintf("expected priorityClass to be 'sandbox-users-pods'/'-3'\nbut it was '%s'/'%d'", actual.Spec.PriorityClassName, actual.Spec.Priority)
 		},
 	}
 }
@@ -2194,9 +2194,9 @@ func (a *MemberAwaitility) WaitForMemberWebhooks(t *testing.T, image string) {
 }
 
 func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
-	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods-"+a.Namespace)
+	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
-	a.waitForResource(t, "", "sandbox-users-pods-"+a.Namespace, actualPrioClass)
+	a.waitForResource(t, "", "sandbox-users-pods", actualPrioClass)
 	assert.True(t, ContainsLabels(actualPrioClass.Labels, codereadyToolchainProviderLabel))
 	assert.Equal(t, int32(-3), actualPrioClass.Value)
 	assert.False(t, actualPrioClass.GlobalDefault)
