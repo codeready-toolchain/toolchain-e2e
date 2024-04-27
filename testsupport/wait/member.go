@@ -1742,7 +1742,7 @@ func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
 	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
 }
 
-// WaitUntilWebhookDeleted waits until the webhook app in memeber namespace is deleted (ie, is not found)
+// WaitUntilWebhookDeleted waits until the webhook app in member namespace is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilWebhookDeleted(t *testing.T) error {
 	t.Logf("waiting until webhook member-operator-webhook in namespace '%s' is deleted", a.Namespace)
 	deployment := &appsv1.Deployment{}
