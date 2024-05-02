@@ -50,6 +50,16 @@ test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run
 test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
+.PHONY: test-e2e-no-parallel
+## Run the e2e tests without migration tests
+test-e2e-no-parallel: prepare-e2e deploy-e2e e2e-run
+	@echo "To clean the cluster run 'make clean-e2e-resources'"
+
+.PHONY: prepare-and-deploy-e2e
+## Prepare and Deploy e2e environment. Usefull to reset without having to run a test
+prepare-and-deploy-e2e: prepare-e2e deploy-e2e
+	@echo "To clean the cluster run 'make clean-e2e-resources'"
+
 .PHONY: verify-migration-and-deploy-e2e
 verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migration-setup get-publish-and-install-operators e2e-migration-verify
 
@@ -92,6 +102,16 @@ label-olm-ns:
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration tests
 test-e2e-local-without-migration:
 	$(MAKE) test-e2e-without-migration HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
+
+.PHONY: test-e2e-local-no-parallel
+## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration tests
+test-e2e-local-no-parallel:
+	$(MAKE) test-e2e-no-parallel HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
+
+.PHONY: prepare-and-deploy-e2e-local
+## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration tests
+prepare-and-deploy-e2e-local:
+	$(MAKE) prepare-and-deploy-e2e HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: test-e2e-local
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories
