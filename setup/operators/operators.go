@@ -30,8 +30,6 @@ var Templates = []string{
 	"camel-k-operator.yaml",
 	"cluster-logging-operator.yaml",
 	"image-puller-operator.yaml",
-	"intel-aikit.yaml",
-	"intel-openvino.yaml",
 	// "devworkspace-operator.yaml", // included with DevSpaces install
 	"pipelines.yaml",
 	"service-binding-operator.yaml", // also included when rhoda is installed
