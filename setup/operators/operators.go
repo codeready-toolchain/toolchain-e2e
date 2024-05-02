@@ -34,7 +34,6 @@ var Templates = []string{
 	"intel-openvino.yaml",
 	// "devworkspace-operator.yaml", // included with DevSpaces install
 	"pipelines.yaml",
-	"rhods.yaml",
 	"service-binding-operator.yaml", // also included when rhoda is installed
 	"serverless-operator.yaml",
 	"web-terminal-operator.yaml",
