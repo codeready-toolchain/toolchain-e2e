@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -1070,7 +1071,35 @@ func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromRedHatODSNamespaceToMariaDB() namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces("allow-from-redhat-ods-app-to-mariadb", metav1.LabelSelector{MatchLabels: map[string]string{"app": "mariadb-dspa"}}, "kubernetes.io/metadata.name", "redhat-ods-applications")
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-from-redhat-ods-app-to-mariadb")
+		require.NoError(t, err)
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+
+		tcpProtocol := corev1.ProtocolTCP
+		port := intstr.FromInt(3306)
+		ingressRules := []netv1.NetworkPolicyIngressRule{
+			{
+				From: []netv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "redhat-ods-applications"}}}},
+				Ports: []netv1.NetworkPolicyPort{
+					{
+						Protocol: &tcpProtocol,
+						Port:     &port,
+					},
+				},
+			},
+		}
+
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				Ingress:     ingressRules,
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+				PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "mariadb-dspa"}},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
 }
 
 func networkPolicyAllowFromRedHatODSNamespaceToModelMesh() namespaceObjectsCheck {
