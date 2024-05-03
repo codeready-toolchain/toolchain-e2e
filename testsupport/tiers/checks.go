@@ -486,6 +486,16 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 				)
 				rolebindings += 2
 			}
+		case "viewer":
+			checks = append(checks, appstudioViewerUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "viewer"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
 		case "contributor":
 			checks = append(checks, appstudioContributorUserActionsRole())
 			roles++
@@ -1590,7 +1600,6 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 17)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1682,15 +1691,19 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
+}
+
+func appstudioViewerUserActionsRole() spaceRoleObjectsCheck {
+	return appstudioContributorUserActionsRole()
 }
 
 func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1776,6 +1789,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
@@ -1784,7 +1798,6 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1870,6 +1883,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
