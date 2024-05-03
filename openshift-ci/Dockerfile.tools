@@ -43,4 +43,6 @@ RUN mkdir -p ${GOPATH}/src/${GO_PACKAGE_PATH}/
 
 WORKDIR ${GOPATH}/src/${GO_PACKAGE_PATH}
 
+RUN go install github.com/jstemmer/go-junit-report/v2@latest
+
 ENTRYPOINT [ "/bin/bash" ]
