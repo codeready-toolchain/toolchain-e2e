@@ -38,6 +38,8 @@ E2E_PARALLELISM=1
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
+REPORT_PORTAL_DIR := rp_preproc/results
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
@@ -56,13 +58,13 @@ verify-migration-and-deploy-e2e: prepare-projects e2e-deploy-latest e2e-migratio
 .PHONY: e2e-migration-setup
 e2e-migration-setup:
 	@echo "Setting up the environment before testing the operator migration..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/setup"
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/setup" REPORT_NAME="xunit_e2e_migration_setup.xml"
 	@echo "Environment successfully setup."
 
 .PHONY: e2e-migration-verify
 e2e-migration-verify:
 	@echo "Updating operators and verifying resources..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/verify"
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/migration/verify" REPORT_NAME="xunit_e2e_migration_verify.xml"
 	@echo "Migration tests successfully finished"
 
 .PHONY: e2e-deploy-latest
@@ -121,13 +123,13 @@ test-e2e-registration-local:
 .PHONY: e2e-run-parallel
 e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100 REPORT_NAME="xunit_e2e_parallel.xml"
 	@echo "The parallel e2e tests successfully finished"
 
 .PHONY: e2e-run
 e2e-run:
 	@echo "Running e2e tests..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e ./test/metrics"
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e ./test/metrics"  REPORT_NAME="xunit_e2e.xml"
 	@echo "The e2e tests successfully finished"
 
 .PHONY: execute-tests
@@ -137,7 +139,7 @@ execute-tests:
 	@echo "Status of ToolchainStatus"
 	-oc get ToolchainStatus -n ${HOST_NS} -o yaml
 	@echo "Starting test $(shell date)"
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast || \
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | $(MAKE) generate-report REPORT_NAME=${REPORT_NAME}  || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -153,6 +155,17 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	$(MAKE) print-deployment-logs DEPLOYMENT_NAME=registration-service DEPLOYMENT_LABELS="-l name=registration-service" NAMESPACE=${REGISTRATION_SERVICE_NS}
 else
 	$(MAKE) print-local-debug-info  HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS}
+endif
+
+.PHONY: generate-report
+generate-report:
+	@echo "Generating report"
+ifneq ($(OPENSHIFT_BUILD_NAMESPACE),) 
+	mkdir -p  ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}
+	go-junit-report > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
+	@echo "xUnit Report Generation Successful"
+else 
+	@echo "Skipping Report as its a local run"
 endif
 
 .PHONY: deploy-e2e-local-and-print-local-debug
