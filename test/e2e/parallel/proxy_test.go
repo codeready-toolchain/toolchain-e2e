@@ -675,7 +675,7 @@ func TestSpaceLister(t *testing.T) {
 			identityID:            uuid.Must(uuid.NewV4()),
 		},
 	}
-	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer"})
+	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer", "viewer"})
 
 	// create the users before the subtests, so they exist for the duration of the whole test
 	for _, user := range users {
