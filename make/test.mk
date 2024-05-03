@@ -50,9 +50,9 @@ test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run
 test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
-.PHONY: test-e2e-no-parallel
+.PHONY: test-e2e-sequential-only
 ## Run the e2e tests without migration and without parallel tests
-test-e2e-no-parallel: prepare-e2e deploy-e2e e2e-run
+test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: prepare-and-deploy-e2e
@@ -103,10 +103,10 @@ label-olm-ns:
 test-e2e-local-without-migration:
 	$(MAKE) test-e2e-without-migration HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
 
-.PHONY: test-e2e-local-no-parallel
+.PHONY: test-e2e-local-sequential-only
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration and without parallel tests
-test-e2e-local-no-parallel:
-	$(MAKE) test-e2e-no-parallel HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
+test-e2e-local-sequential-only:
+	$(MAKE) test-e2e-sequential-only HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: prepare-and-deploy-e2e-local
 ## Prepare and Depoy the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without running any test
