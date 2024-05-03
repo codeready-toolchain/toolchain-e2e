@@ -1080,7 +1080,12 @@ func networkPolicyAllowFromRedHatODSNamespaceToMariaDB() namespaceObjectsCheck {
 		port := intstr.FromInt(3306)
 		ingressRules := []netv1.NetworkPolicyIngressRule{
 			{
-				From: []netv1.NetworkPolicyPeer{{NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "redhat-ods-applications"}}}},
+				From: []netv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "redhat-ods-applications"}},
+						PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "data-science-pipelines-operator"}},
+					},
+				},
 				Ports: []netv1.NetworkPolicyPort{
 					{
 						Protocol: &tcpProtocol,
