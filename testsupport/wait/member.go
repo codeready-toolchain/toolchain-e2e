@@ -2212,7 +2212,7 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
 	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource(t, "", "sandbox-users-pods", actualPrioClass)
-	assert.True(t, ContainsLabels(actualPrioClass.Labels, codereadyToolchainProviderLabel))
+	assert.Equal(t, codereadyToolchainProviderLabel, actualPrioClass.Labels)
 	assert.Equal(t, int32(-3), actualPrioClass.Value)
 	assert.False(t, actualPrioClass.GlobalDefault)
 	assert.Equal(t, "Priority class for pods in users' namespaces", actualPrioClass.Description)
@@ -2294,8 +2294,13 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 	t.Logf("checking MutatingWebhookConfiguration")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
 	a.waitForResource(t, "", "member-operator-webhook-"+a.Namespace, actualMutWbhConf)
-	assert.True(t, ContainsLabels(actualMutWbhConf.Labels, bothWebhookLabels))
+	assert.Equal(t, bothWebhookLabels, actualMutWbhConf.Labels)
 	require.Len(t, actualMutWbhConf.Webhooks, 2)
+	//check that there is only 1 MutatingWebhookConfiguration
+	allMutatingWebhooks := &admv1.MutatingWebhookConfigurationList{}
+	err := a.Client.List(context.TODO(), allMutatingWebhooks, client.MatchingLabels(appMemberOperatorWebhookLabel))
+	require.NoError(t, err)
+	require.Len(t, allMutatingWebhooks.Items, 1)
 
 	type Rule struct {
 		Operations  []admv1.OperationType
@@ -2368,8 +2373,12 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook"+a.Namespace)
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
 	a.waitForResource(t, "", "member-operator-validating-webhook-"+a.Namespace, actualValWbhConf)
-	assert.True(t, ContainsLabels(actualValWbhConf.Labels, bothWebhookLabels))
-	// require.Len(t, actualValWbhConf.Webhooks, 2)
+	assert.Equal(t, bothWebhookLabels, actualValWbhConf.Labels)
+	//check that there is only 1 ValidatingWebhookConfiguration
+	allValidatingWebhooks := &admv1.ValidatingWebhookConfigurationList{}
+	err := a.Client.List(context.TODO(), allValidatingWebhooks, client.MatchingLabels(appMemberOperatorWebhookLabel))
+	require.NoError(t, err)
+	require.Len(t, allValidatingWebhooks.Items, 1)
 
 	rolebindingWebhook := actualValWbhConf.Webhooks[0]
 	assert.Equal(t, "users.rolebindings.webhook.sandbox", rolebindingWebhook.Name)
@@ -2727,13 +2736,4 @@ func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedRules, actualRole.Rules)
-}
-
-func ContainsLabels(m, sub map[string]string) bool {
-	for k, vsub := range sub {
-		if vm, found := m[k]; !found || vm != vsub {
-			return false
-		}
-	}
-	return true
 }

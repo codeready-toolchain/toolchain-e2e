@@ -331,7 +331,7 @@ create-member2:
 ifeq ($(SECOND_MEMBER_MODE),true)
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
-	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator toolchain.dev.openshift.com/webhook=disabled
+	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
 	oc apply -f deploy/member-operator/${ENVIRONMENT}/ -n ${MEMBER_NS_2} || true
 endif
 
