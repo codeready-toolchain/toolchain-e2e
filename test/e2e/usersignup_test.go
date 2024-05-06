@@ -163,6 +163,50 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
 		})
 	})
+
+	s.T().Run("add user not matching domains, expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
+		domains := "anotherdomain.edu"
+		// when
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true).Domains(domains), testconfig.RegistrationService().Verification().Enabled(false))
+		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains), wait.UntilToolchainConfigHasVerificationEnabled(false))
+
+		// and
+		waitingList3, _ := NewSignupRequest(s.Awaitilities).
+			Username("waitinglist3").
+			Email("waitinglist3@redhat.com").
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...).
+			Execute(s.T()).Resources()
+
+		// then
+		s.userIsNotProvisioned(t, waitingList3)
+
+		t.Run("add matching domain to domains and expect the user will be provisioned", func(t *testing.T) {
+			domains := "anotherdomain.edu,redhat.com"
+			// when
+			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true).Domains(domains))
+			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains))
+
+			// then
+			userSignup, err := hostAwait.WaitForUserSignup(t, waitingList3.Name,
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
+				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+			require.NoError(t, err)
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+		})
+
+		t.Run("add user with bad email format and expect the user will not be approved nor provisioned", func(t *testing.T) {
+			msg := "unable to determine automatic approval: invalid email address: waitinglist4@somedomain.org@anotherdomain.com"
+			// when
+			waitingList4, _ := NewSignupRequest(s.Awaitilities).
+				Username("waitinglist4").
+				Email("waitinglist4@somedomain.org@anotherdomain.com").
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApprovalWithMsg(msg), wait.PendingApprovalNoClusterWithMsg(msg))...).
+				Execute(s.T()).Resources()
+
+			// then
+			s.userIsNotProvisioned(t, waitingList4)
+		})
+	})
 }
 
 func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
