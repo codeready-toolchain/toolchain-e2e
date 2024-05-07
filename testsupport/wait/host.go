@@ -1569,6 +1569,32 @@ func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) T
 	}
 }
 
+func UntilToolchainConfigHasAutoApprovalDomains(expected string) ToolchainConfigWaitCriterion {
+	return ToolchainConfigWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
+			return *actual.Spec.Host.AutomaticApproval.Domains == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Spec.Host.AutomaticApproval.Domains)
+			return fmt.Sprintf("expected approval domains to contain: %s.\n\tactual: %s", e, a)
+		},
+	}
+}
+
+func UntilToolchainConfigHasVerificationEnabled(expected bool) ToolchainConfigWaitCriterion {
+	return ToolchainConfigWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
+			return *actual.Spec.Host.RegistrationService.Verification.Enabled == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Spec.Host.RegistrationService.Verification.Enabled)
+			return fmt.Sprintf("expected approval domains to contain: %s.\n\tactual: %s", e, a)
+		},
+	}
+}
+
 // WaitForToolchainConfig waits until the ToolchainConfig is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForToolchainConfig(t *testing.T, criteria ...ToolchainConfigWaitCriterion) (*toolchainv1alpha1.ToolchainConfig, error) {
 	// there should only be one ToolchainConfig with the name "config"
