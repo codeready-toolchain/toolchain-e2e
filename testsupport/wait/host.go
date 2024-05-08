@@ -1991,6 +1991,19 @@ func UntilSpaceHasAnyProvisionedNamespaces() SpaceWaitCriterion {
 	}
 }
 
+// UntilSpaceHasExpectedProvisionedNamespacesNumber returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected number of `status.ProvisionedNamespaces` set
+func UntilSpaceHasExpectedProvisionedNamespacesNumber(expected int) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return len(actual.Status.ProvisionedNamespaces) == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected provisioned namespaces to be %d. Actual Space provisioned namespaces:\n%v", expected, actual)
+		},
+	}
+}
+
 // UntilSpaceHasAnyTargetClusterSet returns a `SpaceWaitCriterion` which checks that the given
 // Space has any `spec.targetCluster` set
 func UntilSpaceHasAnyTargetClusterSet() SpaceWaitCriterion {
