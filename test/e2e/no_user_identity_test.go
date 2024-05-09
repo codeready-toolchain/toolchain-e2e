@@ -9,7 +9,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 
 	username := "nouseridentity"
-	identityID := uuid.Must(uuid.NewV4())
+	identityID := uuid.New()
 
 	// create pre-existing user and identity
 	preexistingUser := &userv1.User{
