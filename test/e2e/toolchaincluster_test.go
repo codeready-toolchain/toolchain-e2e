@@ -129,6 +129,13 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		)
 		require.NoError(t, err)
 	})
+
+	t.Run("referenced secret is labeled", func(t *testing.T) {
+		secret := corev1.Secret{}
+		require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, &secret))
+
+		require.Equal(t, current.Name, secret.Labels[toolchainv1alpha1.ToolchainClusterLabel])
+	})
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
