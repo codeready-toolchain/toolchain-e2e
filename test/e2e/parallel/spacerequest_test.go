@@ -328,7 +328,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		subSpace, err = hostAwait.WaitForSpace(t, subSpace.Name,
 			UntilSpaceHasTier("base"),
 			UntilSpaceHasConditions(Provisioned()),
-			UntilSpaceHasAnyProvisionedNamespaces())
+			UntilSpaceHasExpectedProvisionedNamespacesNumber(2))
 		require.NoError(t, err)
 
 		_, err = memberAwait.WaitForSpaceRequest(t, spaceRequestNamespacedName,
