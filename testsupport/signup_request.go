@@ -17,7 +17,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,13 +25,13 @@ var httpClient = HTTPClient
 
 // NewSignupRequest creates a new signup request for the registration service
 func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
-	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
+	defaultUsername := fmt.Sprintf("testuser-%s", uuid.NewString())
 	return &SignupRequest{
 		awaitilities:       awaitilities,
 		requiredHTTPStatus: http.StatusAccepted,
 		username:           defaultUsername,
 		email:              fmt.Sprintf("%s@test.com", defaultUsername),
-		identityID:         uuid.Must(uuid.NewV4()),
+		identityID:         uuid.New(),
 	}
 }
 
