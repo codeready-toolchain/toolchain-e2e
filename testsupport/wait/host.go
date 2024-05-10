@@ -584,16 +584,9 @@ func UntilUserSignupHasStates(states ...toolchainv1alpha1.UserSignupState) UserS
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
 			for _, requiredState := range states {
-				found := false
-				for _, s := range actual.Spec.States {
-					if s == requiredState {
-						found = true
-						break
-					}
-				}
-				if !found {
-					return false
-				}
+                                if !slices.Contains(actual.Spec.States, requiredState) {
+                                    return false
+                                }
 			}
 			return true
 		},
