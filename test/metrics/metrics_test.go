@@ -17,7 +17,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -267,7 +267,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		// given
 		username := "user-verification-required"
 		// Create a token and identity to sign up with
-		emailAddress := uuid.Must(uuid.NewV4()).String() + "@some.domain"
+		emailAddress := uuid.NewString() + "@some.domain"
 		identity0, token0, err := authsupport.NewToken(authsupport.WithEmail(emailAddress))
 		require.NoError(t, err)
 
@@ -385,8 +385,9 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 			require.NoError(t, err)
 
 			// reactivate the user
+
 			usersignups[username], _ = NewSignupRequest(awaitilities).
-				IdentityID(uuid.Must(uuid.FromString(usersignups[username].Spec.IdentityClaims.Sub))).
+				IdentityID(uuid.MustParse(usersignups[username].Spec.IdentityClaims.Sub)).
 				Username(username).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
@@ -633,7 +634,7 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 func banUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
 	bannedUser := &toolchainv1alpha1.BannedUser{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      uuid.Must(uuid.NewV4()).String(),
+			Name:      uuid.NewString(),
 			Namespace: hostAwait.Namespace,
 			Labels: map[string]string{
 				toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email),
