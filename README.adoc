@@ -36,16 +36,12 @@ This is by design because OLM does not ensure that both the host-operator and me
 
 If you still don't know what to do with e2e tests in some use-cases, go to <<What To Do>> section where all use-cases are covered.
 
-=== Prerequisites if Running Locally
+=== Running Locally
 
-Install the link:required_tools.adoc[required tools].
+*Prerequisites*:
 
-==== OpenShift 4.2+
-
-* Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
-* Log in to the quay.io using `docker login quay.io`
-* Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
-* Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
+* Install the link:required_tools.adoc[required tools].
+* Configure link:quay.adoc[your quay account for dev deployment].
 
 ==== Running in a Development Environment
 

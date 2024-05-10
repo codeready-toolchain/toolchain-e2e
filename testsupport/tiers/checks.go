@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -151,7 +152,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	case "stage":
 		otherNamespaceKind = "dev"
 	}
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(8))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(10))
 
 	return checks
 }
@@ -211,7 +212,7 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "14Gi", "3", "14Gi"),
+		resourceQuotaComputeDeploy("20", "18Gi", "3", "18Gi"),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
 		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
@@ -221,7 +222,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		crtadminViewRoleBinding(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), numberOfNetworkPolicies(7))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
 	return checks
 }
 
@@ -481,6 +482,16 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 			for _, userName := range usernames {
 				checks = append(checks,
 					appstudioUserActionsRoleBinding(userName, "maintainer"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		case "viewer":
+			checks = append(checks, appstudioViewerUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "viewer"),
 					appstudioViewRoleBinding(userName),
 				)
 				rolebindings += 2
@@ -1062,15 +1073,56 @@ func networkPolicyAllowFromMonitoring() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-olm-namespaces", metav1.LabelSelector{}, "openshift.io/scc", "anyuid")
 }
 
 func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
 	return networkPolicyIngressFromPolicyGroup("allow-from-console-namespaces", "console")
 }
 
+func networkPolicyAllowFromRedHatODSNamespaceToMariaDB() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-from-redhat-ods-app-to-mariadb")
+		require.NoError(t, err)
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+
+		tcpProtocol := corev1.ProtocolTCP
+		port := intstr.FromInt(3306)
+		ingressRules := []netv1.NetworkPolicyIngressRule{
+			{
+				From: []netv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "redhat-ods-applications"}},
+						PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "data-science-pipelines-operator"}},
+					},
+				},
+				Ports: []netv1.NetworkPolicyPort{
+					{
+						Protocol: &tcpProtocol,
+						Port:     &port,
+					},
+				},
+			},
+		}
+
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				Ingress:     ingressRules,
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+				PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "mariadb-dspa"}},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func networkPolicyAllowFromRedHatODSNamespaceToModelMesh() namespaceObjectsCheck {
+	return assertNetworkPolicyIngressForNamespaces("allow-from-redhat-ods-app-to-mm", metav1.LabelSelector{MatchLabels: map[string]string{"modelmesh-service": "modelmesh-serving"}}, "kubernetes.io/metadata.name", "redhat-ods-applications")
+}
+
 func networkPolicyAllowFromVirtualizationNamespaces() namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces("allow-from-openshift-virtualization-namespaces", "kubernetes.io/metadata.name", "openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-cnv")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-openshift-virtualization-namespaces", metav1.LabelSelector{}, "kubernetes.io/metadata.name", "openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-cnv")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
@@ -1078,10 +1130,10 @@ func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 }
 
 func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces(name, "network.openshift.io/policy-group", group)
+	return assertNetworkPolicyIngressForNamespaces(name, metav1.LabelSelector{}, "network.openshift.io/policy-group", group)
 }
 
-func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ...string) namespaceObjectsCheck {
+func assertNetworkPolicyIngressForNamespaces(name string, podSelector metav1.LabelSelector, labelNameValuePairs ...string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		require.Equal(t, 0, len(labelNameValuePairs)%2, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
@@ -1099,6 +1151,7 @@ func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ..
 			Spec: netv1.NetworkPolicySpec{
 				Ingress:     ingressRules,
 				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+				PodSelector: podSelector,
 			},
 		}
 
@@ -1547,7 +1600,6 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 17)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1639,15 +1691,19 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
+}
+
+func appstudioViewerUserActionsRole() spaceRoleObjectsCheck {
+	return appstudioContributorUserActionsRole()
 }
 
 func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1733,6 +1789,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
@@ -1741,7 +1798,6 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
@@ -1827,6 +1883,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
