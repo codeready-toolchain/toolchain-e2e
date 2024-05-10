@@ -15,7 +15,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -282,8 +282,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	// given
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
-	id, err := uuid.NewV4()
-	require.NoError(s.T(), err)
+	id := uuid.New()
 
 	// when
 	userSignup, _ := NewSignupRequest(s.Awaitilities).
@@ -407,7 +406,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	// generate a new identity ID
-	identityID := uuid.Must(uuid.NewV4())
+	identityID := uuid.New()
 
 	// when
 	userSignup, _ := NewSignupRequest(s.Awaitilities).
@@ -613,7 +612,7 @@ func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAsser
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
 	// Create a new UserSignup
-	username := "testuser" + uuid.Must(uuid.NewV4()).String()
+	username := "testuser" + uuid.NewString()
 	email := username + "@test.com"
 	userSignup := NewUserSignup(hostAwait.Namespace, username, email)
 	userSignup.Spec.TargetCluster = memberAwait.ClusterName
