@@ -6,7 +6,6 @@ import (
 	"hash/crc32"
 	"reflect"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -585,7 +584,14 @@ func UntilUserSignupHasStates(states ...toolchainv1alpha1.UserSignupState) UserS
 	return UserSignupWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
 			for _, requiredState := range states {
-				if !slices.Contains(actual.Spec.States, requiredState) {
+				found := false
+				for _, s := range actual.Spec.States {
+					if s == requiredState {
+						found = true
+						break
+					}
+				}
+				if !found {
 					return false
 				}
 			}
