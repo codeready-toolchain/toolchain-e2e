@@ -1,0 +1,48 @@
+FROM registry.access.redhat.com/ubi8/ubi:latest as build-tools
+
+LABEL maintainer "Devtools <devtools@redhat.com>"
+LABEL author "Devtools <devtools@redhat.com>"
+
+ENV LANG=en_US.utf8 \
+    GOPATH=/tmp/go \
+    GOCACHE=/tmp/.cache \
+    PATH=$PATH:$GOPATH/bin \
+    GIT_COMMITTER_NAME=devtools \
+    GIT_COMMITTER_EMAIL=devtools@redhat.com \
+    GOLANG_VERSION=go1.20.11 \
+    GOLANG_SHA256=ef79a11aa095a08772d2a69e4f152f897c4e96ee297b0dc20264b7dec2961abe
+
+ARG GO_PACKAGE_PATH=github.com/codeready-toolchain/toolchain-e2e
+
+RUN yum install -y \
+    findutils \
+    git \
+    make \
+    procps-ng \
+    tar \
+    wget \
+    which \
+    bc \
+    jq \
+    gcc \
+    && yum clean all
+
+WORKDIR /tmp
+
+# download, verify and install golang
+ENV PATH=$PATH:/usr/local/go/bin
+ENV PATH=$PATH:/go/bin
+RUN curl -Lo ${GOLANG_VERSION}.linux-amd64.tar.gz https://dl.google.com/go/${GOLANG_VERSION}.linux-amd64.tar.gz \
+    && echo "${GOLANG_SHA256} ${GOLANG_VERSION}.linux-amd64.tar.gz" > ${GOLANG_VERSION}.linux-amd64.sha256 \
+    && sha256sum -c ${GOLANG_VERSION}.linux-amd64.sha256 \
+    && tar xzf ${GOLANG_VERSION}.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf ${GOLANG_VERSION}.linux-amd64.tar.gz \
+    && rm -f ${GOLANG_VERSION}.linux-amd64.tar.gz \
+    && go version \
+    && go install github.com/jstemmer/go-junit-report/v2@latest
+
+RUN mkdir -p ${GOPATH}/src/${GO_PACKAGE_PATH}/
+
+WORKDIR ${GOPATH}/src/${GO_PACKAGE_PATH}
+
+ENTRYPOINT [ "/bin/bash" ]
