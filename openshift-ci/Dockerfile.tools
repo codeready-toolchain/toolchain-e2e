@@ -37,11 +37,11 @@ RUN curl -Lo ${GOLANG_VERSION}.linux-amd64.tar.gz https://dl.google.com/go/${GOL
     && tar xzf ${GOLANG_VERSION}.linux-amd64.tar.gz \
     && tar -C /usr/local -xzf ${GOLANG_VERSION}.linux-amd64.tar.gz \
     && rm -f ${GOLANG_VERSION}.linux-amd64.tar.gz \
-    && go version
+    && go version \
+    && go install github.com/jstemmer/go-junit-report/v2@latest
 
 RUN mkdir -p ${GOPATH}/src/${GO_PACKAGE_PATH}/
 
 WORKDIR ${GOPATH}/src/${GO_PACKAGE_PATH}
-
 
 ENTRYPOINT [ "/bin/bash" ]
