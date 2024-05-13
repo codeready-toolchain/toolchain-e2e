@@ -103,10 +103,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	memberAwait2 := s.Member2()
 	hostAwait.UpdateToolchainConfig(s.T(),
 		testconfig.AutomaticApproval().Enabled(false),
-		testconfig.Deactivation().DeactivatingNotificationDays(-1))
+		testconfig.Deactivation().DeactivatingNotificationDays(0))
 
 	config := hostAwait.GetToolchainConfig(s.T())
-	require.Equal(s.T(), -1, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
+	require.Equal(s.T(), 0, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// User on member cluster 1
