@@ -256,7 +256,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// The non-excluded user should be deactivated
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, murMember1.Name)
-		t.Logf("### DEBUG usersignup: %s", userSignupMember1)
+		bytes, err2 := wait.StringifyObject(userSignupMember1)
+		require.NoError(t, err2)
+		t.Logf("### DEBUG usersignup: %s", string(bytes))
 		require.NoError(t, err)
 
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, murMember1.Name)
