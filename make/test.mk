@@ -158,6 +158,8 @@ execute-tests:
 	-oc get Space -n ${HOST_NS}
 	@echo "Status of ToolchainStatus"
 	-oc get ToolchainStatus -n ${HOST_NS} -o yaml
+	@echo "Check Reporting"
+	$(MAKE) check-go-junit-report
 	@echo "Starting test $(shell date)"
 	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | $(MAKE) generate-report REPORT_NAME=${REPORT_NAME}  || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
@@ -176,6 +178,12 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 else
 	$(MAKE) print-local-debug-info  HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS}
 endif
+
+.PHONY: check-go-junit-report
+
+check-go-junit-report:
+	@command -v go-junit-report >/dev/null 2>&1 || { echo "go-junit-report is not installed. Installing..."; go install github.com/jstemmer/go-junit-report@latest; }
+	@echo "go-junit-report version:" && go-junit-report -version
 
 .PHONY: generate-report
 generate-report:
