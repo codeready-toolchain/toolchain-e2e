@@ -36,6 +36,7 @@ func CreateMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetC
 			Email(fmt.Sprintf("multiple-signup-testuser-%d@test.com", i)).
 			ManuallyApprove().
 			TargetCluster(targetCluster).
+			EnsureMUR().
 			Execute(t).
 			Resources()
 	}
