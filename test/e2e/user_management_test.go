@@ -255,8 +255,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
 		reloaded, err := hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
-			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivating),
-			wait.UntilUserSignupHasScheduledDeactivationTime())
+			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(t, err)
 
 		// The non-excluded user should be deactivated
