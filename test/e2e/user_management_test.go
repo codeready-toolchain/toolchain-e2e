@@ -254,22 +254,19 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 		t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
-		reloaded, err := hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
+		_, err = hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
 			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(t, err)
 
 		// The non-excluded user should be deactivated
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, murMember1.Name)
-		bytes, err2 := wait.StringifyObject(reloaded)
-		require.NoError(t, err2)
-		t.Logf("### DEBUG usersignup: %s", string(bytes))
 		require.NoError(t, err)
 
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, murMember1.Name)
 		require.NoError(t, err)
 
 		userSignupMember1, err = hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Deactivated())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.DeactivatedWithoutDeactivating())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
 		require.True(t, states.Deactivated(userSignupMember1), "usersignup should be deactivated")
