@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -174,17 +174,17 @@ func TestProxyFlow(t *testing.T) {
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		{
 			expectedMemberCluster: memberAwait2,
 			username:              "proxymember2",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "compliant.username", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 	}
 	//create the users before the subtests, so they exist for the duration of the whole "ProxyFlow" test ;)
@@ -605,7 +605,7 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 	watchUser := &proxyUser{
 		expectedMemberCluster: awaitilities.Member1(),
 		username:              "watcher",
-		identityID:            uuid.Must(uuid.NewV4()),
+		identityID:            uuid.New(),
 	}
 	createAppStudioUser(t, awaitilities, watchUser)
 
@@ -662,20 +662,20 @@ func TestSpaceLister(t *testing.T) {
 		"car": {
 			expectedMemberCluster: memberAwait,
 			username:              "car",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		"bus": {
 			expectedMemberCluster: memberAwait2,
 			username:              "bus",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		"bicycle": {
 			expectedMemberCluster: memberAwait,
 			username:              "road.bicycle", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 	}
-	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer"})
+	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer", "viewer"})
 
 	// create the users before the subtests, so they exist for the duration of the whole test
 	for _, user := range users {
