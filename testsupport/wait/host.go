@@ -580,6 +580,52 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 	}
 }
 
+func UntilUserSignupHasStates(states ...toolchainv1alpha1.UserSignupState) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			for _, requiredState := range states {
+				found := false
+				for _, s := range actual.Spec.States {
+					if s == requiredState {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected UserSignup '%s' to contain states '%s', actual states: '%s'", actual.Name,
+				states, actual.Spec.States)
+		},
+	}
+}
+
+func UntilUserSignupHasScheduledDeactivationTime() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.ScheduledDeactivationTimestamp != nil
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected to have a value for '.Status.ScheduledDeactivationTimestamp'"
+		},
+	}
+}
+
+func UntilUserSignupHasNilScheduledDeactivationTime() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.ScheduledDeactivationTimestamp == nil
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected '.Status.ScheduledDeactivationTimestamp' to be nil"
+		},
+	}
+}
+
 // UntilUserSignupHasCompliantUsername returns a `UserSignupWaitCriterion` which checks that the given
 // UserSignup has a `.Status.CompliantUsername` value
 func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
