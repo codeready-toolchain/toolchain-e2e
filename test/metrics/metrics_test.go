@@ -650,7 +650,6 @@ func banUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolch
 }
 
 func TestForceMetricsSynchronization(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -658,7 +657,7 @@ func TestForceMetricsSynchronization(t *testing.T) {
 		testconfig.AutomaticApproval().Enabled(true),
 		testconfig.Metrics().ForceSynchronization(false))
 
-	userSignups := CreateMultipleSignups(t, awaitilities, nil, 2)
+	userSignups := CreateMultipleSignupsWithMURs(t, awaitilities, nil, 2)
 
 	// delete the current toolchainstatus/toolchain-status resource and restart the host-operator pod,
 	// so we can start with accurate counters/metrics and not get flaky because of previous tests,
