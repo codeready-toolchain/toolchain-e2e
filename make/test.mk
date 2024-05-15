@@ -182,7 +182,7 @@ endif
 .PHONY: check-go-junit-report
 
 check-go-junit-report:
-	go env
+	PATH=${PATH}:$(go env GOPATH)/bin
 	@command -v go-junit-report >/dev/null 2>&1 || { echo "go-junit-report is not installed. Installing..."; go install github.com/jstemmer/go-junit-report/v2@latest; }
 	@echo "go-junit-report version:" && go-junit-report -version
 
