@@ -103,10 +103,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	memberAwait2 := s.Member2()
 	hostAwait.UpdateToolchainConfig(s.T(),
 		testconfig.AutomaticApproval().Enabled(false),
-		testconfig.Deactivation().DeactivatingNotificationDays(-1))
+		testconfig.Deactivation().DeactivatingNotificationDays(0))
 
 	config := hostAwait.GetToolchainConfig(s.T())
-	require.Equal(s.T(), -1, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
+	require.Equal(s.T(), 0, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// User on member cluster 1
@@ -254,6 +254,10 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 		t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
+		_, err = hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
+			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
+		require.NoError(t, err)
+
 		// The non-excluded user should be deactivated
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, murMember1.Name)
 		require.NoError(t, err)
@@ -262,7 +266,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		userSignupMember1, err = hostAwait.WaitForUserSignup(t, userSignupMember1.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Deactivated())...),
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.DeactivatedWithoutDeactivating())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
 		require.NoError(t, err)
 		require.True(t, states.Deactivated(userSignupMember1), "usersignup should be deactivated")
@@ -346,7 +350,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// Wait for the UserSignup to have the desired state
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved),
+			wait.UntilUserSignupHasScheduledDeactivationTime())
 		require.NoError(t, err)
 
 		s.T().Run("user set to deactivating when provisioned time set in past", func(t *testing.T) {
@@ -375,6 +380,13 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasConditions(
 				wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically(), wait.Deactivating())...))
 			require.NoError(t, err)
+
+			// The scheduled deactivation time should have also been updated, and should now expire in ~3 days
+			expected := time.Now().Add(3 * time.Hour * 24)
+			comparison := expected.Sub(userSignup.Status.ScheduledDeactivationTimestamp.Time)
+
+			// accept if we're within 1 hour of the expected deactivation time
+			require.Less(t, comparison, time.Hour)
 
 			// Verify resources have been provisioned
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
@@ -437,7 +449,8 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 				// The user should now be set to deactivated
 				userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedAutomatically(), wait.Deactivated())...))
+					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.ApprovedAutomatically(), wait.Deactivated())...),
+					wait.UntilUserSignupHasNilScheduledDeactivationTime())
 				require.NoError(t, err)
 
 				// The MUR should also be deleted
@@ -478,9 +491,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.DeactivatedWithoutPreDeactivation())...),
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated),
+			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(t, err)
-		require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")
 
 		// Set the unverified retention days to 0
 		hostAwait.UpdateToolchainConfig(t,
@@ -498,11 +511,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		t.Logf("user signup '%s' reactivated", userSignup.Name)
 
 		// Since the config for retention days is set to 0, the account should be deactivated again immediately
-		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
+		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutNotification())...),
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated))
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueDeactivated),
+			wait.UntilUserSignupHasNilScheduledDeactivationTime(),
+			wait.UntilUserSignupHasStates(toolchainv1alpha1.UserSignupStateDeactivated))
 		require.NoError(t, err)
-		require.True(t, states.Deactivated(userSignup), "usersignup should be deactivated")
 
 		// Set the unverified retention days to 7
 		hostAwait.UpdateToolchainConfig(t,

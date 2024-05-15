@@ -341,6 +341,34 @@ func Deactivated() []toolchainv1alpha1.Condition {
 	}
 }
 
+// DeactivatedWithoutDeactivating represents a set of conditions where a usersignup may be deactivated without
+// first going through the deactivating (i.e. pre-deactivation) steps, for example when the deactivation notification
+// days are set to 0 via the configuration
+func DeactivatedWithoutDeactivating() []toolchainv1alpha1.Condition {
+	return []toolchainv1alpha1.Condition{
+		{
+			Type:   toolchainv1alpha1.UserSignupComplete,
+			Status: corev1.ConditionTrue,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatingNotificationCreated,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupDeactivatingNotificationUserNotInPreDeactivationReason,
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupUserDeactivatedNotificationCreated,
+			Status: corev1.ConditionTrue,
+			Reason: "NotificationCRCreated",
+		},
+		{
+			Type:   toolchainv1alpha1.UserSignupApproved,
+			Status: corev1.ConditionFalse,
+			Reason: toolchainv1alpha1.UserSignupUserDeactivatedReason,
+		},
+	}
+}
+
 func UserSignupMissingEmail() []toolchainv1alpha1.Condition {
 	return []toolchainv1alpha1.Condition{
 		{
