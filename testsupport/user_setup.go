@@ -12,7 +12,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/gofrs/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,7 +37,7 @@ func createMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetC
 			TargetCluster(targetCluster)
 
 		if ensuresMur {
-			signupRequest = signupRequest.EnsureMUR().RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...)
+			signupRequest = signupRequest.EnsureMUR().RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...)
 		}
 
 		signups[i], _ = signupRequest.Execute(t).Resources()
