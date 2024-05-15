@@ -24,17 +24,36 @@ func TestToolchainClusterE2E(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
 
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, true)
+
+	// NOTE: The labels are currently only set in the host operator. In the next upgrade step, the member operator will
+	// also be updated to use the new version of the toolchain cluster controller.
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, false)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, shouldHaveReferencedSecret bool) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, nil)
 	require.NoError(t, err)
 	require.True(t, ok, "ToolchainCluster should exist")
+
+	// NOTE: this needs to run first, before the sub-tests below, because they reuse the secret for the new
+	// toolchain clusters. This is technically incorrect but sufficient for those tests.
+	// Note that we are going to be changing the workflow such that the label on the secret will actually be the driver
+	// for ToolchainCluster creation and so re-using the secret for different TCs will become impossible in the future.
+	t.Run("referenced secret is labeled", func(t *testing.T) {
+		if !shouldHaveReferencedSecret {
+			t.Skip("this cluster shouldn't have the secret referenced yet")
+		}
+
+		secret := corev1.Secret{}
+		require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, &secret))
+
+		require.Equal(t, current.Name, secret.Labels[toolchainv1alpha1.ToolchainClusterLabel], "the secret of the ToolchainCluster %s is not labeled", client.ObjectKeyFromObject(&current))
+	})
+
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", string(await.ClusterName)), func(t *testing.T) {
 		// given
 		name := "new-ready-" + string(await.ClusterName)
