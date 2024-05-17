@@ -19,6 +19,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -947,6 +948,27 @@ func TestSpaceLister(t *testing.T) {
 			require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot update resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", users["bicycle"].compliantUsername))
 		})
 	})
+
+	t.Run("fix invalid SpaceRole in SBR", func(t *testing.T) {
+		// we need to fix the invalid SpaceRole, otherwise it may cause flakiness as there is already a loop of reconciles based on the error,
+		// and it could take too long to get ot the SBR again if (for example) the removal of the Finalizer fails
+		// given
+		primaryUserSpace, err := awaitilities.Host().WaitForSpace(t, users["bus"].compliantUsername)
+		require.NoError(t, err)
+		memberAwait, err := awaitilities.Member(primaryUserSpace.Spec.TargetCluster)
+		require.NoError(t, err)
+
+		// when
+		_, err = memberAwait.UpdateSpaceBindingRequest(t, test.NamespacedName(failingSBR.Namespace, failingSBR.Name), func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+			sbr.Spec.SpaceRole = "admin"
+		})
+
+		// then
+		require.NoError(t, err)
+		_, err = awaitilities.Host().WaitForSpaceBinding(t, failingSBR.Spec.MasterUserRecord, primaryUserSpace.GetName())
+		require.NoError(t, err)
+	})
+
 }
 
 func tenantNsName(username string) string {
