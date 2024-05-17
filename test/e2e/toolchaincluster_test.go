@@ -145,10 +145,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 }
 
 func generateNewName(prefix, baseName string) string {
-	if len(prefix+baseName) >= 63 {
-		return prefix + baseName[len(prefix):]
-	}
-	return prefix + baseName
+	return (prefix + baseName)[:63]
 }
 
 func copySecret(t *testing.T, await *wait.Awaitility, namespace, name, prefix string) *corev1.Secret {
