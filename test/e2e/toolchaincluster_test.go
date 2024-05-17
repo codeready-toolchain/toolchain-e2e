@@ -58,7 +58,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// given
 		secretCopy := copySecret(t, await, current.Namespace, current.Spec.SecretRef.Name, "new-ready-")
 
-		name := "new-ready-" + current.Name
+		name := generateNewName("new-ready-", current.Name)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
@@ -101,7 +101,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// given
 		secretCopy := copySecret(t, await, current.Namespace, current.Spec.SecretRef.Name, "new-offline-")
 
-		name := "new-offline-" + current.Name
+		name := generateNewName("new-offline-", current.Name)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
@@ -142,6 +142,13 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		)
 		require.NoError(t, err)
 	})
+}
+
+func generateNewName(prefix, baseName string) string {
+	if len(prefix+baseName) >= 63 {
+		return prefix + baseName[len(prefix):]
+	}
+	return prefix + baseName
 }
 
 func copySecret(t *testing.T, await *wait.Awaitility, namespace, name, prefix string) *corev1.Secret {
