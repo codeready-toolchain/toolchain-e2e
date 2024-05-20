@@ -87,7 +87,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// we need to create a copy of the cluster and the token secret
 		existingCluster, err := host.WaitForToolchainCluster(t)
 		require.NoError(t, err)
-		cluster, _ := copyClusterWithSecret(t, host.Awaitility, existingCluster)
+		cluster := copyClusterWithSecret(t, host.Awaitility, existingCluster)
 
 		// when
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
@@ -113,7 +113,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		// we need to create a copy of the cluster and the token secret
 		existingCluster, err := host.WaitForToolchainCluster(t)
 		require.NoError(t, err)
-		cluster, _ := copyClusterWithSecret(t, host.Awaitility, existingCluster)
+		cluster := copyClusterWithSecret(t, host.Awaitility, existingCluster)
 
 		// when
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
@@ -136,7 +136,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 	})
 }
 
-func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) (*toolchainv1alpha1.ToolchainCluster, *corev1.Secret) {
+func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
 	clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
 	secret := &corev1.Secret{}
 	require.NoError(t, a.GetClient().Get(context.TODO(), client.ObjectKey{Name: cluster.Spec.SecretRef.Name, Namespace: cluster.Namespace}, secret))
@@ -153,5 +153,5 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 	newCluster.Spec.SecretRef.Name = secret.Name
 	require.NoError(t, a.CreateWithCleanup(t, newCluster))
 
-	return newCluster, secret
+	return newCluster
 }
