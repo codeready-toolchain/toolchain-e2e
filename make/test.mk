@@ -43,18 +43,18 @@ REPORT_PORTAL_DIR := rp_preproc/results
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run
+test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: test-e2e-without-migration
 ## Run the e2e tests without migration tests
-test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run
+test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: test-e2e-sequential-only
 ## Run the e2e tests without migration and without parallel tests
-test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run
+test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: prepare-and-deploy-e2e
@@ -91,7 +91,7 @@ deploy-published-operators-e2e: clean-e2e-files deploy-e2e
 
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
-deploy-e2e: prepare-projects get-publish-install-and-register-operators 
+deploy-e2e: prepare-projects get-publish-install-and-register-operators
 	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
@@ -148,9 +148,15 @@ e2e-run-parallel:
 
 .PHONY: e2e-run
 e2e-run:
-	@echo "Running e2e tests..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e ./test/metrics"  REPORT_NAME="xunit_e2e.xml"
-	@echo "The e2e tests successfully finished"
+	@echo "Running e2e sequential tests..."
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e" REPORT_NAME="xunit_e2e.xml"
+	@echo "The e2e sequential tests successfully finished"
+
+.PHONY: e2e-run-metrics
+e2e-run-metrics:
+	@echo "Running e2e metrics tests..."
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/metrics"
+	@echo "The e2e metrics tests successfully finished"
 
 .PHONY: execute-tests
 execute-tests:
