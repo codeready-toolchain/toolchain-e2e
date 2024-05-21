@@ -189,8 +189,8 @@ generate-report:
 	@echo "Generating report"
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),) 
 	mkdir -p  ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}
-	go install github.com/jstemmer/go-junit-report/v2@latest
-	PATH=${PATH}:$(go env GOPATH)/bin go-junit-report > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
+	GOBIN=$(PWD) go install github.com/jstemmer/go-junit-report/v2@latest
+	./go-junit-report > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
 	@echo "xUnit Report Generation Successful"
 else 
 	@echo "Skipping Report as its a local run"
