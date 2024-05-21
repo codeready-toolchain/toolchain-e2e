@@ -155,7 +155,7 @@ e2e-run:
 .PHONY: e2e-run-metrics
 e2e-run-metrics:
 	@echo "Running e2e metrics tests..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/metrics"
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/metrics" REPORT_NAME="xunit_e2e_metrics.xml"
 	@echo "The e2e metrics tests successfully finished"
 
 .PHONY: execute-tests
