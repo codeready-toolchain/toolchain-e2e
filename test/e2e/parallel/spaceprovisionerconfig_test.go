@@ -55,22 +55,40 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 	})
 	t.Run("becomes ready when cluster appears and becomes ready", func(t *testing.T) {
 		// given
+		existingCluster, err := host.WaitForToolchainCluster(t, wait.UntilToolchainClusterHasName(awaitilities.Member1().ClusterName))
+		require.NoError(t, err)
 		clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
 
 		// when
 		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
 
 		// then
-		_, err := wait.
+		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
 		require.NoError(t, err)
 
 		// when
+		copiedSecret := &corev1.Secret{}
+		require.NoError(t, host.CopyWithCleanup(t,
+			client.ObjectKey{
+				Name:      existingCluster.Spec.SecretRef.Name,
+				Namespace: existingCluster.Namespace,
+			},
+			client.ObjectKey{
+				Name:      clusterName,
+				Namespace: existingCluster.Namespace,
+			}, copiedSecret))
+
 		cluster := &toolchainv1alpha1.ToolchainCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterName,
 				Namespace: host.Namespace,
+			},
+			Spec: toolchainv1alpha1.ToolchainClusterSpec{
+				SecretRef: toolchainv1alpha1.LocalSecretReference{
+					Name: copiedSecret.Name,
+				},
 			},
 		}
 		assert.NoError(t, host.CreateWithCleanup(t, cluster))
