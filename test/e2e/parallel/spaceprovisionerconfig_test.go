@@ -84,8 +84,10 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterName,
 				Namespace: host.Namespace,
+				Labels:    existingCluster.Labels,
 			},
 			Spec: toolchainv1alpha1.ToolchainClusterSpec{
+				APIEndpoint: existingCluster.Spec.APIEndpoint,
 				SecretRef: toolchainv1alpha1.LocalSecretReference{
 					Name: copiedSecret.Name,
 				},

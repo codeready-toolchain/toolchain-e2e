@@ -678,7 +678,7 @@ func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...
 	return nil
 }
 
-// Creates a copy of the object specified using the `from` parameter. The created copy is named using the `to` parameters and is cleaned up
+// Creates a copy of the object specified using the `from` parameter. The created copy is named using the `to` parameter and is cleaned up
 // after the test.
 func (a *Awaitility) CopyWithCleanup(t *testing.T, from, to client.ObjectKey, object client.Object, opts ...client.CreateOption) error {
 	if err := a.Client.Get(context.TODO(), from, object); err != nil {
