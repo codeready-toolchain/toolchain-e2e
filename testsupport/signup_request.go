@@ -111,7 +111,7 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 // Resources may be called only after a call to Execute(t).  It returns two parameters; the first is the UserSignup
 // instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
 // here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) { //nolint:unparam
 	return r.userSignup, r.mur
 }
 
