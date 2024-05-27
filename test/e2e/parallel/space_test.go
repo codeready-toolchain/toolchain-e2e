@@ -7,11 +7,14 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/gofrs/uuid"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -250,19 +253,27 @@ func TestPromoteSpace(t *testing.T) {
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-	memberAwait := awaitilities.Member1()
 
 	// when
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
-	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	username := uuid.Must(uuid.NewV4()).String()
+	signup, _ := testsupport.NewSignupRequest(awaitilities).
+		Username(username).
+		Email(username + "@acme.com").
+		ManuallyApprove().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		WaitForMUR().
+		Execute(t).
+		Resources()
 
+	spaceName := signup.Status.CompliantUsername
+
+	// then
 	t.Run("to advanced tier", func(t *testing.T) {
 		// when
-		tiers.MoveSpaceToTier(t, hostAwait, space.Name, "advanced")
+		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "advanced")
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, spaceName)
 	})
 }
 
