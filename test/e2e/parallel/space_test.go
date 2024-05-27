@@ -122,25 +122,19 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	_, ownerMUR := NewSignupRequest(awaitilities).
+	userSignup, ownerMUR := NewSignupRequest(awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
+		SpaceTier("appstudio").
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		NoSpace().
 		Execute(t).
 		Resources()
 
-	// when a space owned by the user above is created (and user is an admin of this space)
-	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
-		testspace.WithSpecTargetCluster(awaitilities.Member1().ClusterName),
-		testspace.WithTierName("appstudio"),
-	)
-
 	// then
-	_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
+	s, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, userSignup.Status.CompliantUsername,
 		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 		UntilSpaceHasTier("appstudio"),
 	)
@@ -155,6 +149,9 @@ func TestSpaceRoles(t *testing.T) {
 	_, err = memberAwait.WaitForNamespace(t, s.Name, nsTmplSet.Spec.Namespaces[0].TemplateRef, "appstudio",
 		UntilNamespaceIsActive(),
 		UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
+	require.NoError(t, err)
+
+	ownerBinding, err := awaitilities.Host().WaitForSpaceBinding(t, ownerMUR.GetName(), userSignup.Status.CompliantUsername)
 	require.NoError(t, err)
 
 	t.Run("and with guest admin binding", func(t *testing.T) {
@@ -210,10 +207,10 @@ func TestSpaceRoles(t *testing.T) {
 		ownerBinding.Spec.SpaceRole = "maintainer"
 
 		// when
-		err := hostAwait.Client.Update(context.TODO(), ownerBinding)
+		err = hostAwait.Client.Update(context.TODO(), ownerBinding)
+		require.NoError(t, err)
 
 		// then
-		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
