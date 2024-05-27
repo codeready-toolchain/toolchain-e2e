@@ -299,6 +299,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		if !r.noSpace {
 			if r.spaceTier != "" {
 				tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, r.spaceTier)
+				expectedSpaceTier = r.spaceTier
 			}
 			space := VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
 			spaceMember := GetSpaceTargetMember(t, r.awaitilities, space)
