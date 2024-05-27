@@ -1688,6 +1688,11 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
+				{
+					APIGroups: []string{"external-secrets.io/v1beta1"},
+					Resources: []string{"secretstores", "externalsecrets"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 

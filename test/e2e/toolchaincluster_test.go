@@ -8,11 +8,11 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -54,25 +54,22 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.Equal(t, current.Name, secret.Labels[toolchainv1alpha1.ToolchainClusterLabel], "the secret of the ToolchainCluster %s is not labeled", client.ObjectKeyFromObject(&current))
 	})
 
-	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", string(await.ClusterName)), func(t *testing.T) {
+	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", current.Name), func(t *testing.T) {
 		// given
-		name := "new-ready-" + string(await.ClusterName)
+		secretCopy := copySecret(t, await, current.Namespace, current.Spec.SecretRef.Name, "new-ready-")
+
+		name := generateNewName("new-ready-", current.Name)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
-			secretRef(current.Spec.SecretRef.Name),
+			secretRef(secretCopy.Name),
 			owner(current.Labels["ownerClusterName"]),
 			namespace(current.Labels["namespace"]),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
-		t.Cleanup(func() {
-			if err := await.Client.Delete(context.TODO(), toolchainCluster); err != nil && !errors.IsNotFound(err) {
-				require.NoError(t, err)
-			}
-		})
 
 		// when
-		err := await.Client.Create(context.TODO(), toolchainCluster)
+		err = await.CreateWithCleanup(t, toolchainCluster)
 		require.NoError(t, err)
 		// wait for toolchaincontroller to reconcile
 		time.Sleep(1 * time.Second)
@@ -100,25 +97,22 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 	})
 
-	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", string(await.ClusterName)), func(t *testing.T) {
+	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", current.Name), func(t *testing.T) {
 		// given
-		name := "new-offline-" + string(await.ClusterName)
+		secretCopy := copySecret(t, await, current.Namespace, current.Spec.SecretRef.Name, "new-offline-")
+
+		name := generateNewName("new-offline-", current.Name)
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
-			secretRef(current.Spec.SecretRef.Name),
+			secretRef(secretCopy.Name),
 			owner(current.Labels["ownerClusterName"]),
 			namespace(current.Labels["namespace"]),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
-		t.Cleanup(func() {
-			if err := await.Client.Delete(context.TODO(), toolchainCluster); err != nil && !errors.IsNotFound(err) {
-				require.NoError(t, err)
-			}
-		})
 
 		// when
-		err := await.Client.Create(context.TODO(), toolchainCluster)
+		err := await.CreateWithCleanup(t, toolchainCluster)
 		// wait for toolchaincontroller to reconcile
 		time.Sleep(1 * time.Second)
 
@@ -148,6 +142,28 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		)
 		require.NoError(t, err)
 	})
+}
+
+func generateNewName(prefix, baseName string) string {
+	return (prefix + baseName)[:63]
+}
+
+func copySecret(t *testing.T, await *wait.Awaitility, namespace, name, prefix string) *corev1.Secret {
+	secret := &corev1.Secret{}
+	require.NoError(t, await.Client.Get(context.TODO(), test.NamespacedName(namespace, name), secret))
+
+	secretCopy := &corev1.Secret{}
+	secretCopy.Namespace = secret.Namespace
+	secretCopy.Name = prefix + secret.Name
+	secretCopy.Type = secret.Type
+	secretCopy.Data = map[string][]byte{}
+	for key, value := range secret.Data {
+		secretCopy.Data[key] = value
+	}
+	err := await.CreateWithCleanup(t, secretCopy)
+	require.NoError(t, err)
+
+	return secretCopy
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
