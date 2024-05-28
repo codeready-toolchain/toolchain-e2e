@@ -24,7 +24,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, "")
 	require.NoError(t, err)
 	require.True(t, found)
 
@@ -201,7 +201,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	t.Run("subSpace target cluster is different from spacerequest cluster", func(t *testing.T) {
 		// when
 		// we add a custom cluster-role for member2
-		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Namespace, nil)
+		memberCluster2, found, err := hostAwait.GetToolchainCluster(t, memberAwait2.Namespace, "")
 		require.NoError(t, err)
 		require.True(t, found)
 		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberCluster2.Name, testSpc.WithPlacementRoles(cluster.RoleLabel("member-2")))

@@ -859,7 +859,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, "")
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])

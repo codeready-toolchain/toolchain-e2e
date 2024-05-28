@@ -35,7 +35,7 @@ func TestToolchainClusterE2E(t *testing.T) {
 // in the target cluster type operator
 func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, shouldHaveReferencedSecret bool) {
 	// given
-	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, nil)
+	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, "")
 	require.NoError(t, err)
 	require.True(t, ok, "ToolchainCluster should exist")
 
@@ -77,7 +77,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// then the ToolchainCluster should be ready
 		_, err = await.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
-			wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterReady),
 		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
@@ -86,13 +86,13 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 				client.MatchingLabels{
 					"namespace": otherAwait.Namespace,
 				},
-			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterReady),
 		)
 		require.NoError(t, err)
 		_, err = otherAwait.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
 				"namespace": await.Namespace,
-			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterReady),
 		)
 		require.NoError(t, err)
 	})
@@ -120,10 +120,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 		_, err = await.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
-			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.Condition{
-				Type:   toolchainv1alpha1.ToolchainClusterOffline,
-				Status: corev1.ConditionTrue,
-			}),
+			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterOffline),
 		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
@@ -132,13 +129,13 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 				client.MatchingLabels{
 					"namespace": otherAwait.Namespace,
 				},
-			), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterReady),
 		)
 		require.NoError(t, err)
 		_, err = otherAwait.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
 				"namespace": await.Namespace,
-			}), wait.UntilToolchainClusterHasCondition(*wait.ReadyToolchainCluster),
+			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterReady),
 		)
 		require.NoError(t, err)
 	})
