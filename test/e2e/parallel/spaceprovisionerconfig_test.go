@@ -145,6 +145,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
+		require.NoError(t, host.Client.Get(context.TODO(), client.ObjectKeyFromObject(cluster), cluster))
 		cluster.Spec.SecretRef.Name = ""
 		require.NoError(t, host.Client.Update(context.TODO(), cluster))
 
@@ -158,14 +159,23 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 
 func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
 	clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
+	// copy the secret
 	secret := &corev1.Secret{}
-	require.NoError(t, a.GetClient().Get(context.TODO(), client.ObjectKey{Name: cluster.Spec.SecretRef.Name, Namespace: cluster.Namespace}, secret))
-	secret.ResourceVersion = ""
-	secret.UID = ""
-	secret.Name = clusterName
-	require.NoError(t, a.CreateWithCleanup(t, secret))
+	require.NoError(t, a.CopyWithCleanup(t,
+		client.ObjectKey{
+			Name:      cluster.Spec.SecretRef.Name,
+			Namespace: cluster.Namespace,
+		},
+		client.ObjectKey{
+			Name:      clusterName,
+			Namespace: cluster.Namespace,
+		},
+		secret,
+	))
 
 	// and create a new ToolchainCluster with that secret
+	// note that we can't use the CopyWithCleanup function because we also
+	// need to modify the SecretRef of the TC.
 	newCluster := cluster.DeepCopy()
 	newCluster.ResourceVersion = ""
 	newCluster.UID = ""
