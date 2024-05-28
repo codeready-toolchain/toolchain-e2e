@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
@@ -59,7 +59,7 @@ func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperato
 			return false, err
 		}
 		for _, cluster := range clusters.Items {
-			if containsClusterCondition(cluster.Status.Conditions, wait.ReadyToolchainCluster) {
+			if condition.IsTrue(cluster.Status.Conditions, toolchainv1alpha1.ToolchainClusterReady) {
 				memberCluster = cluster
 				return true, nil
 			}
@@ -67,16 +67,4 @@ func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperato
 		return false, nil
 	})
 	return memberCluster.Name, err
-}
-
-func containsClusterCondition(conditions []toolchainv1alpha1.Condition, contains *toolchainv1alpha1.Condition) bool {
-	if contains == nil {
-		return true
-	}
-	for _, c := range conditions {
-		if c.Type == contains.Type {
-			return contains.Status == c.Status
-		}
-	}
-	return false
 }
