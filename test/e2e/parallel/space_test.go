@@ -256,7 +256,7 @@ func TestPromoteSpace(t *testing.T) {
 
 	// when
 	username := uuid.Must(uuid.NewV4()).String()
-	signup, _ := testsupport.NewSignupRequest(awaitilities).
+	_, mur := testsupport.NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
@@ -265,7 +265,7 @@ func TestPromoteSpace(t *testing.T) {
 		Execute(t).
 		Resources()
 
-	spaceName := signup.Status.CompliantUsername
+	spaceName := mur.Name
 
 	// then
 	t.Run("to advanced tier", func(t *testing.T) {
