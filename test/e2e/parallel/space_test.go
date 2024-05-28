@@ -122,7 +122,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	userSignup, ownerMUR := NewSignupRequest(awaitilities).
+	_, ownerMUR := NewSignupRequest(awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
@@ -134,7 +134,7 @@ func TestSpaceRoles(t *testing.T) {
 		Resources()
 
 	// then
-	s, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, userSignup.Status.CompliantUsername,
+	s, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, ownerMUR.Name,
 		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 		UntilSpaceHasTier("appstudio"),
 	)
@@ -151,7 +151,7 @@ func TestSpaceRoles(t *testing.T) {
 		UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
 	require.NoError(t, err)
 
-	ownerBinding, err := awaitilities.Host().WaitForSpaceBinding(t, ownerMUR.GetName(), userSignup.Status.CompliantUsername)
+	ownerBinding, err := awaitilities.Host().WaitForSpaceBinding(t, ownerMUR.GetName(), ownerMUR.Name)
 	require.NoError(t, err)
 
 	t.Run("and with guest admin binding", func(t *testing.T) {
