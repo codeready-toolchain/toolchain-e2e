@@ -261,7 +261,7 @@ func TestPromoteSpace(t *testing.T) {
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		WaitForMUR().
+		EnsureMUR().
 		Execute(t).
 		Resources()
 
