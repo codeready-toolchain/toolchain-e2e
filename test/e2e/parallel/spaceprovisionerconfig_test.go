@@ -12,7 +12,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -69,31 +68,7 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		copiedSecret := &corev1.Secret{}
-		require.NoError(t, host.CopyWithCleanup(t,
-			client.ObjectKey{
-				Name:      existingCluster.Spec.SecretRef.Name,
-				Namespace: existingCluster.Namespace,
-			},
-			client.ObjectKey{
-				Name:      clusterName,
-				Namespace: existingCluster.Namespace,
-			}, copiedSecret))
-
-		cluster := &toolchainv1alpha1.ToolchainCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterName,
-				Namespace: host.Namespace,
-				Labels:    existingCluster.Labels,
-			},
-			Spec: toolchainv1alpha1.ToolchainClusterSpec{
-				APIEndpoint: existingCluster.Spec.APIEndpoint,
-				SecretRef: toolchainv1alpha1.LocalSecretReference{
-					Name: copiedSecret.Name,
-				},
-			},
-		}
-		assert.NoError(t, host.CreateWithCleanup(t, cluster))
+		_ = copyClusterWithSecretAndNewName(t, host.Awaitility, clusterName, existingCluster)
 
 		// then
 		_, err = wait.
@@ -159,6 +134,10 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 
 func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
 	clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
+	return copyClusterWithSecretAndNewName(t, a, clusterName, cluster)
+}
+
+func copyClusterWithSecretAndNewName(t *testing.T, a *wait.Awaitility, newName string, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
 	// copy the secret
 	secret := &corev1.Secret{}
 	require.NoError(t, a.CopyWithCleanup(t,
@@ -167,7 +146,7 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 			Namespace: cluster.Namespace,
 		},
 		client.ObjectKey{
-			Name:      clusterName,
+			Name:      newName,
 			Namespace: cluster.Namespace,
 		},
 		secret,
@@ -179,7 +158,7 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 	newCluster := cluster.DeepCopy()
 	newCluster.ResourceVersion = ""
 	newCluster.UID = ""
-	newCluster.Name = clusterName
+	newCluster.Name = newName
 	newCluster.Spec.SecretRef.Name = secret.Name
 	require.NoError(t, a.CreateWithCleanup(t, newCluster))
 
