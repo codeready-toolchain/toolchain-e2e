@@ -368,17 +368,17 @@ func Close(t *testing.T, resp *http.Response) {
 }
 
 // CreateUserSignupWithSpaceTier creates a UserSignup with space tier specified
-func CreateUserSignupWithSpaceTier(t *testing.T, awaitilities wait.Awaitilities, tier string) *toolchainv1alpha1.UserSignup {
+func CreateUserSignupWithSpaceTier(t *testing.T, awaitilities wait.Awaitilities, tier string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	username := u.Must(u.NewV4()).String()
-	userSignup, _ := NewSignupRequest(awaitilities).
+	userSignup, mur := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		SpaceTier(tier).
-		WaitForMUR().
+		EnsureMUR().
 		Execute(t).
 		Resources()
 
-	return userSignup
+	return userSignup, mur
 }

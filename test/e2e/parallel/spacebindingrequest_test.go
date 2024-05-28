@@ -100,8 +100,8 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		t.Run("unable create space binding request with invalid SpaceRole", func(t *testing.T) {
-			userSignup := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
-			spaceName := userSignup.Status.CompliantUsername
+			_, m := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
+			spaceName := m.Name
 
 			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 			space, err := hostAwait.WaitForSpace(t, spaceName, UntilSpaceHasAnyProvisionedNamespaces())
@@ -135,8 +135,8 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 		})
 
 		t.Run("unable create space binding request with invalid MasterUserRecord", func(t *testing.T) {
-			userSignup := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
-			spaceName := userSignup.Status.CompliantUsername
+			_, m := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
+			spaceName := m.Name
 
 			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 			space, err := hostAwait.WaitForSpace(t, spaceName, UntilSpaceHasAnyProvisionedNamespaces())
@@ -238,8 +238,8 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 }
 
 func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait *MemberAwaitility, hostAwait *HostAwaitility, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
-	firstUserSignup := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
-	spaceName := firstUserSignup.Status.CompliantUsername
+	firstUserSignup, firstMur := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
+	spaceName := firstMur.Name
 
 	// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
 	space, err := hostAwait.WaitForSpace(t, spaceName, UntilSpaceHasAnyProvisionedNamespaces())
