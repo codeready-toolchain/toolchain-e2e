@@ -276,7 +276,12 @@ func TestSubSpaces(t *testing.T) {
 	t.Run("we create subSpaces in the parentSpace tree and expect roles and usernames to be inherited in NSTemplateSet", func(t *testing.T) {
 		// when
 		// we have a parentSpace
-		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
+		_, mur := CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
+		parentSpace, err := hostAwait.WaitForSpace(t, mur.Name)
+		require.NoError(t, err)
+		parentSpaceBindings, err := hostAwait.WaitForSpaceBinding(t, mur.Name, parentSpace.Name)
+		require.NoError(t, err)
+
 		// then
 		// wait until MUR and Space have been provisioned
 		_, parentNSTemplateSet := VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
