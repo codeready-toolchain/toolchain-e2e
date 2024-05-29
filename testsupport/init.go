@@ -99,10 +99,10 @@ func waitForOperators(t *testing.T) {
 
 	initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
 
-	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ToolchainClusterReady)
+	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 
-	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ToolchainClusterReady)
+	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 
 	t.Log("all operators are ready and in running state")
@@ -235,7 +235,7 @@ func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfi
 	})
 	require.NoError(t, err)
 
-	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, namespace, toolchainv1alpha1.ToolchainClusterReady)
+	memberCluster, err := hostAwait.WaitForToolchainClusterWithCondition(t, namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 	clusterName := memberCluster.Name
 	memberAwait := wait.NewMemberAwaitility(restconfig, memberClient, namespace, clusterName)

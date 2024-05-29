@@ -158,36 +158,11 @@ func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, 
 // if the CR has the ClusterCondition
 func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespace string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, error) {
 	t.Logf("waiting for ToolchainCluster in namespace '%s'", namespace)
-	timeout := a.Timeout
-	if cdtype != "" {
-		timeout = ToolchainClusterConditionTimeout
-	}
+
 	var c toolchainv1alpha1.ToolchainCluster
-	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		var ready bool
 		if c, ready, err = a.GetToolchainCluster(t, namespace, cdtype); ready {
-			return true, nil
-		}
-		return false, err
-	})
-	return c, err
-}
-
-// WaitForNamedToolchainClusterWithCondition waits until there is a ToolchainCluster with the given name
-// and with the given ClusterCondition (if it the condition is nil, then it skips this check)
-func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, name string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, error) {
-	t.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have condition '%v'", name, a.Namespace, cdtype)
-	timeout := a.Timeout
-	if cdtype != "" {
-		timeout = ToolchainClusterConditionTimeout
-	}
-	c := toolchainv1alpha1.ToolchainCluster{}
-	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
-		c = toolchainv1alpha1.ToolchainCluster{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, &c); err != nil {
-			return false, err
-		}
-		if cd.IsTrue(c.Status.Conditions, toolchainv1alpha1.ToolchainClusterReady) {
 			return true, nil
 		}
 		return false, err

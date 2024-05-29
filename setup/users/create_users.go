@@ -59,7 +59,7 @@ func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperato
 			return false, err
 		}
 		for _, cluster := range clusters.Items {
-			if condition.IsTrue(cluster.Status.Conditions, toolchainv1alpha1.ToolchainClusterReady) {
+			if condition.IsTrue(cluster.Status.Conditions, toolchainv1alpha1.ConditionReady) {
 				memberCluster = cluster
 				return true, nil
 			}
