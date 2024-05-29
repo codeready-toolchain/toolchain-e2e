@@ -1604,7 +1604,7 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "imagerepositories", "componentdetectionqueries"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"},
 				},
 				{
@@ -1713,7 +1713,7 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "imagerepositories", "componentdetectionqueries"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
 				},
 				{
@@ -1807,7 +1807,7 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "imagerepositories", "componentdetectionqueries"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
