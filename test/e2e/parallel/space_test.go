@@ -14,7 +14,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/gofrs/uuid"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -255,10 +254,7 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 
 	// when
-	username := uuid.Must(uuid.NewV4()).String()
 	_, mur := testsupport.NewSignupRequest(awaitilities).
-		Username(username).
-		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		EnsureMUR().
