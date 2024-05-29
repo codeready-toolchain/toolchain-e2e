@@ -18,7 +18,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	u "github.com/gofrs/uuid"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -369,10 +368,7 @@ func Close(t *testing.T, resp *http.Response) {
 
 // CreateUserSignupWithSpaceTier creates a UserSignup with space tier specified
 func CreateUserSignupWithSpaceTier(t *testing.T, awaitilities wait.Awaitilities, tier string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-	username := u.Must(u.NewV4()).String()
 	userSignup, mur := NewSignupRequest(awaitilities).
-		Username(username).
-		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		SpaceTier(tier).
