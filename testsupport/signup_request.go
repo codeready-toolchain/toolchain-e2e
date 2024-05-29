@@ -367,10 +367,11 @@ func Close(t *testing.T, resp *http.Response) {
 }
 
 // CreateUserSignupWithSpaceTier creates a UserSignup with space tier specified
-func CreateUserSignupWithSpaceTier(t *testing.T, awaitilities wait.Awaitilities, tier string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+func CreateUserSignupWithSpaceTier(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, tier string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
 	userSignup, mur := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		TargetCluster(targetCluster).
 		SpaceTier(tier).
 		EnsureMUR().
 		Execute(t).

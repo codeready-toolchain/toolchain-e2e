@@ -59,7 +59,7 @@ func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
 	// let's first create a parentSpace
-	_, mur := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
+	_, mur := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, memberAwait, "appstudio")
 	parentSpace, err := hostAwait.WaitForSpace(t, mur.Name)
 	require.NoError(t, err)
 
