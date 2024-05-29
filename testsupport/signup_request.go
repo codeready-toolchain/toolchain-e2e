@@ -15,6 +15,7 @@ import (
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/google/uuid"
@@ -67,6 +68,7 @@ type SignupRequest struct {
 	cleanupDisabled      bool
 	noSpace              bool
 	activationCode       string
+	spaceTier            string
 }
 
 // IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
@@ -108,7 +110,7 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 // Resources may be called only after a call to Execute(t).  It returns two parameters; the first is the UserSignup
 // instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
 // here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) { //nolint:unparam
 	return r.userSignup, r.mur
 }
 
@@ -178,6 +180,12 @@ func (r *SignupRequest) DisableCleanup() *SignupRequest {
 // NoSpace creates only a UserSignup and MasterUserRecord, Space creation will be skipped
 func (r *SignupRequest) NoSpace() *SignupRequest {
 	r.noSpace = true
+	return r
+}
+
+// SpaceTier specifies the tier of the Space
+func (r *SignupRequest) SpaceTier(spaceTier string) *SignupRequest {
+	r.spaceTier = spaceTier
 	return r
 }
 
@@ -288,6 +296,10 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}
 		if !r.noSpace {
+			if r.spaceTier != "" {
+				tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, r.spaceTier)
+				expectedSpaceTier = r.spaceTier
+			}
 			space := VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
 			spaceMember := GetSpaceTargetMember(t, r.awaitilities, space)
 			VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30", ExpectUserAccountIn(spaceMember))
@@ -352,4 +364,17 @@ func Close(t *testing.T, resp *http.Response) {
 	require.NoError(t, err)
 	err = resp.Body.Close()
 	require.NoError(t, err)
+}
+
+// CreateUserSignupWithSpaceTier creates a UserSignup with space tier specified
+func CreateUserSignupWithSpaceTier(t *testing.T, awaitilities wait.Awaitilities, tier string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
+	userSignup, mur := NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		SpaceTier(tier).
+		EnsureMUR().
+		Execute(t).
+		Resources()
+
+	return userSignup, mur
 }

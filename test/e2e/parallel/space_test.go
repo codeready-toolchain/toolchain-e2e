@@ -134,7 +134,7 @@ func TestSpaceRoles(t *testing.T) {
 		Resources()
 
 	// when a space owned by the user above is created (and user is an admin of this space)
-	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
+	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR, "admin",
 		testspace.WithSpecTargetCluster(awaitilities.Member1().ClusterName),
 		testspace.WithTierName("appstudio"),
 	)
@@ -495,18 +495,22 @@ func TestSubSpaceInheritance(t *testing.T) {
 		// when
 		// we have a parentSpace
 		t.Logf("Create parent space")
-		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
-		// then
-		// wait until MUR and Space have been provisioned
-		t.Logf("Wait for space to be provisioned")
-		VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
-		_, err = hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
+		_, mur := CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
+		parentSpace, err := hostAwait.WaitForSpace(t, mur.Name)
 		require.NoError(t, err)
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
 		t.Logf("Create sub space with role: contributor")
-		subSpace, _, subSpaceBindings := CreateSpaceWithRole(t, awaitilities, "contributor",
+		_, subSpaceMur := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			NoSpace().
+			WaitForMUR().
+			Execute(t).
+			Resources()
+
+		subSpace, subSpaceBindings := CreateSpaceWithBinding(t, awaitilities, subSpaceMur, "contributor",
 			testspace.WithSpecParentSpace(parentSpace.Name),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetCluster(memberAwait.ClusterName),
@@ -518,6 +522,14 @@ func TestSubSpaceInheritance(t *testing.T) {
 			UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 			UntilSpaceHasTier("appstudio"),
 		)
+
+		t.Logf("Wait for space binding")
+		_, err = awaitilities.Host().WaitForSpaceBinding(t, subSpaceMur.Name, subSpace.Name,
+			UntilSpaceBindingHasMurName(subSpaceMur.Name),
+			UntilSpaceBindingHasSpaceName(subSpace.Name),
+			UntilSpaceBindingHasSpaceRole("contributor"),
+		)
+		require.NoError(t, err)
 
 		t.Logf("Wait for master user")
 		subMur, err := hostAwait.WaitForMasterUserRecord(t, subSpaceBindings.Spec.MasterUserRecord)
