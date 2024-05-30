@@ -154,8 +154,7 @@ func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, 
 }
 
 // WaitForToolchainClusterWithCondition waits until there is a ToolchainCluster representing a operator of the given type
-// and running in the given expected namespace. If the given condition is not nil, then it also checks
-// if the CR has the ClusterCondition
+// and running in the given expected namespace. It also checks if the CR has the ClusterConditionType
 func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespace string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, error) {
 	t.Logf("waiting for ToolchainCluster in namespace '%s'", namespace)
 
@@ -171,8 +170,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespac
 }
 
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
-// and running in the given expected namespace. If the given condition is not nil, then it also checks
-// if the CR has the ClusterCondition
+// and running in the given expected namespace. It also checks if the CR has the ClusterConditionType
 func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
 	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
