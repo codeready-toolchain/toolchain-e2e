@@ -24,16 +24,13 @@ func TestToolchainClusterE2E(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
 
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, true)
-
-	// NOTE: The labels are currently only set in the host operator. In the next upgrade step, the member operator will
-	// also be updated to use the new version of the toolchain cluster controller.
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, false)
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, shouldHaveReferencedSecret bool) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, nil)
 	require.NoError(t, err)
@@ -44,10 +41,6 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	// Note that we are going to be changing the workflow such that the label on the secret will actually be the driver
 	// for ToolchainCluster creation and so re-using the secret for different TCs will become impossible in the future.
 	t.Run("referenced secret is labeled", func(t *testing.T) {
-		if !shouldHaveReferencedSecret {
-			t.Skip("this cluster shouldn't have the secret referenced yet")
-		}
-
 		secret := corev1.Secret{}
 		require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, &secret))
 
