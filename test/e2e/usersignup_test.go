@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -209,22 +208,23 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		})
 	})
 	s.T().Run("capacity manager doesn't pick offline toolchain clusters", func(t *testing.T) {
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
-		_, err := hostAwait.UpdateToolchainClusterWithCleanup(t, memberAwait1.ClusterName, func(tc *toolchainv1alpha1.ToolchainCluster) {
-			tc.Spec.APIEndpoint = fmt.Sprintf("https://%s.over.the.rainbow:6443", uuid.NewString()[0:10])
-		})
-		require.NoError(t, err)
-
-		// when
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
-			Username("automatic3").
-			Email("automatic3@redhat.com").
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-			Execute(t).Resources()
-
-		// then
-		s.userIsNotProvisioned(t, userSignup)
+		t.Skip("This cannot be implemented because we don't have a way of taking TCs offline without restarting the controller")
+		// spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false))
+		// hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+		// _, err := hostAwait.UpdateToolchainClusterWithCleanup(t, memberAwait1.ClusterName, func(tc *toolchainv1alpha1.ToolchainCluster) {
+		// 	tc.Spec.APIEndpoint = fmt.Sprintf("https://%s.over.the.rainbow:6443", uuid.NewString()[0:10])
+		// })
+		// require.NoError(t, err)
+		//
+		// // when
+		// userSignup, _ := NewSignupRequest(s.Awaitilities).
+		// 	Username("automatic3").
+		// 	Email("automatic3@redhat.com").
+		// 	RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
+		// 	Execute(t).Resources()
+		//
+		// // then
+		// s.userIsNotProvisioned(t, userSignup)
 	})
 }
 
