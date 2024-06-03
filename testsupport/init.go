@@ -209,6 +209,8 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// Also verify the autoscaling buffer in both members
 		webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
 		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
+		err = initMember2Await.WaitUntilWebhookDeleted(t) // webhook on member2 should be deleted
+		require.NoError(t, err)
 		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 
 		// wait for autoscaler buffer apps
