@@ -110,24 +110,24 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("verify user deactivation on each member cluster", func(t *testing.T) {
 		// User on member cluster 1
-		userSignupMember1, _ := NewSignupRequest(s.Awaitilities).
+		userSignupMember1, _, _ := NewSignupRequest(s.Awaitilities).
 			Username("usertodeactivate").
 			Email("usertodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// User on member cluster 2
-		userSignupMember2, _ := NewSignupRequest(s.Awaitilities).
+		userSignupMember2, _, _ := NewSignupRequest(s.Awaitilities).
 			Username("usertodeactivate2").
 			Email("usertodeactivate2@example.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait2).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		DeactivateAndCheckUser(t, s.Awaitilities, userSignupMember1)
 		DeactivateAndCheckUser(t, s.Awaitilities, userSignupMember2)
@@ -140,14 +140,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 	s.T().Run("verify notification fails on user deactivation with no usersignup email", func(t *testing.T) {
 		// User on member cluster 1
-		userNoEmail, _ := NewSignupRequest(s.Awaitilities).
+		userNoEmail, _, _ := NewSignupRequest(s.Awaitilities).
 			Username("usernoemail").
 			Email("usernoemail@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// Delete the user's email and set them to deactivated
 		userSignup, err := hostAwait.UpdateUserSignup(t, userNoEmail.Name,
@@ -164,14 +164,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation disabled", func(t *testing.T) {
-		_, murMember1 := NewSignupRequest(s.Awaitilities).
+		_, murMember1, _ := NewSignupRequest(s.Awaitilities).
 			Username("usernodeactivate").
 			Email("usernodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// Get the tier that has deactivation disabled
 		deactivationDisabledTier, err := hostAwait.WaitForUserTier(t, "nodeactivation")
@@ -207,26 +207,26 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 	})
 
 	s.T().Run("tests for tiers with automatic deactivation enabled", func(t *testing.T) {
-		userSignupMember1, murMember1 := NewSignupRequest(s.Awaitilities).
+		userSignupMember1, murMember1, _ := NewSignupRequest(s.Awaitilities).
 			Username("usertoautodeactivate").
 			Email("usertoautodeactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// TODO remove once UserTier migration is completed
 		s.promoteToDefaultUserTier(hostAwait.Client, murMember1)
 
-		deactivationExcludedUserSignupMember1, excludedMurMember1 := NewSignupRequest(s.Awaitilities).
+		deactivationExcludedUserSignupMember1, excludedMurMember1, _ := NewSignupRequest(s.Awaitilities).
 			Username("userdeactivationexcluded").
 			Email("userdeactivationexcluded@excluded.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// TODO remove once UserTier migration is completed
 		s.promoteToDefaultUserTier(hostAwait.Client, excludedMurMember1)
@@ -290,14 +290,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		config := hostAwait.GetToolchainConfig(t)
 		require.Equal(t, 3, *config.Spec.Host.Deactivation.DeactivatingNotificationDays)
 
-		userSignupMember1, murMember1 := NewSignupRequest(s.Awaitilities).
+		userSignupMember1, murMember1, _ := NewSignupRequest(s.Awaitilities).
 			Username("usertostartdeactivating").
 			Email("usertostartdeactivating@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// TODO remove once UserTier migration is completed
 		s.promoteToDefaultUserTier(hostAwait.Client, murMember1)
@@ -338,12 +338,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.Equal(t, 3, *hostConfig.Deactivation.DeactivatingNotificationDays)
 
 		// Create a new UserSignup
-		userSignup, mur := NewSignupRequest(s.Awaitilities).
+		userSignup, mur, _ := NewSignupRequest(s.Awaitilities).
 			Username("fulldeactivationlifecycle").
 			Email("fulldeactivationlifecycle@redhat.com").
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// TODO remove once UserTier migration is completed
 		s.promoteToDefaultUserTier(hostAwait.Client, mur)
@@ -468,14 +468,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup and wait for it to be provisioned
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
+		userSignup, _, _ := NewSignupRequest(s.Awaitilities).
 			Username("usertoreactivate").
 			Email("usertoreactivate@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// Wait for the UserSignup to have the desired state
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -531,13 +531,13 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup and approve it manually
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
+		userSignup, _, _ := NewSignupRequest(s.Awaitilities).
 			Username("banprovisioned").
 			Email("banprovisioned@test.com").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// Create the BannedUser
 		CreateBannedUser(t, s.Host(), userSignup.Spec.IdentityClaims.Email)
@@ -632,14 +632,14 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		// Create a new UserSignup
-		userSignup, mur := NewSignupRequest(s.Awaitilities).
+		userSignup, mur, _ := NewSignupRequest(s.Awaitilities).
 			Username("banandunban").
 			Email("banandunban@test.com").
 			EnsureMUR().
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t).Resources(t)
 
 		// Create the BannedUser
 		bannedUser := CreateBannedUser(t, s.Host(), userSignup.Spec.IdentityClaims.Email)
@@ -687,13 +687,13 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
 	// Create UserSignup
-	userSignup, mur := NewSignupRequest(s.Awaitilities).
+	userSignup, mur, _ := NewSignupRequest(s.Awaitilities).
 		Username("janedoe").
 		EnsureMUR().
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(s.T()).Resources()
+		Execute(s.T()).Resources(s.T())
 
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 
@@ -755,14 +755,14 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 			// when
 			t.Run(fmt.Sprintf("cluster %s: user activated->deactivated->reactivated", initialTargetCluster.ClusterName), func(t *testing.T) {
 				// given
-				userSignup, _ := NewSignupRequest(s.Awaitilities).
+				userSignup, _, _ := NewSignupRequest(s.Awaitilities).
 					Username(fmt.Sprintf("returninguser%d", i)).
 					Email(fmt.Sprintf("returninguser%d@redhat.com", i)).
 					EnsureMUR().
 					ManuallyApprove().
 					TargetCluster(initialTargetCluster). // use TargetCluster initially to force user to provision to the expected cluster
 					RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-					Execute(t).Resources()
+					Execute(t).Resources(t)
 
 				// when
 				DeactivateAndCheckUser(t, s.Awaitilities, userSignup)

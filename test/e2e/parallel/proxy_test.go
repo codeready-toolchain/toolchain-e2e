@@ -985,7 +985,7 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	user.signup, _ = req.Resources()
+	user.signup, _, _ = req.Resources(t)
 	user.token = req.GetToken()
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), user.signup.Status.CompliantUsername, "appstudio")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")

@@ -45,7 +45,7 @@ func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
 // ManuallyApprove().
 // EnsureMUR().
 // RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-// Execute(t).Resources()
+// Execute(t).Resources(t)
 type SignupRequest struct {
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
@@ -108,12 +108,19 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 // Resources may be called only after a call to Execute(t).  It returns two parameters; the first is the UserSignup
 // instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
 // here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-	return r.userSignup, r.mur
+func (r *SignupRequest) Resources(t *testing.T) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.Space) {
+	space := &toolchainv1alpha1.Space{}
+	if !r.noSpace && r.mur != nil {
+		sp, err := r.awaitilities.Host().WaitForSpace(t, r.mur.Name)
+		require.NoError(t, err)
+		space = sp
+	}
+
+	return r.userSignup, r.mur, space
 }
 
 // EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
-// the Resources() function to return a non-nil value for its second return parameter.
+// the Resources(t) function to return a non-nil value for its second return parameter.
 func (r *SignupRequest) EnsureMUR() *SignupRequest {
 	r.ensureMUR = true
 	return r
@@ -202,7 +209,7 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 }
 
 // Execute executes the request against the Registration service REST endpoint.  This function may only be called
-// once, and must be called after all other functions EXCEPT for Resources()
+// once, and must be called after all other functions EXCEPT for Resources(t)
 func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)

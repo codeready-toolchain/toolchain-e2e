@@ -40,7 +40,7 @@ func createMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetC
 			signupRequest = signupRequest.EnsureMUR().RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...)
 		}
 
-		signups[i], _ = signupRequest.Execute(t).Resources()
+		signups[i], _, _ = signupRequest.Execute(t).Resources(t)
 
 	}
 	return signups

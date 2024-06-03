@@ -20,20 +20,15 @@ func TestRetargetUserByChangingSpaceTargetClusterWhenSpaceIsNotShared(t *testing
 	member1Await := awaitilities.Member1()
 	member2Await := awaitilities.Member2()
 
-	userSignup, mur := NewSignupRequest(awaitilities).
+	userSignup, mur, space := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member1Await).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
-
-	space, err := hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
-		UntilSpaceHasStatusTargetCluster(member1Await.ClusterName),
-		UntilSpaceHasAnyTierNameSet())
-	require.NoError(t, err)
+		Execute(t).Resources(t)
 
 	// when
-	space, err = hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
+	space, err := hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
 		s.Spec.TargetCluster = member2Await.ClusterName
 	})
 	require.NoError(t, err)
@@ -58,30 +53,25 @@ func TestRetargetUserByChangingSpaceTargetClusterWhenSpaceIsShared(t *testing.T)
 	member1Await := awaitilities.Member1()
 	member2Await := awaitilities.Member2()
 
-	signupToShareWith1, murToShareWith1 := NewSignupRequest(awaitilities).
+	signupToShareWith1, murToShareWith1, _ := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member1Await).
 		WaitForMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
-	signupToShareWith2, murToShareWith2 := NewSignupRequest(awaitilities).
+		Execute(t).Resources(t)
+	signupToShareWith2, murToShareWith2, _ := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member2Await).
 		WaitForMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t).Resources(t)
 
-	userSignup, ownerMur := NewSignupRequest(awaitilities).
+	userSignup, ownerMur, spaceToMove := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member1Await).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
-
-	spaceToMove, err := hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
-		UntilSpaceHasStatusTargetCluster(member1Await.ClusterName),
-		UntilSpaceHasAnyTierNameSet())
-	require.NoError(t, err)
+		Execute(t).Resources(t)
 
 	spacebinding.CreateSpaceBinding(t, hostAwait, murToShareWith1, spaceToMove, "admin")
 	spacebinding.CreateSpaceBinding(t, hostAwait, murToShareWith2, spaceToMove, "admin")
@@ -132,30 +122,25 @@ func TestRetargetUserWithSBRByChangingSpaceTargetClusterWhenSpaceIsShared(t *tes
 	member1Await := awaitilities.Member1()
 	member2Await := awaitilities.Member2()
 
-	signupToShareWith1, murToShareWith1 := NewSignupRequest(awaitilities).
+	signupToShareWith1, murToShareWith1, _ := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member1Await).
 		WaitForMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
-	signupToShareWith2, murToShareWith2 := NewSignupRequest(awaitilities).
+		Execute(t).Resources(t)
+	signupToShareWith2, murToShareWith2, _ := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member2Await).
 		WaitForMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t).Resources(t)
 
-	userSignup, ownerMur := NewSignupRequest(awaitilities).
+	userSignup, ownerMur, spaceToMove := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(member1Await).
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		Execute(t).Resources()
-
-	spaceToMove, err := hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
-		UntilSpaceHasStatusTargetCluster(member1Await.ClusterName),
-		UntilSpaceHasAnyTierNameSet())
-	require.NoError(t, err)
+		Execute(t).Resources(t)
 
 	spacebinding.CreateSpaceBindingRequest(t, awaitilities, member1Await.ClusterName,
 		spacebinding.WithSpecSpaceRole("admin"),

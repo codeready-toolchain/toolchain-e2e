@@ -106,7 +106,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		username := fmt.Sprintf("user-%04d", i)
 
 		// Create UserSignup
-		signupsMember2[username], _ = NewSignupRequest(awaitilities).
+		signupsMember2[username], _, _ = NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@redhat.com").
 			ManuallyApprove().
@@ -114,7 +114,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 			TargetCluster(memberAwait2).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
-			Resources()
+			Resources(t)
 	}
 	NewSignupRequest(awaitilities).
 		Username("member1").
@@ -124,7 +124,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).
-		Resources()
+		Resources(t)
 
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3)                                                            // all signups
@@ -203,13 +203,13 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 		username := fmt.Sprintf("userautoapprove-%04d", i)
 
 		// Create UserSignup
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		usersignups[username], _, _ = NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@redhat.com").
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(t).
-			Resources()
+			Resources(t)
 	}
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                                                            // all signups
@@ -361,14 +361,14 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		username := fmt.Sprintf("user-%04d", i)
 
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		usersignups[username], _, _ = NewSignupRequest(awaitilities).
 			Username(username).
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
-			Resources()
+			Resources(t)
 
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
@@ -386,7 +386,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 			// reactivate the user
 
-			usersignups[username], _ = NewSignupRequest(awaitilities).
+			usersignups[username], _, _ = NewSignupRequest(awaitilities).
 				IdentityID(uuid.MustParse(usersignups[username].Spec.IdentityClaims.Sub)).
 				Username(username).
 				ManuallyApprove().
@@ -394,7 +394,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 				EnsureMUR().
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				Execute(t).
-				Resources()
+				Resources(t)
 		}
 	}
 
@@ -442,13 +442,13 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		usersignups[username], _, _ = NewSignupRequest(awaitilities).
 			Username(username).
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t).
-			Resources()
+			Resources(t)
 	}
 
 	// when deleting user "user-0001"
@@ -499,14 +499,14 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	// Create a new UserSignup and approve it manually
-	userSignup, _ := NewSignupRequest(awaitilities).
+	userSignup, _, _ := NewSignupRequest(awaitilities).
 		Username("metricsbanprovisioned").
 		Email("metricsbanprovisioned@test.com").
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t).Resources(t)
 
 	// when creating the BannedUser resource
 	bannedUser := banUser(t, hostAwait, userSignup.Spec.IdentityClaims.Email)
@@ -571,14 +571,14 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	})
 
 	// Create UserSignup
-	_, mur := NewSignupRequest(awaitilities).
+	_, mur, _ := NewSignupRequest(awaitilities).
 		Username("janedoe").
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t).
-		Resources()
+		Resources(t)
 
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // approved

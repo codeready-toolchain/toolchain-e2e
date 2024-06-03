@@ -32,13 +32,13 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 	conflictingSpace, _, _ := CreateSpace(t, awaitilities, testcommonspace.WithName("conflicting"))
 
 	// when
-	userSignup, _ := NewSignupRequest(awaitilities).
+	userSignup, _, space := NewSignupRequest(awaitilities).
 		Username(conflictingSpace.Name).
 		TargetCluster(memberAwait).
 		ManuallyApprove().
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t).Resources(t)
 
 	// then
 	expectedCompliantUsername := userSignup.Status.CompliantUsername
@@ -47,11 +47,9 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 	t.Run("when signup is deactivated, Space is stuck in terminating state, and when it reactivates then it should generate a new name", func(t *testing.T) {
 		// given
 		// let's get a namespace of the space
-		space, err := hostAwait.WaitForSpace(t, expectedCompliantUsername, wait.UntilSpaceHasAnyProvisionedNamespaces())
-		require.NoError(t, err)
 		namespaceName := space.Status.ProvisionedNamespaces[0].Name
 		// and add a dummy finalizer there so it will get stuck
-		_, err = memberAwait.UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
+		_, err := memberAwait.UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
 			util.AddFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
 		})
 		require.NoError(t, err)
@@ -202,13 +200,13 @@ func TestTransformUsername(t *testing.T) {
 }
 
 func assertComplaintUsernameForNewSignup(t *testing.T, awaitilities wait.Awaitilities, testCase TestCase) {
-	userSignup, _ := NewSignupRequest(awaitilities).
+	userSignup, _, _ := NewSignupRequest(awaitilities).
 		Username(testCase.username).
 		Email(testCase.email).
 		ManuallyApprove().
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t).Resources(t)
 
 	require.Equal(t, testCase.expectedCompliantUsername, userSignup.Status.CompliantUsername)
 }

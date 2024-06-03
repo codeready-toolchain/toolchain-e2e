@@ -781,7 +781,7 @@ func TestUsernames(t *testing.T) {
 	t.Run("get usernames 200 response", func(t *testing.T) {
 		// given
 		// we have a user in the system
-		_, mur := NewSignupRequest(awaitilities).
+		_, mur, _ := NewSignupRequest(awaitilities).
 			Username("testgetusernames").
 			Email("testgetusernames@redhat.com").
 			ManuallyApprove().
@@ -790,7 +790,7 @@ func TestUsernames(t *testing.T) {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			NoSpace().
 			Execute(t).
-			Resources()
+			Resources(t)
 
 		// when
 		// we call the get usernames endpoint to get the user
