@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
@@ -13,6 +14,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	kwait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
@@ -52,23 +54,40 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 			WithNameThat(spc.Name, Is(NotReady()))
 		require.NoError(t, err)
 	})
-	t.Run("becomes ready when cluster appears and becomes ready", func(t *testing.T) {
+	t.Run("becomes ready when cluster becomes ready", func(t *testing.T) {
 		// given
 		existingCluster, err := host.WaitForToolchainCluster(t, wait.UntilToolchainClusterHasName(awaitilities.Member1().ClusterName))
 		require.NoError(t, err)
-		clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
+		tc := copyClusterWithoutSecret(t, host.Awaitility, existingCluster)
+		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(tc.Name))
 
-		// when
-		spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(clusterName))
-
-		// then
 		_, err = wait.
 			For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
 			WithNameThat(spc.Name, Is(NotReady()))
 		require.NoError(t, err)
 
+		existingSecret := &corev1.Secret{}
+		require.NoError(t, host.Client.Get(context.TODO(), client.ObjectKey{Name: existingCluster.Spec.SecretRef.Name, Namespace: existingCluster.Namespace}, existingSecret))
+
+		newSecretName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
+		_ = copySecret(t, host.Awaitility, existingSecret, client.ObjectKey{Name: newSecretName, Namespace: tc.Namespace})
+
 		// when
-		_ = copyClusterWithSecretAndNewName(t, host.Awaitility, clusterName, existingCluster)
+
+		// we need to retry here because we're fighting over the control of the TC with the controller
+		require.NoError(t, kwait.Poll(100*time.Millisecond, 1*time.Minute, func() (done bool, err error) {
+			err = host.Client.Get(context.TODO(), client.ObjectKeyFromObject(tc), tc)
+			if err != nil {
+				return
+			}
+			tc.Spec.SecretRef.Name = newSecretName
+			err = host.Client.Update(context.TODO(), tc)
+			if err != nil {
+				return
+			}
+			done = true
+			return
+		}))
 
 		// then
 		_, err = wait.
@@ -102,50 +121,12 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 			WithNameThat(spc.Name, Is(NotReady()))
 		require.NoError(t, err)
 	})
-	t.Run("becomes not ready when cluster becomes not ready", func(t *testing.T) {
-		// NOTE: this is impossible to test currently because there is no way for a TC to
-		// transition from ready to unready (short of updating the TC and restarting the toochaincluster cache controller
-		// which is something we can't afford in the parallel tests).
-		//
-		// // given
-		//
-		// // we need to create a copy of the cluster and the token secret
-		// existingCluster, err := host.WaitForToolchainCluster(t)
-		// require.NoError(t, err)
-		// cluster := copyClusterWithSecret(t, host.Awaitility, existingCluster)
-		//
-		// // when
-		// spc := CreateSpaceProvisionerConfig(t, host.Awaitility, ReferencingToolchainCluster(cluster.Name))
-		//
-		// // then
-		// _, err = wait.
-		// 	For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-		// 	WithNameThat(spc.Name, Is(Ready()))
-		// require.NoError(t, err)
-		//
-		// // when
-		// // update the TC such that it is no longer valid.
-		// require.NoError(t, host.Client.Get(context.TODO(), client.ObjectKeyFromObject(cluster), cluster))
-		// apiEndpoint, err := url.Parse(cluster.Spec.APIEndpoint)
-		// require.NoError(t, err)
-		// apiEndpoint.Host = apiEndpoint.Hostname() + "-not:" + apiEndpoint.Port()
-		// cluster.Spec.APIEndpoint = apiEndpoint.String()
-		// require.NoError(t, host.Client.Update(context.TODO(), cluster))
-		//
-		// // then
-		// _, err = wait.
-		// 	For(t, host.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-		// 	WithNameThat(spc.Name, Is(NotReady()))
-		// require.NoError(t, err)
-	})
 }
 
 func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
+	t.Helper()
 	clusterName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
-	return copyClusterWithSecretAndNewName(t, a, clusterName, cluster)
-}
 
-func copyClusterWithSecretAndNewName(t *testing.T, a *wait.Awaitility, newName string, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
 	// copy the secret
 	secret := &corev1.Secret{}
 	require.NoError(t, a.CopyWithCleanup(t,
@@ -154,7 +135,7 @@ func copyClusterWithSecretAndNewName(t *testing.T, a *wait.Awaitility, newName s
 			Namespace: cluster.Namespace,
 		},
 		client.ObjectKey{
-			Name:      newName,
+			Name:      clusterName,
 			Namespace: cluster.Namespace,
 		},
 		secret,
@@ -166,9 +147,35 @@ func copyClusterWithSecretAndNewName(t *testing.T, a *wait.Awaitility, newName s
 	newCluster := cluster.DeepCopy()
 	newCluster.ResourceVersion = ""
 	newCluster.UID = ""
-	newCluster.Name = newName
+	newCluster.Name = clusterName
 	newCluster.Spec.SecretRef.Name = secret.Name
+	newCluster.Status = toolchainv1alpha1.ToolchainClusterStatus{}
 	require.NoError(t, a.CreateWithCleanup(t, newCluster))
 
 	return newCluster
+}
+
+func copyClusterWithoutSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
+	t.Helper()
+	newName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
+	newCluster := cluster.DeepCopy()
+	newCluster.ResourceVersion = ""
+	newCluster.UID = ""
+	newCluster.Name = newName
+	newCluster.Spec.SecretRef.Name = ""
+	newCluster.Status = toolchainv1alpha1.ToolchainClusterStatus{}
+	require.NoError(t, a.CreateWithCleanup(t, newCluster))
+
+	return newCluster
+}
+
+func copySecret(t *testing.T, a *wait.Awaitility, source *corev1.Secret, targetKey client.ObjectKey) *corev1.Secret {
+	t.Helper()
+	target := source.DeepCopy()
+	target.ResourceVersion = ""
+	target.UID = ""
+	target.Name = targetKey.Name
+	target.Namespace = targetKey.Namespace
+	require.NoError(t, a.CreateWithCleanup(t, target))
+	return target
 }
