@@ -209,10 +209,9 @@ func (r *SetupMigrationRunner) prepareUser(t *testing.T, name string, targetClus
 		requestBuilder = requestBuilder.DisableCleanup()
 	}
 
-	signup, _, _ := requestBuilder.
+	signup, _, _, _ := requestBuilder.
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources(t)
+		Execute(t)
 	_, err := r.Awaitilities.Host().WaitForMasterUserRecord(t, signup.Status.CompliantUsername,
 		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
 	require.NoError(t, err)

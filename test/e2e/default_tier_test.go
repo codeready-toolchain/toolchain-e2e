@@ -22,8 +22,7 @@ func TestSetDefaultTier(t *testing.T) {
 			TargetCluster(memberAwait).
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources(t)
+			Execute(t)
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
@@ -35,7 +34,6 @@ func TestSetDefaultTier(t *testing.T) {
 			TargetCluster(memberAwait).
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources(t)
+			Execute(t)
 	})
 }

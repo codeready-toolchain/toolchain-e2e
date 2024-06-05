@@ -977,7 +977,7 @@ func tenantNsName(username string) string {
 
 func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *proxyUser) {
 	// Create and approve signup
-	req := NewSignupRequest(awaitilities).
+	signup, _, space, token := NewSignupRequest(awaitilities).
 		Username(user.username).
 		IdentityID(user.identityID).
 		ManuallyApprove().
@@ -985,9 +985,9 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	user.signup, _, _ = req.Resources(t)
-	user.token = req.GetToken()
-	tiers.MoveSpaceToTier(t, awaitilities.Host(), user.signup.Status.CompliantUsername, "appstudio")
+	user.signup = signup
+	user.token = token
+	tiers.MoveSpaceToTier(t, awaitilities.Host(), space.Name, "appstudio")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))

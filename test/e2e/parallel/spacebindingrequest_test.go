@@ -107,12 +107,12 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 			require.NoError(t, err)
 			// let's create a new MUR that will have access to the space
-			_, mur, _ := NewSignupRequest(awaitilities).
+			_, mur, _, _ := NewSignupRequest(awaitilities).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
 				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 				NoSpace().
-				WaitForMUR().Execute(t).Resources(t)
+				WaitForMUR().Execute(t)
 			// create the spacebinding request
 			spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 				WithSpecSpaceRole("invalid"), // set invalid spacerole
@@ -187,14 +187,14 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		space, spaceBindingRequest, _ := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "admin")
 		// let's create another MUR that will be used for the update request
 		username := uuid.Must(uuid.NewV4()).String()
-		_, newmur, _ := NewSignupRequest(awaitilities).
+		_, newmur, _, _ := NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@acme.com").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			NoSpace().
-			WaitForMUR().Execute(t).Resources(t)
+			WaitForMUR().Execute(t)
 		// and we try to update the MUR in the SBR
 		// with lower timeout since it will fail as expected
 		_, err := memberAwait.WithRetryOptions(TimeoutOption(time.Second*2)).UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
@@ -229,14 +229,14 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	require.NoError(t, err)
 	// let's create a new MUR that will have access to the space
 	username := uuid.Must(uuid.NewV4()).String()
-	_, secondUserMUR, _ := NewSignupRequest(awaitilities).
+	_, secondUserMUR, _, _ := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		NoSpace().
-		WaitForMUR().Execute(t).Resources(t)
+		WaitForMUR().Execute(t)
 	// create the spacebinding request
 	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		WithSpecSpaceRole(spaceRole),

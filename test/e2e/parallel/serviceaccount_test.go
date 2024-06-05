@@ -24,14 +24,13 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	member := awaitilities.Member1()
 
 	// let's provision user
-	_, mur, _ := NewSignupRequest(awaitilities).
+	_, mur, _, _ := NewSignupRequest(awaitilities).
 		Username("do-not-override-sa").
 		ManuallyApprove().
 		TargetCluster(member).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources(t)
+		Execute(t)
 
 	// and move the user to appstudio tier
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), mur.Name, "appstudio-env")

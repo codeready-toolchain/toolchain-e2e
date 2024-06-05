@@ -45,7 +45,7 @@ func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
 // ManuallyApprove().
 // EnsureMUR().
 // RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-// Execute(t).Resources(t)
+// Execute(t)
 type SignupRequest struct {
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
@@ -67,6 +67,7 @@ type SignupRequest struct {
 	cleanupDisabled      bool
 	noSpace              bool
 	activationCode       string
+	space                *toolchainv1alpha1.Space
 }
 
 // IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
@@ -105,22 +106,8 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 	return r
 }
 
-// Resources may be called only after a call to Execute(t).  It returns two parameters; the first is the UserSignup
-// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
-// here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-func (r *SignupRequest) Resources(t *testing.T) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.Space) {
-	space := &toolchainv1alpha1.Space{}
-	if !r.noSpace && r.mur != nil {
-		sp, err := r.awaitilities.Host().WaitForSpace(t, r.mur.Name)
-		require.NoError(t, err)
-		space = sp
-	}
-
-	return r.userSignup, r.mur, space
-}
-
 // EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
-// the Resources(t) function to return a non-nil value for its second return parameter.
+// the Execute function to return a non-nil value for its second return parameter.
 func (r *SignupRequest) EnsureMUR() *SignupRequest {
 	r.ensureMUR = true
 	return r
@@ -130,11 +117,6 @@ func (r *SignupRequest) EnsureMUR() *SignupRequest {
 func (r *SignupRequest) WaitForMUR() *SignupRequest {
 	r.waitForMUR = true
 	return r
-}
-
-// GetToken may be called only after a call to Execute(t). It returns the token that was generated for the request
-func (r *SignupRequest) GetToken() string {
-	return r.token
 }
 
 func (r *SignupRequest) ActivationCode(code string) *SignupRequest {
@@ -209,8 +191,12 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 }
 
 // Execute executes the request against the Registration service REST endpoint.  This function may only be called
-// once, and must be called after all other functions EXCEPT for Resources(t)
-func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
+// once, and must be called after all other functions. It returns four parameters; the first is the UserSignup
+// instance that was created, the second is the MasterUserRecord instance, the third is the space,
+// and the fourth returns the token that was generated for the request.
+// HOWEVER the MUR will only be returned here if EnsureMUR() was also called previously, otherwise a nil value will be returned
+// The space will only be returned here if noSpace is true. If false, a nil value will be returned
+func (r *SignupRequest) Execute(t *testing.T) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.Space, string) {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
 	require.NoError(t, err)
@@ -296,6 +282,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		}
 		if !r.noSpace {
 			space := VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
+			r.space = space
 			spaceMember := GetSpaceTargetMember(t, r.awaitilities, space)
 			VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30", ExpectUserAccountIn(spaceMember))
 		} else {
@@ -312,7 +299,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		cleanup.AddCleanTasks(t, hostAwait.Client, r.userSignup)
 	}
 
-	return r
+	return r.userSignup, r.mur, r.space, r.token
 }
 
 func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int, queryParams map[string]string) map[string]interface{} {

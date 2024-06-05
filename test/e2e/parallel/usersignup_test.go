@@ -32,13 +32,13 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 	conflictingSpace, _, _ := CreateSpace(t, awaitilities, testcommonspace.WithName("conflicting"))
 
 	// when
-	userSignup, _, space := NewSignupRequest(awaitilities).
+	userSignup, _, space, _ := NewSignupRequest(awaitilities).
 		Username(conflictingSpace.Name).
 		TargetCluster(memberAwait).
 		ManuallyApprove().
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources(t)
+		Execute(t)
 
 	// then
 	expectedCompliantUsername := userSignup.Status.CompliantUsername
@@ -200,13 +200,13 @@ func TestTransformUsername(t *testing.T) {
 }
 
 func assertComplaintUsernameForNewSignup(t *testing.T, awaitilities wait.Awaitilities, testCase TestCase) {
-	userSignup, _, _ := NewSignupRequest(awaitilities).
+	userSignup, _, _, _ := NewSignupRequest(awaitilities).
 		Username(testCase.username).
 		Email(testCase.email).
 		ManuallyApprove().
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources(t)
+		Execute(t)
 
 	require.Equal(t, testCase.expectedCompliantUsername, userSignup.Status.CompliantUsername)
 }

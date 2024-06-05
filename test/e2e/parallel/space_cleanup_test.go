@@ -166,14 +166,14 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 }
 
 func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility, space *toolchainv1alpha1.Space, hostAwait *wait.HostAwaitility, username, spaceRole string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
-	userSignup2, mur2, _ := NewSignupRequest(awaitilities).
+	userSignup2, mur2, _, _ := NewSignupRequest(awaitilities).
 		Username(username).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		NoSpace().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources(t)
+		Execute(t)
 	//... that gets access to the space but using SpaceBindingRequests
 	spaceBindingRequest := testsupportsb.CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		testsupportsb.WithSpecSpaceRole(spaceRole),
@@ -200,13 +200,13 @@ func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awai
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space, owner, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(targetMember.ClusterName), testspace.WithName(spaceName))
 	// at this point, just make sure the space exists so we can bind it to our user
-	userSignup, mur, _ := NewSignupRequest(awaitilities).
+	userSignup, mur, _, _ := NewSignupRequest(awaitilities).
 		Username(murName).
 		ManuallyApprove().
 		TargetCluster(targetMember).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources(t)
+		Execute(t)
 	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
 	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier(t, "appstudio")
 	require.NoError(t, err)

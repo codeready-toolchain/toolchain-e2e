@@ -56,14 +56,14 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 	require.NoError(t, memberAwait.CreateWithCleanup(t, preexistingIdentity))
 
 	// Create and approve signup
-	signup, _, _ := NewSignupRequest(awaitilities).
+	signup, _, _, _ := NewSignupRequest(awaitilities).
 		Username(username).
 		IdentityID(identityID).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources(t)
+		Execute(t)
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "appstudio")
 

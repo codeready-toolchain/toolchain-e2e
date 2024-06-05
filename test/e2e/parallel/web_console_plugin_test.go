@@ -35,7 +35,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		waitForWebConsolePluginDeployment(t, memberAwait, image)
 		waitForWebConsolePluginService(t, memberAwait)
 
-		signupRequest := NewSignupRequest(await).
+		_, _, _, token := NewSignupRequest(await).
 			Username(fmt.Sprintf("consoletest%d", i)).
 			Email("consoletest@redhat.com").
 			TargetCluster(memberAwait).
@@ -112,7 +112,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		// some problem with the service.
 		req, err := http.NewRequest("GET", healthCheckURL, nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", signupRequest.GetToken())
+		req.Header.Set("Authorization", token)
 
 		healthCheckResponse, err = httpClient.Do(req) //nolint
 		require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 
 		req, err = http.NewRequest("GET", manifestURL, nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", signupRequest.GetToken())
+		req.Header.Set("Authorization", token)
 
 		manifestResponse, err := httpClient.Do(req)
 		require.NoError(t, err)

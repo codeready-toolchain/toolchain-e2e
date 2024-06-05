@@ -122,7 +122,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	_, ownerMUR, _ := NewSignupRequest(awaitilities).
+	_, ownerMUR, _, _ := NewSignupRequest(awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
@@ -130,8 +130,7 @@ func TestSpaceRoles(t *testing.T) {
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		NoSpace().
-		Execute(t).
-		Resources(t)
+		Execute(t)
 
 	// when a space owned by the user above is created (and user is an admin of this space)
 	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
@@ -159,7 +158,7 @@ func TestSpaceRoles(t *testing.T) {
 
 	t.Run("and with guest admin binding", func(t *testing.T) {
 		// given a `spaceguest` user (with her own space, but we'll ignore it in this test)
-		_, guestMUR, _ := NewSignupRequest(awaitilities).
+		_, guestMUR, _, _ := NewSignupRequest(awaitilities).
 			Username("spaceguest").
 			Email("spaceguest@redhat.com").
 			ManuallyApprove().
@@ -167,8 +166,7 @@ func TestSpaceRoles(t *testing.T) {
 			WaitForMUR().
 			NoSpace().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute(t).
-			Resources(t)
+			Execute(t)
 
 		// when the `spaceguest` user is bound to the space as an admin
 		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")

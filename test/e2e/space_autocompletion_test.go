@@ -25,15 +25,14 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait1 := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	_, mur, _ := NewSignupRequest(awaitilities).
+	_, mur, _, _ := NewSignupRequest(awaitilities).
 		Username("for-member1").
 		Email("for-member1@redhat.com").
 		TargetCluster(memberAwait1).
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		EnsureMUR().
-		Execute(t).
-		Resources(t)
+		Execute(t)
 	NewSignupRequest(awaitilities).
 		Username("for-member2").
 		Email("for-member2@redhat.com").
