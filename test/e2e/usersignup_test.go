@@ -84,8 +84,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		// when
 		waitingListUser1 := NewSignupRequest(s.Awaitilities).
-			Username("waitingList1").
-			Email("waitingList1@redhat.com").
+			Username("waitinglist1").
+			Email("waitinglist1@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
 			Execute(s.T())
 		waitingList1 := waitingListUser1.UserSignup
@@ -93,8 +93,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
 		waitingListUser2 := NewSignupRequest(s.Awaitilities).
-			Username("waitingList2").
-			Email("waitingList2@redhat.com").
+			Username("waitinglist2").
+			Email("waitinglist2@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
 			Execute(s.T())
 		waitingList2 := waitingListUser2.UserSignup
