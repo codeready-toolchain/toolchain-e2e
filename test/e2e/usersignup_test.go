@@ -8,6 +8,8 @@ import (
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -49,6 +51,31 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 	memberAwait1 := s.Member1()
 	memberAwait2 := s.Member2()
+
+	// let's also create a not-ready ToolchainCluster CR and make sure it doesn't get picked in any of the tests below...
+	// We also create an enabled SpaceProvisionerConfig with enough capacity to try to "lure" the user signups into it.
+	// It should have no effect though, because the unusable cluster is not ready.
+	unusableTCName := util.NewObjectNamePrefix(s.T()) + uuid.NewString()[0:20]
+	require.NoError(s.T(), wait.CopyWithCleanup(s.T(), hostAwait.Awaitility,
+		client.ObjectKey{
+			Name:      memberAwait1.ClusterName,
+			Namespace: hostAwait.Namespace,
+		},
+		client.ObjectKey{
+			Name:      unusableTCName,
+			Namespace: hostAwait.Namespace,
+		},
+		&toolchainv1alpha1.ToolchainCluster{},
+		func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Spec.SecretRef.Name = ""
+			tc.Status = toolchainv1alpha1.ToolchainClusterStatus{}
+		},
+	))
+	spaceprovisionerconfig.CreateSpaceProvisionerConfig(s.T(), hostAwait.Awaitility,
+		testSpc.ReferencingToolchainCluster(unusableTCName),
+		testSpc.Enabled(true),
+		testSpc.MaxNumberOfSpaces(1000),
+		testSpc.MaxMemoryUtilizationPercent(100))
 
 	// when & then
 	_, mur1 := NewSignupRequest(s.Awaitilities).
@@ -206,25 +233,6 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			// then
 			s.userIsNotProvisioned(t, waitingList4)
 		})
-	})
-	s.T().Run("capacity manager doesn't pick offline toolchain clusters", func(t *testing.T) {
-		t.Skip("This cannot be implemented because we don't have a way of taking TCs offline without restarting the controller")
-		// spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false))
-		// hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
-		// _, err := hostAwait.UpdateToolchainClusterWithCleanup(t, memberAwait1.ClusterName, func(tc *toolchainv1alpha1.ToolchainCluster) {
-		// 	tc.Spec.APIEndpoint = fmt.Sprintf("https://%s.over.the.rainbow:6443", uuid.NewString()[0:10])
-		// })
-		// require.NoError(t, err)
-		//
-		// // when
-		// userSignup, _ := NewSignupRequest(s.Awaitilities).
-		// 	Username("automatic3").
-		// 	Email("automatic3@redhat.com").
-		// 	RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-		// 	Execute(t).Resources()
-		//
-		// // then
-		// s.userIsNotProvisioned(t, userSignup)
 	})
 }
 

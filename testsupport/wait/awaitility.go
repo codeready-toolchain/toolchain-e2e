@@ -635,8 +635,9 @@ func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...
 }
 
 // Creates a copy of the object specified using the `from` parameter. The created copy is named using the `to` parameter and is cleaned up
-// after the test.
-func (a *Awaitility) CopyWithCleanup(t *testing.T, from, to client.ObjectKey, object client.Object, opts ...client.CreateOption) error {
+// after the test. The object can be modified using the optionally supplied modifiers before it is created. The `object` is an "output parameter"
+// that will contain the object as it was created in the cluster.
+func CopyWithCleanup[T client.Object](t *testing.T, a *Awaitility, from, to client.ObjectKey, object T, modifiers ...func(T)) error {
 	if err := a.Client.Get(context.TODO(), from, object); err != nil {
 		return err
 	}
@@ -646,7 +647,11 @@ func (a *Awaitility) CopyWithCleanup(t *testing.T, from, to client.ObjectKey, ob
 	object.SetResourceVersion("")
 	object.SetUID("")
 
-	return a.CreateWithCleanup(t, object, opts...)
+	for _, mod := range modifiers {
+		mod(object)
+	}
+
+	return a.CreateWithCleanup(t, object)
 }
 
 // Create creates the given object via client.Client.Create()

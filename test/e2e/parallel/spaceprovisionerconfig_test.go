@@ -129,7 +129,7 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 
 	// copy the secret
 	secret := &corev1.Secret{}
-	require.NoError(t, a.CopyWithCleanup(t,
+	require.NoError(t, wait.CopyWithCleanup(t, a,
 		client.ObjectKey{
 			Name:      cluster.Spec.SecretRef.Name,
 			Namespace: cluster.Namespace,
