@@ -33,13 +33,15 @@ func TestNSTemplateTiers(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	testingtiers, _, space, _ := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("testnstemplatetiers").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
+	testingtiers := user.UserSignup
+	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "base"}
@@ -153,7 +155,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
-		userSignup, _, _, _ := NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username("promoteuser").
 			Email("promoteuser@redhat.com").
 			ManuallyApprove().
@@ -161,7 +163,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
-
+		userSignup := user.UserSignup
 		// Set the deactivating state on the UserSignup
 		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
@@ -206,7 +208,7 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 	// and wait until they are all provisioned by calling EnsureMUR()
 	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		userSignups[i], _, _, _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			WaitForMUR().
@@ -214,6 +216,7 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
 			Execute(t)
+		userSignups[i] = user.UserSignup
 	}
 
 	// let's promote to users the new tier

@@ -23,18 +23,6 @@ import (
 
 var httpClient = HTTPClient
 
-// NewSignupRequest creates a new signup request for the registration service
-func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
-	defaultUsername := fmt.Sprintf("testuser-%s", uuid.NewString())
-	return &SignupRequest{
-		awaitilities:       awaitilities,
-		requiredHTTPStatus: http.StatusAccepted,
-		username:           defaultUsername,
-		email:              fmt.Sprintf("%s@test.com", defaultUsername),
-		identityID:         uuid.New(),
-	}
-}
-
 // SignupRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
 // with a set of sensible default values which can be overridden via its various functions.  Function chaining may
 // be used to achieve an efficient "single-statement" UserSignup creation, for example:
@@ -68,6 +56,25 @@ type SignupRequest struct {
 	noSpace              bool
 	activationCode       string
 	space                *toolchainv1alpha1.Space
+}
+
+type SignupResult struct {
+	UserSignup *toolchainv1alpha1.UserSignup
+	MUR        *toolchainv1alpha1.MasterUserRecord
+	Space      *toolchainv1alpha1.Space
+	Token      string
+}
+
+// NewSignupRequest creates a new signup request for the registration service
+func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
+	defaultUsername := fmt.Sprintf("testuser-%s", uuid.NewString())
+	return &SignupRequest{
+		awaitilities:       awaitilities,
+		requiredHTTPStatus: http.StatusAccepted,
+		username:           defaultUsername,
+		email:              fmt.Sprintf("%s@test.com", defaultUsername),
+		identityID:         uuid.New(),
+	}
 }
 
 // IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
@@ -196,7 +203,7 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 // and the fourth returns the token that was generated for the request.
 // HOWEVER the MUR will only be returned here if EnsureMUR() was also called previously, otherwise a nil value will be returned
 // The space will only be returned here if noSpace is true. If false, a nil value will be returned
-func (r *SignupRequest) Execute(t *testing.T) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord, *toolchainv1alpha1.Space, string) {
+func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
 	require.NoError(t, err)
@@ -299,7 +306,12 @@ func (r *SignupRequest) Execute(t *testing.T) (*toolchainv1alpha1.UserSignup, *t
 		cleanup.AddCleanTasks(t, hostAwait.Client, r.userSignup)
 	}
 
-	return r.userSignup, r.mur, r.space, r.token
+	return &SignupResult{
+		UserSignup: userSignup,
+		MUR:        r.mur,
+		Space:      r.space,
+		Token:      r.token,
+	}
 }
 
 func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int, queryParams map[string]string) map[string]interface{} {

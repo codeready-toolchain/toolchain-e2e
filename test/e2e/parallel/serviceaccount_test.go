@@ -24,7 +24,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	member := awaitilities.Member1()
 
 	// let's provision user
-	_, mur, _, _ := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("do-not-override-sa").
 		ManuallyApprove().
 		TargetCluster(member).
@@ -32,6 +32,7 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
+	mur := user.MUR
 	// and move the user to appstudio tier
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), mur.Name, "appstudio-env")
 	VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)

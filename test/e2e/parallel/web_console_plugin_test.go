@@ -35,7 +35,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		waitForWebConsolePluginDeployment(t, memberAwait, image)
 		waitForWebConsolePluginService(t, memberAwait)
 
-		_, _, _, token := NewSignupRequest(await).
+		user := NewSignupRequest(await).
 			Username(fmt.Sprintf("consoletest%d", i)).
 			Email("consoletest@redhat.com").
 			TargetCluster(memberAwait).
@@ -43,6 +43,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
+		token := user.Token
 
 		// Since we can't easily access the web console API resources directly (due to complex security requirements) we
 		// will instead create a route in the member cluster with which to access the console plugin
