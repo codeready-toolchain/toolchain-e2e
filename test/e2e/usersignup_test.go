@@ -175,8 +175,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 
 		// and
 		waitingListUser3 := NewSignupRequest(s.Awaitilities).
-			Username("waitingList3").
-			Email("waitingList3@redhat.com").
+			Username("waitinglist3").
+			Email("waitinglist3@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...).
 			Execute(s.T())
 		waitingList3 := waitingListUser3.UserSignup
@@ -202,8 +202,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			msg := "unable to determine automatic approval: invalid email address: waitingList4@somedomain.org@anotherdomain.com"
 			// when
 			waitingListUser4 := NewSignupRequest(s.Awaitilities).
-				Username("waitingList4").
-				Email("waitingList4@somedomain.org@anotherdomain.com").
+				Username("waitinglist4").
+				Email("waitinglist4@somedomain.org@anotherdomain.com").
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApprovalWithMsg(msg), wait.PendingApprovalNoClusterWithMsg(msg))...).
 				Execute(s.T())
 			waitingList4 := waitingListUser4.UserSignup
