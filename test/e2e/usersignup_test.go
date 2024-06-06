@@ -199,7 +199,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		})
 
 		t.Run("add user with bad email format and expect the user will not be approved nor provisioned", func(t *testing.T) {
-			msg := "unable to determine automatic approval: invalid email address: waitingList4@somedomain.org@anotherdomain.com"
+			msg := "unable to determine automatic approval: invalid email address: waitinglist4@somedomain.org@anotherdomain.com"
 			// when
 			waitingListUser4 := NewSignupRequest(s.Awaitilities).
 				Username("waitinglist4").
