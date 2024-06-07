@@ -586,45 +586,6 @@ func (a *Awaitility) UpdateToolchainCluster(t *testing.T, toolchainClusterName s
 	return tc, err
 }
 
-func (a *Awaitility) UpdateToolchainClusterWithCleanup(t *testing.T, toolchainClusterName string, modifyToolchainCluster func(s *toolchainv1alpha1.ToolchainCluster)) (*toolchainv1alpha1.ToolchainCluster, error) {
-	var tc *toolchainv1alpha1.ToolchainCluster
-	var origTc *toolchainv1alpha1.ToolchainCluster
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		newToolchainCluster := &toolchainv1alpha1.ToolchainCluster{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
-			return true, err
-		}
-		origTc = newToolchainCluster.DeepCopy()
-		modifyToolchainCluster(newToolchainCluster)
-		if err := a.Client.Update(context.TODO(), newToolchainCluster); err != nil {
-			t.Logf("error updating ToolchainCluster '%s': %s. Will retry again...", toolchainClusterName, err.Error())
-			return false, nil
-		}
-		tc = newToolchainCluster
-		return true, nil
-	})
-
-	t.Cleanup(func() {
-		currentTc := &toolchainv1alpha1.SpaceProvisionerConfig{}
-		err := a.Client.Get(context.TODO(), client.ObjectKeyFromObject(origTc), currentTc)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				require.NoError(t, a.Client.Create(context.TODO(), origTc))
-				return
-			}
-			require.Fail(t, err.Error())
-		}
-
-		// make the originalTc look like we freshly obtained it from the server and updated its fields
-		// to look like the original.
-		origTc.Generation = currentTc.Generation
-		origTc.ResourceVersion = currentTc.ResourceVersion
-
-		require.NoError(t, a.Client.Update(context.TODO(), origTc))
-	})
-	return tc, err
-}
-
 // CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
 func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...client.CreateOption) error {
 	if err := a.Client.Create(context.TODO(), obj, opts...); err != nil {
