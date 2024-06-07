@@ -31,8 +31,8 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-
 	mur := user.MUR
+
 	// and move the user to appstudio tier
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), mur.Name, "appstudio-env")
 	VerifyResourcesProvisionedForSpace(t, awaitilities, mur.Name)

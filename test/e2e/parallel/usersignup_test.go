@@ -40,7 +40,6 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 	userSignup := user.UserSignup
-	space := user.Space
 
 	// then
 	expectedCompliantUsername := userSignup.Status.CompliantUsername
@@ -49,7 +48,7 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 	t.Run("when signup is deactivated, Space is stuck in terminating state, and when it reactivates then it should generate a new name", func(t *testing.T) {
 		// given
 		// let's get a namespace of the space
-		namespaceName := space.Status.ProvisionedNamespaces[0].Name
+		namespaceName := user.Space.Status.ProvisionedNamespaces[0].Name
 		// and add a dummy finalizer there so it will get stuck
 		_, err := memberAwait.UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
 			util.AddFinalizer(ns, "test/finalizer.toolchain.e2e.tests")

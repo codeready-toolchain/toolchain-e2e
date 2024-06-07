@@ -168,10 +168,9 @@ func TestSpaceRoles(t *testing.T) {
 			NoSpace().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			Execute(t)
-		guestMUR := guestUser.MUR
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
+		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestUser.MUR, s, "admin")
 
 		// then
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,

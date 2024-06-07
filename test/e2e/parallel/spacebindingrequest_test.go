@@ -113,11 +113,10 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 				NoSpace().
 				WaitForMUR().Execute(t)
-			mur := user.MUR
 			// create the spacebinding request
 			spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 				WithSpecSpaceRole("invalid"), // set invalid spacerole
-				WithSpecMasterUserRecord(mur.GetName()),
+				WithSpecMasterUserRecord(user.MUR.GetName()),
 				WithNamespace(testsupportspace.GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 			)
 
@@ -196,12 +195,11 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			NoSpace().
 			WaitForMUR().Execute(t)
-		newmur := newUser.MUR
 		// and we try to update the MUR in the SBR
 		// with lower timeout since it will fail as expected
 		_, err := memberAwait.WithRetryOptions(TimeoutOption(time.Second*2)).UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
 			func(s *toolchainv1alpha1.SpaceBindingRequest) {
-				s.Spec.MasterUserRecord = newmur.GetName() // set to the new MUR
+				s.Spec.MasterUserRecord = newUser.MUR.GetName() // set to the new MUR
 			},
 		)
 		require.Error(t, err) // an error from the validating webhook is expected when trying to update the MUR field

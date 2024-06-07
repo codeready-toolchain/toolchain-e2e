@@ -174,12 +174,10 @@ func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awai
 		NoSpace().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	userSignup2 := user2.UserSignup
-	mur2 := user2.MUR
 	//... that gets access to the space but using SpaceBindingRequests
 	spaceBindingRequest := testsupportsb.CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		testsupportsb.WithSpecSpaceRole(spaceRole),
-		testsupportsb.WithSpecMasterUserRecord(mur2.GetName()),
+		testsupportsb.WithSpecMasterUserRecord(user2.MUR.GetName()),
 		testsupportsb.WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 	)
 	// check for the spaceBinding creation
@@ -196,7 +194,7 @@ func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awai
 		wait.UntilSpaceBindingRequestHasConditions(wait.Provisioned()),
 	)
 	require.NoError(t, err)
-	return userSignup2, spaceBindingRequest, spaceBinding
+	return user2.UserSignup, spaceBindingRequest, spaceBinding
 }
 
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
@@ -209,9 +207,7 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	userSignup := user.UserSignup
-	mur := user.MUR
-	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), user.MUR, space, "admin")
 	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier(t, "appstudio")
 	require.NoError(t, err)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
@@ -222,5 +218,5 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 	require.NoError(t, err)
 	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName), wait.UntilSpaceHasAnyProvisionedNamespaces())
-	return space, userSignup, spaceBinding
+	return space, user.UserSignup, spaceBinding
 }

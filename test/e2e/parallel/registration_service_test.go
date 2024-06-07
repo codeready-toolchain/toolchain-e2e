@@ -790,11 +790,10 @@ func TestUsernames(t *testing.T) {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			NoSpace().
 			Execute(t)
-		mur := user.MUR
 		// when
 		// we call the get usernames endpoint to get the user
 		response := NewHTTPRequest(t).
-			InvokeEndpoint("GET", route+"/api/v1/usernames/"+mur.GetName(), token, "", http.StatusOK).
+			InvokeEndpoint("GET", route+"/api/v1/usernames/"+user.MUR.GetName(), token, "", http.StatusOK).
 			UnmarshalSlice()
 
 		// then

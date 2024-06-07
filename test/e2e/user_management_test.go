@@ -150,10 +150,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
-		userNoEmail := uNoEmail.UserSignup
 
 		// Delete the user's email and set them to deactivated
-		userSignup, err := hostAwait.UpdateUserSignup(t, userNoEmail.Name,
+		userSignup, err := hostAwait.UpdateUserSignup(t, uNoEmail.UserSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				us.Spec.IdentityClaims.Email = ""
 				states.SetDeactivated(us, true)
@@ -355,11 +354,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(t)
 		userSignup := user.UserSignup
-		mur := user.MUR
-		space := user.Space
 
 		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, mur)
+		s.promoteToDefaultUserTier(hostAwait.Client, user.MUR)
 
 		// Wait for the UserSignup to have the desired state
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -372,7 +369,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			baseUserTier, err := hostAwait.WaitForUserTier(t, "deactivate30")
 			require.NoError(t, err)
 
-			mur, err := hostAwait.WaitForMasterUserRecord(t, space.Name,
+			mur, err := hostAwait.WaitForMasterUserRecord(t, user.Space.Name,
 				wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
 			require.NoError(t, err)
 
@@ -656,8 +653,6 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
 		userSignup := user.UserSignup
-		mur := user.MUR
-		space := user.Space
 
 		// Create the BannedUser
 		bannedUser := CreateBannedUser(t, s.Host(), userSignup.Spec.IdentityClaims.Email)
@@ -675,7 +670,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...),
 			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(t, err)
-		require.NoError(t, hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, space.Name))
+		require.NoError(t, hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, user.Space.Name))
 
 		t.Run("unban the banned user", func(t *testing.T) {
 			// Unban the user
@@ -693,7 +688,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			require.NoError(t, err)
 
 			// Confirm the MUR is created
-			_, err = hostAwait.WaitForMasterUserRecord(t, mur.Name)
+			_, err = hostAwait.WaitForMasterUserRecord(t, user.MUR.Name)
 			require.NoError(t, err)
 		})
 	})
@@ -713,13 +708,12 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(s.T())
 	userSignup := u.UserSignup
-	mur := u.MUR
 
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
 
 	// Disable MUR
 	mur, err := hostAwait.UpdateMasterUserRecordSpec(s.T(),
-		mur.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+		u.MUR.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
 			mur.Spec.Disabled = true
 		})
 	require.NoError(s.T(), err)
@@ -784,7 +778,6 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 					RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 					Execute(t)
 				userSignup := user.UserSignup
-				space := user.Space
 				// when
 				DeactivateAndCheckUser(t, s.Awaitilities, userSignup)
 				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
@@ -795,7 +788,7 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 				require.NoError(t, err)
 
 				ReactivateAndCheckUser(t, s.Awaitilities, userSignup)
-				mur2, err := hostAwait.WaitForMasterUserRecord(t, space.Name,
+				mur2, err := hostAwait.WaitForMasterUserRecord(t, user.Space.Name,
 					wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()))
 
 				// then

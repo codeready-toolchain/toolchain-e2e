@@ -197,12 +197,11 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 	r.usernames[name] = t.Name()
 }
 
-// Execute executes the request against the Registration service REST endpoint.  This function may only be called
-// once, and must be called after all other functions. It returns four parameters; the first is the UserSignup
-// instance that was created, the second is the MasterUserRecord instance, the third is the space,
-// and the fourth returns the token that was generated for the request.
-// HOWEVER the MUR will only be returned here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-// The space will only be returned here if noSpace is true. If false, a nil value will be returned
+// Execute executes the request against the Registration service REST endpoint. This function may only be called
+// once, and must be called after all other functions. It returns SignupResult that contains the UserSignup,
+// the MasterUserRecord, the Space, and the token that was generated for the request. HOWEVER, the MUR will only be
+// returned here if EnsureMUR() was also called previously, otherwise a nil value will be returned.
+// The space will only be returned here if 'noSpace' is true. If false, a nil value will be returned.
 func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)

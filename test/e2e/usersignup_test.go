@@ -57,8 +57,6 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T())
-	mur1 := user1.MUR
-	space1 := user1.Space
 
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
@@ -73,14 +71,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(s.T())
-		mur2 := user2.MUR
-		space2 := user2.Space
 
 		// TestProvisionToOtherClusterWhenOneIsFull
 		// checks that users will be provisioned to the other member when one is full.
 		// if one cluster if full, then a new space will be placed in the another cluster.
-		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
-		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
+		require.NotEqual(t, user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
+		require.NotEqual(t, user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
 
 		// when
 		waitingListUser1 := NewSignupRequest(s.Awaitilities).
@@ -231,8 +227,6 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(s.T())
-		mur1 := user1.MUR
-		space1 := user1.Space
 
 		user2 := NewSignupRequest(s.Awaitilities).
 			Username("multimember-2").
@@ -240,12 +234,10 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(s.T())
-		mur2 := user2.MUR
-		space2 := user2.Space
 
 		// then
-		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
-		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
+		require.NotEqual(t, user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
+		require.NotEqual(t, user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
@@ -254,10 +246,9 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 				Email("multi3@redhat.com").
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
 				Execute(s.T())
-			userSignupPending := userPending.UserSignup
 
 			// then
-			s.userIsNotProvisioned(t, userSignupPending)
+			s.userIsNotProvisioned(t, userPending.UserSignup)
 		})
 	})
 }
@@ -356,10 +347,9 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T())
-	userSignup := user.UserSignup
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaimsModified() {
@@ -428,10 +418,9 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T())
-	userSignup := user.UserSignup
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
@@ -459,9 +448,8 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 				EnsureMUR().
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				Execute(s.T())
-			userSignup := user.UserSignup
 
-			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 		})
 		t.Run("user is not approved manually thus won't be provisioned", func(t *testing.T) {
 			// when
@@ -470,10 +458,9 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 				Email("manual2@redhat.com").
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...).
 				Execute(s.T())
-			userSignup := user.UserSignup
 
 			// then
-			s.userIsNotProvisioned(t, userSignup)
+			s.userIsNotProvisioned(t, user.UserSignup)
 		})
 	})
 }
@@ -584,9 +571,8 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			TargetCluster(memberAwait1).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(s.T())
-		userSignup := user.UserSignup
 
-		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 	})
 }
 
