@@ -851,6 +851,34 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	return userSignup, token
 }
 
+type GetSignupEndpointAssertions = func(t *testing.T, await wait.Awaitilities, responseBody map[string]interface{})
+
+func getSignupIsProvisioned(t *testing.T, await wait.Awaitilities, username string, responseBody map[string]interface{}) {
+	hostAwait := await.Host()
+	memberAwait := await.Member1()
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
+	transformedUsername := commonsignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	require.NoError(t, err)
+	require.True(t, found)
+	assert.Equal(t, memberCluster.Spec.APIEndpoint, responseBody["apiEndpoint"])
+	assert.Equal(t, hostAwait.APIProxyURL, responseBody["proxyURL"])
+	assert.Equal(t, fmt.Sprintf("%s-dev", transformedUsername), responseBody["defaultUserNamespace"])
+	assertRHODSClusterURL(t, memberAwait, responseBody)
+
+}
+
+func assertGetSignupStatus(t *testing.T, await wait.Awaitilities, username, bearerToken string, assertions ...GetSignupEndpointAssertions) {
+	hostAwait := await.Host()
+	memberAwait := await.Member1()
+	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
+	transformedUsername := commonsignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	assert.Equal(t, transformedUsername, mp["compliantUsername"])
+	assert.Equal(t, username, mp["username"])
+	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
+
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
+}
+
 func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
@@ -866,6 +894,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	assert.Equal(t, hostAwait.APIProxyURL, mp["proxyURL"])
 	assert.Equal(t, fmt.Sprintf("%s-dev", transformedUsername), mp["defaultUserNamespace"])
 	assertRHODSClusterURL(t, memberAwait, mp)
+
 }
 
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
