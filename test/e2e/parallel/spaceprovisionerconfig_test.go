@@ -66,11 +66,11 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 			WithNameThat(spc.Name, Is(NotReady()))
 		require.NoError(t, err)
 
-		existingSecret := &corev1.Secret{}
-		require.NoError(t, host.Client.Get(context.TODO(), client.ObjectKey{Name: existingCluster.Spec.SecretRef.Name, Namespace: existingCluster.Namespace}, existingSecret))
-
 		newSecretName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
-		_ = copySecret(t, host.Awaitility, existingSecret, client.ObjectKey{Name: newSecretName, Namespace: tc.Namespace})
+		wait.CopyWithCleanup(t, host.Awaitility,
+			client.ObjectKey{Name: existingCluster.Spec.SecretRef.Name, Namespace: existingCluster.Namespace},
+			client.ObjectKey{Name: newSecretName, Namespace: existingCluster.Namespace},
+			&corev1.Secret{})
 
 		// when
 
@@ -129,7 +129,7 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 
 	// copy the secret
 	secret := &corev1.Secret{}
-	require.NoError(t, wait.CopyWithCleanup(t, a,
+	wait.CopyWithCleanup(t, a,
 		client.ObjectKey{
 			Name:      cluster.Spec.SecretRef.Name,
 			Namespace: cluster.Namespace,
@@ -139,18 +139,18 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 			Namespace: cluster.Namespace,
 		},
 		secret,
-	))
+	)
 
-	// and create a new ToolchainCluster with that secret
-	// note that we can't use the CopyWithCleanup function because we also
-	// need to modify the SecretRef of the TC.
-	newCluster := cluster.DeepCopy()
-	newCluster.ResourceVersion = ""
-	newCluster.UID = ""
-	newCluster.Name = clusterName
-	newCluster.Spec.SecretRef.Name = secret.Name
-	newCluster.Status = toolchainv1alpha1.ToolchainClusterStatus{}
-	require.NoError(t, a.CreateWithCleanup(t, newCluster))
+	// and copy the cluster referencing the new secret
+	newCluster := &toolchainv1alpha1.ToolchainCluster{}
+	wait.CopyWithCleanup(t, a,
+		client.ObjectKeyFromObject(cluster),
+		client.ObjectKey{Name: clusterName, Namespace: cluster.Namespace},
+		newCluster,
+		func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Spec.SecretRef.Name = secret.Name
+			tc.Status = toolchainv1alpha1.ToolchainClusterStatus{}
+		})
 
 	return newCluster
 }
@@ -158,24 +158,15 @@ func copyClusterWithSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv
 func copyClusterWithoutSecret(t *testing.T, a *wait.Awaitility, cluster *toolchainv1alpha1.ToolchainCluster) *toolchainv1alpha1.ToolchainCluster {
 	t.Helper()
 	newName := util.NewObjectNamePrefix(t) + string(uuid.NewUUID()[0:20])
-	newCluster := cluster.DeepCopy()
-	newCluster.ResourceVersion = ""
-	newCluster.UID = ""
-	newCluster.Name = newName
-	newCluster.Spec.SecretRef.Name = ""
-	newCluster.Status = toolchainv1alpha1.ToolchainClusterStatus{}
-	require.NoError(t, a.CreateWithCleanup(t, newCluster))
+	newCluster := &toolchainv1alpha1.ToolchainCluster{}
+	wait.CopyWithCleanup(t, a,
+		client.ObjectKeyFromObject(cluster),
+		client.ObjectKey{Name: newName, Namespace: cluster.Namespace},
+		newCluster,
+		func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Spec.SecretRef.Name = ""
+			tc.Status = toolchainv1alpha1.ToolchainClusterStatus{}
+		})
 
 	return newCluster
-}
-
-func copySecret(t *testing.T, a *wait.Awaitility, source *corev1.Secret, targetKey client.ObjectKey) *corev1.Secret {
-	t.Helper()
-	target := source.DeepCopy()
-	target.ResourceVersion = ""
-	target.UID = ""
-	target.Name = targetKey.Name
-	target.Namespace = targetKey.Namespace
-	require.NoError(t, a.CreateWithCleanup(t, target))
-	return target
 }

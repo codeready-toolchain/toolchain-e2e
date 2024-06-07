@@ -56,7 +56,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	// We also create an enabled SpaceProvisionerConfig with enough capacity to try to "lure" the user signups into it.
 	// It should have no effect though, because the unusable cluster is not ready.
 	unusableTCName := util.NewObjectNamePrefix(s.T()) + uuid.NewString()[0:20]
-	require.NoError(s.T(), wait.CopyWithCleanup(s.T(), hostAwait.Awaitility,
+	wait.CopyWithCleanup(s.T(), hostAwait.Awaitility,
 		client.ObjectKey{
 			Name:      memberAwait1.ClusterName,
 			Namespace: hostAwait.Namespace,
@@ -70,7 +70,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			tc.Spec.SecretRef.Name = ""
 			tc.Status = toolchainv1alpha1.ToolchainClusterStatus{}
 		},
-	))
+	)
 	spaceprovisionerconfig.CreateSpaceProvisionerConfig(s.T(), hostAwait.Awaitility,
 		testSpc.ReferencingToolchainCluster(unusableTCName),
 		testSpc.Enabled(true),
