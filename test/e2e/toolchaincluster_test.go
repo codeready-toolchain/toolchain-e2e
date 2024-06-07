@@ -141,7 +141,11 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 }
 
 func generateNewName(prefix, baseName string) string {
-	return (prefix + baseName)[:63]
+	name := prefix + baseName
+	if len(name) > 63 {
+		return name[:63]
+	}
+	return name
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
