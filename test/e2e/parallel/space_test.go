@@ -257,7 +257,6 @@ func TestPromoteSpace(t *testing.T) {
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		EnsureMUR().
 		Execute(t)
-
 	spaceName := user.Space.Name
 
 	// then
