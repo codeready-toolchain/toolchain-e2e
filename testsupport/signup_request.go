@@ -15,6 +15,7 @@ import (
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/google/uuid"
@@ -56,6 +57,7 @@ type SignupRequest struct {
 	noSpace              bool
 	activationCode       string
 	space                *toolchainv1alpha1.Space
+	spaceTier            string
 }
 
 type SignupResult struct {
@@ -177,6 +179,12 @@ func (r *SignupRequest) NoSpace() *SignupRequest {
 	return r
 }
 
+// SpaceTier specifies the tier of the Space
+func (r *SignupRequest) SpaceTier(spaceTier string) *SignupRequest {
+	r.spaceTier = spaceTier
+	return r
+}
+
 var usernamesInParallel = &namesRegistry{usernames: map[string]string{}}
 
 type namesRegistry struct {
@@ -287,6 +295,10 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}
 		if !r.noSpace {
+			if r.spaceTier != "" {
+				tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, r.spaceTier)
+				expectedSpaceTier = r.spaceTier
+			}
 			space := VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
 			r.space = space
 			spaceMember := GetSpaceTargetMember(t, r.awaitilities, space)
