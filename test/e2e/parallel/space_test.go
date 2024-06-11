@@ -253,14 +253,13 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 
 	// when
-	_, mur := testsupport.NewSignupRequest(awaitilities).
+	user := testsupport.NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		EnsureMUR().
-		Execute(t).
-		Resources()
+		Execute(t)
 
-	spaceName := mur.Name
+	spaceName := user.Space.Name
 
 	// then
 	t.Run("to advanced tier", func(t *testing.T) {
