@@ -107,16 +107,16 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 			require.NoError(t, err)
 			// let's create a new MUR that will have access to the space
-			_, mur := NewSignupRequest(awaitilities).
+			user := NewSignupRequest(awaitilities).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
 				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 				NoSpace().
-				WaitForMUR().Execute(t).Resources()
+				WaitForMUR().Execute(t)
 			// create the spacebinding request
 			spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 				WithSpecSpaceRole("invalid"), // set invalid spacerole
-				WithSpecMasterUserRecord(mur.GetName()),
+				WithSpecMasterUserRecord(user.MUR.GetName()),
 				WithNamespace(testsupportspace.GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 			)
 
@@ -187,19 +187,19 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		space, spaceBindingRequest, _ := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "admin")
 		// let's create another MUR that will be used for the update request
 		username := uuid.Must(uuid.NewV4()).String()
-		_, newmur := NewSignupRequest(awaitilities).
+		newUser := NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@acme.com").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			NoSpace().
-			WaitForMUR().Execute(t).Resources()
+			WaitForMUR().Execute(t)
 		// and we try to update the MUR in the SBR
 		// with lower timeout since it will fail as expected
 		_, err := memberAwait.WithRetryOptions(TimeoutOption(time.Second*2)).UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
 			func(s *toolchainv1alpha1.SpaceBindingRequest) {
-				s.Spec.MasterUserRecord = newmur.GetName() // set to the new MUR
+				s.Spec.MasterUserRecord = newUser.MUR.GetName() // set to the new MUR
 			},
 		)
 		require.Error(t, err) // an error from the validating webhook is expected when trying to update the MUR field
@@ -229,14 +229,15 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	require.NoError(t, err)
 	// let's create a new MUR that will have access to the space
 	username := uuid.Must(uuid.NewV4()).String()
-	_, secondUserMUR := NewSignupRequest(awaitilities).
+	secondUser := NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		NoSpace().
-		WaitForMUR().Execute(t).Resources()
+		WaitForMUR().Execute(t)
+	secondUserMUR := secondUser.MUR
 	// create the spacebinding request
 	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		WithSpecSpaceRole(spaceRole),
