@@ -251,7 +251,6 @@ func TestPromoteSpace(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	// when
 	user := testsupport.NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
@@ -259,7 +258,6 @@ func TestPromoteSpace(t *testing.T) {
 		Execute(t)
 	spaceName := user.Space.Name
 
-	// then
 	t.Run("to advanced tier", func(t *testing.T) {
 		// when
 		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "advanced")
