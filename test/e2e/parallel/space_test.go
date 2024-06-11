@@ -122,7 +122,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	_, ownerMUR := NewSignupRequest(awaitilities).
+	ownerUser := NewSignupRequest(awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
@@ -130,8 +130,8 @@ func TestSpaceRoles(t *testing.T) {
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		NoSpace().
-		Execute(t).
-		Resources()
+		Execute(t)
+	ownerMUR := ownerUser.MUR
 
 	// when a space owned by the user above is created (and user is an admin of this space)
 	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR, "admin",
@@ -159,7 +159,7 @@ func TestSpaceRoles(t *testing.T) {
 
 	t.Run("and with guest admin binding", func(t *testing.T) {
 		// given a `spaceguest` user (with her own space, but we'll ignore it in this test)
-		_, guestMUR := NewSignupRequest(awaitilities).
+		guestUser := NewSignupRequest(awaitilities).
 			Username("spaceguest").
 			Email("spaceguest@redhat.com").
 			ManuallyApprove().
@@ -167,11 +167,10 @@ func TestSpaceRoles(t *testing.T) {
 			WaitForMUR().
 			NoSpace().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
+			Execute(t)
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
+		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestUser.MUR, s, "admin")
 
 		// then
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
@@ -495,23 +494,27 @@ func TestSubSpaceInheritance(t *testing.T) {
 		// when
 		// we have a parentSpace
 		t.Logf("Create parent space")
-		_, mur := CreateUserSignupWithSpaceTier(t, awaitilities, "appstudio")
-		parentSpace, err := hostAwait.WaitForSpace(t, mur.Name)
-		require.NoError(t, err)
+		parentUser := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
 		t.Logf("Create sub space with role: contributor")
-		_, subSpaceMur := NewSignupRequest(awaitilities).
+		subUser := NewSignupRequest(awaitilities).
 			ManuallyApprove().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 			NoSpace().
 			WaitForMUR().
-			Execute(t).
-			Resources()
+			Execute(t)
+		subSpaceMur := subUser.MUR
 
 		subSpace, subSpaceBindings := CreateSpaceWithBinding(t, awaitilities, subSpaceMur, "contributor",
-			testspace.WithSpecParentSpace(parentSpace.Name),
+			testspace.WithSpecParentSpace(parentUser.Space.Name),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetCluster(memberAwait.ClusterName),
 			testspace.WithDisableInheritance(true))
