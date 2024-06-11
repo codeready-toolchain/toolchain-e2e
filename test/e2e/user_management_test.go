@@ -387,8 +387,9 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				mur.Status.ProvisionedTime.String())
 
 			// The user should be set to deactivating, but not deactivated
-			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasConditions(
-				wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically(), wait.Deactivating())...))
+			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasScheduledDeactivationTime(),
+				wait.UntilUserSignupHasConditions(
+					wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically(), wait.Deactivating())...))
 			require.NoError(t, err)
 
 			// The scheduled deactivation time should have also been updated, and should now expire in ~3 days
