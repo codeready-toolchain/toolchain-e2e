@@ -33,14 +33,15 @@ func TestNSTemplateTiers(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	testingtiers, _ := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("testnstemplatetiers").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources()
+		Execute(t)
+	testingtiers := user.UserSignup
+	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "base"}
@@ -70,9 +71,9 @@ func TestNSTemplateTiers(t *testing.T) {
 			wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
 
-		t.Run(fmt.Sprintf("promote %s space to %s tier", testingtiers.Status.CompliantUsername, tierToCheck), func(t *testing.T) {
+		t.Run(fmt.Sprintf("promote %s space to %s tier", space.Name, tierToCheck), func(t *testing.T) {
 			// when
-			tiers.MoveSpaceToTier(t, hostAwait, testingtiers.Status.CompliantUsername, tierToCheck)
+			tiers.MoveSpaceToTier(t, hostAwait, space.Name, tierToCheck)
 
 			// then
 			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
@@ -154,18 +155,16 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
-		userSignup, _ := NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username("promoteuser").
 			Email("promoteuser@redhat.com").
 			ManuallyApprove().
 			TargetCluster(awaitilities.Member1()).
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
-
+			Execute(t)
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
+		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, user.UserSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivating(us, true)
 			})
@@ -208,15 +207,15 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 	// and wait until they are all provisioned by calling EnsureMUR()
 	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		userSignups[i], _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			WaitForMUR().
 			UserID(uuid.Must(uuid.NewV4()).String()).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
-			Execute(t).
-			Resources()
+			Execute(t)
+		userSignups[i] = user.UserSignup
 	}
 
 	// let's promote to users the new tier
