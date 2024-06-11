@@ -14,7 +14,6 @@ import (
 
 	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 
-	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
@@ -230,9 +229,16 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 }
 
 func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait *MemberAwaitility, hostAwait *HostAwaitility, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
-	space, firstUserSignup, _ := testsupportspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+	user := NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		SpaceTier("appstudio").
+		EnsureMUR().
+		Execute(t)
+	firstUserSignup := user.UserSignup
 	// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
-	space, err := hostAwait.WaitForSpace(t, space.Name, UntilSpaceHasAnyProvisionedNamespaces())
+	space, err := hostAwait.WaitForSpace(t, user.Space.Name, UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 	// let's create a new MUR that will have access to the space
 	username := uuid.Must(uuid.NewV4()).String()
