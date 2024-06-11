@@ -55,16 +55,19 @@ func WithName(name string) SpaceRequestOption {
 }
 
 func CreateSpaceRequest(t *testing.T, awaitilities wait.Awaitilities, memberName string, opts ...SpaceRequestOption) (*toolchainv1alpha1.SpaceRequest, *toolchainv1alpha1.Space) {
-	hostAwait := awaitilities.Host()
 	memberAwait, err := awaitilities.Member(memberName)
 	require.NoError(t, err)
 	// let's first create a parentSpace
-	_, mur := testsupport.CreateUserSignupWithSpaceTier(t, awaitilities, memberAwait, "appstudio")
-	parentSpace, err := hostAwait.WaitForSpace(t, mur.Name)
-	require.NoError(t, err)
+	user := testsupport.NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		TargetCluster(memberAwait).
+		SpaceTier("appstudio").
+		EnsureMUR().
+		Execute(t)
 
 	// wait for the namespace to be provisioned since we will be creating the spacerequest into it.
-	parentSpace, err = awaitilities.Host().WaitForSpace(t, parentSpace.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
+	parentSpace, err := awaitilities.Host().WaitForSpace(t, user.Space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 
 	// create the space request in the "default" namespace provisioned by the parentSpace
