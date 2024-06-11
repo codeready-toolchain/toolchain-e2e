@@ -250,9 +250,11 @@ func TestPromoteSpace(t *testing.T) {
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
 
 	user := testsupport.NewSignupRequest(awaitilities).
 		ManuallyApprove().
+		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		EnsureMUR().
 		Execute(t)

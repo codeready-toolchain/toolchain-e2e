@@ -1,0 +1,1381 @@
+go version go1.21.9 darwin/arm64
+mkdir -p ./build/_output/bin || true
+CGO_ENABLED=0 GOARCH=arm64  GOOS=linux \
+		go build  ./...
+rm -f /tmp/toolchain_e2e_already_paired 2>/dev/null || true
+rm -rf /tmp/crt-e2e-image-names 2>/dev/null || true
+Preparing namespace for host operator toolchain-host-11143355...
+/Library/Developer/CommandLineTools/usr/bin/make create-project PROJECT_NAME=toolchain-host-11143355
+Already on project "toolchain-host-11143355" on server "https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443".
+adding network policies in toolchain-host-11143355 namespace
+networkpolicy.networking.k8s.io/allow-all-ingress created
+oc label ns --overwrite=true toolchain-host-11143355 app=host-operator
+namespace/toolchain-host-11143355 labeled
+Preparing namespace for member operator: toolchain-member-11143355...
+/Library/Developer/CommandLineTools/usr/bin/make create-project PROJECT_NAME=toolchain-member-11143355
+Already on project "toolchain-member-11143355" on server "https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443".
+adding network policies in toolchain-member-11143355 namespace
+networkpolicy.networking.k8s.io/allow-all-ingress created
+oc label ns --overwrite=true toolchain-member-11143355 app=member-operator
+namespace/toolchain-member-11143355 labeled
+oc apply -f deploy/member-operator/e2e-tests/ -n toolchain-member-11143355 || true
+secret/member-operator-secret created
+Preparing namespace for second member operator: toolchain-member2-11143355...
+/Library/Developer/CommandLineTools/usr/bin/make create-project PROJECT_NAME=toolchain-member2-11143355
+Already on project "toolchain-member2-11143355" on server "https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443".
+adding network policies in toolchain-member2-11143355 namespace
+networkpolicy.networking.k8s.io/allow-all-ingress created
+oc label ns --overwrite=true toolchain-member2-11143355 app=member-operator
+namespace/toolchain-member2-11143355 labeled
+oc apply -f deploy/member-operator/e2e-tests/ -n toolchain-member2-11143355 || true
+secret/member-operator-secret created
+oc create -f deploy/crds/ || true
+/Library/Developer/CommandLineTools/usr/bin/make get-publish-install-and-register-operators MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 ENVIRONMENT=e2e-tests INSTALL_OPERATOR=true DEPLOY_LATEST=true LETS_ENCRYPT_PARAM=
+/Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po true -io true -hn toolchain-host-11143355  -ds 11143414 -qn rsoaresd -dl true  "
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/ci/manage-host-operator.sh > /tmp/manage-host-operator.sh && chmod +x /tmp/manage-host-operator.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/manage-host-operator.sh -po true -io true -hn toolchain-host-11143355  -ds 11143414 -qn rsoaresd -dl true  
+objects to be created in order to create CatalogSource
+catalogsource.operators.coreos.com/source-toolchain-host-operator-latest created
+Waiting until the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 gets ready
+0. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+1. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+2. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+3. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+4. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+5. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+6. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+7. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+The CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 is ready - installing the operator
+objects to be created in order to install operator
+operatorgroup.operators.coreos.com/og-toolchain-host-operator created
+subscription.operators.coreos.com/subscription-toolchain-host-operator-latest created
+Waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster...
+0. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+1. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+2. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+3. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+4. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+5. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+6. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+7. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+8. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+9. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+10. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+/Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po true -io true -mn toolchain-member-11143355  -qn rsoaresd -ds 11143414 -dl true -mn2 toolchain-member2-11143355 "
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/ci/manage-member-operator.sh > /tmp/manage-member-operator.sh && chmod +x /tmp/manage-member-operator.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/manage-member-operator.sh -po true -io true -mn toolchain-member-11143355  -qn rsoaresd -ds 11143414 -dl true -mn2 toolchain-member2-11143355 
+objects to be created in order to create CatalogSource
+catalogsource.operators.coreos.com/source-toolchain-member-operator-latest created
+Waiting until the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 gets ready
+0. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+1. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+2. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+3. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+4. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+5. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+6. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+7. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+8. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+9. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+The CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 is ready - installing the operator
+objects to be created in order to install operator
+operatorgroup.operators.coreos.com/og-toolchain-member-operator created
+subscription.operators.coreos.com/subscription-toolchain-member-operator-latest created
+Waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster...
+0. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+1. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+2. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+3. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+4. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+5. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+6. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+objects to be created in order to create CatalogSource
+catalogsource.operators.coreos.com/source-toolchain-member-operator-latest created
+Waiting until the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 gets ready
+0. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+1. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+2. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+3. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+4. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+5. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+6. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+7. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+8. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+The CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 is ready - installing the operator
+objects to be created in order to install operator
+operatorgroup.operators.coreos.com/og-toolchain-member-operator created
+subscription.operators.coreos.com/subscription-toolchain-member-operator-latest created
+Waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster...
+0. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+1. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+2. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+3. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+4. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+5. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+6. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+7. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+/Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn toolchain-member-11143355 -hn toolchain-host-11143355 "
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/add-cluster.sh > /tmp/add-cluster.sh && chmod +x /tmp/add-cluster.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/add-cluster.sh -t member -mn toolchain-member-11143355 -hn toolchain-host-11143355 
+toolchain-member-11143355
+toolchain-host-11143355
+Getting member SA token
+SA token retrieved
+Using standard OpenShift certificate
+Fetching information about the clusters
+API endpoint retrieved: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+Joining cluster name: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+API endpoint of the cluster it is joining to: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+The cluster name it is joining to: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+Creating member secret
+secret/toolchaincluster-member-toolchain-member-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+secret/toolchaincluster-member-toolchain-member-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com labeled
+Creating ToolchainCluster representation of member in host:
+toolchaincluster.toolchain.dev.openshift.com/member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+if [[ true == true ]]; then /Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn toolchain-member2-11143355 -hn toolchain-host-11143355 -mm 2 "; fi
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/add-cluster.sh > /tmp/add-cluster.sh && chmod +x /tmp/add-cluster.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/add-cluster.sh -t member -mn toolchain-member2-11143355 -hn toolchain-host-11143355 -mm 2 
+toolchain-member2-11143355
+toolchain-host-11143355
+Getting member SA token
+SA token retrieved
+Using standard OpenShift certificate
+Fetching information about the clusters
+API endpoint retrieved: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+Joining cluster name: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+API endpoint of the cluster it is joining to: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+The cluster name it is joining to: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+Creating member secret
+secret/toolchaincluster-member-toolchain-member2-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+secret/toolchaincluster-member-toolchain-member2-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com labeled
+Creating ToolchainCluster representation of member in host:
+toolchaincluster.toolchain.dev.openshift.com/member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2 created
+/Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn toolchain-member-11143355 -hn toolchain-host-11143355 "
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/add-cluster.sh > /tmp/add-cluster.sh && chmod +x /tmp/add-cluster.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/add-cluster.sh -t host   -mn toolchain-member-11143355 -hn toolchain-host-11143355 
+toolchain-host-11143355
+toolchain-member-11143355
+Getting host SA token
+SA token retrieved
+Using standard OpenShift certificate
+Fetching information about the clusters
+API endpoint retrieved: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+Joining cluster name: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+API endpoint of the cluster it is joining to: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+The cluster name it is joining to: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+Creating host secret
+secret/toolchaincluster-host-toolchain-host-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+secret/toolchaincluster-host-toolchain-host-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com labeled
+Creating ToolchainCluster representation of host in member:
+toolchaincluster.toolchain.dev.openshift.com/host-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+if [[ true == true ]]; then /Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn toolchain-member2-11143355 -hn toolchain-host-11143355 -mm 2 "; fi
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/add-cluster.sh > /tmp/add-cluster.sh && chmod +x /tmp/add-cluster.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/add-cluster.sh -t host   -mn toolchain-member2-11143355 -hn toolchain-host-11143355 -mm 2 
+toolchain-host-11143355
+toolchain-member2-11143355
+Getting host SA token
+SA token retrieved
+Using standard OpenShift certificate
+Fetching information about the clusters
+API endpoint retrieved: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+Joining cluster name: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+API endpoint of the cluster it is joining to: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+The cluster name it is joining to: gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+Creating host secret
+secret/toolchaincluster-host-toolchain-host-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+secret/toolchaincluster-host-toolchain-host-11143355-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com labeled
+Creating ToolchainCluster representation of host in member:
+toolchaincluster.toolchain.dev.openshift.com/host-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2 created
+echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
+Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up.
+oc delete pods --namespace toolchain-host-11143355 -l control-plane=controller-manager
+pod "host-operator-controller-manager-58c4b9bb49-6wkl4" deleted
+for MEMBER_NAME in `oc get toolchaincluster -n toolchain-host-11143355 --no-headers -o custom-columns=":metadata.name"`; do \
+	  oc process -p TOOLCHAINCLUSTER_NAME=${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=toolchain-host-11143355 -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	done
+spaceprovisionerconfig.toolchain.dev.openshift.com/member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com created
+spaceprovisionerconfig.toolchain.dev.openshift.com/member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2 created
+# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
+oc create -f deploy/host-operator/e2e-tests/ -n toolchain-host-11143355
+secret/host-operator-secret created
+toolchainconfig.toolchain.dev.openshift.com/config created
+# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
+# since e2e environment has 2 member operators running in the same cluster
+# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
+if [[ true == true ]]; then \
+		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -n toolchain-host-11143355 --no-headers -o custom-columns=":metadata.name" | grep "2$"`; \
+		if [[ -z ${TOOLCHAIN_CLUSTER_NAME} ]]; then \
+			echo "ERROR: no ToolchainCluster for member 2 found"; \
+			exit 1; \
+		fi; \
+		echo "TOOLCHAIN_CLUSTER_NAME ${TOOLCHAIN_CLUSTER_NAME}"; \
+		echo "ENVIRONMENT e2e-tests"; \
+		PATCH_FILE=/tmp/patch-toolchainconfig_11143414.json; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true},\"environment\":\"e2e-tests\"}}}}}" > $PATCH_FILE; \
+		oc patch toolchainconfig config -n toolchain-host-11143355 --type=merge --patch "$(cat $PATCH_FILE)"; \
+	fi;
+TOOLCHAIN_CLUSTER_NAME member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+ENVIRONMENT e2e-tests
+toolchainconfig.toolchain.dev.openshift.com/config patched
+echo "Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup"
+Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup
+oc delete pods --namespace toolchain-host-11143355 -l control-plane=controller-manager
+pod "host-operator-controller-manager-58c4b9bb49-lxzhf" deleted
+Setting up the environment before testing the operator migration...
+/Library/Developer/CommandLineTools/usr/bin/make execute-tests MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 TESTS_TO_EXECUTE="./test/migration/setup"
+Present Spaces
+oc get Space -n toolchain-host-11143355
+Status of ToolchainStatus
+oc get ToolchainStatus -n toolchain-host-11143355 -o yaml
+apiVersion: v1
+items:
+- apiVersion: toolchain.dev.openshift.com/v1alpha1
+  kind: ToolchainStatus
+  metadata:
+    annotations:
+      toolchain.dev.openshift.com/last-applied-configuration: '{"metadata":{"name":"toolchain-status","namespace":"toolchain-host-11143355","creationTimestamp":null},"spec":{},"status":{"hostRoutes":{}}}'
+    creationTimestamp: "2024-06-11T13:34:58Z"
+    generation: 1
+    name: toolchain-status
+    namespace: toolchain-host-11143355
+    resourceVersion: "283501"
+    uid: 8f60ab9c-ed91-46c3-bf26-c9af58f212b9
+  spec: {}
+  status:
+    conditions:
+    - lastTransitionTime: "2024-06-11T13:34:58Z"
+      lastUpdatedTime: "2024-06-11T13:36:46Z"
+      message: 'components not ready: [members registrationService hostRoutes]'
+      reason: ComponentsNotReady
+      status: "False"
+      type: Ready
+    hostOperator:
+      buildTimestamp: "2024-06-11T07:41:57Z"
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:36:46Z"
+        lastUpdatedTime: "2024-06-11T13:36:46Z"
+        reason: DeploymentReady
+        status: "True"
+        type: Ready
+      deploymentName: host-operator-controller-manager
+      revision: 05e1de366c24487b6b893df16bdd4f9192c03821
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:36:46Z"
+          lastUpdatedTime: "2024-06-11T13:36:46Z"
+          message: access token key is not provided
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+      version: 0.0.1
+    hostRoutes:
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:36:46Z"
+        lastUpdatedTime: "2024-06-11T13:36:46Z"
+        message: Route.route.openshift.io "api" not found
+        reason: ProxyRouteUnavailable
+        status: "False"
+        type: Ready
+    members:
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:36:40Z"
+          lastUpdatedTime: "2024-06-11T13:36:40Z"
+          message: 'components not ready: [hostConnection]'
+          reason: ComponentsNotReady
+          status: "False"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 33
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:36:40Z"
+            lastUpdatedTime: "2024-06-11T13:36:40Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:36:45Z"
+          lastUpdatedTime: "2024-06-11T13:36:45Z"
+          message: 'components not ready: [hostConnection]'
+          reason: ComponentsNotReady
+          status: "False"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 33
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:36:45Z"
+            lastUpdatedTime: "2024-06-11T13:36:45Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    metrics:
+      masterUserRecordsPerDomain: {}
+      userSignupsPerActivationAndDomain: {}
+    registrationService:
+      deployment:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:36:46Z"
+          lastUpdatedTime: "2024-06-11T13:36:46Z"
+          message: 'unable to get the deployment: Deployment.apps "registration-service"
+            not found'
+          reason: DeploymentNotFound
+          status: "False"
+          type: Ready
+        name: registration-service
+      health:
+        alive: ""
+        buildTime: ""
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:36:46Z"
+          lastUpdatedTime: "2024-06-11T13:36:46Z"
+          message: 'Get "http://registration-service/api/v1/health": dial tcp: lookup
+            registration-service on 172.30.0.10:53: no such host'
+          reason: RegServiceNotReady
+          status: "False"
+          type: Ready
+        environment: ""
+        revision: ""
+        startTime: ""
+      registrationServiceResources: {}
+      revisionCheck: {}
+kind: List
+metadata:
+  resourceVersion: ""
+Starting test Tue Jun 11 14:37:05 WEST 2024
+MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 go test ./test/migration/setup -run TestCreateSpaceBindingRequest -p 1 -parallel 1 -v -timeout=90m -failfast || \
+	(/Library/Developer/CommandLineTools/usr/bin/make print-logs HOST_NS=toolchain-host-11143355 MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 && exit 1)
+testing: warning: no tests to run
+PASS
+ok  	github.com/codeready-toolchain/toolchain-e2e/test/migration/setup	(cached) [no tests to run]
+Environment successfully setup.
+/Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po true -io true -hn toolchain-host-11143355  -ds 11143355 -qn rsoaresd -dl false  "
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/ci/manage-host-operator.sh > /tmp/manage-host-operator.sh && chmod +x /tmp/manage-host-operator.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/manage-host-operator.sh -po true -io true -hn toolchain-host-11143355  -ds 11143355 -qn rsoaresd -dl false  
+subscription.operators.coreos.com "subscription-toolchain-host-operator-latest" deleted
+catalogsource.operators.coreos.com "source-toolchain-host-operator-latest" deleted
+clusterserviceversion.operators.coreos.com "toolchain-host-operator.v0.0.955-395-commit-05e1de3-81ca486" deleted
+Waiting for the already installed operator toolchain-host-operator to be uninstalled from the cluster, so the new version can be installed...
+0. attempt (out of 30) of waiting for operator toolchain-host-operator to be uninstalled from the cluster.
+objects to be created in order to create CatalogSource
+catalogsource.operators.coreos.com/source-toolchain-host-operator-latest created
+Waiting until the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 gets ready
+0. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+1. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+2. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+3. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+4. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+5. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+6. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+7. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+8. attempt (out of 100) of waiting for the CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 to be ready.
+The CatalogSource source-toolchain-host-operator-latest in the namespace toolchain-host-11143355 is ready - installing the operator
+objects to be created in order to install operator
+operatorgroup.operators.coreos.com/og-toolchain-host-operator unchanged
+subscription.operators.coreos.com/subscription-toolchain-host-operator-latest created
+Waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster...
+0. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+1. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+2. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+3. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+4. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+5. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+6. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+7. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+8. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+9. attempt (out of 100) of waiting for CRD toolchainconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+for MEMBER_NAME in `oc get toolchaincluster -n toolchain-host-11143355 --no-headers -o custom-columns=":metadata.name"`; do \
+	  oc process -p TOOLCHAINCLUSTER_NAME=${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=toolchain-host-11143355 -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
+	done
+spaceprovisionerconfig.toolchain.dev.openshift.com/member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com unchanged
+spaceprovisionerconfig.toolchain.dev.openshift.com/member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2 unchanged
+# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
+oc create -f deploy/host-operator/e2e-tests/ -n toolchain-host-11143355
+# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
+# since e2e environment has 2 member operators running in the same cluster
+# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
+if [[ true == true ]]; then \
+		TOOLCHAIN_CLUSTER_NAME=`oc get toolchaincluster -n toolchain-host-11143355 --no-headers -o custom-columns=":metadata.name" | grep "2$"`; \
+		if [[ -z ${TOOLCHAIN_CLUSTER_NAME} ]]; then \
+			echo "ERROR: no ToolchainCluster for member 2 found"; \
+			exit 1; \
+		fi; \
+		echo "TOOLCHAIN_CLUSTER_NAME ${TOOLCHAIN_CLUSTER_NAME}"; \
+		echo "ENVIRONMENT e2e-tests"; \
+		PATCH_FILE=/tmp/patch-toolchainconfig_11143355.json; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true},\"environment\":\"e2e-tests\"}}}}}" > $PATCH_FILE; \
+		oc patch toolchainconfig config -n toolchain-host-11143355 --type=merge --patch "$(cat $PATCH_FILE)"; \
+	fi;
+TOOLCHAIN_CLUSTER_NAME member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+ENVIRONMENT e2e-tests
+toolchainconfig.toolchain.dev.openshift.com/config patched (no change)
+echo "Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup"
+Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup
+oc delete pods --namespace toolchain-host-11143355 -l control-plane=controller-manager
+pod "host-operator-controller-manager-58c4b9bb49-kjf9p" deleted
+/Library/Developer/CommandLineTools/usr/bin/make run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po true -io true -mn toolchain-member-11143355  -qn rsoaresd -ds 11143355 -dl false -mn2 toolchain-member2-11143355 "
+running script from GH toolchain-cicd repo (using latest version in master)...
+curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-cicd/master/scripts/ci/manage-member-operator.sh > /tmp/manage-member-operator.sh && chmod +x /tmp/manage-member-operator.sh && OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master /tmp/manage-member-operator.sh -po true -io true -mn toolchain-member-11143355  -qn rsoaresd -ds 11143355 -dl false -mn2 toolchain-member2-11143355 
+subscription.operators.coreos.com "subscription-toolchain-member-operator-latest" deleted
+catalogsource.operators.coreos.com "source-toolchain-member-operator-latest" deleted
+clusterserviceversion.operators.coreos.com "toolchain-member-operator.v0.0.518-commit-8fddeaf" deleted
+Waiting for the already installed operator toolchain-member-operator to be uninstalled from the cluster, so the new version can be installed...
+0. attempt (out of 30) of waiting for operator toolchain-member-operator to be uninstalled from the cluster.
+objects to be created in order to create CatalogSource
+catalogsource.operators.coreos.com/source-toolchain-member-operator-latest created
+Waiting until the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 gets ready
+0. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+1. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+2. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+3. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+4. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+5. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+6. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+7. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+8. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 to be ready.
+The CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member-11143355 is ready - installing the operator
+objects to be created in order to install operator
+operatorgroup.operators.coreos.com/og-toolchain-member-operator unchanged
+subscription.operators.coreos.com/subscription-toolchain-member-operator-latest created
+Waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster...
+0. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+1. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+2. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+3. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+4. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+5. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+6. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+7. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+8. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+9. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+subscription.operators.coreos.com "subscription-toolchain-member-operator-latest" deleted
+catalogsource.operators.coreos.com "source-toolchain-member-operator-latest" deleted
+clusterserviceversion.operators.coreos.com "toolchain-member-operator.v0.0.518-commit-8fddeaf" deleted
+Waiting for the already installed operator toolchain-member-operator to be uninstalled from the cluster, so the new version can be installed...
+objects to be created in order to create CatalogSource
+catalogsource.operators.coreos.com/source-toolchain-member-operator-latest created
+Waiting until the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 gets ready
+0. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+1. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+2. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+3. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+4. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+5. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+6. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+7. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+8. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+9. attempt (out of 100) of waiting for the CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 to be ready.
+The CatalogSource source-toolchain-member-operator-latest in the namespace toolchain-member2-11143355 is ready - installing the operator
+objects to be created in order to install operator
+operatorgroup.operators.coreos.com/og-toolchain-member-operator unchanged
+subscription.operators.coreos.com/subscription-toolchain-member-operator-latest created
+Waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster...
+0. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+1. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+2. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+3. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+4. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+5. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+6. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+7. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+8. attempt (out of 100) of waiting for CRD memberoperatorconfigs.toolchain.dev.openshift.com to be available in the cluster and the InstallPlan to be complete
+Updating operators and verifying resources...
+/Library/Developer/CommandLineTools/usr/bin/make execute-tests MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 TESTS_TO_EXECUTE="./test/migration/verify"
+Present Spaces
+oc get Space -n toolchain-host-11143355
+Status of ToolchainStatus
+oc get ToolchainStatus -n toolchain-host-11143355 -o yaml
+apiVersion: v1
+items:
+- apiVersion: toolchain.dev.openshift.com/v1alpha1
+  kind: ToolchainStatus
+  metadata:
+    annotations:
+      toolchain.dev.openshift.com/last-applied-configuration: '{"metadata":{"name":"toolchain-status","namespace":"toolchain-host-11143355","creationTimestamp":null},"spec":{},"status":{"hostRoutes":{}}}'
+    creationTimestamp: "2024-06-11T13:34:58Z"
+    generation: 1
+    name: toolchain-status
+    namespace: toolchain-host-11143355
+    resourceVersion: "286804"
+    uid: 8f60ab9c-ed91-46c3-bf26-c9af58f212b9
+  spec: {}
+  status:
+    conditions:
+    - lastTransitionTime: "2024-06-11T13:39:24Z"
+      lastUpdatedTime: "2024-06-11T13:39:40Z"
+      reason: AllComponentsReady
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2024-06-11T13:38:45Z"
+      lastUpdatedTime: "2024-06-11T13:39:40Z"
+      reason: AllComponentsReady
+      status: "False"
+      type: ToolchainStatusUnreadyNotificationCreated
+    hostOperator:
+      buildTimestamp: "2024-06-11T07:41:57Z"
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:39:40Z"
+        lastUpdatedTime: "2024-06-11T13:39:40Z"
+        reason: DeploymentReady
+        status: "True"
+        type: Ready
+      deploymentName: host-operator-controller-manager
+      revision: 05e1de366c24487b6b893df16bdd4f9192c03821
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:40Z"
+          lastUpdatedTime: "2024-06-11T13:39:40Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+      version: 0.0.1
+    hostRoutes:
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:39:40Z"
+        lastUpdatedTime: "2024-06-11T13:39:40Z"
+        reason: HostRoutesAvailable
+        status: "True"
+        type: Ready
+      proxyURL: https://api-toolchain-host-11143355.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+    members:
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:39Z"
+          lastUpdatedTime: "2024-06-11T13:39:39Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:39:39Z"
+            lastUpdatedTime: "2024-06-11T13:39:39Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:38:53Z"
+          lastUpdatedTime: "2024-06-11T13:38:53Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:38:53Z"
+            lastUpdatedTime: "2024-06-11T13:38:53Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    metrics:
+      masterUserRecordsPerDomain: {}
+      userSignupsPerActivationAndDomain: {}
+    registrationService:
+      deployment:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:40Z"
+          lastUpdatedTime: "2024-06-11T13:39:40Z"
+          reason: DeploymentReady
+          status: "True"
+          type: Ready
+        name: registration-service
+      health:
+        alive: "true"
+        buildTime: "2024-05-30T15:09:20Z"
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:40Z"
+          lastUpdatedTime: "2024-06-11T13:39:40Z"
+          reason: RegServiceReady
+          status: "True"
+          type: Ready
+        environment: e2e-tests
+        revision: 81ca48676ba973d8a107571243886eebd918e2e6
+        startTime: "2024-06-11T13:38:36Z"
+      registrationServiceResources: {}
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:40Z"
+          lastUpdatedTime: "2024-06-11T13:39:40Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+kind: List
+metadata:
+  resourceVersion: ""
+Starting test Tue Jun 11 14:39:39 WEST 2024
+MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 go test ./test/migration/verify -run TestCreateSpaceBindingRequest -p 1 -parallel 1 -v -timeout=90m -failfast || \
+	(/Library/Developer/CommandLineTools/usr/bin/make print-logs HOST_NS=toolchain-host-11143355 MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 && exit 1)
+testing: warning: no tests to run
+PASS
+ok  	github.com/codeready-toolchain/toolchain-e2e/test/migration/verify	(cached) [no tests to run]
+Migration tests successfully finished
+Running e2e tests in parallel...
+/Library/Developer/CommandLineTools/usr/bin/make execute-tests MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
+Present Spaces
+oc get Space -n toolchain-host-11143355
+Status of ToolchainStatus
+oc get ToolchainStatus -n toolchain-host-11143355 -o yaml
+apiVersion: v1
+items:
+- apiVersion: toolchain.dev.openshift.com/v1alpha1
+  kind: ToolchainStatus
+  metadata:
+    annotations:
+      toolchain.dev.openshift.com/last-applied-configuration: '{"metadata":{"name":"toolchain-status","namespace":"toolchain-host-11143355","creationTimestamp":null},"spec":{},"status":{"hostRoutes":{}}}'
+    creationTimestamp: "2024-06-11T13:34:58Z"
+    generation: 1
+    name: toolchain-status
+    namespace: toolchain-host-11143355
+    resourceVersion: "286850"
+    uid: 8f60ab9c-ed91-46c3-bf26-c9af58f212b9
+  spec: {}
+  status:
+    conditions:
+    - lastTransitionTime: "2024-06-11T13:39:24Z"
+      lastUpdatedTime: "2024-06-11T13:39:42Z"
+      reason: AllComponentsReady
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2024-06-11T13:38:45Z"
+      lastUpdatedTime: "2024-06-11T13:39:42Z"
+      reason: AllComponentsReady
+      status: "False"
+      type: ToolchainStatusUnreadyNotificationCreated
+    hostOperator:
+      buildTimestamp: "2024-06-11T07:41:57Z"
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:39:42Z"
+        lastUpdatedTime: "2024-06-11T13:39:42Z"
+        reason: DeploymentReady
+        status: "True"
+        type: Ready
+      deploymentName: host-operator-controller-manager
+      revision: 05e1de366c24487b6b893df16bdd4f9192c03821
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:42Z"
+          lastUpdatedTime: "2024-06-11T13:39:42Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+      version: 0.0.1
+    hostRoutes:
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:39:42Z"
+        lastUpdatedTime: "2024-06-11T13:39:42Z"
+        reason: HostRoutesAvailable
+        status: "True"
+        type: Ready
+      proxyURL: https://api-toolchain-host-11143355.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+    members:
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:41Z"
+          lastUpdatedTime: "2024-06-11T13:39:41Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:39:41Z"
+            lastUpdatedTime: "2024-06-11T13:39:41Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:38:53Z"
+          lastUpdatedTime: "2024-06-11T13:38:53Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:38:53Z"
+            lastUpdatedTime: "2024-06-11T13:38:53Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    metrics:
+      masterUserRecordsPerDomain: {}
+      userSignupsPerActivationAndDomain: {}
+    registrationService:
+      deployment:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:42Z"
+          lastUpdatedTime: "2024-06-11T13:39:42Z"
+          reason: DeploymentReady
+          status: "True"
+          type: Ready
+        name: registration-service
+      health:
+        alive: "true"
+        buildTime: "2024-05-30T15:09:20Z"
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:42Z"
+          lastUpdatedTime: "2024-06-11T13:39:42Z"
+          reason: RegServiceReady
+          status: "True"
+          type: Ready
+        environment: e2e-tests
+        revision: 81ca48676ba973d8a107571243886eebd918e2e6
+        startTime: "2024-06-11T13:38:36Z"
+      registrationServiceResources: {}
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:39:42Z"
+          lastUpdatedTime: "2024-06-11T13:39:42Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+kind: List
+metadata:
+  resourceVersion: ""
+Starting test Tue Jun 11 14:39:42 WEST 2024
+MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 go test ./test/e2e/parallel -run TestCreateSpaceBindingRequest -p 1 -parallel 100 -v -timeout=90m -failfast || \
+	(/Library/Developer/CommandLineTools/usr/bin/make print-logs HOST_NS=toolchain-host-11143355 MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 && exit 1)
+=== RUN   TestCreateSpaceBindingRequest
+=== PAUSE TestCreateSpaceBindingRequest
+=== CONT  TestCreateSpaceBindingRequest
+    init.go:60: Host Operator namespace: toolchain-host-11143355
+    init.go:61: Member1 Operator namespace: toolchain-member-11143355
+    init.go:62: Member2 Operator namespace: toolchain-member2-11143355
+    init.go:63: Registration Service namespace: toolchain-host-11143355
+    init.go:121: No Service Account for e2e test found, proceeding to create it
+    init.go:152: Proceeding to create Cluster Role Binding for the Service Account
+    awaitility.go:442: waiting until deployment 'host-operator-controller-manager' in namespace 'toolchain-host-11143355' is ready
+    awaitility.go:442: waiting until deployment 'registration-service' in namespace 'toolchain-host-11143355' is ready
+    awaitility.go:238: waiting for route 'registration-service' in namespace 'toolchain-host-11143355'
+    awaitility.go:159: waiting for ToolchainCluster in namespace 'toolchain-member-11143355'
+    awaitility.go:442: waiting until deployment 'member-operator-controller-manager' in namespace 'toolchain-member-11143355' is ready
+    awaitility.go:159: waiting for ToolchainCluster in namespace 'toolchain-member2-11143355'
+    awaitility.go:442: waiting until deployment 'member-operator-controller-manager' in namespace 'toolchain-member2-11143355' is ready
+    awaitility.go:159: waiting for ToolchainCluster in namespace 'toolchain-host-11143355'
+    awaitility.go:159: waiting for ToolchainCluster in namespace 'toolchain-host-11143355'
+    init.go:108: all operators are ready and in running state
+    awaitility.go:238: waiting for route 'api' in namespace 'toolchain-host-11143355'
+    awaitility.go:134: waiting for Service 'proxy-metrics-service' in namespace 'toolchain-host-11143355'
+    awaitility.go:197: setting up route for service 'host-operator-metrics-service' with endpoint '/metrics'
+    awaitility.go:134: waiting for Service 'host-operator-metrics-service' in namespace 'toolchain-host-11143355'
+    awaitility.go:238: waiting for route 'host-operator-metrics-service' in namespace 'toolchain-host-11143355'
+    awaitility.go:197: setting up route for service 'member-operator-metrics-service' with endpoint '/metrics'
+    awaitility.go:134: waiting for Service 'member-operator-metrics-service' in namespace 'toolchain-member-11143355'
+    awaitility.go:238: waiting for route 'member-operator-metrics-service' in namespace 'toolchain-member-11143355'
+    awaitility.go:442: waiting until deployment 'member-operator-controller-manager' in namespace 'toolchain-member-11143355' is ready
+    member.go:1747: waiting until webhook member-operator-webhook in namespace 'toolchain-member2-11143355' is deleted
+    member.go:2212: checking PrioritiyClass resource 'sandbox-users-pods'
+    member.go:2235: waiting for Service 'member-operator-webhook' in namespace 'toolchain-member-11143355'
+    member.go:2251: checking Deployment 'member-operator-webhook' in namespace 'toolchain-member-11143355'
+    awaitility.go:442: waiting until deployment 'member-operator-webhook' in namespace 'toolchain-member-11143355' is ready
+    awaitility.go:442: waiting until deployment 'member-operator-webhook' in namespace 'toolchain-member-11143355' is ready
+    member.go:2283: checking Secret 'webhook-certs' in namespace 'toolchain-member-11143355'
+    member.go:2294: checking MutatingWebhookConfiguration
+=== RUN   TestCreateSpaceBindingRequest/users_pods_webhook
+=== RUN   TestCreateSpaceBindingRequest/virtual_machine_webhook
+=== NAME  TestCreateSpaceBindingRequest
+    member.go:2373: checking ValidatingWebhookConfiguration 'member-operator-validating-webhooktoolchain-member-11143355'
+    member.go:2456: checking PrioritiyClass 'member-operator-autoscaling-buffer'
+    member.go:2467: checking Deployment 'autoscaling-buffer' in namespace 'toolchain-member-11143355'
+    awaitility.go:442: waiting until deployment 'autoscaling-buffer' in namespace 'toolchain-member-11143355' is ready
+    member.go:2456: checking PrioritiyClass 'member-operator-autoscaling-buffer'
+    member.go:2467: checking Deployment 'autoscaling-buffer' in namespace 'toolchain-member2-11143355'
+    awaitility.go:442: waiting until deployment 'autoscaling-buffer' in namespace 'toolchain-member2-11143355' is ready
+    host.go:978: waiting until NSTemplateTier 'base' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:894: waiting until UserTier 'deactivate30' in namespace 'toolchain-host-11143355' matches criteria
+=== RUN   TestCreateSpaceBindingRequest/success
+=== RUN   TestCreateSpaceBindingRequest/success/create_space_binding_request
+    host.go:978: waiting until NSTemplateTier 'base' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:712: waiting for UserSignup 'testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93' in namespace 'toolchain-host-11143355' to match criteria
+    signup_request.go:276: user signup created: &{TypeMeta:{Kind: APIVersion:} ObjectMeta:{Name:testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93 GenerateName: Namespace:toolchain-host-11143355 SelfLink: UID:25064bc2-e4b6-48f2-9a45-5b2101796ff4 ResourceVersion:287165 Generation:2 CreationTimestamp:2024-06-11 14:40:06 +0100 WEST DeletionTimestamp:<nil> DeletionGracePeriodSeconds:<nil> Labels:map[toolchain.dev.openshift.com/email-hash:f7ea6702569d1cef04399efbfe93e88f toolchain.dev.openshift.com/state:not-ready] Annotations:map[toolchain.dev.openshift.com/verification-counter:0] OwnerReferences:[] Finalizers:[] ManagedFields:[{Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:06 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:labels":{"f:toolchain.dev.openshift.com/state":{}}}} Subresource:} {Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:06 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:status":{".":{},"f:conditions":{".":{},"k:{\"type\":\"Complete\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatedNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatingNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}}}}} Subresource:status} {Manager:registration-service Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:06 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:annotations":{".":{},"f:toolchain.dev.openshift.com/verification-counter":{}},"f:labels":{".":{},"f:toolchain.dev.openshift.com/email-hash":{}}},"f:spec":{".":{},"f:identityClaims":{".":{},"f:company":{},"f:email":{},"f:familyName":{},"f:givenName":{},"f:preferredUsername":{},"f:sub":{}}}} Subresource:} {Manager:parallel.test Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:07 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:spec":{"f:states":{},"f:targetCluster":{}}} Subresource:}]} Spec:{TargetCluster:member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com States:[approved] IdentityClaims:{PropagatedClaims:{Sub:85066052-9052-4621-9d7d-5c6284cf20f4 UserID: AccountID: OriginalSub: Email:testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93@test.com} PreferredUsername:testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93 GivenName:Test FamilyName:User Company:Company Inc.}} Status:{Conditions:[{Type:UserDeactivatedNotificationCreated Status:False LastTransitionTime:2024-06-11 14:40:06 +0100 WEST Reason:UserIsActive Message: LastUpdatedTime:<nil>} {Type:UserDeactivatingNotificationCreated Status:False LastTransitionTime:2024-06-11 14:40:06 +0100 WEST Reason:UserNotInPreDeactivation Message: LastUpdatedTime:<nil>} {Type:Complete Status:False LastTransitionTime:2024-06-11 14:40:06 +0100 WEST Reason:VerificationRequired Message: LastUpdatedTime:<nil>}] CompliantUsername: HomeSpace: ScheduledDeactivationTimestamp:<nil>}}
+    host.go:712: waiting for UserSignup 'testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93' in namespace 'toolchain-host-11143355' to match criteria
+    tier_setup.go:151: moving space 'testuser-3b25e51c-da' to space tier 'appstudio'
+    host.go:1825: waiting for Space 'testuser-3b25e51c-da' with matching criteria
+    host.go:712: waiting for UserSignup 'testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:1825: waiting for Space 'testuser-3b25e51c-da' with matching criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-3b25e51c-da' in namespace 'toolchain-host-11143355' to match criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    nstemplateset.go:17: verifying NSTemplateSet 'testuser-3b25e51c-da' and its resources
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    member.go:837: waiting for namespace with custom criteria and labels map[toolchain.dev.openshift.com/provider:codeready-toolchain toolchain.dev.openshift.com/space:testuser-3b25e51c-da toolchain.dev.openshift.com/templateref:appstudio-tenant-76b358d-76b358d toolchain.dev.openshift.com/tier:appstudio toolchain.dev.openshift.com/type:tenant]
+    member.go:866: found namespace testuser-3b25e51c-da-tenant with custom criteria and labels map[toolchain.dev.openshift.com/provider:codeready-toolchain toolchain.dev.openshift.com/space:testuser-3b25e51c-da toolchain.dev.openshift.com/templateref:appstudio-tenant-76b358d-76b358d toolchain.dev.openshift.com/tier:appstudio toolchain.dev.openshift.com/type:tenant]
+    host.go:1032: waiting until TierTemplate 'appstudio-admin-42c5028-42c5028' exists in namespace 'toolchain-host-11143355'...
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-integration' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1008: waiting for ServiceAccount 'appstudio-pipeline' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:970: waiting for RoleBinding 'appstudio-pipelines-runner-rolebinding' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'compute-build' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'compute-deploy' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-console-namespaces' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-codeready-workspaces-operator' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'storage' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1030: waiting for LimitRange 'resource-limits' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'toolchain-crds' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-build' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-openshift-monitoring' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-spi' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-openshift-ingress' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1566: waiting for ConfigMap 'trusted-ca' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-enterprisecontract' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-olm-namespaces' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:2570: waiting for Environment resource 'development' to exist in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-same-namespace' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-release' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-gitops' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:988: found rolebinding appstudio-pipelines-runner-rolebinding with custom labels
+    nstemplateset.go:50: space role template 'appstudio-admin-42c5028-42c5028' for usernames '[testuser-3b25e51c-da]' in NSTemplateSet 'testuser-3b25e51c-da'
+    member.go:1080: waiting for Role 'appstudio-admin-user-actions' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:970: waiting for RoleBinding 'appstudio-admin-testuser-3b25e51c-da-actions-user' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:970: waiting for RoleBinding 'appstudio-testuser-3b25e51c-da-view-user' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-services' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-deployments' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-replicas' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-routes' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-jobs' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-bc' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-secrets' to match criteria
+    member.go:1355: waiting for Idler 'testuser-3b25e51c-da' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-cm' to match criteria
+    member.go:2590: found Environment development with custom labels
+    member.go:988: found rolebinding appstudio-admin-testuser-3b25e51c-da-actions-user with custom labels
+    member.go:988: found rolebinding appstudio-testuser-3b25e51c-da-view-user with custom labels
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    host.go:712: waiting for UserSignup 'testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-3b25e51c-da' in namespace 'toolchain-host-11143355' to match criteria
+    member.go:1828: waiting for User 'testuser-3b25e51c-da'
+    member.go:1894: waiting for Identity 'rhd:85066052-9052-4621-9d7d-5c6284cf20f4'
+    host.go:147: waiting for MasterUserRecord 'testuser-3b25e51c-da' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-3b25e51c-da' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:1825: waiting for Space 'testuser-3b25e51c-da' with matching criteria
+    host.go:978: waiting until NSTemplateTier 'base' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:712: waiting for UserSignup '76756b1a-e0c3-463a-b6fb-e20a1f8f2b88' in namespace 'toolchain-host-11143355' to match criteria
+    signup_request.go:276: user signup created: &{TypeMeta:{Kind: APIVersion:} ObjectMeta:{Name:76756b1a-e0c3-463a-b6fb-e20a1f8f2b88 GenerateName: Namespace:toolchain-host-11143355 SelfLink: UID:a0f43d10-a4d0-4a2a-b54a-ff83d67f709b ResourceVersion:287846 Generation:2 CreationTimestamp:2024-06-11 14:40:31 +0100 WEST DeletionTimestamp:<nil> DeletionGracePeriodSeconds:<nil> Labels:map[toolchain.dev.openshift.com/email-hash:e87e22ed46c28b770e59d9c1ed7d5b61 toolchain.dev.openshift.com/state:pending] Annotations:map[toolchain.dev.openshift.com/skip-auto-create-space:true toolchain.dev.openshift.com/verification-counter:0] OwnerReferences:[] Finalizers:[] ManagedFields:[{Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:31 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:labels":{"f:toolchain.dev.openshift.com/state":{}}}} Subresource:} {Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:31 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:status":{".":{},"f:conditions":{".":{},"k:{\"type\":\"Approved\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"Complete\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatedNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatingNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}}}}} Subresource:status} {Manager:registration-service Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:31 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:annotations":{".":{},"f:toolchain.dev.openshift.com/skip-auto-create-space":{},"f:toolchain.dev.openshift.com/verification-counter":{}},"f:labels":{".":{},"f:toolchain.dev.openshift.com/email-hash":{}}},"f:spec":{".":{},"f:identityClaims":{".":{},"f:company":{},"f:email":{},"f:familyName":{},"f:givenName":{},"f:preferredUsername":{},"f:sub":{}}}} Subresource:} {Manager:parallel.test Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:32 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:spec":{"f:states":{},"f:targetCluster":{}}} Subresource:}]} Spec:{TargetCluster:member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com States:[approved] IdentityClaims:{PropagatedClaims:{Sub:e3a35706-9acc-43cf-865d-9de0713a3683 UserID: AccountID: OriginalSub: Email:76756b1a-e0c3-463a-b6fb-e20a1f8f2b88@acme.com} PreferredUsername:76756b1a-e0c3-463a-b6fb-e20a1f8f2b88 GivenName:Test FamilyName:User Company:Company Inc.}} Status:{Conditions:[{Type:UserDeactivatedNotificationCreated Status:False LastTransitionTime:2024-06-11 14:40:31 +0100 WEST Reason:UserIsActive Message: LastUpdatedTime:<nil>} {Type:UserDeactivatingNotificationCreated Status:False LastTransitionTime:2024-06-11 14:40:31 +0100 WEST Reason:UserNotInPreDeactivation Message: LastUpdatedTime:<nil>} {Type:Approved Status:False LastTransitionTime:2024-06-11 14:40:31 +0100 WEST Reason:PendingApproval Message: LastUpdatedTime:<nil>} {Type:Complete Status:False LastTransitionTime:2024-06-11 14:40:31 +0100 WEST Reason:PendingApproval Message: LastUpdatedTime:<nil>}] CompliantUsername: HomeSpace: ScheduledDeactivationTimestamp:<nil>}}
+    host.go:712: waiting for UserSignup '76756b1a-e0c3-463a-b6fb-e20a1f8f2b88' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:147: waiting for MasterUserRecord '76756b1a-e0c3-463a-b' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    host.go:1825: waiting for Space 'testuser-3b25e51c-da' with matching criteria
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    space.go:129: verifying resources provisioned for space 'testuser-3b25e51c-da' with tier 'appstudio'
+    host.go:1825: waiting for Space 'testuser-3b25e51c-da' with matching criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    nstemplateset.go:17: verifying NSTemplateSet 'testuser-3b25e51c-da' and its resources
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    member.go:837: waiting for namespace with custom criteria and labels map[toolchain.dev.openshift.com/provider:codeready-toolchain toolchain.dev.openshift.com/space:testuser-3b25e51c-da toolchain.dev.openshift.com/templateref:appstudio-tenant-76b358d-76b358d toolchain.dev.openshift.com/tier:appstudio toolchain.dev.openshift.com/type:tenant]
+    member.go:866: found namespace testuser-3b25e51c-da-tenant with custom criteria and labels map[toolchain.dev.openshift.com/provider:codeready-toolchain toolchain.dev.openshift.com/space:testuser-3b25e51c-da toolchain.dev.openshift.com/templateref:appstudio-tenant-76b358d-76b358d toolchain.dev.openshift.com/tier:appstudio toolchain.dev.openshift.com/type:tenant]
+    host.go:1032: waiting until TierTemplate 'appstudio-admin-42c5028-42c5028' exists in namespace 'toolchain-host-11143355'...
+    member.go:1243: waiting for ResourceQuota 'storage' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'compute-build' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'compute-deploy' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1030: waiting for LimitRange 'resource-limits' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:2570: waiting for Environment resource 'development' to exist in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'toolchain-crds' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-build' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-gitops' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1566: waiting for ConfigMap 'trusted-ca' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-same-namespace' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-integration' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-olm-namespaces' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:970: waiting for RoleBinding 'appstudio-pipelines-runner-rolebinding' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-codeready-workspaces-operator' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-release' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-console-namespaces' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-openshift-ingress' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-enterprisecontract' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:1008: waiting for ServiceAccount 'appstudio-pipeline' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-openshift-monitoring' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-spi' in testuser-3b25e51c-da-tenant to match criteria
+    member.go:2590: found Environment development with custom labels
+    member.go:988: found rolebinding appstudio-pipelines-runner-rolebinding with custom labels
+    nstemplateset.go:50: space role template 'appstudio-admin-42c5028-42c5028' for usernames '[76756b1a-e0c3-463a-b testuser-3b25e51c-da]' in NSTemplateSet 'testuser-3b25e51c-da'
+    member.go:1080: waiting for Role 'appstudio-admin-user-actions' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:970: waiting for RoleBinding 'appstudio-admin-testuser-3b25e51c-da-actions-user' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:970: waiting for RoleBinding 'appstudio-76756b1a-e0c3-463a-b-view-user' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-deployments' to match criteria
+    member.go:970: waiting for RoleBinding 'appstudio-admin-76756b1a-e0c3-463a-b-actions-user' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-bc' to match criteria
+    member.go:970: waiting for RoleBinding 'appstudio-testuser-3b25e51c-da-view-user' in namespace 'testuser-3b25e51c-da-tenant'
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-jobs' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-services' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-replicas' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-cm' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-secrets' to match criteria
+    member.go:1355: waiting for Idler 'testuser-3b25e51c-da' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-3b25e51c-da-routes' to match criteria
+    member.go:988: found rolebinding appstudio-admin-76756b1a-e0c3-463a-b-actions-user with custom labels
+    member.go:988: found rolebinding appstudio-admin-testuser-3b25e51c-da-actions-user with custom labels
+    member.go:988: found rolebinding appstudio-76756b1a-e0c3-463a-b-view-user with custom labels
+    member.go:988: found rolebinding appstudio-testuser-3b25e51c-da-view-user with custom labels
+    member.go:726: waiting for NSTemplateSet 'testuser-3b25e51c-da' to match criteria
+    host.go:1825: waiting for Space 'testuser-3b25e51c-da' with matching criteria
+=== RUN   TestCreateSpaceBindingRequest/success/create_space_binding_request/spaceBinding_is_recreated_if_deleted
+=== RUN   TestCreateSpaceBindingRequest/success/create_space_binding_request/spaceBinding_is_recreated_if_deleted/SpaceBinding_always_reflects_values_from_spaceBindingRequest
+=== RUN   TestCreateSpaceBindingRequest/success/create_space_binding_request/spaceBinding_is_recreated_if_deleted/SpaceBinding_always_reflects_values_from_spaceBindingRequest/delete_space_binding_request
+=== NAME  TestCreateSpaceBindingRequest/success/create_space_binding_request
+    clean.go:113: deleting SpaceBindingRequest: testcreatespacebindingrequestsuccesscrea-r8rd2 ...
+    clean.go:113: deleting UserSignup: testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93 ...
+    clean.go:113: deleting UserSignup: 76756b1a-e0c3-463a-b6fb-e20a1f8f2b88 ...
+    clean.go:124: SpaceBindingRequest: testcreatespacebindingrequestsuccesscrea-r8rd2 was already deleted
+    clean.go:131: waiting until UserSignup: testuser-3b25e51c-da48-4b4e-92f0-ac895e984b93 is completely deleted
+    clean.go:131: waiting until UserSignup: 76756b1a-e0c3-463a-b6fb-e20a1f8f2b88 is completely deleted
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: 76756b1a-e0c3-463a-b is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-3b25e51c-da is deleted as well
+=== RUN   TestCreateSpaceBindingRequest/error
+=== RUN   TestCreateSpaceBindingRequest/error/unable_create_space_binding_request_with_invalid_SpaceRole
+    host.go:978: waiting until NSTemplateTier 'base' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:712: waiting for UserSignup 'testuser-5533eda0-af0e-4586-9de3-a71340b23338' in namespace 'toolchain-host-11143355' to match criteria
+    signup_request.go:276: user signup created: &{TypeMeta:{Kind: APIVersion:} ObjectMeta:{Name:testuser-5533eda0-af0e-4586-9de3-a71340b23338 GenerateName: Namespace:toolchain-host-11143355 SelfLink: UID:f01726bf-c964-4040-b2e0-5aa0454dce4b ResourceVersion:288125 Generation:2 CreationTimestamp:2024-06-11 14:40:45 +0100 WEST DeletionTimestamp:<nil> DeletionGracePeriodSeconds:<nil> Labels:map[toolchain.dev.openshift.com/email-hash:ba9dd241b945bbd791b81aae59a429b5 toolchain.dev.openshift.com/state:not-ready] Annotations:map[toolchain.dev.openshift.com/verification-counter:0] OwnerReferences:[] Finalizers:[] ManagedFields:[{Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:45 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:labels":{"f:toolchain.dev.openshift.com/state":{}}}} Subresource:} {Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:45 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:status":{".":{},"f:conditions":{".":{},"k:{\"type\":\"Complete\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatedNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatingNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}}}}} Subresource:status} {Manager:parallel.test Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:45 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:spec":{"f:states":{},"f:targetCluster":{}}} Subresource:} {Manager:registration-service Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:40:45 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:annotations":{".":{},"f:toolchain.dev.openshift.com/verification-counter":{}},"f:labels":{".":{},"f:toolchain.dev.openshift.com/email-hash":{}}},"f:spec":{".":{},"f:identityClaims":{".":{},"f:company":{},"f:email":{},"f:familyName":{},"f:givenName":{},"f:preferredUsername":{},"f:sub":{}}}} Subresource:}]} Spec:{TargetCluster:member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com States:[approved] IdentityClaims:{PropagatedClaims:{Sub:92482573-5983-4555-af12-d6e1d43924d9 UserID: AccountID: OriginalSub: Email:testuser-5533eda0-af0e-4586-9de3-a71340b23338@test.com} PreferredUsername:testuser-5533eda0-af0e-4586-9de3-a71340b23338 GivenName:Test FamilyName:User Company:Company Inc.}} Status:{Conditions:[{Type:UserDeactivatedNotificationCreated Status:False LastTransitionTime:2024-06-11 14:40:45 +0100 WEST Reason:UserIsActive Message: LastUpdatedTime:<nil>} {Type:UserDeactivatingNotificationCreated Status:False LastTransitionTime:2024-06-11 14:40:45 +0100 WEST Reason:UserNotInPreDeactivation Message: LastUpdatedTime:<nil>} {Type:Complete Status:False LastTransitionTime:2024-06-11 14:40:45 +0100 WEST Reason:VerificationRequired Message: LastUpdatedTime:<nil>}] CompliantUsername: HomeSpace: ScheduledDeactivationTimestamp:<nil>}}
+    host.go:712: waiting for UserSignup 'testuser-5533eda0-af0e-4586-9de3-a71340b23338' in namespace 'toolchain-host-11143355' to match criteria
+    tier_setup.go:151: moving space 'testuser-5533eda0-af' to space tier 'appstudio'
+    host.go:1825: waiting for Space 'testuser-5533eda0-af' with matching criteria
+    host.go:712: waiting for UserSignup 'testuser-5533eda0-af0e-4586-9de3-a71340b23338' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:1825: waiting for Space 'testuser-5533eda0-af' with matching criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-5533eda0-af' in namespace 'toolchain-host-11143355' to match criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-5533eda0-af' to match criteria
+    nstemplateset.go:17: verifying NSTemplateSet 'testuser-5533eda0-af' and its resources
+    host.go:978: waiting until NSTemplateTier 'appstudio' in namespace 'toolchain-host-11143355' matches criteria
+    member.go:726: waiting for NSTemplateSet 'testuser-5533eda0-af' to match criteria
+    member.go:837: waiting for namespace with custom criteria and labels map[toolchain.dev.openshift.com/provider:codeready-toolchain toolchain.dev.openshift.com/space:testuser-5533eda0-af toolchain.dev.openshift.com/templateref:appstudio-tenant-76b358d-76b358d toolchain.dev.openshift.com/tier:appstudio toolchain.dev.openshift.com/type:tenant]
+    member.go:866: found namespace testuser-5533eda0-af-tenant with custom criteria and labels map[toolchain.dev.openshift.com/provider:codeready-toolchain toolchain.dev.openshift.com/space:testuser-5533eda0-af toolchain.dev.openshift.com/templateref:appstudio-tenant-76b358d-76b358d toolchain.dev.openshift.com/tier:appstudio toolchain.dev.openshift.com/type:tenant]
+    host.go:1032: waiting until TierTemplate 'appstudio-admin-42c5028-42c5028' exists in namespace 'toolchain-host-11143355'...
+    member.go:1243: waiting for ResourceQuota 'storage' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-enterprisecontract' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'compute-build' in testuser-5533eda0-af-tenant to match criteria
+    member.go:970: waiting for RoleBinding 'appstudio-pipelines-runner-rolebinding' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1030: waiting for LimitRange 'resource-limits' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1566: waiting for ConfigMap 'trusted-ca' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-same-namespace' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-openshift-monitoring' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:2570: waiting for Environment resource 'development' to exist in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-openshift-ingress' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-console-namespaces' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-spi' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'compute-deploy' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-release' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'toolchain-crds' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1008: waiting for ServiceAccount 'appstudio-pipeline' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-build' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-gitops' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1243: waiting for ResourceQuota 'appstudio-crds-integration' in testuser-5533eda0-af-tenant to match criteria
+    member.go:1055: waiting for NetworkPolicy 'allow-from-codeready-workspaces-operator' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1055: waiting for NetworkPolicy 'allow-from-olm-namespaces' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:988: found rolebinding appstudio-pipelines-runner-rolebinding with custom labels
+    member.go:2590: found Environment development with custom labels
+    nstemplateset.go:50: space role template 'appstudio-admin-42c5028-42c5028' for usernames '[testuser-5533eda0-af]' in NSTemplateSet 'testuser-5533eda0-af'
+    member.go:970: waiting for RoleBinding 'appstudio-admin-testuser-5533eda0-af-actions-user' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1080: waiting for Role 'appstudio-admin-user-actions' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-jobs' to match criteria
+    member.go:970: waiting for RoleBinding 'appstudio-testuser-5533eda0-af-view-user' in namespace 'testuser-5533eda0-af-tenant'
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-deployments' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-secrets' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-routes' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-services' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-cm' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-bc' to match criteria
+    member.go:1178: waiting for ClusterResourceQuota 'for-testuser-5533eda0-af-replicas' to match criteria
+    member.go:1355: waiting for Idler 'testuser-5533eda0-af' to match criteria
+    member.go:988: found rolebinding appstudio-admin-testuser-5533eda0-af-actions-user with custom labels
+    member.go:988: found rolebinding appstudio-testuser-5533eda0-af-view-user with custom labels
+    member.go:726: waiting for NSTemplateSet 'testuser-5533eda0-af' to match criteria
+    host.go:712: waiting for UserSignup 'testuser-5533eda0-af0e-4586-9de3-a71340b23338' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-5533eda0-af' in namespace 'toolchain-host-11143355' to match criteria
+    member.go:1828: waiting for User 'testuser-5533eda0-af'
+    member.go:1894: waiting for Identity 'rhd:92482573-5983-4555-af12-d6e1d43924d9'
+    host.go:147: waiting for MasterUserRecord 'testuser-5533eda0-af' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-5533eda0-af' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:1825: waiting for Space 'testuser-5533eda0-af' with matching criteria
+    host.go:978: waiting until NSTemplateTier 'base' in namespace 'toolchain-host-11143355' matches criteria
+    host.go:712: waiting for UserSignup 'testuser-aba3d66b-eea2-4396-850b-72218e0901c7' in namespace 'toolchain-host-11143355' to match criteria
+    signup_request.go:276: user signup created: &{TypeMeta:{Kind: APIVersion:} ObjectMeta:{Name:testuser-aba3d66b-eea2-4396-850b-72218e0901c7 GenerateName: Namespace:toolchain-host-11143355 SelfLink: UID:476a0368-aa37-44e7-a440-f3898f1f81fe ResourceVersion:288786 Generation:2 CreationTimestamp:2024-06-11 14:41:13 +0100 WEST DeletionTimestamp:<nil> DeletionGracePeriodSeconds:<nil> Labels:map[toolchain.dev.openshift.com/email-hash:b6b166364f2588eed39c860f9d2a0f35 toolchain.dev.openshift.com/state:not-ready] Annotations:map[toolchain.dev.openshift.com/skip-auto-create-space:true toolchain.dev.openshift.com/verification-counter:0] OwnerReferences:[] Finalizers:[] ManagedFields:[{Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:41:13 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:labels":{"f:toolchain.dev.openshift.com/state":{}}}} Subresource:} {Manager:host-operator Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:41:13 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:status":{".":{},"f:conditions":{".":{},"k:{\"type\":\"Complete\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatedNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}},"k:{\"type\":\"UserDeactivatingNotificationCreated\"}":{".":{},"f:lastTransitionTime":{},"f:reason":{},"f:status":{},"f:type":{}}}}} Subresource:status} {Manager:parallel.test Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:41:13 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:spec":{"f:states":{},"f:targetCluster":{}}} Subresource:} {Manager:registration-service Operation:Update APIVersion:toolchain.dev.openshift.com/v1alpha1 Time:2024-06-11 14:41:13 +0100 WEST FieldsType:FieldsV1 FieldsV1:{"f:metadata":{"f:annotations":{".":{},"f:toolchain.dev.openshift.com/skip-auto-create-space":{},"f:toolchain.dev.openshift.com/verification-counter":{}},"f:labels":{".":{},"f:toolchain.dev.openshift.com/email-hash":{}}},"f:spec":{".":{},"f:identityClaims":{".":{},"f:company":{},"f:email":{},"f:familyName":{},"f:givenName":{},"f:preferredUsername":{},"f:sub":{}}}} Subresource:}]} Spec:{TargetCluster:member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com States:[approved] IdentityClaims:{PropagatedClaims:{Sub:b677beb1-d9d5-46b8-85b9-1ae7b25b16b4 UserID: AccountID: OriginalSub: Email:testuser-aba3d66b-eea2-4396-850b-72218e0901c7@test.com} PreferredUsername:testuser-aba3d66b-eea2-4396-850b-72218e0901c7 GivenName:Test FamilyName:User Company:Company Inc.}} Status:{Conditions:[{Type:UserDeactivatedNotificationCreated Status:False LastTransitionTime:2024-06-11 14:41:13 +0100 WEST Reason:UserIsActive Message: LastUpdatedTime:<nil>} {Type:UserDeactivatingNotificationCreated Status:False LastTransitionTime:2024-06-11 14:41:13 +0100 WEST Reason:UserNotInPreDeactivation Message: LastUpdatedTime:<nil>} {Type:Complete Status:False LastTransitionTime:2024-06-11 14:41:13 +0100 WEST Reason:VerificationRequired Message: LastUpdatedTime:<nil>}] CompliantUsername: HomeSpace: ScheduledDeactivationTimestamp:<nil>}}
+    host.go:712: waiting for UserSignup 'testuser-aba3d66b-eea2-4396-850b-72218e0901c7' in namespace 'toolchain-host-11143355' to match criteria
+    host.go:147: waiting for MasterUserRecord 'testuser-aba3d66b-ee' in namespace 'toolchain-host-11143355' to match criteria
+=== RUN   TestCreateSpaceBindingRequest/error/unable_create_space_binding_request_with_invalid_SpaceRole/update_SBR_to_fix_invalid_SpaceRole
+=== NAME  TestCreateSpaceBindingRequest/error/unable_create_space_binding_request_with_invalid_SpaceRole
+    clean.go:113: deleting SpaceBindingRequest: testcreatespacebindingrequesterrorunable-vwbwj ...
+    clean.go:113: deleting UserSignup: testuser-5533eda0-af0e-4586-9de3-a71340b23338 ...
+    clean.go:113: deleting UserSignup: testuser-aba3d66b-eea2-4396-850b-72218e0901c7 ...
+    clean.go:131: waiting until SpaceBindingRequest: testcreatespacebindingrequesterrorunable-vwbwj is completely deleted
+    clean.go:131: waiting until UserSignup: testuser-5533eda0-af0e-4586-9de3-a71340b23338 is completely deleted
+    clean.go:131: waiting until UserSignup: testuser-aba3d66b-eea2-4396-850b-72218e0901c7 is completely deleted
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-aba3d66b-ee is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+    clean.go:184: the related MasterUserRecord: testuser-5533eda0-af is deleted as well
+--- PASS: TestCreateSpaceBindingRequest (95.08s)
+    --- PASS: TestCreateSpaceBindingRequest/users_pods_webhook (0.00s)
+    --- PASS: TestCreateSpaceBindingRequest/virtual_machine_webhook (0.00s)
+    --- PASS: TestCreateSpaceBindingRequest/success (38.43s)
+        --- PASS: TestCreateSpaceBindingRequest/success/create_space_binding_request (38.43s)
+            --- PASS: TestCreateSpaceBindingRequest/success/create_space_binding_request/spaceBinding_is_recreated_if_deleted (1.29s)
+                --- PASS: TestCreateSpaceBindingRequest/success/create_space_binding_request/spaceBinding_is_recreated_if_deleted/SpaceBinding_always_reflects_values_from_spaceBindingRequest (0.94s)
+                    --- PASS: TestCreateSpaceBindingRequest/success/create_space_binding_request/spaceBinding_is_recreated_if_deleted/SpaceBinding_always_reflects_values_from_spaceBindingRequest/delete_space_binding_request (0.36s)
+    --- PASS: TestCreateSpaceBindingRequest/error (37.89s)
+        --- PASS: TestCreateSpaceBindingRequest/error/unable_create_space_binding_request_with_invalid_SpaceRole (37.89s)
+            --- PASS: TestCreateSpaceBindingRequest/error/unable_create_space_binding_request_with_invalid_SpaceRole/update_SBR_to_fix_invalid_SpaceRole (0.59s)
+PASS
+ok  	github.com/codeready-toolchain/toolchain-e2e/test/e2e/parallel	95.788s
+The parallel e2e tests successfully finished
+Running e2e sequential tests...
+/Library/Developer/CommandLineTools/usr/bin/make execute-tests MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 TESTS_TO_EXECUTE="./test/e2e"
+Present Spaces
+oc get Space -n toolchain-host-11143355
+Status of ToolchainStatus
+oc get ToolchainStatus -n toolchain-host-11143355 -o yaml
+apiVersion: v1
+items:
+- apiVersion: toolchain.dev.openshift.com/v1alpha1
+  kind: ToolchainStatus
+  metadata:
+    annotations:
+      toolchain.dev.openshift.com/last-applied-configuration: '{"metadata":{"name":"toolchain-status","namespace":"toolchain-host-11143355","creationTimestamp":null},"spec":{},"status":{"hostRoutes":{}}}'
+    creationTimestamp: "2024-06-11T13:34:58Z"
+    generation: 1
+    name: toolchain-status
+    namespace: toolchain-host-11143355
+    resourceVersion: "288981"
+    uid: 8f60ab9c-ed91-46c3-bf26-c9af58f212b9
+  spec: {}
+  status:
+    conditions:
+    - lastTransitionTime: "2024-06-11T13:40:11Z"
+      lastUpdatedTime: "2024-06-11T13:41:22Z"
+      reason: AllComponentsReady
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2024-06-11T13:38:45Z"
+      lastUpdatedTime: "2024-06-11T13:41:22Z"
+      reason: AllComponentsReady
+      status: "False"
+      type: ToolchainStatusUnreadyNotificationCreated
+    hostOperator:
+      buildTimestamp: "2024-06-11T07:41:57Z"
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:41:22Z"
+        lastUpdatedTime: "2024-06-11T13:41:22Z"
+        reason: DeploymentReady
+        status: "True"
+        type: Ready
+      deploymentName: host-operator-controller-manager
+      revision: 05e1de366c24487b6b893df16bdd4f9192c03821
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:22Z"
+          lastUpdatedTime: "2024-06-11T13:41:22Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+      version: 0.0.1
+    hostRoutes:
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:41:22Z"
+        lastUpdatedTime: "2024-06-11T13:41:22Z"
+        reason: HostRoutesAvailable
+        status: "True"
+        type: Ready
+      proxyURL: https://api-toolchain-host-11143355.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+    members:
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:22Z"
+          lastUpdatedTime: "2024-06-11T13:41:22Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:41:22Z"
+            lastUpdatedTime: "2024-06-11T13:41:22Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:21Z"
+          lastUpdatedTime: "2024-06-11T13:41:21Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:41:21Z"
+            lastUpdatedTime: "2024-06-11T13:41:21Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    metrics:
+      masterUserRecordsPerDomain:
+        external: 0
+      userSignupsPerActivationAndDomain:
+        1,external: 4
+    registrationService:
+      deployment:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:22Z"
+          lastUpdatedTime: "2024-06-11T13:41:22Z"
+          reason: DeploymentReady
+          status: "True"
+          type: Ready
+        name: registration-service
+      health:
+        alive: "true"
+        buildTime: "2024-05-30T15:09:20Z"
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:22Z"
+          lastUpdatedTime: "2024-06-11T13:41:22Z"
+          reason: RegServiceReady
+          status: "True"
+          type: Ready
+        environment: e2e-tests
+        revision: 81ca48676ba973d8a107571243886eebd918e2e6
+        startTime: "2024-06-11T13:38:36Z"
+      registrationServiceResources: {}
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:22Z"
+          lastUpdatedTime: "2024-06-11T13:41:22Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+kind: List
+metadata:
+  resourceVersion: ""
+Starting test Tue Jun 11 14:41:22 WEST 2024
+MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 go test ./test/e2e -run TestCreateSpaceBindingRequest -p 1 -parallel 1 -v -timeout=90m -failfast || \
+	(/Library/Developer/CommandLineTools/usr/bin/make print-logs HOST_NS=toolchain-host-11143355 MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 && exit 1)
+testing: warning: no tests to run
+PASS
+ok  	github.com/codeready-toolchain/toolchain-e2e/test/e2e	(cached) [no tests to run]
+The e2e sequential tests successfully finished
+Running e2e metrics tests...
+/Library/Developer/CommandLineTools/usr/bin/make execute-tests MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 TESTS_TO_EXECUTE="./test/metrics"
+Present Spaces
+oc get Space -n toolchain-host-11143355
+Status of ToolchainStatus
+oc get ToolchainStatus -n toolchain-host-11143355 -o yaml
+apiVersion: v1
+items:
+- apiVersion: toolchain.dev.openshift.com/v1alpha1
+  kind: ToolchainStatus
+  metadata:
+    annotations:
+      toolchain.dev.openshift.com/last-applied-configuration: '{"metadata":{"name":"toolchain-status","namespace":"toolchain-host-11143355","creationTimestamp":null},"spec":{},"status":{"hostRoutes":{}}}'
+    creationTimestamp: "2024-06-11T13:34:58Z"
+    generation: 1
+    name: toolchain-status
+    namespace: toolchain-host-11143355
+    resourceVersion: "289014"
+    uid: 8f60ab9c-ed91-46c3-bf26-c9af58f212b9
+  spec: {}
+  status:
+    conditions:
+    - lastTransitionTime: "2024-06-11T13:40:11Z"
+      lastUpdatedTime: "2024-06-11T13:41:26Z"
+      reason: AllComponentsReady
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2024-06-11T13:38:45Z"
+      lastUpdatedTime: "2024-06-11T13:41:26Z"
+      reason: AllComponentsReady
+      status: "False"
+      type: ToolchainStatusUnreadyNotificationCreated
+    hostOperator:
+      buildTimestamp: "2024-06-11T07:41:57Z"
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:41:25Z"
+        lastUpdatedTime: "2024-06-11T13:41:25Z"
+        reason: DeploymentReady
+        status: "True"
+        type: Ready
+      deploymentName: host-operator-controller-manager
+      revision: 05e1de366c24487b6b893df16bdd4f9192c03821
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:25Z"
+          lastUpdatedTime: "2024-06-11T13:41:25Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+      version: 0.0.1
+    hostRoutes:
+      conditions:
+      - lastTransitionTime: "2024-06-11T13:41:26Z"
+        lastUpdatedTime: "2024-06-11T13:41:26Z"
+        reason: HostRoutesAvailable
+        status: "True"
+        type: Ready
+      proxyURL: https://api-toolchain-host-11143355.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+    members:
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:25Z"
+          lastUpdatedTime: "2024-06-11T13:41:25Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:41:25Z"
+            lastUpdatedTime: "2024-06-11T13:41:25Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    - apiEndpoint: https://api.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com:443
+      clusterName: member-gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com2
+      memberStatus:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:21Z"
+          lastUpdatedTime: "2024-06-11T13:41:21Z"
+          reason: AllComponentsReady
+          status: "True"
+          type: Ready
+        resourceUsage:
+          memoryUsagePerNodeRole:
+            worker: 34
+        routes:
+          conditions:
+          - lastTransitionTime: "2024-06-11T13:41:21Z"
+            lastUpdatedTime: "2024-06-11T13:41:21Z"
+            reason: RoutesAvailable
+            status: "True"
+            type: Ready
+          consoleURL: https://console-openshift-console.apps.rosa.gfig4-wo2so-sbr.ok1t.p3.openshiftapps.com/
+    metrics:
+      masterUserRecordsPerDomain:
+        external: 0
+      userSignupsPerActivationAndDomain:
+        1,external: 4
+    registrationService:
+      deployment:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:26Z"
+          lastUpdatedTime: "2024-06-11T13:41:26Z"
+          reason: DeploymentReady
+          status: "True"
+          type: Ready
+        name: registration-service
+      health:
+        alive: "true"
+        buildTime: "2024-05-30T15:09:20Z"
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:26Z"
+          lastUpdatedTime: "2024-06-11T13:41:26Z"
+          reason: RegServiceReady
+          status: "True"
+          type: Ready
+        environment: e2e-tests
+        revision: 81ca48676ba973d8a107571243886eebd918e2e6
+        startTime: "2024-06-11T13:38:36Z"
+      registrationServiceResources: {}
+      revisionCheck:
+        conditions:
+        - lastTransitionTime: "2024-06-11T13:41:26Z"
+          lastUpdatedTime: "2024-06-11T13:41:26Z"
+          message: is not running in prod environment
+          reason: DeploymentRevisionCheckDisabled
+          status: "True"
+          type: Ready
+kind: List
+metadata:
+  resourceVersion: ""
+Starting test Tue Jun 11 14:41:25 WEST 2024
+MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 HOST_NS=toolchain-host-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 go test ./test/metrics -run TestCreateSpaceBindingRequest -p 1 -parallel 1 -v -timeout=90m -failfast || \
+	(/Library/Developer/CommandLineTools/usr/bin/make print-logs HOST_NS=toolchain-host-11143355 MEMBER_NS=toolchain-member-11143355 MEMBER_NS_2=toolchain-member2-11143355 REGISTRATION_SERVICE_NS=toolchain-host-11143355 && exit 1)
+testing: warning: no tests to run
+PASS
+ok  	github.com/codeready-toolchain/toolchain-e2e/test/metrics	(cached) [no tests to run]
+The e2e metrics tests successfully finished
+The tests successfully finished
+To clean the cluster run 'make clean-e2e-resources'
