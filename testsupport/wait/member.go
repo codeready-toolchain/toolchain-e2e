@@ -1742,6 +1742,21 @@ func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
 	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
 }
 
+// WaitUntilWebhookDeleted waits until the webhook app in member namespace is deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilWebhookDeleted(t *testing.T) error {
+	t.Logf("waiting until webhook member-operator-webhook in namespace '%s' is deleted", a.Namespace)
+	deployment := &appsv1.Deployment{}
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "member-operator-webhook"), deployment); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typeName string) error {
 	t.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
@@ -2197,7 +2212,6 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
 	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource(t, "", "sandbox-users-pods", actualPrioClass)
-
 	assert.Equal(t, codereadyToolchainProviderLabel, actualPrioClass.Labels)
 	assert.Equal(t, int32(-3), actualPrioClass.Value)
 	assert.False(t, actualPrioClass.GlobalDefault)
@@ -2279,9 +2293,14 @@ func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
 func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) {
 	t.Logf("checking MutatingWebhookConfiguration")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
-	a.waitForResource(t, "", "member-operator-webhook", actualMutWbhConf)
+	a.waitForResource(t, "", "member-operator-webhook-"+a.Namespace, actualMutWbhConf)
 	assert.Equal(t, bothWebhookLabels, actualMutWbhConf.Labels)
 	require.Len(t, actualMutWbhConf.Webhooks, 2)
+	//check that there is only 1 MutatingWebhookConfiguration
+	allMutatingWebhooks := &admv1.MutatingWebhookConfigurationList{}
+	err := a.Client.List(context.TODO(), allMutatingWebhooks, client.MatchingLabels(appMemberOperatorWebhookLabel))
+	require.NoError(t, err)
+	require.Len(t, allMutatingWebhooks.Items, 1)
 
 	type Rule struct {
 		Operations  []admv1.OperationType
@@ -2351,11 +2370,15 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 }
 
 func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte) {
-	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
+	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook"+a.Namespace)
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
-	a.waitForResource(t, "", "member-operator-validating-webhook", actualValWbhConf)
+	a.waitForResource(t, "", "member-operator-validating-webhook-"+a.Namespace, actualValWbhConf)
 	assert.Equal(t, bothWebhookLabels, actualValWbhConf.Labels)
-	// require.Len(t, actualValWbhConf.Webhooks, 2)
+	//check that there is only 1 ValidatingWebhookConfiguration
+	allValidatingWebhooks := &admv1.ValidatingWebhookConfigurationList{}
+	err := a.Client.List(context.TODO(), allValidatingWebhooks, client.MatchingLabels(appMemberOperatorWebhookLabel))
+	require.NoError(t, err)
+	require.Len(t, allValidatingWebhooks.Items, 1)
 
 	rolebindingWebhook := actualValWbhConf.Webhooks[0]
 	assert.Equal(t, "users.rolebindings.webhook.sandbox", rolebindingWebhook.Name)
