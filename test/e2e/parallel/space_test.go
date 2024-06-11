@@ -12,7 +12,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/require"
@@ -255,7 +254,7 @@ func TestPromoteSpace(t *testing.T) {
 	// when
 	user := testsupport.NewSignupRequest(awaitilities).
 		ManuallyApprove().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		EnsureMUR().
 		Execute(t)
 
