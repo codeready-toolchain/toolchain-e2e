@@ -7,6 +7,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
@@ -251,17 +252,20 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	// when
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
-	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	user := testsupport.NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		EnsureMUR().
+		Execute(t)
+	spaceName := user.Space.Name
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// when
-		tiers.MoveSpaceToTier(t, hostAwait, space.Name, "advanced")
+		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "advanced")
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, spaceName)
 	})
 }
 
