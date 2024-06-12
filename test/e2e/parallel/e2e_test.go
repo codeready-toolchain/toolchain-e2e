@@ -67,42 +67,47 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup, _ := NewSignupRequest(awaitilities).
+	johnUser := NewSignupRequest(awaitilities).
 		Username(johnsmithName).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	johnSignup := johnUser.UserSignup
 
 	extrajohnName := "extrajohn"
-	johnExtraSignup, _ := NewSignupRequest(awaitilities).
+	johnExtraUser := NewSignupRequest(awaitilities).
 		Username(extrajohnName).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	johnExtraSignup := johnExtraUser.UserSignup
 
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup, _ := NewSignupRequest(awaitilities).
+	targetedJohnUser := NewSignupRequest(awaitilities).
 		Username(targetedJohnName).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait2).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	targetedJohnSignup := targetedJohnUser.UserSignup
 
 	originalSubJohnName := "originalsubjohn"
 	originalSubJohnClaim := "originalsub:john"
-	originalSubJohnSignup, _ := NewSignupRequest(awaitilities).
+	originalSubJohnUser := NewSignupRequest(awaitilities).
 		Username(originalSubJohnName).
 		OriginalSub(originalSubJohnClaim).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	originalSubJohnSignup := originalSubJohnUser.UserSignup
+	originalSubJohnSpace := originalSubJohnUser.Space
 
 	// Confirm the originalSub property has been set during signup
 	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.IdentityClaims.OriginalSub)
@@ -236,18 +241,19 @@ func TestE2EFlow(t *testing.T) {
 		userNamespace := "laracroft-dev"
 		cmName := "test-useraccount-delete-1"
 
-		laraSignUp, _ := NewSignupRequest(awaitilities).
+		laraUser := NewSignupRequest(awaitilities).
 			Username(laraUserName).
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t)
+		laraSignup := laraUser.UserSignup
 
-		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
+		require.Equal(t, "laracroft", laraSignup.Status.CompliantUsername)
 
-		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignup, "deactivate30", "base")
 
 		VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
 
@@ -275,7 +281,7 @@ func TestE2EFlow(t *testing.T) {
 			PropagationPolicy: &deletePolicy,
 		}
 		// when deleting the userSignup
-		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
+		err = hostAwait.Client.Delete(context.TODO(), laraSignup, deleteOpts)
 		require.NoError(t, err)
 
 		// then nothing should be deleted yet (because of the CM with its own finalizer)
@@ -301,7 +307,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
 		// the behaviour is consistent for both AppStudio & DevSandbox
-		err = hostAwait.WaitUntilUserSignupDeleted(t, laraSignUp.Name)
+		err = hostAwait.WaitUntilUserSignupDeleted(t, laraSignup.Name)
 		require.NoError(t, err)
 
 		// space should be stuck terminating
@@ -329,14 +335,15 @@ func TestE2EFlow(t *testing.T) {
 	})
 
 	t.Run("delete namespaced scoped resources of users and expect recreation", func(t *testing.T) {
-		userSignup, _ := NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username("wonderwoman").
 			Email("wonderwoman@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t)
+		userSignup := user.UserSignup
 		devNs := corev1.Namespace{}
 		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
 		require.NoError(t, err)
@@ -444,7 +451,7 @@ func TestE2EFlow(t *testing.T) {
 		// owner label to locate them
 
 		// First, find the MUR
-		mur, err := hostAwait.WaitForMasterUserRecord(t, originalSubJohnSignup.Status.CompliantUsername)
+		mur, err := hostAwait.WaitForMasterUserRecord(t, originalSubJohnSpace.Name)
 		require.NoError(t, err)
 
 		memberAwait := GetMurTargetMember(t, awaitilities, mur)

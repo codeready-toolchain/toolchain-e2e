@@ -7,6 +7,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
@@ -122,7 +123,7 @@ func TestSpaceRoles(t *testing.T) {
 	require.NoError(t, err)
 
 	// given a user (with her own space, but we'll ignore it in this test)
-	_, ownerMUR := NewSignupRequest(awaitilities).
+	ownerUser := NewSignupRequest(awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
@@ -130,8 +131,8 @@ func TestSpaceRoles(t *testing.T) {
 		EnsureMUR().
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
 		NoSpace().
-		Execute(t).
-		Resources()
+		Execute(t)
+	ownerMUR := ownerUser.MUR
 
 	// when a space owned by the user above is created (and user is an admin of this space)
 	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
@@ -159,7 +160,7 @@ func TestSpaceRoles(t *testing.T) {
 
 	t.Run("and with guest admin binding", func(t *testing.T) {
 		// given a `spaceguest` user (with her own space, but we'll ignore it in this test)
-		_, guestMUR := NewSignupRequest(awaitilities).
+		guestUser := NewSignupRequest(awaitilities).
 			Username("spaceguest").
 			Email("spaceguest@redhat.com").
 			ManuallyApprove().
@@ -167,11 +168,10 @@ func TestSpaceRoles(t *testing.T) {
 			WaitForMUR().
 			NoSpace().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
+			Execute(t)
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
+		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestUser.MUR, s, "admin")
 
 		// then
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
@@ -252,17 +252,20 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	// when
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
-	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	user := testsupport.NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		EnsureMUR().
+		Execute(t)
+	spaceName := user.Space.Name
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// when
-		tiers.MoveSpaceToTier(t, hostAwait, space.Name, "advanced")
+		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "advanced")
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, spaceName)
 	})
 }
 
