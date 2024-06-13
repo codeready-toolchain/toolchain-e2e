@@ -8,7 +8,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
@@ -49,9 +48,13 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", current.Name), func(t *testing.T) {
 		// given
-		secretCopy := copySecret(t, await, current.Namespace, current.Spec.SecretRef.Name, "new-ready-")
-
 		name := generateNewName("new-ready-", current.Name)
+		secretCopy := &corev1.Secret{}
+		wait.CopyWithCleanup(t, await,
+			client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace},
+			client.ObjectKey{Name: name, Namespace: current.Namespace},
+			secretCopy)
+
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint(current.Spec.APIEndpoint),
 			caBundle(current.Spec.CABundle),
@@ -92,9 +95,12 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", current.Name), func(t *testing.T) {
 		// given
-		secretCopy := copySecret(t, await, current.Namespace, current.Spec.SecretRef.Name, "new-offline-")
-
 		name := generateNewName("new-offline-", current.Name)
+		secretCopy := &corev1.Secret{}
+		wait.CopyWithCleanup(t, await,
+			client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace},
+			client.ObjectKey{Name: name, Namespace: current.Namespace}, secretCopy)
+
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
 			caBundle(current.Spec.CABundle),
@@ -140,24 +146,6 @@ func generateNewName(prefix, baseName string) string {
 		return name[:63]
 	}
 	return name
-}
-
-func copySecret(t *testing.T, await *wait.Awaitility, namespace, name, prefix string) *corev1.Secret {
-	secret := &corev1.Secret{}
-	require.NoError(t, await.Client.Get(context.TODO(), test.NamespacedName(namespace, name), secret))
-
-	secretCopy := &corev1.Secret{}
-	secretCopy.Namespace = secret.Namespace
-	secretCopy.Name = prefix + secret.Name
-	secretCopy.Type = secret.Type
-	secretCopy.Data = map[string][]byte{}
-	for key, value := range secret.Data {
-		secretCopy.Data[key] = value
-	}
-	err := await.CreateWithCleanup(t, secretCopy)
-	require.NoError(t, err)
-
-	return secretCopy
 }
 
 func newToolchainCluster(namespace, name string, options ...clusterOption) *toolchainv1alpha1.ToolchainCluster {
