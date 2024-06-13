@@ -142,7 +142,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 		wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 
-	_, err = memberAwait.WaitForSpaceRequest(t,
+	spaceRequest, err := memberAwait.WaitForSpaceRequest(t,
 		types.NamespacedName{
 			Namespace: subSpaceNamespace,
 			Name:      migration.ProvisionedSpaceRequest,
@@ -152,8 +152,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
 	)
 	require.NoError(t, err)
-	// Temp workaround as we cannot verify kubeconfig that was created with incompatible functionality of the cicd script that is applied already before the migration step
-	//VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
+	VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
 
 	cleanup.AddCleanTasks(t, hostAwait.Client, parentSpace)
 	cleanup.AddCleanTasks(t, hostAwait.Client, userSignupForSpace)
