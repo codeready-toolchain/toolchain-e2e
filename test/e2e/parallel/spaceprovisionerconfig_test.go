@@ -3,7 +3,6 @@ package parallel
 import (
 	"context"
 	"testing"
-	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
@@ -14,7 +13,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	kwait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/assert"
@@ -73,21 +71,10 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 			&corev1.Secret{})
 
 		// when
-
-		// we need to retry here because we're fighting over the control of the TC with the controller
-		require.NoError(t, kwait.Poll(100*time.Millisecond, 1*time.Minute, func() (done bool, err error) {
-			err = host.Client.Get(context.TODO(), client.ObjectKeyFromObject(tc), tc)
-			if err != nil {
-				return
-			}
-			tc.Spec.SecretRef.Name = newSecretName
-			err = host.Client.Update(context.TODO(), tc)
-			if err != nil {
-				return
-			}
-			done = true
-			return
-		}))
+		_, err = host.UpdateToolchainCluster(t, tc.Name, func(updatedTc *toolchainv1alpha1.ToolchainCluster) {
+			updatedTc.Spec.SecretRef.Name = newSecretName
+		})
+		require.NoError(t, err)
 
 		// then
 		_, err = wait.
