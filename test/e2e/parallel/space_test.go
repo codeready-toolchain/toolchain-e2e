@@ -513,11 +513,12 @@ func TestSubSpaceInheritance(t *testing.T) {
 			SpaceTier("appstudio").
 			EnsureMUR().
 			Execute(t)
+		mur := parentUser.MUR
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
 		t.Logf("Create sub space with role: contributor")
-		subSpace, _, subSpaceBindings := CreateSpaceWithRole(t, awaitilities, "contributor",
+		subSpace, subSpaceBindings := CreateSpaceWithBinding(t, awaitilities, mur, "contributor",
 			testspace.WithSpecParentSpace(parentUser.Space.Name),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetCluster(memberAwait.ClusterName),
@@ -529,6 +530,14 @@ func TestSubSpaceInheritance(t *testing.T) {
 			UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 			UntilSpaceHasTier("appstudio"),
 		)
+
+		t.Logf("Wait for space binding")
+		_, err = awaitilities.Host().WaitForSpaceBinding(t, mur.Name, subSpace.Name,
+			UntilSpaceBindingHasMurName(mur.Name),
+			UntilSpaceBindingHasSpaceName(subSpace.Name),
+			UntilSpaceBindingHasSpaceRole("contributor"),
+		)
+		require.NoError(t, err)
 
 		t.Logf("Wait for master user")
 		subMur, err := hostAwait.WaitForMasterUserRecord(t, subSpaceBindings.Spec.MasterUserRecord)
