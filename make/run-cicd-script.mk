@@ -1,5 +1,5 @@
 
-OWNER_AND_BRANCH_LOCATION=codeready-toolchain/toolchain-cicd/master
+OWNER_AND_BRANCH_LOCATION=matousjobanek/toolchain-cicd/revert-111-add-ca-bundle-temp
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
 USE_LOCAL_SCRIPTS=false
 
