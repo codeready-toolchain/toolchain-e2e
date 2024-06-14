@@ -35,7 +35,7 @@ func TestToolchainClusterE2E(t *testing.T) {
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, kubeConfigShouldExist bool) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, kubeConfigMustExist bool) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// this is enough for the test here. The correctness of the contained kubeconfig is checked in the unit tests of the controller in toolchain-common.
 		_, present := secret.Data["kubeconfig"]
-		assert.Equal(t, kubeConfigShouldExist, present)
+		assert.Equal(t, kubeConfigMustExist, present)
 	})
 
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", current.Name), func(t *testing.T) {
