@@ -61,6 +61,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			secretRef(secretCopy.Name),
 			owner(current.Labels["ownerClusterName"]),
 			namespace(current.Labels["namespace"]),
+			disableTLS(current.Spec.DisabledTLSValidations),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 
@@ -107,6 +108,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			secretRef(secretCopy.Name),
 			owner(current.Labels["ownerClusterName"]),
 			namespace(current.Labels["namespace"]),
+			disableTLS(current.Spec.DisabledTLSValidations),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 
@@ -213,5 +215,12 @@ func apiEndpoint(url string) clusterOption {
 func caBundle(bundle string) clusterOption {
 	return func(c *toolchainv1alpha1.ToolchainCluster) {
 		c.Spec.CABundle = bundle
+	}
+}
+
+// disableTLS sets the DisabledTLSValidations field
+func disableTLS(validations []toolchainv1alpha1.TLSValidation) clusterOption {
+	return func(c *toolchainv1alpha1.ToolchainCluster) {
+		c.Spec.DisabledTLSValidations = validations
 	}
 }
