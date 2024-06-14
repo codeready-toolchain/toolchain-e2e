@@ -781,7 +781,7 @@ func TestUsernames(t *testing.T) {
 	t.Run("get usernames 200 response", func(t *testing.T) {
 		// given
 		// we have a user in the system
-		_, mur := NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username("testgetusernames").
 			Email("testgetusernames@redhat.com").
 			ManuallyApprove().
@@ -789,13 +789,11 @@ func TestUsernames(t *testing.T) {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			NoSpace().
-			Execute(t).
-			Resources()
-
+			Execute(t)
 		// when
 		// we call the get usernames endpoint to get the user
 		response := NewHTTPRequest(t).
-			InvokeEndpoint("GET", route+"/api/v1/usernames/"+mur.GetName(), token, "", http.StatusOK).
+			InvokeEndpoint("GET", route+"/api/v1/usernames/"+user.MUR.GetName(), token, "", http.StatusOK).
 			UnmarshalSlice()
 
 		// then
@@ -859,7 +857,7 @@ func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, use
 	assert.Equal(t, transformedUsername, mp["compliantUsername"])
 	assert.Equal(t, username, mp["username"])
 	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 	require.True(t, found)
 	assert.Equal(t, memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])

@@ -202,7 +202,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, nil)
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 	require.True(t, ok)
 
