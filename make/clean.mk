@@ -31,6 +31,12 @@ clean-cluster-wide-config:
 clean-toolchain-namespaces-in-e2e:
 	$(Q)-oc get projects --output=name | grep -E "toolchain-(member|host)(\-operator)?(\-[0-9]+)?" | xargs oc delete
 
+.PHONY: clean-toolchain-dev-sso-resources
+## Delete resources in the dev sso namespace
+clean-toolchain-dev-sso-resources:
+	$(Q)-oc delete keycloak -n ${DEV_SSO_NS} --all || true
+	$(Q)-oc delete keycloakrealm -n ${DEV_SSO_NS} --all || true
+
 .PHONY: clean-e2e-resources
 ## Delete resources in the OpenShift cluster. The deleted resources are:
 ##    * all user-related resources
@@ -43,13 +49,14 @@ clean-e2e-resources: clean-users clean-toolchain-namespaces-in-e2e clean-cluster
 clean-toolchain-namespaces-in-dev:
 	$(Q)oc delete namespace ${DEV_HOST_NS} || true
 	$(Q)oc delete namespace ${DEV_MEMBER_NS} || true
+	$(Q)oc delete namespace ${DEV_SSO_NS} || true
 
 .PHONY: clean-dev-resources
 ## Delete resources in the OpenShift cluster. The deleted resources are:
 ##    * all user-related resources
 ##    * operator namespaces created during both the dev and e2e test setup (for both operators host and member)
 ##    * cluster-wide config
-clean-dev-resources: clean-users clean-toolchain-namespaces-in-dev clean-cluster-wide-config
+clean-dev-resources: clean-users clean-toolchain-dev-sso-resources clean-toolchain-namespaces-in-dev clean-cluster-wide-config
 
 .PHONY: clean-e2e-files
 ## Remove files and directories used during e2e test setup
