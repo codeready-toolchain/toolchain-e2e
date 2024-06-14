@@ -8,6 +8,8 @@ import (
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -50,13 +52,38 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 	memberAwait1 := s.Member1()
 	memberAwait2 := s.Member2()
 
+	// let's also create a not-ready ToolchainCluster CR and make sure it doesn't get picked in any of the tests below...
+	// We also create an enabled SpaceProvisionerConfig with enough capacity to try to "lure" the user signups into it.
+	// It should have no effect though, because the unusable cluster is not ready.
+	unusableTCName := util.NewObjectNamePrefix(s.T()) + uuid.NewString()[0:20]
+	wait.CopyWithCleanup(s.T(), hostAwait.Awaitility,
+		client.ObjectKey{
+			Name:      memberAwait1.ClusterName,
+			Namespace: hostAwait.Namespace,
+		},
+		client.ObjectKey{
+			Name:      unusableTCName,
+			Namespace: hostAwait.Namespace,
+		},
+		&toolchainv1alpha1.ToolchainCluster{},
+		func(tc *toolchainv1alpha1.ToolchainCluster) {
+			tc.Spec.SecretRef.Name = ""
+			tc.Status = toolchainv1alpha1.ToolchainClusterStatus{}
+		},
+	)
+	spaceprovisionerconfig.CreateSpaceProvisionerConfig(s.T(), hostAwait.Awaitility,
+		testSpc.ReferencingToolchainCluster(unusableTCName),
+		testSpc.Enabled(true),
+		testSpc.MaxNumberOfSpaces(1000),
+		testSpc.MaxMemoryUtilizationPercent(100))
+
 	// when & then
-	_, mur1 := NewSignupRequest(s.Awaitilities).
+	user1 := NewSignupRequest(s.Awaitilities).
 		Username("automatic1").
 		Email("automatic1@redhat.com").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
+		Execute(s.T())
 
 	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
 		// given
@@ -65,41 +92,39 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 		// create additional user to reach max space limits on both members
-		_, mur2 := NewSignupRequest(s.Awaitilities).
+		user2 := NewSignupRequest(s.Awaitilities).
 			Username("automatic2").
 			Email("automatic2@redhat.com").
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
 
 		// TestProvisionToOtherClusterWhenOneIsFull
 		// checks that users will be provisioned to the other member when one is full.
 		// if one cluster if full, then a new space will be placed in the another cluster.
-		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
-		space1, err := hostAwait.WaitForSpace(t, mur1.Name, wait.UntilSpaceHasAnyTargetClusterSet())
-		require.NoError(t, err)
-		space2, err := hostAwait.WaitForSpace(t, mur2.Name, wait.UntilSpaceHasAnyTargetClusterSet())
-		require.NoError(t, err)
-		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
+		require.NotEqual(t, user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
+		require.NotEqual(t, user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
 
 		// when
-		waitingList1, _ := NewSignupRequest(s.Awaitilities).
+		waitingListUser1 := NewSignupRequest(s.Awaitilities).
 			Username("waitinglist1").
 			Email("waitinglist1@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
+		waitingList1 := waitingListUser1.UserSignup
 
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		waitlinglist2, _ := NewSignupRequest(s.Awaitilities).
+		waitingListUser2 := NewSignupRequest(s.Awaitilities).
 			Username("waitinglist2").
 			Email("waitinglist2@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
+		waitingList2 := waitingListUser2.UserSignup
 
 		// then
 		s.userIsNotProvisioned(t, waitingList1)
-		s.userIsNotProvisioned(t, waitlinglist2)
+		s.userIsNotProvisioned(t, waitingList2)
 
 		t.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func(t *testing.T) {
 			// when
@@ -114,7 +139,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			require.NoError(t, err)
 
 			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
-			s.userIsNotProvisioned(t, waitlinglist2)
+			s.userIsNotProvisioned(t, waitingList2)
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
 				// when
@@ -123,7 +148,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 				// then
-				userSignup, err := hostAwait.WaitForUserSignup(t, waitlinglist2.Name,
+				userSignup, err := hostAwait.WaitForUserSignup(t, waitingList2.Name,
 					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(t, err)
@@ -140,11 +165,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 
 		// when
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
+		user := NewSignupRequest(s.Awaitilities).
 			Username("automatic3").
 			Email("automatic3@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-			Execute(t).Resources()
+			Execute(t)
+		userSignup := user.UserSignup
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -171,11 +197,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains), wait.UntilToolchainConfigHasVerificationEnabled(false))
 
 		// and
-		waitingList3, _ := NewSignupRequest(s.Awaitilities).
+		waitingListUser3 := NewSignupRequest(s.Awaitilities).
 			Username("waitinglist3").
 			Email("waitinglist3@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
+		waitingList3 := waitingListUser3.UserSignup
 
 		// then
 		s.userIsNotProvisioned(t, waitingList3)
@@ -197,11 +224,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		t.Run("add user with bad email format and expect the user will not be approved nor provisioned", func(t *testing.T) {
 			msg := "unable to determine automatic approval: invalid email address: waitinglist4@somedomain.org@anotherdomain.com"
 			// when
-			waitingList4, _ := NewSignupRequest(s.Awaitilities).
+			waitingListUser4 := NewSignupRequest(s.Awaitilities).
 				Username("waitinglist4").
 				Email("waitinglist4@somedomain.org@anotherdomain.com").
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApprovalWithMsg(msg), wait.PendingApprovalNoClusterWithMsg(msg))...).
-				Execute(s.T()).Resources()
+				Execute(s.T())
+			waitingList4 := waitingListUser4.UserSignup
 
 			// then
 			s.userIsNotProvisioned(t, waitingList4)
@@ -220,38 +248,34 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 		// when
-		_, mur1 := NewSignupRequest(s.Awaitilities).
+		user1 := NewSignupRequest(s.Awaitilities).
 			Username("multimember-1").
 			Email("multi1@redhat.com").
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
 
-		_, mur2 := NewSignupRequest(s.Awaitilities).
+		user2 := NewSignupRequest(s.Awaitilities).
 			Username("multimember-2").
 			Email("multi2@redhat.com").
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
 
 		// then
-		require.NotEqual(t, mur1.Status.UserAccounts[0].Cluster.Name, mur2.Status.UserAccounts[0].Cluster.Name)
-		space1, err := hostAwait.WaitForSpace(t, mur1.Name, wait.UntilSpaceHasAnyTargetClusterSet())
-		require.NoError(t, err)
-		space2, err := hostAwait.WaitForSpace(t, mur2.Name, wait.UntilSpaceHasAnyTargetClusterSet())
-		require.NoError(t, err)
-		require.NotEqual(t, space1.Spec.TargetCluster, space2.Spec.TargetCluster)
+		require.NotEqual(t, user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
+		require.NotEqual(t, user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
 
 		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
 			// when
-			userSignupPending, _ := NewSignupRequest(s.Awaitilities).
+			userPending := NewSignupRequest(s.Awaitilities).
 				Username("multimember-3").
 				Email("multi3@redhat.com").
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-				Execute(s.T()).Resources()
+				Execute(s.T())
 
 			// then
-			s.userIsNotProvisioned(t, userSignupPending)
+			s.userIsNotProvisioned(t, userPending.UserSignup)
 		})
 	})
 }
@@ -263,17 +287,17 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
+	user := NewSignupRequest(s.Awaitilities).
 		Username("test-user").
 		Email("test-user@redhat.com").
 		UserID("123456789").
 		AccountID("987654321").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
+		Execute(s.T())
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
@@ -285,7 +309,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	id := uuid.New()
 
 	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
+	user := NewSignupRequest(s.Awaitilities).
 		Username("test-user-identityclaims").
 		Email("test-user-identityclaims@redhat.com").
 		IdentityID(id).
@@ -293,7 +317,8 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 		AccountID("111999").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
+		Execute(s.T())
+	userSignup := user.UserSignup
 
 	// then
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
@@ -342,16 +367,16 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
+	user := NewSignupRequest(s.Awaitilities).
 		Username("test-user-with-originalsub").
 		Email("test-user-with-originalsub@redhat.com").
 		OriginalSub("abc:fff000111-bbbccc").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
+		Execute(s.T())
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaimsModified() {
@@ -366,14 +391,15 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 	// 2. user ID and account ID are set by test
 	// 3. no original sub claim is set
 	// This scenario is expected with the regular RHD SSO client
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
+	user := NewSignupRequest(s.Awaitilities).
 		Username("test-user-resources-updated").
 		Email("test-user-resources-updated@redhat.com").
 		UserID("43215432").
 		AccountID("ppqnnn00099").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
+		Execute(s.T())
+	userSignup := user.UserSignup
 
 	// then
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
@@ -409,7 +435,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 	identityID := uuid.New()
 
 	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
+	user := NewSignupRequest(s.Awaitilities).
 		Username("test-user-with-userid-and-originalsub").
 		Email("test-user-with-userid-and-originalsub@redhat.com").
 		IdentityID(identityID).
@@ -418,10 +444,10 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		OriginalSub("def:98734987234").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).Resources()
+		Execute(s.T())
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base")
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
@@ -442,26 +468,26 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 
 		t.Run("user is approved manually", func(t *testing.T) {
 			// when & then
-			userSignup, _ := NewSignupRequest(s.Awaitilities).
+			user := NewSignupRequest(s.Awaitilities).
 				Username("manual1").
 				Email("manual1@redhat.com").
 				ManuallyApprove().
 				EnsureMUR().
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-				Execute(s.T()).Resources()
+				Execute(s.T())
 
-			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 		})
 		t.Run("user is not approved manually thus won't be provisioned", func(t *testing.T) {
 			// when
-			userSignup, _ := NewSignupRequest(s.Awaitilities).
+			user := NewSignupRequest(s.Awaitilities).
 				Username("manual2").
 				Email("manual2@redhat.com").
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...).
-				Execute(s.T()).Resources()
+				Execute(s.T())
 
 			// then
-			s.userIsNotProvisioned(t, userSignup)
+			s.userIsNotProvisioned(t, user.UserSignup)
 		})
 	})
 }
@@ -495,15 +521,16 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Email("manualwithcapacity2@redhat.com").
 			ManuallyApprove().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
 
 		// when
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
+		user := NewSignupRequest(s.Awaitilities).
 			Username("manualwithcapacity3").
 			Email("manualwithcapacity3@redhat.com").
 			ManuallyApprove().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.ApprovedByAdminNoCluster())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
+		userSignup := user.UserSignup
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -530,12 +557,13 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		// when
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
+		user := NewSignupRequest(s.Awaitilities).
 			Username("manualwithcapacity4").
 			Email("manualwithcapacity4@redhat.com").
 			ManuallyApprove().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.ApprovedByAdminNoCluster())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
+		userSignup := user.UserSignup
 
 		// then
 		s.userIsNotProvisioned(t, userSignup)
@@ -562,16 +590,16 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 		// when & then
-		userSignup, _ := NewSignupRequest(s.Awaitilities).
+		user := NewSignupRequest(s.Awaitilities).
 			Username("withtargetcluster").
 			Email("withtargetcluster@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait1).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T()).Resources()
+			Execute(s.T())
 
-		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 	})
 }
 
@@ -648,15 +676,14 @@ func (s *userSignupIntegrationTest) TestSkipSpaceCreation() {
 	hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 	// when
-	userSignup, _ := NewSignupRequest(s.Awaitilities).
+	user := NewSignupRequest(s.Awaitilities).
 		Username("nospace").
 		Email("nospace@redhat.com").
 		NoSpace().
 		WaitForMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-		Execute(s.T()).
-		Resources()
-
+		Execute(s.T())
+	userSignup := user.UserSignup
 	// then
 
 	// annotation should be set

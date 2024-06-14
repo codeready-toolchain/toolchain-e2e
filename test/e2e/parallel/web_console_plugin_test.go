@@ -35,7 +35,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		waitForWebConsolePluginDeployment(t, memberAwait, image)
 		waitForWebConsolePluginService(t, memberAwait)
 
-		signupRequest := NewSignupRequest(await).
+		user := NewSignupRequest(await).
 			Username(fmt.Sprintf("consoletest%d", i)).
 			Email("consoletest@redhat.com").
 			TargetCluster(memberAwait).
@@ -43,6 +43,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
+		token := user.Token
 
 		// Since we can't easily access the web console API resources directly (due to complex security requirements) we
 		// will instead create a route in the member cluster with which to access the console plugin
@@ -112,7 +113,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 		// some problem with the service.
 		req, err := http.NewRequest("GET", healthCheckURL, nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", signupRequest.GetToken())
+		req.Header.Set("Authorization", token)
 
 		healthCheckResponse, err = httpClient.Do(req) //nolint
 		require.NoError(t, err)
@@ -121,7 +122,7 @@ func TestWebConsoleDeployedSuccessfully(t *testing.T) {
 
 		req, err = http.NewRequest("GET", manifestURL, nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", signupRequest.GetToken())
+		req.Header.Set("Authorization", token)
 
 		manifestResponse, err := httpClient.Do(req)
 		require.NoError(t, err)
