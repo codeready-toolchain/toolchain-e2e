@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -363,7 +364,9 @@ func TestSignupOK(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, await, userSignup, "deactivate30", "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
-		NewGetSignupClient(t, await, identity.Username, token).Invoke(signupIsProvisioned)
+		now := time.Now()
+		NewGetSignupClient(t, await, identity.Username, token).Invoke(signupIsProvisioned,
+			signupHasExpectedDates(now, now.Add(time.Hour*24*30), 30))
 
 		return userSignup
 	}
@@ -847,6 +850,22 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	email := userSignup.Spec.IdentityClaims.Email
 	assert.Equal(t, emailValue, email)
 	return userSignup, token
+}
+
+func signupHasExpectedDates(startDate, endDate time.Time, daysRemaining int) func(c *GetSignupClient) {
+	return func(c *GetSignupClient) {
+		responseStartDate, err := time.Parse(time.RFC3339, c.responseBody["startDate"].(string))
+		require.NoError(c.t, err)
+		require.InEpsilon(c.t, startDate, responseStartDate, 0.1)
+
+		responseEndDate, err := time.Parse(time.RFC3339, c.responseBody["endDate"].(string))
+		require.NoError(c.t, err)
+		require.InEpsilon(c.t, endDate, responseEndDate, 0.1)
+
+		responseDaysRemaining, err := strconv.Atoi(c.responseBody["daysRemaining"].(string))
+		require.NoError(c.t, err)
+		require.InEpsilon(c.t, float64(responseDaysRemaining), daysRemaining, 0.1)
+	}
 }
 
 func signupIsProvisioned(client *GetSignupClient) {
