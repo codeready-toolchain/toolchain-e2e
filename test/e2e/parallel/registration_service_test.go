@@ -856,15 +856,18 @@ func signupHasExpectedDates(startDate, endDate time.Time, daysRemaining int) fun
 	return func(c *GetSignupClient) {
 		responseStartDate, err := time.Parse(time.RFC3339, c.responseBody["startDate"].(string))
 		require.NoError(c.t, err)
-		require.InEpsilon(c.t, startDate, responseStartDate, 0.1)
+		require.InEpsilon(c.t, startDate, responseStartDate, 0.1,
+			"startDate in response [%s] not in expected range [%s]", responseStartDate, startDate.Format(time.RFC3339))
 
 		responseEndDate, err := time.Parse(time.RFC3339, c.responseBody["endDate"].(string))
 		require.NoError(c.t, err)
-		require.InEpsilon(c.t, endDate, responseEndDate, 0.1)
+		require.InEpsilon(c.t, endDate, responseEndDate, 0.1,
+			"endDate in response [%s] not in expected range [%s]", responseEndDate, endDate.Format(time.RFC3339))
 
 		responseDaysRemaining, err := strconv.Atoi(c.responseBody["daysRemaining"].(string))
 		require.NoError(c.t, err)
-		require.InEpsilon(c.t, float64(responseDaysRemaining), daysRemaining, 0.1)
+		require.InEpsilon(c.t, float64(responseDaysRemaining), daysRemaining, 0.1,
+			"daysRemaining in response [%s] not in expected range [%s]", responseDaysRemaining, daysRemaining)
 	}
 }
 
