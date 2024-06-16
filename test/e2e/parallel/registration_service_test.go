@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -864,10 +863,8 @@ func signupHasExpectedDates(startDate, endDate time.Time, daysRemaining int) fun
 		require.WithinDuration(c.t, endDate, responseEndDate, time.Hour,
 			"endDate in response [%s] not in expected range [%s]", responseEndDate, endDate.Format(time.RFC3339))
 
-		responseDaysRemaining, err := strconv.ParseFloat(c.responseBody["daysRemaining"].(string), 64)
-		require.NoError(c.t, err)
-		require.InEpsilon(c.t, responseDaysRemaining, daysRemaining, 0.1,
-			"daysRemaining in response [%s] not in expected range [%s]", responseDaysRemaining, daysRemaining)
+		require.InEpsilon(c.t, daysRemaining, c.responseBody["daysRemaining"].(float64), 0.1,
+			"daysRemaining in response [%s] not in expected range [%s]", c.responseBody["daysRemaining"], daysRemaining)
 	}
 }
 
