@@ -513,7 +513,15 @@ func TestSubSpaceInheritance(t *testing.T) {
 			SpaceTier("appstudio").
 			EnsureMUR().
 			Execute(t)
-		mur := parentUser.MUR
+
+		user := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
+		mur := user.MUR
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
