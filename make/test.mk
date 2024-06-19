@@ -187,15 +187,15 @@ endif
 .PHONY: check-go-junit-report
 
 check-go-junit-report:
-	@command -v ./go-junit-report >/dev/null 2>&1 || { echo "go-junit-report is not installed. Installing..."; GOBIN=$(PWD) go install github.com/jstemmer/go-junit-report/v2@latest; }
-	@echo "go-junit-report version:" && ./go-junit-report -version
+	@command -v /tmp/go-junit-report >/dev/null 2>&1 || { echo "go-junit-report is not installed. Installing..."; GOBIN=/tmp go install github.com/jstemmer/go-junit-report/v2@latest; }
+	@echo "go-junit-report version:" && /tmp/go-junit-report -version
 
 .PHONY: generate-report
 generate-report:
 	@echo "Generating report"
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),) 
 	mkdir -p  ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}
-	./go-junit-report > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
+	./tmp/go-junit-report > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
 	@echo "xUnit Report ${REPORT_NAME} Generation Successful"
 else 
 	@echo "Skipping Report as its a local run"
