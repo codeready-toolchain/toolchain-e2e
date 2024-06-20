@@ -39,6 +39,7 @@ E2E_PARALLELISM=1
 TESTS_RUN_FILTER_REGEXP ?= ""
 
 REPORT_PORTAL_DIR := rp_preproc/results
+TEST_OUTPUT_FILE=test_output.log
 
 .PHONY: test-e2e
 ## Run the e2e tests
@@ -170,7 +171,9 @@ ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 else 
 	@echo "Skipping Go Junit report check and install"
 endif
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | $(MAKE) generate-report REPORT_NAME=${REPORT_NAME}  || \
+	@echo "Running tests"
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | tee test_output.log
+	$(MAKE) generate-report REPORT_NAME=${REPORT_NAME} || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -197,12 +200,12 @@ check-go-junit-report:
 .PHONY: generate-report
 generate-report:
 	@echo "Generating report"
-ifneq ($(OPENSHIFT_BUILD_NAMESPACE),) 
-	mkdir -p  ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}
-	/tmp/go-junit-report > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
+ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
+	mkdir -p ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}
+	/tmp/go-junit-report < test_output.log > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
 	@echo "xUnit Report ${REPORT_NAME} Generation Successful"
-else 
-	@echo "Skipping Report as its a local run"
+else
+	@echo "Skipping Report as it's a local run"
 endif
 
 .PHONY: deploy-e2e-local-and-print-local-debug
