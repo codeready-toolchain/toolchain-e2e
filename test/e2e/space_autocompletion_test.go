@@ -54,11 +54,11 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-waitinglist1"), testspace.WithTierName("appstudio"))
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-waitinglist1"), testspace.WithTierName("appstudio"))
 
 		// we need to sleep one second to create UserSignup with different creation time
 		time.Sleep(time.Second)
-		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-waitinglist2"), testspace.WithTierName("appstudio"))
+		space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-waitinglist2"), testspace.WithTierName("appstudio"))
 
 		// then
 		waitUntilSpaceIsPendingCluster(t, hostAwait, space1.Name)
@@ -92,7 +92,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// when
-		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithTierName(""))
+		space, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithTierName(""))
 
 		// then
 		space = waitUntilSpaceIsPendingCluster(t, hostAwait, space.Name)
@@ -123,7 +123,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		}
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-1"), testspace.WithTierName("appstudio"))
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-multimember-1"), testspace.WithTierName("appstudio"))
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space1.Name, wait.UntilSpaceHasStatusTargetCluster(memberAwait2.ClusterName))
@@ -135,14 +135,14 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 			}
 
 			// when
-			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-2"), testspace.WithTierName("appstudio"))
+			space2, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-multimember-2"), testspace.WithTierName("appstudio"))
 
 			// then
 			waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
 
 			t.Run("when target cluster is set manually, then the limits will be ignored", func(t *testing.T) {
 				// when & then
-				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-multimember-3"), testspace.WithSpecTargetCluster(memberAwait1.ClusterName))
+				space3, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-multimember-3"), testspace.WithSpecTargetCluster(memberAwait1.ClusterName))
 				VerifyResourcesProvisionedForSpace(t, awaitilities, space3.Name)
 				// and still
 				waitUntilSpaceIsPendingCluster(t, hostAwait, space2.Name)
@@ -157,7 +157,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.WithPlacementRoles(testSpc.PlacementRole("workspace")))
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant"),
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-clusterole-tenant"),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
 
@@ -172,7 +172,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false), testSpc.WithPlacementRoles(testSpc.PlacementRole("workspace")))
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, testspace.WithName("space-clusterole-tenant-pending"),
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin", testspace.WithName("space-clusterole-tenant-pending"),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetClusterRoles([]string{cluster.RoleLabel("workspace")})) // request that specific cluster role
 
@@ -186,7 +186,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500), testSpc.WithPlacementRoles(testSpc.PlacementRole("workspace")))
 
 		// when
-		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur,
+		space1, _ := CreateSpaceWithBinding(t, awaitilities, mur, "admin",
 			testspace.WithName("space-required-tenant"),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetClusterRoles([]string{cluster.RoleLabel("workspace")}),
