@@ -34,8 +34,8 @@ clean-toolchain-namespaces-in-e2e:
 .PHONY: clean-toolchain-dev-sso-resources
 ## Delete resources in the dev sso namespace
 clean-toolchain-dev-sso-resources:
-	$(Q)-oc delete keycloak -n ${DEV_SSO_NS} --all || true
-	$(Q)-oc delete keycloakrealm -n ${DEV_SSO_NS} --all || true
+	$(Q)-oc delete keycloak -n ${DEV_SSO_NS} --all --wait
+	$(Q)-oc delete keycloakrealm -n ${DEV_SSO_NS} --all
 
 .PHONY: clean-e2e-resources
 ## Delete resources in the OpenShift cluster. The deleted resources are:
