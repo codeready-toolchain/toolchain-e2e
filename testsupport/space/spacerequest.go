@@ -99,7 +99,7 @@ func NewSpaceRequest(t *testing.T, opts ...SpaceRequestOption) *toolchainv1alpha
 func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceRequest *toolchainv1alpha1.SpaceRequest) {
 	for _, nsAccess := range spaceRequest.Status.NamespaceAccess {
 		// create a kube client by ready the secret created in the spacerequest namespace
-		namespaceAccessClient, adminSecret := newKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
+		namespaceAccessClient, adminSecret := NewKubeClientFromSecret(t, cl, nsAccess.SecretRef, spaceRequest.Namespace)
 
 		// check expected labels on the secret
 		require.NotEmpty(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestLabelKey])
@@ -108,12 +108,13 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 		require.Equal(t, adminSecret.Labels[toolchainv1alpha1.SpaceRequestProvisionedNamespaceLabelKey], nsAccess.Name)
 
 		// validate the kube client has access to the namespace name that's in the spacerequest.Status.Namepsacess[n].Name field
-		validateKubeClient(t, namespaceAccessClient, nsAccess.Name)
+		ValidateKubeClient(t, namespaceAccessClient, nsAccess.Name, &corev1.SecretList{})
 	}
 }
 
-// newKubeClientFromSecret reads the kubeconfig from a given secret, create a kube rest client and validates that it works.
-func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretNamespace string) (client.Client, *corev1.Secret) {
+// NewKubeClientFromSecret reads the kubeconfig from a given secret, create a kube rest client and validates that it works.
+func NewKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretNamespace string) (client.Client, *corev1.Secret) {
+	t.Helper()
 	adminSecret := &corev1.Secret{}
 	// retrieve the secret containing the kubeconfig
 	require.NoError(t, cl.Get(context.TODO(), types.NamespacedName{
@@ -141,9 +142,10 @@ func newKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretN
 	return namespaceAccessClient, adminSecret
 }
 
-// validateKubeClient validates the the kube client can access the given namespace
-func validateKubeClient(t *testing.T, namespaceAccessClient client.Client, namespace string) {
-	secretsList := &corev1.SecretList{}
-	require.NoError(t, namespaceAccessClient.List(context.TODO(), secretsList, client.InNamespace(namespace)))
-	require.NotEmpty(t, secretsList)
+// ValidateKubeClient validates the the kube client can access the given namespace by listing objects using the provided list instance
+// The list is checked to not be empty.
+func ValidateKubeClient(t *testing.T, namespaceAccessClient client.Client, namespace string, list client.ObjectList) {
+	t.Helper()
+	require.NoError(t, namespaceAccessClient.List(context.TODO(), list, client.InNamespace(namespace)))
+	require.NotEmpty(t, list)
 }

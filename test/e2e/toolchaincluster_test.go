@@ -9,6 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,12 +57,16 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	// spread over the secret and ToolchainCluster is also set as a kubeconfig inside the secret. Once we migrate to create the ToolchainClusters
 	// based on the secrets, we will no longer require this migration step and this test will be removed.
 	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
-		secret := &corev1.Secret{}
-		require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, secret))
+		if kubeConfigMustExist {
+			targetClient, _ := space.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace)
+			space.ValidateKubeClient(t, targetClient, await.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
+		} else {
+			secret := &corev1.Secret{}
+			require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, secret))
 
-		// this is enough for the test here. The correctness of the contained kubeconfig is checked in the unit tests of the controller in toolchain-common.
-		_, present := secret.Data["kubeconfig"]
-		assert.Equal(t, kubeConfigMustExist, present)
+			_, present := secret.Data["kubeconfig"]
+			assert.False(t, present)
+		}
 	})
 
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", current.Name), func(t *testing.T) {
