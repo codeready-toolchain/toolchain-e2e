@@ -173,7 +173,7 @@ else
 endif
 	@echo "Running tests"
 	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} \
-	go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | tee test_output.log || ( $(MAKE) print-logs && exit 1 )
+	go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | tee /tmp/test_output.log || ( $(MAKE) print-logs && exit 1 )
 	$(MAKE) generate-report REPORT_NAME=${REPORT_NAME}
 
 .PHONY: print-logs
