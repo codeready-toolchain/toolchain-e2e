@@ -46,7 +46,7 @@ clean-e2e-resources: clean-users clean-toolchain-namespaces-in-e2e clean-cluster
 
 .PHONY: clean-toolchain-namespaces-in-dev
 ## Delete dev namespaces
-clean-toolchain-namespaces-in-dev:
+clean-toolchain-namespaces-in-dev: clean-toolchain-dev-sso-resources
 	$(Q)oc delete namespace ${DEV_HOST_NS} || true
 	$(Q)oc delete namespace ${DEV_MEMBER_NS} || true
 	$(Q)oc delete namespace ${DEV_SSO_NS} || true
@@ -56,7 +56,7 @@ clean-toolchain-namespaces-in-dev:
 ##    * all user-related resources
 ##    * operator namespaces created during both the dev and e2e test setup (for both operators host and member)
 ##    * cluster-wide config
-clean-dev-resources: clean-users clean-toolchain-dev-sso-resources clean-toolchain-namespaces-in-dev clean-cluster-wide-config
+clean-dev-resources: clean-users clean-toolchain-namespaces-in-dev clean-cluster-wide-config
 
 .PHONY: clean-e2e-files
 ## Remove files and directories used during e2e test setup
