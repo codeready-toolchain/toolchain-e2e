@@ -172,9 +172,9 @@ else
 	@echo "Skipping Go Junit report check and install"
 endif
 	@echo "Running tests"
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | tee test_output.log
-	$(MAKE) generate-report REPORT_NAME=${REPORT_NAME} || \
-	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} \
+	go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast 2>&1 | tee test_output.log || ( $(MAKE) print-logs && exit 1 )
+	$(MAKE) generate-report REPORT_NAME=${REPORT_NAME}
 
 .PHONY: print-logs
 print-logs:
@@ -202,7 +202,7 @@ generate-report:
 	@echo "Generating report"
 ifneq ($(OPENSHIFT_BUILD_NAMESPACE),)
 	mkdir -p ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}
-	/tmp/go-junit-report < test_output.log > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
+	/tmp/go-junit-report < /tmp/test_output.log > ${ARTIFACT_DIR}/${REPORT_PORTAL_DIR}/${REPORT_NAME}
 	@echo "xUnit Report ${REPORT_NAME} Generation Successful"
 else
 	@echo "Skipping Report as it's a local run"
