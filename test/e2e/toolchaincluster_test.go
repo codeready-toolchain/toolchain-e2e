@@ -9,7 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,8 +58,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	// based on the secrets, we will no longer require this migration step and this test will be removed.
 	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
 		if kubeConfigMustExist {
-			targetClient, _ := space.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
-			space.ValidateKubeClient(t, targetClient, await.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
+			targetClient, _ := util.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
+			util.ValidateKubeClient(t, targetClient, await.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
 		} else {
 			secret := &corev1.Secret{}
 			require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, secret))
