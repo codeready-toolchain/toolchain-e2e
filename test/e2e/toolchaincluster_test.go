@@ -59,7 +59,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
 		if kubeConfigMustExist {
 			targetClient, _ := util.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
-			util.ValidateKubeClient(t, targetClient, await.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
+			util.ValidateKubeClient(t, targetClient, otherAwait.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
 		} else {
 			secret := &corev1.Secret{}
 			require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, secret))
