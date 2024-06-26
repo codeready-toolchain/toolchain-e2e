@@ -58,7 +58,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	// based on the secrets, we will no longer require this migration step and this test will be removed.
 	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
 		if kubeConfigMustExist {
-			targetClient, _ := space.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace)
+			targetClient, _ := space.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
 			space.ValidateKubeClient(t, targetClient, await.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
 		} else {
 			secret := &corev1.Secret{}

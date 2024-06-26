@@ -15,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -112,8 +111,9 @@ func VerifyNamespaceAccessForSpaceRequest(t *testing.T, cl client.Client, spaceR
 	}
 }
 
-// NewKubeClientFromSecret reads the kubeconfig from a given secret, create a kube rest client and validates that it works.
-func NewKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretNamespace string) (client.Client, *corev1.Secret) {
+// NewKubeClientFromSecret reads the kubeconfig from a given secret and create a kube rest client from it. You can supply functions to initialize
+// the scheme with which the client will be built.
+func NewKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretNamespace string, schemeAdders ...func(*runtime.Scheme) error) (client.Client, *corev1.Secret) {
 	t.Helper()
 	adminSecret := &corev1.Secret{}
 	// retrieve the secret containing the kubeconfig
@@ -130,10 +130,9 @@ func NewKubeClientFromSecret(t *testing.T, cl client.Client, secretName, secretN
 	kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
 	require.NoError(t, err)
 
-	s := scheme.Scheme
-	builder := append(runtime.SchemeBuilder{},
-		corev1.AddToScheme,
-	)
+	s := runtime.NewScheme()
+	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
+	builder = append(builder, schemeAdders...)
 	require.NoError(t, builder.AddToScheme(s))
 	namespaceAccessClient, err := client.New(kubeconfig, client.Options{
 		Scheme: s,
