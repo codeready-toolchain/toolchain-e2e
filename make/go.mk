@@ -14,3 +14,19 @@ build:
 	mkdir -p $(OUT_DIR)/bin || true
 	$(Q)CGO_ENABLED=0 GOARCH=${goarch} GOOS=linux \
 		go build ${V_FLAG} ./...
+
+.PHONY: verify-dependencies
+## Runs commands to verify after the updated dependecies of toolchain-common/API(go mod replace), if the repo needs any changes to be made
+verify-dependencies: tidy vet compile test lint-go-code
+
+.PHONY: tidy
+tidy: 
+	go mod tidy
+
+.PHONY: vet
+vet:
+	go vet ./...
+
+.PHONY: go-test-skip-all
+go-test-skip-all:
+	go test ./... -skip '.*'
