@@ -17,7 +17,7 @@ build:
 
 .PHONY: verify-dependencies
 ## Runs commands to verify after the updated dependecies of toolchain-common/API(go mod replace), if the repo needs any changes to be made
-verify-dependencies: tidy vet compile test lint-go-code
+verify-dependencies: tidy vet go-test-skip-all test lint-go-code
 
 .PHONY: tidy
 tidy: 
