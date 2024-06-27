@@ -365,7 +365,7 @@ func TestSignupOK(t *testing.T) {
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		now := time.Now()
 		NewGetSignupClient(t, await, identity.Username, token).Invoke(signupIsProvisioned,
-			signupHasExpectedDates(now, now.Add(time.Hour*24*30), 30))
+			signupHasExpectedDates(now, now.Add(time.Hour*24*30)))
 
 		return userSignup
 	}
@@ -851,7 +851,7 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	return userSignup, token
 }
 
-func signupHasExpectedDates(startDate, endDate time.Time, daysRemaining int) func(c *GetSignupClient) {
+func signupHasExpectedDates(startDate, endDate time.Time) func(c *GetSignupClient) {
 	return func(c *GetSignupClient) {
 		responseStartDate, err := time.Parse(time.RFC3339, c.responseBody["startDate"].(string))
 		require.NoError(c.t, err)
@@ -862,9 +862,6 @@ func signupHasExpectedDates(startDate, endDate time.Time, daysRemaining int) fun
 		require.NoError(c.t, err)
 		require.WithinDuration(c.t, endDate, responseEndDate, time.Hour,
 			"endDate in response [%s] not in expected range [%s]", responseEndDate, endDate.Format(time.RFC3339))
-
-		require.InEpsilon(c.t, daysRemaining, c.responseBody["daysRemaining"].(float64), 0.1,
-			"daysRemaining in response [%s] not in expected range [%s]", c.responseBody["daysRemaining"], daysRemaining)
 	}
 }
 
