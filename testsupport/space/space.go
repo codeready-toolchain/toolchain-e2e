@@ -28,13 +28,15 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	username := uuid.Must(uuid.NewV4()).String()
-	signup, mur := testsupport.NewSignupRequest(awaitilities).
+	user := testsupport.NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
-		WaitForMUR().Execute(t).Resources()
+		WaitForMUR().Execute(t)
+	signup := user.UserSignup
+	mur := user.MUR
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 
 	// create the actual space
@@ -167,7 +169,9 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 	if !cleanup {
 		builder.DisableCleanup()
 	}
-	signup, mur := builder.Execute(t).Resources()
+	user := builder.Execute(t)
+	signup := user.UserSignup
+	mur := user.MUR
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 	var binding *toolchainv1alpha1.SpaceBinding
 	if cleanup {
