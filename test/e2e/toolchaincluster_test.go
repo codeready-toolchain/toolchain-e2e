@@ -11,7 +11,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,18 +24,13 @@ func TestToolchainClusterE2E(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
 
-	// NOTE: because we cannot introduce changes to host operator and member operator simulateneously to enforce
-	// backwards compatibility, we first introduce the conversion of connection details into kubeconfig to the host
-	// operator. This is fine, because that data is not actually used for antyhing at the moment. Once this works
-	// in the host operator and we merge it, it can also be introduced into the member operator (and this test changed)
-	// and we can move forward with secrets updated everywhere.
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, true)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, false)
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, kubeConfigMustExist bool) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
@@ -57,16 +51,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	// spread over the secret and ToolchainCluster is also set as a kubeconfig inside the secret. Once we migrate to create the ToolchainClusters
 	// based on the secrets, we will no longer require this migration step and this test will be removed.
 	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
-		if kubeConfigMustExist {
-			targetClient, _ := util.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
-			util.ValidateKubeClient(t, targetClient, otherAwait.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
-		} else {
-			secret := &corev1.Secret{}
-			require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, secret))
-
-			_, present := secret.Data["kubeconfig"]
-			assert.False(t, present)
-		}
+		targetClient, _ := util.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
+		util.ValidateKubeClient(t, targetClient, otherAwait.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
 	})
 
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", current.Name), func(t *testing.T) {
