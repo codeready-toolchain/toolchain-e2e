@@ -198,7 +198,7 @@ func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -266,7 +266,7 @@ func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -284,7 +284,7 @@ func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsChe
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -302,7 +302,7 @@ func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -321,7 +321,7 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -340,7 +340,7 @@ func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjects
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -386,7 +386,7 @@ func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -559,7 +559,7 @@ func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServiceCount("100"),
+		clusterResourceQuotaServiceCount("100", nil),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecretCount("900"),
 		clusterResourceQuotaConfigMapCount("300"),
@@ -1359,15 +1359,24 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaServices() clusterObjectsCheckCreator {
-	return clusterResourceQuotaServiceCount("30")
+	return clusterResourceQuotaServiceCount("30", nil)
 }
 
-func clusterResourceQuotaServiceCount(serviceCount string) clusterObjectsCheckCreator {
+func clusterResourceQuotaServicesNoLoadBalancers() clusterObjectsCheckCreator {
+	zero := "0"
+	return clusterResourceQuotaServiceCount("30", &zero)
+}
+
+func clusterResourceQuotaServiceCount(serviceCount string, loadbalancerCount *string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity(serviceCount)
+			if loadbalancerCount != nil {
+				hard["services.loadbalancers"], err = resource.ParseQuantity(*loadbalancerCount)
+			}
+
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
