@@ -1,7 +1,6 @@
 package space
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -10,7 +9,6 @@ import (
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
@@ -25,7 +23,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 	return CreateSpaceWithRole(t, awaitilities, "admin", opts...)
 }
 
-// CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
+// CreateSpaceWithRole initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
 func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
@@ -69,26 +67,6 @@ func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role stri
 	}
 
 	return space, signup, spaceBinding
-}
-
-// CreateSpaceWithBinding initializes a new Space object using the NewSpace function, and then creates it in the cluster
-// It also automatically creates SpaceBinding for it and for the given MasterUserRecord
-func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
-	// create space
-	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t), opts...)
-	err := awaitilities.Host().Client.Create(context.TODO(), space)
-	require.NoError(t, err)
-
-	// we need to create the SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
-	spaceBinding := testsupportsb.NewSpaceBinding(mur, space, role)
-	err = awaitilities.Host().Client.Create(context.TODO(), spaceBinding)
-	require.NoError(t, err)
-
-	// add Space and SpaceBinding to the clean tasks
-	cleanup.AddCleanTasks(t, awaitilities.Host().GetClient(), space)
-	cleanup.AddCleanTasks(t, awaitilities.Host().GetClient(), spaceBinding)
-
-	return space, spaceBinding
 }
 
 // CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
