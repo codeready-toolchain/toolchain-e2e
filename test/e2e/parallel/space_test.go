@@ -12,6 +12,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/require"
@@ -526,11 +527,13 @@ func TestSubSpaceInheritance(t *testing.T) {
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
 		t.Logf("Create sub space with role: contributor")
-		subSpace, subSpaceBindings := CreateSpaceWithBinding(t, awaitilities, mur, "contributor",
+		subSpace := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t),
 			testspace.WithSpecParentSpace(parentUser.Space.Name),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetCluster(memberAwait.ClusterName),
 			testspace.WithDisableInheritance(true))
+		subSpace, subSpaceBindings, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, subSpace, "contributor")
+		require.NoError(t, err)
 
 		// then
 		t.Logf("Verify sub space resources")
