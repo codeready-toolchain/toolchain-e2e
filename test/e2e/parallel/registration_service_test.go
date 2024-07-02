@@ -84,7 +84,7 @@ func TestRegistrationServiceMetricsEndpoint(t *testing.T) {
 					Name: "registration-service-metrics",
 				},
 				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("registration-service-metrics"),
+					TargetPort: intstr.FromString("regsvc-metrics"),
 				},
 			},
 		}
