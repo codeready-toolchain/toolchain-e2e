@@ -23,10 +23,13 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	k8swait "k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -47,6 +50,65 @@ func TestLandingPageReachable(t *testing.T) {
 	defer Close(t, resp)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestRegistrationServiceMetricsEndpoint(t *testing.T) {
+
+	// given
+	await := WaitForDeployments(t)
+	t.Parallel()
+
+	t.Run("not available from default route", func(t *testing.T) { // make sure that the `/metrics`` endpoint is NOT reachable with the default route
+		// given
+		route := await.Host().RegistrationServiceURL
+		req, err := http.NewRequest("GET", route+"/metrics", nil)
+		require.NoError(t, err)
+		// when
+		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
+		// then
+		require.NoError(t, err)
+		defer Close(t, resp)
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+
+	t.Run("available from a custom route", func(t *testing.T) { // create a route for to expose the `registration-service-metrics` svc
+		// given
+		route := &routev1.Route{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: await.Host().Namespace,
+				Name:      "registration-service-metrics",
+			},
+			Spec: routev1.RouteSpec{
+				To: routev1.RouteTargetReference{
+					Kind: "Service",
+					Name: "registration-service-metrics",
+				},
+				Port: &routev1.RoutePort{
+					TargetPort: intstr.FromString("regsvc-metrics"),
+				},
+			},
+		}
+		err := await.Host().CreateWithCleanup(t, route)
+		require.NoError(t, err)
+		_, err = await.Host().WaitForRouteToBeAvailable(t, route.Namespace, route.Name, "/metrics")
+		require.NoError(t, err, "route not available", route)
+
+		req, err := http.NewRequest("GET", "http://"+route.Spec.Host+"/metrics", nil)
+		require.NoError(t, err)
+		// when
+		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
+		// then
+		require.NoError(t, err)
+		defer Close(t, resp)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		samples, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(samples), "sandbox_promhttp_client_api_requests_total")
+		assert.Contains(t, string(samples), "sandbox_promhttp_request_duration_seconds_bucket")
+		assert.Contains(t, string(samples), "sandbox_promhttp_request_duration_seconds_sum")
+		assert.Contains(t, string(samples), "sandbox_promhttp_request_duration_seconds_count")
+	})
+
 }
 
 func TestHealth(t *testing.T) {
@@ -487,7 +549,7 @@ func TestPhoneVerification(t *testing.T) {
 	obj := &toolchainv1alpha1.MasterUserRecord{}
 	err = hostAwait.Client.Get(context.TODO(), types.NamespacedName{Namespace: hostAwait.Namespace, Name: identity0.Username}, obj)
 	require.Error(t, err)
-	require.True(t, errors.IsNotFound(err))
+	require.True(t, apierrors.IsNotFound(err))
 
 	// Initiate the verification process
 	NewHTTPRequest(t).
