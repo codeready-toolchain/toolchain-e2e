@@ -103,7 +103,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 	})
 
-	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", current.Name), func(t *testing.T) {
+	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be Not Ready", current.Name), func(t *testing.T) {
 		// given
 		name := generateNewName("new-offline-", current.Name)
 		secretCopy := &corev1.Secret{}
@@ -126,11 +126,11 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// wait for toolchaincontroller to reconcile
 		time.Sleep(1 * time.Second)
 
-		// then the ToolchainCluster should be offline
+		// then the ToolchainCluster should be Not Ready
 		require.NoError(t, err)
 		_, err = await.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
-			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterOffline),
+			wait.UntilToolchainClusterHasConditionAndFlaseStatus(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
 		// other ToolchainCluster should be ready, too
