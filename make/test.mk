@@ -439,7 +439,7 @@ test:
 ## Regenerate and re-apply appstudio tiers using the latest version of ksctl
 tiers-via-ksctl:
 	$(eval HOST_REPO_LOC = $(or ${HOST_REPO_PATH}, /tmp/host-operator-master))
-ifeq ($(HOST_REPO_PATH),/tmp/host-operator-master)
+ifeq ($(HOST_REPO_PATH),)
 	rm -rf /tmp/host-operator-master 2>/dev/null || true
 	git clone --depth 1 https://github.com/codeready-toolchain/host-operator.git /tmp/host-operator-master
 endif
