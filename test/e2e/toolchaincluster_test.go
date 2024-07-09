@@ -23,14 +23,14 @@ func TestToolchainClusterE2E(t *testing.T) {
 	hostAwait.WaitForToolchainClusterResources(t)
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
-
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
+	// this to check after dropping the offline condition and also make it backwards compatible and pair it with member operator
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, false)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, true)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, memberoperator bool) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
@@ -126,13 +126,22 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// wait for toolchaincontroller to reconcile
 		time.Sleep(1 * time.Second)
 
-		// then the ToolchainCluster should be offline
+		// then the ToolchainCluster should be Not Ready
 		require.NoError(t, err)
-		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasName(toolchainCluster.Name),
-			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterOffline),
-		)
-		require.NoError(t, err)
+		if memberoperator {
+			_, err = await.WaitForToolchainCluster(t,
+				wait.UntilToolchainClusterHasName(toolchainCluster.Name),
+				wait.UntilToolchainClusterHasConditionAndFalseStatus(toolchainv1alpha1.ConditionReady),
+			)
+			require.NoError(t, err)
+		} else {
+			// then the ToolchainCluster should be offline
+			_, err = await.WaitForToolchainCluster(t,
+				wait.UntilToolchainClusterHasName(toolchainCluster.Name),
+				wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ToolchainClusterOffline),
+			)
+			require.NoError(t, err)
+		}
 		// other ToolchainCluster should be ready, too
 		_, err = await.WaitForToolchainCluster(t,
 			wait.UntilToolchainClusterHasLabels(
