@@ -540,7 +540,7 @@ func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.ConditionType)
 }
 
 // UntilToolchainClusterHasCondition checks if ToolchainCluster has the given condition and False Status
-func UntilToolchainClusterHasConditionAndFlaseStatus(expected toolchainv1alpha1.ConditionType) ToolchainClusterWaitCriterion {
+func UntilToolchainClusterHasConditionAndFalseStatus(expected toolchainv1alpha1.ConditionType) ToolchainClusterWaitCriterion {
 	return ToolchainClusterWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
 			return cd.IsFalse(actual.Status.Conditions, expected)
