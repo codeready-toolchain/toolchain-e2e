@@ -425,7 +425,9 @@ func TestSignupOK(t *testing.T) {
 		VerifyResourcesProvisionedForSignup(t, await, userSignup, "deactivate30", "base")
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
-		assertGetSignupStatusProvisioned(t, await, identity.Username, token)
+		now := time.Now()
+		NewGetSignupClient(t, await, identity.Username, token).Invoke(signupIsProvisioned,
+			signupHasExpectedDates(now, now.Add(time.Hour*24*30)))
 
 		return userSignup
 	}
@@ -911,21 +913,62 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	return userSignup, token
 }
 
-func assertGetSignupStatusProvisioned(t *testing.T, await wait.Awaitilities, username, bearerToken string) {
-	hostAwait := await.Host()
-	memberAwait := await.Member1()
-	mp := waitForUserSignupReadyInRegistrationService(t, hostAwait.RegistrationServiceURL, username, bearerToken)
-	transformedUsername := commonsignup.TransformUsername(username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
-	assert.Equal(t, transformedUsername, mp["compliantUsername"])
-	assert.Equal(t, username, mp["username"])
-	assert.Equal(t, memberAwait.GetConsoleURL(t), mp["consoleURL"])
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
-	require.NoError(t, err)
-	require.True(t, found)
-	assert.Equal(t, memberCluster.Spec.APIEndpoint, mp["apiEndpoint"])
-	assert.Equal(t, hostAwait.APIProxyURL, mp["proxyURL"])
-	assert.Equal(t, fmt.Sprintf("%s-dev", transformedUsername), mp["defaultUserNamespace"])
-	assertRHODSClusterURL(t, memberAwait, mp)
+func signupHasExpectedDates(startDate, endDate time.Time) func(c *GetSignupClient) {
+	return func(c *GetSignupClient) {
+		responseStartDate, err := time.Parse(time.RFC3339, c.responseBody["startDate"].(string))
+		require.NoError(c.t, err)
+		require.WithinDuration(c.t, startDate, responseStartDate, time.Hour,
+			"startDate in response [%s] not in expected range [%s]", responseStartDate, startDate.Format(time.RFC3339))
+
+		responseEndDate, err := time.Parse(time.RFC3339, c.responseBody["endDate"].(string))
+		require.NoError(c.t, err)
+		require.WithinDuration(c.t, endDate, responseEndDate, time.Hour,
+			"endDate in response [%s] not in expected range [%s]", responseEndDate, endDate.Format(time.RFC3339))
+	}
+}
+
+func signupIsProvisioned(client *GetSignupClient) {
+	hostAwait := client.await.Host()
+	memberAwait := client.await.Member1()
+	memberCluster, found, err := hostAwait.GetToolchainCluster(client.t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
+	transformedUsername := commonsignup.TransformUsername(client.username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	require.NoError(client.t, err)
+	require.True(client.t, found)
+	assert.Equal(client.t, memberCluster.Spec.APIEndpoint, client.responseBody["apiEndpoint"])
+	assert.Equal(client.t, hostAwait.APIProxyURL, client.responseBody["proxyURL"])
+	assert.Equal(client.t, fmt.Sprintf("%s-dev", transformedUsername), client.responseBody["defaultUserNamespace"])
+	assertRHODSClusterURL(client.t, memberAwait, client.responseBody)
+}
+
+type GetSignupClient struct {
+	t            *testing.T
+	await        wait.Awaitilities
+	username     string
+	bearerToken  string
+	responseBody map[string]interface{}
+}
+
+func NewGetSignupClient(t *testing.T, await wait.Awaitilities, username, bearerToken string) *GetSignupClient {
+	return &GetSignupClient{
+		t:           t,
+		await:       await,
+		username:    username,
+		bearerToken: bearerToken,
+	}
+}
+
+func (c *GetSignupClient) Invoke(assertions ...func(client *GetSignupClient)) {
+	hostAwait := c.await.Host()
+	memberAwait := c.await.Member1()
+	c.responseBody = waitForUserSignupReadyInRegistrationService(c.t, hostAwait.RegistrationServiceURL, c.username, c.bearerToken)
+	transformedUsername := commonsignup.TransformUsername(c.username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
+	assert.Equal(c.t, transformedUsername, c.responseBody["compliantUsername"])
+	assert.Equal(c.t, c.username, c.responseBody["username"])
+	assert.Equal(c.t, memberAwait.GetConsoleURL(c.t), c.responseBody["consoleURL"])
+
+	for _, assertion := range assertions {
+		assertion(c)
+	}
 }
 
 func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities, username, bearerToken string) {

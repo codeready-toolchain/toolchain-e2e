@@ -280,3 +280,26 @@ func TestTierTemplates(t *testing.T) {
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
 	assert.GreaterOrEqual(t, len(allTiers.Items), 27)
 }
+
+func TestKsctlGeneratedTiers(t *testing.T) {
+	t.Parallel()
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+
+	for _, tierName := range []string{"appstudio", "appstudio-env", "appstudiolarge"} {
+
+		t.Run("for tier "+tierName, func(t *testing.T) {
+			tier, err := hostAwait.WaitForNSTemplateTier(t, tierName)
+			require.NoError(t, err)
+			assert.Equal(t, "ksctl", tier.Annotations["generated-by"])
+
+			refs := tiers.GetTemplateRefs(t, hostAwait, tierName).Flatten()
+
+			for _, ref := range refs {
+				tierTemplate, err := hostAwait.WaitForTierTemplate(t, ref)
+				require.NoError(t, err)
+				assert.Equal(t, "ksctl", tierTemplate.Annotations["generated-by"], "templateRef", ref)
+			}
+		})
+	}
+}
