@@ -1,7 +1,7 @@
 
-GH_OWNER=mfrancisc
+GH_OWNER=codeready-toolchain
 GH_REPO=toolchain-cicd
-GH_BRANCH=devkeycloak
+GH_BRANCH=master
 STRIPS_FOLDER=3
 OWNER_AND_BRANCH_LOCATION=${GH_OWNER}/${GH_REPO}/${GH_BRANCH}
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
