@@ -29,6 +29,9 @@ spec:
       spaceBindingRequestEnabled: true
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
+      featureToggles:
+      - name: "test-feature"
+        weight: 100
     toolchainStatus:
       toolchainStatusRefreshTime: '1s'
   members:

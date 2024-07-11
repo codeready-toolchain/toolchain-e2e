@@ -1,8 +1,12 @@
 package parallel
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
+	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
 	"time"
 
@@ -303,3 +307,123 @@ func TestKsctlGeneratedTiers(t *testing.T) {
 		})
 	}
 }
+
+func TestFeatureToggles(t *testing.T) {
+	t.Parallel()
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
+
+	t.Run("provision space with enabled feature", func(t *testing.T) {
+		// given
+
+		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
+		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
+		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "featuredtier", baseTier, WithClusterRoleBinding(t, baseTier, "test-feature"))
+		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
+		require.NoError(t, err)
+
+		// when
+
+		// Now let's create a Space with this tier.
+		user := NewSignupRequest(awaitilities).
+			Username("featured-user").
+			Email("featured@domain.com").
+			ManuallyApprove().
+			TargetCluster(awaitilities.Member1()).
+			EnsureMUR().
+			SpaceTier(tier.Name).
+			TargetCluster(memberAwait).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			Execute(t)
+
+		// then
+
+		// Verify that the space has the feature annotation
+		space, err := hostAwait.WaitForSpace(t, user.Space.Name)
+		require.NoError(t, err)
+		require.NotEmpty(t, space.Annotations)
+		assert.Equal(t, "test-feature", space.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey])
+		// and CRB for the that feature has been created
+		crb := &v1.ClusterRoleBinding{}
+		nsName := fmt.Sprintf("%s-dev", user.Space.Name)
+		crbName := fmt.Sprintf("%s-%s", user.Space.Name, "test-feature")
+		err = memberAwait.WaitForObject(t, nsName, crbName, crb)
+		require.NoError(t, err)
+
+		t.Run("disable feature", func(t *testing.T) {
+			// when
+
+			// Now let's disable the feature for the Space by removing the feature annotation
+			an := space.Annotations
+			delete(an, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
+			space, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
+				s.Annotations = an
+			})
+			require.NoError(t, err)
+
+			// then
+			err = memberAwait.WaitForObjectDeleted(t, nsName, crbName, crb)
+			require.NoError(t, err)
+
+			t.Run("re-enable feature", func(t *testing.T) {
+				// when
+
+				// Now let's re-enable the feature for the Space by restoring the feature annotation
+				an := space.Annotations
+				if an == nil {
+					an = make(map[string]string)
+				}
+				an[toolchainv1alpha1.FeatureToggleNameAnnotationKey] = "test-feature"
+				_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
+					s.Annotations = an
+				})
+				require.NoError(t, err)
+
+				// then
+				// Verify that the CRB is back
+				crb := &v1.ClusterRoleBinding{}
+				err = memberAwait.WaitForObject(t, nsName, crbName, crb)
+				require.NoError(t, err)
+			})
+		})
+	})
+}
+
+func WithClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
+	var tpl bytes.Buffer
+	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&tpl, map[string]interface{}{
+		"featureName": feature,
+	})
+	require.NoError(t, err)
+
+	modifiers := []tiers.TierTemplateModifier{
+		func(awaitility *wait.HostAwaitility, template *toolchainv1alpha1.TierTemplate) error {
+			clusterRB := runtime.RawExtension{
+				Raw: tpl.Bytes(),
+			}
+			template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB)
+			return nil
+		},
+	}
+	return tiers.WithClusterResources(t, otherTier, modifiers...)
+}
+
+var viewCRB = `
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: ${SPACE_NAME}-{{ .featureName }}
+    annotations:
+      toolchain.dev.openshift.com/feature: {{ .featureName }}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: view
+  subjects:
+    - kind: User
+      name: ${USERNAME}
+`
