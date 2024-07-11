@@ -139,7 +139,7 @@ test-e2e-registration-local:
 	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: e2e-run-parallel
-e2e-run-parallel:
+e2e-run-parallel: tiers-via-ksctl
 	@echo "Running e2e tests in parallel..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
 	@echo "The parallel e2e tests successfully finished"
@@ -434,3 +434,23 @@ display-eval:
 ## Run the unit tests in the 'testsupport/...' packages
 test:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
+
+.PHONY: tiers-via-ksctl
+## Regenerate and re-apply appstudio tiers using the latest version of ksctl
+tiers-via-ksctl:
+	$(eval HOST_REPO_LOC = $(or ${HOST_REPO_PATH}, /tmp/host-operator-master))
+ifeq ($(HOST_REPO_PATH),)
+	rm -rf /tmp/host-operator-master 2>/dev/null || true
+	git clone --depth 1 https://github.com/codeready-toolchain/host-operator.git /tmp/host-operator-master
+endif
+	rm -rf /tmp/e2e-tiers 2>/dev/null || true
+	rm -rf /tmp/e2e-tiers-out 2>/dev/null || true
+	mkdir /tmp/e2e-tiers
+	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio /tmp/e2e-tiers/
+	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio-env /tmp/e2e-tiers/
+	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudiolarge /tmp/e2e-tiers
+	rm -rf /tmp/ksctl-master 2>/dev/null || true
+	git clone https://github.com/kubesaw/ksctl.git /tmp/ksctl-master
+	$(MAKE) -C /tmp/ksctl-master install GOBIN=/tmp/ksctl-master/bin
+	/tmp/ksctl-master/bin/ksctl generate nstemplatetiers --source /tmp/e2e-tiers --out-dir /tmp/e2e-tiers-out
+	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g;s/^metadata:/metadata:\n  annotations:\n    generated-by: ksctl/g' | oc apply -f -
