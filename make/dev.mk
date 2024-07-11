@@ -34,7 +34,10 @@ deploy-e2e-to-dev-namespaces:
 .PHONY: deploy-e2e-to-dev-namespaces-two-members
 deploy-e2e-to-dev-namespaces-two-members:
 	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
-	if [[ ${DEV_SSO} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; fi
+	if [[ ${DEV_SSO} == true ]]; then \
+		$(MAKE) download-assets ASSETS_FOLDER=scripts/ci/dev-sso; \
+		$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; \
+	fi
 
 .PHONY: dev-deploy-e2e-local
 dev-deploy-e2e-local: deploy-e2e-local-to-dev-namespaces print-reg-service-link
@@ -45,12 +48,19 @@ dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members
 .PHONY: deploy-e2e-local-to-dev-namespaces
 deploy-e2e-local-to-dev-namespaces:
 	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
-	if [[ ${DEV_SSO} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; fi
+	if [[ ${DEV_SSO} == true ]]; then \
+		$(MAKE) download-assets ASSETS_FOLDER=scripts/ci/dev-sso; \
+		$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; \
+	fi
 
 .PHONY: deploy-e2e-local-to-dev-namespaces-two-members
 deploy-e2e-local-to-dev-namespaces-two-members:
 	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
-	if [[ ${DEV_SSO} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; fi
+	if [[ ${DEV_SSO} == true ]]; then \
+		$(MAKE) download-assets ASSETS_FOLDER=scripts/ci/dev-sso; \
+		$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; \
+	fi
+
 
 .PHONY: print-reg-service-link
 print-reg-service-link:
