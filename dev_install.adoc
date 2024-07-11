@@ -18,7 +18,7 @@ Option #2: Configure your own Keycloak server and set up authentication on the O
 
 
 Option #3: Deploy and configure keycloak internally as part of the cluster. Just add `DEV_SSO=true` parameter to the `dev` targets. For eg.: `make dev-deploy-latest DEV_SSO=true` will deploy latest version of the operators with a preconfigured keycloak instance and one default keycloak user `user1@user.us` with password `user1`.
-If you are presented with the following error, you just need to ignore the certificate problem for the `https://keycloak-<dev-sso-namespace>.<domain>/auth/js/keycloak.js :
+If you are presented with the following error, then you need to accept the self-signed certificate of the dev Keycloak instance first. Go to `https://keycloak-<dev-sso-namespace>.<domain>/auth (the complete link is printed out at the end of the command) and accept the certificate.:
 
 :imagesdir: doc/images
 image::insecure_keycloak.png[align="center"]
