@@ -412,8 +412,7 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 	return tiers.WithClusterResources(t, otherTier, modifiers...)
 }
 
-var viewCRB = `
-apiVersion: rbac.authorization.k8s.io/v1
+var viewCRB = `apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: ${SPACE_NAME}-{{ .featureName }}
