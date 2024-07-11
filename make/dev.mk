@@ -35,7 +35,7 @@ deploy-e2e-to-dev-namespaces:
 deploy-e2e-to-dev-namespaces-two-members:
 	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 	if [[ ${DEV_SSO} == true ]]; then \
-		$(MAKE) download-assets ASSETS_FOLDER=scripts/ci/dev-sso; \
+		$(MAKE) download-assets ASSETS_FOLDER=scripts/ci/dev-sso && \
 		$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; \
 	fi
 
