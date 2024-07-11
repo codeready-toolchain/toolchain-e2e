@@ -322,7 +322,7 @@ func TestFeatureToggles(t *testing.T) {
 
 		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
 		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
-		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "featuredtier", baseTier, WithClusterRoleBinding(t, baseTier, "test-feature"))
+		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "featuredtier", baseTier, withClusterRoleBinding(t, baseTier, "test-feature"))
 		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
 		require.NoError(t, err)
 
@@ -393,7 +393,7 @@ func TestFeatureToggles(t *testing.T) {
 	})
 }
 
-func WithClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
+func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
 	var tpl bytes.Buffer
 	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&tpl, map[string]interface{}{
 		"featureName": feature,
