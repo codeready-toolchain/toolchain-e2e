@@ -413,17 +413,17 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 }
 
 var viewCRB = `
-- apiVersion: rbac.authorization.k8s.io/v1
-  kind: ClusterRoleBinding
-  metadata:
-    name: ${SPACE_NAME}-{{ .featureName }}
-    annotations:
-      toolchain.dev.openshift.com/feature: {{ .featureName }}
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: ClusterRole
-    name: view
-  subjects:
-    - kind: User
-      name: ${USERNAME}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${SPACE_NAME}-{{ .featureName }}
+  annotations:
+    toolchain.dev.openshift.com/feature: {{ .featureName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: User
+  name: ${USERNAME}
 `
