@@ -30,7 +30,7 @@ func TestToolchainClusterE2E(t *testing.T) {
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, hostoperator bool) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, singleCondition bool) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
@@ -128,10 +128,10 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// then the ToolchainCluster should be Not Ready
 		require.NoError(t, err)
-		if hostoperator {
+		if singleCondition {
 			_, err = await.WaitForToolchainCluster(t,
 				wait.UntilToolchainClusterHasName(toolchainCluster.Name),
-				wait.UntilToolchainClusterHasConditionAndFalseStatus(toolchainv1alpha1.ConditionReady),
+				wait.UntilToolchainClusterHasConditionFalseStatusAndReason(toolchainv1alpha1.ConditionReady, toolchainv1alpha1.ToolchainClusterClusterNotReachableReason),
 			)
 			require.NoError(t, err)
 		} else {
