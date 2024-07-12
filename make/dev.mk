@@ -34,7 +34,7 @@ deploy-e2e-to-dev-namespaces-two-members:
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
 setup-dev-sso:
-	if [[ ${DEV_SSO} == true ]]; then \
+	if [[ "${DEV_SSO}" == "true" ]]; then \
 		$(MAKE) download-assets ASSETS_FOLDER=scripts/ci/dev-sso && \
 		$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/setup-dev-sso.sh  SCRIPT_PARAMS="--sso-ns $(DEV_SSO_NS)"; \
 	fi
