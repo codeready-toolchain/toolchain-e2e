@@ -31,6 +31,12 @@ clean-cluster-wide-config:
 clean-toolchain-namespaces-in-e2e:
 	$(Q)-oc get projects --output=name | grep -E "toolchain-(member|host)(\-operator)?(\-[0-9]+)?" | xargs oc delete
 
+.PHONY: clean-toolchain-dev-sso-resources
+## Delete resources in the dev sso namespace
+clean-toolchain-dev-sso-resources:
+	$(Q)-oc delete keycloak -n ${DEV_SSO_NS} --all --wait
+	$(Q)-oc delete keycloakrealm -n ${DEV_SSO_NS} --all
+
 .PHONY: clean-e2e-resources
 ## Delete resources in the OpenShift cluster. The deleted resources are:
 ##    * all user-related resources
@@ -40,9 +46,10 @@ clean-e2e-resources: clean-users clean-toolchain-namespaces-in-e2e clean-cluster
 
 .PHONY: clean-toolchain-namespaces-in-dev
 ## Delete dev namespaces
-clean-toolchain-namespaces-in-dev:
+clean-toolchain-namespaces-in-dev: clean-toolchain-dev-sso-resources
 	$(Q)oc delete namespace ${DEV_HOST_NS} || true
 	$(Q)oc delete namespace ${DEV_MEMBER_NS} || true
+	$(Q)oc delete namespace ${DEV_SSO_NS} || true
 
 .PHONY: clean-dev-resources
 ## Delete resources in the OpenShift cluster. The deleted resources are:
