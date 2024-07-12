@@ -1,7 +1,7 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20240530120602-c11598ccffb7
+	github.com/codeready-toolchain/api v0.0.0-20240708122235-0af5a9a178bb
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20240530121312-98aad712838f
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.12.0
@@ -31,7 +31,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.13.0
 )
 
-require github.com/google/uuid v1.6.0
+require (
+	github.com/google/uuid v1.6.0
+	gotest.tools v2.2.0+incompatible
+)
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
