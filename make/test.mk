@@ -437,7 +437,7 @@ test:
 
 .PHONY: tiers-via-ksctl
 ## Regenerate and re-apply appstudio tiers using the latest version of ksctl
-tiers-via-ksctl:
+tiers-via-ksctl: ksctl
 	$(eval HOST_REPO_LOC = $(or ${HOST_REPO_PATH}, /tmp/host-operator-master))
 ifeq ($(HOST_REPO_PATH),)
 	rm -rf /tmp/host-operator-master 2>/dev/null || true
@@ -449,8 +449,5 @@ endif
 	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio /tmp/e2e-tiers/
 	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio-env /tmp/e2e-tiers/
 	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudiolarge /tmp/e2e-tiers
-	rm -rf /tmp/ksctl-master 2>/dev/null || true
-	git clone https://github.com/kubesaw/ksctl.git /tmp/ksctl-master
-	$(MAKE) -C /tmp/ksctl-master install GOBIN=/tmp/ksctl-master/bin
-	/tmp/ksctl-master/bin/ksctl generate nstemplatetiers --source /tmp/e2e-tiers --out-dir /tmp/e2e-tiers-out
+	${BIN_DIR}/ksctl generate nstemplatetiers --source /tmp/e2e-tiers --out-dir /tmp/e2e-tiers-out
 	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g;s/^metadata:/metadata:\n  annotations:\n    generated-by: ksctl/g' | oc apply -f -
