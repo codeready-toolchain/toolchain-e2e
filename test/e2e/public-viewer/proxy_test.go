@@ -53,8 +53,8 @@ func TestPublicViewerProxy(t *testing.T) {
 
 	t.Run("space is flagged as community", func(t *testing.T) {
 		// when
-		_ = CreateCommunitySpaceBinding(t, hostAwait, space.Name, space.Namespace)
-		require.NoError(t, err)
+		sb := CreateCommunitySpaceBinding(t, hostAwait, space.Name, space.Namespace)
+		require.NotNil(t, sb)
 
 		// Wait until space is flagged as community
 		require.NoError(t,
@@ -177,5 +177,5 @@ func CreateCommunitySpaceBinding(
 	hostAwait *wait.HostAwaitility,
 	spaceName, spaceNamespace string,
 ) *toolchainv1alpha1.SpaceBinding {
-	return spacebinding.CreateSpaceBindingStr(t, hostAwait, toolchainv1alpha1.KubesawAuthenticatedUsername, spaceName, spaceNamespace, "contributor")
+	return spacebinding.CreateSpaceBindingStr(t, hostAwait, toolchainv1alpha1.KubesawAuthenticatedUsername, spaceName, spaceNamespace, "viewer")
 }

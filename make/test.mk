@@ -153,7 +153,7 @@ e2e-run-public-viewer:
 	@echo "Running e2e public-viewer tests..."
 	oc patch toolchainconfigs.toolchain.dev.openshift.com config \
 		-n ${HOST_NS} \
-		--patch='{"spec":{"publicViewerConfig":{"enabled":true}}}' \
+		--patch='{"spec":{"host":{"publicViewerConfig":{"enabled":true}}}}' \
 		--type=merge
 	$(MAKE) execute-tests \
 		MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} \
@@ -162,7 +162,7 @@ e2e-run-public-viewer:
 		rt=$$?; \
 		oc patch toolchainconfigs.toolchain.dev.openshift.com config \
 			-n ${HOST_NS} \
-			--patch='{"spec":{"publicViewerConfig":{"enabled":false}}}' \
+			--patch='{"spec":{"host":{"publicViewerConfig":{"enabled":false}}}}' \
 			--type=merge && \
 		exit $$rt
 	@echo "The e2e public-viewer tests successfully finished"
