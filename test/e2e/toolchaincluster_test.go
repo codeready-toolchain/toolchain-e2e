@@ -23,9 +23,9 @@ func TestToolchainClusterE2E(t *testing.T) {
 	hostAwait.WaitForToolchainClusterResources(t)
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
-	// this to check after dropping the offline condition and also make it backwards compatible and pair it with member operator
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, false)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, true)
+
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, true)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, false)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
@@ -103,7 +103,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.NoError(t, err)
 	})
 
-	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be offline", current.Name), func(t *testing.T) {
+	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with incorrect data and expect to be Not Ready", current.Name), func(t *testing.T) {
 		// given
 		name := generateNewName("new-offline-", current.Name)
 		secretCopy := &corev1.Secret{}
@@ -157,6 +157,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
+
 	})
 }
 
