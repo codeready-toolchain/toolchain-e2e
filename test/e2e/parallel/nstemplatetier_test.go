@@ -405,6 +405,7 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 			clusterRB := runtime.RawExtension{
 				Raw: tpl.Bytes(),
 			}
+			clusterRB.UnmarshalJSON()
 			template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB)
 			return nil
 		},
@@ -412,17 +413,25 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 	return tiers.WithClusterResources(t, otherTier, modifiers...)
 }
 
-var viewCRB = `apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: ${SPACE_NAME}-{{ .featureName }}
-  annotations:
-    toolchain.dev.openshift.com/feature: {{ .featureName }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: view
-subjects:
-- kind: User
-  name: ${USERNAME}
+var viewCRB = `{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "ClusterRoleBinding",
+  "metadata": {
+    "name": "${SPACE_NAME}-{{ .featureName }}",
+    "annotations": {
+      "toolchain.dev.openshift.com/feature": "{{ .featureName }}"
+    }
+  },
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+  },
+  "subjects": [
+    {
+      "kind": "User",
+      "name": "${USERNAME}"
+    }
+  ]
+}
 `
