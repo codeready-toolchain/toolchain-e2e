@@ -405,7 +405,6 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 			clusterRB := runtime.RawExtension{
 				Raw: tpl.Bytes(),
 			}
-			clusterRB.UnmarshalJSON()
 			template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB)
 			return nil
 		},
