@@ -328,17 +328,19 @@ func TestFeatureToggles(t *testing.T) {
 
 		// when
 
-		// Now let's create a Space with this tier.
+		// Now let's create a Space
 		user := NewSignupRequest(awaitilities).
 			Username("featured-user").
 			Email("featured@domain.com").
 			ManuallyApprove().
 			TargetCluster(awaitilities.Member1()).
 			EnsureMUR().
-			SpaceTier(tier.Name).
+			SpaceTier("base1ns").
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
+		// and promote that space to the featuredtier tier
+		tiers.MoveSpaceToTier(t, hostAwait, "featured-user", tier.Name)
 
 		// then
 
