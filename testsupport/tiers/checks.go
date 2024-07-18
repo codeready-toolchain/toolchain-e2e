@@ -37,7 +37,7 @@ const (
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
 	testTier           = "test"
-	featuredTier       = "featuredtier" // dynamic tier created by nstemplatetier test to test feature toggles. It's a copy of the "base" tier with additional resources managed by feature toggles.
+	featuredTier       = "featuredtier" // dynamic tier created by nstemplatetier test to test feature toggles. It's a copy of the "base1ns" tier with additional resources managed by feature toggles.
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -79,7 +79,7 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
 	case featuredTier:
-		return &baseTierChecks{tierName: base}, nil
+		return &baseTierChecks{tierName: base1ns}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
