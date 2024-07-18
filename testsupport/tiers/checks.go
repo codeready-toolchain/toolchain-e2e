@@ -79,7 +79,7 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
 	case featuredTier:
-		return &baseTierChecks{tierName: base1ns}, nil
+		return &base1nsTierChecks{tierName: base1ns}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}

@@ -314,7 +314,7 @@ func TestFeatureToggles(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	base1nsTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
 	require.NoError(t, err)
 
 	t.Run("provision space with enabled feature", func(t *testing.T) {
@@ -322,7 +322,7 @@ func TestFeatureToggles(t *testing.T) {
 
 		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
 		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
-		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "featuredtier", baseTier, withClusterRoleBinding(t, baseTier, "test-feature"))
+		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "featuredtier", base1nsTier, withClusterRoleBinding(t, base1nsTier, "test-feature"))
 		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
 		require.NoError(t, err)
 
