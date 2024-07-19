@@ -1012,7 +1012,7 @@ func (a *MemberAwaitility) WaitForObject(t *testing.T, namespaceName string, nam
 
 func (a *MemberAwaitility) printObjectWait(t *testing.T, namespaceName string, name string, obj client.Object, objList client.ObjectList) {
 	buf := &strings.Builder{}
-	buf.WriteString(fmt.Sprintf("failed to find Object with name \"%s\" in namespace \"%s\"\n", name, namespaceName))
+	buf.WriteString(fmt.Sprintf("failed to find %s with name \"%s\" in namespace \"%s\"\n", obj.GetObjectKind().GroupVersionKind().Kind, name, namespaceName))
 	buf.WriteString(a.listAndReturnContent(obj.GetObjectKind().GroupVersionKind().Kind, namespaceName, objList))
 	t.Log(buf.String())
 }

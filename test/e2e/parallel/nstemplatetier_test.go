@@ -341,6 +341,7 @@ func TestFeatureToggles(t *testing.T) {
 			Execute(t)
 		// and promote that space to the featuredtier tier
 		tiers.MoveSpaceToTier(t, hostAwait, "featured-user", tier.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, "featured-user")
 
 		// then
 
@@ -351,9 +352,8 @@ func TestFeatureToggles(t *testing.T) {
 		assert.Equal(t, "test-feature", space.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey])
 		// and CRB for the that feature has been created
 		crb := &v1.ClusterRoleBinding{}
-		nsName := fmt.Sprintf("%s-dev", user.Space.Name)
 		crbName := fmt.Sprintf("%s-%s", user.Space.Name, "test-feature")
-		err = memberAwait.WaitForObject(t, nsName, crbName, crb, &v1.ClusterRoleBindingList{})
+		err = memberAwait.WaitForObject(t, "", crbName, crb, &v1.ClusterRoleBindingList{})
 		require.NoError(t, err)
 
 		t.Run("disable feature", func(t *testing.T) {
@@ -368,7 +368,7 @@ func TestFeatureToggles(t *testing.T) {
 			require.NoError(t, err)
 
 			// then
-			err = memberAwait.WaitForObjectDeleted(t, nsName, crbName, crb)
+			err = memberAwait.WaitForObjectDeleted(t, "", crbName, crb)
 			require.NoError(t, err)
 
 			t.Run("re-enable feature", func(t *testing.T) {
@@ -388,7 +388,7 @@ func TestFeatureToggles(t *testing.T) {
 				// then
 				// Verify that the CRB is back
 				crb := &v1.ClusterRoleBinding{}
-				err = memberAwait.WaitForObject(t, nsName, crbName, crb, &v1.ClusterRoleBindingList{})
+				err = memberAwait.WaitForObject(t, "", crbName, crb, &v1.ClusterRoleBindingList{})
 				require.NoError(t, err)
 			})
 		})
