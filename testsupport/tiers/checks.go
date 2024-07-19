@@ -37,7 +37,7 @@ const (
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
 	testTier           = "test"
-	featuredTier       = "featuredtier" // dynamic tier created by nstemplatetier test to test feature toggles. It's a copy of the "base1ns" tier with additional resources managed by feature toggles.
+	featuredTier       = "ftier" // dynamic tier created by nstemplatetier test to test feature toggles. It's a copy of the "base1ns" tier with additional resources managed by feature toggles. And since it's a copy of another tier we need to keep the name short to avoid exceeding 63 characters for the tier template names
 
 	// common CPU limits
 	baseCPULimit = "40000m"

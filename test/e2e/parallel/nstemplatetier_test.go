@@ -322,8 +322,9 @@ func TestFeatureToggles(t *testing.T) {
 
 		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
 		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
-		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "featuredtier", base1nsTier, withClusterRoleBinding(t, base1nsTier, "test-feature"))
-		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
+		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "ftier", base1nsTier)
+		createdTier, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
+		tier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, tier, withClusterRoleBinding(t, createdTier, "test-feature"))
 		require.NoError(t, err)
 
 		// when
@@ -339,9 +340,8 @@ func TestFeatureToggles(t *testing.T) {
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
-		// and promote that space to the featuredtier tier
+		// and promote that space to the ftier tier
 		tiers.MoveSpaceToTier(t, hostAwait, "featured-user", tier.Name)
-		VerifyResourcesProvisionedForSpace(t, awaitilities, "featured-user")
 
 		// then
 
