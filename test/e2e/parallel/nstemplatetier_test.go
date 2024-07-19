@@ -353,7 +353,7 @@ func TestFeatureToggles(t *testing.T) {
 		crb := &v1.ClusterRoleBinding{}
 		nsName := fmt.Sprintf("%s-dev", user.Space.Name)
 		crbName := fmt.Sprintf("%s-%s", user.Space.Name, "test-feature")
-		err = memberAwait.WaitForObject(t, nsName, crbName, crb)
+		err = memberAwait.WaitForObject(t, nsName, crbName, crb, &v1.ClusterRoleBindingList{})
 		require.NoError(t, err)
 
 		t.Run("disable feature", func(t *testing.T) {
@@ -388,7 +388,7 @@ func TestFeatureToggles(t *testing.T) {
 				// then
 				// Verify that the CRB is back
 				crb := &v1.ClusterRoleBinding{}
-				err = memberAwait.WaitForObject(t, nsName, crbName, crb)
+				err = memberAwait.WaitForObject(t, nsName, crbName, crb, &v1.ClusterRoleBindingList{})
 				require.NoError(t, err)
 			})
 		})
