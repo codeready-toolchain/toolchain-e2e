@@ -1,4 +1,4 @@
-package community_test
+package publicviewer_test
 
 import (
 	"sort"
