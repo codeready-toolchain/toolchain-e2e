@@ -398,16 +398,13 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 	})
 	require.NoError(t, err)
 
-	modifiers := []tiers.TierTemplateModifier{
-		func(awaitility *wait.HostAwaitility, template *toolchainv1alpha1.TierTemplate) error {
-			clusterRB := runtime.RawExtension{
-				Raw: tpl.Bytes(),
-			}
-			template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB)
-			return nil
-		},
-	}
-	return tiers.WithClusterResources(t, otherTier, modifiers...)
+	return tiers.WithClusterResources(t, otherTier, func(awaitility *wait.HostAwaitility, template *toolchainv1alpha1.TierTemplate) error {
+		clusterRB := runtime.RawExtension{
+			Raw: tpl.Bytes(),
+		}
+		template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB)
+		return nil
+	})
 }
 
 var viewCRB = `{
