@@ -157,7 +157,7 @@ e2e-run-public-viewer:
 		--type=merge
 	$(MAKE) execute-tests \
 		MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} \
-		TESTS_TO_EXECUTE="./test/e2e/parallel ./test/e2e/public-viewer ./test/metrics ./test/e2e" \
+		TESTS_TO_EXECUTE="./test/e2e/parallel ./test/e2e/publicviewer ./test/metrics ./test/e2e" \
 		E2E_PARALLELISM=100; \
 		rt=$$?; \
 		oc patch toolchainconfigs.toolchain.dev.openshift.com config \
