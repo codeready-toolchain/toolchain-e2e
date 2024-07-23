@@ -360,10 +360,8 @@ func TestFeatureToggles(t *testing.T) {
 			// when
 
 			// Now let's disable the feature for the Space by removing the feature annotation
-			an := space.Annotations
-			delete(an, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
 			space, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
-				s.Annotations = an
+				delete(s.Annotations, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
 			})
 			require.NoError(t, err)
 
