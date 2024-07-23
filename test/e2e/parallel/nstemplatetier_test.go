@@ -342,10 +342,11 @@ func TestFeatureToggles(t *testing.T) {
 			Execute(t)
 		// and promote that space to the ftier tier
 		tiers.MoveSpaceToTier(t, hostAwait, "featured-user", tier.Name)
+		VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, memberAwait, "featured-user", tier)
 
 		// then
 
-		// Verify that the space has the feature annotation - the weight is set to 100 so it should be added to all Spaces
+		// Verify that the space has the feature annotation - the weight is set to 100, so it should be added to all Spaces in all tiers
 		space, err := hostAwait.WaitForSpace(t, user.Space.Name)
 		require.NoError(t, err)
 		require.NotEmpty(t, space.Annotations)
