@@ -345,7 +345,7 @@ func TestFeatureToggles(t *testing.T) {
 
 		// then
 
-		// Verify that the space has the feature annotation
+		// Verify that the space has the feature annotation - the weight is set to 100 so it should be added to all Spaces
 		space, err := hostAwait.WaitForSpace(t, user.Space.Name)
 		require.NoError(t, err)
 		require.NotEmpty(t, space.Annotations)
