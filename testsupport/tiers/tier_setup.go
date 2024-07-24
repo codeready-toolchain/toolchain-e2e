@@ -80,6 +80,9 @@ func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) C
 	}
 }
 
+// CreateCustomNSTemplateTier creates a custom tier.
+// If no modifiers provided then the new tier will use copies of the baseTier cluster, namespace and space roles templates
+// without any modifications.
 func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name string, baseTier *toolchainv1alpha1.NSTemplateTier, modifiers ...CustomNSTemplateTierModifier) *CustomNSTemplateTier {
 	tier := &CustomNSTemplateTier{
 		NSTemplateTier: &toolchainv1alpha1.NSTemplateTier{
@@ -93,12 +96,14 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 			},
 		},
 	}
-	// add default values before custom values...
-	modifiers = append([]CustomNSTemplateTierModifier{
-		WithClusterResources(t, baseTier),
-		WithNamespaceResources(t, baseTier),
-		WithSpaceRoles(t, baseTier),
-	}, modifiers...)
+	if len(modifiers) == 0 {
+		// If no modifiers provided then use default modifiers which would use resources from the base tier.
+		modifiers = []CustomNSTemplateTierModifier{
+			WithClusterResources(t, baseTier),
+			WithNamespaceResources(t, baseTier),
+			WithSpaceRoles(t, baseTier),
+		}
+	}
 
 	// ... and apply
 	for _, modify := range modifiers {
