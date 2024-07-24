@@ -796,7 +796,7 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 	return returnedObject, err
 }
 
-// WithNameDeleted waits for a single object with the provided name in the namespace of the awaitality to get deleted
+// WithNameDeleted waits for a single object with the provided name in the namespace of the awaitility to get deleted
 func (w *Waiter[T]) WithNameDeleted(name string) error {
 	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to be deleted", w.gvk, name, w.await.Namespace)
 	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
