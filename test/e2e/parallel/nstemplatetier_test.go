@@ -336,7 +336,6 @@ func TestFeatureToggles(t *testing.T) {
 			Username("featured-user").
 			Email("featured@domain.com").
 			ManuallyApprove().
-			TargetCluster(awaitilities.Member1()).
 			EnsureMUR().
 			SpaceTier("base1ns").
 			TargetCluster(memberAwait).
