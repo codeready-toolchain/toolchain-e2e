@@ -989,48 +989,6 @@ func (a *MemberAwaitility) WaitForRoleBinding(t *testing.T, namespace *corev1.Na
 	return roleBinding, err
 }
 
-// WaitForObject waits until an Object with the given name exists in the given namespace
-func (a *MemberAwaitility) WaitForObject(t *testing.T, namespaceName string, name string, obj client.Object, objList client.ObjectList) error {
-	t.Logf("waiting for Object '%s' in namespace '%s'", name, namespaceName)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespaceName, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	})
-	if err != nil {
-		t.Logf("failed to wait for object")
-		a.printObjectWait(t, namespaceName, name, obj, objList)
-		return err
-	}
-	t.Logf("found object %s", obj.GetName())
-	return nil
-}
-
-func (a *MemberAwaitility) printObjectWait(t *testing.T, namespaceName string, name string, obj client.Object, objList client.ObjectList) {
-	buf := &strings.Builder{}
-	buf.WriteString(fmt.Sprintf("failed to find %s with name \"%s\" in namespace \"%s\"\n", obj.GetObjectKind().GroupVersionKind().Kind, name, namespaceName))
-	buf.WriteString(a.listAndReturnContent(obj.GetObjectKind().GroupVersionKind().Kind, namespaceName, objList))
-	t.Log(buf.String())
-}
-
-// WaitForObjectDeleted waits until an Object with the given name does not exist anymore in the given namespace
-func (a *MemberAwaitility) WaitForObjectDeleted(t *testing.T, namespaceName string, name string, obj client.Object) error {
-	t.Logf("waiting for Object '%s' in namespace '%s' to be deleted", name, namespaceName)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespaceName, Name: name}, obj); err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, err
-		}
-		return false, nil
-	})
-}
-
 // WaitUntilRoleBindingDeleted waits until a RoleBinding with the given name does not exist anymore in the given namespace
 func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(t *testing.T, namespace *corev1.Namespace, name string) error {
 	t.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)

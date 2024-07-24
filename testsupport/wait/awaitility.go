@@ -796,6 +796,41 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 	return returnedObject, err
 }
 
+// WithNameDeleted waits for a single object with the provided name in the namespace of the awaitality to get deleted
+func (w *Waiter[T]) WithNameDeleted(name string) error {
+	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to be deleted", w.gvk, name, w.await.Namespace)
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("failed to wait for the the object (GVK '%s') called '%s' in namespace '%s' to be deleted")
+		args := []any{w.gvk, name, w.await.Namespace}
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			o, _ := w.cast(obj)
+			sb.WriteString(" and the object exists in the cluster:")
+			content, _ := StringifyObject(o)
+			sb.WriteRune('\n')
+			sb.Write(content)
+		}
+		w.t.Logf(sb.String(), args...)
+	}
+	return err
+}
+
 func (w *Waiter[T]) cast(obj *unstructured.Unstructured) (T, error) {
 	var empty T
 	raw, err := obj.MarshalJSON()
