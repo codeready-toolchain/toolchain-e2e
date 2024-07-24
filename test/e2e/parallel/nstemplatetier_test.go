@@ -401,7 +401,7 @@ func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 	})
 	require.NoError(t, err)
 
-	return tiers.WithClusterResources(t, otherTier, func(awaitility *wait.HostAwaitility, template *toolchainv1alpha1.TierTemplate) error {
+	return tiers.WithClusterResources(t, otherTier, func(template *toolchainv1alpha1.TierTemplate) error {
 		clusterRB := runtime.RawExtension{
 			Raw: tpl.Bytes(),
 		}

@@ -29,7 +29,7 @@ type CustomNSTemplateTier struct {
 
 type CustomNSTemplateTierModifier func(*HostAwaitility, *CustomNSTemplateTier) error
 
-type TierTemplateModifier func(*HostAwaitility, *toolchainv1alpha1.TierTemplate) error
+type TierTemplateModifier func(*toolchainv1alpha1.TierTemplate) error
 
 func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, modifiers ...TierTemplateModifier) CustomNSTemplateTierModifier {
 	return func(hostAwait *HostAwaitility, tier *CustomNSTemplateTier) error {
@@ -146,7 +146,7 @@ func duplicateTierTemplate(t *testing.T, hostAwait *HostAwaitility, namespace, t
 		Spec: origTierTemplate.Spec,
 	}
 	for _, modify := range modifiers {
-		err := modify(hostAwait, newTierTemplate)
+		err := modify(newTierTemplate)
 		require.NoError(t, err)
 	}
 
