@@ -400,8 +400,6 @@ func TestFeatureToggles(t *testing.T) {
 	})
 }
 
-var unknownFeature = "unknown-feature"
-
 func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
 	clusterRB := getCRBforFeature(t, feature)       // This is the ClusterRoleBinding for the desired feature
 	noiseCRB := getCRBforFeature(t, unknownFeature) // This is a noise CRB for unknown/disabled feature. To be used to check that this CRB is never created.
@@ -413,18 +411,21 @@ func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTempla
 }
 
 func getCRBforFeature(t *testing.T, featureName string) runtime.RawExtension {
-	var enabledFeature bytes.Buffer
-	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&enabledFeature, map[string]interface{}{
+	var crb bytes.Buffer
+	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&crb, map[string]interface{}{
 		"featureName": featureName,
 	})
 	require.NoError(t, err)
 	clusterRB := runtime.RawExtension{
-		Raw: enabledFeature.Bytes(),
+		Raw: crb.Bytes(),
 	}
 	return clusterRB
 }
 
-var viewCRB = `{
+const (
+	unknownFeature = "unknown-feature"
+
+	viewCRB = `{
   "apiVersion": "rbac.authorization.k8s.io/v1",
   "kind": "ClusterRoleBinding",
   "metadata": {
@@ -446,3 +447,4 @@ var viewCRB = `{
   ]
 }
 `
+)
