@@ -301,7 +301,7 @@ func TestFeatureToggles(t *testing.T) {
 		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
 		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
 		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "ftier", base1nsTier,
-			withClusterRoleBinding(t, base1nsTier, "test-feature"),
+			withClusterRoleBindings(t, base1nsTier, "test-feature"),
 			tiers.WithNamespaceResources(t, base1nsTier),
 			tiers.WithSpaceRoles(t, base1nsTier))
 		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
@@ -334,6 +334,10 @@ func TestFeatureToggles(t *testing.T) {
 		crbName := fmt.Sprintf("%s-%s", user.Space.Name, "test-feature")
 		_, err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameThat(crbName)
 		require.NoError(t, err)
+		// the noise CRB for unknown/disabled feature is not created
+		noiseCrbName := fmt.Sprintf("%s-%s", user.Space.Name, unknownFeature)
+		err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+		require.NoError(t, err)
 
 		t.Run("disable feature", func(t *testing.T) {
 			// when
@@ -346,6 +350,8 @@ func TestFeatureToggles(t *testing.T) {
 
 			// then
 			err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(crbName)
+			require.NoError(t, err)
+			err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
 			require.NoError(t, err)
 
 			t.Run("re-enable feature", func(t *testing.T) {
@@ -364,28 +370,40 @@ func TestFeatureToggles(t *testing.T) {
 				// Verify that the CRB is back
 				_, err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameThat(crbName)
 				require.NoError(t, err)
+				// the noise CRB for unknown/disabled feature is still not created
+				err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+				require.NoError(t, err)
 			})
 		})
 	})
 }
 
-func withClusterRoleBinding(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
-	var tpl bytes.Buffer
-	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&tpl, map[string]interface{}{
-		"featureName": feature,
-	})
-	require.NoError(t, err)
+func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
+	clusterRB := getCRBforFeature(t, feature)       // This is the ClusterRoleBinding for the desired feature
+	noiseCRB := getCRBforFeature(t, unknownFeature) // This is a noise CRB for unknown/disabled feature. To be used to check that this CRB is never created.
 
 	return tiers.WithClusterResources(t, otherTier, func(template *toolchainv1alpha1.TierTemplate) error {
-		clusterRB := runtime.RawExtension{
-			Raw: tpl.Bytes(),
-		}
-		template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB)
+		template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB, noiseCRB)
 		return nil
 	})
 }
 
-var viewCRB = `{
+func getCRBforFeature(t *testing.T, featureName string) runtime.RawExtension {
+	var crb bytes.Buffer
+	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&crb, map[string]interface{}{
+		"featureName": featureName,
+	})
+	require.NoError(t, err)
+	clusterRB := runtime.RawExtension{
+		Raw: crb.Bytes(),
+	}
+	return clusterRB
+}
+
+const (
+	unknownFeature = "unknown-feature"
+
+	viewCRB = `{
   "apiVersion": "rbac.authorization.k8s.io/v1",
   "kind": "ClusterRoleBinding",
   "metadata": {
@@ -407,3 +425,4 @@ var viewCRB = `{
   ]
 }
 `
+)
