@@ -56,7 +56,7 @@ func TestE2EFlow(t *testing.T) {
 			VerifyMemberOperatorConfig(t, hostAwait, memberAwait, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
 		t.Run("verify MemberOperatorConfig was synced to member 2", func(t *testing.T) {
-			member2ExpectedConfig := testconfig.NewMemberOperatorConfigObj(testconfig.Webhook().Deploy(false), testconfig.WebConsolePlugin().Deploy(true), testconfig.MemberEnvironment("e2e-tests"))
+			member2ExpectedConfig := testconfig.NewMemberOperatorConfigObj(testconfig.Webhook().Deploy(false), testconfig.MemberEnvironment("e2e-tests"))
 			VerifyMemberOperatorConfig(t, hostAwait, memberAwait2, wait.UntilMemberConfigMatches(member2ExpectedConfig.Spec))
 		})
 	})

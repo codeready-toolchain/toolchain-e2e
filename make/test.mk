@@ -386,7 +386,7 @@ create-host-resources: create-spaceprovisionerconfigs-for-members
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		echo "ENVIRONMENT ${ENVIRONMENT}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
-		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true},\"environment\":\"${ENVIRONMENT}\"}}}}}" > $$PATCH_FILE; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"environment\":\"${ENVIRONMENT}\"}}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 	echo "Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup"
