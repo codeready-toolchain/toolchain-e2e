@@ -1,4 +1,4 @@
-package publicviewer_test
+package e2e_test
 
 import (
 	"context"
@@ -14,8 +14,11 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
+	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
+	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -31,23 +34,25 @@ type proxyUser struct {
 }
 
 // tests access to community-shared spaces
-func TestPublicViewerProxy(t *testing.T) {
+func TestProxyPublicViewer(t *testing.T) {
 	// given
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
-	// we create a space to share , a new MUR and a SpaceBindingRequest
-	space, _, _ := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "admin")
 
+	// public viewer is enabled in ToolchainConfig
+	hostAwait.UpdateToolchainConfig(t, testconfig.PublicViewerConfig(true))
+
+	// we create a space to share and a user for 'community-user'
+	space, _, _ := testsupportspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
 	communityUser := &proxyUser{
 		expectedMemberCluster: memberAwait,
 		username:              "community-user",
 		identityID:            uuid.New(),
 	}
 	createAppStudioUser(t, awaitilities, communityUser)
-
 	communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, hostAwait.APIProxyURL)
 	require.NoError(t, err)
 

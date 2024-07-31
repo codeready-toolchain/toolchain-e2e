@@ -41,18 +41,13 @@ TESTS_RUN_FILTER_REGEXP ?= ""
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run-public-viewer e2e-run e2e-run-metrics
+test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
-	@echo "To clean the cluster run 'make clean-e2e-resources'"
-
-.PHONY: test-e2e-public-viewer
-## Run the e2e tests for public-viewer
-test-e2e-public-viewer: prepare-e2e deploy-e2e e2e-run-public-viewer
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: test-e2e-without-migration
 ## Run the e2e tests without migration tests
-test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run-public-viewer e2e-run e2e-run-metrics
+test-e2e-without-migration: prepare-e2e deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: test-e2e-sequential-only
@@ -103,11 +98,6 @@ label-olm-ns:
 # so that deployment also works when network policies were configured with `sandbox-cli`
 	@-oc label --overwrite=true ns/openshift-operator-lifecycle-manager name=openshift-operator-lifecycle-manager
 
-.PHONY: test-e2e-local-public-viewer
-## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration tests
-test-e2e-local-public-viewer:
-	$(MAKE) test-e2e-public-viewer HOST_REPO_PATH=${PWD}/../host-operator MEMBER_REPO_PATH=${PWD}/../member-operator REG_REPO_PATH=${PWD}/../registration-service
-
 .PHONY: test-e2e-local-without-migration
 ## Run the e2e tests with the local 'host', 'member', and 'registration-service' repositories but without migration tests
 test-e2e-local-without-migration:
@@ -147,25 +137,6 @@ test-e2e-host-local:
 ## Run the e2e tests with the local 'registration' repository only
 test-e2e-registration-local:
 	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
-
-.PHONY: e2e-run-public-viewer
-e2e-run-public-viewer:
-	@echo "Running e2e public-viewer tests..."
-	oc patch toolchainconfigs.toolchain.dev.openshift.com config \
-		-n ${HOST_NS} \
-		--patch='{"spec":{"host":{"publicViewerConfig":{"enabled":true}}}}' \
-		--type=merge
-	$(MAKE) execute-tests \
-		MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} \
-		TESTS_TO_EXECUTE="./test/e2e/parallel ./test/e2e/publicviewer ./test/metrics ./test/e2e" \
-		E2E_PARALLELISM=100; \
-		rt=$$?; \
-		oc patch toolchainconfigs.toolchain.dev.openshift.com config \
-			-n ${HOST_NS} \
-			--patch='{"spec":{"host":{"publicViewerConfig":{"enabled":false}}}}' \
-			--type=merge && \
-		exit $$rt
-	@echo "The e2e public-viewer tests successfully finished"
 
 .PHONY: e2e-run-parallel
 e2e-run-parallel: tiers-via-ksctl
