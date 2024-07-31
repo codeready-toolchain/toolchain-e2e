@@ -46,6 +46,4 @@ spec:
         secret:
           ref: 'member-operator-secret'
           virtualMachineAccessKey: 'vm.access'
-      webConsolePlugin:
-        deploy: true
       environment: 'e2e-tests'
