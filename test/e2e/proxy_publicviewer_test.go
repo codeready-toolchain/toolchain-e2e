@@ -160,7 +160,7 @@ func TestProxyPublicViewer(t *testing.T) {
 	t.Run("space is not flagged as community", func(t *testing.T) {
 		sp := toolchainv1alpha1.Space{}
 		err = hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
-		require.Error(t, err)
+		require.NoError(t, err)
 
 		/*
 		   Given Space exists for user A
