@@ -156,6 +156,45 @@ func TestProxyPublicViewer(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("space is not flagged as community", func(t *testing.T) {
+		sp := toolchainv1alpha1.Space{}
+		err = hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
+		require.Error(t, err)
+
+		/*
+		   Given Space exists for user A
+		   Given User community-user exists
+		   Given A space's visibility is NOT "community"
+		   Then  community-user cannot view A's Space
+		   And   community-user cannot create resources in A's Space
+		*/
+		t.Run("community user cannot access to non-community space", func(t *testing.T) {
+			require.NotEmpty(t, sp.Status.ProvisionedNamespaces)
+
+			t.Run("community user cannot list config maps from community space", func(t *testing.T) {
+				// then
+				cms := corev1.ConfigMapList{}
+
+				communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, hostAwait.ProxyURLWithWorkspaceContext(sp.Name))
+				require.NoError(t, err)
+
+				err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
+				require.Error(t, err)
+			})
+
+			t.Run("community user cannot create config maps into space", func(t *testing.T) {
+				cm := corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cm",
+						Namespace: sp.Status.ProvisionedNamespaces[0].Name,
+					},
+				}
+				err := communityUserProxyClient.Create(context.TODO(), &cm)
+				require.Error(t, err)
+			})
+		})
+	})
 }
 
 func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *proxyUser) {
