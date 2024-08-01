@@ -261,8 +261,8 @@ print-operator-logs:
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters: ksctl
-	${BIN_DIR}/ksctl adm register-member --host-ns $(HOST_NS) --member-ns $(MEMBER_NS) --host-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config) --member-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config)
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${BIN_DIR}/ksctl adm register-member --host-ns $(HOST_NS) --member-ns $(MEMBER_NS_2) --host-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config) --member-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config); fi
+	${BIN_DIR}/ksctl adm register-member --host-ns $(HOST_NS) --member-ns $(MEMBER_NS) --host-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config) --member-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config) LETS_ENCRYPT_PARAM=${LETS_ENCRYPT_PARAM}
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${BIN_DIR}/ksctl adm register-member --host-ns $(HOST_NS) --member-ns $(MEMBER_NS_2) --host-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config) --member-kubeconfig $(or ${KUBECONFIG}, ${HOME}/.kube/config) LETS_ENCRYPT_PARAM=${LETS_ENCRYPT_PARAM}; fi
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
