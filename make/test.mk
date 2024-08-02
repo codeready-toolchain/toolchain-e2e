@@ -30,11 +30,10 @@ endif
 
 E2E_TEST_EXECUTION ?= true
 
-LETS_ENCRYPT_PARAM_VALUE :=  false
+LETS_ENCRYPT_PARAM_VALUE := true
 
 ifeq ($(IS_OSD),true)
-LETS_ENCRYPT_PARAM := 
-LETS_ENCRYPT_PARAM_VALUE = true
+LETS_ENCRYPT_PARAM := --lets-encrypt
 endif
 
 
