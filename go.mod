@@ -31,10 +31,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.13.0
 )
 
-replace github.com/codeready-toolchain/api => github.com/xcoulon/api v0.0.0-20240725145329-0fc7541fe19e
-
-replace github.com/codeready-toolchain/toolchain-common => github.com/xcoulon/toolchain-common v0.0.0-20240725145759-056fcf98e945
-
 require github.com/google/uuid v1.6.0
 
 require (
