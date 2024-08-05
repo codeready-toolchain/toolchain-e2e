@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	waitpoll "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -20,7 +20,6 @@ import (
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 )
 
@@ -62,22 +61,8 @@ func TestProxyPublicViewer(t *testing.T) {
 		require.NotNil(t, sb)
 
 		// Wait until space is flagged as community
-		require.NoError(t,
-			waitpoll.Poll(hostAwait.RetryInterval, hostAwait.Timeout, func() (bool, error) {
-				opts := []client.ListOption{
-					client.MatchingLabels{
-						toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: toolchainv1alpha1.KubesawAuthenticatedUsername,
-						toolchainv1alpha1.SpaceBindingSpaceLabelKey:            space.Name,
-					},
-					client.InNamespace(space.Namespace),
-				}
-				sbs := &toolchainv1alpha1.SpaceBindingList{}
-				if err := hostAwait.Client.List(context.TODO(), sbs, opts...); err != nil {
-					return false, err
-				}
-
-				return len(sbs.Items) == 1, nil
-			}))
+		_, err = hostAwait.WaitForSpaceBinding(t, toolchainv1alpha1.KubesawAuthenticatedUsername, space.Name, wait.UntilSpaceBindingHasSpaceRole("viewer"))
+		require.NoError(t, err)
 
 		sp := toolchainv1alpha1.Space{}
 		err = hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
@@ -112,7 +97,7 @@ func TestProxyPublicViewer(t *testing.T) {
 					},
 				}
 				err := communityUserProxyClient.Create(context.TODO(), &cm)
-				require.Error(t, err)
+				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
 			})
 		})
 
@@ -152,7 +137,7 @@ func TestProxyPublicViewer(t *testing.T) {
 					},
 				}
 				err := joeCli.Create(context.TODO(), &cm)
-				require.Error(t, err)
+				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as SSO user to return a Forbidden error, actual: %v", err)
 			})
 		})
 	})
@@ -191,7 +176,7 @@ func TestProxyPublicViewer(t *testing.T) {
 					},
 				}
 				err := communityUserProxyClient.Create(context.TODO(), &cm)
-				require.Error(t, err)
+				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
 			})
 		})
 	})
@@ -205,11 +190,11 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		ManuallyApprove().
 		TargetCluster(user.expectedMemberCluster).
 		EnsureMUR().
+		SpaceTier("appstudio").
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 	user.signup = req.UserSignup
 	user.token = req.Token
-	tiers.MoveSpaceToTier(t, awaitilities.Host(), user.signup.Status.CompliantUsername, "appstudio")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
