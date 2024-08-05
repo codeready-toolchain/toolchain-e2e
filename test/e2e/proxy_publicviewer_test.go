@@ -46,12 +46,7 @@ func TestProxyPublicViewer(t *testing.T) {
 
 	// we create a space to share and a user for 'community-user'
 	space, _, _ := testsupportspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
-	communityUser := &proxyUser{
-		expectedMemberCluster: memberAwait,
-		username:              "community-user",
-		identityID:            uuid.New(),
-	}
-	createAppStudioUser(t, awaitilities, communityUser)
+	communityUser := createAppStudioCommunityUser(t, awaitilities, memberAwait)
 	communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, hostAwait.APIProxyURL)
 	require.NoError(t, err)
 
@@ -182,7 +177,13 @@ func TestProxyPublicViewer(t *testing.T) {
 	})
 }
 
-func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *proxyUser) {
+func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility) *proxyUser {
+	user := &proxyUser{
+		expectedMemberCluster: memberAwait,
+		username:              "community-user",
+		identityID:            uuid.New(),
+	}
+
 	// Create and approve signup
 	req := NewSignupRequest(awaitilities).
 		Username(user.username).
@@ -190,6 +191,7 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		ManuallyApprove().
 		TargetCluster(user.expectedMemberCluster).
 		EnsureMUR().
+		NoSpace().
 		SpaceTier("appstudio").
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
@@ -199,6 +201,8 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
+
+	return user
 }
 
 func CreateCommunitySpaceBinding(
