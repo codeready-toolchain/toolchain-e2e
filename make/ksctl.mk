@@ -1,5 +1,5 @@
-KSCTL_GH_OWNER=kubesaw
-KSCTL_GH_BRANCH=master
+KSCTL_GH_OWNER=mfrancisc
+KSCTL_GH_BRANCH=fixclientrestconfig
 
 BIN_DIR := $(shell pwd)/build/_output/bin
 
