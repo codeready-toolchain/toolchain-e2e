@@ -2491,6 +2491,10 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, container.Resources.Requests.Memory().Equal(expectedMemory))
 	assert.True(t, container.Resources.Limits.Memory().Equal(expectedMemory))
+	expectedCPU, err := resource.ParseQuantity("15m")
+	require.NoError(t, err)
+	assert.True(t, container.Resources.Requests.Cpu().Equal(expectedCPU))
+	assert.True(t, container.Resources.Limits.Cpu().Equal(expectedCPU))
 
 	a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2)
 }
