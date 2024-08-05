@@ -165,7 +165,7 @@ func TestProxyPublicViewer(t *testing.T) {
 				require.NoError(t, err)
 
 				err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-				require.Error(t, err)
+				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
 			})
 
 			t.Run("community user cannot create config maps into space", func(t *testing.T) {
