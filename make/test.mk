@@ -372,8 +372,8 @@ create-host-project:
 
 .PHONY: create-host-resources
 create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksctl
-	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
-	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
+	# apply the environment resources instead of creating them in case they have been changed. It may affect migration tests.
+	-oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
 	# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
