@@ -622,7 +622,7 @@ func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
 }
 
 // UntilNSTemplateSetHasConditions returns a `NSTemplateSetWaitCriterion` which checks that the given
-// NSTemlateSet has exactly all the given status conditions
+// NSTemplateSet has exactly all the given status conditions
 func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
@@ -635,7 +635,7 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 }
 
 // UntilNSTemplateSetHasSpaceRoles returns a `NSTemplateSetWaitCriterion` which checks that the given
-// NSTemlateSet has the expected roles for the given users
+// NSTemplateSet has the expected roles for the given users
 func UntilNSTemplateSetHasSpaceRoles(expected ...toolchainv1alpha1.NSTemplateSetSpaceRole) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
@@ -2463,40 +2463,50 @@ func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass(t *testing.T) {
 	assert.Equal(t, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
 }
 
+// WaitForDeployment waits until the Deployment with the given name is available with the provided criteria, if any
+func (a *MemberAwaitility) waitForAutoscalingBufferDeployment(t *testing.T, criteria ...DeploymentCriteria) *appsv1.Deployment {
+	return a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2, criteria...)
+}
+
 func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
-	actualDeployment := &appsv1.Deployment{}
-	a.waitForResource(t, a.Namespace, "autoscaling-buffer", actualDeployment)
+	expectedMemory, err := resource.ParseQuantity("50Mi")
+	require.NoError(t, err)
+	expectedCPU, err := resource.ParseQuantity("15m")
+	require.NoError(t, err)
+
+	actualDeployment := a.waitForAutoscalingBufferDeployment(t, func(d *appsv1.Deployment) bool {
+		r := d.Spec.Replicas
+		return r != nil && *r == int32(2)
+	}, func(d *appsv1.Deployment) bool {
+		return d.Spec.Selector != nil && len(d.Spec.Selector.MatchLabels) == 1 && d.Spec.Selector.MatchLabels["app"] == "autoscaling-buffer"
+	}, func(d *appsv1.Deployment) bool {
+		return len(d.Spec.Template.ObjectMeta.Labels) == 1 && d.Spec.Template.ObjectMeta.Labels["app"] == "autoscaling-buffer"
+	}, func(d *appsv1.Deployment) bool {
+		return d.Spec.Template.Spec.PriorityClassName == "member-operator-autoscaling-buffer"
+	}, func(d *appsv1.Deployment) bool {
+		p := d.Spec.Template.Spec.TerminationGracePeriodSeconds
+		return p != nil && *p == int64(0)
+	}, func(d *appsv1.Deployment) bool {
+		if len(d.Spec.Template.Spec.Containers) != 1 {
+			return false
+		}
+		c := d.Spec.Template.Spec.Containers[0]
+		return c.Name == "autoscaling-buffer" &&
+			c.Image == "gcr.io/google_containers/pause-amd64:3.2" &&
+			c.ImagePullPolicy == corev1.PullIfNotPresent
+	}, func(d *appsv1.Deployment) bool {
+		c := d.Spec.Template.Spec.Containers[0]
+		return c.Resources.Requests.Memory().Equal(expectedMemory) &&
+			c.Resources.Limits.Memory().Equal(expectedMemory) &&
+			c.Resources.Requests.Cpu().Equal(expectedCPU) &&
+			c.Resources.Limits.Cpu().Equal(expectedCPU)
+	})
 
 	assert.Equal(t, map[string]string{
 		"app":                                  "autoscaling-buffer",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualDeployment.Labels)
-	assert.Equal(t, int32(2), *actualDeployment.Spec.Replicas)
-	assert.Equal(t, map[string]string{"app": "autoscaling-buffer"}, actualDeployment.Spec.Selector.MatchLabels)
-
-	template := actualDeployment.Spec.Template
-	assert.Equal(t, map[string]string{"app": "autoscaling-buffer"}, template.ObjectMeta.Labels)
-
-	assert.Equal(t, "member-operator-autoscaling-buffer", template.Spec.PriorityClassName)
-	assert.Equal(t, int64(0), *template.Spec.TerminationGracePeriodSeconds)
-
-	require.Len(t, template.Spec.Containers, 1)
-	container := template.Spec.Containers[0]
-	assert.Equal(t, "autoscaling-buffer", container.Name)
-	assert.Equal(t, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
-	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
-
-	expectedMemory, err := resource.ParseQuantity("50Mi")
-	require.NoError(t, err)
-	assert.True(t, container.Resources.Requests.Memory().Equal(expectedMemory))
-	assert.True(t, container.Resources.Limits.Memory().Equal(expectedMemory))
-	expectedCPU, err := resource.ParseQuantity("15m")
-	require.NoError(t, err)
-	assert.True(t, container.Resources.Requests.Cpu().Equal(expectedCPU))
-	assert.True(t, container.Resources.Limits.Cpu().Equal(expectedCPU))
-
-	a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2)
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
