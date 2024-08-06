@@ -141,7 +141,7 @@ test-e2e-registration-local:
 	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: e2e-run-parallel
-e2e-run-parallel: tiers-via-ksctl
+e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
 	@echo "The parallel e2e tests successfully finished"
@@ -371,7 +371,7 @@ create-host-project:
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
-create-host-resources: create-spaceprovisionerconfigs-for-members
+create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksctl
 	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
 	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
@@ -401,6 +401,13 @@ create-spaceprovisionerconfigs-for-members:
 	for MEMBER_NAME in `oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
 	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
 	done
+
+.PHONY: tiers-via-ksctl
+## Generate and apply appstudio tiers using the latest version of ksctl
+tiers-via-ksctl: ksctl
+	rm -rf /tmp/e2e-tiers-out 2>/dev/null || true
+	${BIN_DIR}/ksctl generate nstemplatetiers --source deploy/nstemplatetiers --out-dir /tmp/e2e-tiers-out
+	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g' | oc apply -f -
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
@@ -434,20 +441,3 @@ display-eval:
 ## Run the unit tests in the 'testsupport/...' packages
 test:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
-
-.PHONY: tiers-via-ksctl
-## Regenerate and re-apply appstudio tiers using the latest version of ksctl
-tiers-via-ksctl: ksctl
-	$(eval HOST_REPO_LOC = $(or ${HOST_REPO_PATH}, /tmp/host-operator-master))
-ifeq ($(HOST_REPO_PATH),)
-	rm -rf /tmp/host-operator-master 2>/dev/null || true
-	git clone --depth 1 https://github.com/codeready-toolchain/host-operator.git /tmp/host-operator-master
-endif
-	rm -rf /tmp/e2e-tiers 2>/dev/null || true
-	rm -rf /tmp/e2e-tiers-out 2>/dev/null || true
-	mkdir /tmp/e2e-tiers
-	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio /tmp/e2e-tiers/
-	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio-env /tmp/e2e-tiers/
-	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudiolarge /tmp/e2e-tiers
-	${BIN_DIR}/ksctl generate nstemplatetiers --source /tmp/e2e-tiers --out-dir /tmp/e2e-tiers-out
-	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g;s/^metadata:/metadata:\n  annotations:\n    generated-by: ksctl/g' | oc apply -f -
