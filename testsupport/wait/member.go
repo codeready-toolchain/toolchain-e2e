@@ -2529,7 +2529,7 @@ func (a *Awaitility) GetAndLog(t *testing.T, resourceKind, name string, obj clie
 		c = string(content)
 	}
 
-	t.Log(fmt.Sprintf("\n%s present in the namespace %s:\n%s\n", resourceKind, namespace, c))
+	t.Logf(fmt.Sprintf("\n%s present in the namespace %s:\n%s\n", resourceKind, namespace, c))
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
