@@ -2451,9 +2451,9 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
 }
 
-func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
+func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T, hostAwait *HostAwaitility) {
 	a.verifyAutoscalingBufferPriorityClass(t)
-	a.verifyAutoscalingBufferDeployment(t)
+	a.verifyAutoscalingBufferDeployment(t, hostAwait)
 }
 
 func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass(t *testing.T) {
@@ -2472,8 +2472,9 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment(t *testing.T, crit
 	return a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2, criteria...)
 }
 
-func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
+func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T, hostAwait *HostAwaitility) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
+	a.debug(t, hostAwait)
 	expectedMemory, err := resource.ParseQuantity("50Mi")
 	require.NoError(t, err)
 	expectedCPU, err := resource.ParseQuantity("15m")
@@ -2511,6 +2512,24 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 		"app":                                  "autoscaling-buffer",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualDeployment.Labels)
+}
+
+func (a *MemberAwaitility) debug(t *testing.T, hostAwait *HostAwaitility) {
+	hostAwait.GetAndLog(t, "ToolchainConfig", "config", &toolchainv1alpha1.ToolchainConfig{})
+	a.GetAndLog(t, "MemberOperatorConfig", "config", &toolchainv1alpha1.MemberOperatorConfig{})
+}
+
+func (a *Awaitility) GetAndLog(t *testing.T, resourceKind, name string, obj client.Object) {
+	namespace := a.Namespace
+	var c string
+	if err := a.Client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, obj); err != nil {
+		c = fmt.Sprintf("unable to get %s: %s", resourceKind, err)
+	} else {
+		content, _ := StringifyObject(obj)
+		c = string(content)
+	}
+
+	t.Log(fmt.Sprintf("\n%s present in the namespace %s:\n%s\n", resourceKind, namespace, c))
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
