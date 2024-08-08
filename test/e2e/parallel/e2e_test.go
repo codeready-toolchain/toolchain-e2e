@@ -60,6 +60,7 @@ func TestE2EFlow(t *testing.T) {
 			member2ExpectedConfig := expectedMemberConfiguration.DeepCopy()
 			f := false
 			member2ExpectedConfig.Webhook.Deploy = &f
+			member2ExpectedConfig.Webhook.Secret = nil
 			VerifyMemberOperatorConfig(t, hostAwait, memberAwait2, wait.UntilMemberConfigMatches(*member2ExpectedConfig))
 		})
 	})
