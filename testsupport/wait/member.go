@@ -2163,14 +2163,14 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(t *testing.T, hostAwait *
 	t.Logf("waiting for MemberOperatorConfig '%s'", name)
 	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		memberOperatorConfig = &toolchainv1alpha1.MemberOperatorConfig{}
+		obj := &toolchainv1alpha1.MemberOperatorConfig{}
 		// retrieve the MemberOperatorConfig from the member namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
 			},
-			memberOperatorConfig)
+			obj)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -2178,12 +2178,16 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(t *testing.T, hostAwait *
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(hostAwait, a, memberOperatorConfig) {
+			if !match(hostAwait, a, obj) {
 				return false, nil
 			}
 		}
+		memberOperatorConfig = obj
 		return true, nil
 	})
+	if err != nil {
+		a.listAndPrint(t, "MemberOperatorConfig", a.Namespace, &toolchainv1alpha1.MemberOperatorConfigList{})
+	}
 	return memberOperatorConfig, err
 }
 

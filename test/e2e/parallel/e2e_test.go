@@ -10,7 +10,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -56,8 +55,13 @@ func TestE2EFlow(t *testing.T) {
 			VerifyMemberOperatorConfig(t, hostAwait, memberAwait, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
 		t.Run("verify MemberOperatorConfig was synced to member 2", func(t *testing.T) {
-			member2ExpectedConfig := testconfig.NewMemberOperatorConfigObj(testconfig.Webhook().Deploy(false), testconfig.MemberEnvironment("e2e-tests"))
-			VerifyMemberOperatorConfig(t, hostAwait, memberAwait2, wait.UntilMemberConfigMatches(member2ExpectedConfig.Spec))
+			// Expected to be the same as for member-1 but with Webhook deployment disabled.
+			// We can't deploy the same cluster-scoped webhook twice (member-1 and member-2) in the same physical cluster.
+			member2ExpectedConfig := expectedMemberConfiguration.DeepCopy()
+			f := false
+			member2ExpectedConfig.Webhook.Deploy = &f
+			member2ExpectedConfig.Webhook.Secret = nil
+			VerifyMemberOperatorConfig(t, hostAwait, memberAwait2, wait.UntilMemberConfigMatches(*member2ExpectedConfig))
 		})
 	})
 
