@@ -38,6 +38,7 @@ spec:
     default:
       autoscaler:
         bufferMemory: "50Mi"
+        bufferCPU: "15m"
         bufferReplicas: 2
         deploy: true
       memberStatus:
