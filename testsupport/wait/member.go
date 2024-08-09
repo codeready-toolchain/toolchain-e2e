@@ -2474,7 +2474,6 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment(t *testing.T, crit
 
 func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T, hostAwait *HostAwaitility) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
-	a.debug(t, hostAwait)
 	expectedMemory, err := resource.ParseQuantity("50Mi")
 	require.NoError(t, err)
 	expectedCPU, err := resource.ParseQuantity("15m")
@@ -2512,24 +2511,6 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T, hostA
 		"app":                                  "autoscaling-buffer",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualDeployment.Labels)
-}
-
-func (a *MemberAwaitility) debug(t *testing.T, hostAwait *HostAwaitility) {
-	hostAwait.GetAndLog(t, "ToolchainConfig", "config", &toolchainv1alpha1.ToolchainConfig{})
-	a.GetAndLog(t, "MemberOperatorConfig", "config", &toolchainv1alpha1.MemberOperatorConfig{})
-}
-
-func (a *Awaitility) GetAndLog(t *testing.T, resourceKind, name string, obj client.Object) {
-	namespace := a.Namespace
-	var c string
-	if err := a.Client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, obj); err != nil {
-		c = fmt.Sprintf("unable to get %s: %s", resourceKind, err)
-	} else {
-		content, _ := StringifyObject(obj)
-		c = string(content)
-	}
-
-	t.Logf(fmt.Sprintf("\n%s present in the namespace %s:\n%s\n", resourceKind, namespace, c))
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
