@@ -2451,9 +2451,9 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
 }
 
-func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T, hostAwait *HostAwaitility) {
+func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
 	a.verifyAutoscalingBufferPriorityClass(t)
-	a.verifyAutoscalingBufferDeployment(t, hostAwait)
+	a.verifyAutoscalingBufferDeployment(t)
 }
 
 func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass(t *testing.T) {
@@ -2472,7 +2472,7 @@ func (a *MemberAwaitility) waitForAutoscalingBufferDeployment(t *testing.T, crit
 	return a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2, criteria...)
 }
 
-func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T, hostAwait *HostAwaitility) {
+func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
 	expectedMemory, err := resource.ParseQuantity("50Mi")
 	require.NoError(t, err)

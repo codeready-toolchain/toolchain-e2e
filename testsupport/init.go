@@ -214,8 +214,8 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 
 		// wait for autoscaler buffer apps
-		initMemberAwait.WaitForAutoscalingBufferApp(t, initHostAwait)
-		initMember2Await.WaitForAutoscalingBufferApp(t, initHostAwait)
+		initMemberAwait.WaitForAutoscalingBufferApp(t)
+		initMember2Await.WaitForAutoscalingBufferApp(t)
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
