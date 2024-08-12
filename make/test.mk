@@ -30,8 +30,8 @@ endif
 
 E2E_TEST_EXECUTION ?= true
 
-ifeq ($(IS_OSD),true)
-LETS_ENCRYPT_PARAM := --lets-encrypt
+ifneq ($(IS_OSD),true)
+LETS_ENCRYPT_PARAM := --lets-encrypt=false
 endif
 
 E2E_PARALLELISM=1
@@ -260,11 +260,9 @@ print-operator-logs:
 	@echo ""
 
 .PHONY: setup-toolchainclusters
-setup-toolchainclusters:
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS) -hn $(HOST_NS) ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
+setup-toolchainclusters: ksctl
+	${BIN_DIR}/ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} -y
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${BIN_DIR}/ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS_2)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} --name-suffix="2" -y ; fi
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
@@ -372,8 +370,8 @@ create-host-project:
 
 .PHONY: create-host-resources
 create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksctl
-	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
-	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
+	# apply the environment resources instead of creating them in case they have been changed. It may affect migration tests.
+	-oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
 	# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
@@ -386,7 +384,7 @@ create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksct
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		echo "ENVIRONMENT ${ENVIRONMENT}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
-		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"environment\":\"${ENVIRONMENT}\"}}}}}" > $$PATCH_FILE; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":$$(oc get toolchainconfig config -n ${HOST_NS} -o jsonpath='{.spec.members.default}' | jq '. += { webhook: { deploy: false } }')}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 	echo "Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup"

@@ -16,7 +16,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	cd "github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
@@ -442,17 +441,22 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 	t.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 	deployment := &appsv1.Deployment{}
 	err := wait.Poll(a.RetryInterval, 6*a.Timeout, func() (done bool, err error) {
+		obj := &appsv1.Deployment{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
 		deploymentConditions := status.GetDeploymentStatusConditions(context.TODO(), a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			return false, nil // nolint:nilerr
 		}
-		deployment = &appsv1.Deployment{}
-		require.NoError(t, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
-		if int(deployment.Status.AvailableReplicas) != replicas {
+		if int(obj.Status.AvailableReplicas) != replicas {
 			return false, nil
 		}
 		pods := &corev1.PodList{}
-		require.NoError(t, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(deployment.Spec.Selector.MatchLabels)))
+		require.NoError(t, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(obj.Spec.Selector.MatchLabels)))
 		if len(pods.Items) != replicas {
 			return false, nil
 		}
@@ -462,12 +466,16 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 			}
 		}
 		for _, criteriaMatch := range criteria {
-			if !criteriaMatch(deployment) {
+			if !criteriaMatch(obj) {
 				return false, nil
 			}
 		}
+		deployment = obj
 		return true, nil
 	})
+	if err != nil {
+		a.getAndPrint(t, "Deployment", a.Namespace, name, &appsv1.Deployment{})
+	}
 	require.NoError(t, err)
 	return deployment
 }
@@ -649,6 +657,18 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 		return fmt.Sprintf("unable to list %s: %s", resourceKind, err)
 	}
 	content, _ := StringifyObjects(list)
+	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
+}
+
+func (a *Awaitility) getAndPrint(t *testing.T, resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) {
+	t.Logf(a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
+}
+
+func (a *Awaitility) getAndReturnContent(resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) string {
+	if err := a.Client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, obj, additionalOptions...); err != nil {
+		return fmt.Sprintf("unable to get %s: %s", resourceKind, err)
+	}
+	content, _ := StringifyObject(obj)
 	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
 }
 
