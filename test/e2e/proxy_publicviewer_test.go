@@ -191,7 +191,6 @@ func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, 
 		ManuallyApprove().
 		TargetCluster(user.expectedMemberCluster).
 		EnsureMUR().
-		NoSpace().
 		SpaceTier("appstudio").
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
