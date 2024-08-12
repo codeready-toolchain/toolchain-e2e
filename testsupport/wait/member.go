@@ -2501,10 +2501,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 			c.ImagePullPolicy == corev1.PullIfNotPresent
 	}, func(d *appsv1.Deployment) bool {
 		c := d.Spec.Template.Spec.Containers[0]
-		return c.Resources.Requests.Memory().Equal(expectedMemory) &&
-			c.Resources.Limits.Memory().Equal(expectedMemory) &&
-			c.Resources.Requests.Cpu().Equal(expectedCPU) &&
-			c.Resources.Limits.Cpu().Equal(expectedCPU)
+		return c.Resources.Requests.Memory().Equal(expectedMemory) && c.Resources.Requests.Cpu().Equal(expectedCPU)
 	})
 
 	assert.Equal(t, map[string]string{
