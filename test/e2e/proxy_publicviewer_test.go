@@ -197,6 +197,7 @@ func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, 
 		Execute(t)
 	user.signup = req.UserSignup
 	user.token = req.Token
+	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
