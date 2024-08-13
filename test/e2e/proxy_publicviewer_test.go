@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -46,9 +47,32 @@ func TestProxyPublicViewer(t *testing.T) {
 
 	// we create a space to share and a user for 'community-user'
 	space, _, _ := testsupportspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
-	communityUser := createAppStudioCommunityUser(t, awaitilities, memberAwait)
-	communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, hostAwait.APIProxyURL)
-	require.NoError(t, err)
+
+	// test cases for community user
+	tt := map[string]struct {
+		communityUserOpts []func(sr *SignupRequest) *SignupRequest
+	}{
+		"approved user with space": {
+			communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
+				func(sr *SignupRequest) *SignupRequest { return sr.ManuallyApprove() },
+			},
+		},
+		"approved user without space": {
+			communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
+				func(sr *SignupRequest) *SignupRequest { return sr.ManuallyApprove().NoSpace() },
+			},
+		},
+		// "user is banned": {
+		// 	communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
+		// 		func(sr *SignupRequest) *SignupRequest { return sr. },
+		// 	},
+		// },
+		"not approved user": {
+			communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
+				func(sr *SignupRequest) *SignupRequest { return sr.NoSpace() },
+			},
+		},
+	}
 
 	t.Run("space is flagged as community", func(t *testing.T) {
 		// when
@@ -56,7 +80,7 @@ func TestProxyPublicViewer(t *testing.T) {
 		require.NotNil(t, sb)
 
 		// Wait until space is flagged as community
-		_, err = hostAwait.WaitForSpaceBinding(t, toolchainv1alpha1.KubesawAuthenticatedUsername, space.Name, wait.UntilSpaceBindingHasSpaceRole("viewer"))
+		_, err := hostAwait.WaitForSpaceBinding(t, toolchainv1alpha1.KubesawAuthenticatedUsername, space.Name, wait.UntilSpaceBindingHasSpaceRole("viewer"))
 		require.NoError(t, err)
 
 		sp := toolchainv1alpha1.Space{}
@@ -73,27 +97,38 @@ func TestProxyPublicViewer(t *testing.T) {
 		t.Run("community user access to community space", func(t *testing.T) {
 			require.NotEmpty(t, sp.Status.ProvisionedNamespaces)
 
-			t.Run("community user can list config maps from community space", func(t *testing.T) {
-				// then
-				cms := corev1.ConfigMapList{}
+			for s, c := range tt {
+				t.Run(s, func(t *testing.T) {
+					communityUser := createAppStudioCommunityUser(t, awaitilities, memberAwait, c.communityUserOpts...)
 
-				communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, hostAwait.ProxyURLWithWorkspaceContext(sp.Name))
-				require.NoError(t, err)
+					t.Run("community user can list config maps from community space", func(t *testing.T) {
+						// then
+						cms := corev1.ConfigMapList{}
 
-				err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-				require.NoError(t, err)
-			})
+						proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+						communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, proxyWorkspaceURL)
+						require.NoError(t, err)
 
-			t.Run("community user cannot create config maps into space", func(t *testing.T) {
-				cm := corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-cm",
-						Namespace: sp.Status.ProvisionedNamespaces[0].Name,
-					},
-				}
-				err := communityUserProxyClient.Create(context.TODO(), &cm)
-				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
-			})
+						err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
+						require.NoError(t, err)
+					})
+
+					t.Run("community user cannot create config maps into space", func(t *testing.T) {
+						cm := corev1.ConfigMap{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-cm",
+								Namespace: sp.Status.ProvisionedNamespaces[0].Name,
+							},
+						}
+						proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+						communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, proxyWorkspaceURL)
+						require.NoError(t, err)
+
+						err = communityUserProxyClient.Create(context.TODO(), &cm)
+						require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
+					})
+				})
+			}
 		})
 
 		/*
@@ -139,7 +174,7 @@ func TestProxyPublicViewer(t *testing.T) {
 
 	t.Run("space is not flagged as community", func(t *testing.T) {
 		sp := toolchainv1alpha1.Space{}
-		err = hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
+		err := hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
 		require.NoError(t, err)
 
 		/*
@@ -149,35 +184,42 @@ func TestProxyPublicViewer(t *testing.T) {
 		   Then  community-user cannot view A's Space
 		   And   community-user cannot create resources in A's Space
 		*/
-		t.Run("community user cannot access to non-community space", func(t *testing.T) {
-			require.NotEmpty(t, sp.Status.ProvisionedNamespaces)
+		for s, c := range tt {
+			t.Run(s, func(t *testing.T) {
+				communityUser := createAppStudioCommunityUser(t, awaitilities, memberAwait, c.communityUserOpts...)
 
-			t.Run("community user cannot list config maps from community space", func(t *testing.T) {
-				// then
-				cms := corev1.ConfigMapList{}
+				t.Run("community user cannot access to non-community space", func(t *testing.T) {
+					require.NotEmpty(t, sp.Status.ProvisionedNamespaces)
 
-				communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, hostAwait.ProxyURLWithWorkspaceContext(sp.Name))
-				require.NoError(t, err)
+					proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+					communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, communityUser.token, proxyWorkspaceURL)
+					require.NoError(t, err)
 
-				err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
+					t.Run("community user cannot list config maps from community space", func(t *testing.T) {
+						// then
+						cms := corev1.ConfigMapList{}
+
+						err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
+						require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap as community user to return a NoMatch error, actual: %v", err)
+					})
+
+					t.Run("community user cannot create config maps into space", func(t *testing.T) {
+						cm := corev1.ConfigMap{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-cm",
+								Namespace: sp.Status.ProvisionedNamespaces[0].Name,
+							},
+						}
+						err := communityUserProxyClient.Create(context.TODO(), &cm)
+						require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap as community user to return a NoMatch error, actual: %v", err)
+					})
+				})
 			})
-
-			t.Run("community user cannot create config maps into space", func(t *testing.T) {
-				cm := corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-cm",
-						Namespace: sp.Status.ProvisionedNamespaces[0].Name,
-					},
-				}
-				err := communityUserProxyClient.Create(context.TODO(), &cm)
-				require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
-			})
-		})
+		}
 	})
 }
 
-func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility) *proxyUser {
+func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility, withOptions ...func(*SignupRequest) *SignupRequest) *proxyUser {
 	user := &proxyUser{
 		expectedMemberCluster: memberAwait,
 		username:              "community-user",
@@ -185,18 +227,22 @@ func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, 
 	}
 
 	// Create and approve signup
-	req := NewSignupRequest(awaitilities).
+	sr := NewSignupRequest(awaitilities).
 		Username(user.username).
 		IdentityID(user.identityID).
 		ManuallyApprove().
 		TargetCluster(user.expectedMemberCluster).
 		EnsureMUR().
+		NoSpace().
 		SpaceTier("appstudio").
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...)
+	for _, opts := range withOptions {
+		sr = opts(sr)
+	}
+	req := sr.Execute(t)
+
 	user.signup = req.UserSignup
 	user.token = req.Token
-	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
