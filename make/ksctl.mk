@@ -28,6 +28,8 @@ ifeq ($(strip $(KSCTL_REPO_PATH)),)
 		@echo "using author link ${AUTHOR_LINK}"
 		@echo "detected branch ${BRANCH_NAME}"
 		# check if a branch with the same ref exists in the user's fork of ksctl repo
+		@echo "branches of ${AUTHOR_LINK}/ksctl - checking if there is a branch ${BRANCH_NAME} we could pair with."
+		curl ${AUTHOR_LINK}/ksctl.git/info/refs?service=git-upload-pack --output -
 		$(eval REMOTE_KSCTL_BRANCH := $(shell curl ${AUTHOR_LINK}/ksctl.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "refs/heads/${BRANCH_NAME}$$" | awk '{print $$2}'))
 		@echo "branch ref of the user's fork: \"${REMOTE_KSCTL_BRANCH}\" - if empty then not found"
 		# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
