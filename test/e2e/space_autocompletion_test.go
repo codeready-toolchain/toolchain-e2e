@@ -117,7 +117,7 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait1.ClusterName == m.ClusterName {
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.Enabled(false)) // temporarily disable provisioning on this cluster
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)))
 			} else if memberAwait2.ClusterName == m.ClusterName {
 				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1)))
 			}

@@ -39,6 +39,9 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 	}
 
 	require.NoError(t, await.Client.Update(context.TODO(), spc))
+	// log spc values needed for debugging a problem with random capacity manager e2e test failures
+	t.Logf("SPC values before the update %+v", originalSpc)
+	t.Logf("SPC values after the update %+v", spc)
 
 	t.Cleanup(func() {
 		currentSpc := &toolchainv1alpha1.SpaceProvisionerConfig{}
