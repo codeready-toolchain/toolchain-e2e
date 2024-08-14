@@ -2476,8 +2476,8 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
 	expectedMemory, err := resource.ParseQuantity("50Mi")
 	require.NoError(t, err)
-	// expectedCPU, err := resource.ParseQuantity("15m")
-	// require.NoError(t, err)
+	expectedCPU, err := resource.ParseQuantity("15m")
+	require.NoError(t, err)
 
 	actualDeployment := a.waitForAutoscalingBufferDeployment(t, func(d *appsv1.Deployment) bool {
 		r := d.Spec.Replicas
@@ -2501,7 +2501,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 			c.ImagePullPolicy == corev1.PullIfNotPresent
 	}, func(d *appsv1.Deployment) bool {
 		c := d.Spec.Template.Spec.Containers[0]
-		return c.Resources.Requests.Memory().Equal(expectedMemory) // && c.Resources.Requests.Cpu().Equal(expectedCPU)
+		return c.Resources.Requests.Memory().Equal(expectedMemory) && c.Resources.Requests.Cpu().Equal(expectedCPU)
 	})
 
 	assert.Equal(t, map[string]string{
