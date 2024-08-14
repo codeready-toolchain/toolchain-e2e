@@ -44,7 +44,7 @@ func TestProxyPublicViewer(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// public viewer is enabled in ToolchainConfig
-	hostAwait.UpdateToolchainConfig(t, testconfig.PublicViewerConfig(false))
+	hostAwait.UpdateToolchainConfig(t, testconfig.PublicViewerConfig(true))
 
 	// we create a space to share
 	space, _, _ := testsupportspace.CreateSpace(t, awaitilities,
