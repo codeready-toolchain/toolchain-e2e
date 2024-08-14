@@ -45,12 +45,16 @@ func TestProxyPublicViewer(t *testing.T) {
 	// public viewer is enabled in ToolchainConfig
 	hostAwait.UpdateToolchainConfig(t, testconfig.PublicViewerConfig(true))
 
-	// we create a space to share and a user for 'community-user'
-	space, _, _ := testsupportspace.CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
+	// we create a space to share
+	space, _, _ := testsupportspace.CreateSpace(t, awaitilities,
+		testspace.WithTierName("appstudio"),
+		testspace.WithSpecTargetCluster(memberAwait.ClusterName),
+	)
 
 	// test cases for community user
 	tt := map[string]struct {
-		communityUserOpts []func(sr *SignupRequest) *SignupRequest
+		communityUserOpts       []func(sr *SignupRequest) *SignupRequest
+		additionalHostResources []client.Object
 	}{
 		"approved user with space": {
 			communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
@@ -62,11 +66,14 @@ func TestProxyPublicViewer(t *testing.T) {
 				func(sr *SignupRequest) *SignupRequest { return sr.ManuallyApprove().NoSpace() },
 			},
 		},
-		// "user is banned": {
-		// 	communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
-		// 		func(sr *SignupRequest) *SignupRequest { return sr. },
-		// 	},
-		// },
+		"user is banned": {
+			communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
+				func(sr *SignupRequest) *SignupRequest { return sr.ManuallyApprove() },
+			},
+			additionalHostResources: []client.Object{
+				NewBannedUser(hostAwait, "communityuser@teste2e.com"),
+			},
+		},
 		"not approved user": {
 			communityUserOpts: []func(sr *SignupRequest) *SignupRequest{
 				func(sr *SignupRequest) *SignupRequest { return sr.NoSpace() },
@@ -95,11 +102,16 @@ func TestProxyPublicViewer(t *testing.T) {
 		   And   community-user cannot create resources in A's Space
 		*/
 		t.Run("community user access to community space", func(t *testing.T) {
-			require.NotEmpty(t, sp.Status.ProvisionedNamespaces)
-
 			for s, c := range tt {
 				t.Run(s, func(t *testing.T) {
+					// create community user
 					communityUser := createAppStudioCommunityUser(t, awaitilities, memberAwait, c.communityUserOpts...)
+
+					// create additional resources
+					for _, r := range c.additionalHostResources {
+						err := hostAwait.CreateWithCleanup(t, r)
+						require.Nil(t, err)
+					}
 
 					t.Run("community user can list config maps from community space", func(t *testing.T) {
 						// then
@@ -230,6 +242,7 @@ func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, 
 	sr := NewSignupRequest(awaitilities).
 		Username(user.username).
 		IdentityID(user.identityID).
+		Email("communityuser@teste2e.com").
 		ManuallyApprove().
 		TargetCluster(user.expectedMemberCluster).
 		EnsureMUR().
