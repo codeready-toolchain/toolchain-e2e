@@ -33,7 +33,7 @@ ifeq ($(strip $(KSCTL_REPO_PATH)),)
 		$(eval REMOTE_KSCTL_BRANCH := $(shell curl ${AUTHOR_LINK}/ksctl.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "refs/heads/${BRANCH_NAME}$$" | awk '{print $$2}'))
 		@echo "branch ref of the user's fork: \"${REMOTE_KSCTL_BRANCH}\" - if empty then not found"
 		# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
-        ifneq ($(REMOTE_KSCTL_BRANCH),"")
+        ifneq ($(strip $(REMOTE_KSCTL_BRANCH)),)
 			# define temp dir
 			$(eval KSCTL_REPO_PATH := /tmp/ksctl)
 			# delete to have clear environment
