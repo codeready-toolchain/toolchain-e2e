@@ -44,7 +44,7 @@ func TestProxyPublicViewer(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 
 	// public viewer is enabled in ToolchainConfig
-	hostAwait.UpdateToolchainConfig(t, testconfig.PublicViewerConfig(true))
+	hostAwait.UpdateToolchainConfig(t, testconfig.PublicViewerConfig(false))
 
 	// we create a space to share
 	space, _, _ := testsupportspace.CreateSpace(t, awaitilities,
@@ -137,7 +137,7 @@ func TestProxyPublicViewer(t *testing.T) {
 					// create additional resources
 					for _, r := range c.additionalHostResources {
 						err := hostAwait.CreateWithCleanup(t, r)
-						require.Nil(t, err)
+						require.NoError(t, err)
 					}
 
 					// if set, wait until the user signup has the required conditions
