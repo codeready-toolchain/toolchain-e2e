@@ -83,8 +83,8 @@ func TestProxyPublicViewer(t *testing.T) {
 		_, err := hostAwait.WaitForSpaceBinding(t, toolchainv1alpha1.KubesawAuthenticatedUsername, space.Name, wait.UntilSpaceBindingHasSpaceRole("viewer"))
 		require.NoError(t, err)
 
-		sp := toolchainv1alpha1.Space{}
-		err = hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
+		// wait until the space has ProvisionedNamespaces
+		sp, err := hostAwait.WaitForSpace(t, space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
 		require.NoError(t, err)
 
 		/*
