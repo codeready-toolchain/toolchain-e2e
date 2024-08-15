@@ -30,8 +30,8 @@ endif
 
 E2E_TEST_EXECUTION ?= true
 
-ifeq ($(IS_OSD),true)
-LETS_ENCRYPT_PARAM := --lets-encrypt
+ifneq ($(IS_OSD),true)
+LETS_ENCRYPT_PARAM := --lets-encrypt=false
 endif
 
 E2E_PARALLELISM=1
@@ -139,7 +139,7 @@ test-e2e-registration-local:
 	$(MAKE) test-e2e REG_REPO_PATH=${PWD}/../registration-service
 
 .PHONY: e2e-run-parallel
-e2e-run-parallel: tiers-via-ksctl
+e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
 	@echo "The parallel e2e tests successfully finished"
@@ -260,11 +260,9 @@ print-operator-logs:
 	@echo ""
 
 .PHONY: setup-toolchainclusters
-setup-toolchainclusters:
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS) -hn $(HOST_NS) ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t member -mn $(MEMBER_NS_2) -hn $(HOST_NS) -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS) -hn $(HOST_NS) ${LETS_ENCRYPT_PARAM}"
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then $(MAKE) run-cicd-script SCRIPT_PATH=scripts/add-cluster.sh  SCRIPT_PARAMS="-t host   -mn $(MEMBER_NS_2) -hn $(HOST_NS) -mm 2 ${LETS_ENCRYPT_PARAM}"; fi
+setup-toolchainclusters: ksctl
+	${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} -y
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS_2)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} --name-suffix="2" -y ; fi
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
@@ -371,9 +369,9 @@ create-host-project:
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
-create-host-resources: create-spaceprovisionerconfigs-for-members
-	# ignore if these resources already exist (nstemplatetiers may have already been created by operator)
-	-oc create -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
+create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksctl
+	# apply the environment resources instead of creating them in case they have been changed. It may affect migration tests.
+	-oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
 	# since e2e environment has 2 member operators running in the same cluster
 	# for details on how the TOOLCHAINCLUSTER_NAME is composed see https://github.com/codeready-toolchain/toolchain-cicd/blob/master/scripts/add-cluster.sh
@@ -386,7 +384,7 @@ create-host-resources: create-spaceprovisionerconfigs-for-members
 		echo "TOOLCHAIN_CLUSTER_NAME $${TOOLCHAIN_CLUSTER_NAME}"; \
 		echo "ENVIRONMENT ${ENVIRONMENT}"; \
 		PATCH_FILE=/tmp/patch-toolchainconfig_${DATE_SUFFIX}.json; \
-		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":{\"webhook\":{\"deploy\":false},\"webConsolePlugin\":{\"deploy\":true},\"environment\":\"${ENVIRONMENT}\"}}}}}" > $$PATCH_FILE; \
+		echo "{\"spec\":{\"members\":{\"specificPerMemberCluster\":{\"$${TOOLCHAIN_CLUSTER_NAME}\":$$(oc get toolchainconfig config -n ${HOST_NS} -o jsonpath='{.spec.members.default}' | jq '. += { webhook: { deploy: false } }')}}}}" > $$PATCH_FILE; \
 		oc patch toolchainconfig config -n ${HOST_NS} --type=merge --patch "$$(cat $$PATCH_FILE)"; \
 	fi;
 	echo "Restart host operator pods so that configuration referenced in main.go can get the updated ToolchainConfig CRs at startup"
@@ -401,6 +399,13 @@ create-spaceprovisionerconfigs-for-members:
 	for MEMBER_NAME in `oc get toolchaincluster -n ${HOST_NS} --no-headers -o custom-columns=":metadata.name"`; do \
 	  oc process -p TOOLCHAINCLUSTER_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NAME=$${MEMBER_NAME} -p SPACEPROVISIONERCONFIG_NS=${HOST_NS} -f deploy/host-operator/default-spaceprovisionerconfig.yaml | oc apply -f -; \
 	done
+
+.PHONY: tiers-via-ksctl
+## Generate and apply appstudio tiers using the latest version of ksctl
+tiers-via-ksctl: ksctl
+	rm -rf /tmp/e2e-tiers-out 2>/dev/null || true
+	${KSCTL_BIN_DIR}ksctl generate nstemplatetiers --source deploy/nstemplatetiers --out-dir /tmp/e2e-tiers-out
+	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g' | oc apply -f -
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:
@@ -434,23 +439,3 @@ display-eval:
 ## Run the unit tests in the 'testsupport/...' packages
 test:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
-
-.PHONY: tiers-via-ksctl
-## Regenerate and re-apply appstudio tiers using the latest version of ksctl
-tiers-via-ksctl:
-	$(eval HOST_REPO_LOC = $(or ${HOST_REPO_PATH}, /tmp/host-operator-master))
-ifeq ($(HOST_REPO_PATH),)
-	rm -rf /tmp/host-operator-master 2>/dev/null || true
-	git clone --depth 1 https://github.com/codeready-toolchain/host-operator.git /tmp/host-operator-master
-endif
-	rm -rf /tmp/e2e-tiers 2>/dev/null || true
-	rm -rf /tmp/e2e-tiers-out 2>/dev/null || true
-	mkdir /tmp/e2e-tiers
-	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio /tmp/e2e-tiers/
-	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudio-env /tmp/e2e-tiers/
-	cp -r ${HOST_REPO_LOC}/deploy/templates/nstemplatetiers/appstudiolarge /tmp/e2e-tiers
-	rm -rf /tmp/ksctl-master 2>/dev/null || true
-	git clone https://github.com/kubesaw/ksctl.git /tmp/ksctl-master
-	$(MAKE) -C /tmp/ksctl-master install GOBIN=/tmp/ksctl-master/bin
-	/tmp/ksctl-master/bin/ksctl generate nstemplatetiers --source /tmp/e2e-tiers --out-dir /tmp/e2e-tiers-out
-	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g;s/^metadata:/metadata:\n  annotations:\n    generated-by: ksctl/g' | oc apply -f -

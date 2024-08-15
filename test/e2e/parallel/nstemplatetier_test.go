@@ -1,10 +1,15 @@
 package parallel
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"testing"
 	"time"
+
+	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gofrs/uuid"
 
@@ -281,25 +286,143 @@ func TestTierTemplates(t *testing.T) {
 	assert.GreaterOrEqual(t, len(allTiers.Items), 27)
 }
 
-func TestKsctlGeneratedTiers(t *testing.T) {
+func TestFeatureToggles(t *testing.T) {
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
 
-	for _, tierName := range []string{"appstudio", "appstudio-env", "appstudiolarge"} {
+	base1nsTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
 
-		t.Run("for tier "+tierName, func(t *testing.T) {
-			tier, err := hostAwait.WaitForNSTemplateTier(t, tierName)
+	t.Run("provision space with enabled feature", func(t *testing.T) {
+		// given
+
+		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
+		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
+		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "ftier", base1nsTier,
+			withClusterRoleBindings(t, base1nsTier, "test-feature"),
+			tiers.WithNamespaceResources(t, base1nsTier),
+			tiers.WithSpaceRoles(t, base1nsTier))
+		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
+		require.NoError(t, err)
+
+		// when
+
+		// Now let's create a Space
+		user := NewSignupRequest(awaitilities).
+			Username("featured-user").
+			Email("featured@domain.com").
+			ManuallyApprove().
+			EnsureMUR().
+			SpaceTier("base1ns").
+			TargetCluster(memberAwait).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			Execute(t)
+		// and promote that space to the ftier tier
+		tiers.MoveSpaceToTier(t, hostAwait, "featured-user", tier.Name)
+		VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, memberAwait, "featured-user", tier)
+
+		// then
+
+		// Verify that the space has the feature annotation - the weight is set to 100, so it should be added to all Spaces in all tiers
+		space, err := hostAwait.WaitForSpace(t, user.Space.Name)
+		require.NoError(t, err)
+		require.NotEmpty(t, space.Annotations)
+		assert.Equal(t, "test-feature", space.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey])
+		// and CRB for the that feature has been created
+		crbName := fmt.Sprintf("%s-%s", user.Space.Name, "test-feature")
+		_, err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameThat(crbName)
+		require.NoError(t, err)
+		// the noise CRB for unknown/disabled feature is not created
+		noiseCrbName := fmt.Sprintf("%s-%s", user.Space.Name, unknownFeature)
+		err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+		require.NoError(t, err)
+
+		t.Run("disable feature", func(t *testing.T) {
+			// when
+
+			// Now let's disable the feature for the Space by removing the feature annotation
+			_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
+				delete(s.Annotations, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
+			})
 			require.NoError(t, err)
-			assert.Equal(t, "ksctl", tier.Annotations["generated-by"])
 
-			refs := tiers.GetTemplateRefs(t, hostAwait, tierName).Flatten()
+			// then
+			err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(crbName)
+			require.NoError(t, err)
+			err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+			require.NoError(t, err)
 
-			for _, ref := range refs {
-				tierTemplate, err := hostAwait.WaitForTierTemplate(t, ref)
+			t.Run("re-enable feature", func(t *testing.T) {
+				// when
+
+				// Now let's re-enable the feature for the Space by restoring the feature annotation
+				_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
+					if s.Annotations == nil {
+						s.Annotations = make(map[string]string)
+					}
+					s.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey] = "test-feature"
+				})
 				require.NoError(t, err)
-				assert.Equal(t, "ksctl", tierTemplate.Annotations["generated-by"], "templateRef", ref)
-			}
+
+				// then
+				// Verify that the CRB is back
+				_, err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameThat(crbName)
+				require.NoError(t, err)
+				// the noise CRB for unknown/disabled feature is still not created
+				err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+				require.NoError(t, err)
+			})
 		})
-	}
+	})
 }
+
+func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
+	clusterRB := getCRBforFeature(t, feature)       // This is the ClusterRoleBinding for the desired feature
+	noiseCRB := getCRBforFeature(t, unknownFeature) // This is a noise CRB for unknown/disabled feature. To be used to check that this CRB is never created.
+
+	return tiers.WithClusterResources(t, otherTier, func(template *toolchainv1alpha1.TierTemplate) error {
+		template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB, noiseCRB)
+		return nil
+	})
+}
+
+func getCRBforFeature(t *testing.T, featureName string) runtime.RawExtension {
+	var crb bytes.Buffer
+	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&crb, map[string]interface{}{
+		"featureName": featureName,
+	})
+	require.NoError(t, err)
+	clusterRB := runtime.RawExtension{
+		Raw: crb.Bytes(),
+	}
+	return clusterRB
+}
+
+const (
+	unknownFeature = "unknown-feature"
+
+	viewCRB = `{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "ClusterRoleBinding",
+  "metadata": {
+    "name": "${SPACE_NAME}-{{ .featureName }}",
+    "annotations": {
+      "toolchain.dev.openshift.com/feature": "{{ .featureName }}"
+    }
+  },
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+  },
+  "subjects": [
+    {
+      "kind": "User",
+      "name": "${USERNAME}"
+    }
+  ]
+}
+`
+)
