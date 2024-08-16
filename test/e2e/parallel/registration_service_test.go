@@ -738,20 +738,17 @@ func TestActivationCodeVerification(t *testing.T) {
 			wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 		require.NoError(t, err)
 		assert.Equal(t, event.Spec.UserTier, mur.Spec.TierName)
-		if targetCluster == "" {
-			_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
-				wait.UntilSpaceHasTier(event.Spec.SpaceTier),
-				wait.UntilSpaceHasConditions(wait.Provisioned()),
-			)
-			require.NoError(t, err)
-		} else {
-			_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
-				wait.UntilSpaceHasTier(event.Spec.SpaceTier),
-				wait.UntilSpaceHasConditions(wait.Provisioned()),
-				wait.UntilSpaceHasStatusTargetCluster(targetCluster),
-			)
-			require.NoError(t, err)
+		spaceCriterion := []wait.SpaceWaitCriterion{
+			wait.UntilSpaceHasTier(event.Spec.SpaceTier),
+			wait.UntilSpaceHasConditions(wait.Provisioned()),
 		}
+		if targetCluster != "" {
+			spaceCriterion = append(spaceCriterion, wait.UntilSpaceHasStatusTargetCluster(targetCluster))
+		} else {
+			spaceCriterion = append(spaceCriterion, wait.UntilSpaceHasAnyTargetClusterSet())
+		}
+		_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername, spaceCriterion...)
+		require.NoError(t, err)
 
 		// also check that the SocialEvent status was updated accordingly
 		_, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasActivationCount(1))
