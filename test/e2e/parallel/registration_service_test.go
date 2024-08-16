@@ -695,13 +695,15 @@ func TestActivationCodeVerification(t *testing.T) {
 	t.Parallel()
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
+	member2Await := await.Member2()
 	route := hostAwait.RegistrationServiceURL
 
-	t.Run("verification successful", func(t *testing.T) {
+	verifySuccessful := func(t *testing.T, targetCluster string) {
 		// given
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate80"),
-			testsocialevent.WithSpaceTier("base1ns6didler"))
+			testsocialevent.WithSpaceTier("base1ns6didler"),
+			testsocialevent.WithTargetCluster(member2Await.ClusterName))
 		err := hostAwait.CreateWithCleanup(t, event)
 		require.NoError(t, err)
 		userSignup, token := signup(t, hostAwait)
@@ -728,22 +730,40 @@ func TestActivationCodeVerification(t *testing.T) {
 		// check that the MUR and Space are configured as expected
 		// Wait for the UserSignup to have the desired state
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasCompliantUsername())
+			wait.UntilUserSignupHasCompliantUsername(),
+			wait.UntilUserSignupHasTargetCluster(targetCluster))
 		require.NoError(t, err)
 		mur, err := hostAwait.WaitForMasterUserRecord(t, userSignup.Status.CompliantUsername,
 			wait.UntilMasterUserRecordHasTierName(event.Spec.UserTier),
 			wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 		require.NoError(t, err)
 		assert.Equal(t, event.Spec.UserTier, mur.Spec.TierName)
-		_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
-			wait.UntilSpaceHasTier(event.Spec.SpaceTier),
-			wait.UntilSpaceHasConditions(wait.Provisioned()),
-		)
-		require.NoError(t, err)
+		if targetCluster == "" {
+			_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
+				wait.UntilSpaceHasTier(event.Spec.SpaceTier),
+				wait.UntilSpaceHasConditions(wait.Provisioned()),
+			)
+			require.NoError(t, err)
+		} else {
+			_, err = hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
+				wait.UntilSpaceHasTier(event.Spec.SpaceTier),
+				wait.UntilSpaceHasConditions(wait.Provisioned()),
+				wait.UntilSpaceHasStatusTargetCluster(targetCluster),
+			)
+			require.NoError(t, err)
+		}
 
 		// also check that the SocialEvent status was updated accordingly
 		_, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasActivationCount(1))
 		require.NoError(t, err)
+	}
+
+	t.Run("verification successful with no target cluster", func(t *testing.T) {
+		verifySuccessful(t, "")
+	})
+
+	t.Run("verification successful with target cluster", func(t *testing.T) {
+		verifySuccessful(t, member2Await.ClusterName)
 	})
 
 	t.Run("verification failed", func(t *testing.T) {
@@ -767,7 +787,8 @@ func TestActivationCodeVerification(t *testing.T) {
 			// given
 			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 				testsocialevent.WithUserTier("deactivate80"),
-				testsocialevent.WithSpaceTier("base1ns6didler"))
+				testsocialevent.WithSpaceTier("base1ns6didler"),
+				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
 			event, err = hostAwait.WaitForSocialEvent(t, event.Name) // need to reload event
@@ -785,14 +806,17 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is not approved yet
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
+				wait.UntilUserSignupHasTargetCluster("")) // target cluster from the event is ignored when verification failed
 			require.NoError(t, err)
 			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
 
 		t.Run("not opened yet", func(t *testing.T) {
 			// given
-			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(), testsocialevent.WithStartTime(time.Now().Add(time.Hour))) // not open yet
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+				testsocialevent.WithStartTime(time.Now().Add(time.Hour)), // not open yet
+				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
 			userSignup, token := signup(t, hostAwait)
@@ -804,14 +828,18 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is not approved yet
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
+				wait.UntilUserSignupHasTargetCluster("")) // target cluster from the event is ignored when verification failed
 			require.NoError(t, err)
 			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
 
 		t.Run("already closed", func(t *testing.T) {
 			// given
-			event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(), testsocialevent.WithEndTime(time.Now().Add(-time.Hour))) // already closd
+			event := testsocialevent.NewSocialEvent(hostAwait.Namespace,
+				commonsocialevent.NewName(),
+				testsocialevent.WithEndTime(time.Now().Add(-time.Hour)), // already closd
+				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
 			userSignup, token := signup(t, hostAwait)
@@ -823,7 +851,8 @@ func TestActivationCodeVerification(t *testing.T) {
 			// then
 			// ensure the UserSignup is approved
 			userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
-				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...))
+				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.VerificationRequired())...),
+				wait.UntilUserSignupHasTargetCluster("")) // target cluster from the event is ignored when verification failed
 			require.NoError(t, err)
 			assert.Equal(t, "1", userSignup.Annotations[toolchainv1alpha1.UserVerificationAttemptsAnnotationKey])
 		})
