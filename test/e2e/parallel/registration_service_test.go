@@ -703,7 +703,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate80"),
 			testsocialevent.WithSpaceTier("base1ns6didler"),
-			testsocialevent.WithTargetCluster(member2Await.ClusterName))
+			testsocialevent.WithTargetCluster(targetCluster))
 		err := hostAwait.CreateWithCleanup(t, event)
 		require.NoError(t, err)
 		userSignup, token := signup(t, hostAwait)
