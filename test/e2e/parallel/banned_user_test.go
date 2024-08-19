@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
@@ -31,9 +30,6 @@ func TestBannedUser(t *testing.T) {
 	sp, us, _ := testsupportspace.CreateSpaceWithRoleSignupResult(t, awaitilities, "admin",
 		testspace.WithSpecTargetCluster(memberAwait.ClusterName),
 		testspace.WithTierName("appstudio"),
-		testspace.WithStatusProvisionedNamespaces([]toolchainv1alpha1.SpaceNamespace{
-			{},
-		}),
 	)
 
 	// wait until the space has ProvisionedNamespaces
