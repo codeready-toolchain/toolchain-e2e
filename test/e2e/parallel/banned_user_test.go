@@ -36,12 +36,12 @@ func TestBannedUser(t *testing.T) {
 		}),
 	)
 
-	// ban the user
-	_ = CreateBannedUser(t, hostAwait, us.UserSignup.Spec.IdentityClaims.Email)
-
 	// wait until the space has ProvisionedNamespaces
 	sp, err := hostAwait.WaitForSpace(t, sp.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
+	
+	// ban the user
+	_ = CreateBannedUser(t, hostAwait, us.UserSignup.Spec.IdentityClaims.Email)
 
 	// wait until the user is banned
 	_, err = hostAwait.
