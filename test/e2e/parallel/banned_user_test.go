@@ -51,13 +51,14 @@ func TestBannedUser(t *testing.T) {
 				wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
 	require.NoError(t, err)
 
+	// build proxy client
+	proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+	userProxyClient, err := hostAwait.CreateAPIProxyClient(t, us.Token, proxyWorkspaceURL)
+	require.NoError(t, err)
+
 	t.Run("banned user cannot list config maps from space", func(t *testing.T) {
 		// then
 		cms := corev1.ConfigMapList{}
-
-		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
-		userProxyClient, err := hostAwait.CreateAPIProxyClient(t, us.Token, proxyWorkspaceURL)
-		require.NoError(t, err)
 
 		err = userProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
 		require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap to return a NoMatch error, actual: %v", err)
@@ -70,11 +71,8 @@ func TestBannedUser(t *testing.T) {
 				Namespace: sp.Status.ProvisionedNamespaces[0].Name,
 			},
 		}
-		proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
-		communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, us.Token, proxyWorkspaceURL)
-		require.NoError(t, err)
 
-		err = communityUserProxyClient.Create(context.TODO(), &cm)
+		err = userProxyClient.Create(context.TODO(), &cm)
 		require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap to return a NoMatch error, actual: %v", err)
 	})
 }
