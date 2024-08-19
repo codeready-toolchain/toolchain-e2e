@@ -25,7 +25,7 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 
 // CreateSpaceWithRole initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
-// It returns the space, the UserSignup, and the SpaceBinding.
+// It returns the Space, the UserSignup, and the SpaceBinding.
 func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	sp, sr, sb := CreateSpaceWithRoleSignupResult(t, awaitilities, role, opts...)
 	return sp, sr.UserSignup, sb
