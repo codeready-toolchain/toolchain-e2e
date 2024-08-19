@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBannedUser(t *testing.T) {
+func TestProxyBannedUser(t *testing.T) {
 	t.Parallel()
 
 	// make sure everything is ready before running the actual tests
