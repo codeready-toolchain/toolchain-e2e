@@ -675,6 +675,11 @@ func TestSpaceLister(t *testing.T) {
 			username:              "road.bicycle", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
 			identityID:            uuid.New(),
 		},
+		"banneduser": {
+			expectedMemberCluster: memberAwait,
+			username:              "banned.user",
+			identityID:            uuid.New(),
+		},
 	}
 	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer", "viewer"})
 
@@ -682,6 +687,16 @@ func TestSpaceLister(t *testing.T) {
 	for _, user := range users {
 		createAppStudioUser(t, awaitilities, user)
 	}
+
+	// ban a user,
+	// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
+	_ = CreateBannedUser(t, hostAwait, users["banneduser"].signup.Spec.IdentityClaims.Email)
+	// wait until the user is banned
+	_, err := hostAwait.
+		WaitForUserSignup(t, users["banneduser"].signup.Name,
+			wait.UntilUserSignupHasConditions(
+				wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+	require.NoError(t, err)
 
 	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
 	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
@@ -967,6 +982,24 @@ func TestSpaceLister(t *testing.T) {
 		require.NoError(t, err)
 		_, err = awaitilities.Host().WaitForSpaceBinding(t, failingSBR.Spec.MasterUserRecord, primaryUserSpace.GetName())
 		require.NoError(t, err)
+	})
+
+	t.Run("banned user cannot get workspace", func(t *testing.T) {
+		// when
+		workspace, err := users["banneduser"].getWorkspace(t, hostAwait, users["banneduser"].compliantUsername)
+
+		// then
+		require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com bus)")
+		assert.Empty(t, workspace)
+	})
+
+	t.Run("banned user cannot list workspaces", func(t *testing.T) {
+		// when
+		workspaces := users["banneduser"].listWorkspaces(t, hostAwait)
+
+		// then
+		// banned user should not see any workspace
+		require.Len(t, workspaces, 0)
 	})
 
 }
