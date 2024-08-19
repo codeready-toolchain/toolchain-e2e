@@ -989,7 +989,7 @@ func TestSpaceLister(t *testing.T) {
 		workspace, err := users["banneduser"].getWorkspace(t, hostAwait, users["banneduser"].compliantUsername)
 
 		// then
-		require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com bus)")
+		require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com banneduser)")
 		assert.Empty(t, workspace)
 	})
 
