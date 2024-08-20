@@ -7,6 +7,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/test"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/wait"
@@ -15,20 +16,22 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestForNamespace(t *testing.T) {
+func TestForSpace(t *testing.T) {
 	configuration.DefaultTimeout = time.Millisecond * 1
 	t.Run("success", func(t *testing.T) {
 		// given
-		ns := &toolchainv1alpha1.Space{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "user0001-stage",
-			},
-		}
-		cl := test.NewFakeClient(t, ns) // space exists
+		space := testspace.NewSpace(configuration.HostOperatorNamespace, "user0001", testspace.WithCondition(
+			toolchainv1alpha1.Condition{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: corev1.ConditionTrue,
+				Reason: "Provisioned",
+			}))
+		cl := test.NewFakeClient(t, space) // space exists
 
 		// when
 		err := wait.ForSpace(cl, "user0001")
@@ -41,14 +44,14 @@ func TestForNamespace(t *testing.T) {
 		t.Run("timeout", func(t *testing.T) {
 			// given
 			configuration.DefaultTimeout = time.Second * 1
-			cl := test.NewFakeClient(t) // ns doesn't exist
+			cl := test.NewFakeClient(t) // space doesn't exist
 
 			// when
 			err := wait.ForSpace(cl, "user0001")
 
 			// then
 			require.Error(t, err)
-			assert.EqualError(t, err, "space 'user0001' does not exist: timed out waiting for the condition")
+			assert.EqualError(t, err, "space 'user0001' is not ready yet: timed out waiting for the condition")
 		})
 	})
 }
