@@ -989,7 +989,8 @@ func TestSpaceLister(t *testing.T) {
 		workspace, err := users["banneduser"].getWorkspace(t, hostAwait, users["banneduser"].compliantUsername)
 
 		// then
-		require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com banneduser)")
+		// this is the error expected to be returned by the proxy when the user is banned
+		require.EqualError(t, err, "unable to get target cluster: no member cluster found for the user")
 		require.Nil(t, workspace)
 	})
 
