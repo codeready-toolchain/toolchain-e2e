@@ -446,4 +446,4 @@ test-support:
 
 .PHONY: test-setup
 test-setup:
-	@go test github.com/codeready-toolchain/toolchain-e2e/setup/... -failfast - skip github.com/codeready-toolchain/toolchain-e2e/setup/resources
+	@go test github.com/codeready-toolchain/toolchain-e2e/setup/... -failfast
