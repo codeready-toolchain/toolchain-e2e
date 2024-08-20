@@ -85,7 +85,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
-			require.EqualError(t, err, "failed to verify installation of operator with subscription 'kiali-ossm': could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
+			require.ErrorContains(t, err, "could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
 		})
 
 		t.Run("error when getting csv", func(t *testing.T) {

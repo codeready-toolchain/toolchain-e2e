@@ -29,12 +29,16 @@ spec:
       spaceBindingRequestEnabled: true
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
+      featureToggles:
+      - name: "test-feature"
+        weight: 100
     toolchainStatus:
       toolchainStatusRefreshTime: '1s'
   members:
     default:
       autoscaler:
         bufferMemory: "50Mi"
+        bufferCPU: "15m"
         bufferReplicas: 2
         deploy: true
       memberStatus:
@@ -43,6 +47,4 @@ spec:
         secret:
           ref: 'member-operator-secret'
           virtualMachineAccessKey: 'vm.access'
-      webConsolePlugin:
-        deploy: true
       environment: 'e2e-tests'
