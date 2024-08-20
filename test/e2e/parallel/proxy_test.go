@@ -990,7 +990,7 @@ func TestSpaceLister(t *testing.T) {
 
 		// then
 		require.EqualError(t, err, "the server could not find the requested resource (get workspaces.toolchain.dev.openshift.com banneduser)")
-		assert.Empty(t, workspace)
+		require.Nil(t, workspace)
 	})
 
 	t.Run("banned user cannot list workspaces", func(t *testing.T) {
