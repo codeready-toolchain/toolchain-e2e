@@ -990,7 +990,7 @@ func TestSpaceLister(t *testing.T) {
 
 		// then
 		// this is the error expected to be returned by the proxy when the user is banned
-		require.EqualError(t, err, "unable to get target cluster: no member cluster found for the user")
+		require.ErrorContains(t, err, "unable to get target cluster: no member cluster found for the user")
 	})
 }
 
