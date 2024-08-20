@@ -999,7 +999,7 @@ func TestSpaceLister(t *testing.T) {
 
 		// then
 		// banned user should not see any workspace
-		require.Len(t, workspaces, 0)
+		require.Empty(t, workspaces)
 	})
 
 }
