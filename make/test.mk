@@ -438,7 +438,6 @@ display-eval:
 .PHONY: test
 ## Run the unit tests in the 'testsupport/...' packages
 test: test-support test-setup
-	 @echo 'Run unit tests in test-support and setup'
 
 .PHONY: test-support
 test-support:
