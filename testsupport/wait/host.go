@@ -515,6 +515,19 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 	}
 }
 
+// UntilUserSignupHasTargetCluster returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has the expected target cluster field
+func UntilUserSignupHasTargetCluster(expectedTargetCluster string) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Spec.TargetCluster == expectedTargetCluster
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected target cluster to match:\n%s", Diff(expectedTargetCluster, actual.Spec.TargetCluster))
+		},
+	}
+}
+
 // UntilUserSignupContainsConditions returns a `UserSignupWaitCriterion` which checks that the given
 // UserSignup contains all the given status conditions
 func UntilUserSignupContainsConditions(shouldContain ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
