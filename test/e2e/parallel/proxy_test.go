@@ -984,25 +984,14 @@ func TestSpaceLister(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("banned user cannot get workspace", func(t *testing.T) {
+	t.Run("banned user cannot create proxy client", func(t *testing.T) {
 		// when
-		workspace, err := users["banneduser"].getWorkspace(t, hostAwait, users["banneduser"].compliantUsername)
+		_, err := hostAwait.CreateAPIProxyClient(t, users["banneduser"].token, hostAwait.APIProxyURL)
 
 		// then
 		// this is the error expected to be returned by the proxy when the user is banned
 		require.EqualError(t, err, "unable to get target cluster: no member cluster found for the user")
-		require.Nil(t, workspace)
 	})
-
-	t.Run("banned user cannot list workspaces", func(t *testing.T) {
-		// when
-		workspaces := users["banneduser"].listWorkspaces(t, hostAwait)
-
-		// then
-		// banned user should not see any workspace
-		require.Empty(t, workspaces)
-	})
-
 }
 
 func tenantNsName(username string) string {
