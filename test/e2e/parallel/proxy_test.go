@@ -675,6 +675,11 @@ func TestSpaceLister(t *testing.T) {
 			username:              "road.bicycle", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
 			identityID:            uuid.New(),
 		},
+		"banneduser": {
+			expectedMemberCluster: memberAwait,
+			username:              "banned.user",
+			identityID:            uuid.New(),
+		},
 	}
 	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer", "viewer"})
 
@@ -682,6 +687,16 @@ func TestSpaceLister(t *testing.T) {
 	for _, user := range users {
 		createAppStudioUser(t, awaitilities, user)
 	}
+
+	// ban a user,
+	// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
+	_ = CreateBannedUser(t, hostAwait, users["banneduser"].signup.Spec.IdentityClaims.Email)
+	// wait until the user is banned
+	_, err := hostAwait.
+		WaitForUserSignup(t, users["banneduser"].signup.Name,
+			wait.UntilUserSignupHasConditions(
+				wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+	require.NoError(t, err)
 
 	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
 	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
@@ -969,6 +984,14 @@ func TestSpaceLister(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("banned user cannot create proxy client", func(t *testing.T) {
+		// when
+		_, err := hostAwait.CreateAPIProxyClient(t, users["banneduser"].token, hostAwait.APIProxyURL)
+
+		// then
+		// this is the error expected to be returned by the proxy when the user is banned
+		require.ErrorContains(t, err, "unable to get target cluster: no member cluster found for the user")
+	})
 }
 
 func tenantNsName(username string) string {
