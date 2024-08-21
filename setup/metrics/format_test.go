@@ -15,7 +15,7 @@ func TestBytesToMBString(t *testing.T) {
 			// when
 			result := bytesToMBString(val)
 
-			require.Equal(t, "0.00 MB", result)
+			require.Equal(t, "0.00", result)
 		})
 
 		t.Run("non-zero value", func(t *testing.T) {
@@ -25,7 +25,7 @@ func TestBytesToMBString(t *testing.T) {
 			// when
 			result := bytesToMBString(val)
 
-			require.Equal(t, "117.74 MB", result)
+			require.Equal(t, "117.74", result)
 		})
 	})
 }
