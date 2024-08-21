@@ -25,7 +25,16 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 
 // CreateSpaceWithRole initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
+// It returns the Space, the UserSignup, and the SpaceBinding.
 func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+	sp, sr, sb := CreateSpaceWithRoleSignupResult(t, awaitilities, role, opts...)
+	return sp, sr.UserSignup, sb
+}
+
+// CreateSpaceWithRoleSignupResult initializes a new Space object using the NewSpace function, and then creates it in the cluster
+// It also automatically provisions MasterUserRecord and creates SpaceBinding for it.
+// It returns the Space, the SignupResult, and the SpaceBinding.
+func CreateSpaceWithRoleSignupResult(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *testsupport.SignupResult, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	username := uuid.Must(uuid.NewV4()).String()
 	user := testsupport.NewSignupRequest(awaitilities).
@@ -66,7 +75,7 @@ func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role stri
 		require.NoError(t, err)
 	}
 
-	return space, signup, spaceBinding
+	return space, user, spaceBinding
 }
 
 // CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
