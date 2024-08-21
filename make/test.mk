@@ -297,7 +297,7 @@ get-publish-install-and-register-operators: get-and-publish-host-operator get-an
 get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
 
 .PHONY: get-and-publish-member-operator
-get-and-publish-member-operator:
+get-and-publish-member-operator: ksctl
 ifneq (${MEMBER_NS_2},"")
     ifneq (${MEMBER_NS_2},)
 		$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
@@ -313,10 +313,16 @@ ifneq (${FORCED_TAG},"")
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
+ifeq ($(DEPLOY_LATEST),true)
+	@echo "Installing latest version of the member-operator"
+	${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS};  \
+else
+	@echo "Installing specific version of the member-operator"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
+endif
 
 .PHONY: get-and-publish-host-operator
-get-and-publish-host-operator:
+get-and-publish-host-operator: ksctl
 ifneq (${REG_REPO_PATH},"")
     ifneq (${REG_REPO_PATH},)
 		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
@@ -332,7 +338,13 @@ ifneq (${FORCED_TAG},"")
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
+ifeq ($(DEPLOY_LATEST),true)
+	@echo "Installing latest version of the host-operator"
+	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS};  \
+else
+	@echo "Installing specific version of the host-operator"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
+endif
 
 ###########################################################
 #
