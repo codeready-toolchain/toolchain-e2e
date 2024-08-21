@@ -314,8 +314,12 @@ ifneq (${FORCED_TAG},"")
     endif
 endif
 ifeq ($(DEPLOY_LATEST),true)
-	@echo "Installing latest version of the member-operator"
+	@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS}"
 	${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS} -y
+   ifneq (${MEMBER_NS_2},)
+		@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS_2}"
+		${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS_2} -y
+   endif
 else
 	@echo "Installing specific version of the member-operator"
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
