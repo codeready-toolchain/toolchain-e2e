@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -576,6 +577,54 @@ func TestProxyFlow(t *testing.T) {
 
 				// then
 				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (get applications.appstudio.redhat.com %s)`, primaryUserNamespace, workspaceName, applicationName))
+			})
+		})
+
+		t.Run("banned user", func(t *testing.T) {
+			// create an user and a space
+			sp, us, _ := testsupportspace.CreateSpaceWithRoleSignupResult(t, awaitilities, "admin",
+				testspace.WithSpecTargetCluster(memberAwait.ClusterName),
+				testspace.WithTierName("appstudio"),
+			)
+
+			// wait until the space has ProvisionedNamespaces
+			sp, err := hostAwait.WaitForSpace(t, sp.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
+			require.NoError(t, err)
+
+			// ban the user
+			_ = CreateBannedUser(t, hostAwait, us.UserSignup.Spec.IdentityClaims.Email)
+
+			// wait until the user is banned
+			_, err = hostAwait.
+				WithRetryOptions(wait.TimeoutOption(time.Second*10), wait.RetryInterval(time.Second*2)).
+				WaitForUserSignup(t, us.UserSignup.Name,
+					wait.UntilUserSignupHasConditions(
+						wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+			require.NoError(t, err)
+
+			// build proxy client
+			proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+			userProxyClient, err := hostAwait.CreateAPIProxyClient(t, us.Token, proxyWorkspaceURL)
+			require.NoError(t, err)
+
+			t.Run("banned user cannot list config maps from space", func(t *testing.T) {
+				// then
+				cms := corev1.ConfigMapList{}
+
+				err = userProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
+				require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap to return a NoMatch error, actual: %v", err)
+			})
+
+			t.Run("banned user cannot create config maps into space", func(t *testing.T) {
+				cm := corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cm",
+						Namespace: sp.Status.ProvisionedNamespaces[0].Name,
+					},
+				}
+
+				err = userProxyClient.Create(context.TODO(), &cm)
+				require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap to return a NoMatch error, actual: %v", err)
 			})
 		})
 	})
