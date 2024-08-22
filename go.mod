@@ -123,4 +123,4 @@ require (
 
 go 1.20
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240809102621-de603e703e53
+replace github.com/codeready-toolchain/toolchain-common => github.com/metlos/toolchain-common v0.0.0-20240822152448-678fc4017cd9
