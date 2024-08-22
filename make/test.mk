@@ -456,5 +456,12 @@ display-eval:
 
 .PHONY: test
 ## Run the unit tests in the 'testsupport/...' packages
-test:
+test: test-support test-setup
+
+.PHONY: test-support
+test-support:
 	@go test github.com/codeready-toolchain/toolchain-e2e/testsupport/... -failfast
+
+.PHONY: test-setup
+test-setup:
+	@go test github.com/codeready-toolchain/toolchain-e2e/setup/... -failfast
