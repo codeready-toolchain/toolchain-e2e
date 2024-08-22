@@ -1,7 +1,7 @@
 
-GH_OWNER=codeready-toolchain
+GH_OWNER=mfrancisc
 GH_REPO=toolchain-cicd
-GH_BRANCH=master
+GH_BRANCH=fixolmresroucenames
 STRIPS_FOLDER=3
 OWNER_AND_BRANCH_LOCATION=${GH_OWNER}/${GH_REPO}/${GH_BRANCH}
 GH_SCRIPTS_URL=https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}
