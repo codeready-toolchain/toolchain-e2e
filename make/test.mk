@@ -8,6 +8,9 @@ QUAY_NAMESPACE ?= codeready-toolchain-test
 DATE_SUFFIX := $(shell date +'%d%H%M%S')
 HOST_NS ?= toolchain-host-${DATE_SUFFIX}
 MEMBER_NS ?= toolchain-member-${DATE_SUFFIX}
+# it can be used to customize the install wait timeout parameter for the ksctl adm install-operator
+# for eg. on slow systems you can customize it like so: KSCTL_INSTALL_TIMEOUT_PARAM="--timeout=15m"
+KSCTL_INSTALL_TIMEOUT_PARAM ?= ""
 
 SECOND_MEMBER_MODE = true
 
@@ -315,10 +318,10 @@ ifneq (${FORCED_TAG},"")
 endif
 ifeq ($(DEPLOY_LATEST),true)
 	@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS}"
-	${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS} -y
+	${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
    ifneq (${MEMBER_NS_2},)
 		@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS_2}"
-		${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS_2} -y
+		${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS_2} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
    endif
 else
 	@echo "Installing specific version of the member-operator"
@@ -344,7 +347,7 @@ ifneq (${FORCED_TAG},"")
 endif
 ifeq ($(DEPLOY_LATEST),true)
 	@echo "Installing latest version of the host-operator"
-	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} -y
+	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
 else
 	@echo "Installing specific version of the host-operator"
 	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
