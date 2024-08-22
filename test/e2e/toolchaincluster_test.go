@@ -9,6 +9,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/kubeconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
@@ -112,19 +113,15 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
+
 		// other ToolchainCluster should be ready, too
 		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(
-				client.MatchingLabels{
-					"namespace": otherAwait.Namespace,
-				},
-			), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+			wait.UntilToolchainClusterHasOperatorNamespace(otherAwait.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
+
 		_, err = otherAwait.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
-				"namespace": await.Namespace,
-			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+			wait.UntilToolchainClusterHasOperatorNamespace(await.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
 	})
@@ -133,9 +130,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// given
 		name := generateNewName("new-offline-", current.Name)
 		secretCopy := &corev1.Secret{}
-		wait.CopyWithCleanup(t, await,
-			client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace},
-			client.ObjectKey{Name: name, Namespace: current.Namespace}, secretCopy)
+		wait.CopyWithCleanup(t, await, client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace},
+			client.ObjectKey{Name: name, Namespace: current.Namespace}, secretCopy, kubeconfig.Modify(t, kubeconfig.ApiEndpoint("https://1.2.3.4:8443")))
 
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
@@ -163,20 +159,14 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// other ToolchainCluster should be ready, too
 		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(
-				client.MatchingLabels{
-					"namespace": otherAwait.Namespace,
-				},
-			), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
-		)
-		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
-				"namespace": await.Namespace,
-			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+			wait.UntilToolchainClusterHasOperatorNamespace(otherAwait.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
 
+		_, err = otherAwait.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasOperatorNamespace(await.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+		)
+		require.NoError(t, err)
 	})
 }
 
