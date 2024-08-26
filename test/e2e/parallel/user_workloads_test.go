@@ -8,15 +8,12 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,18 +27,15 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	memberAwait := await.Member1()
 	// Provision a user to idle with a short idling timeout
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
-	userSignup, _ := NewSignupRequest(await).
+	NewSignupRequest(await).
 		Username("test-idler").
 		Email("test-idler@redhat.com").
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
+		SpaceTier("base"). // let's move it to base to have to namespaces to monitor
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
-
-	// let's move it to base to have to namespaces to monitor
-	tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, "base")
-	space.VerifyResourcesProvisionedForSpace(t, await, userSignup.Status.CompliantUsername)
+		Execute(t)
 
 	idler, err := memberAwait.WaitForIdler(t, "test-idler-dev", wait.IdlerConditions(wait.Running()))
 	require.NoError(t, err)
@@ -77,8 +71,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 	_, err = memberAwait.WaitForPods(t, "workloads-noise", len(externalNsPodsNoise), wait.PodRunning(), wait.WithPodLabel("idler", "idler"), wait.WithOriginalPriorityClass())
 	require.NoError(t, err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(t, "test-idler-stage-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.True(t, errors.IsNotFound(err))
+	err = hostAwait.WaitForNotificationToNotBeCreated(t, "test-idler-stage-idled")
+	require.NoError(t, err)
 
 	// Check if notification has been deleted before creating another pod
 	err = hostAwait.WaitUntilNotificationWithNameDeleted(t, "test-idler-dev-idled")
@@ -94,8 +88,8 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	time.Sleep(time.Duration(2*idler.Spec.TimeoutSeconds) * time.Second)
 	err = memberAwait.WaitUntilPodDeleted(t, pod.Namespace, pod.Name)
 	require.NoError(t, err)
-	_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(10*time.Second)).WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
-	require.True(t, errors.IsNotFound(err))
+	err = hostAwait.WaitForNotificationToNotBeCreated(t, "test-idler-dev-idled")
+	require.NoError(t, err)
 
 	// There should not be any pods left in the namespace
 	err = memberAwait.WaitUntilPodsDeleted(t, idler.Name, wait.WithPodLabel("idler", "idler"))
@@ -253,7 +247,7 @@ func podSpec() corev1.PodSpec {
 		TerminationGracePeriodSeconds: &zero,
 		Containers: []corev1.Container{{
 			Name:    "sleep",
-			Image:   "busybox",
+			Image:   "quay.io/prometheus/busybox:latest",
 			Command: []string{"sleep", "36000"}, // 10 hours
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{

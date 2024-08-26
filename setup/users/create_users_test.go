@@ -15,7 +15,6 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-
 	// given
 	configuration.DefaultTimeout = time.Second * 5
 
@@ -33,13 +32,12 @@ func TestCreate(t *testing.T) {
 				Name:      "member-abcd",
 				Labels: map[string]string{
 					"namespace": memberOperatorNamespace,
-					"type":      "member",
 				},
 			},
 			Status: toolchainv1alpha1.ToolchainClusterStatus{
-				Conditions: []toolchainv1alpha1.ToolchainClusterCondition{
+				Conditions: []toolchainv1alpha1.Condition{
 					{
-						Type:   toolchainv1alpha1.ToolchainClusterReady,
+						Type:   toolchainv1alpha1.ConditionReady,
 						Status: corev1.ConditionTrue,
 					},
 				},
@@ -53,11 +51,9 @@ func TestCreate(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-
 	})
 
 	t.Run("failures", func(t *testing.T) {
-
 		t.Run("missing ToolchainCluster resource for member cluster", func(t *testing.T) {
 			// given
 			configuration.DefaultTimeout = time.Second * 5

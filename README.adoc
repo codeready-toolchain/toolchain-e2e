@@ -36,16 +36,14 @@ This is by design because OLM does not ensure that both the host-operator and me
 
 If you still don't know what to do with e2e tests in some use-cases, go to <<What To Do>> section where all use-cases are covered.
 
-=== Prerequisites if Running Locally
+NOTE: You can also pair a toolchain-e2e PR with a PR from the https://github.com/kubesaw/ksctl repository, but this is one-directional only (e2e tests are not yet executed in the `ksctl` repo). To rely on a locally installed version of the `ksctl` binary, set `USE_INSTALLED_KSCTL=true`. If you want to build and use the `ksctl` binary from your local `kubesaw/ksctl` repository, set the `KSCTL_REPO_PATH` variable to point to your `kubesaw/ksctl` folder.
 
-Install the link:required_tools.adoc[required tools].
+=== Running Locally
 
-==== OpenShift 4.2+
+*Prerequisites*:
 
-* Make sure you have set the `QUAY_NAMESPACE` variable: `export QUAY_NAMESPACE=<quay-username>`
-* Log in to the quay.io using `docker login quay.io`
-* Make sure that the visibility of all repositories `host-operator`, `member-operator` and `registration-service` in quay is set to `public` (https://quay.io/repository/<your-username>/host-operator?tab=settings https://quay.io/repository/<your-username>/member-operator?tab=settings https://quay.io/repository/<your-username>/registration-service?tab=settings)
-* Log in to the target OpenShift 4.2+ cluster with cluster admin privileges using `oc login`
+* Install the link:required_tools.adoc[required tools].
+* Configure link:quay.adoc[your quay account for dev deployment].
 
 ==== Running in a Development Environment
 
@@ -104,7 +102,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 	// some more code here ...
 
 	t.Run("create space request", func(t *testing.T) {
-        // test case impelementation here ...
+        // test case implementation here ...
 ....
 ```
 

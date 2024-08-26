@@ -11,6 +11,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/require"
@@ -121,26 +122,20 @@ func TestSpaceRoles(t *testing.T) {
 	appstudioTier, err := hostAwait.WaitForNSTemplateTier(t, "appstudio")
 	require.NoError(t, err)
 
-	// given a user (with her own space, but we'll ignore it in this test)
-	_, ownerMUR := NewSignupRequest(awaitilities).
+	// given a user (with her own space)
+	ownerUser := NewSignupRequest(awaitilities).
 		Username("spaceowner").
 		Email("spaceowner@redhat.com").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
+		SpaceTier("appstudio").
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-		NoSpace().
-		Execute(t).
-		Resources()
-
-	// when a space owned by the user above is created (and user is an admin of this space)
-	s, ownerBinding := CreateSpaceWithBinding(t, awaitilities, ownerMUR,
-		testspace.WithSpecTargetCluster(awaitilities.Member1().ClusterName),
-		testspace.WithTierName("appstudio"),
-	)
+		Execute(t)
+	ownerMUR := ownerUser.MUR
 
 	// then
-	_, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, s.Name,
+	s, nsTmplSet := VerifyResourcesProvisionedForSpace(t, awaitilities, ownerMUR.Name,
 		UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 		UntilSpaceHasTier("appstudio"),
 	)
@@ -157,9 +152,12 @@ func TestSpaceRoles(t *testing.T) {
 		UntilHasLastAppliedSpaceRoles(nsTmplSet.Spec.SpaceRoles))
 	require.NoError(t, err)
 
+	ownerBinding, err := awaitilities.Host().WaitForSpaceBinding(t, ownerMUR.Name, ownerUser.Space.Name)
+	require.NoError(t, err)
+
 	t.Run("and with guest admin binding", func(t *testing.T) {
 		// given a `spaceguest` user (with her own space, but we'll ignore it in this test)
-		_, guestMUR := NewSignupRequest(awaitilities).
+		guestUser := NewSignupRequest(awaitilities).
 			Username("spaceguest").
 			Email("spaceguest@redhat.com").
 			ManuallyApprove().
@@ -167,14 +165,12 @@ func TestSpaceRoles(t *testing.T) {
 			WaitForMUR().
 			NoSpace().
 			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
+			Execute(t)
 
 		// when the `spaceguest` user is bound to the space as an admin
-		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestMUR, s, "admin")
+		guestBinding := testsupportsb.CreateSpaceBinding(t, hostAwait, guestUser.MUR, s, "admin")
 
 		// then
-		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
@@ -211,10 +207,10 @@ func TestSpaceRoles(t *testing.T) {
 		ownerBinding.Spec.SpaceRole = "maintainer"
 
 		// when
-		err := hostAwait.Client.Update(context.TODO(), ownerBinding)
+		err = hostAwait.Client.Update(context.TODO(), ownerBinding)
+		require.NoError(t, err)
 
 		// then
-		require.NoError(t, err)
 		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name,
 			UntilNSTemplateSetHasConditions(Provisioned()),
 			UntilNSTemplateSetHasSpaceRoles(
@@ -253,17 +249,20 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	// when
-	space, _, _ := CreateSpace(t, awaitilities, testspace.WithTierName("base1ns"), testspace.WithSpecTargetCluster(memberAwait.ClusterName))
-	// then
-	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
+	user := NewSignupRequest(awaitilities).
+		ManuallyApprove().
+		TargetCluster(memberAwait).
+		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		EnsureMUR().
+		Execute(t)
+	spaceName := user.Space.Name
 
 	t.Run("to advanced tier", func(t *testing.T) {
 		// when
-		tiers.MoveSpaceToTier(t, hostAwait, space.Name, "advanced")
+		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "advanced")
 
 		// then
-		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
+		VerifyResourcesProvisionedForSpace(t, awaitilities, spaceName)
 	})
 }
 
@@ -280,7 +279,18 @@ func TestSubSpaces(t *testing.T) {
 	t.Run("we create subSpaces in the parentSpace tree and expect roles and usernames to be inherited in NSTemplateSet", func(t *testing.T) {
 		// when
 		// we have a parentSpace
-		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
+		user := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
+		mur := user.MUR
+		parentSpace := user.Space
+		parentSpaceBindings, err := hostAwait.WaitForSpaceBinding(t, mur.Name, parentSpace.Name)
+		require.NoError(t, err)
+
 		// then
 		// wait until MUR and Space have been provisioned
 		_, parentNSTemplateSet := VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
@@ -496,22 +506,33 @@ func TestSubSpaceInheritance(t *testing.T) {
 		// when
 		// we have a parentSpace
 		t.Logf("Create parent space")
-		parentSpace, _, parentSpaceBindings := CreateSpace(t, awaitilities, testspace.WithSpecTargetCluster(memberAwait.ClusterName), testspace.WithTierName("appstudio"))
-		// then
-		// wait until MUR and Space have been provisioned
-		t.Logf("Wait for space to be provisioned")
-		VerifyResourcesProvisionedForSpace(t, awaitilities, parentSpace.Name, UntilSpaceHasStatusTargetCluster(memberAwait.ClusterName))
-		_, err = hostAwait.WaitForMasterUserRecord(t, parentSpaceBindings.Spec.MasterUserRecord)
-		require.NoError(t, err)
+		parentUser := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
+
+		user := NewSignupRequest(awaitilities).
+			ManuallyApprove().
+			TargetCluster(memberAwait).
+			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			SpaceTier("appstudio").
+			EnsureMUR().
+			Execute(t)
+		mur := user.MUR
 
 		// when
 		// we also have a subSpace with same tier but with disable inheritance
 		t.Logf("Create sub space with role: contributor")
-		subSpace, _, subSpaceBindings := CreateSpaceWithRole(t, awaitilities, "contributor",
-			testspace.WithSpecParentSpace(parentSpace.Name),
+		subSpace := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t),
+			testspace.WithSpecParentSpace(parentUser.Space.Name),
 			testspace.WithTierName("appstudio"),
 			testspace.WithSpecTargetCluster(memberAwait.ClusterName),
 			testspace.WithDisableInheritance(true))
+		subSpace, subSpaceBindings, err := awaitilities.Host().CreateSpaceAndSpaceBinding(t, mur, subSpace, "contributor")
+		require.NoError(t, err)
 
 		// then
 		t.Logf("Verify sub space resources")
@@ -519,6 +540,14 @@ func TestSubSpaceInheritance(t *testing.T) {
 			UntilSpaceHasStatusTargetCluster(awaitilities.Member1().ClusterName),
 			UntilSpaceHasTier("appstudio"),
 		)
+
+		t.Logf("Wait for space binding")
+		_, err = awaitilities.Host().WaitForSpaceBinding(t, mur.Name, subSpace.Name,
+			UntilSpaceBindingHasMurName(mur.Name),
+			UntilSpaceBindingHasSpaceName(subSpace.Name),
+			UntilSpaceBindingHasSpaceRole("contributor"),
+		)
+		require.NoError(t, err)
 
 		t.Logf("Wait for master user")
 		subMur, err := hostAwait.WaitForMasterUserRecord(t, subSpaceBindings.Spec.MasterUserRecord)
@@ -531,7 +560,6 @@ func TestSubSpaceInheritance(t *testing.T) {
 				SpaceRole(appstudioTier.Spec.SpaceRoles["contributor"].TemplateRef, subMur.Name)),
 		)
 		require.NoError(t, err)
-
 	})
 }
 

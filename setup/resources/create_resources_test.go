@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commontest "github.com/codeready-toolchain/toolchain-common/pkg/test"
+	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	templatev1 "github.com/openshift/api/template/v1"
 
@@ -20,6 +23,7 @@ import (
 
 func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 	// given
+	configuration.DefaultTimeout = time.Millisecond * 1
 	s, err := configuration.NewScheme()
 	require.NoError(t, err)
 
@@ -28,12 +32,13 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 		t.Cleanup(func() {
 			tmpls = make(map[string]*templatev1.Template) // forget about the template after this test, so others can fail as expected
 		})
-		ns := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "user0001-stage",
-			},
-		}
-		cl := commontest.NewFakeClient(t, ns)
+		space := testspace.NewSpace(configuration.HostOperatorNamespace, "user0001", testspace.WithCondition(
+			toolchainv1alpha1.Condition{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: corev1.ConditionTrue,
+				Reason: "Provisioned",
+			}))
+		cl := commontest.NewFakeClient(t, space)
 		username := "user0001"
 		templatePath := "user-workloads.yaml"
 
@@ -44,23 +49,20 @@ func TestCreateUserResourcesFromTemplateFiles(t *testing.T) {
 		require.NoError(t, err)
 		assert.NoError(t, cl.Get(context.TODO(),
 			types.NamespacedName{
-				Namespace: "user0001-stage",
+				Namespace: "user0001-dev",
 				Name:      "nginx-deployment",
 			},
 			&appsv1.Deployment{}))
 		assert.NoError(t, cl.Get(context.TODO(),
 			types.NamespacedName{
-				Namespace: "user0001-stage",
+				Namespace: "user0001-dev",
 				Name:      "nginx-service",
 			},
 			&corev1.Service{}))
-
 	})
 
 	t.Run("failures", func(t *testing.T) {
-
 		t.Run("invalid template", func(t *testing.T) {
-
 			t.Run("file not found", func(t *testing.T) {
 				// given
 				ns := &corev1.Namespace{

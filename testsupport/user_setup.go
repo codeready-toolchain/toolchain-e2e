@@ -12,13 +12,12 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	authsupport "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-
 	"github.com/gofrs/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func CreateMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+func createMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, capacity int, ensuresMur bool) []*toolchainv1alpha1.UserSignup {
 	hostAwait := awaitilities.Host()
 	signups := make([]*toolchainv1alpha1.UserSignup, capacity)
 	for i := 0; i < capacity; i++ {
@@ -30,16 +29,30 @@ func CreateMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetC
 			// skip this one, it already exists
 			continue
 		}
-		// Create an approved UserSignup resource
-		signups[i], _ = NewSignupRequest(awaitilities).
+
+		signupRequest := NewSignupRequest(awaitilities).
 			Username(name).
 			Email(fmt.Sprintf("multiple-signup-testuser-%d@test.com", i)).
 			ManuallyApprove().
-			TargetCluster(targetCluster).
-			Execute(t).
-			Resources()
+			TargetCluster(targetCluster)
+
+		if ensuresMur {
+			signupRequest = signupRequest.EnsureMUR().RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...)
+		}
+
+		user := signupRequest.Execute(t)
+		signups[i] = user.UserSignup
+
 	}
 	return signups
+}
+
+func CreateMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+	return createMultipleSignups(t, awaitilities, targetCluster, capacity, false)
+}
+
+func CreateMultipleSignupsWithMURs(t *testing.T, awaitilities wait.Awaitilities, targetCluster *wait.MemberAwaitility, capacity int) []*toolchainv1alpha1.UserSignup {
+	return createMultipleSignups(t, awaitilities, targetCluster, capacity, true)
 }
 
 type IdentityOption func(*authsupport.Identity) error
@@ -55,9 +68,6 @@ func NewUserSignup(namespace, username string, email string) *toolchainv1alpha1.
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,
-			Annotations: map[string]string{
-				toolchainv1alpha1.UserSignupUserEmailAnnotationKey: email,
-			},
 			Labels: map[string]string{
 				toolchainv1alpha1.UserSignupUserEmailHashLabelKey: hash.EncodeString(email),
 			},

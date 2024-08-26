@@ -6,15 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/codeready-toolchain/toolchain-e2e/setup/configuration"
 	"github.com/codeready-toolchain/toolchain-e2e/setup/test"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestEnsureOperatorsInstalled(t *testing.T) {
@@ -86,7 +85,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
-			require.EqualError(t, err, "failed to verify installation of operator with subscription 'kiali-ossm': could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
+			require.ErrorContains(t, err, "could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
 		})
 
 		t.Run("error when getting csv", func(t *testing.T) {

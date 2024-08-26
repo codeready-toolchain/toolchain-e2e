@@ -6,19 +6,15 @@ import (
 	"time"
 
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
-
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	userv1 "github.com/openshift/api/user/v1"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,8 +54,13 @@ func TestE2EFlow(t *testing.T) {
 			VerifyMemberOperatorConfig(t, hostAwait, memberAwait, wait.UntilMemberConfigMatches(expectedMemberConfiguration))
 		})
 		t.Run("verify MemberOperatorConfig was synced to member 2", func(t *testing.T) {
-			member2ExpectedConfig := testconfig.NewMemberOperatorConfigObj(testconfig.Webhook().Deploy(false), testconfig.WebConsolePlugin().Deploy(true), testconfig.MemberEnvironment("e2e-tests"))
-			VerifyMemberOperatorConfig(t, hostAwait, memberAwait2, wait.UntilMemberConfigMatches(member2ExpectedConfig.Spec))
+			// Expected to be the same as for member-1 but with Webhook deployment disabled.
+			// We can't deploy the same cluster-scoped webhook twice (member-1 and member-2) in the same physical cluster.
+			member2ExpectedConfig := expectedMemberConfiguration.DeepCopy()
+			f := false
+			member2ExpectedConfig.Webhook.Deploy = &f
+			member2ExpectedConfig.Webhook.Secret = nil
+			VerifyMemberOperatorConfig(t, hostAwait, memberAwait2, wait.UntilMemberConfigMatches(*member2ExpectedConfig))
 		})
 	})
 
@@ -69,62 +70,58 @@ func TestE2EFlow(t *testing.T) {
 
 	// Create and approve "johnsmith" and "extrajohn" signups
 	johnsmithName := "johnsmith"
-	johnSignup, _ := NewSignupRequest(awaitilities).
+	johnUser := NewSignupRequest(awaitilities).
 		Username(johnsmithName).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
+		SpaceTier("base").
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
-
-	tiers.MoveSpaceToTier(t, hostAwait, johnSignup.Status.CompliantUsername, "base")
-	space.VerifyResourcesProvisionedForSpace(t, awaitilities, johnSignup.Status.CompliantUsername)
+		Execute(t)
+	johnSignup := johnUser.UserSignup
 
 	extrajohnName := "extrajohn"
-	johnExtraSignup, _ := NewSignupRequest(awaitilities).
+	johnExtraUser := NewSignupRequest(awaitilities).
 		Username(extrajohnName).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	johnExtraSignup := johnExtraUser.UserSignup
 
 	targetedJohnName := "targetedjohn"
-	targetedJohnSignup, _ := NewSignupRequest(awaitilities).
+	targetedJohnUser := NewSignupRequest(awaitilities).
 		Username(targetedJohnName).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait2).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	targetedJohnSignup := targetedJohnUser.UserSignup
 
 	originalSubJohnName := "originalsubjohn"
 	originalSubJohnClaim := "originalsub:john"
-	originalSubJohnSignup, _ := NewSignupRequest(awaitilities).
+	originalSubJohnUser := NewSignupRequest(awaitilities).
 		Username(originalSubJohnName).
 		OriginalSub(originalSubJohnClaim).
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	originalSubJohnSignup := originalSubJohnUser.UserSignup
+	originalSubJohnSpace := originalSubJohnUser.Space
 
 	// Confirm the originalSub property has been set during signup
-	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.OriginalSub)
+	require.Equal(t, originalSubJohnClaim, originalSubJohnSignup.Spec.IdentityClaims.OriginalSub)
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, targetedJohnSignup, "deactivate30", "base1ns")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, originalSubJohnSignup, "deactivate30", "base1ns")
 
-	_, err := hostAwait.WaitForSpace(t, johnsmithName, wait.UntilSpaceHasAnyTargetClusterSet())
-	require.NoError(t, err)
-
-	_, err = hostAwait.WaitForSpace(t, targetedJohnName, wait.UntilSpaceHasAnyTargetClusterSet())
-	require.NoError(t, err)
-
 	t.Run("try to break UserAccount", func(t *testing.T) {
-
 		t.Run("delete user and wait until recreated", func(t *testing.T) {
 			// given
 			user := &userv1.User{}
@@ -194,7 +191,7 @@ func TestE2EFlow(t *testing.T) {
 			namespaces := make([]*corev1.Namespace, 0, 2)
 			templateRefs := tiers.GetTemplateRefs(t, hostAwait, "base")
 			for _, ref := range templateRefs.Namespaces {
-				ns, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
+				ns, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.IdentityClaims.PreferredUsername, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
 				namespaces = append(namespaces, ns)
 			}
@@ -207,7 +204,7 @@ func TestE2EFlow(t *testing.T) {
 			// then
 			// wait for the namespaces to be re-created before validating all other resources to avoid race condition
 			for _, ref := range templateRefs.Namespaces {
-				_, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.Username, ref, "base", wait.UntilNamespaceIsActive())
+				_, err := memberAwait.WaitForNamespace(t, johnSignup.Spec.IdentityClaims.PreferredUsername, ref, "base", wait.UntilNamespaceIsActive())
 				require.NoError(t, err)
 			}
 			VerifyResourcesProvisionedForSignup(t, awaitilities, johnSignup, "deactivate30", "base")
@@ -248,18 +245,19 @@ func TestE2EFlow(t *testing.T) {
 		userNamespace := "laracroft-dev"
 		cmName := "test-useraccount-delete-1"
 
-		laraSignUp, _ := NewSignupRequest(awaitilities).
+		laraUser := NewSignupRequest(awaitilities).
 			Username(laraUserName).
 			Email("laracroft@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
+			Execute(t)
+		laraSignup := laraUser.UserSignup
 
-		require.Equal(t, "laracroft", laraSignUp.Status.CompliantUsername)
+		require.Equal(t, "laracroft", laraSignup.Status.CompliantUsername)
 
-		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignUp, "deactivate30", "base1ns")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, laraSignup, "deactivate30", "base1ns")
 
 		VerifySpaceBinding(t, hostAwait, laraUserName, laraUserName, "admin")
 
@@ -276,9 +274,9 @@ func TestE2EFlow(t *testing.T) {
 				"video_game": "Tomb Raider",
 			},
 		}
-		err = memberAwait.Client.Create(context.TODO(), cm)
+		err := memberAwait.Client.Create(context.TODO(), cm)
 		require.NoError(t, err)
-		cm, err := memberAwait.WaitForConfigMap(t, userNamespace, cmName)
+		cm, err = memberAwait.WaitForConfigMap(t, userNamespace, cmName)
 		require.NoError(t, err)
 		require.NotEmpty(t, cm)
 
@@ -287,7 +285,7 @@ func TestE2EFlow(t *testing.T) {
 			PropagationPolicy: &deletePolicy,
 		}
 		// when deleting the userSignup
-		err = hostAwait.Client.Delete(context.TODO(), laraSignUp, deleteOpts)
+		err = hostAwait.Client.Delete(context.TODO(), laraSignup, deleteOpts)
 		require.NoError(t, err)
 
 		// then nothing should be deleted yet (because of the CM with its own finalizer)
@@ -313,7 +311,7 @@ func TestE2EFlow(t *testing.T) {
 
 		// UserSignup should be deleted even though Space and NSTemplateSet are stuck deleting so that
 		// the behaviour is consistent for both AppStudio & DevSandbox
-		err = hostAwait.WaitUntilUserSignupDeleted(t, laraSignUp.Name)
+		err = hostAwait.WaitUntilUserSignupDeleted(t, laraSignup.Name)
 		require.NoError(t, err)
 
 		// space should be stuck terminating
@@ -330,30 +328,27 @@ func TestE2EFlow(t *testing.T) {
 
 			// then check remaining resources are deleted
 			err = memberAwait.WaitUntilNamespaceDeleted(t, laraUserName, "dev")
-			assert.NoError(t, err, "laracroft-dev namespace is not deleted")
+			require.NoError(t, err, "laracroft-dev namespace is not deleted")
 
 			err = memberAwait.WaitUntilNSTemplateSetDeleted(t, laraUserName)
-			assert.NoError(t, err, "NSTemplateSet is not deleted")
+			require.NoError(t, err, "NSTemplateSet is not deleted")
 
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, laraUserName)
 			require.NoError(t, err)
 		})
-
 	})
 
 	t.Run("delete namespaced scoped resources of users and expect recreation", func(t *testing.T) {
-		userSignup, _ := NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username("wonderwoman").
 			Email("wonderwoman@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait).
+			SpaceTier("base").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).Resources()
-
-		tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, "base")
-		space.VerifyResourcesProvisionedForSpace(t, awaitilities, userSignup.Status.CompliantUsername)
-
+			Execute(t)
+		userSignup := user.UserSignup
 		devNs := corev1.Namespace{}
 		err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "wonderwoman-dev"}, &devNs)
 		require.NoError(t, err)
@@ -382,7 +377,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("namespace rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
-
 			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "crtadmin-pods")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")
@@ -408,7 +402,6 @@ func TestE2EFlow(t *testing.T) {
 		})
 
 		t.Run("space rolebinding accidentally deleted by user in stage namespace is recreated", func(t *testing.T) {
-
 			DeleteRoleBindingAndAwaitRecreation(t, memberAwait, stageNs, "wonderwoman-rbac-edit")
 			// then the user account should be recreated
 			VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")
@@ -428,44 +421,42 @@ func TestE2EFlow(t *testing.T) {
 		t.Logf("usersignup '%s' deleted (resource name='%s')", johnsmithName, johnSignup.Name)
 
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, johnsmithName)
-		assert.NoError(t, err, "MasterUserRecord is not deleted")
+		require.NoError(t, err, "MasterUserRecord is not deleted")
 
 		err = memberAwait.WaitUntilUserAccountDeleted(t, johnsmithName)
-		assert.NoError(t, err, "UserAccount is not deleted")
+		require.NoError(t, err, "UserAccount is not deleted")
 
 		err = memberAwait.WaitUntilUserDeleted(t, johnsmithName)
-		assert.NoError(t, err, "User is not deleted")
+		require.NoError(t, err, "User is not deleted")
 
 		err = memberAwait.WaitUntilIdentityDeleted(t, johnsmithName)
-		assert.NoError(t, err, "Identity is not deleted")
+		require.NoError(t, err, "Identity is not deleted")
 
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, johnsmithName)
 		require.NoError(t, err)
 
 		err = memberAwait.WaitUntilNSTemplateSetDeleted(t, johnsmithName)
-		assert.NoError(t, err, "NSTemplateSet is not deleted")
+		require.NoError(t, err, "NSTemplateSet is not deleted")
 
 		err = memberAwait.WaitUntilClusterResourceQuotasDeleted(t, johnsmithName)
-		assert.NoError(t, err, "ClusterResourceQuotas were not deleted")
+		require.NoError(t, err, "ClusterResourceQuotas were not deleted")
 
 		err = memberAwait.WaitUntilNamespaceDeleted(t, johnsmithName, "dev")
-		assert.NoError(t, err, "johnsmith-dev namespace is not deleted")
+		require.NoError(t, err, "johnsmith-dev namespace is not deleted")
 
 		err = memberAwait.WaitUntilNamespaceDeleted(t, johnsmithName, "stage")
-		assert.NoError(t, err, "johnsmith-stage namespace is not deleted")
+		require.NoError(t, err, "johnsmith-stage namespace is not deleted")
 
 		// also, verify that other user's resource are left intact
 		VerifyResourcesProvisionedForSignup(t, awaitilities, johnExtraSignup, "deactivate30", "base1ns")
-
 	})
 
 	t.Run("deactivate UserSignup and ensure that all user and identity resources are deleted", func(t *testing.T) {
-
 		// First confirm that there are actually multiple identities for the UserSignup in question, using the
 		// owner label to locate them
 
 		// First, find the MUR
-		mur, err := hostAwait.WaitForMasterUserRecord(t, originalSubJohnSignup.Status.CompliantUsername)
+		mur, err := hostAwait.WaitForMasterUserRecord(t, originalSubJohnSpace.Name)
 		require.NoError(t, err)
 
 		memberAwait := GetMurTargetMember(t, awaitilities, mur)
@@ -515,7 +506,6 @@ func TestE2EFlow(t *testing.T) {
 		err = memberAwait.WaitUntilUserDeleted(t, userList.Items[0].Name)
 		require.NoError(t, err)
 	})
-
 }
 
 func listByOwnerLabel(owner string) client.ListOption {

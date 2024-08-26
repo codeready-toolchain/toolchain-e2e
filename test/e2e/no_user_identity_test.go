@@ -9,7 +9,7 @@ import (
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +29,7 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 	hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("appstudio"), testconfig.Members().Default(memberConfigurationWithSkipUserCreation.Spec))
 
 	username := "nouseridentity"
-	identityID := uuid.Must(uuid.NewV4())
+	identityID := uuid.New()
 
 	// create pre-existing user and identity
 	preexistingUser := &userv1.User{
@@ -56,27 +56,28 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 	require.NoError(t, memberAwait.CreateWithCleanup(t, preexistingIdentity))
 
 	// Create and approve signup
-	signup, _ := NewSignupRequest(awaitilities).
+	u := NewSignupRequest(awaitilities).
 		Username(username).
 		IdentityID(identityID).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	signup := u.UserSignup
 
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "appstudio")
 
 	// preexisting user & identity are still there and not modified
 	// Verify provisioned User
 	user, err := memberAwait.WaitForUser(t, preexistingUser.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, preexistingUser.UID, user.UID)
 	assert.NotEqual(t, toolchainv1alpha1.ProviderLabelValue, user.Labels[toolchainv1alpha1.ProviderLabelKey])
 
 	// Verify provisioned Identity
 	identity, err := memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, preexistingIdentity.UID, identity.UID)
 	assert.NotEqual(t, toolchainv1alpha1.ProviderLabelValue, identity.Labels[toolchainv1alpha1.ProviderLabelKey])
 
@@ -96,10 +97,10 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 		// then
 		// Verify provisioned User
 		_, err = memberAwait.WaitForUser(t, preexistingUser.Name)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Verify provisioned Identity
 		_, err = memberAwait.WaitForIdentity(t, preexistingIdentity.Name)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

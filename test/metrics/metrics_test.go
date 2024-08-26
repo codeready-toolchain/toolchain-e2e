@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -16,15 +17,15 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestOperatorVersionMetrics(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 
@@ -40,8 +41,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for Host Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit := labels[0]["commit"]
-		require.NotNil(t, commit)
-		assert.Len(t, *commit, 7)
+		assert.Len(t, commit, 7)
 	})
 
 	t.Run("member-operators", func(t *testing.T) {
@@ -59,8 +59,7 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for the first Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit1 := labels[0]["commit"]
-		require.NotNil(t, commit1)
-		assert.Len(t, *commit1, 7)
+		assert.Len(t, commit1, 7)
 
 		// --- member2 ---
 		// when
@@ -69,11 +68,10 @@ func TestOperatorVersionMetrics(t *testing.T) {
 		// verify that the "version" metric exists for the second Member Operator and that it has a non-empty `commit` label
 		require.Len(t, labels, 1)
 		commit2 := labels[0]["commit"]
-		require.NotNil(t, commit2)
-		assert.Len(t, *commit2, 7)
+		assert.Len(t, commit2, 7)
 
 		// expect the same version on member1 and member2
-		assert.Equal(t, *commit1, *commit2)
+		assert.Equal(t, commit1, commit2)
 	})
 }
 
@@ -108,15 +106,15 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		username := fmt.Sprintf("user-%04d", i)
 
 		// Create UserSignup
-		signupsMember2[username], _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@redhat.com").
 			ManuallyApprove().
 			EnsureMUR().
 			TargetCluster(memberAwait2).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
+			Execute(t)
+		signupsMember2[username] = user.UserSignup
 	}
 	NewSignupRequest(awaitilities).
 		Username("member1").
@@ -125,8 +123,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources()
+		Execute(t)
 
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 3)                                                            // all signups
@@ -205,13 +202,13 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 		username := fmt.Sprintf("userautoapprove-%04d", i)
 
 		// Create UserSignup
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(username).
 			Email(username + "@redhat.com").
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
-			Execute(t).
-			Resources()
+			Execute(t)
+		usersignups[username] = user.UserSignup
 	}
 	// checking the metrics after creation/before deactivation, so we can better understand the changes after deactivations occurred.
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                                                            // all signups
@@ -245,7 +242,6 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
-
 }
 
 // TestVerificationRequiredMetric verifies that `UserSignupVerificationRequiredMetric` counters are increased only once when users are created/reactivated
@@ -270,7 +266,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 		// given
 		username := "user-verification-required"
 		// Create a token and identity to sign up with
-		emailAddress := uuid.Must(uuid.NewV4()).String() + "@some.domain"
+		emailAddress := uuid.NewString() + "@some.domain"
 		identity0, token0, err := authsupport.NewToken(authsupport.WithEmail(emailAddress))
 		require.NoError(t, err)
 
@@ -364,14 +360,14 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		username := fmt.Sprintf("user-%04d", i)
 
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(username).
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
+			Execute(t)
+		usersignups[username] = user.UserSignup
 
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
@@ -388,15 +384,16 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 			require.NoError(t, err)
 
 			// reactivate the user
-			usersignups[username], _ = NewSignupRequest(awaitilities).
-				IdentityID(uuid.Must(uuid.FromString(usersignups[username].Spec.IdentityClaims.Sub))).
+
+			user := NewSignupRequest(awaitilities).
+				IdentityID(uuid.MustParse(usersignups[username].Spec.IdentityClaims.Sub)).
 				Username(username).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
 				EnsureMUR().
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-				Execute(t).
-				Resources()
+				Execute(t)
+			usersignups[username] = user.UserSignup
 		}
 	}
 
@@ -444,13 +441,13 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 	for i := 1; i <= 2; i++ {
 		username := fmt.Sprintf("user-%04d", i)
-		usersignups[username], _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(username).
 			ManuallyApprove().
 			TargetCluster(memberAwait).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
+			Execute(t)
+		usersignups[username] = user.UserSignup
 	}
 
 	// when deleting user "user-0001"
@@ -485,7 +482,6 @@ func TestMetricsWhenUsersDeleted(t *testing.T) {
 
 // TestMetricsWhenUsersBanned verifies that the relevant gauges are decreased when a user is banned, and increased again when unbanned
 func TestMetricsWhenUsersBanned(t *testing.T) {
-
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -502,17 +498,18 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 
 	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	// Create a new UserSignup and approve it manually
-	userSignup, _ := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("metricsbanprovisioned").
 		Email("metricsbanprovisioned@test.com").
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
+	userSignup := user.UserSignup
 
 	// when creating the BannedUser resource
-	bannedUser := banUser(t, hostAwait, userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+	bannedUser := banUser(t, hostAwait, userSignup.Spec.IdentityClaims.Email)
 
 	// then
 	// confirm the user is banned
@@ -574,14 +571,14 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	})
 
 	// Create UserSignup
-	_, mur := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("janedoe").
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources()
+		Execute(t)
+	mur := user.MUR
 
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // approved
@@ -631,14 +628,13 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external") // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
-
 	})
 }
 
 func banUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolchainv1alpha1.BannedUser {
 	bannedUser := &toolchainv1alpha1.BannedUser{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      uuid.Must(uuid.NewV4()).String(),
+			Name:      uuid.NewString(),
 			Namespace: hostAwait.Namespace,
 			Labels: map[string]string{
 				toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email),
@@ -651,4 +647,74 @@ func banUser(t *testing.T, hostAwait *wait.HostAwaitility, email string) *toolch
 	err := hostAwait.CreateWithCleanup(t, bannedUser)
 	require.NoError(t, err)
 	return bannedUser
+}
+
+func TestForceMetricsSynchronization(t *testing.T) {
+	// given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	hostAwait.UpdateToolchainConfig(t,
+		testconfig.AutomaticApproval().Enabled(true),
+		testconfig.Metrics().ForceSynchronization(false))
+
+	userSignups := CreateMultipleSignupsWithMURs(t, awaitilities, nil, 2)
+
+	// delete the current toolchainstatus/toolchain-status resource and restart the host-operator pod,
+	// so we can start with accurate counters/metrics and not get flaky because of previous tests,
+	// in particular w.r.t the `userSignupsPerActivationAndDomain` counter which is not decremented when a user
+	// is deleted
+	err := hostAwait.DeleteToolchainStatus(t, "toolchain-status")
+	require.NoError(t, err)
+	// restarting the pod after the `toolchain-status` resource was deleted will trigger a recount based on resources
+	err = hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"control-plane": "controller-manager"})
+	require.NoError(t, err)
+	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
+
+	t.Run("tampering activation-counter annotations", func(t *testing.T) {
+		// change the `toolchain.dev.openshift.com/activation-counter` annotation value
+		for _, userSignup := range userSignups {
+			// given
+			annotations := userSignup.Annotations
+			annotations[toolchainv1alpha1.UserSignupActivationCounterAnnotationKey] = "10"
+			// when
+			mergePatch, err := json.Marshal(map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"annotations": annotations,
+				},
+			})
+			require.NoError(t, err)
+			err = hostAwait.Client.Patch(context.TODO(), userSignup, client.RawPatch(types.MergePatchType, mergePatch))
+			// then
+			require.NoError(t, err)
+		}
+
+		t.Run("verify metrics did not change after restarting pod without forcing recount", func(t *testing.T) {
+			// given
+			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(false))
+
+			// when restarting the pod
+			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"control-plane": "controller-manager"})
+
+			// then
+			require.NoError(t, err)
+			// metrics have not changed yet
+			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                       // value was increased by 1
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "external") // value was increased by 1
+		})
+
+		t.Run("verify metrics are still correct after restarting pod and forcing recount", func(t *testing.T) {
+			// given
+			hostAwait.UpdateToolchainConfig(t, testconfig.Metrics().ForceSynchronization(true))
+
+			// when restarting the pod
+			// TODO: unneeded once the ToolchainConfig controller will be in place ?
+			err := hostAwait.DeletePods(client.InNamespace(hostAwait.Namespace), client.MatchingLabels{"control-plane": "controller-manager"})
+
+			// then
+			require.NoError(t, err)
+			// metrics have been updated
+			hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "external")                        // unchanged
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 2, "activations", "10", "domain", "external") // updated
+		})
+	})
 }

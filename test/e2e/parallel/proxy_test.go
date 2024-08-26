@@ -19,7 +19,9 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
+	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
@@ -29,12 +31,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -67,6 +70,25 @@ func (u *proxyUser) shareSpaceWith(t *testing.T, awaitilities wait.Awaitilities,
 		WithNamespace(testsupportspace.GetDefaultNamespace(primaryUserSpace.Status.ProvisionedNamespaces)),
 	)
 	_, err = awaitilities.Host().WaitForSpaceBinding(t, guestUserMur.GetName(), primaryUserSpace.GetName())
+	require.NoError(t, err)
+	return spaceBindingRequest
+}
+
+func (u *proxyUser) invalidShareSpaceWith(t *testing.T, awaitilities wait.Awaitilities, guestUser *proxyUser) *toolchainv1alpha1.SpaceBindingRequest {
+	// share primaryUser space with guestUser
+	guestUserMur, err := awaitilities.Host().GetMasterUserRecord(guestUser.compliantUsername)
+	require.NoError(t, err)
+	primaryUserSpace, err := awaitilities.Host().WaitForSpace(t, u.compliantUsername, wait.UntilSpaceHasAnyTargetClusterSet(), wait.UntilSpaceHasAnyTierNameSet(), wait.UntilSpaceHasAnyProvisionedNamespaces())
+	require.NoError(t, err)
+	spaceBindingRequest := CreateSpaceBindingRequest(t, awaitilities, primaryUserSpace.Spec.TargetCluster,
+		WithSpecSpaceRole("invalidRole"),
+		WithSpecMasterUserRecord(guestUserMur.GetName()),
+		WithNamespace(testsupportspace.GetDefaultNamespace(primaryUserSpace.Status.ProvisionedNamespaces)),
+	)
+	// wait for spacebinding request status to be set
+	_, err = awaitilities.Member1().WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
+		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalidRole' for space '%s'", primaryUserSpace.Name))),
+	)
 	require.NoError(t, err)
 	return spaceBindingRequest
 }
@@ -154,17 +176,17 @@ func TestProxyFlow(t *testing.T) {
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "proxymember1",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		{
 			expectedMemberCluster: memberAwait2,
 			username:              "proxymember2",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		{
 			expectedMemberCluster: memberAwait,
 			username:              "compliant.username", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 	}
 	//create the users before the subtests, so they exist for the duration of the whole "ProxyFlow" test ;)
@@ -461,7 +483,6 @@ func TestProxyFlow(t *testing.T) {
 						assert.Contains(t, string(r), fmt.Sprintf(`nodes is forbidden: User \"%s\" cannot list resource \"nodes\" in API group \"\" at the cluster scope`, user.compliantUsername))
 					})
 				}
-
 			}) // end of invalid request headers
 		})
 	} // end users loop
@@ -559,8 +580,54 @@ func TestProxyFlow(t *testing.T) {
 			})
 		})
 
-	})
+		t.Run("banned user", func(t *testing.T) {
+			// create an user and a space
+			sp, us, _ := testsupportspace.CreateSpaceWithRoleSignupResult(t, awaitilities, "admin",
+				testspace.WithSpecTargetCluster(memberAwait.ClusterName),
+				testspace.WithTierName("appstudio"),
+			)
 
+			// wait until the space has ProvisionedNamespaces
+			sp, err := hostAwait.WaitForSpace(t, sp.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
+			require.NoError(t, err)
+
+			// ban the user
+			_ = CreateBannedUser(t, hostAwait, us.UserSignup.Spec.IdentityClaims.Email)
+
+			// wait until the user is banned
+			_, err = hostAwait.
+				WithRetryOptions(wait.TimeoutOption(time.Second*10), wait.RetryInterval(time.Second*2)).
+				WaitForUserSignup(t, us.UserSignup.Name,
+					wait.UntilUserSignupHasConditions(
+						wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+			require.NoError(t, err)
+
+			// build proxy client
+			proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+			userProxyClient, err := hostAwait.CreateAPIProxyClient(t, us.Token, proxyWorkspaceURL)
+			require.NoError(t, err)
+
+			t.Run("banned user cannot list config maps from space", func(t *testing.T) {
+				// then
+				cms := corev1.ConfigMapList{}
+
+				err = userProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
+				require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap to return a NoMatch error, actual: %v", err)
+			})
+
+			t.Run("banned user cannot create config maps into space", func(t *testing.T) {
+				cm := corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cm",
+						Namespace: sp.Status.ProvisionedNamespaces[0].Name,
+					},
+				}
+
+				err = userProxyClient.Create(context.TODO(), &cm)
+				require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap to return a NoMatch error, actual: %v", err)
+			})
+		})
+	})
 }
 
 // this test will:
@@ -570,7 +637,6 @@ func TestProxyFlow(t *testing.T) {
 //     II. the call will be terminated via a context timeout
 //     III. check the expected error that it was terminated via a context and not on the server side
 func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
-
 	// ======================================================
 	// let's define two timeouts
 
@@ -589,7 +655,7 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 	watchUser := &proxyUser{
 		expectedMemberCluster: awaitilities.Member1(),
 		username:              "watcher",
-		identityID:            uuid.Must(uuid.NewV4()),
+		identityID:            uuid.New(),
 	}
 	createAppStudioUser(t, awaitilities, watchUser)
 
@@ -625,7 +691,7 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 				Get()
 			t.Logf("stopping the watch after %s", time.Since(started))
 
-			assert.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
+			require.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
 			assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
 		})
 	}()
@@ -646,29 +712,46 @@ func TestSpaceLister(t *testing.T) {
 		"car": {
 			expectedMemberCluster: memberAwait,
 			username:              "car",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		"bus": {
 			expectedMemberCluster: memberAwait2,
 			username:              "bus",
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
 		},
 		"bicycle": {
 			expectedMemberCluster: memberAwait,
 			username:              "road.bicycle", // contains a '.' that is valid in the username but should not be in the impersonation header since it should use the compliant username
-			identityID:            uuid.Must(uuid.NewV4()),
+			identityID:            uuid.New(),
+		},
+		"banneduser": {
+			expectedMemberCluster: memberAwait,
+			username:              "banned.user",
+			identityID:            uuid.New(),
 		},
 	}
-	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer"})
+	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer", "viewer"})
 
 	// create the users before the subtests, so they exist for the duration of the whole test
 	for _, user := range users {
 		createAppStudioUser(t, awaitilities, user)
 	}
 
+	// ban a user,
+	// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
+	_ = CreateBannedUser(t, hostAwait, users["banneduser"].signup.Spec.IdentityClaims.Email)
+	// wait until the user is banned
+	_, err := hostAwait.
+		WaitForUserSignup(t, users["banneduser"].signup.Name,
+			wait.UntilUserSignupHasConditions(
+				wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+	require.NoError(t, err)
+
 	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
 	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
 	bicycleSBROnBusSpace := users["bus"].shareSpaceWith(t, awaitilities, users["bicycle"])
+	// let's also create a failing SBR so that we can check if it's being added in the bindings list
+	failingSBR := users["bus"].invalidShareSpaceWith(t, awaitilities, users["car"])
 
 	t.Run("car lists workspaces", func(t *testing.T) {
 		// when
@@ -782,10 +865,17 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", commonproxy.WithType("home"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					// the failing SBR should be present in the list of bindings, so that the user can manage it
+					{MasterUserRecord: "car", Role: "invalidRole", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
+						Name:      failingSBR.GetName(),
+						Namespace: failingSBR.GetNamespace(),
+					}},
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
-					}}})),
+					}},
+				})),
+
 				*busWS)
 		})
 
@@ -833,6 +923,10 @@ func TestSpaceLister(t *testing.T) {
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), "bus", appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string(nil)}, // this is system generated so no actions for the user
+					{MasterUserRecord: "car", Role: "invalidRole", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
+						Name:      failingSBR.GetName(),
+						Namespace: failingSBR.GetNamespace(),
+					}},
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnBusSpace.GetName(),
 						Namespace: bicycleSBROnBusSpace.GetNamespace(),
@@ -857,7 +951,7 @@ func TestSpaceLister(t *testing.T) {
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnCarSpace.GetName(),
 						Namespace: bicycleSBROnCarSpace.GetNamespace(),
-					}}}, // this is system generated so no actions for the user
+					}}},
 				),
 			), *carWS)
 		})
@@ -918,6 +1012,35 @@ func TestSpaceLister(t *testing.T) {
 			require.EqualError(t, err, fmt.Sprintf("workspaces.toolchain.dev.openshift.com \"%[1]s\" is forbidden: User \"%[1]s\" cannot update resource \"workspaces\" in API group \"toolchain.dev.openshift.com\" at the cluster scope", users["bicycle"].compliantUsername))
 		})
 	})
+
+	t.Run("fix invalid SpaceRole in SBR", func(t *testing.T) {
+		// we need to fix the invalid SpaceRole, otherwise it may cause flakiness as there is already a loop of reconciles based on the error,
+		// and it could take too long to get ot the SBR again if (for example) the removal of the Finalizer fails
+		// given
+		primaryUserSpace, err := awaitilities.Host().WaitForSpace(t, users["bus"].compliantUsername)
+		require.NoError(t, err)
+		memberAwait, err := awaitilities.Member(primaryUserSpace.Spec.TargetCluster)
+		require.NoError(t, err)
+
+		// when
+		_, err = memberAwait.UpdateSpaceBindingRequest(t, test.NamespacedName(failingSBR.Namespace, failingSBR.Name), func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+			sbr.Spec.SpaceRole = "admin"
+		})
+
+		// then
+		require.NoError(t, err)
+		_, err = awaitilities.Host().WaitForSpaceBinding(t, failingSBR.Spec.MasterUserRecord, primaryUserSpace.GetName())
+		require.NoError(t, err)
+	})
+
+	t.Run("banned user cannot create proxy client", func(t *testing.T) {
+		// when
+		_, err := hostAwait.CreateAPIProxyClient(t, users["banneduser"].token, hostAwait.APIProxyURL)
+
+		// then
+		// this is the error expected to be returned by the proxy when the user is banned
+		require.ErrorContains(t, err, "unable to get target cluster: no member cluster found for the user")
+	})
 }
 
 func tenantNsName(username string) string {
@@ -926,7 +1049,7 @@ func tenantNsName(username string) string {
 
 func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *proxyUser) {
 	// Create and approve signup
-	req := NewSignupRequest(awaitilities).
+	u := NewSignupRequest(awaitilities).
 		Username(user.username).
 		IdentityID(user.identityID).
 		ManuallyApprove().
@@ -934,9 +1057,9 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	user.signup, _ = req.Resources()
-	user.token = req.GetToken()
-	tiers.MoveSpaceToTier(t, awaitilities.Host(), user.signup.Status.CompliantUsername, "appstudio")
+	user.signup = u.UserSignup
+	user.token = u.Token
+	tiers.MoveSpaceToTier(t, awaitilities.Host(), u.Space.Name, "appstudio")
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))

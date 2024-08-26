@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -31,15 +30,14 @@ var Templates = []string{
 	"camel-k-operator.yaml",
 	"cluster-logging-operator.yaml",
 	"image-puller-operator.yaml",
-	"intel-aikit.yaml",
-	"intel-openvino.yaml",
 	// "devworkspace-operator.yaml", // included with DevSpaces install
 	"pipelines.yaml",
-	"rhods.yaml",
 	"service-binding-operator.yaml", // also included when rhoda is installed
 	"serverless-operator.yaml",
 	"web-terminal-operator.yaml",
 	"gitops-primer-template.yaml",
+	"ansible-automation-platform.yaml",
+	"cnv.yaml",
 	"kiali.yaml", // OSD comes with an operator that creates CSVs in all namespaces so kiali is being used in this case to mimic the behaviour on OCP clusters
 }
 
@@ -68,7 +66,6 @@ func VerifySandboxOperatorsInstalled(cl client.Client) error {
 
 func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.Scheme, templatePaths []string) error {
 	for _, templatePath := range templatePaths {
-
 		tmpl, err := templates.GetTemplateFromFile(templatePath)
 		if err != nil {
 			return errors.Wrapf(err, "invalid template file: '%s'", templatePath)
@@ -81,7 +78,7 @@ func EnsureOperatorsInstalled(ctx context.Context, cl client.Client, s *runtime.
 		}
 
 		// find the subscription resource
-		var subscriptionResource runtimeclient.Object
+		var subscriptionResource client.Object
 		foundSub := false
 		for _, obj := range objsToProcess {
 			if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {

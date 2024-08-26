@@ -12,19 +12,21 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
+	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,9 +51,9 @@ func NewHostAwaitility(cfg *rest.Config, cl client.Client, ns string, registrati
 	return &HostAwaitility{
 		Awaitility: &Awaitility{
 			Client:        cl,
+			ClusterName:   "host",
 			RestConfig:    cfg,
 			Namespace:     ns,
-			Type:          cluster.Host,
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
@@ -358,7 +360,7 @@ func WithMurName(name string) MasterUserRecordWaitCriterion {
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return actual.Name == name
 		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+		Diff: func(_ *toolchainv1alpha1.MasterUserRecord) string {
 			return fmt.Sprintf("expected MasterUserRecord named '%s'", name)
 		},
 	}
@@ -390,7 +392,7 @@ func UntilMasterUserRecordHasAnyUserAccountStatus() MasterUserRecordWaitCriterio
 		Match: func(actual *toolchainv1alpha1.MasterUserRecord) bool {
 			return len(actual.Status.UserAccounts) > 0
 		},
-		Diff: func(actual *toolchainv1alpha1.MasterUserRecord) string {
+		Diff: func(_ *toolchainv1alpha1.MasterUserRecord) string {
 			return "expected to be at least one embedded UserAccount status present, but is empty"
 		},
 	}
@@ -513,6 +515,19 @@ func UntilUserSignupHasConditions(expected ...toolchainv1alpha1.Condition) UserS
 	}
 }
 
+// UntilUserSignupHasTargetCluster returns a `UserSignupWaitCriterion` which checks that the given
+// UserSignup has the expected target cluster field
+func UntilUserSignupHasTargetCluster(expectedTargetCluster string) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Spec.TargetCluster == expectedTargetCluster
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected target cluster to match:\n%s", Diff(expectedTargetCluster, actual.Spec.TargetCluster))
+		},
+	}
+}
+
 // UntilUserSignupContainsConditions returns a `UserSignupWaitCriterion` which checks that the given
 // UserSignup contains all the given status conditions
 func UntilUserSignupContainsConditions(shouldContain ...toolchainv1alpha1.Condition) UserSignupWaitCriterion {
@@ -574,6 +589,52 @@ func UntilUserSignupHasStateLabel(expected string) UserSignupWaitCriterion {
 				return fmt.Sprintf("expected to have a label with key '%s' and value '%s'", toolchainv1alpha1.UserSignupStateLabelKey, expected)
 			}
 			return fmt.Sprintf("expected value of label '%s' to equal '%s'. Actual: '%s'", toolchainv1alpha1.UserSignupStateLabelKey, expected, actual.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+		},
+	}
+}
+
+func UntilUserSignupHasStates(states ...toolchainv1alpha1.UserSignupState) UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			for _, requiredState := range states {
+				found := false
+				for _, s := range actual.Spec.States {
+					if s == requiredState {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return fmt.Sprintf("expected UserSignup '%s' to contain states '%s', actual states: '%s'", actual.Name,
+				states, actual.Spec.States)
+		},
+	}
+}
+
+func UntilUserSignupHasScheduledDeactivationTime() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.ScheduledDeactivationTimestamp != nil
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected to have a value for '.Status.ScheduledDeactivationTimestamp'"
+		},
+	}
+}
+
+func UntilUserSignupHasNilScheduledDeactivationTime() UserSignupWaitCriterion {
+	return UserSignupWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.UserSignup) bool {
+			return actual.Status.ScheduledDeactivationTimestamp == nil
+		},
+		Diff: func(actual *toolchainv1alpha1.UserSignup) string {
+			return "expected '.Status.ScheduledDeactivationTimestamp' to be nil"
 		},
 	}
 }
@@ -1175,9 +1236,13 @@ func (a *HostAwaitility) WaitForNotifications(t *testing.T, username, notificati
 // WaitForNotificationWithName waits until there is an expected Notifications available with the provided name and with the notification type and which match the conditions (if provided).
 func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
 	t.Logf("waiting for notification with name '%s'", notificationName)
-	var notification toolchainv1alpha1.Notification
+	notification := &toolchainv1alpha1.Notification{}
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, &notification); err != nil {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
 		if typeFound, found := notification.GetLabels()[toolchainv1alpha1.NotificationTypeLabelKey]; !found {
@@ -1186,13 +1251,36 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 			return false, fmt.Errorf("notification found with name does not have the expected type")
 		}
 
-		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{notification}, criteria...), nil
+		return matchNotificationWaitCriterion([]toolchainv1alpha1.Notification{*notification}, criteria...), nil
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{notification}, criteria...)
+		a.printNotificationWaitCriterionDiffs(t, []toolchainv1alpha1.Notification{*notification}, criteria...)
 	}
-	return notification, err
+	return *notification, err
+}
+
+// WaitForNotificationToBeNotCreated waits and checks that notification is NOT created.
+func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notificationName string) error {
+	t.Logf("waiting to check notification with name '%s' is NOT created", notificationName)
+	notification := &toolchainv1alpha1.Notification{}
+	err := wait.Poll(a.RetryInterval, 10*time.Second, func() (done bool, err error) {
+		notification = &toolchainv1alpha1.Notification{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	if err == nil {
+		return fmt.Errorf("notification '%s' was found, but it was expected to not be created/present: \n %v", notificationName, notification)
+	}
+	if goerr.Is(err, wait.ErrWaitTimeout) {
+		return nil
+	}
+	return err
 }
 
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
@@ -1430,6 +1518,52 @@ func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...Toolch
 	return toolchainStatus, err
 }
 
+func (a *HostAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	require.NoError(t, err)
+}
+
+func (a *HostAwaitility) WaitForToolchainClusterResources(t *testing.T) {
+	t.Logf("checking ToolchainCluster Resources")
+	actualSA := &corev1.ServiceAccount{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualSA)
+	expectedLabels := map[string]string{
+		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
+	}
+	assert.Equal(t, expectedLabels, actualSA.Labels)
+	actualRole := &v1.Role{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRole)
+	assert.Equal(t, expectedLabels, actualRole.Labels)
+	expectedRules := []v1.PolicyRule{
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualRole.Rules)
+	actualRB := &v1.RoleBinding{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-host", actualRB)
+	assert.Equal(t, expectedLabels, actualRB.Labels)
+	assert.Equal(t, []v1.Subject{{
+		Kind: "ServiceAccount",
+		Name: "toolchaincluster-host",
+	}}, actualRB.Subjects)
+	assert.Equal(t, v1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "toolchaincluster-host",
+	}, actualRB.RoleRef)
+}
+
 // GetToolchainConfig returns ToolchainConfig instance, nil if not found
 func (a *HostAwaitility) GetToolchainConfig(t *testing.T) *toolchainv1alpha1.ToolchainConfig {
 	config := &toolchainv1alpha1.ToolchainConfig{}
@@ -1490,6 +1624,32 @@ func UntilToolchainConfigHasSyncedStatus(expected toolchainv1alpha1.Condition) T
 			e, _ := yaml.Marshal(expected)
 			a, _ := yaml.Marshal(actual.Status.Conditions)
 			return fmt.Sprintf("expected conditions to contain: %s.\n\tactual: %s", e, a)
+		},
+	}
+}
+
+func UntilToolchainConfigHasAutoApprovalDomains(expected string) ToolchainConfigWaitCriterion {
+	return ToolchainConfigWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
+			return *actual.Spec.Host.AutomaticApproval.Domains == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Spec.Host.AutomaticApproval.Domains)
+			return fmt.Sprintf("expected approval domains to contain: %s.\n\tactual: %s", e, a)
+		},
+	}
+}
+
+func UntilToolchainConfigHasVerificationEnabled(expected bool) ToolchainConfigWaitCriterion {
+	return ToolchainConfigWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainConfig) bool {
+			return *actual.Spec.Host.RegistrationService.Verification.Enabled == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.ToolchainConfig) string {
+			e, _ := yaml.Marshal(expected)
+			a, _ := yaml.Marshal(actual.Spec.Host.RegistrationService.Verification.Enabled)
+			return fmt.Sprintf("expected approval domains to contain: %s.\n\tactual: %s", e, a)
 		},
 	}
 }
@@ -1718,7 +1878,6 @@ func (a *HostAwaitility) WaitForProxyPlugin(t *testing.T, name string) (*toolcha
 		}
 		proxyPlugin = obj
 		return true, nil
-
 	})
 	return proxyPlugin, err
 }
@@ -1822,6 +1981,19 @@ func UntilSpaceHasTargetClusterRoles(expected []string) SpaceWaitCriterion {
 	}
 }
 
+// UntilSpaceHasTargetClusterRoles returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected Spec.DisableInheritance value
+func UntilSpaceHasDisableInheritance(expected bool) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return actual.Spec.DisableInheritance == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected disableInheritance to match:\n%s", Diff(expected, actual.Spec.DisableInheritance))
+		},
+	}
+}
+
 // UntilSpaceHasConditions returns a `SpaceWaitCriterion` which checks that the given
 // Space has exactly all the given status conditions
 func UntilSpaceHasConditions(expected ...toolchainv1alpha1.Condition) SpaceWaitCriterion {
@@ -1874,6 +2046,19 @@ func UntilSpaceHasAnyProvisionedNamespaces() SpaceWaitCriterion {
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected provisioned namespaces not to be empty. Actual Space provisioned namespaces:\n%v", actual)
+		},
+	}
+}
+
+// UntilSpaceHasExpectedProvisionedNamespacesNumber returns a `SpaceWaitCriterion` which checks that the given
+// Space has the expected number of `status.ProvisionedNamespaces` set
+func UntilSpaceHasExpectedProvisionedNamespacesNumber(expected int) SpaceWaitCriterion {
+	return SpaceWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.Space) bool {
+			return len(actual.Status.ProvisionedNamespaces) == expected
+		},
+		Diff: func(actual *toolchainv1alpha1.Space) string {
+			return fmt.Sprintf("expected provisioned namespaces to be %d. Actual Space provisioned namespaces:\n%v", expected, actual)
 		},
 	}
 }
@@ -2330,28 +2515,33 @@ func EncodeUserIdentifier(subject string) string {
 func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchainv1alpha1.MasterUserRecord, space *toolchainv1alpha1.Space, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 	var spaceCreated *toolchainv1alpha1.Space
-	t.Logf("Creating Space %s and SpaceBinding with role %s for %s", space.Name, spaceRole, mur.Name)
+	testutil.LogWithTimestamp(t, fmt.Sprintf("Creating Space %s (prefix: %s) and SpaceBinding with role %s for %s", space.Name, space.GenerateName, spaceRole, mur.Name))
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		// create the space
 		spaceToCreate := space.DeepCopy()
-		if err := a.CreateWithCleanup(t, spaceToCreate); err != nil {
+		if err := a.Create(spaceToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
+
+		// temporary log due to SANDBOX-593
+		testutil.LogWithTimestamp(t, fmt.Sprintf("Space created with name %s, %s", spaceToCreate.Name, time.Now()))
+
 		// create spacebinding request immediately after ...
-		spaceBinding = spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
-		if err := a.CreateWithCleanup(t, spaceBinding); err != nil {
+		spaceBindingToCreate := spacebinding.NewSpaceBinding(mur, spaceToCreate, spaceRole, spacebinding.WithRole(spaceRole))
+		if err := a.Create(spaceBindingToCreate); err != nil {
 			if !errors.IsAlreadyExists(err) {
 				return false, err
 			}
 		}
+
 		// let's see if space was provisioned as expected
 		spaceCreated = &toolchainv1alpha1.Space{}
 		err = a.Client.Get(context.TODO(), client.ObjectKeyFromObject(spaceToCreate), spaceCreated)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				t.Logf("The created Space %s is not present", spaceCreated.Name)
+				testutil.LogWithTimestamp(t, fmt.Sprintf("The created Space %s is not present in namespace %s", spaceToCreate.Name, spaceToCreate.Namespace))
 				return false, nil
 			}
 			return false, err
@@ -2367,7 +2557,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, err
 		}
 		if spaceBinding == nil {
-			t.Logf("The created SpaceBinding %s is not present", spaceCreated.Name)
+			testutil.LogWithTimestamp(t, fmt.Sprintf("The created SpaceBinding %s is not present in namespace %s", spaceBindingToCreate.Name, spaceBindingToCreate.Namespace))
 			return false, nil
 		}
 		if util.IsBeingDeleted(spaceBinding) {
@@ -2376,6 +2566,10 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 			return false, a.WaitUntilSpaceBindingDeleted(spaceBinding.Name)
 		}
 		t.Logf("Space %s and SpaceBinding %s created", spaceCreated.Name, spaceBinding.Name)
+
+		// schedules the cleanup of the Space and the SpaceBinding at the end of the current test
+		cleanup.AddCleanTasks(t, a.GetClient(), spaceCreated)
+		cleanup.AddCleanTasks(t, a.GetClient(), spaceBinding)
 		return true, nil
 	})
 	return spaceCreated, spaceBinding, err

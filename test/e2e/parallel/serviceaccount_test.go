@@ -24,14 +24,14 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 	member := awaitilities.Member1()
 
 	// let's provision user
-	_, mur := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("do-not-override-sa").
 		ManuallyApprove().
 		TargetCluster(member).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources()
+		Execute(t)
+	mur := user.MUR
 
 	// and move the user to appstudio tier
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), mur.Name, "appstudio-env")
@@ -50,7 +50,6 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 
 		// update the ServiceAccount values so we can verify that some parts will stay and some will be reverted to the needed values
 		_, err := member.UpdateServiceAccount(t, nsName, "namespace-manager", func(sa *corev1.ServiceAccount) {
-
 			// when we add an annotation to the SA resource then it should stay there
 			sa.Annotations = map[string]string{
 				"should": "stay",
@@ -125,7 +124,6 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		// verify that the secrets created for SA is the same
 		assert.Equal(t, expectedSecrets, getSASecrets(t, member, nsName, sa.Name))
 	}
-
 }
 
 func getSASecrets(t *testing.T, member *wait.MemberAwaitility, ns, saName string) []string {

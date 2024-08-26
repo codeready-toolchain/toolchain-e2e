@@ -3,6 +3,7 @@ package wait
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,8 +14,9 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
+	cd "github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/status"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
 
@@ -26,6 +28,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -50,7 +54,6 @@ type Awaitility struct {
 	RestConfig     *rest.Config
 	ClusterName    string
 	Namespace      string
-	Type           cluster.Type
 	RetryInterval  time.Duration
 	Timeout        time.Duration
 	MetricsURL     string
@@ -65,12 +68,6 @@ func (a *Awaitility) copy() *Awaitility {
 	result := new(Awaitility)
 	*result = *a
 	return result
-}
-
-// ReadyToolchainCluster is a ClusterCondition that represents cluster that is ready
-var ReadyToolchainCluster = &toolchainv1alpha1.ToolchainClusterCondition{
-	Type:   toolchainv1alpha1.ToolchainClusterReady,
-	Status: corev1.ConditionTrue,
 }
 
 // WithRetryOptions returns a new Awaitility with the given "RetryOption"s applied
@@ -156,40 +153,14 @@ func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, 
 }
 
 // WaitForToolchainClusterWithCondition waits until there is a ToolchainCluster representing a operator of the given type
-// and running in the given expected namespace. If the given condition is not nil, then it also checks
-// if the CR has the ClusterCondition
-func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
-	t.Logf("waiting for ToolchainCluster for cluster type '%s' in namespace '%s'", clusterType, namespace)
-	timeout := a.Timeout
-	if condition != nil {
-		timeout = ToolchainClusterConditionTimeout
-	}
-	var c toolchainv1alpha1.ToolchainCluster
-	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
-		var ready bool
-		if c, ready, err = a.GetToolchainCluster(t, clusterType, namespace, condition); ready {
-			return true, nil
-		}
-		return false, err
-	})
-	return c, err
-}
+// and running in the given expected namespace. It also checks if the CR has the ClusterConditionType
+func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespace string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, error) {
+	t.Logf("waiting for ToolchainCluster in namespace '%s'", namespace)
 
-// WaitForNamedToolchainClusterWithCondition waits until there is a ToolchainCluster with the given name
-// and with the given ClusterCondition (if it the condition is nil, then it skips this check)
-func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, name string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, error) {
-	t.Logf("waiting for ToolchainCluster '%s' in namespace '%s' to have condition '%v'", name, a.Namespace, condition)
-	timeout := a.Timeout
-	if condition != nil {
-		timeout = ToolchainClusterConditionTimeout
-	}
-	c := toolchainv1alpha1.ToolchainCluster{}
-	err := wait.Poll(a.RetryInterval, timeout, func() (done bool, err error) {
-		c = toolchainv1alpha1.ToolchainCluster{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, &c); err != nil {
-			return false, err
-		}
-		if containsClusterCondition(c.Status.Conditions, condition) {
+	var c toolchainv1alpha1.ToolchainCluster
+	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		var ready bool
+		if c, ready, err = a.GetToolchainCluster(t, namespace, cdtype); ready {
 			return true, nil
 		}
 		return false, err
@@ -198,38 +169,24 @@ func (a *Awaitility) WaitForNamedToolchainClusterWithCondition(t *testing.T, nam
 }
 
 // GetToolchainCluster retrieves and returns a ToolchainCluster representing a operator of the given type
-// and running in the given expected namespace. If the given condition is not nil, then it also checks
-// if the CR has the ClusterCondition
-func (a *Awaitility) GetToolchainCluster(t *testing.T, clusterType cluster.Type, namespace string, condition *toolchainv1alpha1.ToolchainClusterCondition) (toolchainv1alpha1.ToolchainCluster, bool, error) {
+// and running in the given expected namespace. It also checks if the CR has the ClusterConditionType
+func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
 	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
 		"namespace": namespace,
-		"type":      string(clusterType),
 	}); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
 	}
 	if len(clusters.Items) == 0 {
-		t.Logf("no toolchaincluster resource with expected labels: namespace='%s', type='%s'", namespace, string(clusterType))
+		t.Logf("no toolchaincluster resource with expected labels: namespace='%s'", namespace)
 	}
 	// assume there is zero or 1 match only
 	for _, cl := range clusters.Items {
-		if containsClusterCondition(cl.Status.Conditions, condition) {
+		if cd.IsTrue(cl.Status.Conditions, cdtype) {
 			return cl, true, nil
 		}
 	}
 	return toolchainv1alpha1.ToolchainCluster{}, false, nil
-}
-
-func containsClusterCondition(conditions []toolchainv1alpha1.ToolchainClusterCondition, contains *toolchainv1alpha1.ToolchainClusterCondition) bool {
-	if contains == nil {
-		return true
-	}
-	for _, c := range conditions {
-		if c.Type == contains.Type {
-			return contains.Status == c.Status
-		}
-	}
-	return false
 }
 
 // SetupRouteForService if needed, creates a route for the given service (with the same namespace/name)
@@ -312,7 +269,6 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 				return false, err
 			}
 			request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", a.RestConfig.BearerToken))
-
 		} else {
 			request, err = http.NewRequest("GET", "http://"+route.Status.Ingress[0].Host+endpoint, nil)
 			if err != nil {
@@ -349,7 +305,7 @@ func (a *Awaitility) GetMetricValue(t *testing.T, family string, labelAndValues 
 
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
 // fails if the metric with the given labelAndValues does not exist
-func (a *Awaitility) GetMetricLabels(t *testing.T, family string) []map[string]*string {
+func (a *Awaitility) GetMetricLabels(t *testing.T, family string) []map[string]string {
 	labels, err := metrics.GetMetricLabels(a.RestConfig, a.MetricsURL, family)
 	require.NoError(t, err)
 	return labels
@@ -485,17 +441,22 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 	t.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 	deployment := &appsv1.Deployment{}
 	err := wait.Poll(a.RetryInterval, 6*a.Timeout, func() (done bool, err error) {
-		deploymentConditions := status.GetDeploymentStatusConditions(a.Client, name, a.Namespace)
+		obj := &appsv1.Deployment{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		deploymentConditions := status.GetDeploymentStatusConditions(context.TODO(), a.Client, name, a.Namespace)
 		if err := status.ValidateComponentConditionReady(deploymentConditions...); err != nil {
 			return false, nil // nolint:nilerr
 		}
-		deployment = &appsv1.Deployment{}
-		require.NoError(t, a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, name), deployment))
-		if int(deployment.Status.AvailableReplicas) != replicas {
+		if int(obj.Status.AvailableReplicas) != replicas {
 			return false, nil
 		}
 		pods := &corev1.PodList{}
-		require.NoError(t, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(deployment.Spec.Selector.MatchLabels)))
+		require.NoError(t, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(obj.Spec.Selector.MatchLabels)))
 		if len(pods.Items) != replicas {
 			return false, nil
 		}
@@ -505,12 +466,16 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 			}
 		}
 		for _, criteriaMatch := range criteria {
-			if !criteriaMatch(deployment) {
+			if !criteriaMatch(obj) {
 				return false, nil
 			}
 		}
+		deployment = obj
 		return true, nil
 	})
+	if err != nil {
+		a.getAndPrint(t, "Deployment", a.Namespace, name, &appsv1.Deployment{})
+	}
 	require.NoError(t, err)
 	return deployment
 }
@@ -574,10 +539,19 @@ func UntilToolchainClusterHasName(expectedName string) ToolchainClusterWaitCrite
 }
 
 // UntilToolchainClusterHasCondition checks if ToolchainCluster has the given condition
-func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.ToolchainClusterCondition) ToolchainClusterWaitCriterion {
+func UntilToolchainClusterHasCondition(expected toolchainv1alpha1.ConditionType) ToolchainClusterWaitCriterion {
 	return ToolchainClusterWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
-			return containsClusterCondition(actual.Status.Conditions, &expected)
+			return cd.IsTrue(actual.Status.Conditions, expected)
+		},
+	}
+}
+
+// UntilToolchainClusterHasCondition checks if ToolchainCluster has the given condition and False Status
+func UntilToolchainClusterHasConditionFalseStatusAndReason(expected toolchainv1alpha1.ConditionType, reason string) ToolchainClusterWaitCriterion {
+	return ToolchainClusterWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
+			return cd.IsFalseWithReason(actual.Status.Conditions, expected, reason)
 		},
 	}
 }
@@ -638,6 +612,33 @@ func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...
 	return nil
 }
 
+// Creates a copy of the object specified using the `from` parameter. The created copy is named using the `to` parameter and is cleaned up
+// after the test. The object can be modified using the optionally supplied modifiers before it is created. The `object` is an "output parameter"
+// that will contain the object as it was created in the cluster.
+func CopyWithCleanup[T client.Object](t *testing.T, a *Awaitility, from, to client.ObjectKey, object T, modifiers ...func(T)) {
+	t.Helper()
+	require.NoError(t, a.Client.Get(context.TODO(), from, object))
+
+	object.SetName(to.Name)
+	object.SetNamespace(to.Namespace)
+	object.SetResourceVersion("")
+	object.SetUID("")
+
+	for _, mod := range modifiers {
+		mod(object)
+	}
+
+	require.NoError(t, a.CreateWithCleanup(t, object))
+}
+
+// Create creates the given object via client.Client.Create()
+func (a *Awaitility) Create(obj client.Object, opts ...client.CreateOption) error {
+	if err := a.Client.Create(context.TODO(), obj, opts...); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Clean triggers cleanup of all resources that were marked to be cleaned before that
 func (a *Awaitility) Clean(t *testing.T) {
 	cleanup.ExecuteAllCleanTasks(t)
@@ -657,4 +658,243 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 	}
 	content, _ := StringifyObjects(list)
 	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
+}
+
+func (a *Awaitility) getAndPrint(t *testing.T, resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) {
+	t.Logf(a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
+}
+
+func (a *Awaitility) getAndReturnContent(resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) string {
+	if err := a.Client.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, obj, additionalOptions...); err != nil {
+		return fmt.Sprintf("unable to get %s: %s", resourceKind, err)
+	}
+	content, _ := StringifyObject(obj)
+	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
+}
+
+// Waiter is a helper struct for `wait.For()` that provides functions to query the cluster waiting
+// for the results.
+type Waiter[T client.Object] struct {
+	await *Awaitility
+	t     *testing.T
+	gvk   schema.GroupVersionKind
+}
+
+// FirstThat uses the provided predicates to filter the objects of the type provided to `wait.For()` and
+// repeatedly tries to find the first one that satisfies all the predicates.
+func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object]) (T, error) {
+	w.t.Logf("waiting for objects of GVK '%s' in namespace '%s' to match criteria", w.gvk, w.await.Namespace)
+
+	var returnedObject T
+	// match status of each predicate per object
+	latestResults := map[client.ObjectKey][]bool{}
+
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		// because there is no generic way of figuring out the list type for some client.Object type, we need to go
+		// down the low level route and use unstructured to get the list generically and unmarshal and cast the list
+		// items.
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+			return false, err
+		}
+		for _, obj := range list.Items {
+			obj := obj // required due to memory aliasing until we upgrade to Go 1.22 which fixes this.
+			object, err := w.cast(&obj)
+			if err != nil {
+				return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
+			}
+
+			matches, results := w.matches(object, predicates)
+			latestResults[client.ObjectKeyFromObject(object)] = results
+			if matches {
+				returnedObject = object
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("failed to find objects (of GVK '%s') in namespace '%s' matching the criteria")
+		args := []any{w.gvk, w.await.Namespace}
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			sb.WriteString("\nlisting the objects found in cluster with the differences from the expected state for each:")
+			for _, o := range list.Items {
+				o := o
+				obj, _ := w.cast(&o)
+				key := client.ObjectKeyFromObject(obj)
+
+				matches := true
+				objectResults := latestResults[key]
+				for _, res := range objectResults {
+					if !res {
+						matches = false
+						break
+					}
+				}
+
+				sb.WriteRune('\n')
+				sb.WriteString("object ")
+				sb.WriteString(key.String())
+				if matches {
+					sb.WriteString("matches all predicates")
+				} else {
+					sb.WriteString("was found to have the following differences:")
+					for i, res := range objectResults {
+						if !res {
+							sb.WriteRune('\n')
+							sb.WriteString(assertions.Explain(predicates[i], obj.DeepCopyObject().(T)))
+						}
+					}
+				}
+			}
+		}
+		w.t.Logf(sb.String(), args...)
+	}
+	return returnedObject, err
+}
+
+// WithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
+// matches the provided predicates.
+func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate[client.Object]) (T, error) {
+	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to match additional criteria", w.gvk, name, w.await.Namespace)
+
+	var returnedObject T
+	latestResults := []bool{}
+
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		object, err := w.cast(obj)
+		if err != nil {
+			return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
+		}
+
+		matches, results := w.matches(object, predicates)
+		latestResults = results
+		if matches {
+			returnedObject = object
+			return true, nil
+		}
+
+		return false, nil
+	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("couldn't match the object (GVK '%s') called '%s' in namespace '%s' with the criteria")
+		args := []any{w.gvk, name, w.await.Namespace}
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			o, _ := w.cast(obj)
+			sb.WriteString(" but the object exists in the cluster with the following differences:")
+			for i, p := range predicates {
+				if !latestResults[i] {
+					expl := assertions.Explain(p, o.DeepCopyObject().(T))
+					sb.WriteRune('\n')
+					sb.WriteString(expl)
+				}
+			}
+		}
+		w.t.Logf(sb.String(), args...)
+	}
+	return returnedObject, err
+}
+
+// WithNameDeleted waits for a single object with the provided name in the namespace of the awaitility to get deleted
+func (w *Waiter[T]) WithNameDeleted(name string) error {
+	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to be deleted", w.gvk, name, w.await.Namespace)
+	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+	if err != nil {
+		sb := strings.Builder{}
+		sb.WriteString("failed to wait for the the object (GVK '%s') called '%s' in namespace '%s' to be deleted")
+		args := []any{w.gvk, name, w.await.Namespace}
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
+			args = append(args, err)
+		} else {
+			o, _ := w.cast(obj)
+			sb.WriteString(" and the object exists in the cluster:")
+			content, _ := StringifyObject(o)
+			sb.WriteRune('\n')
+			sb.Write(content)
+		}
+		w.t.Logf(sb.String(), args...)
+	}
+	return err
+}
+
+func (w *Waiter[T]) cast(obj *unstructured.Unstructured) (T, error) {
+	var empty T
+	raw, err := obj.MarshalJSON()
+	if err != nil {
+		return empty, fmt.Errorf("failed to obtain the raw JSON of the object: %w", err)
+	}
+
+	typed, err := w.await.Client.Scheme().New(w.gvk)
+	if err != nil {
+		return empty, fmt.Errorf("failed to create a new empty object from the scheme: %w", err)
+	}
+
+	err = json.Unmarshal(raw, typed)
+	if err != nil {
+		return empty, fmt.Errorf("failed to unmarshal the raw JSON to the go structure: %w", err)
+	}
+
+	return typed.(T), nil
+}
+
+func (w *Waiter[T]) matches(obj T, predicates []assertions.Predicate[client.Object]) (bool, []bool) {
+	matches := true
+	results := make([]bool, len(predicates))
+	for i, p := range predicates {
+		res := p.Matches(obj)
+		results[i] = res
+		matches = matches && res
+	}
+	return matches, results
+}
+
+// For returns an struct using which one can wait for the objects with the same type as the one provided.
+//
+// Note that this is a recent addition to the utility functions and therefore is not used much. It could
+// be used to cut down the line count of the new utility functions dramatically though.
+func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
+	gvks, _, err := a.Client.Scheme().ObjectKinds(obj)
+	require.NoError(t, err, "failed to get the GVK of object %v", obj)
+
+	require.Len(t, gvks, 1, "multiple versions of a single GK not supported but found multiple for object %v", obj)
+
+	return &Waiter[T]{
+		await: a,
+		t:     t,
+		gvk:   gvks[0],
+	}
 }

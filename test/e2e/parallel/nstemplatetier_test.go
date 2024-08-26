@@ -1,10 +1,15 @@
 package parallel
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"testing"
 	"time"
+
+	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gofrs/uuid"
 
@@ -15,7 +20,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,14 +38,15 @@ func TestNSTemplateTiers(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	testingtiers, _ := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username("testnstemplatetiers").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).
-		Resources()
+		Execute(t)
+	testingtiers := user.UserSignup
+	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
 	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "base"}
@@ -63,17 +68,17 @@ func TestNSTemplateTiers(t *testing.T) {
 
 	// wait for the user to be provisioned for the first time
 	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", "base1ns") // deactivate30 is the default UserTier and base is the default SpaceTier
-	for _, tierToCheck := range tiersToCheck {
 
+	for _, tierToCheck := range tiersToCheck {
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
 		_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierToCheck,
-			UntilNSTemplateTierSpec(HasNoTemplateRefWithSuffix("-000000a")))
+			wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
 		require.NoError(t, err)
 
-		t.Run(fmt.Sprintf("promote %s space to %s tier", testingtiers.Status.CompliantUsername, tierToCheck), func(t *testing.T) {
+		t.Run(fmt.Sprintf("promote %s space to %s tier", space.Name, tierToCheck), func(t *testing.T) {
 			// when
-			tiers.MoveSpaceToTier(t, hostAwait, testingtiers.Status.CompliantUsername, tierToCheck)
+			tiers.MoveSpaceToTier(t, hostAwait, space.Name, tierToCheck)
 
 			// then
 			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
@@ -95,8 +100,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// we will have a lot of usersignups who are affected by the tier updates, so
 	// we need to increase the timeouts on assertions/awaitilities to allow for all resources to be updated
-	hostAwait = hostAwait.WithRetryOptions(TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
-	memberAwait = memberAwait.WithRetryOptions(TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
+	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
+	memberAwait = memberAwait.WithRetryOptions(wait.TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
 	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
 	require.NoError(t, err)
@@ -155,25 +160,23 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	t.Run("test reset deactivating state when promoting user", func(t *testing.T) {
-		userSignup, _ := NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username("promoteuser").
 			Email("promoteuser@redhat.com").
 			ManuallyApprove().
 			TargetCluster(awaitilities.Member1()).
 			EnsureMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(t).
-			Resources()
-
+			Execute(t)
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
+		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, user.UserSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivating(us, true)
 			})
 		require.NoError(t, err)
 
 		// Move the MUR to the user tier with longer deactivation time
-		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.Username, "deactivate90")
+		tiers.MoveMURToTier(t, hostAwait, updatedUserSignup.Spec.IdentityClaims.PreferredUsername, "deactivate90")
 
 		// Ensure the deactivating state is reset after promotion
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(t, updatedUserSignup.Name)
@@ -186,7 +189,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 // setupSpaces takes care of:
 // 1. creating a new tier with the provided tierName and using the TemplateRefs of the provided tier.
 // 2. creating `count` number of spaces
-func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []string {
+func setupSpaces(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *wait.MemberAwaitility, count int) []string {
 	var spaces []string
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf(nameFmt, i)
@@ -201,7 +204,7 @@ func setupSpaces(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTe
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
-func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
+func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *wait.MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
 	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
 	hostAwait := awaitilities.Host()
 
@@ -209,15 +212,15 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 	// and wait until they are all provisioned by calling EnsureMUR()
 	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
 	for i := 0; i < count; i++ {
-		userSignups[i], _ = NewSignupRequest(awaitilities).
+		user := NewSignupRequest(awaitilities).
 			Username(fmt.Sprintf(nameFmt, i)).
 			ManuallyApprove().
 			WaitForMUR().
 			UserID(uuid.Must(uuid.NewV4()).String()).
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			TargetCluster(targetCluster).
-			Execute(t).
-			Resources()
+			Execute(t)
+		userSignups[i] = user.UserSignup
 	}
 
 	// let's promote to users the new tier
@@ -229,22 +232,22 @@ func setupAccounts(t *testing.T, awaitilities Awaitilities, tier *tiers.CustomNS
 	return userSignups
 }
 
-func verifyStatus(t *testing.T, hostAwait *HostAwaitility, tierName string, expectedCount int) {
-	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierName, UntilNSTemplateTierStatusUpdates(expectedCount))
+func verifyStatus(t *testing.T, hostAwait *wait.HostAwaitility, tierName string, expectedCount int) {
+	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierName, wait.UntilNSTemplateTierStatusUpdates(expectedCount))
 	require.NoError(t, err)
 }
 
-func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility, memberAwaitility *MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
+func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *wait.HostAwaitility, memberAwaitility *wait.MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
 	// if there's an annotation that describes on which other tier this one is based (for e2e tests only)
 	for _, usersignup := range userSignups {
 		userAccount, err := memberAwaitility.WaitForUserAccount(t, usersignup.Status.CompliantUsername,
-			UntilUserAccountHasConditions(wait.Provisioned()),
-			UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.PropagatedClaims)),
-			UntilUserAccountMatchesMur(hostAwait))
+			wait.UntilUserAccountHasConditions(wait.Provisioned()),
+			wait.UntilUserAccountHasSpec(ExpectedUserAccount(usersignup.Spec.IdentityClaims.PropagatedClaims)),
+			wait.UntilUserAccountMatchesMur(hostAwait))
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, UntilNSTemplateSetHasTier(tier.Name))
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, wait.UntilNSTemplateSetHasTier(tier.Name))
 		if err != nil {
 			t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
 		}
@@ -255,7 +258,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *HostAwaitility
 	}
 }
 
-func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *HostAwaitility, targetCluster *MemberAwaitility, spaces []string, tier *tiers.CustomNSTemplateTier) {
+func verifyResourceUpdatesForSpaces(t *testing.T, hostAwait *wait.HostAwaitility, targetCluster *wait.MemberAwaitility, spaces []string, tier *tiers.CustomNSTemplateTier) {
 	// verify individual space updates
 	for _, spaceName := range spaces {
 		VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, targetCluster, spaceName, tier)
@@ -280,5 +283,146 @@ func TestTierTemplates(t *testing.T) {
 	require.NoError(t, err)
 	// We have 27 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3)
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
-	assert.True(t, len(allTiers.Items) >= 27)
+	assert.GreaterOrEqual(t, len(allTiers.Items), 27)
 }
+
+func TestFeatureToggles(t *testing.T) {
+	t.Parallel()
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	base1nsTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
+
+	t.Run("provision space with enabled feature", func(t *testing.T) {
+		// given
+
+		// Create a new tier which is a copy of base1ns but with an additional ClusterRoleBinding object with "test-feature" annotation.
+		// "feature-test" feature is defined in the ToolchainConfig and has 100 weight
+		tier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "ftier", base1nsTier,
+			withClusterRoleBindings(t, base1nsTier, "test-feature"),
+			tiers.WithNamespaceResources(t, base1nsTier),
+			tiers.WithSpaceRoles(t, base1nsTier))
+		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
+		require.NoError(t, err)
+
+		// when
+
+		// Now let's create a Space
+		user := NewSignupRequest(awaitilities).
+			Username("featured-user").
+			Email("featured@domain.com").
+			ManuallyApprove().
+			EnsureMUR().
+			SpaceTier("base1ns").
+			TargetCluster(memberAwait).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			Execute(t)
+		// and promote that space to the ftier tier
+		tiers.MoveSpaceToTier(t, hostAwait, "featured-user", tier.Name)
+		VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, memberAwait, "featured-user", tier)
+
+		// then
+
+		// Verify that the space has the feature annotation - the weight is set to 100, so it should be added to all Spaces in all tiers
+		space, err := hostAwait.WaitForSpace(t, user.Space.Name)
+		require.NoError(t, err)
+		require.NotEmpty(t, space.Annotations)
+		assert.Equal(t, "test-feature", space.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey])
+		// and CRB for the that feature has been created
+		crbName := fmt.Sprintf("%s-%s", user.Space.Name, "test-feature")
+		_, err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameThat(crbName)
+		require.NoError(t, err)
+		// the noise CRB for unknown/disabled feature is not created
+		noiseCrbName := fmt.Sprintf("%s-%s", user.Space.Name, unknownFeature)
+		err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+		require.NoError(t, err)
+
+		t.Run("disable feature", func(t *testing.T) {
+			// when
+
+			// Now let's disable the feature for the Space by removing the feature annotation
+			_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
+				delete(s.Annotations, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
+			})
+			require.NoError(t, err)
+
+			// then
+			err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(crbName)
+			require.NoError(t, err)
+			err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+			require.NoError(t, err)
+
+			t.Run("re-enable feature", func(t *testing.T) {
+				// when
+
+				// Now let's re-enable the feature for the Space by restoring the feature annotation
+				_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
+					if s.Annotations == nil {
+						s.Annotations = make(map[string]string)
+					}
+					s.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey] = "test-feature"
+				})
+				require.NoError(t, err)
+
+				// then
+				// Verify that the CRB is back
+				_, err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameThat(crbName)
+				require.NoError(t, err)
+				// the noise CRB for unknown/disabled feature is still not created
+				err = wait.For(t, memberAwait.Awaitility, &v1.ClusterRoleBinding{}).WithNameDeleted(noiseCrbName)
+				require.NoError(t, err)
+			})
+		})
+	})
+}
+
+func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
+	clusterRB := getCRBforFeature(t, feature)       // This is the ClusterRoleBinding for the desired feature
+	noiseCRB := getCRBforFeature(t, unknownFeature) // This is a noise CRB for unknown/disabled feature. To be used to check that this CRB is never created.
+
+	return tiers.WithClusterResources(t, otherTier, func(template *toolchainv1alpha1.TierTemplate) error {
+		template.Spec.Template.Objects = append(template.Spec.Template.Objects, clusterRB, noiseCRB)
+		return nil
+	})
+}
+
+func getCRBforFeature(t *testing.T, featureName string) runtime.RawExtension {
+	var crb bytes.Buffer
+	err := template.Must(template.New("crb").Parse(viewCRB)).Execute(&crb, map[string]interface{}{
+		"featureName": featureName,
+	})
+	require.NoError(t, err)
+	clusterRB := runtime.RawExtension{
+		Raw: crb.Bytes(),
+	}
+	return clusterRB
+}
+
+const (
+	unknownFeature = "unknown-feature"
+
+	viewCRB = `{
+  "apiVersion": "rbac.authorization.k8s.io/v1",
+  "kind": "ClusterRoleBinding",
+  "metadata": {
+    "name": "${SPACE_NAME}-{{ .featureName }}",
+    "annotations": {
+      "toolchain.dev.openshift.com/feature": "{{ .featureName }}"
+    }
+  },
+  "roleRef": {
+    "apiGroup": "rbac.authorization.k8s.io",
+    "kind": "ClusterRole",
+    "name": "view"
+  },
+  "subjects": [
+    {
+      "kind": "User",
+      "name": "${USERNAME}"
+    }
+  ]
+}
+`
+)

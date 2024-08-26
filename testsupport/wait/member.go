@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/davecgh/go-spew/spew"
@@ -61,7 +60,6 @@ func NewMemberAwaitility(cfg *rest.Config, cl client.Client, ns, clusterName str
 			RestConfig:    cfg,
 			ClusterName:   clusterName,
 			Namespace:     ns,
-			Type:          cluster.Member,
 			RetryInterval: DefaultRetryInterval,
 			Timeout:       DefaultTimeout,
 		},
@@ -185,7 +183,7 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return false
 			}
-			return actual.Spec.UserID == mur.Spec.UserID &&
+			return actual.Spec.PropagatedClaims.Sub == mur.Spec.PropagatedClaims.Sub &&
 				actual.Spec.Disabled == mur.Spec.Disabled
 		},
 		Diff: func(actual *toolchainv1alpha1.UserAccount) string {
@@ -193,7 +191,8 @@ func UntilUserAccountMatchesMur(hostAwaitility *HostAwaitility) UserAccountWaitC
 			if err != nil {
 				return fmt.Sprintf("could not find mur for user account '%s'", actual.Name)
 			}
-			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n", actual.Spec.UserID, mur.Spec.UserID, actual.Spec.Disabled, mur.Spec.Disabled)
+			return fmt.Sprintf("expected mur to match with useraccount:\n\tUserID: %s/%s\n\tDisabled: %t/%t\n",
+				actual.Spec.PropagatedClaims.Sub, mur.Spec.PropagatedClaims.Sub, actual.Spec.Disabled, mur.Spec.Disabled)
 		},
 	}
 }
@@ -340,6 +339,8 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 	for _, expectedNamespace := range subSpace.Status.ProvisionedNamespaces {
 		expectedNames = append(expectedNames, expectedNamespace.Name)
 	}
+	sort.Strings(expectedNames)
+
 	return SpaceRequestWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
 			// check if expected number of namespaces matches
@@ -347,20 +348,14 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 				return false
 			}
 
-			for _, nsAccess := range actual.Status.NamespaceAccess {
-				// check the name of the namespaces are matching
-				for _, expectedNamespace := range expectedNames {
-					found := false
-					if expectedNamespace == nsAccess.Name {
-						found = true
-						break
-					}
-					if !found {
-						return false
-					}
-				}
+			// check if the name of namespaces matches
+			var actualNamespaces []string
+			for _, actualNamespace := range actual.Status.NamespaceAccess {
+				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
 			}
-			return true
+			sort.Strings(actualNamespaces)
+
+			return reflect.DeepEqual(expectedNames, actualNamespaces)
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
 			if len(actual.Status.NamespaceAccess) != len(subSpace.Status.ProvisionedNamespaces) {
@@ -371,6 +366,42 @@ func UntilSpaceRequestHasNamespaceAccess(subSpace *toolchainv1alpha1.Space) Spac
 				actualNamespaces = append(actualNamespaces, actualNamespace.Name)
 			}
 			return fmt.Sprintf("could not match namespace names: \n%s ", Diff(expectedNames, actualNamespaces))
+		},
+	}
+}
+
+// UntilSpaceRequestHasNamespaceAccessWithoutSecretRef returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has `status.NamespaceAccess[*].SecretRef` empty, since generation of a secret is not expected for the given SpaceRequest.
+func UntilSpaceRequestHasNamespaceAccessWithoutSecretRef() SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			// check that there are namespace provisioned
+			if len(actual.Status.NamespaceAccess) == 0 {
+				return false
+			}
+			for _, nsAccess := range actual.Status.NamespaceAccess {
+				// check the secretRef is empty
+				if nsAccess.SecretRef != "" {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("namespace access has secret ref and it's not expected: \n%v ", actual.Status.NamespaceAccess)
+		},
+	}
+}
+
+// UntilSpaceRequestHasDisableInheritance returns a `SpaceRequestWaitCriterion` which checks that the given
+// SpaceRequest has the expected Spec.DisableInheritance value
+func UntilSpaceRequestHasDisableInheritance(expected bool) SpaceRequestWaitCriterion {
+	return SpaceRequestWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.SpaceRequest) bool {
+			return expected == actual.Spec.DisableInheritance
+		},
+		Diff: func(actual *toolchainv1alpha1.SpaceRequest) string {
+			return fmt.Sprintf("expected DisableInheritance to match:\n%s", Diff(expected, actual.Spec.DisableInheritance))
 		},
 	}
 }
@@ -591,7 +622,7 @@ func UntilNSTemplateSetIsBeingDeleted() NSTemplateSetWaitCriterion {
 }
 
 // UntilNSTemplateSetHasConditions returns a `NSTemplateSetWaitCriterion` which checks that the given
-// NSTemlateSet has exactly all the given status conditions
+// NSTemplateSet has exactly all the given status conditions
 func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
@@ -604,7 +635,7 @@ func UntilNSTemplateSetHasConditions(expected ...toolchainv1alpha1.Condition) NS
 }
 
 // UntilNSTemplateSetHasSpaceRoles returns a `NSTemplateSetWaitCriterion` which checks that the given
-// NSTemlateSet has the expected roles for the given users
+// NSTemplateSet has the expected roles for the given users
 func UntilNSTemplateSetHasSpaceRoles(expected ...toolchainv1alpha1.NSTemplateSetSpaceRole) NSTemplateSetWaitCriterion {
 	return NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
@@ -1711,6 +1742,21 @@ func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
 	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
 }
 
+// WaitUntilWebhookDeleted waits until the webhook app in member namespace is deleted (ie, is not found)
+func (a *MemberAwaitility) WaitUntilWebhookDeleted(t *testing.T) error {
+	t.Logf("waiting until webhook member-operator-webhook in namespace '%s' is deleted", a.Namespace)
+	deployment := &appsv1.Deployment{}
+	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+		if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "member-operator-webhook"), deployment); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+}
+
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typeName string) error {
 	t.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
@@ -1765,7 +1811,6 @@ func (a *MemberAwaitility) printUserWaitCriterionDiffs(t *testing.T, actual *use
 	buf := &strings.Builder{}
 	if actual == nil {
 		buf.WriteString("failed to find User\n")
-		buf.WriteString(a.listAndReturnContent("User", actual.Namespace, &userv1.UserList{}))
 	} else {
 		buf.WriteString("failed to find User with matching criteria:\n")
 		for _, c := range criteria {
@@ -2118,14 +2163,14 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(t *testing.T, hostAwait *
 	t.Logf("waiting for MemberOperatorConfig '%s'", name)
 	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
 	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
-		memberOperatorConfig = &toolchainv1alpha1.MemberOperatorConfig{}
+		obj := &toolchainv1alpha1.MemberOperatorConfig{}
 		// retrieve the MemberOperatorConfig from the member namespace
 		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
 			},
-			memberOperatorConfig)
+			obj)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -2133,12 +2178,16 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(t *testing.T, hostAwait *
 			return false, err
 		}
 		for _, match := range criteria {
-			if !match(hostAwait, a, memberOperatorConfig) {
+			if !match(hostAwait, a, obj) {
 				return false, nil
 			}
 		}
+		memberOperatorConfig = obj
 		return true, nil
 	})
+	if err != nil {
+		a.listAndPrint(t, "MemberOperatorConfig", a.Namespace, &toolchainv1alpha1.MemberOperatorConfigList{})
+	}
 	return memberOperatorConfig, err
 }
 
@@ -2167,7 +2216,6 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
 	t.Logf("checking PrioritiyClass resource '%s'", "sandbox-users-pods")
 	actualPrioClass := &schedulingv1.PriorityClass{}
 	a.waitForResource(t, "", "sandbox-users-pods", actualPrioClass)
-
 	assert.Equal(t, codereadyToolchainProviderLabel, actualPrioClass.Labels)
 	assert.Equal(t, int32(-3), actualPrioClass.Value)
 	assert.False(t, actualPrioClass.GlobalDefault)
@@ -2249,9 +2297,14 @@ func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
 func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) {
 	t.Logf("checking MutatingWebhookConfiguration")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
-	a.waitForResource(t, "", "member-operator-webhook", actualMutWbhConf)
+	a.waitForResource(t, "", "member-operator-webhook-"+a.Namespace, actualMutWbhConf)
 	assert.Equal(t, bothWebhookLabels, actualMutWbhConf.Labels)
 	require.Len(t, actualMutWbhConf.Webhooks, 2)
+	//check that there is only 1 MutatingWebhookConfiguration
+	allMutatingWebhooks := &admv1.MutatingWebhookConfigurationList{}
+	err := a.Client.List(context.TODO(), allMutatingWebhooks, client.MatchingLabels(appMemberOperatorWebhookLabel))
+	require.NoError(t, err)
+	require.Len(t, allMutatingWebhooks.Items, 1)
 
 	type Rule struct {
 		Operations  []admv1.OperationType
@@ -2321,11 +2374,15 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 }
 
 func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte) {
-	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook")
+	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook"+a.Namespace)
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
-	a.waitForResource(t, "", "member-operator-validating-webhook", actualValWbhConf)
+	a.waitForResource(t, "", "member-operator-validating-webhook-"+a.Namespace, actualValWbhConf)
 	assert.Equal(t, bothWebhookLabels, actualValWbhConf.Labels)
-	// require.Len(t, actualValWbhConf.Webhooks, 2)
+	//check that there is only 1 ValidatingWebhookConfiguration
+	allValidatingWebhooks := &admv1.ValidatingWebhookConfigurationList{}
+	err := a.Client.List(context.TODO(), allValidatingWebhooks, client.MatchingLabels(appMemberOperatorWebhookLabel))
+	require.NoError(t, err)
+	require.Len(t, allValidatingWebhooks.Items, 1)
 
 	rolebindingWebhook := actualValWbhConf.Webhooks[0]
 	assert.Equal(t, "users.rolebindings.webhook.sandbox", rolebindingWebhook.Name)
@@ -2349,29 +2406,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"rolebindings"}, rolebindingRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *rolebindingRule.Scope)
 
-	k8sImagePullerWebhook := actualValWbhConf.Webhooks[1]
-	assert.Equal(t, "users.kubernetesimagepullers.webhook.sandbox", k8sImagePullerWebhook.Name)
-	assert.Equal(t, []string{"v1"}, k8sImagePullerWebhook.AdmissionReviewVersions)
-	assert.Equal(t, admv1.SideEffectClassNone, *k8sImagePullerWebhook.SideEffects)
-	assert.Equal(t, int32(5), *k8sImagePullerWebhook.TimeoutSeconds)
-	assert.Equal(t, admv1.Fail, *k8sImagePullerWebhook.FailurePolicy)
-	assert.Equal(t, admv1.Equivalent, *k8sImagePullerWebhook.MatchPolicy)
-	assert.Equal(t, codereadyToolchainProviderLabel, k8sImagePullerWebhook.NamespaceSelector.MatchLabels)
-	assert.Equal(t, ca, k8sImagePullerWebhook.ClientConfig.CABundle)
-	assert.Equal(t, "member-operator-webhook", k8sImagePullerWebhook.ClientConfig.Service.Name)
-	assert.Equal(t, a.Namespace, k8sImagePullerWebhook.ClientConfig.Service.Namespace)
-	assert.Equal(t, "/validate-users-kubernetesimagepullers", *k8sImagePullerWebhook.ClientConfig.Service.Path)
-	assert.Equal(t, int32(443), *k8sImagePullerWebhook.ClientConfig.Service.Port)
-	require.Len(t, k8sImagePullerWebhook.Rules, 1)
-
-	k8sImagePullerRule := k8sImagePullerWebhook.Rules[0]
-	assert.Equal(t, []admv1.OperationType{admv1.Create}, k8sImagePullerRule.Operations)
-	assert.Equal(t, []string{"che.eclipse.org"}, k8sImagePullerRule.APIGroups)
-	assert.Equal(t, []string{"v1alpha1"}, k8sImagePullerRule.APIVersions)
-	assert.Equal(t, []string{"kubernetesimagepullers"}, k8sImagePullerRule.Resources)
-	assert.Equal(t, admv1.NamespacedScope, *k8sImagePullerRule.Scope)
-
-	spacebindingrequestWebhook := actualValWbhConf.Webhooks[2]
+	spacebindingrequestWebhook := actualValWbhConf.Webhooks[1]
 	assert.Equal(t, "users.spacebindingrequests.webhook.sandbox", spacebindingrequestWebhook.Name)
 	assert.Equal(t, []string{"v1"}, spacebindingrequestWebhook.AdmissionReviewVersions)
 	assert.Equal(t, admv1.SideEffectClassNone, *spacebindingrequestWebhook.SideEffects)
@@ -2393,6 +2428,27 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"spacebindingrequests"}, spacebindingrequestRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *spacebindingrequestRule.Scope)
 
+	ssprequestWebhook := actualValWbhConf.Webhooks[2]
+	assert.Equal(t, "users.virtualmachines.ssp.webhook.sandbox", ssprequestWebhook.Name)
+	assert.Equal(t, []string{"v1"}, ssprequestWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *ssprequestWebhook.SideEffects)
+	assert.Equal(t, int32(5), *ssprequestWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Fail, *ssprequestWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *ssprequestWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, ssprequestWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, ssprequestWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", ssprequestWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, ssprequestWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-ssprequests", *ssprequestWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *ssprequestWebhook.ClientConfig.Service.Port)
+	require.Len(t, ssprequestWebhook.Rules, 1)
+
+	ssprequestRule := ssprequestWebhook.Rules[0]
+	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, ssprequestRule.Operations)
+	assert.Equal(t, []string{"ssp.kubevirt.io"}, ssprequestRule.APIGroups)
+	assert.Equal(t, []string{"*"}, ssprequestRule.APIVersions)
+	assert.Equal(t, []string{"ssps"}, ssprequestRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
@@ -2411,36 +2467,47 @@ func (a *MemberAwaitility) verifyAutoscalingBufferPriorityClass(t *testing.T) {
 	assert.Equal(t, "This priority class is to be used by the autoscaling buffer pod only", actualPrioClass.Description)
 }
 
+// WaitForDeployment waits until the Deployment with the given name is available with the provided criteria, if any
+func (a *MemberAwaitility) waitForAutoscalingBufferDeployment(t *testing.T, criteria ...DeploymentCriteria) *appsv1.Deployment {
+	return a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2, criteria...)
+}
+
 func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 	t.Logf("checking Deployment '%s' in namespace '%s'", "autoscaling-buffer", a.Namespace)
-	actualDeployment := &appsv1.Deployment{}
-	a.waitForResource(t, a.Namespace, "autoscaling-buffer", actualDeployment)
+	expectedMemory, err := resource.ParseQuantity("50Mi")
+	require.NoError(t, err)
+	expectedCPU, err := resource.ParseQuantity("15m")
+	require.NoError(t, err)
+
+	actualDeployment := a.waitForAutoscalingBufferDeployment(t, func(d *appsv1.Deployment) bool {
+		r := d.Spec.Replicas
+		return r != nil && *r == int32(2)
+	}, func(d *appsv1.Deployment) bool {
+		return d.Spec.Selector != nil && len(d.Spec.Selector.MatchLabels) == 1 && d.Spec.Selector.MatchLabels["app"] == "autoscaling-buffer"
+	}, func(d *appsv1.Deployment) bool {
+		return len(d.Spec.Template.ObjectMeta.Labels) == 1 && d.Spec.Template.ObjectMeta.Labels["app"] == "autoscaling-buffer"
+	}, func(d *appsv1.Deployment) bool {
+		return d.Spec.Template.Spec.PriorityClassName == "member-operator-autoscaling-buffer"
+	}, func(d *appsv1.Deployment) bool {
+		p := d.Spec.Template.Spec.TerminationGracePeriodSeconds
+		return p != nil && *p == int64(0)
+	}, func(d *appsv1.Deployment) bool {
+		if len(d.Spec.Template.Spec.Containers) != 1 {
+			return false
+		}
+		c := d.Spec.Template.Spec.Containers[0]
+		return c.Name == "autoscaling-buffer" &&
+			c.Image == "gcr.io/google_containers/pause-amd64:3.2" &&
+			c.ImagePullPolicy == corev1.PullIfNotPresent
+	}, func(d *appsv1.Deployment) bool {
+		c := d.Spec.Template.Spec.Containers[0]
+		return c.Resources.Requests.Memory().Equal(expectedMemory) && c.Resources.Requests.Cpu().Equal(expectedCPU)
+	})
 
 	assert.Equal(t, map[string]string{
 		"app":                                  "autoscaling-buffer",
 		"toolchain.dev.openshift.com/provider": "codeready-toolchain",
 	}, actualDeployment.Labels)
-	assert.Equal(t, int32(2), *actualDeployment.Spec.Replicas)
-	assert.Equal(t, map[string]string{"app": "autoscaling-buffer"}, actualDeployment.Spec.Selector.MatchLabels)
-
-	template := actualDeployment.Spec.Template
-	assert.Equal(t, map[string]string{"app": "autoscaling-buffer"}, template.ObjectMeta.Labels)
-
-	assert.Equal(t, "member-operator-autoscaling-buffer", template.Spec.PriorityClassName)
-	assert.Equal(t, int64(0), *template.Spec.TerminationGracePeriodSeconds)
-
-	require.Len(t, template.Spec.Containers, 1)
-	container := template.Spec.Containers[0]
-	assert.Equal(t, "autoscaling-buffer", container.Name)
-	assert.Equal(t, "gcr.io/google_containers/pause-amd64:3.2", container.Image)
-	assert.Equal(t, corev1.PullIfNotPresent, container.ImagePullPolicy)
-
-	expectedMemory, err := resource.ParseQuantity("50Mi")
-	require.NoError(t, err)
-	assert.True(t, container.Resources.Requests.Memory().Equal(expectedMemory))
-	assert.True(t, container.Resources.Limits.Memory().Equal(expectedMemory))
-
-	a.WaitForDeploymentToGetReady(t, "autoscaling-buffer", 2)
 }
 
 // WaitForExpectedNumberOfResources waits until the number of resources matches the expected count
@@ -2577,4 +2644,111 @@ containers:
 		}
 	}
 	return value
+}
+
+func (a *MemberAwaitility) WaitForToolchainClusterResources(t *testing.T) {
+	t.Logf("checking ToolchainCluster Resources")
+	actualSA := &corev1.ServiceAccount{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualSA)
+	expectedLabels := map[string]string{
+		"toolchain.dev.openshift.com/provider": "toolchaincluster-resources-controller",
+	}
+	assert.Equal(t, expectedLabels, actualSA.Labels)
+	actualClusterRole := &rbacv1.ClusterRole{}
+	a.waitForResource(t, "", "toolchaincluster-"+a.Namespace, actualClusterRole)
+	assert.Equal(t, expectedLabels, actualClusterRole.Labels)
+	expectedRules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"authentication.k8s.io"},
+			Resources: []string{"tokenreviews"},
+			Verbs:     []string{"create"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"users", "groups"},
+			Verbs:     []string{"impersonate"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacerequests"},
+			Verbs:     []string{"*"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacerequests/finalizers"},
+			Verbs:     []string{"update"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacerequests/status"},
+			Verbs:     []string{"get", "patch", "update"},
+		},
+		{
+			APIGroups: []string{"route.openshift.io"},
+			Resources: []string{"routes"},
+			Verbs:     []string{"get", "list", "watch"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+			Verbs:     []string{"get", "list", "watch"},
+		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"secrets", "serviceaccounts/token"},
+			Verbs:     []string{"*"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacebindingrequests"},
+			Verbs:     []string{"*"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacebindingrequests/finalizers"},
+			Verbs:     []string{"update"},
+		},
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"spacebindingrequests/status"},
+			Verbs:     []string{"get", "patch", "update"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualClusterRole.Rules)
+	actualCRB := &rbacv1.ClusterRoleBinding{}
+	a.waitForResource(t, "", "toolchaincluster-"+a.Namespace, actualCRB)
+	assert.Equal(t, expectedLabels, actualCRB.Labels)
+	assert.Equal(t, []rbacv1.Subject{{
+		Kind:      "ServiceAccount",
+		Name:      "toolchaincluster-member",
+		Namespace: a.Namespace,
+	}}, actualCRB.Subjects)
+	assert.Equal(t, rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "ClusterRole",
+		Name:     "toolchaincluster-" + a.Namespace,
+	}, actualCRB.RoleRef)
+	actualRB := &rbacv1.RoleBinding{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualRB)
+	assert.Equal(t, expectedLabels, actualRB.Labels)
+	assert.Equal(t, []rbacv1.Subject{{
+		Kind: "ServiceAccount",
+		Name: "toolchaincluster-member",
+	}}, actualRB.Subjects)
+	assert.Equal(t, rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     "toolchaincluster-member",
+	}, actualRB.RoleRef)
+	actualRole := &rbacv1.Role{}
+	a.waitForResource(t, a.Namespace, "toolchaincluster-member", actualRole)
+	assert.Equal(t, expectedLabels, actualRole.Labels)
+	expectedRules = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"toolchain.dev.openshift.com"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		},
+	}
+	assert.Equal(t, expectedRules, actualRole.Rules)
 }

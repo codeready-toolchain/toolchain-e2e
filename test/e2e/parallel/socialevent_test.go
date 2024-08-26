@@ -34,6 +34,7 @@ func TestCreateSocialEvent(t *testing.T) {
 			testsocialevent.WithStartTime(start),
 			testsocialevent.WithEndTime(end),
 			testsocialevent.WithMaxAttendees(5),
+			testsocialevent.WithTargetCluster("member-1"),
 		)
 
 		// when
@@ -51,6 +52,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		assert.Equal(t, start, event.Spec.StartTime.Time)
 		assert.Equal(t, end, event.Spec.EndTime.Time)
 		assert.Equal(t, 5, event.Spec.MaxAttendees)
+		assert.Equal(t, "member-1", event.Spec.TargetCluster)
 	})
 
 	t.Run("create socialevent with invalid user tier name", func(t *testing.T) {

@@ -137,7 +137,7 @@ func TestExecuteQueryAndProcessResult(t *testing.T) {
 			err := g.sample(tc.query)
 
 			// then
-			require.Equal(t, tc.exp.resultLen, len(g.results))
+			require.Len(t, g.results, tc.exp.resultLen)
 			if tc.exp.err != "" {
 				require.EqualError(t, err, tc.exp.err)
 			} else {
@@ -145,8 +145,8 @@ func TestExecuteQueryAndProcessResult(t *testing.T) {
 			}
 			if tc.exp.resultLen > 0 {
 				require.NotNil(t, g.results[tc.query.name])
-				require.Equal(t, tc.exp.max, g.results[tc.query.name].max)
-				require.Equal(t, tc.exp.sum, g.results[tc.query.name].sum)
+				require.InDelta(t, tc.exp.max, g.results[tc.query.name].max, 0.01)
+				require.InDelta(t, tc.exp.sum, g.results[tc.query.name].sum, 0.01)
 				require.Equal(t, tc.exp.sampleCount, g.results[tc.query.name].sampleCount)
 			}
 		})

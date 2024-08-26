@@ -23,18 +23,29 @@ func CreateSpace(t *testing.T, awaitilities wait.Awaitilities, opts ...testspace
 	return CreateSpaceWithRole(t, awaitilities, "admin", opts...)
 }
 
-// CreateSpace initializes a new Space object using the NewSpace function, and then creates it in the cluster
+// CreateSpaceWithRole initializes a new Space object using the NewSpace function, and then creates it in the cluster
 // It also automatically provisions MasterUserRecord and creates SpaceBinding for it
+// It returns the Space, the UserSignup, and the SpaceBinding.
 func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
+	sp, sr, sb := CreateSpaceWithRoleSignupResult(t, awaitilities, role, opts...)
+	return sp, sr.UserSignup, sb
+}
+
+// CreateSpaceWithRoleSignupResult initializes a new Space object using the NewSpace function, and then creates it in the cluster
+// It also automatically provisions MasterUserRecord and creates SpaceBinding for it.
+// It returns the Space, the SignupResult, and the SpaceBinding.
+func CreateSpaceWithRoleSignupResult(t *testing.T, awaitilities wait.Awaitilities, role string, opts ...testspace.Option) (*toolchainv1alpha1.Space, *testsupport.SignupResult, *toolchainv1alpha1.SpaceBinding) {
 	// we need to create a MUR & SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
 	username := uuid.Must(uuid.NewV4()).String()
-	signup, mur := testsupport.NewSignupRequest(awaitilities).
+	user := testsupport.NewSignupRequest(awaitilities).
 		Username(username).
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
-		WaitForMUR().Execute(t).Resources()
+		WaitForMUR().Execute(t)
+	signup := user.UserSignup
+	mur := user.MUR
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 
 	// create the actual space
@@ -64,21 +75,7 @@ func CreateSpaceWithRole(t *testing.T, awaitilities wait.Awaitilities, role stri
 		require.NoError(t, err)
 	}
 
-	return space, signup, spaceBinding
-}
-
-// CreateSpaceWithBinding initializes a new Space object using the NewSpace function, and then creates it in the cluster
-// It also automatically creates SpaceBinding for it and for the given MasterUserRecord
-func CreateSpaceWithBinding(t *testing.T, awaitilities wait.Awaitilities, mur *toolchainv1alpha1.MasterUserRecord, opts ...testspace.Option) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBinding) {
-	space := testspace.NewSpaceWithGeneratedName(awaitilities.Host().Namespace, util.NewObjectNamePrefix(t), opts...)
-
-	err := awaitilities.Host().CreateWithCleanup(t, space)
-	require.NoError(t, err)
-
-	// we need to  create the SpaceBinding, otherwise, the Space could be automatically deleted by the SpaceCleanup controller
-	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
-
-	return space, spaceBinding
+	return space, user, spaceBinding
 }
 
 // CreateSubSpace initializes a new Space object using the NewSpace function, and sets the parentSpace field value accordingly.
@@ -158,7 +155,7 @@ func verifyResourcesProvisionedForSpace(t *testing.T, hostAwait *wait.HostAwaiti
 	require.NoError(t, err)
 
 	// verify NSTemplateSet with namespace & cluster scoped resources
-	nsTmplSet = tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, checks)
+	nsTmplSet = tiers.VerifyNSTemplateSet(t, hostAwait, targetCluster, nsTmplSet, space, checks)
 
 	// Wait for space to have list of provisioned namespaces in Space status.
 	// the expected namespaces for `nsTmplSet.Status.ProvisionedNamespaces` are checked as part of VerifyNSTemplateSet function above.
@@ -181,7 +178,9 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 	if !cleanup {
 		builder.DisableCleanup()
 	}
-	signup, mur := builder.Execute(t).Resources()
+	user := builder.Execute(t)
+	signup := user.UserSignup
+	mur := user.MUR
 	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
 	var binding *toolchainv1alpha1.SpaceBinding
 	if cleanup {

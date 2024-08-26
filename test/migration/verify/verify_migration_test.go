@@ -128,7 +128,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 	targetClusterRoles := []string{cluster.RoleLabel(cluster.Tenant)}
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member2()
-	memberCluster, found, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, found, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 	require.True(t, found)
 	subSpaceNamespace := GetDefaultNamespace(parentSpace.Status.ProvisionedNamespaces)
@@ -168,7 +168,7 @@ func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signu
 func verifySecondMemberProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base1ns")
-	CreateBannedUser(t, awaitilities.Host(), signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey])
+	CreateBannedUser(t, awaitilities.Host(), signup.Spec.IdentityClaims.Email)
 }
 
 func verifyAppStudioProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
@@ -212,7 +212,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 
 	// get the BannedUser resource
 	matchEmailHash := client.MatchingLabels{
-		toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(signup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]),
+		toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(signup.Spec.IdentityClaims.Email),
 	}
 	bannedUsers := &toolchainv1alpha1.BannedUserList{}
 	err = hostAwait.Client.List(context.TODO(), bannedUsers, client.InNamespace(hostAwait.Namespace), matchEmailHash)

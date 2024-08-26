@@ -31,7 +31,6 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 	// TODO: needs to be changed as soon as we start creating objects in namespaces for SpaceRoles - we need to verify that it also automatically updates NSTemplateSet and the resources in the namespaces
 	t.Run("for SpaceBinding", func(t *testing.T) {
 		t.Run("when space is deleted", func(t *testing.T) {
-
 			// given
 			space, _, spaceBinding := setupForSpaceBindingCleanupTest(t, awaitilities, memberAwait, "joe", "for-redhat")
 
@@ -131,11 +130,9 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 				// check that sub-space was not recreated
 				assert.Equal(t, subSpace.UID, actualSubSpace.UID)
 			})
-
 		})
 
 		t.Run("when space is provisioned for more than 30 seconds, then it should not delete the Space when SpaceBinding still exists", func(t *testing.T) {
-
 			// when
 			space, err := hostAwait.WaitForSpace(t, space1.Name)
 			require.NoError(t, err)
@@ -169,18 +166,18 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 }
 
 func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility, space *toolchainv1alpha1.Space, hostAwait *wait.HostAwaitility, username, spaceRole string) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
-	userSignup2, mur2 := NewSignupRequest(awaitilities).
+	user2 := NewSignupRequest(awaitilities).
 		Username(username).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		EnsureMUR().
 		NoSpace().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
+		Execute(t)
 	//... that gets access to the space but using SpaceBindingRequests
 	spaceBindingRequest := testsupportsb.CreateSpaceBindingRequest(t, awaitilities, memberAwait.ClusterName,
 		testsupportsb.WithSpecSpaceRole(spaceRole),
-		testsupportsb.WithSpecMasterUserRecord(mur2.GetName()),
+		testsupportsb.WithSpecMasterUserRecord(user2.MUR.GetName()),
 		testsupportsb.WithNamespace(GetDefaultNamespace(space.Status.ProvisionedNamespaces)),
 	)
 	// check for the spaceBinding creation
@@ -197,20 +194,20 @@ func setupForSpaceBindingCleanupWithSBRTest(t *testing.T, awaitilities wait.Awai
 		wait.UntilSpaceBindingRequestHasConditions(wait.Provisioned()),
 	)
 	require.NoError(t, err)
-	return userSignup2, spaceBindingRequest, spaceBinding
+	return user2.UserSignup, spaceBindingRequest, spaceBinding
 }
 
 func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilities, targetMember *wait.MemberAwaitility, murName, spaceName string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.UserSignup, *toolchainv1alpha1.SpaceBinding) {
 	space, owner, _ := CreateSpace(t, awaitilities, testspace.WithTierName("appstudio"), testspace.WithSpecTargetCluster(targetMember.ClusterName), testspace.WithName(spaceName))
 	// at this point, just make sure the space exists so we can bind it to our user
-	userSignup, mur := NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		Username(murName).
 		ManuallyApprove().
 		TargetCluster(targetMember).
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t).Resources()
-	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")
+		Execute(t)
+	spaceBinding := testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), user.MUR, space, "admin")
 	appstudioTier, err := awaitilities.Host().WaitForNSTemplateTier(t, "appstudio")
 	require.NoError(t, err)
 	// make sure that the NSTemplateSet associated with the Space was updated after the space binding was created (new entry in the `spec.SpaceRoles`)
@@ -221,5 +218,5 @@ func setupForSpaceBindingCleanupTest(t *testing.T, awaitilities wait.Awaitilitie
 	require.NoError(t, err)
 	// in particular, verify that there are role and rolebindings for all the users (the "default" one and the one referred as an argument of this func) in the space
 	VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name, wait.UntilSpaceHasStatusTargetCluster(targetMember.ClusterName), wait.UntilSpaceHasAnyProvisionedNamespaces())
-	return space, userSignup, spaceBinding
+	return space, user.UserSignup, spaceBinding
 }

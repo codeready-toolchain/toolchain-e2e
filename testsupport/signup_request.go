@@ -15,25 +15,14 @@ import (
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 var httpClient = HTTPClient
-
-// NewSignupRequest creates a new signup request for the registration service
-func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
-	defaultUsername := fmt.Sprintf("testuser-%s", uuid.Must(uuid.NewV4()).String())
-	return &SignupRequest{
-		awaitilities:       awaitilities,
-		requiredHTTPStatus: http.StatusAccepted,
-		username:           defaultUsername,
-		email:              fmt.Sprintf("%s@test.com", defaultUsername),
-		identityID:         uuid.Must(uuid.NewV4()),
-	}
-}
 
 // SignupRequest provides an API for creating a new UserSignup via the registration service REST endpoint. It operates
 // with a set of sensible default values which can be overridden via its various functions.  Function chaining may
@@ -45,7 +34,7 @@ func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
 // ManuallyApprove().
 // EnsureMUR().
 // RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-// Execute(t).Resources()
+// Execute(t)
 type SignupRequest struct {
 	awaitilities         wait.Awaitilities
 	ensureMUR            bool
@@ -67,6 +56,27 @@ type SignupRequest struct {
 	cleanupDisabled      bool
 	noSpace              bool
 	activationCode       string
+	space                *toolchainv1alpha1.Space
+	spaceTier            string
+}
+
+type SignupResult struct {
+	UserSignup *toolchainv1alpha1.UserSignup
+	MUR        *toolchainv1alpha1.MasterUserRecord
+	Space      *toolchainv1alpha1.Space
+	Token      string
+}
+
+// NewSignupRequest creates a new signup request for the registration service
+func NewSignupRequest(awaitilities wait.Awaitilities) *SignupRequest {
+	defaultUsername := fmt.Sprintf("testuser-%s", uuid.NewString())
+	return &SignupRequest{
+		awaitilities:       awaitilities,
+		requiredHTTPStatus: http.StatusAccepted,
+		username:           defaultUsername,
+		email:              fmt.Sprintf("%s@test.com", defaultUsername),
+		identityID:         uuid.New(),
+	}
 }
 
 // IdentityID specifies the ID value for the user's Identity.  This value if set will be used to set both the
@@ -105,15 +115,8 @@ func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 	return r
 }
 
-// Resources may be called only after a call to Execute(t).  It returns two parameters; the first is the UserSignup
-// instance that was created, the second is the MasterUserRecord instance, HOWEVER the MUR will only be returned
-// here if EnsureMUR() was also called previously, otherwise a nil value will be returned
-func (r *SignupRequest) Resources() (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-	return r.userSignup, r.mur
-}
-
 // EnsureMUR will ensure that a MasterUserRecord is created.  It is necessary to call this function in order for
-// the Resources() function to return a non-nil value for its second return parameter.
+// the Execute function to return a non-nil value for its second return parameter.
 func (r *SignupRequest) EnsureMUR() *SignupRequest {
 	r.ensureMUR = true
 	return r
@@ -123,11 +126,6 @@ func (r *SignupRequest) EnsureMUR() *SignupRequest {
 func (r *SignupRequest) WaitForMUR() *SignupRequest {
 	r.waitForMUR = true
 	return r
-}
-
-// GetToken may be called only after a call to Execute(t). It returns the token that was generated for the request
-func (r *SignupRequest) GetToken() string {
-	return r.token
 }
 
 func (r *SignupRequest) ActivationCode(code string) *SignupRequest {
@@ -181,6 +179,12 @@ func (r *SignupRequest) NoSpace() *SignupRequest {
 	return r
 }
 
+// SpaceTier specifies the tier of the Space
+func (r *SignupRequest) SpaceTier(spaceTier string) *SignupRequest {
+	r.spaceTier = spaceTier
+	return r
+}
+
 var usernamesInParallel = &namesRegistry{usernames: map[string]string{}}
 
 type namesRegistry struct {
@@ -201,9 +205,12 @@ func (r *namesRegistry) add(t *testing.T, name string) {
 	r.usernames[name] = t.Name()
 }
 
-// Execute executes the request against the Registration service REST endpoint.  This function may only be called
-// once, and must be called after all other functions EXCEPT for Resources()
-func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
+// Execute executes the request against the Registration service REST endpoint. This function may only be called
+// once, and must be called after all other functions. It returns SignupResult that contains the UserSignup,
+// the MasterUserRecord, the Space, and the token that was generated for the request. HOWEVER, the MUR will only be
+// returned here if EnsureMUR() was also called previously, otherwise a nil value will be returned.
+// The space will only be returned here if 'noSpace' is true. If false, a nil value will be returned.
+func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	hostAwait := r.awaitilities.Host()
 	err := hostAwait.WaitUntilBaseNSTemplateTierIsUpdated(t)
 	require.NoError(t, err)
@@ -238,11 +245,8 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		r.token, "", r.requiredHTTPStatus, queryParams)
 
 	// Wait for the UserSignup to be created
-	//userSignup, err := hostAwait.WaitForUserSignup(t,userIdentity.Username)
-	// TODO remove this after reg service PR #254 is merged
-	userSignup, err := hostAwait.WaitForUserSignupByUserIDAndUsername(t, userIdentity.ID.String(), userIdentity.Username)
-
-	require.NoError(t, err)
+	userSignup, err := hostAwait.WaitForUserSignup(t, wait.EncodeUserIdentifier(userIdentity.Username))
+	require.NoError(t, err, "failed to find UserSignup %s", userIdentity.Username)
 
 	if r.targetCluster != nil && hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled != nil {
 		require.False(t, *hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled,
@@ -269,7 +273,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		require.NoError(t, err)
 	}
 
-	t.Logf("user signup '%s' created", userSignup.Name)
+	t.Logf("user signup created: %+v", userSignup)
 
 	// If any required conditions have been specified, confirm the UserSignup has them
 	if len(r.conditions) > 0 {
@@ -291,7 +295,12 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
 		}
 		if !r.noSpace {
+			if r.spaceTier != "" {
+				tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, r.spaceTier)
+				expectedSpaceTier = r.spaceTier
+			}
 			space := VerifySpaceRelatedResources(t, r.awaitilities, userSignup, expectedSpaceTier)
+			r.space = space
 			spaceMember := GetSpaceTargetMember(t, r.awaitilities, space)
 			VerifyUserRelatedResources(t, r.awaitilities, userSignup, "deactivate30", ExpectUserAccountIn(spaceMember))
 		} else {
@@ -308,7 +317,12 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupRequest {
 		cleanup.AddCleanTasks(t, hostAwait.Client, r.userSignup)
 	}
 
-	return r
+	return &SignupResult{
+		UserSignup: userSignup,
+		MUR:        r.mur,
+		Space:      r.space,
+		Token:      r.token,
+	}
 }
 
 func invokeEndpoint(t *testing.T, method, path, authToken, requestBody string, requiredStatus int, queryParams map[string]string) map[string]interface{} {

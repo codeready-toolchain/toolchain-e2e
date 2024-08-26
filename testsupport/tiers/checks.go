@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -56,37 +57,26 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 	switch tier.Name {
 	case base:
 		return &baseTierChecks{tierName: base}, nil
-
 	case base1ns:
 		return &base1nsTierChecks{tierName: base1ns}, nil
-
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
-
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
-
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
-
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-
 	case advanced:
 		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
-
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
-
 	case appstudiolarge:
 		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
-
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
-
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
-
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
@@ -162,7 +152,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	case "stage":
 		otherNamespaceKind = "dev"
 	}
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(8))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(10))
 
 	return checks
 }
@@ -204,11 +194,11 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -222,7 +212,7 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "14Gi", "3", "14Gi"),
+		resourceQuotaComputeDeploy("20", "18Gi", "3", "18Gi"),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
 		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
@@ -232,7 +222,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		crtadminViewRoleBinding(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), numberOfNetworkPolicies(7))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
 	return checks
 }
 
@@ -272,11 +262,11 @@ func (a *base1nsTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wai
 
 func (a *base1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -290,11 +280,11 @@ type base1nsnoidlingTierChecks struct {
 
 func (a *base1nsnoidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -308,11 +298,11 @@ type base1ns6didlerTierChecks struct {
 
 func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -327,11 +317,11 @@ type baselargeTierChecks struct {
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -346,11 +336,11 @@ type baseextendedidlingTierChecks struct {
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -392,11 +382,11 @@ type advancedTierChecks struct {
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
-		clusterResourceQuotaDeployments("50"),
+		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServices(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
 		clusterResourceQuotaBuildConfig(),
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
@@ -438,11 +428,9 @@ type appstudioTierChecks struct {
 	tierName string
 }
 
-func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
+func commonAppstudioTierChecks() []namespaceObjectsCheck {
+	return []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "32Gi", "1750m", "32Gi"),
-		resourceQuotaComputeBuild("120", "128Gi", "12", "64Gi"),
-		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "30"),
 		limitRange("2", "2Gi", "10m", "256Mi"),
 		numberOfLimitRanges(1),
 		gitOpsServiceLabel(),
@@ -458,8 +446,16 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaAppstudioCrdsSPI("512", "512", "512", "512", "512"),
 		pipelineServiceAccount(),
 		pipelineRunnerRoleBinding(),
+		caBundleConfigMap(),
 	}
+}
 
+func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaStorage("50Gi", "200Gi", "50Gi", "90"),
+		resourceQuotaComputeBuild("120", "128Gi", "60", "64Gi"),
+	}
+	checks = append(checks, commonAppstudioTierChecks()...)
 	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
 	return checks
 }
@@ -486,6 +482,16 @@ func (a *appstudioTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 			for _, userName := range usernames {
 				checks = append(checks,
 					appstudioUserActionsRoleBinding(userName, "maintainer"),
+					appstudioViewRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		case "viewer":
+			checks = append(checks, appstudioViewerUserActionsRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					appstudioUserActionsRoleBinding(userName, "viewer"),
 					appstudioViewRoleBinding(userName),
 				)
 				rolebindings += 2
@@ -520,13 +526,13 @@ func (a *appstudioTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *w
 
 func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("300"),
+		clusterResourceQuotaDeploymentCount("600", "30", ""),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
 		clusterResourceQuotaServices(),
 		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaSecretCount("300"),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
@@ -537,15 +543,25 @@ type appstudiolargeTierChecks struct {
 	appstudioTierChecks
 }
 
+func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeBuild("480", "512Gi", "240", "256Gi"),
+		resourceQuotaStorage("50Gi", "400Gi", "50Gi", "180"),
+	}
+	checks = append(checks, commonAppstudioTierChecks()...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	return checks
+}
+
 func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeploymentCount("300", "100"),
+		clusterResourceQuotaDeploymentCount("600", "100", ""),
 		clusterResourceQuotaReplicaCount("100"),
 		clusterResourceQuotaRouteCount("100"),
 		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServiceCount("100"),
+		clusterResourceQuotaServiceCount("100", nil),
 		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecretCount("300"),
+		clusterResourceQuotaSecretCount("900"),
 		clusterResourceQuotaConfigMapCount("300"),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, ""),
@@ -603,7 +619,7 @@ func (a *appstudioEnvTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait
 
 func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments("150"),
+		clusterResourceQuotaDeploymentCount("150", "30", ""),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
 		clusterResourceQuotaJobs(),
@@ -1057,15 +1073,56 @@ func networkPolicyAllowFromMonitoring() namespaceObjectsCheck {
 }
 
 func networkPolicyAllowFromOlmNamespaces() namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces("allow-from-olm-namespaces", "openshift.io/scc", "anyuid")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-olm-namespaces", metav1.LabelSelector{}, "openshift.io/scc", "anyuid")
 }
 
 func networkPolicyAllowFromConsoleNamespaces() namespaceObjectsCheck {
 	return networkPolicyIngressFromPolicyGroup("allow-from-console-namespaces", "console")
 }
 
+func networkPolicyAllowFromRedHatODSNamespaceToMariaDB() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
+		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-from-redhat-ods-app-to-mariadb")
+		require.NoError(t, err)
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+
+		tcpProtocol := corev1.ProtocolTCP
+		port := intstr.FromInt(3306)
+		ingressRules := []netv1.NetworkPolicyIngressRule{
+			{
+				From: []netv1.NetworkPolicyPeer{
+					{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"kubernetes.io/metadata.name": "redhat-ods-applications"}},
+						PodSelector:       &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "data-science-pipelines-operator"}},
+					},
+				},
+				Ports: []netv1.NetworkPolicyPort{
+					{
+						Protocol: &tcpProtocol,
+						Port:     &port,
+					},
+				},
+			},
+		}
+
+		expected := &netv1.NetworkPolicy{
+			Spec: netv1.NetworkPolicySpec{
+				Ingress:     ingressRules,
+				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+				PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "mariadb-dspa"}},
+			},
+		}
+
+		assert.Equal(t, expected.Spec, np.Spec)
+	}
+}
+
+func networkPolicyAllowFromRedHatODSNamespaceToModelMesh() namespaceObjectsCheck {
+	return assertNetworkPolicyIngressForNamespaces("allow-from-redhat-ods-app-to-mm", metav1.LabelSelector{MatchLabels: map[string]string{"modelmesh-service": "modelmesh-serving"}}, "kubernetes.io/metadata.name", "redhat-ods-applications")
+}
+
 func networkPolicyAllowFromVirtualizationNamespaces() namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces("allow-from-openshift-virtualization-namespaces", "kubernetes.io/metadata.name", "openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-cnv")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-openshift-virtualization-namespaces", metav1.LabelSelector{}, "kubernetes.io/metadata.name", "openshift-virtualization-os-images", "kubernetes.io/metadata.name", "openshift-cnv")
 }
 
 func networkPolicyAllowFromCRW() namespaceObjectsCheck {
@@ -1073,12 +1130,12 @@ func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 }
 
 func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces(name, "network.openshift.io/policy-group", group)
+	return assertNetworkPolicyIngressForNamespaces(name, metav1.LabelSelector{}, "network.openshift.io/policy-group", group)
 }
 
-func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ...string) namespaceObjectsCheck {
+func assertNetworkPolicyIngressForNamespaces(name string, podSelector metav1.LabelSelector, labelNameValuePairs ...string) namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
-		require.True(t, len(labelNameValuePairs)%2 == 0, "labelNameValuePairs must be a list of key-value pairs")
+		require.Equal(t, 0, len(labelNameValuePairs)%2, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
 		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
@@ -1094,6 +1151,7 @@ func assertNetworkPolicyIngressForNamespaces(name string, labelNameValuePairs ..
 			Spec: netv1.NetworkPolicySpec{
 				Ingress:     ingressRules,
 				PolicyTypes: []netv1.PolicyType{netv1.PolicyTypeIngress},
+				PodSelector: podSelector,
 			},
 		}
 
@@ -1202,11 +1260,11 @@ func crqToolchainLabelsWaitCriterion(userName string) wait.ClusterResourceQuotaW
 	}
 }
 
-func clusterResourceQuotaDeployments(pods string) clusterObjectsCheckCreator {
-	return clusterResourceQuotaDeploymentCount(pods, "30")
+func clusterResourceQuotaDeployments() clusterObjectsCheckCreator {
+	return clusterResourceQuotaDeploymentCount("50", "30", "2")
 }
 
-func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clusterObjectsCheckCreator {
+func clusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
@@ -1217,6 +1275,10 @@ func clusterResourceQuotaDeploymentCount(podCount, deploymentCount string) clust
 			require.NoError(t, err)
 			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
 			require.NoError(t, err)
+			if vmCount != "" {
+				hard[count("virtualmachines.kubevirt.io")], err = resource.ParseQuantity(vmCount)
+				require.NoError(t, err)
+			}
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
 				crqToolchainLabelsWaitCriterion(userName),
@@ -1297,15 +1359,24 @@ func clusterResourceQuotaJobs() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaServices() clusterObjectsCheckCreator {
-	return clusterResourceQuotaServiceCount("30")
+	return clusterResourceQuotaServiceCount("30", nil)
 }
 
-func clusterResourceQuotaServiceCount(serviceCount string) clusterObjectsCheckCreator {
+func clusterResourceQuotaServicesNoLoadBalancers() clusterObjectsCheckCreator {
+	zero := "0"
+	return clusterResourceQuotaServiceCount("30", &zero)
+}
+
+func clusterResourceQuotaServiceCount(serviceCount string, loadbalancerCount *string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
 			hard := make(map[corev1.ResourceName]resource.Quantity)
 			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity(serviceCount)
+			if loadbalancerCount != nil {
+				hard["services.loadbalancers"], err = resource.ParseQuantity(*loadbalancerCount)
+			}
+
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
@@ -1538,12 +1609,11 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-admin-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 16)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "imagerepositories", "componentdetectionqueries"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"},
 				},
 				{
@@ -1622,23 +1692,37 @@ func appstudioAdminUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"spacebindingrequests"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+				{
+					APIGroups: []string{"external-secrets.io"},
+					Resources: []string{"secretstores", "externalsecrets"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
+}
+
+func appstudioViewerUserActionsRole() spaceRoleObjectsCheck {
+	return appstudioContributorUserActionsRole()
 }
 
 func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-maintainer-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "imagerepositories", "componentdetectionqueries"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch"},
 				},
 				{
@@ -1711,9 +1795,15 @@ func appstudioMaintainerUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"buildpipelineselectors"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
@@ -1722,12 +1812,11 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		role, err := memberAwait.WaitForRole(t, ns, "appstudio-contributor-user-actions", toolchainLabelsWaitCriterion(owner)...)
 		require.NoError(t, err)
-		assert.Len(t, role.Rules, 15)
 		expected := &rbacv1.Role{
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"appstudio.redhat.com"},
-					Resources: []string{"applications", "components", "componentdetectionqueries"},
+					Resources: []string{"applications", "components", "imagerepositories", "componentdetectionqueries"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 				{
@@ -1800,9 +1889,15 @@ func appstudioContributorUserActionsRole() spaceRoleObjectsCheck {
 					Resources: []string{"buildpipelineselectors"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
+				{
+					APIGroups: []string{"projctl.konflux.dev"},
+					Resources: []string{"projects", "projectdevelopmentstreams", "projectdevelopmentstreamtemplates"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
 			},
 		}
 
+		assert.Len(t, role.Rules, len(expected.Rules))
 		assert.Equal(t, expected.Rules, role.Rules)
 	}
 }
@@ -1899,6 +1994,13 @@ func namespaceManagerSA() namespaceObjectsCheck {
 func pipelineServiceAccount() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
 		_, err := memberAwait.WaitForServiceAccount(t, ns.Name, "appstudio-pipeline", toolchainLabelsWaitCriterion(owner)...)
+		require.NoError(t, err)
+	}
+}
+
+func caBundleConfigMap() namespaceObjectsCheck {
+	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
+		_, err := memberAwait.WaitForConfigMap(t, ns.Name, "trusted-ca")
 		require.NoError(t, err)
 	}
 }

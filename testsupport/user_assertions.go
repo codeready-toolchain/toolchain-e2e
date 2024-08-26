@@ -10,13 +10,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
 	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,7 +62,6 @@ func ExpectUserAccountIn(targetCluster *wait.MemberAwaitility) UserAccountOption
 }
 
 func VerifyUserRelatedResources(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, tierName string, userAccountOption UserAccountOption) (*toolchainv1alpha1.UserSignup, *toolchainv1alpha1.MasterUserRecord) {
-
 	hostAwait := awaitilities.Host()
 	// Get the latest signup version, wait for usersignup to have the approved label and wait for the complete status to
 	// ensure the compliantusername is available
@@ -126,15 +123,14 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 
 	// Check the originalSub identity
 	originalSubIdentityName := ""
-	if userAccount.Spec.OriginalSub != "" {
+	if userAccount.Spec.PropagatedClaims.OriginalSub != "" {
 		originalSubIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.OriginalSub, "rhd").IdentityName()
 	}
 
 	// Check the UserID identity
 	userIDIdentityName := ""
-	val, ok := userAccount.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey]
-	if ok {
-		userIDIdentityName = identitypkg.NewIdentityNamingStandard(val, "rhd").IdentityName()
+	if userAccount.Spec.PropagatedClaims.UserID != "" {
+		userIDIdentityName = identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.UserID, "rhd").IdentityName()
 	}
 
 	memberConfiguration := memberAwait.GetMemberOperatorConfig(t)
@@ -145,22 +141,22 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		user, err := memberAwait.WaitForUser(t, userAccount.Name,
 			wait.UntilUserHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
-			wait.UntilUserHasAnnotation(toolchainv1alpha1.UserEmailAnnotationKey,
-				userSignup.Annotations[toolchainv1alpha1.UserSignupUserEmailAnnotationKey]))
-		assert.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
+			wait.UntilUserHasAnnotation(toolchainv1alpha1.EmailUserAnnotationKey,
+				userSignup.Spec.IdentityClaims.Email))
+		require.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
 
 		userID := userSignup.Spec.IdentityClaims.UserID
 		if userID != "" {
 			accountID := userSignup.Spec.IdentityClaims.AccountID
 			if accountID != "" {
-				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.SSOUserIDAnnotationKey])
-				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.SSOAccountIDAnnotationKey])
+				require.Equal(t, userID, user.Annotations[toolchainv1alpha1.UserIDUserAnnotationKey])
+				require.Equal(t, accountID, user.Annotations[toolchainv1alpha1.AccountIDUserAnnotationKey])
 			}
 		}
 
 		if userID == "" {
-			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOUserIDAnnotationKey)
-			require.NotContains(t, user.Annotations, toolchainv1alpha1.SSOAccountIDAnnotationKey)
+			require.NotContains(t, user.Annotations, toolchainv1alpha1.UserIDUserAnnotationKey)
+			require.NotContains(t, user.Annotations, toolchainv1alpha1.AccountIDUserAnnotationKey)
 		}
 
 		// Verify provisioned Identity
@@ -169,14 +165,14 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		_, err = memberAwait.WaitForIdentity(t, identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-		assert.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
+		require.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
 
 		// Verify the originalSub identity
 		if originalSubIdentityName != "" {
 			_, err = memberAwait.WaitForIdentity(t, originalSubIdentityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
+			require.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
 		}
 
 		// Verify the userID identity
@@ -184,30 +180,29 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 			_, err = memberAwait.WaitForIdentity(t, userIDIdentityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-			assert.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
+			require.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
 		}
 	} else {
 		// we don't expect User nor Identity resources to be present for AppStudio tier
 		// This can be removed as soon as we don't create UserAccounts in AppStudio environment.
 		err := memberAwait.WaitUntilUserDeleted(t, userAccount.Name)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = memberAwait.WaitUntilIdentityDeleted(t, identitypkg.NewIdentityNamingStandard(userAccount.Spec.PropagatedClaims.Sub, "rhd").IdentityName())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Verify the originalSub identity
 		if originalSubIdentityName != "" {
 			err = memberAwait.WaitUntilIdentityDeleted(t, originalSubIdentityName)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		// Verify the userID identity
 		if userIDIdentityName != "" {
 			err = memberAwait.WaitUntilIdentityDeleted(t, userIDIdentityName)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
-
 	}
 
 	// Get member cluster to verify that it was used to provision user accounts
-	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, cluster.Member, memberAwait.Namespace, nil)
+	memberCluster, ok, err := hostAwait.GetToolchainCluster(t, memberAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -221,11 +216,10 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 	_, err = hostAwait.WaitForMasterUserRecord(t, mur.Name,
 		wait.UntilMasterUserRecordHasConditions(wait.Provisioned(), wait.ProvisionedNotificationCRCreated()),
 		wait.UntilMasterUserRecordHasUserAccountStatuses(expectedEmbeddedUaStatus))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup, spaceTierName string) *toolchainv1alpha1.Space {
-
 	hostAwait := awaitilities.Host()
 
 	userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -265,8 +259,9 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 	require.NoError(t, err)
 	tierChecks, err := tiers.NewChecksForTier(tier)
 	require.NoError(t, err)
-	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, tierChecks)
+	tiers.VerifyNSTemplateSet(t, hostAwait, memberAwait, nsTemplateSet, space, tierChecks)
 
+	require.Equal(t, space.Name, userSignup.Status.HomeSpace)
 	return space
 }
 

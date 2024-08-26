@@ -29,11 +29,13 @@ type CustomNSTemplateTier struct {
 
 type CustomNSTemplateTierModifier func(*HostAwaitility, *CustomNSTemplateTier) error
 
-func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+type TierTemplateModifier func(*toolchainv1alpha1.TierTemplate) error
+
+func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, modifiers ...TierTemplateModifier) CustomNSTemplateTierModifier {
 	return func(hostAwait *HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.ClusterResourcesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
-		tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, otherTier.Spec.ClusterResources.TemplateRef)
+		tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, otherTier.Spec.ClusterResources.TemplateRef, modifiers...)
 		if err != nil {
 			return err
 		}
@@ -78,6 +80,9 @@ func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) C
 	}
 }
 
+// CreateCustomNSTemplateTier creates a custom tier.
+// If no modifiers provided then the new tier will use copies of the baseTier cluster, namespace and space roles templates
+// without any modifications.
 func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name string, baseTier *toolchainv1alpha1.NSTemplateTier, modifiers ...CustomNSTemplateTierModifier) *CustomNSTemplateTier {
 	tier := &CustomNSTemplateTier{
 		NSTemplateTier: &toolchainv1alpha1.NSTemplateTier{
@@ -91,12 +96,14 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 			},
 		},
 	}
-	// add default values before custom values...
-	modifiers = append([]CustomNSTemplateTierModifier{
-		WithClusterResources(t, baseTier),
-		WithNamespaceResources(t, baseTier),
-		WithSpaceRoles(t, baseTier),
-	}, modifiers...)
+	if len(modifiers) == 0 {
+		// If no modifiers provided then use default modifiers which would use resources from the base tier.
+		modifiers = []CustomNSTemplateTierModifier{
+			WithClusterResources(t, baseTier),
+			WithNamespaceResources(t, baseTier),
+			WithSpaceRoles(t, baseTier),
+		}
+	}
 
 	// ... and apply
 	for _, modify := range modifiers {
@@ -108,7 +115,7 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, name st
 	return tier
 }
 
-// createCustomNSTemplateTier updates the given "tier" using the modifiers
+// UpdateCustomNSTemplateTier updates the given "tier" using the modifiers
 // returns the latest version of the NSTemplateTier
 func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tier *CustomNSTemplateTier, modifiers ...CustomNSTemplateTierModifier) *CustomNSTemplateTier {
 	// reload the underlying NSTemplateTier resource before modifying it
@@ -125,7 +132,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tier *C
 	return tier
 }
 
-func duplicateTierTemplate(t *testing.T, hostAwait *HostAwaitility, namespace, tierName, origTemplateRef string) (string, error) {
+func duplicateTierTemplate(t *testing.T, hostAwait *HostAwaitility, namespace, tierName, origTemplateRef string, modifiers ...TierTemplateModifier) (string, error) {
 	origTierTemplate := &toolchainv1alpha1.TierTemplate{}
 	if err := hostAwait.Client.Get(context.TODO(), test.NamespacedName(hostAwait.Namespace, origTemplateRef), origTierTemplate); err != nil {
 		return "", err
@@ -138,6 +145,11 @@ func duplicateTierTemplate(t *testing.T, hostAwait *HostAwaitility, namespace, t
 		},
 		Spec: origTierTemplate.Spec,
 	}
+	for _, modify := range modifiers {
+		err := modify(newTierTemplate)
+		require.NoError(t, err)
+	}
+
 	newTierTemplate.Spec.TierName = tierName
 	if err := hostAwait.CreateWithCleanup(t, newTierTemplate); err != nil {
 		if !errors.IsAlreadyExists(err) {
