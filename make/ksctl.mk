@@ -19,7 +19,6 @@ ifeq ($(strip $(KSCTL_REPO_PATH)),)
     ifneq ($(CI_DISABLE_PAIRING),true)
         ifeq ($(shell jq -r '.refs[0].org' <<< $${CLONEREFS_OPTIONS} 2>/dev/null || true | tr -d '[:space:]'),codeready-toolchain)
 			$(eval AUTHOR_LINK = $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'))
-			@echo "found author link ${AUTHOR_LINK}"
 			$(eval BRANCH_NAME := $(shell jq -r '.refs[0].pulls[0].head_ref' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'))
 			@echo "using author link ${AUTHOR_LINK}"
 			@echo "detected branch ${BRANCH_NAME}"
