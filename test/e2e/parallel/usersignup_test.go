@@ -87,8 +87,8 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 
 		// then
 		userSignup, _ = VerifyUserRelatedResources(t, awaitilities, userSignup, "deactivate30", ExpectAnyUserAccount())
-		VerifySpaceRelatedResources(t, awaitilities, userSignup, "base")
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup, "deactivate30", "base")
+		VerifySpaceRelatedResources(t, awaitilities, userSignup, "base1ns")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup)
 		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)
 	})
 }

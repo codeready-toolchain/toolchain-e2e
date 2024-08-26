@@ -138,7 +138,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
 
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 			s.userIsNotProvisioned(t, waitingList2)
 
 			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
@@ -153,7 +153,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 				require.NoError(t, err)
 
-				VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
+				VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 			})
 		})
 	})
@@ -186,7 +186,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 		})
 	})
 
@@ -218,7 +218,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 		})
 
 		t.Run("add user with bad email format and expect the user will not be approved nor provisioned", func(t *testing.T) {
@@ -297,7 +297,7 @@ func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 		Execute(s.T())
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup)
 }
 
 func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims() {
@@ -321,7 +321,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	userSignup := user.UserSignup
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 
 	// Create a token and identity to invoke the GetSignup endpoint with
 	userIdentity := &commonauth.Identity{
@@ -376,7 +376,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		Execute(s.T())
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup)
 }
 
 func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaimsModified() {
@@ -402,7 +402,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 	userSignup := user.UserSignup
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 
 	// Update the UserSignup
 	userSignup, err := hostAwait.UpdateUserSignup(s.T(), userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
@@ -415,7 +415,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 	require.Equal(s.T(), "nnnbbb111234", userSignup.Spec.IdentityClaims.AccountID)
 
 	// Verify that the resources are updated with the propagated claim
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 }
 
 // TestUserResourcesCreatedWhenOriginalSubIsSetAndUserIDSameAsSub tests the case where:
@@ -447,7 +447,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesCreatedWhenOriginalSubIsSet
 		Execute(s.T())
 
 	// then
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, user.UserSignup)
 }
 
 func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignup *toolchainv1alpha1.UserSignup) {
@@ -546,7 +546,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 		})
 	})
 
@@ -579,7 +579,7 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
 			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base1ns")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 		})
 	})
 
@@ -633,7 +633,7 @@ func (s *userSignupIntegrationTest) TestTargetClusterSelectedAutomatically() {
 	require.NoError(s.T(), err)
 
 	// Confirm the MUR was created and target cluster was set
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base1ns")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 }
 
 func (s *userSignupIntegrationTest) createUserSignupVerificationRequiredAndAssertNotProvisioned() *toolchainv1alpha1.UserSignup {

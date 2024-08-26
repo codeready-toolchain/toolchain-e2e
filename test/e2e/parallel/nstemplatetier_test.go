@@ -67,7 +67,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", "base1ns") // deactivate30 is the default UserTier and base is the default SpaceTier
+	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers) // deactivate30 is the default UserTier and base is the default SpaceTier
 
 	for _, tierToCheck := range tiersToCheck {
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -81,7 +81,7 @@ func TestNSTemplateTiers(t *testing.T) {
 			tiers.MoveSpaceToTier(t, hostAwait, space.Name, tierToCheck)
 
 			// then
-			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
+			VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
 		})
 	}
 }
@@ -182,7 +182,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(t, updatedUserSignup.Name)
 		require.NoError(t, err)
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
-		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "deactivate90", "base1ns")
+		VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, promotedUserSignup, "deactivate90", "base1ns")
 	})
 }
 
@@ -225,7 +225,7 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 
 	// let's promote to users the new tier
 	for i := range userSignups {
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i], "deactivate30", "base1ns")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i])
 		username := fmt.Sprintf(nameFmt, i)
 		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
 	}

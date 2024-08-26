@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/configuration"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
 	corev1 "k8s.io/api/core/v1"
 
@@ -20,11 +21,18 @@ import (
 
 func VerifyMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, signups []*toolchainv1alpha1.UserSignup) {
 	for _, signup := range signups {
-		VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base1ns")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, signup)
 	}
 }
 
-func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, userTierName, spaceTierName string) {
+func VerifyResourcesProvisionedForSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
+	toolchainConfig := awaitilities.Host().GetToolchainConfig(t)
+	spaceTier := configuration.GetString(toolchainConfig.Spec.Host.Tiers.DefaultSpaceTier, "base")
+	userTier := configuration.GetString(toolchainConfig.Spec.Host.Tiers.DefaultUserTier, "deactivate30")
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, signup, userTier, spaceTier)
+}
+
+func VerifyResourcesProvisionedForSignupWithTiers(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup, userTierName, spaceTierName string) {
 	space := VerifySpaceRelatedResources(t, awaitilities, signup, spaceTierName)
 	spaceMember := GetSpaceTargetMember(t, awaitilities, space)
 	VerifyUserRelatedResources(t, awaitilities, signup, userTierName, ExpectUserAccountIn(spaceMember))

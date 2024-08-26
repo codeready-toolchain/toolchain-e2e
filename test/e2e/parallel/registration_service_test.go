@@ -422,7 +422,7 @@ func TestSignupOK(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait for the resources to be provisioned
-		VerifyResourcesProvisionedForSignup(t, await, userSignup, "deactivate30", "base1ns")
+		VerifyResourcesProvisionedForSignup(t, await, userSignup)
 
 		// Call signup endpoint with same valid token to check if status changed to Provisioned now
 		now := time.Now()
