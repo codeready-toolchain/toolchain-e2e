@@ -17,16 +17,10 @@ endif
 
 get-ksctl-and-install:
 ifeq ($(strip $(KSCTL_REPO_PATH)),)
-    ifneq ($(DEPLOY_LATEST),true)
-        ifneq ($(CI),)
-            ifneq ($(GITHUB_ACTIONS),)
-				$(eval BRANCH_NAME = ${GITHUB_HEAD_REF})
-				$(eval AUTHOR_LINK = https://github.com/${AUTHOR})
-            else
-				$(eval AUTHOR_LINK = $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'))
-				@echo "found author link ${AUTHOR_LINK}"
-				$(eval BRANCH_NAME := $(shell jq -r '.refs[0].pulls[0].head_ref' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'))
-            endif
+    ifneq ($(CI_DISABLE_PAIRING),true)
+        ifeq ($(shell jq -r '.refs[0].org' <<< $${CLONEREFS_OPTIONS} 2>/dev/null || true | tr -d '[:space:]'),codeready-toolchain)
+			$(eval AUTHOR_LINK = $(shell jq -r '.refs[0].pulls[0].author_link' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'))
+			$(eval BRANCH_NAME := $(shell jq -r '.refs[0].pulls[0].head_ref' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'))
 			@echo "using author link ${AUTHOR_LINK}"
 			@echo "detected branch ${BRANCH_NAME}"
 			# check if a branch with the same ref exists in the user's fork of ksctl repo
@@ -36,10 +30,10 @@ ifeq ($(strip $(KSCTL_REPO_PATH)),)
 			# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
 			@$(MAKE) clone-ksctl-and-pair REMOTE_KSCTL_BRANCH=${REMOTE_KSCTL_BRANCH} AUTHOR_LINK=${AUTHOR_LINK}
         else
-			@echo "Not running in CI - no pairing"
+			@echo "Either not running in openshift-ci or not in the codeready-toolchain org - no pairing"
         endif
     else
-		@echo "DEPLOY_LATEST is set to true - no pairing"
+		@echo "Pairing explicitly disabled"
     endif
 else
 	@echo "KSCTL_REPO_PATH is set to ${KSCTL_REPO_PATH} - no pairing"
