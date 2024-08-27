@@ -267,7 +267,7 @@ func banUser(t *testing.T, hostAwait *wait.HostAwaitility, user proxyUser) {
 }
 
 func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, withOptions ...func(*SignupRequest) *SignupRequest) *SignupResult {
-	suffix := rand.Int31n(999999)
+	suffix := rand.Int31n(999999) // nolint:gosec
 	sr := NewSignupRequest(awaitilities).
 		Username(fmt.Sprintf("commuser-%d", suffix)).
 		IdentityID(uuid.New()).
