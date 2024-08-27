@@ -7,7 +7,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	testsupportsb "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
@@ -250,7 +249,7 @@ func TestPromoteSpace(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
-	user := testsupport.NewSignupRequest(awaitilities).
+	user := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
 		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).

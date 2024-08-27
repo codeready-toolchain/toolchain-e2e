@@ -35,6 +35,17 @@ func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName stri
 	}
 }
 
+func (r TemplateRefs) Flatten() []string {
+	refs := r.Namespaces
+	if r.ClusterResources != nil {
+		refs = append(refs, *r.ClusterResources)
+	}
+	for _, ref := range r.SpaceRoles {
+		refs = append(refs, ref)
+	}
+	return refs
+}
+
 func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
 	if tier.Spec.ClusterResources != nil {
 		return &(tier.Spec.ClusterResources.TemplateRef)
