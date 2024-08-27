@@ -67,7 +67,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers) // deactivate30 is the default UserTier and base is the default SpaceTier
+	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers)
 
 	for _, tierToCheck := range tiersToCheck {
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
