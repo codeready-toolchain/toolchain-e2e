@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	hostSubscriptionName   = "subscription-toolchain-host-operator"
-	memberSubscriptionName = "subscription-toolchain-member-operator"
+	hostSubscriptionName   = "host-operator"
+	memberSubscriptionName = "member-operator"
 )
 
 // Templates are the operator install templates, this list should be kept in sync with prod install templates with some exceptions:
