@@ -122,6 +122,6 @@ require (
 go 1.20
 
 replace (
-	github.com/codeready-toolchain/api v0.0.0-20240815232340-d0c164a83d27 => github.com/ranakan19/api v0.0.0-20240821174759-30e09d17170b
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20240816011540-2184e6268b4a => github.com/ranakan19/toolchain-common v0.0.0-20240815204418-d488ba44374c
+	github.com/codeready-toolchain/api v0.0.0-20240815232340-d0c164a83d27 => github.com/ranakan19/api v0.0.0-20240827194454-431999ae615b
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20240816011540-2184e6268b4a => github.com/ranakan19/toolchain-common v0.0.0-20240827195846-8a892553bda1
 )
