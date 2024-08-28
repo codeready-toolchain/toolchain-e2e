@@ -2231,6 +2231,22 @@ func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRe
 	return subSpace, err
 }
 
+// WaitForSpaceBindingNotToExist waits until the SpaceBinding with the given MUR and Space names doesn't exist
+func (a *HostAwaitility) WaitForSpaceBindingNotToExist(murName, spaceName string) error {
+	return wait.Poll(a.RetryInterval, 2*a.Timeout, func() (bool, error) {
+		matchingLabels := client.MatchingLabels{
+			toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: murName,
+			toolchainv1alpha1.SpaceBindingSpaceLabelKey:            spaceName,
+		}
+
+		spaceBindingList := &toolchainv1alpha1.SpaceBindingList{}
+		if err := a.Client.List(context.TODO(), spaceBindingList, matchingLabels, client.InNamespace(a.Namespace)); err != nil {
+			return false, err
+		}
+		return len(spaceBindingList.Items) == 0, nil
+	})
+}
+
 // WaitForSpaceBinding waits until the SpaceBinding with the given MUR and Space names is available with the provided criteria, if any
 func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding

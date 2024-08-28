@@ -203,9 +203,15 @@ func TestProxyPublicViewer(t *testing.T) {
 	})
 
 	t.Run("space is not flagged as community", func(t *testing.T) {
+		// retrieve the space
 		sp := toolchainv1alpha1.Space{}
 		err := hostAwait.Client.Get(context.TODO(), client.ObjectKeyFromObject(space), &sp)
 		require.NoError(t, err)
+
+		// ensure no SpaceBinding exists for Public-Viewer
+		sbs, err := hostAwait.GetSpaceBindingByListing(toolchainv1alpha1.KubesawAuthenticatedUsername, space.Name)
+		require.NoError(t, err)
+		require.Empty(t, sbs)
 
 		testCases := map[string]bool{
 			"user is not banned": false,
