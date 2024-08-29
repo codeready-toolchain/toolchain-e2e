@@ -114,8 +114,8 @@ func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, w
 	workspace := &toolchainv1alpha1.Workspace{}
 	var cause error
 	// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
-	_ = kubewait.Poll(wait.DefaultRetryInterval, 5*time.Second, func() (bool, error) {
-		cause = proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
+	_ = kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+		cause = proxyCl.Get(ctx, types.NamespacedName{Name: workspaceName}, workspace)
 		return cause == nil, nil
 	})
 
@@ -1199,7 +1199,7 @@ func (w *wsWatcher) receiveHandler() {
 
 func (w *wsWatcher) WaitForApplication(expectedAppName string) (*appstudiov1.Application, error) {
 	var foundApp *appstudiov1.Application
-	err := kubewait.Poll(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+	err := kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, wait.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
 		foundApp = w.receivedApps[expectedAppName]
@@ -1209,7 +1209,7 @@ func (w *wsWatcher) WaitForApplication(expectedAppName string) (*appstudiov1.App
 }
 
 func (w *wsWatcher) WaitForApplicationDeletion(expectedAppName string) error {
-	err := kubewait.PollImmediate(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+	err := kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, wait.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
 		_, present := w.receivedApps[expectedAppName]

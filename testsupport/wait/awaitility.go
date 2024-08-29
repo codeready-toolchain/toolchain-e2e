@@ -132,10 +132,10 @@ func (a *Awaitility) baselineKey(t *testing.T, name string, labelAndValues ...st
 func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, error) {
 	t.Logf("waiting for Service '%s' in namespace '%s'", name, a.Namespace)
 	var metricsSvc *corev1.Service
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		metricsSvc = &corev1.Service{}
 		// retrieve the metrics service from the namespace
-		err = a.Client.Get(context.TODO(),
+		err = a.Client.Get(ctx,
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
@@ -158,7 +158,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespac
 	t.Logf("waiting for ToolchainCluster in namespace '%s'", namespace)
 
 	var c toolchainv1alpha1.ToolchainCluster
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		var ready bool
 		if c, ready, err = a.GetToolchainCluster(t, namespace, cdtype); ready {
 			return true, nil
@@ -237,8 +237,8 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 	t.Logf("waiting for route '%s' in namespace '%s'", name, ns)
 	route := routev1.Route{}
 	// retrieve the route for the registration service
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		if err = a.Client.Get(context.TODO(),
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		if err = a.Client.Get(ctx,
 			types.NamespacedName{
 				Namespace: ns,
 				Name:      name,
@@ -328,7 +328,7 @@ func (a *Awaitility) GetMetricValueOrZero(t *testing.T, family string, labelAndV
 func (a *Awaitility) WaitUntiltMetricHasValue(t *testing.T, family string, expectedValue float64, labels ...string) {
 	t.Logf("waiting for metric '%s{%v}' to reach '%v'", family, labels, expectedValue)
 	var value float64
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		value, err = metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, ignore and return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		// unless the expected value is `0`, in which case the metric is bot exposed (value==0 and err!= nil), but it's fine too.
@@ -342,7 +342,7 @@ func (a *Awaitility) WaitUntiltMetricHasValue(t *testing.T, family string, expec
 func (a *Awaitility) WaitUntilMetricHasValueOrMore(t *testing.T, family string, expectedValue float64, labels ...string) error {
 	t.Logf("waiting for metric '%s{%v}' to reach '%v' or more", family, labels, expectedValue)
 	var value float64
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		value, err = metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		return value >= expectedValue && err == nil, nil
@@ -358,7 +358,7 @@ func (a *Awaitility) WaitUntilMetricHasValueOrMore(t *testing.T, family string, 
 func (a *Awaitility) WaitUntilMetricHasValueOrLess(t *testing.T, family string, expectedValue float64, labels ...string) error {
 	t.Logf("waiting for metric '%s{%v}' to reach '%v' or less", family, labels, expectedValue)
 	var value float64
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		value, err = metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labels)
 		// if error occurred, return `false` to keep waiting (may be due to endpoint temporarily unavailable)
 		return value <= expectedValue && err == nil, nil
@@ -387,9 +387,9 @@ func (a *Awaitility) DeletePods(criteria ...client.ListOption) error {
 // GetMemoryUsage retrieves the memory usage (in KB) of a given the pod
 func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
 	var containerMetrics k8smetrics.ContainerMetrics
-	if err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		podMetrics := k8smetrics.PodMetrics{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{
+		if err := a.Client.Get(ctx, types.NamespacedName{
 			Namespace: ns,
 			Name:      podname,
 		}, &podMetrics); err != nil && !apierrors.IsNotFound(err) {
@@ -419,9 +419,9 @@ func (a *Awaitility) CreateNamespace(t *testing.T, name string) {
 	}
 	err := a.Client.Create(context.TODO(), ns)
 	require.NoError(t, err)
-	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		ns := &corev1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, ns); err != nil && apierrors.IsNotFound(err) {
+		if err := a.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil && apierrors.IsNotFound(err) {
 			return false, nil
 		} else if err != nil {
 			return false, err
@@ -504,9 +504,9 @@ func (a *Awaitility) WaitForToolchainCluster(t *testing.T, criteria ...Toolchain
 	t.Logf("waiting for toolchaincluster in namespace '%s' to match criteria", a.Namespace)
 	var clusters *toolchainv1alpha1.ToolchainClusterList
 	var cl *toolchainv1alpha1.ToolchainCluster
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		clusters = &toolchainv1alpha1.ToolchainClusterList{}
-		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace)); err != nil {
+		if err := a.Client.List(ctx, clusters, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
 		for _, obj := range clusters.Items {
@@ -588,13 +588,13 @@ func UntilToolchainClusterHasNoTenantLabel() ToolchainClusterWaitCriterion {
 // Returns the updated ToolchainCluster
 func (a *Awaitility) UpdateToolchainCluster(t *testing.T, toolchainClusterName string, modifyToolchainCluster func(s *toolchainv1alpha1.ToolchainCluster)) (*toolchainv1alpha1.ToolchainCluster, error) {
 	var tc *toolchainv1alpha1.ToolchainCluster
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		newToolchainCluster := &toolchainv1alpha1.ToolchainCluster{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
+		if err := a.Client.Get(ctx, types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
 			return true, err
 		}
 		modifyToolchainCluster(newToolchainCluster)
-		if err := a.Client.Update(context.TODO(), newToolchainCluster); err != nil {
+		if err := a.Client.Update(ctx, newToolchainCluster); err != nil {
 			t.Logf("error updating ToolchainCluster '%s': %s. Will retry again...", toolchainClusterName, err.Error())
 			return false, nil
 		}
@@ -690,13 +690,13 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 	// match status of each predicate per object
 	latestResults := map[client.ObjectKey][]bool{}
 
-	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		// because there is no generic way of figuring out the list type for some client.Object type, we need to go
 		// down the low level route and use unstructured to get the list generically and unmarshal and cast the list
 		// items.
 		list := &unstructured.UnstructuredList{}
 		list.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
+		if err := w.await.Client.List(ctx, list, client.InNamespace(w.await.Namespace)); err != nil {
 			return false, err
 		}
 		for _, obj := range list.Items {
@@ -769,10 +769,10 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 	var returnedObject T
 	latestResults := []bool{}
 
-	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &unstructured.Unstructured{}
 		obj.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+		if err := w.await.Client.Get(ctx, client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil
 			}
@@ -820,10 +820,10 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 // WithNameDeleted waits for a single object with the provided name in the namespace of the awaitility to get deleted
 func (w *Waiter[T]) WithNameDeleted(name string) error {
 	w.t.Logf("waiting for object of GVK '%s' with name '%s' in namespace '%s' to be deleted", w.gvk, name, w.await.Namespace)
-	err := wait.Poll(w.await.RetryInterval, w.await.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &unstructured.Unstructured{}
 		obj.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+		if err := w.await.Client.Get(ctx, client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
 			}

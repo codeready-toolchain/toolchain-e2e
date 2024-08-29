@@ -1024,7 +1024,7 @@ func assertRHODSClusterURL(t *testing.T, memberAwait *wait.MemberAwaitility, res
 func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServiceURL, name, bearerToken string) map[string]interface{} {
 	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
 	var mp, mpStatus map[string]interface{}
-	err := k8swait.Poll(time.Second, time.Second*60, func() (done bool, err error) {
+	err := k8swait.PollUntilContextTimeout(context.TODO(), time.Second, time.Second*60, true, func(ctx context.Context) (done bool, err error) {
 		mp, mpStatus = ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", registrationServiceURL+"/api/v1/signup", bearerToken, "", http.StatusOK).UnmarshalMap())
 		// check if `ready` field is set
 		if _, ok := mpStatus["ready"]; !ok {
