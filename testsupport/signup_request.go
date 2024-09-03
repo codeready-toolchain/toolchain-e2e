@@ -290,10 +290,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	}
 
 	if r.ensureMUR {
-		expectedSpaceTier := "base1ns"
-		if hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier != nil {
-			expectedSpaceTier = *hostAwait.GetToolchainConfig(t).Spec.Host.Tiers.DefaultSpaceTier
-		}
+		expectedSpaceTier := tiers.GetDefaultSpaceTierName(t, hostAwait)
 		if !r.noSpace {
 			if r.spaceTier != "" {
 				tiers.MoveSpaceToTier(t, hostAwait, userSignup.Status.CompliantUsername, r.spaceTier)

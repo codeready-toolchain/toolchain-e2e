@@ -9,6 +9,7 @@ import (
 	testcommonspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	v1 "k8s.io/api/core/v1"
@@ -87,7 +88,7 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 
 		// then
 		userSignup, _ = VerifyUserRelatedResources(t, awaitilities, userSignup, "deactivate30", ExpectAnyUserAccount())
-		VerifySpaceRelatedResources(t, awaitilities, userSignup, "base1ns")
+		VerifySpaceRelatedResources(t, awaitilities, userSignup, tiers.GetDefaultSpaceTierName(t, hostAwait))
 		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignup)
 		require.Equal(t, fmt.Sprintf("%s-3", conflictingSpace.Name), userSignup.Status.CompliantUsername)
 	})
