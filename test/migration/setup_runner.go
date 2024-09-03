@@ -69,7 +69,7 @@ func (r *SetupMigrationRunner) prepareAppStudioProvisionedSpace(t *testing.T) {
 }
 
 func (r *SetupMigrationRunner) prepareSecondMemberProvisionedSpace(t *testing.T) {
-	r.createAndWaitForSpace(t, SecondMemberProvisionedSpace, "base1ns", r.Awaitilities.Member2())
+	r.createAndWaitForSpace(t, SecondMemberProvisionedSpace, tiers.GetDefaultSpaceTierName(t, r.Awaitilities.Host()), r.Awaitilities.Member2())
 }
 
 func (r *SetupMigrationRunner) createAndWaitForSpace(t *testing.T, name, tierName string, targetCluster *wait.MemberAwaitility) {
