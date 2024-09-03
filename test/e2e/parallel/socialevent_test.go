@@ -30,7 +30,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		end := time.Now().Add(24 * time.Hour).Round(time.Second)
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate30"),
-			testsocialevent.WithSpaceTier("base1ns"),
+			testsocialevent.WithSpaceTier("base"),
 			testsocialevent.WithStartTime(start),
 			testsocialevent.WithEndTime(end),
 			testsocialevent.WithMaxAttendees(5),
@@ -48,7 +48,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		}))
 		require.NoError(t, err)
 		assert.Equal(t, "deactivate30", event.Spec.UserTier)
-		assert.Equal(t, "base1ns", event.Spec.SpaceTier)
+		assert.Equal(t, "base", event.Spec.SpaceTier)
 		assert.Equal(t, start, event.Spec.StartTime.Time)
 		assert.Equal(t, end, event.Spec.EndTime.Time)
 		assert.Equal(t, 5, event.Spec.MaxAttendees)
@@ -59,7 +59,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		// given
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("invalid"),
-			testsocialevent.WithSpaceTier("base1ns"))
+			testsocialevent.WithSpaceTier("base"))
 
 		// when
 		err := hostAwait.CreateWithCleanup(t, event)
@@ -112,7 +112,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// given
-			event.Spec.SpaceTier = "base1ns"
+			event.Spec.SpaceTier = "base"
 
 			// when
 			err := hostAwait.Client.Update(context.TODO(), event)
