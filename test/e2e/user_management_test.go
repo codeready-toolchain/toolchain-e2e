@@ -334,7 +334,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Verify resources still exist
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1, "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignupMember1)
 	})
 
 	s.T().Run("test full automatic user deactivation lifecycle", func(t *testing.T) {
@@ -400,7 +400,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			require.Less(t, comparison, time.Hour)
 
 			// Verify resources have been provisioned
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup, "deactivate30", "base")
+			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 
 			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
@@ -710,7 +710,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 		Execute(s.T())
 	userSignup := u.UserSignup
 
-	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 
 	// Disable MUR
 	mur, err := hostAwait.UpdateMasterUserRecordSpec(s.T(),
@@ -752,7 +752,7 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 			})
 		require.NoError(s.T(), err)
 
-		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup, "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 	})
 }
 

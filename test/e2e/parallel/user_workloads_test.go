@@ -33,6 +33,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 		ManuallyApprove().
 		EnsureMUR().
 		TargetCluster(memberAwait).
+		SpaceTier("base"). // let's move it to base to have to namespaces to monitor
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
