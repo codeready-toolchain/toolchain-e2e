@@ -160,20 +160,20 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 
 func verifyProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, signup)
 	DeactivateAndCheckUser(t, awaitilities, signup)
 	ReactivateAndCheckUser(t, awaitilities, signup)
 }
 
 func verifySecondMemberProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, signup)
 	CreateBannedUser(t, awaitilities.Host(), signup.Spec.IdentityClaims.Email)
 }
 
 func verifyAppStudioProvisionedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
 	cleanup.AddCleanTasks(t, awaitilities.Host().Client, signup)
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "appstudio")
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, signup, "deactivate30", "appstudio")
 }
 
 func verifyDeactivatedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *toolchainv1alpha1.UserSignup) {
@@ -224,7 +224,7 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 	require.NoError(t, err)
 
 	// verify that it's unbanned
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "base")
+	VerifyResourcesProvisionedForSignup(t, awaitilities, signup)
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
