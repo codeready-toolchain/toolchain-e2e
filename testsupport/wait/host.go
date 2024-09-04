@@ -889,7 +889,7 @@ func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(t *testing.T, name strin
 		}
 		return false, fmt.Errorf("the MasterUserRecord '%s' should not be present, but it is", name)
 	})
-	require.Equal(t, wait.ErrorInterrupted(goerr.New("timed out waiting for the condition")), err)
+	require.Equal(t, wait.ErrorInterrupted(goerr.New("context deadline exceeded")), err)
 }
 
 func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
@@ -1277,7 +1277,7 @@ func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notific
 	if err == nil {
 		return fmt.Errorf("notification '%s' was found, but it was expected to not be created/present: \n %v", notificationName, notification)
 	}
-	if goerr.Is(err, wait.ErrorInterrupted(goerr.New("timed out waiting for the condition"))) {
+	if goerr.Is(err, wait.ErrorInterrupted(goerr.New("context deadline exceeded"))) {
 		return nil
 	}
 	return err
