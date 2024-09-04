@@ -67,7 +67,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	}
 
 	// wait for the user to be provisioned for the first time
-	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", "base") // deactivate30 is the default UserTier and base is the default SpaceTier
+	VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers)
 
 	for _, tierToCheck := range tiersToCheck {
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
@@ -81,14 +81,14 @@ func TestNSTemplateTiers(t *testing.T) {
 			tiers.MoveSpaceToTier(t, hostAwait, space.Name, tierToCheck)
 
 			// then
-			VerifyResourcesProvisionedForSignup(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
+			VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", tierToCheck) // deactivate30 is the default UserTier
 		})
 	}
 }
 
 func TestUpdateNSTemplateTier(t *testing.T) {
 	t.Parallel()
-	// in this test, we have 2 groups of users, configured with their own tier (both using the "base" tier templates)
+	// in this test, we have 2 groups of users, configured with their own tier (both using the "base1ns" tier templates)
 	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
@@ -103,7 +103,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
 	memberAwait = memberAwait.WithRetryOptions(wait.TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
-	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base")
+	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
 	require.NoError(t, err)
 	advancedTier, err := hostAwait.WaitForNSTemplateTier(t, "advanced")
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 		promotedUserSignup, err := hostAwait.WaitForUserSignup(t, updatedUserSignup.Name)
 		require.NoError(t, err)
 		require.False(t, states.Deactivating(promotedUserSignup), "usersignup should not be deactivating")
-		VerifyResourcesProvisionedForSignup(t, awaitilities, promotedUserSignup, "deactivate90", "base")
+		VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, promotedUserSignup, "deactivate90", "base1ns")
 	})
 }
 
@@ -200,7 +200,7 @@ func setupSpaces(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Custo
 }
 
 // setupAccounts takes care of:
-// 1. creating a new tier with the TemplateRefs of the "base" tier.
+// 1. creating a new tier with the TemplateRefs of the "base1ns" tier.
 // 2. creating 10 users (signups, MURs, etc.)
 // 3. promoting the users to the new tier
 // returns the tier, users and their "syncIndexes"
@@ -225,7 +225,7 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 
 	// let's promote to users the new tier
 	for i := range userSignups {
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i], "deactivate30", "base")
+		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i])
 		username := fmt.Sprintf(nameFmt, i)
 		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
 	}

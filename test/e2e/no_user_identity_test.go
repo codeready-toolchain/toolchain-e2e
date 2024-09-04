@@ -66,7 +66,7 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 		Execute(t)
 	signup := u.UserSignup
 
-	VerifyResourcesProvisionedForSignup(t, awaitilities, signup, "deactivate30", "appstudio")
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, signup, "deactivate30", "appstudio")
 
 	// preexisting user & identity are still there and not modified
 	// Verify provisioned User
