@@ -83,7 +83,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 
 				// when
 				subSpace, err = hostAwait.UpdateSpace(t, subSpace.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TierName = "base" // let's change the tier
+					s.Spec.TierName = "base1ns" // let's change the tier
 				})
 				require.NoError(t, err)
 

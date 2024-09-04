@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/configuration"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait" // nolint:revive
 
@@ -17,7 +18,7 @@ import (
 type TierModifier func(tier *toolchainv1alpha1.NSTemplateTier) error
 
 type CustomNSTemplateTier struct {
-	// the "base" NSTemplateTier
+	// the "base1ns" NSTemplateTier
 	*toolchainv1alpha1.NSTemplateTier
 	// name of the tier used to set the cluster resources (by default, the name of the NSTemplateTier used to create this custom one)
 	ClusterResourcesTier *toolchainv1alpha1.NSTemplateTier
@@ -181,4 +182,9 @@ func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName s
 			mur.Spec.TierName = tierName
 		})
 	require.NoError(t, err)
+}
+
+func GetDefaultSpaceTierName(t *testing.T, hostAwait *HostAwaitility) string {
+	toolchainConfig := hostAwait.GetToolchainConfig(t)
+	return configuration.GetString(toolchainConfig.Spec.Host.Tiers.DefaultSpaceTier, "base")
 }

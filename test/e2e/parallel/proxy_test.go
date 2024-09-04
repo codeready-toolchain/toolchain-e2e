@@ -1060,7 +1060,7 @@ func createAppStudioUser(t *testing.T, awaitilities wait.Awaitilities, user *pro
 	user.signup = u.UserSignup
 	user.token = u.Token
 	tiers.MoveSpaceToTier(t, awaitilities.Host(), u.Space.Name, "appstudio")
-	VerifyResourcesProvisionedForSignup(t, awaitilities, user.signup, "deactivate30", "appstudio")
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, user.signup, "deactivate30", "appstudio")
 	user.compliantUsername = user.signup.Status.CompliantUsername
 	_, err := awaitilities.Host().WaitForMasterUserRecord(t, user.compliantUsername, wait.UntilMasterUserRecordHasCondition(wait.Provisioned()))
 	require.NoError(t, err)
