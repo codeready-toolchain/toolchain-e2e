@@ -9,11 +9,14 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/kubeconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -24,13 +27,17 @@ func TestToolchainClusterE2E(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
 
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
+	// NOTE: we need to go in phases and merge support to populate the toolchaincluster status with info from the kubeconfig to
+	// the host operator first because the CI enforces the compatibility of the two by disallowing having 1 feature spread across
+	// both operators in 1 PR set. Afer it's merged in host and all works, we can proceed and merge it in the member, too, at which
+	// point we can remove the flag from the verifyToolchainCluster arguments.
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, true)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, false)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, tcStatusShouldBePopulated bool) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
@@ -53,6 +60,26 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
 		targetClient, _ := util.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
 		util.ValidateKubeClient(t, targetClient, otherAwait.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
+	})
+
+	t.Run("status is populated with info from kubeconfig", func(t *testing.T) {
+		if !tcStatusShouldBePopulated {
+			t.Skip("not applicable for this cluster type")
+			return
+		}
+		secret := corev1.Secret{}
+		require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, &secret))
+		apiConfig, err := clientcmd.Load(secret.Data["kubeconfig"])
+		require.NoError(t, err)
+
+		configContext, present := apiConfig.Contexts[apiConfig.CurrentContext]
+		require.True(t, present)
+
+		operatorNamespace := configContext.Namespace
+		apiEndpoint := apiConfig.Clusters[configContext.Cluster].Server
+
+		assert.Equal(t, operatorNamespace, current.Status.OperatorNamespace)
+		assert.Equal(t, apiEndpoint, current.Status.APIEndpoint)
 	})
 
 	t.Run(fmt.Sprintf("create new ToolchainCluster based on '%s' with correct data and expect to be ready", current.Name), func(t *testing.T) {
@@ -86,19 +113,15 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
+
 		// other ToolchainCluster should be ready, too
 		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(
-				client.MatchingLabels{
-					"namespace": otherAwait.Namespace,
-				},
-			), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+			wait.UntilToolchainClusterHasOperatorNamespace(otherAwait.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
+
 		_, err = otherAwait.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
-				"namespace": await.Namespace,
-			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+			wait.UntilToolchainClusterHasOperatorNamespace(await.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
 	})
@@ -107,9 +130,8 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		// given
 		name := generateNewName("new-offline-", current.Name)
 		secretCopy := &corev1.Secret{}
-		wait.CopyWithCleanup(t, await,
-			client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace},
-			client.ObjectKey{Name: name, Namespace: current.Namespace}, secretCopy)
+		wait.CopyWithCleanup(t, await, client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace},
+			client.ObjectKey{Name: name, Namespace: current.Namespace}, secretCopy, kubeconfig.Modify(t, kubeconfig.ApiEndpoint("https://1.2.3.4:8443")))
 
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			apiEndpoint("https://1.2.3.4:8443"),
@@ -137,20 +159,14 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		// other ToolchainCluster should be ready, too
 		_, err = await.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(
-				client.MatchingLabels{
-					"namespace": otherAwait.Namespace,
-				},
-			), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
-		)
-		require.NoError(t, err)
-		_, err = otherAwait.WaitForToolchainCluster(t,
-			wait.UntilToolchainClusterHasLabels(client.MatchingLabels{
-				"namespace": await.Namespace,
-			}), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+			wait.UntilToolchainClusterHasOperatorNamespace(otherAwait.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
 		)
 		require.NoError(t, err)
 
+		_, err = otherAwait.WaitForToolchainCluster(t,
+			wait.UntilToolchainClusterHasOperatorNamespace(await.Namespace), wait.UntilToolchainClusterHasCondition(toolchainv1alpha1.ConditionReady),
+		)
+		require.NoError(t, err)
 	})
 }
 
