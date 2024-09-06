@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	DefaultRetryInterval             = time.Millisecond * 50 // make it short because a "retry interval" is waited before the first test
+	DefaultRetryInterval             = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
 	DefaultTimeout                   = time.Second * 120
 	MemberNsVar                      = "MEMBER_NS"
 	MemberNsVar2                     = "MEMBER_NS_2"

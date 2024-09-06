@@ -1266,7 +1266,7 @@ func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notific
 	notification := &toolchainv1alpha1.Notification{}
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 10*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		notification = &toolchainv1alpha1.Notification{}
-		if err := a.Client.Get(ctx, types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
