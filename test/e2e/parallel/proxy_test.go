@@ -1049,7 +1049,7 @@ func TestSpaceLister(t *testing.T) {
 			require.NoError(t, err)
 
 			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bannedUser.token))
-			tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+			tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} // nolint:gosec
 			client := &http.Client{Transport: tr}
 			res, err := client.Do(req)
 			require.NoError(t, err)
@@ -1125,7 +1125,7 @@ func TestSpaceLister(t *testing.T) {
 			require.NoError(t, err)
 
 			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", lazyBannedUser.token))
-			tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+			tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} // nolint:gosec
 			client := &http.Client{Transport: tr}
 			res, err := client.Do(req)
 			require.NoError(t, err)
