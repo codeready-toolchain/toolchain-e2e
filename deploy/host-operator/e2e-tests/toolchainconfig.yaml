@@ -29,6 +29,7 @@ spec:
       spaceBindingRequestEnabled: true
     tiers:
       durationBeforeChangeTierRequestDeletion: '5s'
+      defaultSpaceTier: 'base1ns'
       featureToggles:
       - name: "test-feature"
         weight: 100

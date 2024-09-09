@@ -556,16 +556,12 @@ func UntilToolchainClusterHasConditionFalseStatusAndReason(expected toolchainv1a
 	}
 }
 
-// UntilToolchainClusterHasLabels checks if ToolchainCluster has the given labels
-func UntilToolchainClusterHasLabels(expected client.MatchingLabels) ToolchainClusterWaitCriterion {
+func UntilToolchainClusterHasOperatorNamespace(expectedNs string) ToolchainClusterWaitCriterion {
 	return ToolchainClusterWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.ToolchainCluster) bool {
-			for expectedLabelKey, expectedLabelValue := range expected {
-				if actualLabelValue, found := actual.Labels[expectedLabelKey]; !found || expectedLabelValue != actualLabelValue {
-					return false
-				}
-			}
-			return true
+		Match: func(toolchainCluster *toolchainv1alpha1.ToolchainCluster) bool {
+			// TODO: remove the check for the legacy label once both host and member operators are upgraded to the
+			// new version of the operator.
+			return toolchainCluster.Status.OperatorNamespace == expectedNs || toolchainCluster.Labels["namespace"] == expectedNs
 		},
 	}
 }
@@ -716,8 +712,8 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 	})
 	if err != nil {
 		sb := strings.Builder{}
-		sb.WriteString("failed to find objects (of GVK '%s') in namespace '%s' matching the criteria")
-		args := []any{w.gvk, w.await.Namespace}
+		sb.WriteString("failed to find objects (of GVK '%s') in namespace '%s' matching the criteria: %s")
+		args := []any{w.gvk, w.await.Namespace, err.Error()}
 		list := &unstructured.UnstructuredList{}
 		list.SetGroupVersionKind(w.gvk)
 		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
