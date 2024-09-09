@@ -1065,6 +1065,13 @@ func TestSpaceLister(t *testing.T) {
 			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
 		})
 
+		t.Run("cannot get shared workspace", func(t *testing.T) {
+			_, err := bannedUser.getWorkspace(t, hostAwait, users["car"].compliantUsername)
+
+			require.Error(t, err)
+			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
+		})
+
 		t.Run("cannot list workspaces", func(t *testing.T) {
 			proxyCl := bannedUser.createProxyClient(t, hostAwait)
 
@@ -1139,6 +1146,19 @@ func TestSpaceLister(t *testing.T) {
 			// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
 			err := kubewait.Poll(wait.DefaultRetryInterval, 5*time.Second, func() (bool, error) {
 				cause = proxyClDefault.Get(context.TODO(), types.NamespacedName{Name: lazyBannedUser.compliantUsername}, &toolchainv1alpha1.Workspace{})
+				return cause == nil, nil
+			})
+
+			require.Error(t, err)
+			require.Error(t, cause)
+			require.True(t, k8serr.IsForbidden(cause), "expected Forbidden error, got %v", cause)
+		})
+
+		t.Run("cannot get shared workspace", func(t *testing.T) {
+			var cause error
+			// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
+			err := kubewait.Poll(wait.DefaultRetryInterval, 5*time.Second, func() (bool, error) {
+				cause = proxyClDefault.Get(context.TODO(), types.NamespacedName{Name: users["car"].compliantUsername}, &toolchainv1alpha1.Workspace{})
 				return cause == nil, nil
 			})
 
