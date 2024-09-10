@@ -1059,14 +1059,22 @@ func TestSpaceLister(t *testing.T) {
 		})
 
 		t.Run("cannot get workspace", func(t *testing.T) {
-			_, err := bannedUser.getWorkspace(t, hostAwait, bannedUser.compliantUsername)
+			proxyUrl := hostAwait.ProxyURLWithWorkspaceContext(bannedUser.compliantUsername)
+			proxyCl, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, proxyUrl)
+			require.NoError(t, err)
+
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: bannedUser.compliantUsername}, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
 			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
 		})
 
 		t.Run("cannot get shared workspace", func(t *testing.T) {
-			_, err := bannedUser.getWorkspace(t, hostAwait, users["car"].compliantUsername)
+			proxyUrl := hostAwait.ProxyURLWithWorkspaceContext(users["car"].compliantUsername)
+			proxyCl, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, proxyUrl)
+			require.NoError(t, err)
+
+			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: users["car"].compliantUsername}, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
 			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
@@ -1142,29 +1150,19 @@ func TestSpaceLister(t *testing.T) {
 		})
 
 		t.Run("cannot get workspace", func(t *testing.T) {
-			var cause error
-			// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
-			err := kubewait.Poll(wait.DefaultRetryInterval, 5*time.Second, func() (bool, error) {
-				cause = proxyClDefault.Get(context.TODO(), types.NamespacedName{Name: lazyBannedUser.compliantUsername}, &toolchainv1alpha1.Workspace{})
-				return cause == nil, nil
-			})
+			workspaceNamespacedName := types.NamespacedName{Name: lazyBannedUser.compliantUsername}
+			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
-			require.Error(t, cause)
-			require.True(t, k8serr.IsForbidden(cause), "expected Forbidden error, got %v", cause)
+			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
 		})
 
 		t.Run("cannot get shared workspace", func(t *testing.T) {
-			var cause error
-			// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
-			err := kubewait.Poll(wait.DefaultRetryInterval, 5*time.Second, func() (bool, error) {
-				cause = proxyClDefault.Get(context.TODO(), types.NamespacedName{Name: users["car"].compliantUsername}, &toolchainv1alpha1.Workspace{})
-				return cause == nil, nil
-			})
+			workspaceNamespacedName := types.NamespacedName{Name: users["car"].compliantUsername}
+			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
-			require.Error(t, cause)
-			require.True(t, k8serr.IsForbidden(cause), "expected Forbidden error, got %v", cause)
+			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
 		})
 
 		t.Run("cannot list workspaces", func(t *testing.T) {
