@@ -1083,8 +1083,7 @@ func TestSpaceLister(t *testing.T) {
 		t.Run("cannot list workspaces", func(t *testing.T) {
 			proxyCl := bannedUser.createProxyClient(t, hostAwait)
 
-			workspaces := &toolchainv1alpha1.WorkspaceList{}
-			err := proxyCl.List(context.TODO(), workspaces)
+			err := proxyCl.List(context.TODO(), &toolchainv1alpha1.WorkspaceList{})
 
 			require.Error(t, err)
 			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
