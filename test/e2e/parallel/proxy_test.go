@@ -1083,20 +1083,20 @@ func TestSpaceLister(t *testing.T) {
 		})
 
 		t.Run("cannot list resources", func(t *testing.T) {
-			tt := map[string]client.Client{
+			workspacesTestCases := map[string]client.Client{
 				"home workspace":   proxyClDefault,
 				"shared workspace": proxyClCar,
 			}
-			for k, wc := range tt {
+			for k, workspaceClient := range workspacesTestCases {
 				t.Run(k, func(t *testing.T) {
-					tt := map[string]client.ObjectList{
+					resourcesTestCases := map[string]client.ObjectList{
 						"applications": &appstudiov1.ApplicationList{},
 						"pods":         &corev1.PodList{},
 						"configmaps":   &corev1.ConfigMapList{},
 					}
-					for k, o := range tt {
+					for k, objList := range resourcesTestCases {
 						t.Run(k, func(t *testing.T) {
-							err := wc.List(context.TODO(), o)
+							err := workspaceClient.List(context.TODO(), objList)
 							require.Error(t, err)
 							require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
 						})
