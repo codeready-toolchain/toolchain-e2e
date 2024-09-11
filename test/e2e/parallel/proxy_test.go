@@ -729,11 +729,6 @@ func TestSpaceLister(t *testing.T) {
 			username:              "banned.user",
 			identityID:            uuid.New(),
 		},
-		"lazybanneduser": {
-			expectedMemberCluster: memberAwait,
-			username:              "lazybanned.user",
-			identityID:            uuid.New(),
-		},
 	}
 	appStudioTierRolesWSOption := commonproxy.WithAvailableRoles([]string{"admin", "contributor", "maintainer", "viewer"})
 
@@ -743,23 +738,11 @@ func TestSpaceLister(t *testing.T) {
 	}
 
 	// share workspaces
-	_ = users["car"].shareSpaceWith(t, awaitilities, users["banneduser"])
-	_ = users["car"].shareSpaceWith(t, awaitilities, users["lazybanneduser"])
 	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
 	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
 	bicycleSBROnBusSpace := users["bus"].shareSpaceWith(t, awaitilities, users["bicycle"])
 	// let's also create a failing SBR so that we can check if it's being added in the bindings list
 	failingSBR := users["bus"].invalidShareSpaceWith(t, awaitilities, users["car"])
-
-	// ban a user,
-	// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
-	_ = CreateBannedUser(t, hostAwait, users["banneduser"].signup.Spec.IdentityClaims.Email)
-	// wait until the user is banned
-	_, err := hostAwait.
-		WaitForUserSignup(t, users["banneduser"].signup.Name,
-			wait.UntilUserSignupHasConditions(
-				wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
-	require.NoError(t, err)
 
 	t.Run("car lists workspaces", func(t *testing.T) {
 		// when
@@ -1044,6 +1027,24 @@ func TestSpaceLister(t *testing.T) {
 	t.Run("banned user", func(t *testing.T) {
 		bannedUser := users["banneduser"]
 
+		// share car's space with banned user
+		_ = users["car"].shareSpaceWith(t, awaitilities, bannedUser)
+
+		// initialize clients before ban so that the call to `/apis` is successful
+		proxyClDefault := bannedUser.createProxyClient(t, hostAwait)
+		proxyClCar, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, hostAwait.ProxyURLWithWorkspaceContext("car"))
+		require.NoError(t, err)
+
+		// ban banneduser,
+		// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
+		_ = CreateBannedUser(t, hostAwait, bannedUser.signup.Spec.IdentityClaims.Email)
+		// wait until the user is banned
+		_, err = hostAwait.
+			WaitForUserSignup(t, bannedUser.signup.Name,
+				wait.UntilUserSignupHasConditions(
+					wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+		require.NoError(t, err)
+
 		t.Run("cannot get apis list", func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", hostAwait.APIProxyURL, "/apis"), nil)
 			require.NoError(t, err)
@@ -1059,97 +1060,7 @@ func TestSpaceLister(t *testing.T) {
 		})
 
 		t.Run("cannot get workspace", func(t *testing.T) {
-			proxyUrl := hostAwait.ProxyURLWithWorkspaceContext(bannedUser.compliantUsername)
-			proxyCl, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, proxyUrl)
-			require.NoError(t, err)
-
-			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: bannedUser.compliantUsername}, &toolchainv1alpha1.Workspace{})
-
-			require.Error(t, err)
-			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
-		})
-
-		t.Run("cannot get shared workspace", func(t *testing.T) {
-			proxyUrl := hostAwait.ProxyURLWithWorkspaceContext(users["car"].compliantUsername)
-			proxyCl, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, proxyUrl)
-			require.NoError(t, err)
-
-			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: users["car"].compliantUsername}, &toolchainv1alpha1.Workspace{})
-
-			require.Error(t, err)
-			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
-		})
-
-		t.Run("cannot list workspaces", func(t *testing.T) {
-			proxyCl := bannedUser.createProxyClient(t, hostAwait)
-
-			err := proxyCl.List(context.TODO(), &toolchainv1alpha1.WorkspaceList{})
-
-			require.Error(t, err)
-			require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
-		})
-
-		t.Run("cannot list resources", func(t *testing.T) {
-			tt := map[string]string{
-				"home workspace":   "banneduser",
-				"shared workspace": "car",
-			}
-			for k, w := range tt {
-				t.Run(k, func(t *testing.T) {
-					proxyCl, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, hostAwait.ProxyURLWithWorkspaceContext(w))
-					require.NoError(t, err)
-
-					tt := map[string]client.ObjectList{
-						"applications": &appstudiov1.ApplicationList{},
-						"pods":         &corev1.PodList{},
-						"configmaps":   &corev1.ConfigMapList{},
-					}
-					for k, o := range tt {
-						t.Run(k, func(t *testing.T) {
-							err := proxyCl.List(context.TODO(), o)
-							require.Error(t, err)
-							require.True(t, meta.IsNoMatchError(err), "expected NoMatch error, got %v", err)
-						})
-					}
-				})
-			}
-		})
-	})
-
-	t.Run("lazy banned user", func(t *testing.T) {
-		lazyBannedUser := users["lazybanneduser"]
-
-		// initialize clients before ban so that the call to `/apis` is successful
-		proxyClDefault := lazyBannedUser.createProxyClient(t, hostAwait)
-		proxyClCar, err := hostAwait.CreateAPIProxyClient(t, lazyBannedUser.token, hostAwait.ProxyURLWithWorkspaceContext("car"))
-		require.NoError(t, err)
-
-		// ban lazy banned user,
-		// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
-		_ = CreateBannedUser(t, hostAwait, lazyBannedUser.signup.Spec.IdentityClaims.Email)
-		// wait until the user is banned
-		_, err = hostAwait.
-			WaitForUserSignup(t, lazyBannedUser.signup.Name,
-				wait.UntilUserSignupHasConditions(
-					wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
-		require.NoError(t, err)
-
-		t.Run("cannot get apis list", func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", hostAwait.APIProxyURL, "/apis"), nil)
-			require.NoError(t, err)
-
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", lazyBannedUser.token))
-			tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} // nolint:gosec
-			client := &http.Client{Transport: tr}
-			res, err := client.Do(req)
-			require.NoError(t, err)
-			defer res.Body.Close()
-
-			require.Equal(t, http.StatusForbidden, res.StatusCode)
-		})
-
-		t.Run("cannot get workspace", func(t *testing.T) {
-			workspaceNamespacedName := types.NamespacedName{Name: lazyBannedUser.compliantUsername}
+			workspaceNamespacedName := types.NamespacedName{Name: bannedUser.compliantUsername}
 			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
