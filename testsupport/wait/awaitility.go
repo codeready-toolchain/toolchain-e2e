@@ -135,7 +135,7 @@ func (a *Awaitility) WaitForService(t *testing.T, name string) (corev1.Service, 
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		metricsSvc = &corev1.Service{}
 		// retrieve the metrics service from the namespace
-		err = a.Client.Get(ctx,
+		err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: a.Namespace,
 				Name:      name,
@@ -238,7 +238,7 @@ func (a *Awaitility) WaitForRouteToBeAvailable(t *testing.T, ns, name, endpoint 
 	route := routev1.Route{}
 	// retrieve the route for the registration service
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		if err = a.Client.Get(ctx,
+		if err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
 				Namespace: ns,
 				Name:      name,
@@ -389,7 +389,7 @@ func (a *Awaitility) GetMemoryUsage(podname, ns string) (int64, error) {
 	var containerMetrics k8smetrics.ContainerMetrics
 	if err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		podMetrics := k8smetrics.PodMetrics{}
-		if err := a.Client.Get(ctx, types.NamespacedName{
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: ns,
 			Name:      podname,
 		}, &podMetrics); err != nil && !apierrors.IsNotFound(err) {
@@ -421,7 +421,7 @@ func (a *Awaitility) CreateNamespace(t *testing.T, name string) {
 	require.NoError(t, err)
 	err = wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		ns := &corev1.Namespace{}
-		if err := a.Client.Get(ctx, types.NamespacedName{Name: name}, ns); err != nil && apierrors.IsNotFound(err) {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, ns); err != nil && apierrors.IsNotFound(err) {
 			return false, nil
 		} else if err != nil {
 			return false, err
@@ -443,7 +443,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 6*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 
 		obj := &appsv1.Deployment{}
-		if err := a.Client.Get(ctx, types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil
 			}
@@ -457,7 +457,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 			return false, nil
 		}
 		pods := &corev1.PodList{}
-		require.NoError(t, a.Client.List(ctx, pods, client.InNamespace(a.Namespace), client.MatchingLabels(obj.Spec.Selector.MatchLabels)))
+		require.NoError(t, a.Client.List(context.TODO(), pods, client.InNamespace(a.Namespace), client.MatchingLabels(obj.Spec.Selector.MatchLabels)))
 		if len(pods.Items) != replicas {
 			return false, nil
 		}
@@ -506,7 +506,7 @@ func (a *Awaitility) WaitForToolchainCluster(t *testing.T, criteria ...Toolchain
 	var cl *toolchainv1alpha1.ToolchainCluster
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		clusters = &toolchainv1alpha1.ToolchainClusterList{}
-		if err := a.Client.List(ctx, clusters, client.InNamespace(a.Namespace)); err != nil {
+		if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
 		for _, obj := range clusters.Items {
@@ -586,11 +586,11 @@ func (a *Awaitility) UpdateToolchainCluster(t *testing.T, toolchainClusterName s
 	var tc *toolchainv1alpha1.ToolchainCluster
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		newToolchainCluster := &toolchainv1alpha1.ToolchainCluster{}
-		if err := a.Client.Get(ctx, types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
 			return true, err
 		}
 		modifyToolchainCluster(newToolchainCluster)
-		if err := a.Client.Update(ctx, newToolchainCluster); err != nil {
+		if err := a.Client.Update(context.TODO(), newToolchainCluster); err != nil {
 			t.Logf("error updating ToolchainCluster '%s': %s. Will retry again...", toolchainClusterName, err.Error())
 			return false, nil
 		}
@@ -692,7 +692,7 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 		// items.
 		list := &unstructured.UnstructuredList{}
 		list.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.List(ctx, list, client.InNamespace(w.await.Namespace)); err != nil {
+		if err := w.await.Client.List(context.TODO(), list, client.InNamespace(w.await.Namespace)); err != nil {
 			return false, err
 		}
 		for _, obj := range list.Items {
@@ -768,7 +768,7 @@ func (w *Waiter[T]) WithNameThat(name string, predicates ...assertions.Predicate
 	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &unstructured.Unstructured{}
 		obj.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.Get(ctx, client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil
 			}
@@ -819,7 +819,7 @@ func (w *Waiter[T]) WithNameDeleted(name string) error {
 	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &unstructured.Unstructured{}
 		obj.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.Get(ctx, client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
+		if err := w.await.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: w.await.Namespace}, obj); err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
 			}

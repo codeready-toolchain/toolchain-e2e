@@ -28,7 +28,7 @@ func ForSpace(cl client.Client, space string) error {
 	}
 
 	if err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, configuration.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
-		err := cl.Get(ctx, types.NamespacedName{
+		err := cl.Get(context.TODO(), types.NamespacedName{
 			Name:      space,
 			Namespace: configuration.HostOperatorNamespace,
 		}, sp)

@@ -34,7 +34,7 @@ func UpdateTimeout(cl client.Client, username string, timeout time.Duration) err
 func getIdler(cl client.Client, name string) (*toolchainv1alpha1.Idler, error) {
 	idler := &toolchainv1alpha1.Idler{}
 	err := k8swait.PollUntilContextTimeout(context.TODO(), cfg.DefaultRetryInterval, cfg.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
-		err := cl.Get(ctx, types.NamespacedName{
+		err := cl.Get(context.TODO(), types.NamespacedName{
 			Name: name,
 		}, idler)
 		if errors.IsNotFound(err) {

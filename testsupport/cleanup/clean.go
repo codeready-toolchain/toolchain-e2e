@@ -130,7 +130,7 @@ func (c *cleanTask) cleanObject() {
 	// wait until deletion is done
 	c.t.Logf("waiting until %s: %s is completely deleted", kind, objToClean.GetName())
 	err := wait.PollUntilContextTimeout(context.TODO(), defaultRetryInterval, defaultTimeout, true, func(ctx context.Context) (done bool, err error) {
-		if err := c.client.Get(ctx, test.NamespacedName(objToClean.GetNamespace(), objToClean.GetName()), objToClean); err != nil {
+		if err := c.client.Get(context.TODO(), test.NamespacedName(objToClean.GetNamespace(), objToClean.GetName()), objToClean); err != nil {
 			if errors.IsNotFound(err) {
 				// if the object was UserSignup, then let's check that the MUR is deleted as well
 				if murDeleted, err := c.verifyMurDeleted(isUserSignup, userSignup, false); !murDeleted || err != nil {

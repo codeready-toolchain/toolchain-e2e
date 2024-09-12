@@ -115,7 +115,7 @@ func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, w
 	var cause error
 	// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
 	_ = kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, 5*time.Second, true, func(ctx context.Context) (bool, error) {
-		cause = proxyCl.Get(ctx, types.NamespacedName{Name: workspaceName}, workspace)
+		cause = proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
 		return cause == nil, nil
 	})
 
