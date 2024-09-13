@@ -171,21 +171,39 @@ func TestProxyPublicViewer(t *testing.T) {
 			for s, c := range tt {
 				t.Run(s, func(t *testing.T) {
 					user := c.proxyClientUser()
+					// the client needs to be created before the ban,
+					// otherwise it won't initialize properly
+					url := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+					proxyClient, err := hostAwait.CreateAPIProxyClient(t, user.Token(), url)
+					require.NoError(t, err)
+
 					banUser(t, hostAwait, user)
 
 					t.Run(s, func(t *testing.T) {
-						url := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
-						proxyClient, err := hostAwait.CreateAPIProxyClient(t, user.Token(), url)
-						require.NoError(t, err)
+						t.Run("user can not initialize a new client", func(t *testing.T) {
+							url := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
+							proxyClient, err := hostAwait.CreateAPIProxyClient(t, user.Token(), url)
+							require.NoError(t, err)
 
-						// TODO(@filariow): enable this once registration-service's middleware is implemented
-						//
-						// t.Run("cannot list config maps", func(t *testing.T) {
-						// 	cms := corev1.ConfigMapList{}
-						// 	err := proxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-						// 	require.Zero(t, cms)
-						// 	require.Error(t, err)
-						// })
+							// as the client is not initialized correctly,
+							// any request should return a NoMatch error
+							cm := corev1.ConfigMap{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      "test-cm",
+									Namespace: sp.Status.ProvisionedNamespaces[0].Name,
+								},
+							}
+							err = proxyClient.Create(context.TODO(), &cm)
+							require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap as SSO user to return a NoMatch error, actual: %v", err)
+						})
+
+						t.Run("cannot list config maps", func(t *testing.T) {
+							cms := corev1.ConfigMapList{}
+							err := proxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
+							require.Zero(t, cms)
+							require.Error(t, err)
+						})
+
 						t.Run("cannot create config maps", func(t *testing.T) {
 							cm := corev1.ConfigMap{
 								ObjectMeta: metav1.ObjectMeta{
