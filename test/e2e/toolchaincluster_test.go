@@ -75,12 +75,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			secretCopy)
 
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
-			apiEndpoint(current.Spec.APIEndpoint),
-			caBundle(current.Spec.CABundle),
 			secretRef(secretCopy.Name),
 			owner(current.Labels["ownerClusterName"]),
 			namespace(current.Labels["namespace"]),
-			disableTLS(current.Spec.DisabledTLSValidations),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 
@@ -117,12 +114,9 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 			client.ObjectKey{Name: name, Namespace: current.Namespace}, secretCopy, kubeconfig.Modify(t, kubeconfig.ApiEndpoint("https://1.2.3.4:8443")))
 
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
-			apiEndpoint("https://1.2.3.4:8443"),
-			caBundle(current.Spec.CABundle),
 			secretRef(secretCopy.Name),
 			owner(current.Labels["ownerClusterName"]),
 			namespace(current.Labels["namespace"]),
-			disableTLS(current.Spec.DisabledTLSValidations),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 
@@ -167,8 +161,6 @@ func newToolchainCluster(namespace, name string, options ...clusterOption) *tool
 			SecretRef: toolchainv1alpha1.LocalSecretReference{
 				Name: "", // default
 			},
-			APIEndpoint: "", // default
-			CABundle:    "", // default
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -212,26 +204,5 @@ func secretRef(ref string) clusterOption {
 		c.Spec.SecretRef = toolchainv1alpha1.LocalSecretReference{
 			Name: ref,
 		}
-	}
-}
-
-// APIEndpoint sets the APIEndpoint in the cluster's Spec
-func apiEndpoint(url string) clusterOption {
-	return func(c *toolchainv1alpha1.ToolchainCluster) {
-		c.Spec.APIEndpoint = url
-	}
-}
-
-// CABundle sets the CABundle in the cluster's Spec
-func caBundle(bundle string) clusterOption {
-	return func(c *toolchainv1alpha1.ToolchainCluster) {
-		c.Spec.CABundle = bundle
-	}
-}
-
-// disableTLS sets the DisabledTLSValidations field
-func disableTLS(validations []toolchainv1alpha1.TLSValidation) clusterOption {
-	return func(c *toolchainv1alpha1.ToolchainCluster) {
-		c.Spec.DisabledTLSValidations = validations
 	}
 }

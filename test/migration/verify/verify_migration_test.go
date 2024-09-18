@@ -147,7 +147,7 @@ func verifyProvisionedSubSpace(t *testing.T, awaitilities wait.Awaitilities) {
 			Namespace: subSpaceNamespace,
 			Name:      migration.ProvisionedSpaceRequest,
 		},
-		wait.UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+		wait.UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Status.APIEndpoint),
 		wait.UntilSpaceRequestHasNamespaceAccess(subSpace),
 		wait.UntilSpaceRequestHasConditions(wait.Provisioned()),
 	)
