@@ -123,5 +123,5 @@ go 1.20
 
 replace (
 	github.com/codeready-toolchain/api v0.0.0-20240815232340-d0c164a83d27 => github.com/ranakan19/api v0.0.0-20240827194454-431999ae615b
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20240826144207-8833deda63a9 => github.com/ranakan19/toolchain-common v0.0.0-20240827195846-8a892553bda1
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20240905135929-d55d86fdd41e => github.com/ranakan19/toolchain-common v0.0.0-20240827195846-8a892553bda1
 )
