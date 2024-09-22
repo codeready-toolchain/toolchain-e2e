@@ -8,6 +8,9 @@ QUAY_NAMESPACE ?= codeready-toolchain-test
 DATE_SUFFIX := $(shell date +'%d%H%M%S')
 HOST_NS ?= toolchain-host-${DATE_SUFFIX}
 MEMBER_NS ?= toolchain-member-${DATE_SUFFIX}
+# it can be used to customize the install wait timeout parameter for the ksctl adm install-operator
+# for eg. on slow systems you can customize it like so: KSCTL_INSTALL_TIMEOUT_PARAM="--timeout=15m"
+KSCTL_INSTALL_TIMEOUT_PARAM ?= ""
 
 SECOND_MEMBER_MODE = true
 
@@ -33,8 +36,6 @@ E2E_TEST_EXECUTION ?= true
 ifneq ($(IS_OSD),true)
 LETS_ENCRYPT_PARAM := --lets-encrypt=false
 endif
-
-E2E_PARALLELISM=1
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
@@ -141,7 +142,7 @@ test-e2e-registration-local:
 .PHONY: e2e-run-parallel
 e2e-run-parallel:
 	@echo "Running e2e tests in parallel..."
-	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel" E2E_PARALLELISM=100
+	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/e2e/parallel"
 	@echo "The parallel e2e tests successfully finished"
 
 .PHONY: e2e-run
@@ -163,7 +164,7 @@ execute-tests:
 	@echo "Status of ToolchainStatus"
 	-oc get ToolchainStatus -n ${HOST_NS} -o yaml
 	@echo "Starting test $(shell date)"
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -parallel ${E2E_PARALLELISM} -v -timeout=90m -failfast || \
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
@@ -297,7 +298,7 @@ get-publish-install-and-register-operators: get-and-publish-host-operator get-an
 get-publish-and-install-operators: get-and-publish-host-operator create-host-resources get-and-publish-member-operator
 
 .PHONY: get-and-publish-member-operator
-get-and-publish-member-operator:
+get-and-publish-member-operator: ksctl
 ifneq (${MEMBER_NS_2},"")
     ifneq (${MEMBER_NS_2},)
 		$(eval MEMBER_NS_2_PARAM = -mn2 ${MEMBER_NS_2})
@@ -313,10 +314,20 @@ ifneq (${FORCED_TAG},"")
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} -dl ${DEPLOY_LATEST} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
+ifeq ($(DEPLOY_LATEST),true)
+	@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS}"
+	${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
+   ifneq (${MEMBER_NS_2},)
+		@echo "Installing latest version of the member-operator in namespace ${MEMBER_NS_2}"
+		${KSCTL_BIN_DIR}ksctl adm install-operator member --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${MEMBER_NS_2} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
+   endif
+else
+	@echo "Installing specific version of the member-operator"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
+endif
 
 .PHONY: get-and-publish-host-operator
-get-and-publish-host-operator:
+get-and-publish-host-operator: ksctl
 ifneq (${REG_REPO_PATH},"")
     ifneq (${REG_REPO_PATH},)
 		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
@@ -332,7 +343,13 @@ ifneq (${FORCED_TAG},"")
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
     endif
 endif
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} -dl ${DEPLOY_LATEST} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
+ifeq ($(DEPLOY_LATEST),true)
+	@echo "Installing latest version of the host-operator"
+	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
+else
+	@echo "Installing specific version of the host-operator"
+	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
+endif
 
 ###########################################################
 #

@@ -737,16 +737,7 @@ func TestSpaceLister(t *testing.T) {
 		createAppStudioUser(t, awaitilities, user)
 	}
 
-	// ban a user,
-	// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
-	_ = CreateBannedUser(t, hostAwait, users["banneduser"].signup.Spec.IdentityClaims.Email)
-	// wait until the user is banned
-	_, err := hostAwait.
-		WaitForUserSignup(t, users["banneduser"].signup.Name,
-			wait.UntilUserSignupHasConditions(
-				wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
-	require.NoError(t, err)
-
+	// share workspaces
 	busSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bus"])
 	bicycleSBROnCarSpace := users["car"].shareSpaceWith(t, awaitilities, users["bicycle"])
 	bicycleSBROnBusSpace := users["bus"].shareSpaceWith(t, awaitilities, users["bicycle"])
@@ -1033,13 +1024,86 @@ func TestSpaceLister(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("banned user cannot create proxy client", func(t *testing.T) {
-		// when
-		_, err := hostAwait.CreateAPIProxyClient(t, users["banneduser"].token, hostAwait.APIProxyURL)
+	t.Run("banned user", func(t *testing.T) {
+		bannedUser := users["banneduser"]
 
-		// then
-		// this is the error expected to be returned by the proxy when the user is banned
-		require.ErrorContains(t, err, "unable to get target cluster: no member cluster found for the user")
+		// share car's space with banned user
+		_ = users["car"].shareSpaceWith(t, awaitilities, bannedUser)
+
+		// initialize clients before ban so that the call to `/apis` is successful
+		proxyClDefault := bannedUser.createProxyClient(t, hostAwait)
+		proxyClCar, err := hostAwait.CreateAPIProxyClient(t, bannedUser.token, hostAwait.ProxyURLWithWorkspaceContext("car"))
+		require.NoError(t, err)
+
+		// ban banneduser,
+		// this will be used in order to make sure this type of user doesn't have access to any of the requests in the workspace lister
+		_ = CreateBannedUser(t, hostAwait, bannedUser.signup.Spec.IdentityClaims.Email)
+		// wait until the user is banned
+		_, err = hostAwait.
+			WaitForUserSignup(t, bannedUser.signup.Name,
+				wait.UntilUserSignupHasConditions(
+					wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
+		require.NoError(t, err)
+
+		t.Run("cannot get apis list", func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", hostAwait.APIProxyURL, "/apis"), nil)
+			require.NoError(t, err)
+
+			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", bannedUser.token))
+			tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} // nolint:gosec
+			client := &http.Client{Transport: tr}
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			defer res.Body.Close()
+
+			require.Equal(t, http.StatusForbidden, res.StatusCode)
+		})
+
+		t.Run("cannot get workspace", func(t *testing.T) {
+			workspaceNamespacedName := types.NamespacedName{Name: bannedUser.compliantUsername}
+			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
+
+			require.Error(t, err)
+			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+		})
+
+		t.Run("cannot get shared workspace", func(t *testing.T) {
+			workspaceNamespacedName := types.NamespacedName{Name: users["car"].compliantUsername}
+			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
+
+			require.Error(t, err)
+			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+		})
+
+		t.Run("cannot list workspaces", func(t *testing.T) {
+			err := proxyClDefault.List(context.TODO(), &toolchainv1alpha1.WorkspaceList{})
+
+			require.Error(t, err)
+			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+		})
+
+		t.Run("cannot list resources", func(t *testing.T) {
+			workspacesTestCases := map[string]client.Client{
+				"home workspace":   proxyClDefault,
+				"shared workspace": proxyClCar,
+			}
+			for k, workspaceClient := range workspacesTestCases {
+				t.Run(k, func(t *testing.T) {
+					resourcesTestCases := map[string]client.ObjectList{
+						"applications": &appstudiov1.ApplicationList{},
+						"pods":         &corev1.PodList{},
+						"configmaps":   &corev1.ConfigMapList{},
+					}
+					for k, objList := range resourcesTestCases {
+						t.Run(k, func(t *testing.T) {
+							err := workspaceClient.List(context.TODO(), objList)
+							require.Error(t, err)
+							require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+						})
+					}
+				})
+			}
+		})
 	})
 }
 

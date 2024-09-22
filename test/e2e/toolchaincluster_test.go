@@ -10,7 +10,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/kubeconfig"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,17 +26,13 @@ func TestToolchainClusterE2E(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait.WaitForToolchainClusterResources(t)
 
-	// NOTE: we need to go in phases and merge support to populate the toolchaincluster status with info from the kubeconfig to
-	// the host operator first because the CI enforces the compatibility of the two by disallowing having 1 feature spread across
-	// both operators in 1 PR set. Afer it's merged in host and all works, we can proceed and merge it in the member, too, at which
-	// point we can remove the flag from the verifyToolchainCluster arguments.
-	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility, true)
-	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility, false)
+	verifyToolchainCluster(t, hostAwait.Awaitility, memberAwait.Awaitility)
+	verifyToolchainCluster(t, memberAwait.Awaitility, hostAwait.Awaitility)
 }
 
 // verifyToolchainCluster verifies existence and correct conditions of ToolchainCluster CRD
 // in the target cluster type operator
-func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility, tcStatusShouldBePopulated bool) {
+func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wait.Awaitility) {
 	// given
 	current, ok, err := await.GetToolchainCluster(t, otherAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
@@ -54,19 +49,7 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 		require.Equal(t, current.Name, secret.Labels[toolchainv1alpha1.ToolchainClusterLabel], "the secret of the ToolchainCluster %s is not labeled", client.ObjectKeyFromObject(&current))
 	})
 
-	// NOTE: this checks that there is the migration step in place that converts the connection details for the cluster that is currently
-	// spread over the secret and ToolchainCluster is also set as a kubeconfig inside the secret. Once we migrate to create the ToolchainClusters
-	// based on the secrets, we will no longer require this migration step and this test will be removed.
-	t.Run("kubeconfig is generated from the connection details", func(t *testing.T) {
-		targetClient, _ := util.NewKubeClientFromSecret(t, await.Client, current.Spec.SecretRef.Name, current.Namespace, toolchainv1alpha1.AddToScheme)
-		util.ValidateKubeClient(t, targetClient, otherAwait.Namespace, &toolchainv1alpha1.ToolchainClusterList{})
-	})
-
 	t.Run("status is populated with info from kubeconfig", func(t *testing.T) {
-		if !tcStatusShouldBePopulated {
-			t.Skip("not applicable for this cluster type")
-			return
-		}
 		secret := corev1.Secret{}
 		require.NoError(t, await.Client.Get(context.TODO(), client.ObjectKey{Name: current.Spec.SecretRef.Name, Namespace: current.Namespace}, &secret))
 		apiConfig, err := clientcmd.Load(secret.Data["kubeconfig"])
