@@ -30,3 +30,7 @@ vet:
 .PHONY: go-test-skip-all
 go-test-skip-all:
 	go test ./... -skip '.*'
+
+.PHONY: pre-verify
+pre-verify:
+	echo "No Pre-requisite needed"
