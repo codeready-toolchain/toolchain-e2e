@@ -77,7 +77,7 @@ func TestProxyPublicViewer(t *testing.T) {
 	}{
 		"approved user with space": {
 			proxyClientUser: func() proxyUser {
-				user := createAppStudioCommunityUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
+				user := createAppStudioRandomUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
 					return sr.
 						ManuallyApprove().
 						EnsureMUR().
@@ -89,7 +89,7 @@ func TestProxyPublicViewer(t *testing.T) {
 		},
 		"approved user without space": {
 			proxyClientUser: func() proxyUser {
-				user := createAppStudioCommunityUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
+				user := createAppStudioRandomUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
 					return sr.
 						ManuallyApprove().
 						EnsureMUR().
@@ -102,7 +102,7 @@ func TestProxyPublicViewer(t *testing.T) {
 		},
 		"not approved user": {
 			proxyClientUser: func() proxyUser {
-				user := createAppStudioCommunityUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
+				user := createAppStudioRandomUser(t, awaitilities, func(sr *SignupRequest) *SignupRequest {
 					return sr.
 						NoSpace().
 						RequireConditions(
@@ -290,12 +290,12 @@ func banUser(t *testing.T, hostAwait *wait.HostAwaitility, user proxyUser) {
 	}
 }
 
-func createAppStudioCommunityUser(t *testing.T, awaitilities wait.Awaitilities, withOptions ...func(*SignupRequest) *SignupRequest) *SignupResult {
+func createAppStudioRandomUser(t *testing.T, awaitilities wait.Awaitilities, withOptions ...func(*SignupRequest) *SignupRequest) *SignupResult {
 	suffix := rand.Int31n(999999) // nolint:gosec
 	sr := NewSignupRequest(awaitilities).
-		Username(fmt.Sprintf("commuser-%d", suffix)).
+		Username(fmt.Sprintf("user-%d", suffix)).
 		IdentityID(uuid.New()).
-		Email(fmt.Sprintf("communityuser-%d@teste2e.com", suffix)).
+		Email(fmt.Sprintf("user-%d@teste2e.com", suffix)).
 		SpaceTier("appstudio").
 		RequireConditions(wait.Default()...)
 	for _, opts := range withOptions {
