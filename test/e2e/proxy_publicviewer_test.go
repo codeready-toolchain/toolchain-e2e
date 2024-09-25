@@ -235,12 +235,12 @@ func TestProxyPublicViewer(t *testing.T) {
 			"user is not banned": false,
 			"user is banned":     true,
 		}
-		for s, tc := range testCases {
+		for s, banRequired := range testCases {
 			t.Run(s, func(t *testing.T) {
 				for s, c := range tt {
 					t.Run(s, func(t *testing.T) {
 						user := c.proxyClientUser()
-						if tc {
+						if banRequired {
 							banUser(t, hostAwait, user)
 						}
 
