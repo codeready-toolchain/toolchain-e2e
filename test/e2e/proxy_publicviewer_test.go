@@ -180,7 +180,7 @@ func TestProxyPublicViewer(t *testing.T) {
 					banUser(t, hostAwait, user)
 
 					t.Run(s, func(t *testing.T) {
-						t.Run("user can not initialize a new client", func(t *testing.T) {
+						t.Run("user cannot initialize a new client", func(t *testing.T) {
 							url := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
 							proxyClient, err := hostAwait.CreateAPIProxyClient(t, user.Token(), url)
 							require.NoError(t, err)
@@ -244,21 +244,21 @@ func TestProxyPublicViewer(t *testing.T) {
 							banUser(t, hostAwait, user)
 						}
 
-						t.Run("community user cannot access to non-community space", func(t *testing.T) {
+						t.Run("user cannot access to non-community space", func(t *testing.T) {
 							require.NotEmpty(t, sp.Status.ProvisionedNamespaces)
 
 							proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(sp.Name)
 							communityUserProxyClient, err := hostAwait.CreateAPIProxyClient(t, user.Token(), proxyWorkspaceURL)
 							require.NoError(t, err)
 
-							t.Run("community user cannot list config maps from community space", func(t *testing.T) {
+							t.Run("user cannot list config maps from non-community space", func(t *testing.T) {
 								cms := corev1.ConfigMapList{}
 
 								err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
 								require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap as community user to return a NoMatch error, actual: %v", err)
 							})
 
-							t.Run("community user cannot create config maps into space", func(t *testing.T) {
+							t.Run("user cannot create config maps into non-community space", func(t *testing.T) {
 								cm := corev1.ConfigMap{
 									ObjectMeta: metav1.ObjectMeta{
 										Name:      "test-cm",
