@@ -99,9 +99,8 @@ toolchain-member-status   False   ...
 [source,bash]
 ----
 # create/configure the ToolchainCluster resources on host and member clusters
-$ curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t member -mn ${MEMBER_NS} -hn ${HOST_NS}
-$ curl -sSL https://raw.githubusercontent.com/codeready-toolchain/toolchain-common/master/scripts/add-cluster.sh | bash -s -- -t host -mn ${MEMBER_NS} -hn ${HOST_NS}
-	
+$ ksctl adm register-member --host-ns="${HOST_NS}" --member-ns="${MEMBER_NS}" --host-kubeconfig="${HOME}/.kube/host-config" --member-kubeconfig="${HOME}/.kube/member-config"
+
 
 # verify
 $ oc config use-context host-admin && oc get toolchainstatus -n ${HOST_NS}
