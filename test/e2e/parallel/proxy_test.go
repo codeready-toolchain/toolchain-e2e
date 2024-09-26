@@ -441,7 +441,7 @@ func TestProxyFlow(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
 				_, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
-				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
+				require.EqualError(t, err, `an error on the server ("unable to get target cluster: access to workspace 'notexist' is forbidden") has prevented the request from succeeding`)
 			})
 
 			t.Run("invalid request headers", func(t *testing.T) {
