@@ -37,7 +37,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -369,7 +368,13 @@ func TestProxyFlow(t *testing.T) {
 				// note: the actual error message is "invalid workspace request: access to workspace '%s' is forbidden" but clients make api discovery calls
 				// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
 				// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
-				require.EqualError(t, err, `no matches for kind "Application" in version "appstudio.redhat.com/v1alpha1"`)
+
+				// Sep 26 2024
+				// As mentioned in the issue -https://github.com/kubernetes-sigs/controller-runtime/issues/2354 in introduced in controller-runtime v0.15
+				// for this test, instead of expecting the NoMatchError, discovery client fails and returns a server list error 'failed to get API group resources: unable to retrieve the complete list of server APIs'
+				// But since the returned error is wrapped around the actual error message mentioned in the above comments, updated to check error contains nstead of error eqals
+				// TO-DO : This issue is fixed in controller-runtime v0.17 - revisit it then
+				require.ErrorContains(t, err, fmt.Sprintf("invalid workspace request: access to workspace '%s' is forbidden", workspaceName))
 			})
 
 			t.Run("successful workspace context request", func(t *testing.T) {
@@ -440,8 +445,11 @@ func TestProxyFlow(t *testing.T) {
 			t.Run("invalid workspace context request", func(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
-				_, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
-				require.EqualError(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
+				proxyCl, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
+				require.NoError(t, err)
+				actualApp := &appstudiov1.Application{}
+				err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: "test", Namespace: "primaryUserNamespace"}, actualApp)
+				require.ErrorContains(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
 			})
 
 			t.Run("invalid request headers", func(t *testing.T) {
@@ -513,7 +521,8 @@ func TestProxyFlow(t *testing.T) {
 			// note: the actual error message is "invalid workspace request: access to workspace '%s' is forbidden" but clients make api discovery calls
 			// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
 			// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
-			require.EqualError(t, err, `no matches for kind "Application" in version "appstudio.redhat.com/v1alpha1"`)
+
+			require.ErrorContains(t, err, "invalid workspace request: access to workspace 'proxymember2' is forbidden")
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
@@ -612,7 +621,7 @@ func TestProxyFlow(t *testing.T) {
 				cms := corev1.ConfigMapList{}
 
 				err = userProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-				require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap to return a NoMatch error, actual: %v", err)
+				require.ErrorContains(t, err, "user access is forbidden")
 			})
 
 			t.Run("banned user cannot create config maps into space", func(t *testing.T) {
@@ -624,7 +633,7 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				err = userProxyClient.Create(context.TODO(), &cm)
-				require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap to return a NoMatch error, actual: %v", err)
+				require.ErrorContains(t, err, "user access is forbidden")
 			})
 		})
 	})
