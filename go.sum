@@ -121,10 +121,6 @@ github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:z
 github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5/go.mod h1:h6jFvWxBdQXxjopDMZyH2UVceIRfR84bdzbkoKrsWNo=
 github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoCr5oaCLELYA=
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
-github.com/codeready-toolchain/api v0.0.0-20240927104325-b5bfcb3cb1b0 h1:7cXHlRpoi1Owo8fYawl80PUsVWz+9AtMge6OJ4DjvWU=
-github.com/codeready-toolchain/api v0.0.0-20240927104325-b5bfcb3cb1b0/go.mod h1:ie9p4LenCCS0LsnbWp6/xwpFDdCWYE0KWzUO6Sk1g0E=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20240905135929-d55d86fdd41e h1:xTqyuImyon/P2QfV5NIJDsVkEWqb9b6Ax9INsmzpI1Q=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20240905135929-d55d86fdd41e/go.mod h1:aIbki5CFsykeqZn2/ZwvUb3Krx2f2Tbq58R6MGnk6H8=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/etcd v3.3.13+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
@@ -600,6 +596,8 @@ github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/procfs v0.9.0 h1:wzCHvIvM5SxWqYvwgVL7yJY8Lz3PKn49KQtpgMYJfhI=
 github.com/prometheus/procfs v0.9.0/go.mod h1:+pB4zwohETzFnmlpe6yd2lSc+0/46IYZRB/chUwxUZY=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
+github.com/ranakan19/api v0.0.0-20240923151833-647d61ba6f05 h1:WpnDX9uKLBxqvFEmI4TwUO4FnzEgEiVGp+wNPQtlDNc=
+github.com/ranakan19/api v0.0.0-20240923151833-647d61ba6f05/go.mod h1:blXQx8ZLooVqZ589EBtaAOmh13qLzGpDEnCBgjh9bv8=
 github.com/ranakan19/toolchain-common v0.0.0-20240923152117-007ae28d1744 h1:lp7B1eXtPR+FQ9ybyTH0G61dYdN22m8pY+skxDZCBEE=
 github.com/ranakan19/toolchain-common v0.0.0-20240923152117-007ae28d1744/go.mod h1:69UhmtxeIEu+D9rD2g47Zos8BInYH/RU2szTTqPWdZ4=
 github.com/redhat-cop/operator-utils v1.3.3-0.20220121120056-862ef22b8cdf h1:fsZiv9XuFo8G7IyzFWjG02vqzJG7kSqFvD1Wiq3V/o8=
