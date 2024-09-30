@@ -85,3 +85,24 @@ clean-toolchain-crds:
 		CRD_NAME=`oc get $${CRD} --template '{{.metadata.name}}'`; \
 		oc delete crd $${CRD_NAME}; \
 	done
+
+.PHONY: force-remove-finalizers-from-e2e-resources
+## Sometimes after a failed run, the cluster doesn't have our operators running but still contain our resources
+## with finalizers. This target removes those finalizers so that the subsequent call to some "clean-*" target
+## doesn't get stuck.
+## This goal is not called by default so that an attempt to clean up "cleanly" is always attempted first. If that
+## fails, you can call this goal explicitly before attempting the cleanup again.
+force-remove-finalizers-from-e2e-resources:
+	$(Q)for CRD in `oc get crd -o name | grep toolchain`; do \
+		CRD_NAME=`oc get $${CRD} --template='{{.metadata.name}}'`; \
+		for RES in `oc get $${CRD_NAME} --all-namespaces -ogo-template='{{range .items}}{{.metadata.name}},{{if ne .metadata.namespace nil}}{{.metadata.namespace}}{{else}}{{end}}{{"\n"}}{{end}}'`; do \
+		  NAME=`echo $${RES} | cut -d',' -f1`; \
+			NS=`echo $${RES} | cut -d',' -f2`; \
+			if [ -z "$$NS" ]; then \
+			  oc patch $${CRD_NAME} $${NAME} -p '{"metadata":{"finalizers": null}}' --type=merge; \
+			else \
+			  oc patch $${CRD_NAME} $${NAME} -n $${NS} -p '{"metadata":{"finalizers": null}}' --type=merge; \
+			fi \
+		done \
+	done
+
