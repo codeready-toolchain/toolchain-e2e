@@ -447,8 +447,8 @@ func TestProxyFlow(t *testing.T) {
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
 				proxyCl, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
 				require.NoError(t, err)
-				actualApp := &appstudiov1.Application{}
-				err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: "test", Namespace: "primaryUserNamespace"}, actualApp)
+				actualWorkspace := &toolchainv1alpha1.Workspace{}
+				err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: "notexist"}, actualWorkspace)
 				require.ErrorContains(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
 			})
 
