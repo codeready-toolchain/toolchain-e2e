@@ -443,13 +443,15 @@ func TestProxyFlow(t *testing.T) {
 			}) // end of successful workspace context request with proxy plugin
 
 			t.Run("invalid workspace context request", func(t *testing.T) {
+				// given
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
 				proxyCl, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
-				require.NoError(t, err)
-				actualWorkspace := &toolchainv1alpha1.Workspace{}
-				err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: "notexist"}, actualWorkspace)
-				require.ErrorContains(t, err, `an error on the server ("unable to get target cluster: the requested space is not available") has prevented the request from succeeding`)
+				expectedApp := &appstudiov1.Application{}
+				// when
+				err = proxyCl.Get(context.TODO(), types.NamespacedName{Namespace: "testNamespace", Name: "test"}, expectedApp)
+				// then
+				require.ErrorContains(t, err, `an error on the server ("unable to get target cluster: access to workspace 'notexist' is forbidden") has prevented the request from succeeding`)
 			})
 
 			t.Run("invalid request headers", func(t *testing.T) {
