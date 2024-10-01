@@ -1076,7 +1076,7 @@ func TestSpaceLister(t *testing.T) {
 			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
-			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+			require.ErrorContains(t, err, "user access is forbidden")
 		})
 
 		t.Run("cannot get shared workspace", func(t *testing.T) {
@@ -1084,14 +1084,14 @@ func TestSpaceLister(t *testing.T) {
 			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
-			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+			require.ErrorContains(t, err, "user access is forbidden")
 		})
 
 		t.Run("cannot list workspaces", func(t *testing.T) {
 			err := proxyClDefault.List(context.TODO(), &toolchainv1alpha1.WorkspaceList{})
 
 			require.Error(t, err)
-			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+			require.ErrorContains(t, err, "user access is forbidden")
 		})
 
 		t.Run("cannot list resources", func(t *testing.T) {
@@ -1110,7 +1110,7 @@ func TestSpaceLister(t *testing.T) {
 						t.Run(k, func(t *testing.T) {
 							err := workspaceClient.List(context.TODO(), objList)
 							require.Error(t, err)
-							require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+							require.ErrorContains(t, err, "user access is forbidden")
 						})
 					}
 				})
