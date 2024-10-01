@@ -447,6 +447,7 @@ func TestProxyFlow(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
 				proxyCl, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
+				require.NoError(t, err)
 				expectedApp := &appstudiov1.Application{}
 				// when
 				err = proxyCl.Get(context.TODO(), types.NamespacedName{Namespace: "testNamespace", Name: "test"}, expectedApp)
