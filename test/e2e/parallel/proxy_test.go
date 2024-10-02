@@ -325,34 +325,27 @@ func TestProxyFlow(t *testing.T) {
 				anotherNamespace := fmt.Sprintf("outside-%s", user.compliantUsername)
 				user.expectedMemberCluster.CreateNamespace(t, anotherNamespace)
 
-				tests := map[string]struct {
-					ProxyClient func() client.Client
-				}{
-					"using explicit user's workspace context": {
-						ProxyClient: func() client.Client {
-							proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
-							proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
-							require.NoError(t, err)
-							return proxyCl
-						},
-					},
-					"not using any workspace context": {
-						ProxyClient: func() client.Client {
-							return user.createProxyClient(t, hostAwait)
-						},
-					},
-				}
+				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
+				explicitWorkspaceCtxClient, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // a client with a workspace context
+				require.NoError(t, err)
+				withoutWorkspaceCtxClient := user.createProxyClient(t, hostAwait) // a client with no workspace context
 
 				t.Run("fail when accessing unshared namespace", func(t *testing.T) {
-					for k, tc := range tests {
-						t.Run(k, func(t *testing.T) {
-							// then
-							cm := corev1.ConfigMap{}
-							// every namespace has a CM "kube-root-ca.crt" but we can't get it because the user doesn't have access to the namespace
-							err := tc.ProxyClient().Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
-							require.EqualError(t, err, fmt.Sprintf(`configmaps "kube-root-ca.crt" is forbidden: User "%s" cannot get resource "configmaps" in API group "" in the namespace "%s"`, user.compliantUsername, anotherNamespace))
-						})
-					}
+					cm := corev1.ConfigMap{}
+					t.Run("using explicit workspace context", func(t *testing.T) {
+						// when
+						// every namespace has a CM "kube-root-ca.crt" but we can't get it because the user doesn't have access to the namespace
+						err = explicitWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.EqualError(t, err, fmt.Sprintf(`configmaps "kube-root-ca.crt" is forbidden: User "%s" cannot get resource "configmaps" in API group "" in the namespace "%s"`, user.compliantUsername, anotherNamespace))
+					})
+					t.Run("not using any workspace context", func(t *testing.T) {
+						// when
+						// every namespace has a CM "kube-root-ca.crt" but we can't get it because the user doesn't have access to the namespace
+						err := withoutWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.EqualError(t, err, fmt.Sprintf(`configmaps "kube-root-ca.crt" is forbidden: User "%s" cannot get resource "configmaps" in API group "" in the namespace "%s"`, user.compliantUsername, anotherNamespace))
+					})
 				})
 
 				t.Run("success when accessing shared namespace", func(t *testing.T) {
@@ -384,16 +377,24 @@ func TestProxyFlow(t *testing.T) {
 					_, err = user.expectedMemberCluster.WaitForRoleBinding(t, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: rb.Namespace}}, rb.Name)
 					require.NoError(t, err)
 
-					for k, tc := range tests {
-						t.Run(k, func(t *testing.T) {
-							// then
-							cm := corev1.ConfigMap{}
-							// every namespace has a CM "kube-root-ca.crt", let's get it and check that it's actually from the shared namespace
-							err = tc.ProxyClient().Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
-							require.NoError(t, err)
-							assert.Equal(t, anotherNamespace, cm.Namespace)
-						})
-					}
+					t.Run("using explicit workspace context", func(t *testing.T) {
+						// when
+						cm := corev1.ConfigMap{}
+						// every namespace has a CM "kube-root-ca.crt", let's get it and check that it's actually from the shared namespace
+						err = explicitWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.NoError(t, err)
+						assert.Equal(t, anotherNamespace, cm.Namespace)
+					})
+					t.Run("not using any workspace context", func(t *testing.T) {
+						// when
+						cm := corev1.ConfigMap{}
+						// every namespace has a CM "kube-root-ca.crt", let's get it and check that it's actually from the shared namespace
+						err := withoutWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.NoError(t, err)
+						assert.Equal(t, anotherNamespace, cm.Namespace)
+					})
 				})
 			})
 
