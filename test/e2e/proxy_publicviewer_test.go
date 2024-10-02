@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -53,6 +51,12 @@ func (u *proxyUser) Email() string {
 	default:
 		return ""
 	}
+}
+
+type TestCase struct {
+	description   string
+	banned        bool
+	expectedError string
 }
 
 // tests access to community-shared spaces
@@ -161,7 +165,7 @@ func TestProxyPublicViewer(t *testing.T) {
 							},
 						}
 						err = communityUserProxyClient.Create(context.TODO(), &cm)
-						require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as community user to return a Forbidden error, actual: %v", err)
+						require.ErrorContains(t, err, "configmaps is forbidden: User \"kubesaw-authenticated\" cannot create resource \"configmaps\" in API group")
 					})
 				})
 			}
@@ -194,7 +198,7 @@ func TestProxyPublicViewer(t *testing.T) {
 								},
 							}
 							err = proxyClient.Create(context.TODO(), &cm)
-							require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap as SSO user to return a NoMatch error, actual: %v", err)
+							require.ErrorContains(t, err, "user access is forbidden")
 						})
 
 						t.Run("cannot list config maps", func(t *testing.T) {
@@ -212,7 +216,7 @@ func TestProxyPublicViewer(t *testing.T) {
 								},
 							}
 							err := proxyClient.Create(context.TODO(), &cm)
-							require.True(t, errors.IsForbidden(err), "expected Create ConfigMap as SSO user to return a Forbidden error, actual: %v", err)
+							require.ErrorContains(t, err, "user access is forbidden")
 						})
 					})
 				})
@@ -231,16 +235,24 @@ func TestProxyPublicViewer(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, sbs)
 
-		testCases := map[string]bool{
-			"user is not banned": false,
-			"user is banned":     true,
+		testCases := []TestCase{
+			{
+				description:   "user is not banned",
+				banned:        false,
+				expectedError: "invalid workspace request",
+			},
+			{
+				description:   "user is banned",
+				banned:        true,
+				expectedError: "user access is forbidden",
+			},
 		}
-		for s, banRequired := range testCases {
-			t.Run(s, func(t *testing.T) {
+		for _, testCase := range testCases {
+			t.Run(testCase.description, func(t *testing.T) {
 				for s, c := range tt {
 					t.Run(s, func(t *testing.T) {
 						user := c.proxyClientUser()
-						if banRequired {
+						if testCase.banned {
 							banUser(t, hostAwait, user)
 						}
 
@@ -255,7 +267,7 @@ func TestProxyPublicViewer(t *testing.T) {
 								cms := corev1.ConfigMapList{}
 
 								err = communityUserProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-								require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap as community user to return a NoMatch error, actual: %v", err)
+								require.ErrorContains(t, err, testCase.expectedError)
 							})
 
 							t.Run("user cannot create config maps into non-community space", func(t *testing.T) {
@@ -266,7 +278,7 @@ func TestProxyPublicViewer(t *testing.T) {
 									},
 								}
 								err := communityUserProxyClient.Create(context.TODO(), &cm)
-								require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap as community user to return a NoMatch error, actual: %v", err)
+								require.ErrorContains(t, err, testCase.expectedError)
 							})
 						})
 					})
