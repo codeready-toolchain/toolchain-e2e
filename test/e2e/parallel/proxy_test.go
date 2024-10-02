@@ -620,9 +620,10 @@ func TestProxyFlow(t *testing.T) {
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
 
-			t.Run("request for namespace that doesn't belong to workspace context should fail", func(t *testing.T) {
-				// In this test the guest user has access to the primary user's namespace since the primary user's workspace has been shared, but if they specify the wrong
-				// workspace context (guest user's workspace context) the request should fail. In order for proxy requests to succeed the namespace must belong to the workspace.
+			t.Run("request for shared namespace that doesn't belong to workspace context should succeed", func(t *testing.T) {
+				// In this test the guest user has access to the primary user's namespace since the primary user's workspace has been shared,
+				// and proxy should forward the request even if the namespace does not belong to the workspace.
+				// It's up to the API server to check user's permissions. Not the proxy.
 
 				// given
 				workspaceName := guestUser.compliantUsername // guestUser's workspace
@@ -635,7 +636,8 @@ func TestProxyFlow(t *testing.T) {
 				err = guestUserGuestWsCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp) // primaryUser's namespace
 
 				// then
-				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (get applications.appstudio.redhat.com %s)`, primaryUserNamespace, workspaceName, applicationName))
+				require.NoError(t, err)
+				assert.Equal(t, primaryUserNamespace, actualApp.Namespace)
 			})
 		})
 
