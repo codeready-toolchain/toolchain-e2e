@@ -76,8 +76,6 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			secretRef(secretCopy.Name),
-			owner(current.Labels["ownerClusterName"]),
-			namespace(current.Labels["namespace"]),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 
@@ -115,8 +113,6 @@ func verifyToolchainCluster(t *testing.T, await *wait.Awaitility, otherAwait *wa
 
 		toolchainCluster := newToolchainCluster(await.Namespace, name,
 			secretRef(secretCopy.Name),
-			owner(current.Labels["ownerClusterName"]),
-			namespace(current.Labels["namespace"]),
 			capacityExhausted, // make sure this cluster cannot be used in other e2e tests
 		)
 
@@ -182,20 +178,6 @@ type clusterOption func(*toolchainv1alpha1.ToolchainCluster)
 // capacityExhausted an option to state that the cluster capacity has exhausted
 var capacityExhausted clusterOption = func(c *toolchainv1alpha1.ToolchainCluster) {
 	c.Labels["toolchain.dev.openshift.com/capacity-exhausted"] = strconv.FormatBool(true)
-}
-
-// Owner sets the 'ownerClusterName' label
-func owner(name string) clusterOption {
-	return func(c *toolchainv1alpha1.ToolchainCluster) {
-		c.Labels["ownerClusterName"] = name
-	}
-}
-
-// Namespace sets the 'namespace' label
-func namespace(name string) clusterOption {
-	return func(c *toolchainv1alpha1.ToolchainCluster) {
-		c.Labels["namespace"] = name
-	}
 }
 
 // SecretRef sets the SecretRef in the cluster's Spec

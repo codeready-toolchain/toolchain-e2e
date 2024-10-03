@@ -172,9 +172,7 @@ func (a *Awaitility) WaitForToolchainClusterWithCondition(t *testing.T, namespac
 // and running in the given expected namespace. It also checks if the CR has the ClusterConditionType
 func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, cdtype toolchainv1alpha1.ConditionType) (toolchainv1alpha1.ToolchainCluster, bool, error) {
 	clusters := &toolchainv1alpha1.ToolchainClusterList{}
-	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace), client.MatchingLabels{
-		"namespace": namespace,
-	}); err != nil {
+	if err := a.Client.List(context.TODO(), clusters, client.InNamespace(a.Namespace)); err != nil {
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
 	}
 	if len(clusters.Items) == 0 {
@@ -182,7 +180,7 @@ func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, cdtype 
 	}
 	// assume there is zero or 1 match only
 	for _, cl := range clusters.Items {
-		if cd.IsTrue(cl.Status.Conditions, cdtype) {
+		if cl.Status.OperatorNamespace == namespace && cd.IsTrue(cl.Status.Conditions, cdtype) {
 			return cl, true, nil
 		}
 	}
@@ -559,9 +557,7 @@ func UntilToolchainClusterHasConditionFalseStatusAndReason(expected toolchainv1a
 func UntilToolchainClusterHasOperatorNamespace(expectedNs string) ToolchainClusterWaitCriterion {
 	return ToolchainClusterWaitCriterion{
 		Match: func(toolchainCluster *toolchainv1alpha1.ToolchainCluster) bool {
-			// TODO: remove the check for the legacy label once both host and member operators are upgraded to the
-			// new version of the operator.
-			return toolchainCluster.Status.OperatorNamespace == expectedNs || toolchainCluster.Labels["namespace"] == expectedNs
+			return toolchainCluster.Status.OperatorNamespace == expectedNs
 		},
 	}
 }
