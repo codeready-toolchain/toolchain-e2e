@@ -30,11 +30,9 @@ func TestCreate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: hostOperatorNamespace,
 				Name:      "member-abcd",
-				Labels: map[string]string{
-					"namespace": memberOperatorNamespace,
-				},
 			},
 			Status: toolchainv1alpha1.ToolchainClusterStatus{
+				OperatorNamespace: memberOperatorNamespace,
 				Conditions: []toolchainv1alpha1.Condition{
 					{
 						Type:   toolchainv1alpha1.ConditionReady,

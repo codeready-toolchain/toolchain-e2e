@@ -48,7 +48,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Status.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
 		)
 		require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Status.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
 			UntilSpaceRequestHasDisableInheritance(true),
 		)
@@ -165,7 +165,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Status.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait.Client, spaceRequest)
@@ -221,7 +221,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		spaceRequest, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster2.Spec.APIEndpoint),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster2.Status.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace))
 		require.NoError(t, err)
 		VerifyNamespaceAccessForSpaceRequest(t, memberAwait2.Client, spaceRequest) // space request has access to ns on member2
@@ -272,7 +272,7 @@ func TestCreateSpaceRequest(t *testing.T) {
 		subSpace, _ = VerifyResourcesProvisionedForSpace(t, awaitilities, subSpace.Name, UntilSpaceHasAnyTargetClusterSet())
 		_, err = memberAwait.WaitForSpaceRequest(t, types.NamespacedName{Namespace: spaceRequest.GetNamespace(), Name: spaceRequest.GetName()},
 			UntilSpaceRequestHasConditions(Provisioned()),
-			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Spec.APIEndpoint),
+			UntilSpaceRequestHasStatusTargetClusterURL(memberCluster.Status.APIEndpoint),
 			UntilSpaceRequestHasNamespaceAccess(subSpace),
 			UntilSpaceRequestHasNamespaceAccessWithoutSecretRef(), // check that namespace access is present but without a SecretRef set
 		)
@@ -323,7 +323,7 @@ func TestUpdateSpaceRequest(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		//then
+		// then
 		// wait for both spaceRequest and subSpace to have same tierName
 		subSpace, err = hostAwait.WaitForSpace(t, subSpace.Name,
 			UntilSpaceHasTier("base"),
