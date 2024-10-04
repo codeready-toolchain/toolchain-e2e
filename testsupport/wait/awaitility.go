@@ -176,7 +176,7 @@ func (a *Awaitility) GetToolchainCluster(t *testing.T, namespace string, cdtype 
 		return toolchainv1alpha1.ToolchainCluster{}, false, err
 	}
 	if len(clusters.Items) == 0 {
-		t.Logf("no toolchaincluster resource with expected labels: namespace='%s'", namespace)
+		t.Logf("no toolchaincluster resource with the expected operator namespace (.status.operatorNamespace): '%s'", namespace)
 	}
 	// assume there is zero or 1 match only
 	for _, cl := range clusters.Items {
