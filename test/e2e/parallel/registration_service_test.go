@@ -53,7 +53,6 @@ func TestLandingPageReachable(t *testing.T) {
 }
 
 func TestRegistrationServiceMetricsEndpoint(t *testing.T) {
-
 	// given
 	await := WaitForDeployments(t)
 	t.Parallel()
@@ -108,7 +107,6 @@ func TestRegistrationServiceMetricsEndpoint(t *testing.T) {
 		assert.Contains(t, string(samples), "sandbox_promhttp_request_duration_seconds_sum")
 		assert.Contains(t, string(samples), "sandbox_promhttp_request_duration_seconds_count")
 	})
-
 }
 
 func TestHealth(t *testing.T) {
@@ -463,6 +461,7 @@ func TestSignupOK(t *testing.T) {
 		signupUser(token, emailAddress, identity.Username, identity)
 	})
 }
+
 func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
 	// given
 	t.Parallel()
@@ -960,7 +959,7 @@ func signupIsProvisioned(client *GetSignupClient) {
 	transformedUsername := commonsignup.TransformUsername(client.username, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	require.NoError(client.t, err)
 	require.True(client.t, found)
-	assert.Equal(client.t, memberCluster.Spec.APIEndpoint, client.responseBody["apiEndpoint"])
+	assert.Equal(client.t, memberCluster.Status.APIEndpoint, client.responseBody["apiEndpoint"])
 	assert.Equal(client.t, hostAwait.APIProxyURL, client.responseBody["proxyURL"])
 	assert.Equal(client.t, fmt.Sprintf("%s-dev", transformedUsername), client.responseBody["defaultUserNamespace"])
 	assertRHODSClusterURL(client.t, memberAwait, client.responseBody)

@@ -1416,7 +1416,7 @@ func UntilAllMembersHaveUsageSet() ToolchainStatusWaitCriterion {
 func UntilAllMembersHaveAPIEndpoint(apiEndpoint string) ToolchainStatusWaitCriterion {
 	return ToolchainStatusWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.ToolchainStatus) bool {
-			//Since all member operators currently run in the same cluster in the e2e test environment, then using the same memberCluster.Spec.APIEndpoint for all the member clusters should be fine.
+			// Since all member operators currently run in the same cluster in the e2e test environment, then using the same api endpoint for all the member clusters should be fine.
 			for _, member := range actual.Status.Members {
 				// check Member field ApiEndpoint is assigned
 				if member.APIEndpoint != apiEndpoint {

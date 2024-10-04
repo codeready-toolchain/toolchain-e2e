@@ -53,13 +53,11 @@ func getMemberClusterName(cl client.Client, hostOperatorNamespace, memberOperato
 	var memberCluster toolchainv1alpha1.ToolchainCluster
 	err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, configuration.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		clusters := &toolchainv1alpha1.ToolchainClusterList{}
-		if err := cl.List(context.TODO(), clusters, client.InNamespace(hostOperatorNamespace), client.MatchingLabels{
-			"namespace": memberOperatorNamespace,
-		}); err != nil {
+		if err := cl.List(context.TODO(), clusters, client.InNamespace(hostOperatorNamespace)); err != nil {
 			return false, err
 		}
 		for _, cluster := range clusters.Items {
-			if condition.IsTrue(cluster.Status.Conditions, toolchainv1alpha1.ConditionReady) {
+			if cluster.Status.OperatorNamespace == memberOperatorNamespace && condition.IsTrue(cluster.Status.Conditions, toolchainv1alpha1.ConditionReady) {
 				memberCluster = cluster
 				return true, nil
 			}
