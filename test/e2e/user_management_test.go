@@ -589,7 +589,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 		t.Logf("user signup '%s' created", userSignup.Name)
 
-		// Check the UserSignup is created
+		// Check the UserSignup is created and confirm that the user is banned
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(t, err)
 
