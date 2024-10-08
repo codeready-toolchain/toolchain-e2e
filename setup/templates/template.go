@@ -140,7 +140,7 @@ func applyObject(ctx context.Context, applycl *applyclientlib.ApplyClient, obj r
 
 	// retry the apply in case it fails due to errors like the following:
 	// unable to create resource of kind: Deployment, version: v1: Operation cannot be fulfilled on clusterresourcequotas.quota.openshift.io "for-zippy-1882-deployments": the object has been modified; please apply your changes to the latest version and try again
-	if err := k8swait.Poll(cfg.DefaultRetryInterval, 30*time.Second, func() (bool, error) {
+	if err := k8swait.PollUntilContextTimeout(context.TODO(), cfg.DefaultRetryInterval, 30*time.Second, true, func(context context.Context) (bool, error) {
 		if _, applyErr := applycl.ApplyObject(ctx, obj); applyErr != nil {
 			return false, applyErr
 		}
