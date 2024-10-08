@@ -590,7 +590,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		t.Logf("user signup '%s' created", userSignup.Name)
 
 		// Check the UserSignup is created
-		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
+		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(t, err)
 
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, "testuser"+id)
