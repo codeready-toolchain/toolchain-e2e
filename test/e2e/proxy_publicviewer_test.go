@@ -53,12 +53,6 @@ func (u *proxyUser) Email() string {
 	}
 }
 
-type TestCase struct {
-	description   string
-	banned        bool
-	expectedError string
-}
-
 // tests access to community-shared spaces
 func TestProxyPublicViewer(t *testing.T) {
 	// make sure everything is ready before running the actual tests
@@ -235,20 +229,21 @@ func TestProxyPublicViewer(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, sbs)
 
-		testCases := []TestCase{
-			{
-				description:   "user is not banned",
+		testCases := map[string]struct {
+			banned        bool
+			expectedError string
+		}{
+			"user is not banned": {
 				banned:        false,
 				expectedError: "invalid workspace request",
 			},
-			{
-				description:   "user is banned",
+			"user is banned": {
 				banned:        true,
 				expectedError: "user access is forbidden",
 			},
 		}
-		for _, testCase := range testCases {
-			t.Run(testCase.description, func(t *testing.T) {
+		for str, testCase := range testCases {
+			t.Run(str, func(t *testing.T) {
 				for s, c := range tt {
 					t.Run(s, func(t *testing.T) {
 						user := c.proxyClientUser()

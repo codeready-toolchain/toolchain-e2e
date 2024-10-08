@@ -516,10 +516,11 @@ func TestProxyFlow(t *testing.T) {
 			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
 
 			// then
-			// note: the actual error message is "invalid workspace request: access to workspace '%s' is forbidden" but clients make api discovery calls
-			// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
-			// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
-
+			// Sep 26 2024
+			// As mentioned in the issue -https://github.com/kubernetes-sigs/controller-runtime/issues/2354 introduced in controller-runtime v0.15
+			// for this test, instead of expecting the NoMatchError, discovery client fails and returns a server list error like 'failed to get API group resources: unable to retrieve the complete list of server APIs'
+			// The returned server error wraps around the actual error message of ""invalid workspace request", thus check error contains instead of error equals
+			// TO-DO : This issue is fixed in controller-runtime v0.17 - revisit it then
 			require.ErrorContains(t, err, "invalid workspace request: access to workspace 'proxymember2' is forbidden")
 
 			// Double check that the Application does exist using a regular client (non-proxy)
