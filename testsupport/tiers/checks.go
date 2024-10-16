@@ -702,7 +702,7 @@ func (a *intelMediumTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSecrets(),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
-		idlers(43200, "dev"))
+		idlers(172800, "dev"))
 }
 
 type intelLargeTierChecks struct {
