@@ -27,7 +27,7 @@ func ForSpace(cl client.Client, space string) error {
 		},
 	}
 
-	if err := k8swait.Poll(configuration.DefaultRetryInterval, configuration.DefaultTimeout, func() (bool, error) {
+	if err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, configuration.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		err := cl.Get(context.TODO(), types.NamespacedName{
 			Name:      space,
 			Namespace: configuration.HostOperatorNamespace,
@@ -64,7 +64,7 @@ func HasSubscriptionWithCriteria(cl client.Client, name, namespace string, crite
 }
 
 func ForSubscriptionWithCriteria(cl client.Client, name, namespace string, timeout time.Duration, criteria ...subCriteria) error {
-	if err := k8swait.Poll(configuration.DefaultRetryInterval, timeout, func() (bool, error) {
+	if err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, timeout, true, func(ctx context.Context) (bool, error) {
 		return HasSubscriptionWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
 		return errors.Wrapf(err, "could not find a Subscription with name '%s' in namespace '%s' that meets the expected criteria", name, namespace)
@@ -90,7 +90,7 @@ func HasCSVWithCriteria(cl client.Client, name, namespace string, criteria ...cs
 }
 
 func ForCSVWithCriteria(cl client.Client, name, namespace string, timeout time.Duration, criteria ...csvCriteria) error {
-	if err := k8swait.Poll(configuration.DefaultRetryInterval, timeout, func() (bool, error) {
+	if err := k8swait.PollUntilContextTimeout(context.TODO(), configuration.DefaultRetryInterval, timeout, true, func(ctx context.Context) (bool, error) {
 		return HasCSVWithCriteria(cl, name, namespace, criteria...)
 	}); err != nil {
 		return errors.Wrapf(err, "could not find a CSV with name '%s' in namespace '%s' that meets the expected criteria", name, namespace)

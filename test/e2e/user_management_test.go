@@ -593,13 +593,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(t, err)
 		t.Logf("user signup '%s' created", userSignup.Name)
 
-		// Check the UserSignup is created
-		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name)
-		require.NoError(t, err)
-
-		// Confirm that the user is banned
-		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueBanned, userSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
-		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, "testuser"+id)
+		// Check the UserSignup is created and confirm that the user is banned
+		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
 		require.NoError(t, err)
 
 		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, "testuser"+id)

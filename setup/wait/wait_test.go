@@ -51,7 +51,7 @@ func TestForSpace(t *testing.T) {
 
 			// then
 			require.Error(t, err)
-			assert.EqualError(t, err, "space 'user0001' is not ready yet: timed out waiting for the condition")
+			assert.EqualError(t, err, "space 'user0001' is not ready yet: context deadline exceeded")
 		})
 	})
 }
@@ -181,7 +181,7 @@ func TestForSubscriptionWithCriteria(t *testing.T) {
 			err := wait.ForSubscriptionWithCriteria(cl, "test-prefix", "test-ns", configuration.DefaultTimeout)
 
 			// then
-			require.EqualError(t, err, `could not find a Subscription with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: timed out waiting for the condition`)
+			require.EqualError(t, err, `could not find a Subscription with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: context deadline exceeded`)
 		})
 
 		t.Run("client error", func(t *testing.T) {
@@ -324,7 +324,7 @@ func TestForCSVWithCriteria(t *testing.T) {
 			err := wait.ForCSVWithCriteria(cl, "test-prefix", "test-ns", time.Millisecond)
 
 			// then
-			require.EqualError(t, err, `could not find a CSV with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: timed out waiting for the condition`)
+			require.EqualError(t, err, `could not find a CSV with name 'test-prefix' in namespace 'test-ns' that meets the expected criteria: context deadline exceeded`)
 		})
 
 		t.Run("client error", func(t *testing.T) {

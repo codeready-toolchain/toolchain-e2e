@@ -85,7 +85,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
-			require.ErrorContains(t, err, "could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
+			require.ErrorContains(t, err, "could not find a Subscription with name 'kiali-ossm' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
 		})
 
 		t.Run("error when getting csv", func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
-			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
+			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
 		})
 
 		t.Run("csv has wrong phase", func(t *testing.T) {
@@ -131,9 +131,8 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 			err = EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
-			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: timed out waiting for the condition")
+			require.EqualError(t, err, "failed to find CSV 'kiali-operator.v1.24.7' with Phase 'Succeeded': could not find a CSV with name 'kiali-operator.v1.24.7' in namespace 'openshift-operators' that meets the expected criteria: context deadline exceeded")
 		})
-
 		t.Run("no subscription in template", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
