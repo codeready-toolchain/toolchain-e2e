@@ -37,6 +37,8 @@ const (
 	baseextendedidling = "baseextendedidling"
 	baselarge          = "baselarge"
 	testTier           = "test"
+	intelMedium        = "intelmedium"
+	intelLarge         = "intellarge"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -77,6 +79,10 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
 	case testTier:
 		return &testTierChecks{tierName: testTier}, nil
+	case intelMedium:
+		return &intelMediumTierChecks{tierName: intelMedium}, nil
+	case intelLarge:
+		return &intelLargeTierChecks{intelMediumTierChecks{tierName: intelLarge}}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
@@ -629,6 +635,94 @@ func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck 
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, "env"))
+}
+
+type intelMediumTierChecks struct {
+	tierName string
+}
+
+func (a *intelMediumTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("8", "16Gi", "8", "16Gi"),
+		resourceQuotaComputeBuild("8", "16Gi", "8", "16Gi"),
+		resourceQuotaStorage("15Gi", "50Gi", "15Gi", "5"),
+		limitRange("1", "1000Mi", "10m", "64Mi"),
+		numberOfLimitRanges(1),
+		execPodsRole(),
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+	}
+	checks = append(checks, commonNetworkPolicyChecks()...)
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
+	return checks
+}
+
+func (a *intelMediumTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
+	checks := []spaceRoleObjectsCheck{}
+	roles := 0
+	rolebindings := 0
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
+			checks = append(checks, rbacEditRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					rbacEditRoleBinding(userName),
+					userEditRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		default:
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
+		}
+	}
+	// also count the roles, rolebindings
+	checks = append(checks,
+		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
+		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
+	)
+	return checks, nil
+}
+
+func (a *intelMediumTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
+	verifyNsTypes(t, a.tierName, templateRefs, "dev")
+	return templateRefs
+}
+
+func (a *intelMediumTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		clusterResourceQuotaDeployments(),
+		clusterResourceQuotaReplicas(),
+		clusterResourceQuotaRoutes(),
+		clusterResourceQuotaJobs(),
+		clusterResourceQuotaServicesNoLoadBalancers(),
+		clusterResourceQuotaBuildConfig(),
+		clusterResourceQuotaSecrets(),
+		clusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(172800, "dev"))
+}
+
+type intelLargeTierChecks struct {
+	intelMediumTierChecks
+}
+
+func (a *intelLargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("16", "32Gi", "16", "32Gi"),
+		resourceQuotaComputeBuild("16", "32Gi", "16", "32Gi"),
+		resourceQuotaStorage("15Gi", "100Gi", "15Gi", "5"),
+		limitRange("1", "1000Mi", "10m", "64Mi"),
+		numberOfLimitRanges(1),
+		execPodsRole(),
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+	}
+	checks = append(checks, commonNetworkPolicyChecks()...)
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
+	return checks
 }
 
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
