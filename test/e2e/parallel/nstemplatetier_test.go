@@ -49,7 +49,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "base"}
+	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -281,9 +281,9 @@ func TestTierTemplates(t *testing.T) {
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	require.NoError(t, err)
-	// We have 27 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3, intelmedium: 2, intellarge: 2)
+	// We have 29 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3, intelmedium: 2, intellarge: 2, intelxlarge: 2)
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
-	assert.GreaterOrEqual(t, len(allTiers.Items), 31)
+	assert.GreaterOrEqual(t, len(allTiers.Items), 33)
 }
 
 func TestFeatureToggles(t *testing.T) {

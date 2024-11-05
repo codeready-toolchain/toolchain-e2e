@@ -39,6 +39,7 @@ const (
 	testTier           = "test"
 	intelMedium        = "intelmedium"
 	intelLarge         = "intellarge"
+	intelXLarge        = "intelxlarge"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -83,6 +84,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &intelMediumTierChecks{tierName: intelMedium}, nil
 	case intelLarge:
 		return &intelLargeTierChecks{intelMediumTierChecks{tierName: intelLarge}}, nil
+	case intelXLarge:
+		return &intelXLargeTierChecks{intelLargeTierChecks{intelMediumTierChecks{tierName: intelXLarge}}}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
@@ -710,9 +713,21 @@ type intelLargeTierChecks struct {
 }
 
 func (a *intelLargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	return getNamespaceObjectChecksForIntelLarge("32Gi")
+}
+
+type intelXLargeTierChecks struct {
+	intelLargeTierChecks
+}
+
+func (a *intelXLargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	return getNamespaceObjectChecksForIntelLarge("64Gi")
+}
+
+func getNamespaceObjectChecksForIntelLarge(memoryLimit string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("16", "32Gi", "16", "32Gi"),
-		resourceQuotaComputeBuild("16", "32Gi", "16", "32Gi"),
+		resourceQuotaComputeDeploy("16", memoryLimit, "16", memoryLimit),
+		resourceQuotaComputeBuild("16", memoryLimit, "16", memoryLimit),
 		resourceQuotaStorage("15Gi", "100Gi", "15Gi", "5"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
