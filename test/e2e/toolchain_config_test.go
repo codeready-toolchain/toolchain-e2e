@@ -27,5 +27,8 @@ func TestToolchainConfig(t *testing.T) {
 		newNrReplicas := currentNrReplicas + 1
 		hostAwait.UpdateToolchainConfig(t, testconfig.RegistrationService().Replicas(newNrReplicas))
 		hostAwait.WaitForDeploymentToGetReady(t, registrationServiceName, int(newNrReplicas))
+
+		// no need to revert to original replica count
+		// UpdateToolchainConfig returns the resource back to the original value/state at the end of the test
 	})
 }
