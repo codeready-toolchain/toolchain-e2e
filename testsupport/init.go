@@ -82,7 +82,7 @@ func waitForOperators(t *testing.T) {
 	initHostAwait.WaitForDeploymentToGetReady(t, "host-operator-controller-manager", 1)
 
 	// wait for registration service to be ready
-	initHostAwait.WaitForDeploymentToGetReady(t, "registration-service", 2)
+	initHostAwait.WaitForDeploymentToGetReady(t, "registration-service", 3)
 
 	// set registration service values
 	registrationServiceRoute, err := initHostAwait.WaitForRouteToBeAvailable(t, registrationServiceNs, "registration-service", "/")
