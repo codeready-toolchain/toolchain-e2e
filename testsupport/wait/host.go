@@ -1054,11 +1054,15 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if r.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' in spaceRole %s in NSTemplateTier '%s'", r.TemplateRef, tier.Name)
 		}
-		if _, err := a.WaitForTierTemplate(t, r.TemplateRef); err != nil {
+		tierTemplateSpaceRoles, err := a.WaitForTierTemplate(t, r.TemplateRef)
+		if err != nil {
 			return nil, err
 		}
-		if _, err := a.WaitForTierTemplateRevision(t, r.TemplateRef); err != nil {
-			return nil, err
+		// if the tier template supports Tier Template Revisions then let's check those
+		if tierTemplateSpaceRoles.Spec.TemplateObjects != nil {
+			if _, err := a.WaitForTierTemplateRevision(t, r.TemplateRef); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -1098,9 +1102,6 @@ func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, templateRef s
 		if err := a.Client.List(context.TODO(), objs, client.InNamespace(a.Namespace), client.MatchingLabels(map[string]string{
 			toolchainv1alpha1.TemplateRefLabelKey: templateRef,
 		})); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
 			return false, err
 		}
 		require.Len(t, objs.Items, 1)

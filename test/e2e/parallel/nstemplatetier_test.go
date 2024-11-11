@@ -20,6 +20,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	apiwait "k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -376,6 +377,46 @@ func TestFeatureToggles(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestTierTemplateRevision(t *testing.T) {
+	t.Parallel()
+
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+
+	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
+
+	// create new NSTemplateTiers (derived from `base`)
+	// for the tiertemplaterevisions to be created the tiertemplates need to have template objects populated
+	namespaceResourcesWithTemplateObjects := tiers.WithNamespaceResources(t, baseTier, func(template *toolchainv1alpha1.TierTemplate) error {
+		template.Spec.TemplateObjects = template.Spec.Template.Objects
+		return nil
+	})
+	clusterResroucesWithTemplateObjects := tiers.WithClusterResources(t, baseTier, func(template *toolchainv1alpha1.TierTemplate) error {
+		template.Spec.TemplateObjects = template.Spec.Template.Objects
+		return nil
+	})
+	spaceRolesWithTemplateObjects := tiers.WithSpaceRoles(t, baseTier, func(template *toolchainv1alpha1.TierTemplate) error {
+		template.Spec.TemplateObjects = template.Spec.Template.Objects
+		return nil
+	})
+	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResroucesWithTemplateObjects, spaceRolesWithTemplateObjects)
+
+	// verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
+	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
+	verifyStatus(t, hostAwait, "ttr", 1)
+	// check the expected total number of ttr matches
+	err = apiwait.Poll(hostAwait.RetryInterval, hostAwait.Timeout, func() (done bool, err error) {
+		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
+		if err := hostAwait.Client.List(context.TODO(), objs, client.InNamespace(hostAwait.Namespace)); err != nil {
+			return false, err
+		}
+		require.Len(t, objs.Items, 3) // expect one TTR per each tiertemplate ( clusterresource, namespace and spacerole )
+		return true, nil
+	})
+	require.NoError(t, err)
 }
 
 func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
