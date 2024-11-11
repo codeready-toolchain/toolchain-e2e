@@ -390,19 +390,14 @@ func TestTierTemplateRevision(t *testing.T) {
 
 	// create new NSTemplateTiers (derived from `base`)
 	// for the tiertemplaterevisions to be created the tiertemplates need to have template objects populated
-	namespaceResourcesWithTemplateObjects := tiers.WithNamespaceResources(t, baseTier, func(template *toolchainv1alpha1.TierTemplate) error {
+	updateTierTemplateObjects := func(template *toolchainv1alpha1.TierTemplate) error {
 		template.Spec.TemplateObjects = template.Spec.Template.Objects
 		return nil
-	})
-	clusterResroucesWithTemplateObjects := tiers.WithClusterResources(t, baseTier, func(template *toolchainv1alpha1.TierTemplate) error {
-		template.Spec.TemplateObjects = template.Spec.Template.Objects
-		return nil
-	})
-	spaceRolesWithTemplateObjects := tiers.WithSpaceRoles(t, baseTier, func(template *toolchainv1alpha1.TierTemplate) error {
-		template.Spec.TemplateObjects = template.Spec.Template.Objects
-		return nil
-	})
-	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResroucesWithTemplateObjects, spaceRolesWithTemplateObjects)
+	}
+	namespaceResourcesWithTemplateObjects := tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects)
+	clusterResourcesWithTemplateObjects := tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects)
+	spaceRolesWithTemplateObjects := tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects)
+	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResourcesWithTemplateObjects, spaceRolesWithTemplateObjects)
 
 	// verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated

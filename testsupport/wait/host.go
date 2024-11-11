@@ -1029,7 +1029,13 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		}
 		// if the tier template supports Tier Template Revisions then let's check those
 		if tierTemplateNamespaces.Spec.TemplateObjects != nil {
-			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateNamespaces.GetName()); err != nil {
+			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateNamespaces.GetName(), UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
+				{
+					APIVersion: tierTemplateNamespaces.APIVersion,
+					Kind:       tierTemplateNamespaces.Kind,
+					Name:       tierTemplateNamespaces.Name,
+				},
+			})); err != nil {
 				return nil, err
 			}
 		}
@@ -1044,7 +1050,13 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		}
 		// if the tier template supports Tier Template Revisions then let's check those
 		if tierTemplateClusterResources.Spec.TemplateObjects != nil {
-			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateClusterResources.GetName()); err != nil {
+			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateClusterResources.GetName(), UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
+				{
+					APIVersion: tierTemplateClusterResources.APIVersion,
+					Kind:       tierTemplateClusterResources.Kind,
+					Name:       tierTemplateClusterResources.Name,
+				},
+			})); err != nil {
 				return nil, err
 			}
 		}
@@ -1060,7 +1072,13 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		}
 		// if the tier template supports Tier Template Revisions then let's check those
 		if tierTemplateSpaceRoles.Spec.TemplateObjects != nil {
-			if _, err := a.WaitForTierTemplateRevision(t, r.TemplateRef); err != nil {
+			if _, err := a.WaitForTierTemplateRevision(t, r.TemplateRef, UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
+				{
+					APIVersion: tierTemplateSpaceRoles.APIVersion,
+					Kind:       tierTemplateSpaceRoles.Kind,
+					Name:       tierTemplateSpaceRoles.Name,
+				},
+			})); err != nil {
 				return nil, err
 			}
 		}
@@ -1092,27 +1110,96 @@ func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolch
 	return tierTemplate, err
 }
 
+// TierTemplateRevisionWaitCriterion a struct to compare with an expected TierTemplateRevision
+type TierTemplateRevisionWaitCriterion struct {
+	Match func(*toolchainv1alpha1.TierTemplateRevision) bool
+	Diff  func(*toolchainv1alpha1.TierTemplateRevision) string
+}
+
+func matchTierTemplateRevisionWaitCriterion(actual *toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) bool {
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find TierTemplateRevision\n")
+	} else {
+		buf.WriteString("failed to find TierTemplateRevision with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	// include also all TierTemplateRevisions in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{})
+
+	t.Log(buf.String())
+}
+
 // WaitForTierTemplateRevision waits until a TierTemplateRevision with the given labels to exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, templateRef string) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
+func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, templateRef string, criteria ...TierTemplateRevisionWaitCriterion) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
 	ttr := &toolchainv1alpha1.TierTemplateRevision{}
 	t.Logf("waiting until TierTemplateRevision for templateRef '%s' exists in namespace '%s'...", templateRef, a.Namespace)
 	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
 		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
-		if err := a.Client.List(context.TODO(), objs, client.InNamespace(a.Namespace), client.MatchingLabels(map[string]string{
+		err = a.Client.List(context.TODO(), objs, client.InNamespace(a.Namespace), client.MatchingLabels(map[string]string{
 			toolchainv1alpha1.TemplateRefLabelKey: templateRef,
-		})); err != nil {
+		}))
+		// no match found, print the diffs
+		if err != nil {
 			return false, err
 		}
 		require.Len(t, objs.Items, 1)
 		ttr = &objs.Items[0]
-		return true, nil
+		return matchTierTemplateRevisionWaitCriterion(ttr, criteria...), nil
 	})
 	// log message if an error occurred
 	if err != nil {
-		t.Logf("failed to find TierTemplateRevision templateRef '%s': %v", templateRef, err)
+		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttr, criteria...)
 	}
 	return ttr, err
+}
+
+// UntilTierTemplateRevisionsHasOwnerReferences verify that the TierTemplateRevision has the specified owner references
+func UntilTierTemplateRevisionsHasOwnerReferences(references []metav1.OwnerReference) TierTemplateRevisionWaitCriterion {
+	return TierTemplateRevisionWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.TierTemplateRevision) bool {
+			actualReferences := actual.GetOwnerReferences()
+			for _, actualRef := range actualReferences {
+				found := false
+				for _, expectedRef := range references {
+					if expectedRef.Name == actualRef.Name &&
+						expectedRef.APIVersion == actualRef.APIVersion &&
+						expectedRef.Kind == actualRef.Kind {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			}
+			return len(references) == len(actualReferences)
+		},
+		Diff: func(actual *toolchainv1alpha1.TierTemplateRevision) string {
+			return fmt.Sprintf("unable to find expected owner references: %v", references)
+		},
+	}
 }
 
 // NSTemplateTierWaitCriterion a struct to compare with an expected NSTemplateTier
