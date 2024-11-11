@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"net/http"
 	"net/url"
 	"os"
@@ -316,25 +317,84 @@ func TestProxyFlow(t *testing.T) {
 				})
 			})
 
-			t.Run("try to create a resource in an unauthorized namespace", func(t *testing.T) {
+			t.Run("get resource from namespace outside of user's workspace", func(t *testing.T) {
 				// given
-				appName := fmt.Sprintf("%s-proxy-test-app", user.username)
-				expectedApp := &appstudiov1.Application{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      appName,
-						Namespace: hostAwait.Namespace, // user should not be allowed to create a resource in the host operator namespace
-					},
-					Spec: appstudiov1.ApplicationSpec{
-						DisplayName: "Should be forbidden",
-					},
-				}
 
-				// when
-				proxyCl = user.createProxyClient(t, hostAwait)
+				// create a namespace which does not belong to the user's workspace
+				anotherNamespace := fmt.Sprintf("outside-%s", user.compliantUsername)
+				user.expectedMemberCluster.CreateNamespace(t, anotherNamespace)
 
-				// then
-				err := proxyCl.Create(context.TODO(), expectedApp)
-				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (post applications.appstudio.redhat.com)`, hostAwait.Namespace, user.compliantUsername))
+				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
+				explicitWorkspaceCtxClient, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // a client with a workspace context
+				require.NoError(t, err)
+				withoutWorkspaceCtxClient := user.createProxyClient(t, hostAwait) // a client with no workspace context
+
+				t.Run("fail when accessing unshared namespace", func(t *testing.T) {
+					cm := corev1.ConfigMap{}
+					t.Run("using explicit workspace context", func(t *testing.T) {
+						// when
+						// every namespace has a CM "kube-root-ca.crt" but we can't get it because the user doesn't have access to the namespace
+						err = explicitWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.EqualError(t, err, fmt.Sprintf(`configmaps "kube-root-ca.crt" is forbidden: User "%s" cannot get resource "configmaps" in API group "" in the namespace "%s"`, user.compliantUsername, anotherNamespace))
+					})
+					t.Run("not using any workspace context", func(t *testing.T) {
+						// when
+						// every namespace has a CM "kube-root-ca.crt" but we can't get it because the user doesn't have access to the namespace
+						err := withoutWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.EqualError(t, err, fmt.Sprintf(`configmaps "kube-root-ca.crt" is forbidden: User "%s" cannot get resource "configmaps" in API group "" in the namespace "%s"`, user.compliantUsername, anotherNamespace))
+					})
+				})
+
+				t.Run("success when accessing shared namespace", func(t *testing.T) {
+					// when
+					// grand all authenticated users view access to the namespace
+					rb := rbacv1.RoleBinding{
+						TypeMeta: metav1.TypeMeta{
+							Kind: "RoleBinding",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "authenticated-view",
+							Namespace: anotherNamespace,
+						},
+						RoleRef: rbacv1.RoleRef{
+							APIGroup: "rbac.authorization.k8s.io",
+							Kind:     "ClusterRole",
+							Name:     "view",
+						},
+						Subjects: []rbacv1.Subject{
+							{
+								Kind:     "Group",
+								APIGroup: "rbac.authorization.k8s.io",
+								Name:     "system:authenticated",
+							},
+						},
+					}
+					err := user.expectedMemberCluster.Create(t, &rb)
+					require.NoError(t, err)
+					_, err = user.expectedMemberCluster.WaitForRoleBinding(t, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: rb.Namespace}}, rb.Name)
+					require.NoError(t, err)
+
+					t.Run("using explicit workspace context", func(t *testing.T) {
+						// when
+						cm := corev1.ConfigMap{}
+						// every namespace has a CM "kube-root-ca.crt", let's get it and check that it's actually from the shared namespace
+						err = explicitWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.NoError(t, err)
+						assert.Equal(t, anotherNamespace, cm.Namespace)
+					})
+					t.Run("not using any workspace context", func(t *testing.T) {
+						// when
+						cm := corev1.ConfigMap{}
+						// every namespace has a CM "kube-root-ca.crt", let's get it and check that it's actually from the shared namespace
+						err := withoutWorkspaceCtxClient.Get(context.TODO(), types.NamespacedName{Namespace: anotherNamespace, Name: "kube-root-ca.crt"}, &cm)
+						// then
+						require.NoError(t, err)
+						assert.Equal(t, anotherNamespace, cm.Namespace)
+					})
+				})
 			})
 
 			t.Run("unable to create a resource in the other users namespace because the workspace is not shared", func(t *testing.T) {
@@ -363,7 +423,6 @@ func TestProxyFlow(t *testing.T) {
 				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
 				require.NoError(t, err)
 				err = proxyCl.Create(context.TODO(), appToCreate)
-
 				// Sep 26 2024
 				// As mentioned in the issue -https://github.com/kubernetes-sigs/controller-runtime/issues/2354 introduced in controller-runtime v0.15
 				// for this test, instead of expecting the NoMatchError, discovery client fails and returns a server list error like 'failed to get API group resources: unable to retrieve the complete list of server APIs'
@@ -569,9 +628,10 @@ func TestProxyFlow(t *testing.T) {
 			require.NotEmpty(t, createdApp)
 			assert.Equal(t, expectedApp.Spec.DisplayName, createdApp.Spec.DisplayName)
 
-			t.Run("request for namespace that doesn't belong to workspace context should fail", func(t *testing.T) {
-				// In this test the guest user has access to the primary user's namespace since the primary user's workspace has been shared, but if they specify the wrong
-				// workspace context (guest user's workspace context) the request should fail. In order for proxy requests to succeed the namespace must belong to the workspace.
+			t.Run("request for shared namespace that doesn't belong to workspace context should succeed", func(t *testing.T) {
+				// In this test the guest user has access to the primary user's namespace since the primary user's workspace has been shared,
+				// and proxy should forward the request even if the namespace does not belong to the workspace.
+				// It's up to the API server to check user's permissions. Not the proxy.
 
 				// given
 				workspaceName := guestUser.compliantUsername // guestUser's workspace
@@ -584,7 +644,8 @@ func TestProxyFlow(t *testing.T) {
 				err = guestUserGuestWsCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp) // primaryUser's namespace
 
 				// then
-				require.EqualError(t, err, fmt.Sprintf(`invalid workspace request: access to namespace '%s' in workspace '%s' is forbidden (get applications.appstudio.redhat.com %s)`, primaryUserNamespace, workspaceName, applicationName))
+				require.NoError(t, err)
+				assert.Equal(t, primaryUserNamespace, actualApp.Namespace)
 			})
 		})
 
