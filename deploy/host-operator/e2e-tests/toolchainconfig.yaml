@@ -15,7 +15,8 @@ spec:
           segmentWriteKey: 'test devspaces segment write key'
         segmentWriteKey: 'test sandbox segment write key'
       environment: 'e2e-tests'
-      replicas: 2
+      # same number that is set in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/registration-service/registration-service.yaml#L272-L273
+      replicas: 3
       verification:
         enabled: true
         excludedEmailDomains: 'redhat.com,acme.com'
