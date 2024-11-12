@@ -9,7 +9,7 @@ import (
 
 func TestSetupMigration(t *testing.T) {
 	// given
-	awaitilities := WaitForOperators(t)
+	awaitilities := WaitForOperators(t, IsSecondMemberMode(t))
 
 	runner := migration.SetupMigrationRunner{
 		Awaitilities: awaitilities,
