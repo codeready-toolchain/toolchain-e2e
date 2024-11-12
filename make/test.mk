@@ -164,7 +164,7 @@ execute-tests:
 	@echo "Status of ToolchainStatus"
 	-oc get ToolchainStatus -n ${HOST_NS} -o yaml
 	@echo "Starting test $(shell date)"
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -v -timeout=90m -failfast || \
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} SECOND_MEMBER_MODE=true go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -v -timeout=90m -failfast || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
