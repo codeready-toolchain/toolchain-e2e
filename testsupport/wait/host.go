@@ -1031,8 +1031,8 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if tierTemplateNamespaces.Spec.TemplateObjects != nil {
 			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateNamespaces.GetName(), UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
 				{
-					APIVersion: tierTemplateNamespaces.APIVersion,
-					Kind:       tierTemplateNamespaces.Kind,
+					APIVersion: "toolchain.dev.openshift.com/v1alpha1", // for some reason, the apiversion and kind are empty on the CR
+					Kind:       "TierTemplate",
 					Name:       tierTemplateNamespaces.Name,
 				},
 			})); err != nil {
@@ -1052,8 +1052,8 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if tierTemplateClusterResources.Spec.TemplateObjects != nil {
 			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateClusterResources.GetName(), UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
 				{
-					APIVersion: tierTemplateClusterResources.APIVersion,
-					Kind:       tierTemplateClusterResources.Kind,
+					APIVersion: "toolchain.dev.openshift.com/v1alpha1", // for some reason, the apiversion and kind are empty on the CR
+					Kind:       "TierTemplate",
 					Name:       tierTemplateClusterResources.Name,
 				},
 			})); err != nil {
@@ -1074,8 +1074,8 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if tierTemplateSpaceRoles.Spec.TemplateObjects != nil {
 			if _, err := a.WaitForTierTemplateRevision(t, r.TemplateRef, UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
 				{
-					APIVersion: tierTemplateSpaceRoles.APIVersion,
-					Kind:       tierTemplateSpaceRoles.Kind,
+					APIVersion: "toolchain.dev.openshift.com/v1alpha1", // for some reason, the apiversion and kind are empty on the CR
+					Kind:       "TierTemplate",
 					Name:       tierTemplateSpaceRoles.Name,
 				},
 			})); err != nil {
