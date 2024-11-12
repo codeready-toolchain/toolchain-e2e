@@ -46,20 +46,20 @@ var (
 // and corresponding ToolchainCluster CRDs are present, running and ready. Based on the given cluster type that represents the current operator that is the target of
 // the e2e test it retrieves namespace names. Also waits for the registration service to be deployed (with 3 replica)
 // Returns the test context and an instance of Awaitility that contains all necessary information
-func WaitForOperators(t *testing.T, isSecondMemberMode bool) wait.Awaitilities {
+func WaitForOperators(t *testing.T) wait.Awaitilities {
 	initOnce.Do(func() {
-		waitForOperators(t, isSecondMemberMode)
+		waitForOperators(t)
 	})
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
-func waitForOperators(t *testing.T, isSecondMemberMode bool) {
+func waitForOperators(t *testing.T) {
 	memberNs := os.Getenv(wait.MemberNsVar)
 	memberNs2 := os.Getenv(wait.MemberNsVar2)
 	hostNs := os.Getenv(wait.HostNsVar)
 	registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
 	t.Logf("Host Operator namespace: %s", hostNs)
 	t.Logf("Member1 Operator namespace: %s", memberNs)
-	if isSecondMemberMode {
+	if IsSecondMemberMode(t) {
 		t.Logf("Member2 Operator namespace: %s", memberNs2)
 	}
 	t.Logf("Registration Service namespace: %s", registrationServiceNs)
@@ -102,7 +102,7 @@ func waitForOperators(t *testing.T, isSecondMemberMode bool) {
 	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 
-	if isSecondMemberMode {
+	if IsSecondMemberMode(t) {
 		initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
 
 		_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
@@ -182,10 +182,8 @@ func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Con
 // The primary reason for separation is because the migration tests are for testing host operator and member operator changes related to Spaces, NSTemplateTiers, etc.
 // Webhooks and autoscaling buffers do not deal with the same set of resources so they can be verified independently of migration tests
 func WaitForDeployments(t *testing.T) wait.Awaitilities {
-	isSecondMemberMode := IsSecondMemberMode(t)
-
 	initOnce.Do(func() {
-		waitForOperators(t, isSecondMemberMode)
+		waitForOperators(t)
 		// wait for host and member operators to be ready
 		registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
 
@@ -214,7 +212,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// Also verify the autoscaling buffer in both members
 		webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
 		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
-		if isSecondMemberMode {
+		if IsSecondMemberMode(t) {
 			err = initMember2Await.WaitUntilWebhookDeleted(t) // webhook on member2 should be deleted
 			require.NoError(t, err)
 		}
@@ -222,7 +220,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 
 		// wait for autoscaler buffer apps
 		initMemberAwait.WaitForAutoscalingBufferApp(t)
-		if isSecondMemberMode {
+		if IsSecondMemberMode(t) {
 			initMember2Await.WaitForAutoscalingBufferApp(t)
 		}
 
@@ -237,7 +235,7 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		require.NoError(t, err)
 	})
 
-	if !isSecondMemberMode {
+	if !IsSecondMemberMode(t) {
 		return wait.NewAwaitilities(initHostAwait, initMemberAwait)
 	}
 
