@@ -153,9 +153,11 @@ All e2e resources (host operator, member operator, registration-service, CRDs, e
 
 * `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
 
-By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
+NOTE: By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 
 NOTE: If running in CodeReady Containers `eval $(crc oc-env)` is required.
+
+NOTE: By default, `SECOND_MEMBER_MODE` is set to false.
 
 == How to Test Mailgun/Twilio Notifications in a Dev Environment
 * Get a cluster and setup the following env vars
