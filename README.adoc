@@ -70,7 +70,7 @@ NOTE: you can disable SSL/TLS certificate verification in tests setting the `DIS
 
 NOTE: you can specify a regular expression to selectively run particular test cases by setting the `TESTS_RUN_FILTER_REGEXP` variable. eg.: `make test-e2e TESTS_RUN_FILTER_REGEXP="TestSetupMigration"`. For more information see the https://pkg.go.dev/cmd/go#hdr-Testing_flags[go test -run documentation].
 
-NOTE: you should not override `SECOND_MEMBER_MODE` in test-e2e, since the e2e tests require a second member operator.
+NOTE: you should not override `SECOND_MEMBER_MODE` in test-e2e, since the some e2e tests require a second member operator.
 
 === Running/Debugging e2e tests from your IDE
 
@@ -99,6 +99,7 @@ import (
 
 func TestCreateSpaceRequest(t *testing.T) {
 	os.Setenv("MEMBER_NS","toolchain-member-18161051")
+	os.Setenv("SECOND_MEMBER_MODE","true")
 	os.Setenv("MEMBER_NS_2","toolchain-member2-18161051")
 	os.Setenv("HOST_NS","toolchain-host-18161051")
 	os.Setenv("REGISTRATION_SERVICE_NS","toolchain-host-18161051")
