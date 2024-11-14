@@ -44,6 +44,7 @@ const (
 	DefaultTimeout                   = time.Second * 120
 	MemberNsVar                      = "MEMBER_NS"
 	MemberNsVar2                     = "MEMBER_NS_2"
+	SecondMemberModeVar              = "SECOND_MEMBER_MODE"
 	HostNsVar                        = "HOST_NS"
 	RegistrationServiceVar           = "REGISTRATION_SERVICE_NS"
 	ToolchainClusterConditionTimeout = 180 * time.Second
