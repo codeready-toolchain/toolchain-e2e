@@ -35,7 +35,7 @@ deploy-e2e-to-dev-namespaces-two-members:
 
 setup-dev-sso:
 	if [[ "${DEV_SSO}" == "true" ]]; then \
-		scripts/ci/setup-dev-sso.sh "--sso-ns $(DEV_SSO_NS)"; \
+		scripts/ci/setup-dev-sso.sh --sso-ns $(DEV_SSO_NS); \
 	fi
 
 .PHONY: dev-deploy-e2e-local
