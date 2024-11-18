@@ -7,7 +7,7 @@ else
 fi
 
 WAS_ALREADY_PAIRED_FILE=/tmp/toolchain_e2e_already_paired
-OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION:-codeready-toolchain/toolchain-cicd/master}
+OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION:-codeready-toolchain/toolchain-e2e/master}
 
 get_repo() {
     PAIRED=false
