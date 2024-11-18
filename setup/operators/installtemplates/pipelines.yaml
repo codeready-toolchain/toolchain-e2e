@@ -9,7 +9,7 @@ objects:
       name: openshift-pipelines-operator-rh
       namespace: ${PIPELINES_OPERATOR_NAMESPACE}
     spec:
-      channel: pipelines-1.11
+      channel: pipelines-1.15
       installPlanApproval: Automatic
       name: openshift-pipelines-operator-rh
       source: redhat-operators
