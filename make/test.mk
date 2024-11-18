@@ -323,7 +323,7 @@ ifeq ($(DEPLOY_LATEST),true)
    endif
 else
 	@echo "Installing specific version of the member-operator"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-member-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}"
+	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}
 endif
 
 .PHONY: get-and-publish-host-operator
@@ -348,7 +348,7 @@ ifeq ($(DEPLOY_LATEST),true)
 	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
 else
 	@echo "Installing specific version of the host-operator"
-	$(MAKE) run-cicd-script SCRIPT_PATH=scripts/ci/manage-host-operator.sh SCRIPT_PARAMS="-po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}"
+	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}
 endif
 
 ###########################################################
