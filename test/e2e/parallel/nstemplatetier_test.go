@@ -403,9 +403,9 @@ func TestTierTemplateRevision(t *testing.T) {
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
 	verifyStatus(t, hostAwait, "ttr", 1)
 	// check the expected total number of ttr matches
-	err = apiwait.Poll(hostAwait.RetryInterval, hostAwait.Timeout, func() (done bool, err error) {
+	err = apiwait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
-		if err := hostAwait.Client.List(context.TODO(), objs, client.InNamespace(hostAwait.Namespace)); err != nil {
+		if err := hostAwait.Client.List(ctx, objs, client.InNamespace(hostAwait.Namespace)); err != nil {
 			return false, err
 		}
 		require.Len(t, objs.Items, 3) // expect one TTR per each tiertemplate ( clusterresource, namespace and spacerole )

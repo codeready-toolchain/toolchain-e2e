@@ -1155,9 +1155,9 @@ func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.
 func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, templateRef string, criteria ...TierTemplateRevisionWaitCriterion) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
 	ttr := &toolchainv1alpha1.TierTemplateRevision{}
 	t.Logf("waiting until TierTemplateRevision for templateRef '%s' exists in namespace '%s'...", templateRef, a.Namespace)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
-		err = a.Client.List(context.TODO(), objs, client.InNamespace(a.Namespace), client.MatchingLabels(map[string]string{
+		err = a.Client.List(ctx, objs, client.InNamespace(a.Namespace), client.MatchingLabels(map[string]string{
 			toolchainv1alpha1.TemplateRefLabelKey: templateRef,
 		}))
 		// no match found, print the diffs
