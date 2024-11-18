@@ -59,7 +59,9 @@ func waitForOperators(t *testing.T) {
 	registrationServiceNs := os.Getenv(wait.RegistrationServiceVar)
 	t.Logf("Host Operator namespace: %s", hostNs)
 	t.Logf("Member1 Operator namespace: %s", memberNs)
-	t.Logf("Member2 Operator namespace: %s", memberNs2)
+	if IsSecondMemberMode(t) {
+		t.Logf("Member2 Operator namespace: %s", memberNs2)
+	}
 	t.Logf("Registration Service namespace: %s", registrationServiceNs)
 
 	apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
@@ -97,14 +99,15 @@ func waitForOperators(t *testing.T) {
 	// wait for member operators to be ready
 	initMemberAwait = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs)
 
-	initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
-
 	_, err = initMemberAwait.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
 	require.NoError(t, err)
 
-	_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
-	require.NoError(t, err)
+	if IsSecondMemberMode(t) {
+		initMember2Await = getMemberAwaitility(t, initHostAwait, kubeconfig, memberNs2)
 
+		_, err = initMember2Await.WaitForToolchainClusterWithCondition(t, initHostAwait.Namespace, toolchainv1alpha1.ConditionReady)
+		require.NoError(t, err)
+	}
 	t.Log("all operators are ready and in running state")
 }
 
@@ -209,13 +212,17 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// Also verify the autoscaling buffer in both members
 		webhookImage := initMemberAwait.GetContainerEnv(t, "MEMBER_OPERATOR_WEBHOOK_IMAGE")
 		require.NotEmpty(t, webhookImage, "The value of the env var MEMBER_OPERATOR_WEBHOOK_IMAGE wasn't found in the deployment of the member operator.")
-		err = initMember2Await.WaitUntilWebhookDeleted(t) // webhook on member2 should be deleted
-		require.NoError(t, err)
+		if IsSecondMemberMode(t) {
+			err = initMember2Await.WaitUntilWebhookDeleted(t) // webhook on member2 should be deleted
+			require.NoError(t, err)
+		}
 		initMemberAwait.WaitForMemberWebhooks(t, webhookImage)
 
 		// wait for autoscaler buffer apps
-		//initMemberAwait.WaitForAutoscalingBufferApp(t)
-		//initMember2Await.WaitForAutoscalingBufferApp(t)
+		initMemberAwait.WaitForAutoscalingBufferApp(t)
+		if IsSecondMemberMode(t) {
+			initMember2Await.WaitForAutoscalingBufferApp(t)
+		}
 
 		// check that the tier exists, and all its namespace other cluster-scoped resource revisions
 		// are different from `000000a` which is the value specified in the initial manifest (used for base tier)
@@ -227,6 +234,10 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		err = initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
 		require.NoError(t, err)
 	})
+
+	if !IsSecondMemberMode(t) {
+		return wait.NewAwaitilities(initHostAwait, initMemberAwait)
+	}
 
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
@@ -262,4 +273,11 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
+}
+
+func IsSecondMemberMode(t *testing.T) bool {
+	secondMemberMode := os.Getenv(wait.SecondMemberModeVar)
+	require.NotEmpty(t, secondMemberMode)
+
+	return secondMemberMode == "true"
 }

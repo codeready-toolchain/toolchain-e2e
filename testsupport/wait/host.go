@@ -146,7 +146,7 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 func (a *HostAwaitility) WaitForMasterUserRecord(t *testing.T, name string, criteria ...MasterUserRecordWaitCriterion) (*toolchainv1alpha1.MasterUserRecord, error) {
 	t.Logf("waiting for MasterUserRecord '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var mur *toolchainv1alpha1.MasterUserRecord
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -191,7 +191,7 @@ func (a *HostAwaitility) UpdateMasterUserRecordStatus(t *testing.T, murName stri
 // Returns the updated MasterUserRecord
 func (a *HostAwaitility) UpdateMasterUserRecord(t *testing.T, status bool, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
 	var m *toolchainv1alpha1.MasterUserRecord
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshMur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: murName}, freshMur); err != nil {
 			return true, err
@@ -219,7 +219,7 @@ func (a *HostAwaitility) UpdateMasterUserRecord(t *testing.T, status bool, murNa
 // Returns the updated UserSignup
 func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshUserSignup := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userSignupName}, freshUserSignup); err != nil {
 			return true, err
@@ -241,7 +241,7 @@ func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, m
 // Returns the updated Space
 func (a *HostAwaitility) UpdateSpace(t *testing.T, spaceName string, modifySpace func(s *toolchainv1alpha1.Space)) (*toolchainv1alpha1.Space, error) {
 	var s *toolchainv1alpha1.Space
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshSpace := &toolchainv1alpha1.Space{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceName}, freshSpace); err != nil {
 			return true, err
@@ -262,7 +262,7 @@ func (a *HostAwaitility) UpdateSpace(t *testing.T, spaceName string, modifySpace
 // Returns the updated SpaceBinding
 func (a *HostAwaitility) UpdateSpaceBinding(t *testing.T, spaceBindingName string, modifySpaceBinding func(s *toolchainv1alpha1.SpaceBinding)) (*toolchainv1alpha1.SpaceBinding, error) {
 	var s *toolchainv1alpha1.SpaceBinding
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshSpaceBinding := &toolchainv1alpha1.SpaceBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceBindingName}, freshSpaceBinding); err != nil {
 			return true, err
@@ -656,7 +656,7 @@ func UntilUserSignupHasCompliantUsername() UserSignupWaitCriterion {
 func (a *HostAwaitility) WaitForTestResourcesCleanup(t *testing.T, initialDelay time.Duration) error {
 	t.Logf("waiting for resource cleanup")
 	time.Sleep(initialDelay)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		usList := &toolchainv1alpha1.UserSignupList{}
 		if err := a.Client.List(context.TODO(), usList, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
@@ -724,7 +724,7 @@ func (a *HostAwaitility) WaitForTestResourcesCleanup(t *testing.T, initialDelay 
 func (a *HostAwaitility) WaitForUserSignup(t *testing.T, name string, criteria ...UserSignupWaitCriterion) (*toolchainv1alpha1.UserSignup, error) {
 	t.Logf("waiting for UserSignup '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -747,7 +747,7 @@ func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(t *testing.T, user
 	t.Logf("waiting for UserSignup '%s' or '%s' in namespace '%s' to match criteria", userID, username, a.Namespace)
 	encodedUsername := EncodeUserIdentifier(username)
 	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userID}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -775,7 +775,7 @@ func (a *HostAwaitility) WaitForUserSignupByUserIDAndUsername(t *testing.T, user
 func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(t *testing.T, name string) {
 	t.Logf("waiting and verifying that UserSignup '%s' in namespace '%s' is not created", name, a.Namespace)
 	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -796,7 +796,7 @@ func (a *HostAwaitility) WaitForBannedUser(t *testing.T, email string) (*toolcha
 	t.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
 	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email)}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
 		if err = a.Client.List(context.TODO(), bannedUserList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
 			if len(bannedUserList.Items) == 0 {
@@ -830,7 +830,7 @@ func (a *HostAwaitility) DeleteToolchainStatus(t *testing.T, name string) error 
 // WaitUntilBannedUserDeleted waits until the BannedUser with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilBannedUserDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until BannedUser '%s' in namespace '%s' is deleted", name, a.Namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		user := &toolchainv1alpha1.BannedUser{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
@@ -845,7 +845,7 @@ func (a *HostAwaitility) WaitUntilBannedUserDeleted(t *testing.T, name string) e
 // WaitUntilUserSignupDeleted waits until the UserSignup with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilUserSignupDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until UserSignup '%s' in namespace '%s is deleted", name, a.Namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		userSignup := &toolchainv1alpha1.UserSignup{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, userSignup); err != nil {
 			if errors.IsNotFound(err) {
@@ -860,7 +860,7 @@ func (a *HostAwaitility) WaitUntilUserSignupDeleted(t *testing.T, name string) e
 // WaitUntilMasterUserRecordAndSpaceBindingsDeleted waits until the MUR with the given name and its associated SpaceBindings are deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
@@ -879,7 +879,7 @@ func (a *HostAwaitility) WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t *tes
 // CheckMasterUserRecordIsDeleted checks that the MUR with the given name is not present and won't be created in the next 2 seconds
 func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(t *testing.T, name string) {
 	t.Logf("checking that MasterUserRecord '%s' in namespace '%s' is deleted", name, a.Namespace)
-	err := wait.Poll(a.RetryInterval, 2*time.Second, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
@@ -889,7 +889,7 @@ func (a *HostAwaitility) CheckMasterUserRecordIsDeleted(t *testing.T, name strin
 		}
 		return false, fmt.Errorf("the MasterUserRecord '%s' should not be present, but it is", name)
 	})
-	require.Equal(t, wait.ErrWaitTimeout, err)
+	require.Equal(t, context.DeadlineExceeded, err)
 }
 
 func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusEmbedded, uaStatus toolchainv1alpha1.UserAccountStatusEmbedded) bool {
@@ -906,7 +906,7 @@ func containsUserAccountStatus(uaStatuses []toolchainv1alpha1.UserAccountStatusE
 func (a *HostAwaitility) WaitForUserTier(t *testing.T, name string, criteria ...UserTierWaitCriterion) (*toolchainv1alpha1.UserTier, error) {
 	t.Logf("waiting until UserTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
 	tier := &toolchainv1alpha1.UserTier{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.UserTier{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
@@ -990,7 +990,7 @@ func (a *HostAwaitility) WaitUntilBaseNSTemplateTierIsUpdated(t *testing.T) erro
 func (a *HostAwaitility) WaitForNSTemplateTier(t *testing.T, name string, criteria ...NSTemplateTierWaitCriterion) (*toolchainv1alpha1.NSTemplateTier, error) {
 	t.Logf("waiting until NSTemplateTier '%s' in namespace '%s' matches criteria", name, a.Namespace)
 	tier := &toolchainv1alpha1.NSTemplateTier{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateTier{}
 		err = a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj)
 		if err != nil && !errors.IsNotFound(err) {
@@ -1092,7 +1092,7 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolchainv1alpha1.TierTemplate, error) { // nolint:unparam
 	tierTemplate := &toolchainv1alpha1.TierTemplate{}
 	t.Logf("waiting until TierTemplate '%s' exists in namespace '%s'...", name, a.Namespace)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.TierTemplate{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1354,7 +1354,7 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(t *testing.T, actua
 func (a *HostAwaitility) WaitForNotifications(t *testing.T, username, notificationType string, numberOfNotifications int, criteria ...NotificationWaitCriterion) ([]toolchainv1alpha1.Notification, error) {
 	t.Logf("waiting for notifications to match criteria for user '%s'", username)
 	var notifications []toolchainv1alpha1.Notification
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
@@ -1378,7 +1378,7 @@ func (a *HostAwaitility) WaitForNotifications(t *testing.T, username, notificati
 func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationName, notificationType string, criteria ...NotificationWaitCriterion) (toolchainv1alpha1.Notification, error) {
 	t.Logf("waiting for notification with name '%s'", notificationName)
 	notification := &toolchainv1alpha1.Notification{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		notification = &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
 			if errors.IsNotFound(err) {
@@ -1405,7 +1405,7 @@ func (a *HostAwaitility) WaitForNotificationWithName(t *testing.T, notificationN
 func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notificationName string) error {
 	t.Logf("waiting to check notification with name '%s' is NOT created", notificationName)
 	notification := &toolchainv1alpha1.Notification{}
-	err := wait.Poll(a.RetryInterval, 10*time.Second, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 10*time.Second, true, func(ctx context.Context) (done bool, err error) {
 		notification = &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
 			if errors.IsNotFound(err) {
@@ -1418,7 +1418,7 @@ func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notific
 	if err == nil {
 		return fmt.Errorf("notification '%s' was found, but it was expected to not be created/present: \n %v", notificationName, notification)
 	}
-	if goerr.Is(err, wait.ErrWaitTimeout) {
+	if goerr.Is(err, context.DeadlineExceeded) {
 		return nil
 	}
 	return err
@@ -1427,7 +1427,7 @@ func (a *HostAwaitility) WaitForNotificationToNotBeCreated(t *testing.T, notific
 // WaitUntilNotificationsDeleted waits until the Notification for the given user is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilNotificationsDeleted(t *testing.T, username, notificationType string) error {
 	t.Logf("waiting until notifications have been deleted for user '%s'", username)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		labels := map[string]string{toolchainv1alpha1.NotificationUserNameLabelKey: username, toolchainv1alpha1.NotificationTypeLabelKey: notificationType}
 		opts := client.MatchingLabels(labels)
 		notificationList := &toolchainv1alpha1.NotificationList{}
@@ -1441,7 +1441,7 @@ func (a *HostAwaitility) WaitUntilNotificationsDeleted(t *testing.T, username, n
 // WaitUntilNotificationWithNameDeleted waits until the Notification with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilNotificationWithNameDeleted(t *testing.T, notificationName string) error {
 	t.Logf("waiting for notification with name '%s' to get deleted", notificationName)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		notification := &toolchainv1alpha1.Notification{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: notificationName, Namespace: a.Namespace}, notification); err != nil {
 			if errors.IsNotFound(err) {
@@ -1634,7 +1634,7 @@ func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...Toolch
 	// there should only be one toolchain status with the name toolchain-status
 	name := "toolchain-status"
 	toolchainStatus := &toolchainv1alpha1.ToolchainStatus{}
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.ToolchainStatus{}
 		// retrieve the toolchainstatus from the host namespace
 		err = a.Client.Get(context.TODO(),
@@ -1660,7 +1660,7 @@ func (a *HostAwaitility) WaitForToolchainStatus(t *testing.T, criteria ...Toolch
 }
 
 func (a *HostAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -1800,7 +1800,7 @@ func (a *HostAwaitility) WaitForToolchainConfig(t *testing.T, criteria ...Toolch
 	// there should only be one ToolchainConfig with the name "config"
 	name := "config"
 	var toolchainConfig *toolchainv1alpha1.ToolchainConfig
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.ToolchainConfig{}
 		// retrieve the ToolchainConfig from the host namespace
 		if err := a.Client.Get(context.TODO(),
@@ -1891,7 +1891,7 @@ func (a *HostAwaitility) UpdateToolchainConfig(t *testing.T, options ...testconf
 // resource periodically which can cause errors like `Operation cannot be fulfilled on toolchainconfigs.toolchain.dev.openshift.com "config": the object has been modified; please apply your changes to the latest version and try again`
 // in some cases. Retrying mitigates the potential for test flakiness due to this behaviour.
 func (a *HostAwaitility) updateToolchainConfigWithRetry(t *testing.T, updatedConfig *toolchainv1alpha1.ToolchainConfig) error {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		config := a.GetToolchainConfig(t)
 		config.Spec = updatedConfig.Spec
 		if err := a.Client.Update(context.TODO(), config); err != nil {
@@ -1942,7 +1942,7 @@ func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, userToken, proxyURL 
 	// updated yet and we try to create the client too quickly so retry to reduce flakiness.
 	var proxyCl client.Client
 	var initProxyClError error
-	waitErr := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		proxyCl, initProxyClError = client.New(proxyKubeConfig, client.Options{Scheme: s})
 		return initProxyClError == nil, nil
 	})
@@ -1978,7 +1978,7 @@ func matchSpaceWaitCriterion(actual *toolchainv1alpha1.Space, criteria ...SpaceW
 func (a *HostAwaitility) WaitForSpace(t *testing.T, name string, criteria ...SpaceWaitCriterion) (*toolchainv1alpha1.Space, error) {
 	t.Logf("waiting for Space '%s' with matching criteria", name)
 	var space *toolchainv1alpha1.Space
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
 		// retrieve the Space from the host namespace
 		if err := a.Client.Get(context.TODO(),
@@ -2005,7 +2005,7 @@ func (a *HostAwaitility) WaitForSpace(t *testing.T, name string, criteria ...Spa
 func (a *HostAwaitility) WaitForProxyPlugin(t *testing.T, name string) (*toolchainv1alpha1.ProxyPlugin, error) {
 	t.Logf("waiting for ProxyPlugin %q", name)
 	var proxyPlugin *toolchainv1alpha1.ProxyPlugin
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.ProxyPlugin{}
 		if err = a.Client.Get(context.TODO(),
 			types.NamespacedName{
@@ -2260,7 +2260,7 @@ func UntilSpaceHasStatusTargetCluster(expected string) SpaceWaitCriterion {
 func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until Space '%s' in namespace '%s' is deleted", name, a.Namespace)
 	var s *toolchainv1alpha1.Space
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.Space{}
 		if err := a.Client.Get(context.TODO(),
 			types.NamespacedName{
@@ -2289,7 +2289,7 @@ func (a *HostAwaitility) WaitUntilSpaceAndSpaceBindingsDeleted(t *testing.T, nam
 
 // WaitUntilSpaceBindingDeleted waits until the SpaceBinding with the given name is deleted (ie, not found)
 func (a *HostAwaitility) WaitUntilSpaceBindingDeleted(name string) error {
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		mur := &toolchainv1alpha1.SpaceBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, mur); err != nil {
 			if errors.IsNotFound(err) {
@@ -2306,7 +2306,7 @@ func (a *HostAwaitility) WaitUntilSpaceBindingsWithLabelDeleted(t *testing.T, ke
 	labels := map[string]string{key: value}
 	t.Logf("waiting until SpaceBindings with labels '%v' in namespace '%s' are deleted", labels, a.Namespace)
 	var spaceBindingList *toolchainv1alpha1.SpaceBindingList
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		// retrieve the SpaceBinding from the host namespace
 		spaceBindingList = &toolchainv1alpha1.SpaceBindingList{}
 		if err = a.Client.List(context.TODO(), spaceBindingList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
@@ -2350,7 +2350,7 @@ func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRe
 		toolchainv1alpha1.ParentSpaceLabelKey:           parentSpaceName,
 	}
 
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		// retrieve the subSpace from the host namespace
 		spaceList := &toolchainv1alpha1.SpaceList{}
 		if err = a.Client.List(context.TODO(), spaceList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
@@ -2376,7 +2376,7 @@ func (a *HostAwaitility) WaitForSubSpace(t *testing.T, spaceRequestName, spaceRe
 func (a *HostAwaitility) WaitForSpaceBinding(t *testing.T, murName, spaceName string, criteria ...SpaceBindingWaitCriterion) (*toolchainv1alpha1.SpaceBinding, error) {
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (bool, error) {
 		// retrieve the SpaceBinding from the host namespace
 		var err error
 		if spaceBinding, err = a.GetSpaceBindingByListing(murName, spaceName); err != nil {
@@ -2546,7 +2546,7 @@ func matchSocialEventWaitCriterion(actual *toolchainv1alpha1.SocialEvent, criter
 func (a *HostAwaitility) WaitForSocialEvent(t *testing.T, name string, criteria ...SocialEventWaitCriterion) (*toolchainv1alpha1.SocialEvent, error) {
 	t.Logf("waiting for SocialEvent '%s' in namespace '%s' to match criteria", name, a.Namespace)
 	var event *toolchainv1alpha1.SocialEvent
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.SocialEvent{}
 		// retrieve the Space from the host namespace
 		if err := a.Client.Get(context.TODO(),
@@ -2657,7 +2657,7 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 	var spaceBinding *toolchainv1alpha1.SpaceBinding
 	var spaceCreated *toolchainv1alpha1.Space
 	testutil.LogWithTimestamp(t, fmt.Sprintf("Creating Space %s (prefix: %s) and SpaceBinding with role %s for %s", space.Name, space.GenerateName, spaceRole, mur.Name))
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		// create the space
 		spaceToCreate := space.DeepCopy()
 		if err := a.Create(spaceToCreate); err != nil {
