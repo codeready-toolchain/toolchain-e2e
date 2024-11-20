@@ -81,6 +81,21 @@ func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, m
 	}
 }
 
+func WithParameter(name, value string) CustomNSTemplateTierModifier {
+	return func(hostAwait *HostAwaitility, tier *CustomNSTemplateTier) error {
+		if tier.Spec.Parameters == nil {
+			tier.Spec.Parameters = []toolchainv1alpha1.Parameter{}
+		}
+		tier.Spec.Parameters = append(tier.Spec.Parameters,
+			toolchainv1alpha1.Parameter{
+				Name:  name,
+				Value: value,
+			},
+		)
+		return nil
+	}
+}
+
 // CreateCustomNSTemplateTier creates a custom tier.
 // If no modifiers provided then the new tier will use copies of the baseTier cluster, namespace and space roles templates
 // without any modifications.

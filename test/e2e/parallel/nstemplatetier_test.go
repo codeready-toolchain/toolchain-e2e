@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gofrs/uuid"
@@ -382,33 +383,55 @@ func TestFeatureToggles(t *testing.T) {
 func TestTierTemplateRevision(t *testing.T) {
 	t.Parallel()
 
+	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-
+	// we create new NSTemplateTiers (derived from `base`)
 	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
 	require.NoError(t, err)
-
-	// create new NSTemplateTiers (derived from `base`)
 	// for the tiertemplaterevisions to be created the tiertemplates need to have template objects populated
+	// we add the RawExtension objects to the TemplateObjects field
+	ns := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"kind": "Namespace",
+			"metadata": map[string]interface{}{
+				"name": "{{.SPACE_NAME}}",
+			},
+		},
+	}
+	rawTemplateObjects := []runtime.RawExtension{{Object: &ns}}
 	updateTierTemplateObjects := func(template *toolchainv1alpha1.TierTemplate) error {
-		template.Spec.TemplateObjects = template.Spec.Template.Objects
+		template.Spec.TemplateObjects = rawTemplateObjects
 		return nil
 	}
 	namespaceResourcesWithTemplateObjects := tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects)
 	clusterResourcesWithTemplateObjects := tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects)
 	spaceRolesWithTemplateObjects := tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects)
-	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResourcesWithTemplateObjects, spaceRolesWithTemplateObjects)
+	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResourcesWithTemplateObjects, spaceRolesWithTemplateObjects, tiers.WithParameter("SPACE_NAME", "janedoe"))
 
-	// verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
+	// when
+	// we verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
-	verifyStatus(t, hostAwait, "ttr", 1)
+	_, err = hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr", wait.HasStatusTierTemplateRevisions([]string{
+		fmt.Sprintf("ttrfrom%s", baseTier.Spec.Namespaces[0].TemplateRef), // check that the revision field is set using the expected tierTemplate refs as keys
+		fmt.Sprintf("ttrfrom%s", baseTier.Spec.SpaceRoles["admin"].TemplateRef),
+		fmt.Sprintf("ttrfrom%s", baseTier.Spec.ClusterResources.TemplateRef),
+	}))
+	require.NoError(t, err)
+
+	// then
 	// check the expected total number of ttr matches
 	err = apiwait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
 		if err := hostAwait.Client.List(ctx, objs, client.InNamespace(hostAwait.Namespace)); err != nil {
 			return false, err
 		}
-		require.Len(t, objs.Items, 3) // expect one TTR per each tiertemplate ( clusterresource, namespace and spacerole )
+		require.Len(t, objs.Items, 3) // expect one TTR per each tiertemplate (clusterresource, namespace and spacerole)
+		// we check that the TTR content has the parameters replaced with values from the NSTemplateTier
+		for _, obj := range objs.Items {
+			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), "janedoe")        // the object should have the namespace name replaced
+			assert.NotContains(t, string(obj.Spec.TemplateObjects[0].Raw), ".SPACE_NAME") // the object should NOT contain the variable anymore
+		}
 		return true, nil
 	})
 	require.NoError(t, err)

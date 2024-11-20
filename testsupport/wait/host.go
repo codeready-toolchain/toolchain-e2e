@@ -25,6 +25,7 @@ import (
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1029,7 +1030,11 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		}
 		// if the tier template supports Tier Template Revisions then let's check those
 		if tierTemplateNamespaces.Spec.TemplateObjects != nil {
-			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateNamespaces.GetName(), UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
+			ttrName, found := tier.Status.Revisions[tierTemplateNamespaces.GetName()]
+			if !found {
+				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateNamespaces.GetName(), tier.Name)
+			}
+			if _, err := a.WaitForTierTemplateRevision(t, ttrName, UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
 				{
 					APIVersion: "toolchain.dev.openshift.com/v1alpha1", // for some reason, the apiversion and kind are empty on the CR
 					Kind:       "TierTemplate",
@@ -1050,7 +1055,11 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		}
 		// if the tier template supports Tier Template Revisions then let's check those
 		if tierTemplateClusterResources.Spec.TemplateObjects != nil {
-			if _, err := a.WaitForTierTemplateRevision(t, tierTemplateClusterResources.GetName(), UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
+			ttrName, found := tier.Status.Revisions[tierTemplateClusterResources.GetName()]
+			if !found {
+				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateClusterResources.GetName(), tier.Name)
+			}
+			if _, err := a.WaitForTierTemplateRevision(t, ttrName, UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
 				{
 					APIVersion: "toolchain.dev.openshift.com/v1alpha1", // for some reason, the apiversion and kind are empty on the CR
 					Kind:       "TierTemplate",
@@ -1072,7 +1081,11 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		}
 		// if the tier template supports Tier Template Revisions then let's check those
 		if tierTemplateSpaceRoles.Spec.TemplateObjects != nil {
-			if _, err := a.WaitForTierTemplateRevision(t, r.TemplateRef, UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
+			ttrName, found := tier.Status.Revisions[tierTemplateSpaceRoles.GetName()]
+			if !found {
+				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateSpaceRoles.GetName(), tier.Name)
+			}
+			if _, err := a.WaitForTierTemplateRevision(t, ttrName, UntilTierTemplateRevisionsHasOwnerReferences([]metav1.OwnerReference{
 				{
 					APIVersion: "toolchain.dev.openshift.com/v1alpha1", // for some reason, the apiversion and kind are empty on the CR
 					Kind:       "TierTemplate",
@@ -1152,20 +1165,19 @@ func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.
 
 // WaitForTierTemplateRevision waits until a TierTemplateRevision with the given labels to exists
 // Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, templateRef string, criteria ...TierTemplateRevisionWaitCriterion) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
+func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, ttrName string, criteria ...TierTemplateRevisionWaitCriterion) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
 	ttr := &toolchainv1alpha1.TierTemplateRevision{}
-	t.Logf("waiting until TierTemplateRevision for templateRef '%s' exists in namespace '%s'...", templateRef, a.Namespace)
+	t.Logf("waiting until TierTemplateRevision with name '%s' exists in namespace '%s'...", ttrName, a.Namespace)
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
-		err = a.Client.List(ctx, objs, client.InNamespace(a.Namespace), client.MatchingLabels(map[string]string{
-			toolchainv1alpha1.TemplateRefLabelKey: templateRef,
-		}))
+		ttr := &toolchainv1alpha1.TierTemplateRevision{}
+		err = a.Client.Get(ctx, types.NamespacedName{
+			Namespace: a.Namespace,
+			Name:      ttrName,
+		}, ttr)
 		// no match found, print the diffs
 		if err != nil {
 			return false, err
 		}
-		require.Len(t, objs.Items, 1)
-		ttr = &objs.Items[0]
 		return matchTierTemplateRevisionWaitCriterion(ttr, criteria...), nil
 	})
 	// log message if an error occurred
@@ -1268,6 +1280,26 @@ func UntilNSTemplateTierStatusUpdates(expected int) NSTemplateTierWaitCriterion 
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
 			return fmt.Sprintf("expected status.updates count %d. Actual: %d", expected, len(actual.Status.Updates))
+		},
+	}
+}
+
+// HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
+func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
+	return NSTemplateTierWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+			if len(actual.Status.Revisions) != len(revisions) {
+				return false
+			}
+			for _, tierTemplateRef := range revisions {
+				if _, found := actual.Status.Revisions[tierTemplateRef]; !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
+			return fmt.Sprintf("expected status.revision %v. Actual: %v", revisions, maps.Keys(actual.Status.Revisions))
 		},
 	}
 }

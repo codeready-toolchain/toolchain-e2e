@@ -7,7 +7,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v3.3.0+incompatible
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
@@ -31,7 +31,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.15.0
 )
 
-require github.com/google/uuid v1.6.0
+require (
+	github.com/google/uuid v1.6.0
+	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
+)
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
