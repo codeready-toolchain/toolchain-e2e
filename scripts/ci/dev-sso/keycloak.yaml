@@ -1,0 +1,125 @@
+apiVersion: keycloak.org/v1alpha1
+kind: Keycloak
+metadata:
+  name: kubesaw-dev
+  namespace: ${DEV_SSO_NS}
+  labels:
+    sso-toolchain: kubesaw-dev
+spec:
+  externalAccess:
+    enabled: true
+  instances: 1
+---
+apiVersion: keycloak.org/v1alpha1
+kind: KeycloakRealm
+metadata:
+  name: kubesaw-dev
+  namespace: ${DEV_SSO_NS}
+spec:
+  instanceSelector:
+    matchLabels:
+      sso-toolchain: kubesaw-dev
+  realm:
+    id: kubesaw-dev
+    realm: kubesaw-dev
+    displayName: kubesaw Dev In-cluster Keycloak
+    accessTokenLifespan: 7200
+    accessTokenLifespanForImplicitFlow: 900
+    enabled: true
+    sslRequired: none
+    registrationAllowed: false
+    registrationEmailAsUsername: false
+    rememberMe: false
+    verifyEmail: false
+    loginWithEmailAllowed: true
+    duplicateEmailsAllowed: false
+    resetPasswordAllowed: false
+    editUsernameAllowed: false
+    bruteForceProtected: false
+    permanentLockout: false
+    maxFailureWaitSeconds: 900
+    minimumQuickLoginWaitSeconds: 60
+    waitIncrementSeconds: 60
+    quickLoginCheckMilliSeconds: 1000
+    maxDeltaTimeSeconds: 43200
+    failureFactor: 30
+    clients:
+      - id: 86427c2e-8736-4ce4-8da5-11f0fbf4d2f2
+        clientId: kubesaw
+        surrogateAuthRequired: false
+        enabled: true
+        clientAuthenticatorType: client-secret
+        redirectUris:
+          - '*'
+        webOrigins: []
+        notBefore: 0
+        bearerOnly: false
+        consentRequired: false
+        standardFlowEnabled: true
+        implicitFlowEnabled: false
+        directAccessGrantsEnabled: true
+        serviceAccountsEnabled: false
+        publicClient: false
+        frontchannelLogout: false
+        protocol: openid-connect
+        secret: "${KEYCLOAK_SECRET}"
+        attributes: {}
+        authenticationFlowBindingOverrides: {}
+        fullScopeAllowed: true
+        nodeReRegistrationTimeout: -1
+        defaultClientScopes: []
+        optionalClientScopes: []
+      - id: 9a5018a7-5f92-40c9-b8f1-63f53bc32a68
+        clientId: kubesaw-public
+        surrogateAuthRequired: false
+        enabled: true
+        clientAuthenticatorType: client-secret
+        redirectUris:
+          - '*'
+        webOrigins:
+          - '*'
+        notBefore: 0
+        bearerOnly: false
+        consentRequired: false
+        standardFlowEnabled: true
+        implicitFlowEnabled: false
+        directAccessGrantsEnabled: true
+        serviceAccountsEnabled: false
+        publicClient: true
+        frontchannelLogout: false
+        protocol: openid-connect
+        protocolMappers: []
+        attributes: {}
+        authenticationFlowBindingOverrides: {}
+        fullScopeAllowed: true
+        nodeReRegistrationTimeout: -1
+        defaultClientScopes: []
+        optionalClientScopes: []
+    clientScopes: []
+    defaultDefaultClientScopes: []
+    smtpServer: {}
+    loginTheme: rh-sso
+    eventsEnabled: false
+    eventsListeners:
+      - jboss-logging
+    enabledEventTypes: []
+    adminEventsEnabled: false
+    adminEventsDetailsEnabled: false
+    identityProviders: []
+    identityProviderMappers: []
+    internationalizationEnabled: false
+    supportedLocales: []
+    authenticationFlows: []
+    authenticatorConfig: []
+    userManagedAccessAllowed: false
+    users:
+      - credentials:
+          - type: password
+            value: user1
+        email: user1@user.us
+        emailVerified: true
+        enabled: true
+        firstName: user1
+        id: user1
+        username: user1
+        clientRoles: {}

@@ -1,0 +1,20 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: og-rhsso
+  namespace: ${DEV_SSO_NS}
+spec:
+  targetNamespaces:
+  - ${DEV_SSO_NS}
+---
+ apiVersion: operators.coreos.com/v1alpha1
+ kind: Subscription
+ metadata:
+   name: ${SUBSCRIPTION_NAME}
+   namespace: ${DEV_SSO_NS}
+ spec:
+   channel: stable
+   name: rhsso-operator
+   source: redhat-operators
+   sourceNamespace: openshift-marketplace
+   installPlanApproval: Automatic
