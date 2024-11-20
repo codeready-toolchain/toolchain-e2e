@@ -1150,7 +1150,7 @@ func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, ttrName strin
 	ttr := &toolchainv1alpha1.TierTemplateRevision{}
 	t.Logf("waiting until TierTemplateRevision with name '%s' exists in namespace '%s'...", ttrName, a.Namespace)
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		ttr := &toolchainv1alpha1.TierTemplateRevision{}
+		ttr = &toolchainv1alpha1.TierTemplateRevision{}
 		err = a.Client.Get(ctx, types.NamespacedName{
 			Namespace: a.Namespace,
 			Name:      ttrName,
