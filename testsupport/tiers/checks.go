@@ -202,7 +202,7 @@ func (a *baseTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.H
 
 func (a *baseTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "60Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -223,7 +223,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("20", "18Gi", "3", "18Gi"),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
-		resourceQuotaStorage("15Gi", "40Gi", "15Gi", "5"),
+		resourceQuotaStorage("15Gi", "60Gi", "15Gi", "5"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),
@@ -325,7 +325,7 @@ type baselargeTierChecks struct {
 
 func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "60Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -344,7 +344,7 @@ type baseextendedidlingTierChecks struct {
 
 func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "60Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
@@ -390,7 +390,7 @@ type advancedTierChecks struct {
 
 func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "40Gi"),
+		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "60Gi"),
 		clusterResourceQuotaDeployments(),
 		clusterResourceQuotaReplicas(),
 		clusterResourceQuotaRoutes(),
