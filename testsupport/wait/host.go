@@ -25,7 +25,6 @@ import (
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1299,7 +1298,7 @@ func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriter
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected status.revision %v. Actual: %v", revisions, maps.Keys(actual.Status.Revisions))
+			return fmt.Sprintf("expected revision keys %v not found in: %v", revisions, actual.Status.Revisions)
 		},
 	}
 }
