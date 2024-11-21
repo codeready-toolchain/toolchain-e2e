@@ -267,6 +267,13 @@ setup-toolchainclusters: ksctl
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
+E2E_MEMBER_NS := toolchain-member-operator
+E2E_HOST_NS := toolchain-host-operator
+
+.PHONY: deploy-toolchain-resources-e2e
+## Deploy the toolchain resources in e2e environment
+deploy-toolchain-resources-e2e:
+	$(MAKE) prepare-e2e deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${E2E_HOST_NS} MEMBER_NS=${E2E_MEMBER_NS} REGISTRATION_SERVICE_NS=${E2E_HOST_NS}
 
 ###########################################################
 #
