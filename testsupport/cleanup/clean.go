@@ -257,7 +257,7 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 	if err := c.client.List(context.TODO(), ttrs,
 		client.InNamespace(nsTemplateTier.GetNamespace()),
 		client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()}); err != nil {
-		c.t.Logf("problem with getting the ttrs for tier %s: %s", nsTemplateTier, err)
+		c.t.Logf("problem with getting the ttrs for tier %s: %s", nsTemplateTier.GetName(), err)
 		return false, err
 	}
 	if len(ttrs.Items) == 0 {
@@ -265,7 +265,8 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 		return true, nil
 	}
 	if delete {
-		for _, ttr := range ttrs.Items {
+		for i := range ttrs.Items {
+			ttr := ttrs.Items[i]
 			c.t.Logf("deleting also the related TTR %s", ttr.GetName())
 			if err := c.client.Delete(context.TODO(), &ttr, propagationPolicyOpts); err != nil {
 				if errors.IsNotFound(err) {
