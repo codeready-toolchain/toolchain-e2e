@@ -203,8 +203,7 @@ install_operator() {
             sleep 1
         done
     fi
-
-#    start_collecting_logs
+    
 
     CATALOG_SOURCE_OBJECT="
 apiVersion: operators.coreos.com/v1alpha1
@@ -269,12 +268,6 @@ ${INSTALL_OBJECTS}
 EOF
 
 wait_until_is_installed
-}
-
-
-start_collecting_logs() {
-  scripts/ci/collect-logs.sh -n ${NAMESPACE} &
-  scripts/ci/collect-logs.sh -n "openshift-operator-lifecycle-manager"  &
 }
 
 wait_until_is_installed() {
