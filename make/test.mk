@@ -201,6 +201,7 @@ print-local-debug-info:
 	@echo 'os.Setenv("KUBECONFIG","$(or ${KUBECONFIG}, ${HOME}/.kube/config)")'
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
 	@echo 'os.Setenv("MEMBER_NS_2","${MEMBER_NS_2}")'
+	@echo 'os.Setenv("SECOND_MEMBER_MODE","true")'
 	@echo 'os.Setenv("HOST_NS","${HOST_NS}")'
 	@echo 'os.Setenv("REGISTRATION_SERVICE_NS","${REGISTRATION_SERVICE_NS}")'
 
