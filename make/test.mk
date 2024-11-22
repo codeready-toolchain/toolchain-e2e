@@ -8,6 +8,9 @@ QUAY_NAMESPACE ?= codeready-toolchain-test
 DATE_SUFFIX := $(shell date +'%d%H%M%S')
 HOST_NS ?= toolchain-host-${DATE_SUFFIX}
 MEMBER_NS ?= toolchain-member-${DATE_SUFFIX}
+DEFAULT_HOST_NS= toolchain-host-operator
+DEFAULT_MEMBER_NS= toolchain-member-operator
+DEFAULT_MEMBER_NS_2= toolchain-member2-operator
 # it can be used to customize the install wait timeout parameter for the ksctl adm install-operator
 # for eg. on slow systems you can customize it like so: KSCTL_INSTALL_TIMEOUT_PARAM="--timeout=15m"
 KSCTL_INSTALL_TIMEOUT_PARAM ?= ""
@@ -271,10 +274,14 @@ setup-toolchainclusters: ksctl
 E2E_MEMBER_NS := toolchain-member-operator
 E2E_HOST_NS := toolchain-host-operator
 
-.PHONY: deploy-toolchain-resources-e2e
-## Deploy the toolchain resources in e2e environment
-deploy-toolchain-resources-e2e:
-	$(MAKE) prepare-e2e deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${E2E_HOST_NS} MEMBER_NS=${E2E_MEMBER_NS} REGISTRATION_SERVICE_NS=${E2E_HOST_NS}
+.PHONY: deploy-single-member-e2e
+## Deploy operators in e2e mode with single member without running tests
+deploy-single-member-e2e: SECOND_MEMBER_MODE=false
+deploy-single-member-e2e: HOST_NS=${DEFAULT_HOST_NS}
+deploy-single-member-e2e: MEMBER_NS=${DEFAULT_MEMBER_NS}
+deploy-single-member-e2e: REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS}
+deploy-single-member-e2e: prepare-e2e deploy-e2e
+
 
 ###########################################################
 #
