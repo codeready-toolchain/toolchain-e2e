@@ -276,11 +276,8 @@ E2E_HOST_NS := toolchain-host-operator
 
 .PHONY: deploy-single-member-e2e
 ## Deploy operators in e2e mode with single member without running tests
-deploy-single-member-e2e: SECOND_MEMBER_MODE=false
-deploy-single-member-e2e: HOST_NS=${DEFAULT_HOST_NS}
-deploy-single-member-e2e: MEMBER_NS=${DEFAULT_MEMBER_NS}
-deploy-single-member-e2e: REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS}
-deploy-single-member-e2e: prepare-e2e deploy-e2e
+deploy-single-member-e2e: 
+	$(MAKE) prepare-and-deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} MEMBER_NS=${DEFAULT_MEMBER_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS}
 
 
 ###########################################################
@@ -384,7 +381,9 @@ create-member1:
 
 .PHONY: create-member2
 create-member2:
+	@echo SECOND_MEMBER_MODE=$(SECOND_MEMBER_MODE) 
 ifeq ($(SECOND_MEMBER_MODE),true)
+	@echo SECOND_MEMBER_MODE inside=$(SECOND_MEMBER_MODE) 
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator
