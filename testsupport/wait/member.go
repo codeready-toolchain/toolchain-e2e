@@ -2340,7 +2340,7 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 			Rule: Rule{
 				Operations:  []admv1.OperationType{"CREATE"},
 				APIGroups:   []string{"kubevirt.io"},
-				APIVersions: []string{"v1"},
+				APIVersions: []string{"*"},
 				Resources:   []string{"virtualmachines"},
 			},
 		},
