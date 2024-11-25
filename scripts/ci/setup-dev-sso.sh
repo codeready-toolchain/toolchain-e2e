@@ -60,16 +60,8 @@ check_command()
 }
 
 run_wait_until_is_installed() {
-    WAIT_UNTIL_IS_INSTALLED=scripts/ci/wait-until-is-installed.sh
     PARAMS="-crd keycloak.org -cs '' -n ${DEV_SSO_NS} -s ${SUBSCRIPTION_NAME}"
-    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-    SCRIPT_NAME=$(basename ${WAIT_UNTIL_IS_INSTALLED})
-
-    if [[ -f ${SCRIPT_DIR}/${SCRIPT_NAME} ]]; then
-        ${SCRIPT_DIR}/${SCRIPT_NAME} ${PARAMS}
-    else
-        curl -sSL https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}/${WAIT_UNTIL_IS_INSTALLED} > /tmp/${SCRIPT_NAME} && chmod +x /tmp/${SCRIPT_NAME} && OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION} /tmp/${SCRIPT_NAME} ${PARAMS}
-    fi
+    scripts/ci/wait-until-is-installed.sh ${PARAMS}
 }
 
 setup_oauth_generic()

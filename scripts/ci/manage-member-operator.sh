@@ -86,16 +86,7 @@ else
     set -e
 fi
 
-MANAGE_OPERATOR_FILE=scripts/ci/manage-operator.sh
-OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION:-codeready-toolchain/toolchain-cicd/master}
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-SCRIPT_NAME=$(basename ${MANAGE_OPERATOR_FILE})
-
-if [[ -f ${SCRIPT_DIR}/${SCRIPT_NAME} ]]; then
-    source ${SCRIPT_DIR}/${SCRIPT_NAME}
-else
-    source /dev/stdin <<< "$(curl -sSL https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}/${MANAGE_OPERATOR_FILE})"
-fi
+source scripts/ci/manage-operator.sh
 
 if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=member-operator
