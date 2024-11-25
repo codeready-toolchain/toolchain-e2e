@@ -1,6 +1,8 @@
 DEV_SSO_NS := toolchain-dev-sso
 DEV_ENVIRONMENT := dev
-
+DEFAULT_HOST_NS= toolchain-host-operator
+DEFAULT_MEMBER_NS= toolchain-member-operator
+DEFAULT_MEMBER_NS_2= toolchain-member2-operator
 SHOW_CLEAN_COMMAND="make clean-dev-resources"
 
 .PHONY: dev-deploy-latest
