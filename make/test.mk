@@ -8,9 +8,6 @@ QUAY_NAMESPACE ?= codeready-toolchain-test
 DATE_SUFFIX := $(shell date +'%d%H%M%S')
 HOST_NS ?= toolchain-host-${DATE_SUFFIX}
 MEMBER_NS ?= toolchain-member-${DATE_SUFFIX}
-DEFAULT_HOST_NS= toolchain-host-operator
-DEFAULT_MEMBER_NS= toolchain-member-operator
-DEFAULT_MEMBER_NS_2= toolchain-member2-operator
 # it can be used to customize the install wait timeout parameter for the ksctl adm install-operator
 # for eg. on slow systems you can customize it like so: KSCTL_INSTALL_TIMEOUT_PARAM="--timeout=15m"
 KSCTL_INSTALL_TIMEOUT_PARAM ?= ""
@@ -271,8 +268,6 @@ setup-toolchainclusters: ksctl
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
 
-E2E_MEMBER_NS := toolchain-member-operator
-E2E_HOST_NS := toolchain-host-operator
 
 .PHONY: deploy-single-member-e2e
 ## Deploy operators in e2e mode with single member without running tests
