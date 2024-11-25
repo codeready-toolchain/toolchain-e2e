@@ -1,10 +1,8 @@
-DEV_MEMBER_NS := toolchain-member-operator
-DEV_MEMBER_NS_2 := toolchain-member2-operator
-DEV_HOST_NS := toolchain-host-operator
 DEV_SSO_NS := toolchain-dev-sso
-DEV_REGISTRATION_SERVICE_NS := $(DEV_HOST_NS)
 DEV_ENVIRONMENT := dev
-
+DEFAULT_HOST_NS= toolchain-host-operator
+DEFAULT_MEMBER_NS= toolchain-member-operator
+DEFAULT_MEMBER_NS_2= toolchain-member2-operator
 SHOW_CLEAN_COMMAND="make clean-dev-resources"
 
 .PHONY: dev-deploy-latest
@@ -25,12 +23,12 @@ dev-deploy-e2e-two-members: deploy-e2e-to-dev-namespaces-two-members print-reg-s
 
 .PHONY: deploy-e2e-to-dev-namespaces
 deploy-e2e-to-dev-namespaces:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD} DEPLOY_LATEST=${DEPLOY_LATEST}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEFAULT_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD} DEPLOY_LATEST=${DEPLOY_LATEST}
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
 .PHONY: deploy-e2e-to-dev-namespaces-two-members
 deploy-e2e-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e MEMBER_NS=${DEFAULT_MEMBER_NS} MEMBER_NS_2=${DEFAULT_MEMBER_NS_2} HOST_NS=${DEFAULT_HOST_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
 setup-dev-sso:
@@ -46,12 +44,12 @@ dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members
 
 .PHONY: deploy-e2e-local-to-dev-namespaces
 deploy-e2e-local-to-dev-namespaces:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEFAULT_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
 .PHONY: deploy-e2e-local-to-dev-namespaces-two-members
 deploy-e2e-local-to-dev-namespaces-two-members:
-	$(MAKE) deploy-e2e-local MEMBER_NS=${DEV_MEMBER_NS} MEMBER_NS_2=${DEV_MEMBER_NS_2} HOST_NS=${DEV_HOST_NS} REGISTRATION_SERVICE_NS=${DEV_REGISTRATION_SERVICE_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
+	$(MAKE) deploy-e2e-local MEMBER_NS=${DEFAULT_MEMBER_NS} MEMBER_NS_2=${DEFAULT_MEMBER_NS_2} HOST_NS=${DEFAULT_HOST_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false IS_OSD=${IS_OSD}
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
 
@@ -61,7 +59,7 @@ print-reg-service-link:
 	@echo "Deployment complete!"
 	@echo "Waiting for the registration-service route being available"
 	@echo -n "."
-	@while [[ -z `oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
+	@while [[ -z `oc get routes registration-service -n ${DEFAULT_HOST_NS} 2>/dev/null || true` ]]; do \
 		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
             echo ""; \
             echo "The timeout of waiting for the registration-service route has been reached. Try to run 'make  print-reg-service-link' later or check the deployment logs"; \
@@ -73,7 +71,7 @@ print-reg-service-link:
 	@echo ""
 	@echo "Waiting for the api route (that is used by proxy) being available"
 	@echo -n "."
-	@while [[ -z `oc get routes api -n ${DEV_REGISTRATION_SERVICE_NS} 2>/dev/null || true` ]]; do \
+	@while [[ -z `oc get routes api -n ${DEFAULT_HOST_NS} 2>/dev/null || true` ]]; do \
 		if [[ $${NEXT_WAIT_TIME} -eq 100 ]]; then \
             echo ""; \
             echo "The timeout of waiting for the api route (that is used by proxy) has been reached. Try to run 'make  print-reg-service-link' later or check the deployment logs"; \
@@ -85,8 +83,8 @@ print-reg-service-link:
 	@echo ""
 	@echo ""
 	@echo "==========================================================================================================================================="
-	@echo Access the Landing Page here:   https://$$(oc get routes registration-service -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
-	@echo Access Proxy here:              https://$$(oc get routes api -n ${DEV_REGISTRATION_SERVICE_NS} -o=jsonpath='{.spec.host}')
+	@echo Access the Landing Page here:   https://$$(oc get routes registration-service -n ${DEFAULT_HOST_NS} -o=jsonpath='{.spec.host}')
+	@echo Access Proxy here:              https://$$(oc get routes api -n ${DEFAULT_HOST_NS} -o=jsonpath='{.spec.host}')
 	@echo "==========================================================================================================================================="
 	@echo ""
 	@echo "To clean the cluster run '${SHOW_CLEAN_COMMAND}'"

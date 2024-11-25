@@ -201,6 +201,7 @@ print-local-debug-info:
 	@echo 'os.Setenv("KUBECONFIG","$(or ${KUBECONFIG}, ${HOME}/.kube/config)")'
 	@echo 'os.Setenv("MEMBER_NS","${MEMBER_NS}")'
 	@echo 'os.Setenv("MEMBER_NS_2","${MEMBER_NS_2}")'
+	@echo 'os.Setenv("SECOND_MEMBER_MODE","true")'
 	@echo 'os.Setenv("HOST_NS","${HOST_NS}")'
 	@echo 'os.Setenv("REGISTRATION_SERVICE_NS","${REGISTRATION_SERVICE_NS}")'
 
@@ -266,6 +267,12 @@ setup-toolchainclusters: ksctl
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS_2)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} --name-suffix="2" -y ; fi
 	echo "Restart host operator pods so it can get the ToolchainCluster CRs while it's starting up".
 	oc delete pods --namespace ${HOST_NS} -l control-plane=controller-manager
+
+
+.PHONY: deploy-single-member-e2e
+## Deploy operators in e2e mode with single member without running tests
+deploy-single-member-e2e: 
+	$(MAKE) prepare-and-deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} MEMBER_NS=${DEFAULT_MEMBER_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS}
 
 
 ###########################################################
@@ -369,7 +376,9 @@ create-member1:
 
 .PHONY: create-member2
 create-member2:
+	@echo SECOND_MEMBER_MODE=$(SECOND_MEMBER_MODE) 
 ifeq ($(SECOND_MEMBER_MODE),true)
+	@echo SECOND_MEMBER_MODE inside=$(SECOND_MEMBER_MODE) 
 	@echo "Preparing namespace for second member operator: ${MEMBER_NS_2}..."
 	$(MAKE) create-project PROJECT_NAME=${MEMBER_NS_2}
 	-oc label ns --overwrite=true ${MEMBER_NS_2} app=member-operator

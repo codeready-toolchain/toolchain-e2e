@@ -7,7 +7,6 @@ else
 fi
 
 WAS_ALREADY_PAIRED_FILE=/tmp/toolchain_e2e_already_paired
-OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION:-codeready-toolchain/toolchain-cicd/master}
 
 get_repo() {
     PAIRED=false
@@ -204,8 +203,7 @@ install_operator() {
             sleep 1
         done
     fi
-
-#    start_collecting_logs
+    
 
     CATALOG_SOURCE_OBJECT="
 apiVersion: operators.coreos.com/v1alpha1
@@ -272,32 +270,7 @@ EOF
 wait_until_is_installed
 }
 
-
-start_collecting_logs() {
-    COLLECT_LOGS=scripts/ci/collect-logs.sh
-    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-    SCRIPT_NAME=$(basename ${COLLECT_LOGS})
-
-    if [[ -f ${SCRIPT_DIR}/${SCRIPT_NAME} ]]; then
-        ${SCRIPT_DIR}/${SCRIPT_NAME} -n ${NAMESPACE} &
-        ${SCRIPT_DIR}/${SCRIPT_NAME} -n "openshift-operator-lifecycle-manager"  &
-    else
-        SCRIPT_NAME=$(basename ${COLLECT_LOGS})
-        curl -sSL https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}/${COLLECT_LOGS} > /tmp/${SCRIPT_NAME} && chmod +x /tmp/${SCRIPT_NAME}
-        OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION} /tmp/${SCRIPT_NAME} -n ${NAMESPACE} &
-        OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION} /tmp/${SCRIPT_NAME} -n "openshift-operator-lifecycle-manager" &
-    fi
-}
-
 wait_until_is_installed() {
-    WAIT_UNTIL_IS_INSTALLED=scripts/ci/wait-until-is-installed.sh
     PARAMS="-crd ${EXPECT_CRD} -cs ${CATALOGSOURCE_NAME} -n ${NAMESPACE} -s ${SUBSCRIPTION_NAME}"
-    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-    SCRIPT_NAME=$(basename ${WAIT_UNTIL_IS_INSTALLED})
-
-    if [[ -f ${SCRIPT_DIR}/${SCRIPT_NAME} ]]; then
-        ${SCRIPT_DIR}/${SCRIPT_NAME} ${PARAMS}
-    else
-        curl -sSL https://raw.githubusercontent.com/${OWNER_AND_BRANCH_LOCATION}/${WAIT_UNTIL_IS_INSTALLED} > /tmp/${SCRIPT_NAME} && chmod +x /tmp/${SCRIPT_NAME} && OWNER_AND_BRANCH_LOCATION=${OWNER_AND_BRANCH_LOCATION} /tmp/${SCRIPT_NAME} ${PARAMS}
-    fi
+    scripts/ci/wait-until-is-installed.sh ${PARAMS}
 }

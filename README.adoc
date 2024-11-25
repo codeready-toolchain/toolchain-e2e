@@ -149,9 +149,11 @@ If you are still confused by the different e2e/operator location, execution and 
 
 All e2e resources (host operator, member operator, registration-service, CRDs, etc) can be deployed without running tests:
 
-* `make dev-deploy-e2e-local` - deploys the same resources as `make test-e2e-local` but doesn't run tests.
+* `make dev-deploy-e2e-local` - deploys the same resources as `make test-e2e-local` in dev environment but doesn't run tests.
 
-* `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
+* `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` in dev environment but doesn't run tests.
+
+* `make deploy-toolchain-resources-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
 
 NOTE: By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 
