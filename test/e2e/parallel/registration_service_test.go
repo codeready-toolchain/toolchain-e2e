@@ -26,6 +26,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -787,7 +788,10 @@ func TestActivationCodeVerification(t *testing.T) {
 				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
-			event, err = hostAwait.WaitForSocialEvent(t, event.Name) // need to reload event
+			event, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: corev1.ConditionTrue,
+			})) // need to reload event
 			require.NoError(t, err)
 			event.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
 			err = hostAwait.Client.Status().Update(context.TODO(), event)
