@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -2295,6 +2296,11 @@ func (a *MemberAwaitility) verifySecret(t *testing.T) []byte {
 }
 
 func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) {
+	if val := os.Getenv("skip-webhook-checks-on-setup"); val == "true" {
+		// skipped temporarily only for setup migration test but applies for after migration test
+		// This should be removed after PR https://github.com/codeready-toolchain/toolchain-e2e/pull/1070 is merged
+		return
+	}
 	t.Logf("checking MutatingWebhookConfiguration")
 	actualMutWbhConf := &admv1.MutatingWebhookConfiguration{}
 	a.waitForResource(t, "", "member-operator-webhook-"+a.Namespace, actualMutWbhConf)
@@ -2340,7 +2346,7 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 			Rule: Rule{
 				Operations:  []admv1.OperationType{"CREATE"},
 				APIGroups:   []string{"kubevirt.io"},
-				APIVersions: []string{"v1"},
+				APIVersions: []string{"*"},
 				Resources:   []string{"virtualmachines"},
 			},
 		},
@@ -2374,6 +2380,11 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 }
 
 func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte) {
+	if val := os.Getenv("skip-webhook-checks-on-setup"); val == "true" {
+		// skipped temporarily only for setup migration test but applies for after migration test
+		// This should be removed after PR https://github.com/codeready-toolchain/toolchain-e2e/pull/1070 is merged
+		return
+	}
 	t.Logf("checking ValidatingWebhookConfiguration '%s'", "member-operator-validating-webhook"+a.Namespace)
 	actualValWbhConf := &admv1.ValidatingWebhookConfiguration{}
 	a.waitForResource(t, "", "member-operator-validating-webhook-"+a.Namespace, actualValWbhConf)
@@ -2449,6 +2460,28 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"*"}, ssprequestRule.APIVersions)
 	assert.Equal(t, []string{"ssps"}, ssprequestRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
+
+	vmrequestWebhook := actualValWbhConf.Webhooks[3]
+	assert.Equal(t, "users.virtualmachines.validating.webhook.sandbox", vmrequestWebhook.Name)
+	assert.Equal(t, []string{"v1"}, vmrequestWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *vmrequestWebhook.SideEffects)
+	assert.Equal(t, int32(5), *vmrequestWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Fail, *vmrequestWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *vmrequestWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, vmrequestWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, vmrequestWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", vmrequestWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, vmrequestWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-vmrequests", *vmrequestWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *vmrequestWebhook.ClientConfig.Service.Port)
+	require.Len(t, vmrequestWebhook.Rules, 1)
+
+	vmrequestRule := vmrequestWebhook.Rules[0]
+	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, vmrequestRule.Operations)
+	assert.Equal(t, []string{"kubevirt.io"}, vmrequestRule.APIGroups)
+	assert.Equal(t, []string{"*"}, vmrequestRule.APIVersions)
+	assert.Equal(t, []string{"virtualmachines"}, vmrequestRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *vmrequestRule.Scope)
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
