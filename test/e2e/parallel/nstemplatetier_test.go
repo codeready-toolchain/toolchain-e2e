@@ -430,7 +430,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
 		// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
 		// thus we assert the number of TTRs doesn't exceed the double of the expected number.
-		assert.LessOrEqual(t, objs.Items, 6)
+		assert.LessOrEqual(t, len(objs.Items), 6)
 		// we check that the TTR content has the parameters replaced with values from the NSTemplateTier
 		for _, obj := range objs.Items {
 			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), "janedoe")        // the object should have the namespace name replaced
