@@ -147,7 +147,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 
 	// when deactivating the users
 	for username, usersignup := range signupsMember2 {
-		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
+		_, err := hostAwait.UpdateUserSignup(t, false, usersignup.Name,
 			func(usersignup *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(usersignup, true)
 			})
@@ -221,7 +221,7 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 
 	// when deactivating the users
 	for username, usersignup := range usersignups {
-		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
+		_, err := hostAwait.UpdateUserSignup(t, false, usersignup.Name,
 			func(usersignup *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(usersignup, true)
 			})
@@ -310,7 +310,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		t.Run("no change to metric when user deactivated", func(t *testing.T) {
 			// when deactivating the user
-			_, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+			_, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 				func(usersignup *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(usersignup, true)
 				})
@@ -371,7 +371,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
-			_, err := hostAwait.UpdateUserSignup(t, usersignups[username].Name,
+			_, err := hostAwait.UpdateUserSignup(t, false, usersignups[username].Name,
 				func(usersignup *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(usersignup, true)
 				})

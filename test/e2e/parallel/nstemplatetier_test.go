@@ -169,7 +169,7 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, user.UserSignup.Name,
+		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, false, user.UserSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivating(us, true)
 			})

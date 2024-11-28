@@ -153,7 +153,7 @@ func (r *SetupMigrationRunner) prepareDeactivatedUser(t *testing.T) {
 	hostAwait := r.Awaitilities.Host()
 
 	// deactivate the UserSignup
-	userSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
+	userSignup, err := hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 		func(us *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivated(us, true)
 		})

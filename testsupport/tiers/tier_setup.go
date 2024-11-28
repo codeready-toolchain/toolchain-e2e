@@ -128,7 +128,10 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tier *C
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
 	}
-	err = hostAwait.Client.Update(context.TODO(), tier.NSTemplateTier)
+	_, err = hostAwait.UpdateNSTemplateTier(t, tier.NSTemplateTier.Name,
+		func(nstt *toolchainv1alpha1.NSTemplateTier) {
+			nstt.Spec = tier.NSTemplateTier.Spec
+		})
 	require.NoError(t, err)
 	return tier
 }

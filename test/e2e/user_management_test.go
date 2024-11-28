@@ -156,7 +156,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Execute(t)
 
 		// Delete the user's email and set them to deactivated
-		userSignup, err := hostAwait.UpdateUserSignup(t, uNoEmail.UserSignup.Name,
+		userSignup, err := hostAwait.UpdateUserSignup(t, false, uNoEmail.UserSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				us.Spec.IdentityClaims.Email = ""
 				states.SetDeactivated(us, true)
@@ -499,7 +499,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Now deactivate the user
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(us, true)
 			})
@@ -516,7 +516,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			testconfig.Deactivation().UserSignupUnverifiedRetentionDays(0))
 
 		// Reactivate the user
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivating(us, false)
 				states.SetDeactivated(us, false)
@@ -781,7 +781,7 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 				// when
 				DeactivateAndCheckUser(t, s.Awaitilities, userSignup)
 				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
-				userSignup, err := s.Host().UpdateUserSignup(t, userSignup.Name,
+				userSignup, err := s.Host().UpdateUserSignup(t, false, userSignup.Name,
 					func(us *toolchainv1alpha1.UserSignup) {
 						us.Spec.TargetCluster = ""
 					})

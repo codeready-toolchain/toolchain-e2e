@@ -20,7 +20,9 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
 
+	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	userv1 "github.com/openshift/api/user/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -891,4 +893,88 @@ func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
 		t:     t,
 		gvk:   gvks[0],
 	}
+}
+
+// UpdateUser tries to update the Spec of the given User
+// If it fails with an error (for example if the object has been modified), it retrieves the latest version and tries again
+// Returns the updated User
+func (a *Awaitility) UpdateUser(t *testing.T, userName string, modifyUser func(user *userv1.User)) (*userv1.User, error) {
+	var user *userv1.User
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		freshUser := &userv1.User{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userName}, freshUser); err != nil {
+			return true, err
+		}
+		modifyUser(freshUser)
+		if err := a.Client.Update(context.TODO(), freshUser); err != nil {
+			t.Logf("error updating User '%s': %s.Will retry again...", userName, err.Error())
+			return false, nil
+		}
+		user = freshUser
+		return true, nil
+	})
+	return user, err
+}
+
+// UpdateIdentity tries to update the Spec of the given Identity
+// If it fails with an error (for example if the object has been modified), it retrieves the latest version and retries
+// Returns the updated Identity
+func (a *Awaitility) UpdateIdentity(t *testing.T, identityName string, modifyIdentity func(identity *userv1.Identity)) (*userv1.Identity, error) {
+	var identity *userv1.Identity
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		freshIdentity := &userv1.Identity{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: identityName}, freshIdentity); err != nil {
+			return true, err
+		}
+		modifyIdentity(freshIdentity)
+		if err := a.Client.Update(context.TODO(), freshIdentity); err != nil {
+			t.Logf("error updating Identity '%s': %s.Will retry again...", identityName, err.Error())
+			return false, nil
+		}
+		identity = freshIdentity
+		return true, nil
+	})
+	return identity, err
+}
+
+// UpdateSpaceProvisionerConfig tries to update the Spec of the given SpaceProvisionerConfig
+// If it fails with an error (for example if the object has been modified), it retrieves the latest version and retries
+// Returns the updated SpaceProvisionerConfig
+func (a *Awaitility) UpdateSpaceProvisionerConfig(t *testing.T, spcName string, modifySpc func(spc *toolchainv1alpha1.SpaceProvisionerConfig)) (*toolchainv1alpha1.SpaceProvisionerConfig, error) {
+	var spc *toolchainv1alpha1.SpaceProvisionerConfig
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		freshSpc := &toolchainv1alpha1.SpaceProvisionerConfig{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spcName}, freshSpc); err != nil {
+			return true, err
+		}
+		modifySpc(freshSpc)
+		if err := a.Client.Update(context.TODO(), freshSpc); err != nil {
+			t.Logf("error updating SpaceProvisionerConfig '%s': %s.Will retry again...", spcName, err.Error())
+			return false, nil
+		}
+		spc = freshSpc
+		return true, nil
+	})
+	return spc, err
+}
+
+// UpdateApplication tries to update the Spec of the given Application
+// If it fails with an error (for example if the object has been modified), it retrieves the latest version and retries
+// Returns the updated Application
+func (a *Awaitility) UpdateApplication(t *testing.T, cl client.Client, appName, namespace string, modifyApplication func(app *appstudiov1.Application)) (*appstudiov1.Application, error) {
+	var app *appstudiov1.Application
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		freshApp := &appstudiov1.Application{}
+		if err := cl.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: appName}, freshApp); err != nil {
+			return true, err
+		}
+		modifyApplication(freshApp)
+		if err := cl.Update(context.TODO(), freshApp); err != nil {
+			t.Logf("error updating Application '%s': %s.Will retry again...", appName, err.Error())
+			return false, nil
+		}
+		app = freshApp
+		return true, nil
+	})
+	return app, err
 }

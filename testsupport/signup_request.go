@@ -269,7 +269,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 			}
 		}
 
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name, doUpdate)
+		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name, doUpdate)
 		require.NoError(t, err)
 	}
 

@@ -412,7 +412,7 @@ func TestSignupOK(t *testing.T) {
 			identity.ID, identity.Username), mp["message"])
 		assert.Equal(t, "error creating UserSignup resource", mp["details"])
 
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 			func(instance *toolchainv1alpha1.UserSignup) {
 				// Approve usersignup.
 				states.SetApprovedManually(instance, true)
@@ -444,7 +444,7 @@ func TestSignupOK(t *testing.T) {
 		t.Logf("Signed up new user %+v", userSignup)
 
 		// Deactivate the usersignup
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(us, true)
 			})
@@ -609,7 +609,7 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
 	require.False(t, mpStatus["verificationRequired"].(bool))
 
-	userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+	userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 		func(instance *toolchainv1alpha1.UserSignup) {
 			// Now approve the usersignup.
 			states.SetApprovedManually(instance, true)
@@ -666,7 +666,7 @@ func TestPhoneVerification(t *testing.T) {
 	userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name)
 	require.NoError(t, err)
 
-	userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+	userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 		func(instance *toolchainv1alpha1.UserSignup) {
 			// Now mark the original UserSignup as deactivated
 			states.SetDeactivated(instance, true)
@@ -720,7 +720,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetApprovedManually(us, true)
 			})
@@ -793,8 +793,10 @@ func TestActivationCodeVerification(t *testing.T) {
 				Status: corev1.ConditionTrue,
 			})) // need to reload event
 			require.NoError(t, err)
-			event.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
-			err = hostAwait.Client.Status().Update(context.TODO(), event)
+			event, err = hostAwait.UpdateSocialEvent(t, true, event.Name,
+				func(ev *toolchainv1alpha1.SocialEvent) {
+					ev.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
+				})
 			require.NoError(t, err)
 
 			userSignup, token := signup(t, hostAwait)

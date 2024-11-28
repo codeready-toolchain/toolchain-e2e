@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
@@ -232,14 +233,14 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
-					// Update application
+					// Get application name
 					applicationName := user.getApplicationName(0)
-					// Get application
-					proxyApp := user.getApplication(t, proxyCl, applicationName)
 					// Update DisplayName
 					changedDisplayName := fmt.Sprintf("Proxy test for user %s - updated application", tenantNsName(user.compliantUsername))
-					proxyApp.Spec.DisplayName = changedDisplayName
-					err := proxyCl.Update(context.TODO(), proxyApp)
+					// Update application
+					proxyApp, err := awaitilities.Host().UpdateApplication(t, proxyCl, applicationName, tenantNsName(user.compliantUsername), func(app *appstudiov1.Application) {
+						app.Spec.DisplayName = changedDisplayName
+					})
 					require.NoError(t, err)
 
 					// Find application and check, if it is updated
@@ -319,7 +320,6 @@ func TestProxyFlow(t *testing.T) {
 
 			t.Run("get resource from namespace outside of user's workspace", func(t *testing.T) {
 				// given
-
 				// create a namespace which does not belong to the user's workspace
 				anotherNamespace := fmt.Sprintf("outside-%s", user.compliantUsername)
 				user.expectedMemberCluster.CreateNamespace(t, anotherNamespace)

@@ -214,10 +214,10 @@ func (a *HostAwaitility) UpdateMasterUserRecord(t *testing.T, status bool, murNa
 	return m, err
 }
 
-// UpdateUserSignup tries to update the Spec of the given UserSignup
+// UpdateUserSignup tries to update the Status or Spec of the given UserSignup
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated UserSignup
-func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
+func (a *HostAwaitility) UpdateUserSignup(t *testing.T, status bool, userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
 	var userSignup *toolchainv1alpha1.UserSignup
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshUserSignup := &toolchainv1alpha1.UserSignup{}
@@ -226,9 +226,18 @@ func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, m
 		}
 
 		modifyUserSignup(freshUserSignup)
-		if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
-			t.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
-			return false, nil
+		if status {
+			// Update the Status
+			if err := a.Client.Status().Update(context.TODO(), freshUserSignup); err != nil {
+				t.Logf("error updating UserSignup Status '%s': %s. Will retry again...", userSignupName, err.Error())
+				return false, nil
+			}
+		} else {
+			// Update the Spec
+			if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
+				t.Logf("error updating UserSignup Spec '%s': %s. Will retry again...", userSignupName, err.Error())
+				return false, nil
+			}
 		}
 		userSignup = freshUserSignup
 		return true, nil
@@ -2573,4 +2582,61 @@ func (a *HostAwaitility) CreateSpaceAndSpaceBinding(t *testing.T, mur *toolchain
 		return true, nil
 	})
 	return spaceCreated, spaceBinding, err
+}
+
+// UpdateSocialEvent tries to update the Status or Spec of the given SocialEvent
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated SocialEvent
+func (a *HostAwaitility) UpdateSocialEvent(t *testing.T, status bool, socialEventName string, modifySocialEvent func(us *toolchainv1alpha1.SocialEvent)) (*toolchainv1alpha1.SocialEvent, error) {
+	var socialEvent *toolchainv1alpha1.SocialEvent
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		freshSocialEvent := &toolchainv1alpha1.SocialEvent{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: socialEventName}, freshSocialEvent); err != nil {
+			return true, err
+		}
+
+		modifySocialEvent(freshSocialEvent)
+		if status {
+			// Update the Status
+			if err := a.Client.Status().Update(context.TODO(), freshSocialEvent); err != nil {
+				t.Logf("error updating SocialEvent Status '%s': %s. Will retry again...", socialEventName, err.Error())
+				return false, err
+			}
+		} else {
+			// Update the Spec
+			if err := a.Client.Update(context.TODO(), freshSocialEvent); err != nil {
+				t.Logf("Error updating SocialEvent Spec '%s': %s. Will retry again...", socialEventName, err.Error())
+				return false, err
+			}
+		}
+		socialEvent = freshSocialEvent
+		return true, nil
+	})
+	return socialEvent, err
+}
+
+// NSTemplateTier updates the given NSTemplateTier using the provided modifiers.
+// If it encounters an error (e.g., object has been modified), it retrieves the latest version and retries.
+// Returns the updated NSTemplateTier.
+func (hostAwait *HostAwaitility) UpdateNSTemplateTier(t *testing.T, tierName string, modifyTier func(tier *toolchainv1alpha1.NSTemplateTier)) (*toolchainv1alpha1.NSTemplateTier, error) {
+	var tier *toolchainv1alpha1.NSTemplateTier
+	err := wait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		freshTier := &toolchainv1alpha1.NSTemplateTier{}
+		if err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: hostAwait.Namespace,
+			Name:      tierName,
+		}, freshTier); err != nil {
+			return true, err
+		}
+
+		modifyTier(freshTier)
+
+		if err := hostAwait.Client.Update(context.TODO(), freshTier); err != nil {
+			t.Logf("error updating NSTemplateTier '%s': %s. Will retry again...", tierName, err.Error())
+			return false, nil
+		}
+		tier = freshTier
+		return true, nil
+	})
+	return tier, err
 }

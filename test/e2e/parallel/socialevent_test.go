@@ -1,7 +1,6 @@
 package parallel
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -79,7 +78,10 @@ func TestCreateSocialEvent(t *testing.T) {
 			event.Spec.UserTier = "deactivate30"
 
 			// when
-			err := hostAwait.Client.Update(context.TODO(), event)
+			event, err = hostAwait.UpdateSocialEvent(t, false, event.Name,
+				func(ev *toolchainv1alpha1.SocialEvent) {
+					ev.Spec.UserTier = "deactivate30"
+				})
 
 			// then
 			require.NoError(t, err)
@@ -115,7 +117,10 @@ func TestCreateSocialEvent(t *testing.T) {
 			event.Spec.SpaceTier = "base"
 
 			// when
-			err := hostAwait.Client.Update(context.TODO(), event)
+			event, err = hostAwait.UpdateSocialEvent(t, false, event.Name,
+				func(ev *toolchainv1alpha1.SocialEvent) {
+					ev.Spec.SpaceTier = "base"
+				})
 
 			// then
 			require.NoError(t, err)

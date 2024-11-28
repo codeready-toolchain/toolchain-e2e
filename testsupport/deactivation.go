@@ -16,7 +16,7 @@ import (
 // DeactivateAndCheckUser deactivates the given UserSignups and checks that the MUR is deprovisioned
 func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup) *toolchainv1alpha1.UserSignup {
 	hostAwait := awaitilities.Host()
-	userSignup, err := hostAwait.UpdateUserSignup(t, userSignup.Name,
+	userSignup, err := hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 		func(us *toolchainv1alpha1.UserSignup) {
 			states.SetDeactivated(us, true)
 		})
@@ -62,7 +62,7 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	}, userSignup)
 	require.NoError(t, err)
 
-	userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
+	userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
 		func(us *toolchainv1alpha1.UserSignup) {
 			states.SetApprovedManually(us, true)
 		})

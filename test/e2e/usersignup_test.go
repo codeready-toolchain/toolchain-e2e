@@ -405,7 +405,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 
 	// Update the UserSignup
-	userSignup, err := hostAwait.UpdateUserSignup(s.T(), userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+	userSignup, err := hostAwait.UpdateUserSignup(s.T(), false, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
 		// Modify the user's AccountID
 		us.Spec.IdentityClaims.AccountID = "nnnbbb111234"
 	})
