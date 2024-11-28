@@ -31,10 +31,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.15.0
 )
 
-require (
-	github.com/google/uuid v1.6.0
-	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
-)
+require github.com/google/uuid v1.6.0
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
@@ -104,13 +101,14 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/net v0.31.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.18.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/term v0.26.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/tools v0.27.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
@@ -132,3 +130,5 @@ require (
 )
 
 go 1.20
+
+replace github.com/codeready-toolchain/api => github.com/mfrancisc/api v0.0.0-20241128133539-a24a5d454de5

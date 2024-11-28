@@ -391,15 +391,30 @@ func TestTierTemplateRevision(t *testing.T) {
 	require.NoError(t, err)
 	// for the tiertemplaterevisions to be created the tiertemplates need to have template objects populated
 	// we add the RawExtension objects to the TemplateObjects field
-	ns := unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"kind": "Namespace",
-			"metadata": map[string]interface{}{
-				"name": "{{.SPACE_NAME}}",
+	crq := unstructured.Unstructured{Object: map[string]interface{}{
+		"kind": "ClusterResourceQuota",
+		"metadata": map[string]interface{}{
+			"name": "for-{{.SPACE_NAME}}-deployments",
+		},
+		"spec": map[string]interface{}{
+			"quota": map[string]interface{}{
+				"hard": map[string]string{
+					"count/deploymentconfigs.apps": "{{.DEPLOYMENT_QUOTA}}",
+					"count/deployments.apps":       "{{.DEPLOYMENT_QUOTA}}",
+					"count/pods":                   "600",
+				},
+			},
+			"selector": map[string]interface{}{
+				"annotations": map[string]string{},
+				"labels": map[string]interface{}{
+					"matchLabels": map[string]string{
+						"toolchain.dev.openshift.com/space": "'{{.SPACE_NAME}}'",
+					},
+				},
 			},
 		},
-	}
-	rawTemplateObjects := []runtime.RawExtension{{Object: &ns}}
+	}}
+	rawTemplateObjects := []runtime.RawExtension{{Object: &crq}}
 	updateTierTemplateObjects := func(template *toolchainv1alpha1.TierTemplate) error {
 		template.Spec.TemplateObjects = rawTemplateObjects
 		return nil
@@ -407,12 +422,12 @@ func TestTierTemplateRevision(t *testing.T) {
 	namespaceResourcesWithTemplateObjects := tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects)
 	clusterResourcesWithTemplateObjects := tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects)
 	spaceRolesWithTemplateObjects := tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects)
-	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResourcesWithTemplateObjects, spaceRolesWithTemplateObjects, tiers.WithParameter("SPACE_NAME", "janedoe"))
+	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResourcesWithTemplateObjects, spaceRolesWithTemplateObjects, tiers.WithParameter("DEPLOYMENT_QUOTA", "60"))
 
 	// when
 	// we verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
-	_, err = hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr", wait.HasStatusTierTemplateRevisions([]string{
+	customTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr", wait.HasStatusTierTemplateRevisions([]string{
 		fmt.Sprintf("ttrfrom%s", baseTier.Spec.Namespaces[0].TemplateRef),       // check that the revision field is set using the expected tierTemplate refs as keys
 		fmt.Sprintf("ttrfrom%s", baseTier.Spec.SpaceRoles["admin"].TemplateRef), // we can safely use the template refs from base tier since the custom tier was created from base one.
 		fmt.Sprintf("ttrfrom%s", baseTier.Spec.ClusterResources.TemplateRef),
@@ -433,8 +448,12 @@ func TestTierTemplateRevision(t *testing.T) {
 		assert.LessOrEqual(t, len(objs.Items), 6)
 		// we check that the TTR content has the parameters replaced with values from the NSTemplateTier
 		for _, obj := range objs.Items {
-			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), "janedoe")        // the object should have the namespace name replaced
-			assert.NotContains(t, string(obj.Spec.TemplateObjects[0].Raw), ".SPACE_NAME") // the object should NOT contain the variable anymore
+			// the object should have all the variables still there since this one will be replaced when provisioning the Space
+			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), ".SPACE_NAME")
+			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), ".DEPLOYMENT_QUOTA")
+			// the parameter is copied from the NSTemplateTier
+			assert.Equal(t, obj.Spec.Parameters[0].Name, customTier.Spec.Parameters[0].Name)
+			assert.Equal(t, obj.Spec.Parameters[0].Value, customTier.Spec.Parameters[0].Value)
 		}
 		return true, nil
 	})
