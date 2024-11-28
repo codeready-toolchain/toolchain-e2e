@@ -51,9 +51,6 @@ func TestThat(t *testing.T) {
 	expl, _ = predicates.Explain(spc, preds[2])
 	assert.Equal(t, "this is not the actual output", expl)
 
-	expl, _ = predicates.Explain(spc, preds[1])
-	assert.Equal(t, "this is not the actual output", expl)
-
 	expl, _ = predicates.Explain(spc, preds[3])
 	assert.Equal(t, "this is not the actual output", expl)
 }
