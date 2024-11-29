@@ -233,14 +233,14 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				t.Run("use proxy to update a HAS Application CR in the user appstudio namespace via proxy API", func(t *testing.T) {
-					// Get application name
+					// Update application
 					applicationName := user.getApplicationName(0)
+					// Get application
+					proxyApp := user.getApplication(t, proxyCl, applicationName)
 					// Update DisplayName
 					changedDisplayName := fmt.Sprintf("Proxy test for user %s - updated application", tenantNsName(user.compliantUsername))
-					// Update application
-					proxyApp, err := awaitilities.Host().UpdateApplication(t, proxyCl, applicationName, tenantNsName(user.compliantUsername), func(app *appstudiov1.Application) {
-						app.Spec.DisplayName = changedDisplayName
-					})
+					proxyApp.Spec.DisplayName = changedDisplayName
+					err := proxyCl.Update(context.TODO(), proxyApp)
 					require.NoError(t, err)
 
 					// Find application and check, if it is updated
@@ -320,6 +320,7 @@ func TestProxyFlow(t *testing.T) {
 
 			t.Run("get resource from namespace outside of user's workspace", func(t *testing.T) {
 				// given
+
 				// create a namespace which does not belong to the user's workspace
 				anotherNamespace := fmt.Sprintf("outside-%s", user.compliantUsername)
 				user.expectedMemberCluster.CreateNamespace(t, anotherNamespace)

@@ -20,7 +20,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
 
-	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -956,25 +955,4 @@ func (a *Awaitility) UpdateSpaceProvisionerConfig(t *testing.T, spcName string, 
 		return true, nil
 	})
 	return spc, err
-}
-
-// UpdateApplication tries to update the Spec of the given Application
-// If it fails with an error (for example if the object has been modified), it retrieves the latest version and retries
-// Returns the updated Application
-func (a *Awaitility) UpdateApplication(t *testing.T, cl client.Client, appName, namespace string, modifyApplication func(app *appstudiov1.Application)) (*appstudiov1.Application, error) {
-	var app *appstudiov1.Application
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshApp := &appstudiov1.Application{}
-		if err := cl.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: appName}, freshApp); err != nil {
-			return true, err
-		}
-		modifyApplication(freshApp)
-		if err := cl.Update(context.TODO(), freshApp); err != nil {
-			t.Logf("error updating Application '%s': %s.Will retry again...", appName, err.Error())
-			return false, nil
-		}
-		app = freshApp
-		return true, nil
-	})
-	return app, err
 }

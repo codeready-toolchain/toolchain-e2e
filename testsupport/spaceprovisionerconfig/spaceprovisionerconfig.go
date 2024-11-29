@@ -59,10 +59,6 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 
 		_, err = await.UpdateSpaceProvisionerConfig(t, originalSpc.Name,
 			func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
-				// make the originalSpc look like we freshly obtained it from the server and updated its fields
-				// to look like the original.
-				spcfg.Generation = currentSpc.Generation
-				spcfg.ResourceVersion = currentSpc.ResourceVersion
 				spcfg.Spec = originalSpc.Spec
 			})
 

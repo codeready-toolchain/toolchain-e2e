@@ -2618,12 +2618,12 @@ func (a *HostAwaitility) UpdateSocialEvent(t *testing.T, status bool, socialEven
 // NSTemplateTier updates the given NSTemplateTier using the provided modifiers.
 // If it encounters an error (e.g., object has been modified), it retrieves the latest version and retries.
 // Returns the updated NSTemplateTier.
-func (hostAwait *HostAwaitility) UpdateNSTemplateTier(t *testing.T, tierName string, modifyTier func(tier *toolchainv1alpha1.NSTemplateTier)) (*toolchainv1alpha1.NSTemplateTier, error) {
+func (a *HostAwaitility) UpdateNSTemplateTier(t *testing.T, tierName string, modifyTier func(tier *toolchainv1alpha1.NSTemplateTier)) (*toolchainv1alpha1.NSTemplateTier, error) {
 	var tier *toolchainv1alpha1.NSTemplateTier
-	err := wait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshTier := &toolchainv1alpha1.NSTemplateTier{}
-		if err := hostAwait.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: hostAwait.Namespace,
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{
+			Namespace: a.Namespace,
 			Name:      tierName,
 		}, freshTier); err != nil {
 			return true, err
@@ -2631,7 +2631,7 @@ func (hostAwait *HostAwaitility) UpdateNSTemplateTier(t *testing.T, tierName str
 
 		modifyTier(freshTier)
 
-		if err := hostAwait.Client.Update(context.TODO(), freshTier); err != nil {
+		if err := a.Client.Update(context.TODO(), freshTier); err != nil {
 			t.Logf("error updating NSTemplateTier '%s': %s. Will retry again...", tierName, err.Error())
 			return false, nil
 		}
