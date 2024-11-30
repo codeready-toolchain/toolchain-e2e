@@ -408,7 +408,7 @@ func TestTierTemplateRevision(t *testing.T) {
 				"annotations": map[string]string{},
 				"labels": map[string]interface{}{
 					"matchLabels": map[string]string{
-						"toolchain.dev.openshift.com/space": "'{{.SPACE_NAME}}'",
+						"toolchain.dev.openshift.com/space": "{{.SPACE_NAME}}",
 					},
 				},
 			},
@@ -452,6 +452,8 @@ func TestTierTemplateRevision(t *testing.T) {
 			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), ".SPACE_NAME")
 			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), ".DEPLOYMENT_QUOTA")
 			// the parameter is copied from the NSTemplateTier
+			assert.NotNil(t, obj.Spec.Parameters)
+			assert.NotNil(t, customTier.Spec.Parameters)
 			assert.Equal(t, obj.Spec.Parameters[0].Name, customTier.Spec.Parameters[0].Name)
 			assert.Equal(t, obj.Spec.Parameters[0].Value, customTier.Spec.Parameters[0].Value)
 		}
