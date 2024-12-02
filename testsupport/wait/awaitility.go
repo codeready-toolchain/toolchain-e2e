@@ -474,7 +474,7 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 		return true, nil
 	})
 	if err != nil {
-		a.getAndPrint(t, "Deployment", a.Namespace, name, &appsv1.Deployment{})
+		a.GetAndPrint(t, "Deployment", a.Namespace, name, &appsv1.Deployment{})
 	}
 	require.NoError(t, err)
 	return deployment
@@ -654,7 +654,7 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 	return fmt.Sprintf("\n%s present in the namespace:\n%s\n", resourceKind, string(content))
 }
 
-func (a *Awaitility) getAndPrint(t *testing.T, resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) {
+func (a *Awaitility) GetAndPrint(t *testing.T, resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) {
 	t.Logf(a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
 }
 
