@@ -34,12 +34,13 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 
 	originalSpc := spc.DeepCopy()
 
-	spc, err = await.UpdateSpaceProvisionerConfig(t, spc.Name,
-		func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
-			for _, opt := range opts {
-				opt(spcfg)
-			}
-		})
+	spc, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
+		Update(spc.Name,
+			func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
+				for _, opt := range opts {
+					opt(spcfg)
+				}
+			})
 	require.NoError(t, err)
 
 	// log spc values needed for debugging a problem with random capacity manager e2e test failures
@@ -57,10 +58,11 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 			require.Fail(t, err.Error())
 		}
 
-		_, err = await.UpdateSpaceProvisionerConfig(t, originalSpc.Name,
-			func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
-				spcfg.Spec = originalSpc.Spec
-			})
+		_, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
+			Update(originalSpc.Name,
+				func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
+					spcfg.Spec = originalSpc.Spec
+				})
 
 		require.NoError(t, err)
 	})

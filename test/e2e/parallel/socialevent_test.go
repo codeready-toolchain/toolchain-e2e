@@ -75,10 +75,11 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// when
-			event, err = hostAwait.UpdateSocialEvent(t, false, event.Name,
-				func(ev *toolchainv1alpha1.SocialEvent) {
-					ev.Spec.UserTier = "deactivate30"
-				})
+			event, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
+				Update(event.Name,
+					func(ev *toolchainv1alpha1.SocialEvent) {
+						ev.Spec.UserTier = "deactivate30"
+					})
 
 			// then
 			require.NoError(t, err)
@@ -111,10 +112,11 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// when
-			event, err = hostAwait.UpdateSocialEvent(t, false, event.Name,
-				func(ev *toolchainv1alpha1.SocialEvent) {
-					ev.Spec.SpaceTier = "base"
-				})
+			event, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
+				Update(event.Name,
+					func(ev *toolchainv1alpha1.SocialEvent) {
+						ev.Spec.SpaceTier = "base"
+					})
 
 			// then
 			require.NoError(t, err)

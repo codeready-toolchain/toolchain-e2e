@@ -16,10 +16,11 @@ import (
 // DeactivateAndCheckUser deactivates the given UserSignups and checks that the MUR is deprovisioned
 func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup) *toolchainv1alpha1.UserSignup {
 	hostAwait := awaitilities.Host()
-	userSignup, err := hostAwait.UpdateUserSignup(t, false, userSignup.Name,
-		func(us *toolchainv1alpha1.UserSignup) {
-			states.SetDeactivated(us, true)
-		})
+	userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+		Update(userSignup.Name,
+			func(us *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivated(us, true)
+			})
 	require.NoError(t, err)
 	t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
@@ -62,10 +63,11 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	}, userSignup)
 	require.NoError(t, err)
 
-	userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
-		func(us *toolchainv1alpha1.UserSignup) {
-			states.SetApprovedManually(us, true)
-		})
+	userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+		Update(userSignup.Name,
+			func(us *toolchainv1alpha1.UserSignup) {
+				states.SetApprovedManually(us, true)
+			})
 	require.NoError(t, err)
 	t.Logf("user signup '%s' reactivated", userSignup.Name)
 

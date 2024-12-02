@@ -66,9 +66,10 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 		}()
 
 		// now deactivate the usersignup
-		_, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetDeactivated(us, true)
-		})
+		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+				states.SetDeactivated(us, true)
+			})
 		require.NoError(t, err)
 
 		// wait until it is deactivated, SpaceBinding is gone, and Space is in terminating state
@@ -81,9 +82,10 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
-			states.SetApprovedManually(us, true)
-		})
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+				states.SetApprovedManually(us, true)
+			})
 		require.NoError(t, err)
 
 		// then

@@ -156,11 +156,12 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			Execute(t)
 
 		// Delete the user's email and set them to deactivated
-		userSignup, err := hostAwait.UpdateUserSignup(t, false, uNoEmail.UserSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				us.Spec.IdentityClaims.Email = ""
-				states.SetDeactivated(us, true)
-			})
+		userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(uNoEmail.UserSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					us.Spec.IdentityClaims.Email = ""
+					states.SetDeactivated(us, true)
+				})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' set to deactivated", userSignup.Name)
 
@@ -499,10 +500,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		require.NoError(t, err)
 
 		// Now deactivate the user
-		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(us, true)
-			})
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
 		require.NoError(t, err)
 
 		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -516,13 +518,14 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			testconfig.Deactivation().UserSignupUnverifiedRetentionDays(0))
 
 		// Reactivate the user
-		userSignup, err = hostAwait.UpdateUserSignup(t, false, userSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivating(us, false)
-				states.SetDeactivated(us, false)
-				states.SetApprovedManually(us, true)
-				states.SetVerificationRequired(us, true)
-			})
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivating(us, false)
+					states.SetDeactivated(us, false)
+					states.SetApprovedManually(us, true)
+					states.SetVerificationRequired(us, true)
+				})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' reactivated", userSignup.Name)
 
@@ -781,10 +784,11 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 				// when
 				DeactivateAndCheckUser(t, s.Awaitilities, userSignup)
 				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
-				userSignup, err := s.Host().UpdateUserSignup(t, false, userSignup.Name,
-					func(us *toolchainv1alpha1.UserSignup) {
-						us.Spec.TargetCluster = ""
-					})
+				userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+					Update(userSignup.Name,
+						func(us *toolchainv1alpha1.UserSignup) {
+							us.Spec.TargetCluster = ""
+						})
 				require.NoError(t, err)
 
 				ReactivateAndCheckUser(t, s.Awaitilities, userSignup)

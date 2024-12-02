@@ -169,10 +169,11 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, false, user.UserSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivating(us, true)
-			})
+		updatedUserSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(user.UserSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivating(us, true)
+				})
 		require.NoError(t, err)
 
 		// Move the MUR to the user tier with longer deactivation time

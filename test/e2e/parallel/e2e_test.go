@@ -160,9 +160,10 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// when
-			_, err = memberAwait.UpdateUser(t, user.Name, func(u *userv1.User) {
-				u.Identities = []string{}
-			})
+			_, err = wait.For(t, memberAwait.Awaitility, &userv1.User{}).
+				Update(user.Name, func(u *userv1.User) {
+					u.Identities = []string{}
+				})
 
 			// then
 			require.NoError(t, err)
@@ -178,9 +179,10 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// when
-			_, err = memberAwait.UpdateIdentity(t, identity.Name, func(i *userv1.Identity) {
-				i.User = corev1.ObjectReference{Name: "", UID: ""}
-			})
+			_, err = wait.For(t, memberAwait.Awaitility, &userv1.Identity{}).
+				Update(identity.Name, func(i *userv1.Identity) {
+					i.User = corev1.ObjectReference{Name: "", UID: ""}
+				})
 
 			// then
 			require.NoError(t, err)
@@ -485,10 +487,11 @@ func TestE2EFlow(t *testing.T) {
 		require.Len(t, userList.Items, 1)
 
 		// Now deactivate the UserSignup
-		userSignup, err := hostAwait.UpdateUserSignup(t, false, originalSubJohnSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(us, true)
-			})
+		userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(originalSubJohnSignup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
 		require.NoError(t, err)
 
 		// Wait until the UserSignup is deactivated

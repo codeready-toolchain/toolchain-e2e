@@ -21,7 +21,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/metrics"
 
 	routev1 "github.com/openshift/api/route/v1"
-	userv1 "github.com/openshift/api/user/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -894,65 +893,51 @@ func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
 	}
 }
 
-// UpdateUser tries to update the Spec of the given User
-// If it fails with an error (for example if the object has been modified), it retrieves the latest version and tries again
-// Returns the updated User
-func (a *Awaitility) UpdateUser(t *testing.T, userName string, modifyUser func(user *userv1.User)) (*userv1.User, error) {
-	var user *userv1.User
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshUser := &userv1.User{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userName}, freshUser); err != nil {
+// doUpdate tries to update the Status or Spec of the given object
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated object
+func (w *Waiter[T]) doUpdate(status bool, objectName string, modify func(T)) (T, error) {
+	var objectToReturn T
+	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), types.NamespacedName{Namespace: w.await.Namespace, Name: objectName}, obj); err != nil {
 			return true, err
 		}
-		modifyUser(freshUser)
-		if err := a.Client.Update(context.TODO(), freshUser); err != nil {
-			t.Logf("error updating User '%s': %s.Will retry again...", userName, err.Error())
-			return false, nil
+		object, err := w.cast(obj)
+		if err != nil {
+			return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
 		}
-		user = freshUser
+		modify(object)
+		if status {
+			// Update the Status
+			if err := w.await.Client.Status().Update(context.TODO(), object); err != nil {
+				w.t.Logf("error updating '%v' Status '%s': %s. Will retry again...", w.gvk, objectName, err.Error())
+				return false, err
+			}
+		} else {
+			// Update the Spec
+			if err := w.await.Client.Update(context.TODO(), object); err != nil {
+				w.t.Logf("Error updating '%v' Spec '%s': %s. Will retry again...", w.gvk, objectName, err.Error())
+				return false, err
+			}
+		}
+		objectToReturn = object
 		return true, nil
 	})
-	return user, err
+	return objectToReturn, err
 }
 
-// UpdateIdentity tries to update the Spec of the given Identity
-// If it fails with an error (for example if the object has been modified), it retrieves the latest version and retries
-// Returns the updated Identity
-func (a *Awaitility) UpdateIdentity(t *testing.T, identityName string, modifyIdentity func(identity *userv1.Identity)) (*userv1.Identity, error) {
-	var identity *userv1.Identity
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshIdentity := &userv1.Identity{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: identityName}, freshIdentity); err != nil {
-			return true, err
-		}
-		modifyIdentity(freshIdentity)
-		if err := a.Client.Update(context.TODO(), freshIdentity); err != nil {
-			t.Logf("error updating Identity '%s': %s.Will retry again...", identityName, err.Error())
-			return false, nil
-		}
-		identity = freshIdentity
-		return true, nil
-	})
-	return identity, err
+// Update tries to update the Spec of the given object
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated object
+func (w *Waiter[T]) Update(objectName string, modify func(T)) (T, error) {
+	return w.doUpdate(false, objectName, modify)
 }
 
-// UpdateSpaceProvisionerConfig tries to update the Spec of the given SpaceProvisionerConfig
-// If it fails with an error (for example if the object has been modified), it retrieves the latest version and retries
-// Returns the updated SpaceProvisionerConfig
-func (a *Awaitility) UpdateSpaceProvisionerConfig(t *testing.T, spcName string, modifySpc func(spc *toolchainv1alpha1.SpaceProvisionerConfig)) (*toolchainv1alpha1.SpaceProvisionerConfig, error) {
-	var spc *toolchainv1alpha1.SpaceProvisionerConfig
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshSpc := &toolchainv1alpha1.SpaceProvisionerConfig{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spcName}, freshSpc); err != nil {
-			return true, err
-		}
-		modifySpc(freshSpc)
-		if err := a.Client.Update(context.TODO(), freshSpc); err != nil {
-			t.Logf("error updating SpaceProvisionerConfig '%s': %s.Will retry again...", spcName, err.Error())
-			return false, nil
-		}
-		spc = freshSpc
-		return true, nil
-	})
-	return spc, err
+// UpdateStatus tries to update the Status of the given object
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated object
+func (w *Waiter[T]) UpdateStatus(objectName string, modify func(T)) (T, error) {
+	return w.doUpdate(true, objectName, modify)
 }
