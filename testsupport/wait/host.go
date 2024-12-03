@@ -214,28 +214,6 @@ func (a *HostAwaitility) UpdateMasterUserRecord(t *testing.T, status bool, murNa
 	return m, err
 }
 
-// UpdateUserSignup tries to update the Spec of the given UserSignup
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated UserSignup
-func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
-	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshUserSignup := &toolchainv1alpha1.UserSignup{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userSignupName}, freshUserSignup); err != nil {
-			return true, err
-		}
-
-		modifyUserSignup(freshUserSignup)
-		if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
-			t.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
-			return false, nil
-		}
-		userSignup = freshUserSignup
-		return true, nil
-	})
-	return userSignup, err
-}
-
 // UpdateSpace tries to update the Spec of the given Space
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated Space
