@@ -913,13 +913,13 @@ func (w *Waiter[T]) doUpdate(status bool, objectName string, modify func(T)) (T,
 			// Update the Status
 			if err := w.await.Client.Status().Update(context.TODO(), object); err != nil {
 				w.t.Logf("error updating '%v' Status '%s': %s. Will retry again...", w.gvk, objectName, err.Error())
-				return false, err
+				return false, nil
 			}
 		} else {
 			// Update the Spec
 			if err := w.await.Client.Update(context.TODO(), object); err != nil {
 				w.t.Logf("Error updating '%v' Spec '%s': %s. Will retry again...", w.gvk, objectName, err.Error())
-				return false, err
+				return false, nil
 			}
 		}
 		objectToReturn = object
@@ -928,7 +928,7 @@ func (w *Waiter[T]) doUpdate(status bool, objectName string, modify func(T)) (T,
 	return objectToReturn, err
 }
 
-// Update tries to update the Spec of the given object
+// Update tries to update the given object
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated object
 func (w *Waiter[T]) Update(objectName string, modify func(T)) (T, error) {
