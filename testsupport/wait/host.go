@@ -13,7 +13,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
-	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -769,25 +768,28 @@ func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(t *testing.T, n
 	}
 }
 
-// WaitForBannedUser waits until there is a BannedUser available with the given email
-func (a *HostAwaitility) WaitForBannedUser(t *testing.T, email string) (*toolchainv1alpha1.BannedUser, error) {
-	t.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
+// WaitForBannedUser waits until there is a BannedUser available with the given email hash
+// !!! WARNING: for now, just used for WA
+func (a *HostAwaitility) WaitForBannedUser(t *testing.T, userEmailHash string) (*toolchainv1alpha1.BannedUser, error) {
+	t.Logf("waiting for BannedUser for user email hash '%s' in namespace '%s'", userEmailHash, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
-	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email)}
+	emailHashLabelMatch := client.MatchingLabels(map[string]string{
+		toolchainv1alpha1.BannedUserEmailHashLabelKey: userEmailHash,
+	})
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
-		if err = a.Client.List(context.TODO(), bannedUserList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
-			if len(bannedUserList.Items) == 0 {
-				return false, nil
-			}
+		if err := a.Client.List(ctx, bannedUserList, emailHashLabelMatch, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
-		bannedUser = &bannedUserList.Items[0]
-		return true, nil
+		if len(bannedUserList.Items) > 0 {
+			bannedUser = &bannedUserList.Items[0]
+			return true, nil
+		}
+		return false, nil
 	})
 	// log message if an error occurred
 	if err != nil {
-		t.Logf("failed to find Banned for email address '%s': %v", email, err)
+		t.Logf("failed to find Banned for email hash '%s': %v", userEmailHash, err)
 	}
 	return bannedUser, err
 }
