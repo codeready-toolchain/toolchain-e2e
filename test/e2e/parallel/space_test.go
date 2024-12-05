@@ -79,9 +79,10 @@ func TestCreateSpace(t *testing.T) {
 
 		t.Run("unable to delete space that was already provisioned", func(t *testing.T) {
 			// given
-			s, err := hostAwait.UpdateSpace(t, space.Name, func(s *toolchainv1alpha1.Space) {
-				s.Spec.TargetCluster = "unknown"
-			})
+			s, err := For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+				Update(space.Name, hostAwait.Namespace, func(ss *toolchainv1alpha1.Space) {
+					ss.Spec.TargetCluster = "unknown"
+				})
 			require.NoError(t, err)
 
 			// when
@@ -96,9 +97,10 @@ func TestCreateSpace(t *testing.T) {
 
 			t.Run("update target cluster to unblock deletion", func(t *testing.T) {
 				// when
-				s, err = hostAwait.UpdateSpace(t, s.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TargetCluster = memberAwait.ClusterName
-				})
+				s, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+					Update(s.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+						s.Spec.TargetCluster = memberAwait.ClusterName
+					})
 				require.NoError(t, err)
 
 				// then
@@ -204,10 +206,11 @@ func TestSpaceRoles(t *testing.T) {
 
 	t.Run("set owner user as maintainer instead", func(t *testing.T) {
 		// when
-		ownerBinding, err = hostAwait.UpdateSpaceBinding(t, ownerBinding.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
-			// given an appstudio space with `owner` user as an admin of it
-			sb.Spec.SpaceRole = "maintainer"
-		})
+		ownerBinding, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceBinding{}).
+			Update(ownerBinding.Name, hostAwait.Namespace, func(sb *toolchainv1alpha1.SpaceBinding) {
+				// given an appstudio space with `owner` user as an admin of it
+				sb.Spec.SpaceRole = "maintainer"
+			})
 		require.NoError(t, err)
 
 		// then
@@ -223,10 +226,11 @@ func TestSpaceRoles(t *testing.T) {
 
 	t.Run("set owner user as contributor instead", func(t *testing.T) {
 		// when
-		ownerBinding, err = hostAwait.UpdateSpaceBinding(t, ownerBinding.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
-			// given an appstudio space with `owner` user as an admin of it
-			sb.Spec.SpaceRole = "contributor"
-		})
+		ownerBinding, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceBinding{}).
+			Update(ownerBinding.Name, hostAwait.Namespace, func(sb *toolchainv1alpha1.SpaceBinding) {
+				// given an appstudio space with `owner` user as an admin of it
+				sb.Spec.SpaceRole = "contributor"
+			})
 
 		// then
 		require.NoError(t, err)
@@ -337,10 +341,11 @@ func TestSubSpaces(t *testing.T) {
 		t.Run("we update role in parentSpaceBinding and expect change to be reflected in subSpaces", func(t *testing.T) {
 			// when
 			// we update the parentSpace bindings
-			parentSpaceBindings, err = hostAwait.UpdateSpaceBinding(t, parentSpaceBindings.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
-				// the parentSpace role was "downgraded" to maintainer
-				sb.Spec.SpaceRole = "maintainer"
-			})
+			parentSpaceBindings, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceBinding{}).
+				Update(parentSpaceBindings.Name, hostAwait.Namespace, func(sb *toolchainv1alpha1.SpaceBinding) {
+					// the parentSpace role was "downgraded" to maintainer
+					sb.Spec.SpaceRole = "maintainer"
+				})
 
 			// then
 			// downgrade of the usernames is done in parentSpace

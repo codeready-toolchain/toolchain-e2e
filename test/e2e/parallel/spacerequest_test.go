@@ -82,9 +82,10 @@ func TestCreateSpaceRequest(t *testing.T) {
 				// something/someone updates the tierName directly on the Space object
 
 				// when
-				subSpace, err = hostAwait.UpdateSpace(t, subSpace.Name, func(s *toolchainv1alpha1.Space) {
-					s.Spec.TierName = "base1ns" // let's change the tier
-				})
+				subSpace, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+					Update(subSpace.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+						s.Spec.TierName = "base1ns" // let's change the tier
+					})
 				require.NoError(t, err)
 
 				// then
@@ -316,11 +317,11 @@ func TestUpdateSpaceRequest(t *testing.T) {
 
 	t.Run("update space request tierName", func(t *testing.T) {
 		// when
-		_, err := memberAwait.UpdateSpaceRequest(t, spaceRequestNamespacedName,
-			func(s *toolchainv1alpha1.SpaceRequest) {
-				s.Spec.TierName = "base"
-			},
-		)
+		_, err := For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceRequest{}).
+			Update(spaceRequestNamespacedName.Name, spaceRequestNamespacedName.Namespace,
+				func(s *toolchainv1alpha1.SpaceRequest) {
+					s.Spec.TierName = "base"
+				})
 		require.NoError(t, err)
 
 		// then

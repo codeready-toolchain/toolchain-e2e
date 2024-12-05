@@ -413,7 +413,7 @@ func TestSignupOK(t *testing.T) {
 		assert.Equal(t, "error creating UserSignup resource", mp["details"])
 
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name,
+			Update(userSignup.Name, hostAwait.Namespace,
 				func(instance *toolchainv1alpha1.UserSignup) {
 					// Approve usersignup.
 					states.SetApprovedManually(instance, true)
@@ -446,7 +446,7 @@ func TestSignupOK(t *testing.T) {
 
 		// Deactivate the usersignup
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name,
+			Update(userSignup.Name, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(us, true)
 				})
@@ -612,7 +612,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.False(t, mpStatus["verificationRequired"].(bool))
 
 	userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-		Update(userSignup.Name,
+		Update(userSignup.Name, hostAwait.Namespace,
 			func(instance *toolchainv1alpha1.UserSignup) {
 				// Now approve the usersignup.
 				states.SetApprovedManually(instance, true)
@@ -670,7 +670,7 @@ func TestPhoneVerification(t *testing.T) {
 	require.NoError(t, err)
 
 	userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-		Update(userSignup.Name,
+		Update(userSignup.Name, hostAwait.Namespace,
 			func(instance *toolchainv1alpha1.UserSignup) {
 				// Now mark the original UserSignup as deactivated
 				states.SetDeactivated(instance, true)
@@ -725,7 +725,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name,
+			Update(userSignup.Name, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetApprovedManually(us, true)
 				})
@@ -799,7 +799,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			})) // need to reload event
 			require.NoError(t, err)
 			event, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				UpdateStatus(event.Name,
+				UpdateStatus(event.Name, hostAwait.Namespace,
 					func(ev *toolchainv1alpha1.SocialEvent) {
 						ev.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
 					})

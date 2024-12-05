@@ -28,9 +28,10 @@ func TestRetargetUserByChangingSpaceTargetClusterWhenSpaceIsNotShared(t *testing
 		Execute(t)
 
 	// when
-	space, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = member2Await.ClusterName
-	})
+	space, err := For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+		Update(user.Space.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+			s.Spec.TargetCluster = member2Await.ClusterName
+		})
 	require.NoError(t, err)
 
 	// then
@@ -89,9 +90,10 @@ func TestRetargetUserByChangingSpaceTargetClusterWhenSpaceIsShared(t *testing.T)
 	require.NoError(t, err)
 
 	// when
-	spaceToMove, err = hostAwait.UpdateSpace(t, spaceToMove.Name, func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = member2Await.ClusterName
-	})
+	spaceToMove, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+		Update(spaceToMove.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+			s.Spec.TargetCluster = member2Await.ClusterName
+		})
 	require.NoError(t, err)
 
 	// then
@@ -169,9 +171,10 @@ func TestRetargetUserWithSBRByChangingSpaceTargetClusterWhenSpaceIsShared(t *tes
 	require.NoError(t, err)
 
 	// when
-	spaceToMove, err = hostAwait.UpdateSpace(t, spaceToMove.Name, func(s *toolchainv1alpha1.Space) {
-		s.Spec.TargetCluster = member2Await.ClusterName
-	})
+	spaceToMove, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+		Update(spaceToMove.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+			s.Spec.TargetCluster = member2Await.ClusterName
+		})
 	require.NoError(t, err)
 
 	// then

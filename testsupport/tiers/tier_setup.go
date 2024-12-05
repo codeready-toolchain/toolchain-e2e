@@ -129,7 +129,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *HostAwaitility, tier *C
 		require.NoError(t, err)
 	}
 	_, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
-		Update(tier.NSTemplateTier.Name, func(nstt *toolchainv1alpha1.NSTemplateTier) {
+		Update(tier.NSTemplateTier.Name, hostAwait.Namespace, func(nstt *toolchainv1alpha1.NSTemplateTier) {
 			nstt.Spec = tier.NSTemplateTier.Spec
 		})
 	require.NoError(t, err)
@@ -168,10 +168,11 @@ func MoveSpaceToTier(t *testing.T, hostAwait *HostAwaitility, spacename, tierNam
 	_, err := hostAwait.WaitForSpace(t, spacename)
 	require.NoError(t, err)
 
-	_, err = hostAwait.UpdateSpace(t, spacename,
-		func(s *toolchainv1alpha1.Space) {
-			s.Spec.TierName = tierName
-		})
+	_, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+		Update(spacename, hostAwait.Namespace,
+			func(s *toolchainv1alpha1.Space) {
+				s.Spec.TierName = tierName
+			})
 	require.NoError(t, err)
 }
 
@@ -180,10 +181,11 @@ func MoveMURToTier(t *testing.T, hostAwait *HostAwaitility, username, tierName s
 	mur, err := hostAwait.WaitForMasterUserRecord(t, username)
 	require.NoError(t, err)
 
-	_, err = hostAwait.UpdateMasterUserRecord(t, false, mur.Name,
-		func(mur *toolchainv1alpha1.MasterUserRecord) {
-			mur.Spec.TierName = tierName
-		})
+	_, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+		Update(mur.Name, hostAwait.Namespace,
+			func(mur *toolchainv1alpha1.MasterUserRecord) {
+				mur.Spec.TierName = tierName
+			})
 	require.NoError(t, err)
 }
 

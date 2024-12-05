@@ -65,9 +65,10 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 					// something/someone updates the SpaceRole directly on the SpaceBinding object
 
 					// when
-					spaceBinding, err = hostAwait.UpdateSpaceBinding(t, spaceBinding.Name, func(s *toolchainv1alpha1.SpaceBinding) {
-						s.Spec.SpaceRole = "maintainer" // let's change the role
-					})
+					spaceBinding, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceBinding{}).
+						Update(spaceBinding.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.SpaceBinding) {
+							s.Spec.SpaceRole = "maintainer" // let's change the role
+						})
 					require.NoError(t, err)
 
 					// then
@@ -138,9 +139,10 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 
 			t.Run("update SBR to fix invalid SpaceRole", func(t *testing.T) {
 				// when
-				_, err = memberAwait.UpdateSpaceBindingRequest(t, client.ObjectKeyFromObject(spaceBindingRequest), func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
-					sbr.Spec.SpaceRole = "admin"
-				})
+				_, err = For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceBindingRequest{}).
+					Update(spaceBindingRequest.Name, spaceBindingRequest.Namespace, func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+						sbr.Spec.SpaceRole = "admin"
+					})
 
 				// then
 				require.NoError(t, err)
@@ -163,11 +165,11 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 	t.Run("update space binding request SpaceRole", func(t *testing.T) {
 		// when
 		space, spaceBindingRequest, _ := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "contributor")
-		_, err := memberAwait.UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
-			func(s *toolchainv1alpha1.SpaceBindingRequest) {
-				s.Spec.SpaceRole = "admin" // set to admin from contributor
-			},
-		)
+		_, err := For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceBindingRequest{}).
+			Update(spaceBindingRequest.Name, spaceBindingRequest.Namespace, func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+				sbr.Spec.SpaceRole = "admin"
+			})
+
 		require.NoError(t, err)
 
 		//then

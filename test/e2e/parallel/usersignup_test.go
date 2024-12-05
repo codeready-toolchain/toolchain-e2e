@@ -51,23 +51,25 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 		// let's get a namespace of the space
 		namespaceName := user.Space.Status.ProvisionedNamespaces[0].Name
 		// and add a dummy finalizer there so it will get stuck
-		_, err := memberAwait.UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
-			util.AddFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
-		})
+		_, err := wait.For(t, memberAwait.Awaitility, &v1.Namespace{}).
+			Update(namespaceName, memberAwait.Namespace, func(ns *v1.Namespace) {
+				util.AddFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
+			})
 		require.NoError(t, err)
 
 		// don't forget to clean the finalizer up
 		defer func() {
 			t.Log("cleaning up the finalizer")
-			_, err = memberAwait.UpdateNamespace(t, namespaceName, func(ns *v1.Namespace) {
-				util.RemoveFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
-			})
+			_, err = wait.For(t, memberAwait.Awaitility, &v1.Namespace{}).
+				Update(namespaceName, memberAwait.Namespace, func(ns *v1.Namespace) {
+					util.RemoveFinalizer(ns, "test/finalizer.toolchain.e2e.tests")
+				})
 			require.NoError(t, err)
 		}()
 
 		// now deactivate the usersignup
 		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			Update(userSignup.Name, hostAwait.Namespace, func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(us, true)
 			})
 		require.NoError(t, err)
@@ -83,7 +85,7 @@ func TestTransformUsernameWithSpaceConflict(t *testing.T) {
 
 		// when
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+			Update(userSignup.Name, hostAwait.Namespace, func(us *toolchainv1alpha1.UserSignup) {
 				states.SetApprovedManually(us, true)
 			})
 		require.NoError(t, err)

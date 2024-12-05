@@ -71,9 +71,10 @@ func TestSpaceProvisionerConfig(t *testing.T) {
 			&corev1.Secret{})
 
 		// when
-		_, err = host.UpdateToolchainCluster(t, tc.Name, func(updatedTc *toolchainv1alpha1.ToolchainCluster) {
-			updatedTc.Spec.SecretRef.Name = newSecretName
-		})
+		_, err = wait.For(t, host.Awaitility, &toolchainv1alpha1.ToolchainCluster{}).
+			Update(tc.Name, host.Namespace, func(updatedTc *toolchainv1alpha1.ToolchainCluster) {
+				updatedTc.Spec.SecretRef.Name = newSecretName
+			})
 		require.NoError(t, err)
 
 		// then

@@ -76,7 +76,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// when
 			event, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				Update(event.Name,
+				Update(event.Name, hostAwait.Namespace,
 					func(ev *toolchainv1alpha1.SocialEvent) {
 						ev.Spec.UserTier = "deactivate30"
 					})
@@ -113,7 +113,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// when
 			event, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				Update(event.Name,
+				Update(event.Name, hostAwait.Namespace,
 					func(ev *toolchainv1alpha1.SocialEvent) {
 						ev.Spec.SpaceTier = "base"
 					})

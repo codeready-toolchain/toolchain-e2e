@@ -157,7 +157,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// Delete the user's email and set them to deactivated
 		userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(uNoEmail.UserSignup.Name,
+			Update(uNoEmail.UserSignup.Name, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					us.Spec.IdentityClaims.Email = ""
 					states.SetDeactivated(us, true)
@@ -198,10 +198,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		manyManyDaysAgo := 999999999999999
 		durationDelta := time.Duration(manyManyDaysAgo) * time.Hour * 24
 		updatedProvisionedTime := &metav1.Time{Time: time.Now().Add(-durationDelta)}
-		murMember1, err = hostAwait.UpdateMasterUserRecordStatus(t, murMember1.Name,
-			func(mur *toolchainv1alpha1.MasterUserRecord) {
-				mur.Status.ProvisionedTime = updatedProvisionedTime
-			})
+		murMember1, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+			UpdateStatus(murMember1.Name, hostAwait.Namespace,
+				func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Status.ProvisionedTime = updatedProvisionedTime
+				})
 		require.NoError(t, err)
 		t.Logf("masteruserrecord '%s' provisioned time adjusted", murMember1.Name)
 
@@ -227,7 +228,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		murMember1 := userMember1.MUR
 
 		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, murMember1)
+		s.promoteToDefaultUserTier(murMember1)
 
 		deactivationExcludedUserMember1 := NewSignupRequest(s.Awaitilities).
 			Username("userdeactivationexcluded").
@@ -241,7 +242,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		excludedMurMember1 := deactivationExcludedUserMember1.MUR
 
 		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, excludedMurMember1)
+		s.promoteToDefaultUserTier(excludedMurMember1)
 
 		// Get the provisioned account's tier
 		baseUserTier, err := hostAwait.WaitForUserTier(t, "deactivate30")
@@ -251,18 +252,20 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// to a time far enough in the past to trigger auto deactivation. Subtracting the given period from the current time and setting this as the provisioned
 		// time should test the behaviour of the deactivation controller reconciliation.
 		tierDeactivationDuration := time.Duration(baseUserTier.Spec.DeactivationTimeoutDays+1) * time.Hour * 24
-		murMember1, err = hostAwait.UpdateMasterUserRecordStatus(t, murMember1.Name,
-			func(mur *toolchainv1alpha1.MasterUserRecord) {
-				mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-			})
+		murMember1, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+			UpdateStatus(murMember1.Name, hostAwait.Namespace,
+				func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+				})
 		require.NoError(t, err)
 		t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", murMember1.Name, murMember1.Status.ProvisionedTime.String())
 
 		// Use the same method above to change the provisioned time for the excluded user
-		excludedMurMember1, err = hostAwait.UpdateMasterUserRecordStatus(t, excludedMurMember1.Name,
-			func(mur *toolchainv1alpha1.MasterUserRecord) {
-				mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-			})
+		excludedMurMember1, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+			UpdateStatus(excludedMurMember1.Name, hostAwait.Namespace,
+				func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+				})
 		require.NoError(t, err)
 		t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", excludedMurMember1.Name, excludedMurMember1.Status.ProvisionedTime.String())
 
@@ -314,7 +317,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		murMember1 := userMember1.MUR
 
 		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, murMember1)
+		s.promoteToDefaultUserTier(murMember1)
 
 		// Get the provisioned account's tier
 		baseUserTier, err := hostAwait.WaitForUserTier(t, "deactivate30")
@@ -325,10 +328,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		// period from the current time and setting this as the provisioned time should test the behaviour of the
 		// deactivation controller reconciliation.
 		tierDeactivationDuration := time.Duration(baseUserTier.Spec.DeactivationTimeoutDays+1) * time.Hour * 24
-		murMember1, err = hostAwait.UpdateMasterUserRecordStatus(t, murMember1.Name,
-			func(mur *toolchainv1alpha1.MasterUserRecord) {
-				mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-			})
+		murMember1, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+			UpdateStatus(murMember1.Name, hostAwait.Namespace,
+				func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+				})
 		require.NoError(t, err)
 		t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", murMember1.Name,
 			murMember1.Status.ProvisionedTime.String())
@@ -361,7 +365,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 		userSignup := user.UserSignup
 
 		// TODO remove once UserTier migration is completed
-		s.promoteToDefaultUserTier(hostAwait.Client, user.MUR)
+		s.promoteToDefaultUserTier(user.MUR)
 
 		// Wait for the UserSignup to have the desired state
 		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
@@ -383,10 +387,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			// period from the current time and setting this as the provisioned time should test the behaviour of the
 			// deactivation controller reconciliation.
 			tierDeactivationDuration := time.Duration(baseUserTier.Spec.DeactivationTimeoutDays+1) * time.Hour * 24
-			mur, err = hostAwait.UpdateMasterUserRecordStatus(t, mur.Name,
-				func(mur *toolchainv1alpha1.MasterUserRecord) {
-					mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-				})
+			mur, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+				UpdateStatus(mur.Name, hostAwait.Namespace,
+					func(mur *toolchainv1alpha1.MasterUserRecord) {
+						mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+					})
 			require.NoError(t, err)
 			t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", mur.Name,
 				mur.Status.ProvisionedTime.String())
@@ -410,10 +415,11 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 			t.Run("user set to deactivated after deactivating", func(t *testing.T) {
 				// Set the provisioned time even further back
 				tierDeactivationDuration := time.Duration(baseUserTier.Spec.DeactivationTimeoutDays+4) * time.Hour * 24
-				mur, err = hostAwait.UpdateMasterUserRecordStatus(t, mur.Name,
-					func(mur *toolchainv1alpha1.MasterUserRecord) {
-						mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
-					})
+				mur, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+					UpdateStatus(mur.Name, hostAwait.Namespace,
+						func(mur *toolchainv1alpha1.MasterUserRecord) {
+							mur.Status.ProvisionedTime = &metav1.Time{Time: time.Now().Add(-tierDeactivationDuration)}
+						})
 				murName := mur.Name
 				require.NoError(t, err)
 				t.Logf("masteruserrecord '%s' provisioned time adjusted to %s", mur.Name,
@@ -448,16 +454,22 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 				require.Equal(t, deactivatingLastTransitionTime, updated.LastTransitionTime)
 
 				// Save the updated UserSignup's Status
-				require.NoError(t, hostAwait.Client.Status().Update(context.TODO(), userSignup))
+				userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+					UpdateStatus(userSignup.Name, hostAwait.Namespace, func(u *toolchainv1alpha1.UserSignup) {
+						u.Status.Conditions = userSignup.Status.Conditions
+					})
+
+				require.NoError(t, err)
 
 				// Trigger a reconciliation of the deactivation controller by updating the MUR annotation
-				_, err := hostAwait.UpdateMasterUserRecordSpec(t, murName,
-					func(mur *toolchainv1alpha1.MasterUserRecord) {
-						if mur.Annotations == nil {
-							mur.Annotations = map[string]string{}
-						}
-						mur.Annotations["update-from-e2e-tests"] = "trigger"
-					})
+				_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+					Update(murName, hostAwait.Namespace,
+						func(mur *toolchainv1alpha1.MasterUserRecord) {
+							if mur.Annotations == nil {
+								mur.Annotations = map[string]string{}
+							}
+							mur.Annotations["update-from-e2e-tests"] = "trigger"
+						})
 				if err != nil {
 					// the mur might already be deleted, so we can continue as long as the error is the mur was not found
 					require.EqualError(t, err, fmt.Sprintf("masteruserrecords.toolchain.dev.openshift.com \"%s\" not found", murName))
@@ -501,7 +513,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// Now deactivate the user
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name,
+			Update(userSignup.Name, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivated(us, true)
 				})
@@ -519,7 +531,7 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 
 		// Reactivate the user
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name,
+			Update(userSignup.Name, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetDeactivating(us, false)
 					states.SetDeactivated(us, false)
@@ -715,8 +727,8 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 	VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 
 	// Disable MUR
-	mur, err := hostAwait.UpdateMasterUserRecordSpec(s.T(),
-		u.MUR.Name, func(mur *toolchainv1alpha1.MasterUserRecord) {
+	mur, err := wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+		Update(u.MUR.Name, hostAwait.Namespace, func(mur *toolchainv1alpha1.MasterUserRecord) {
 			mur.Spec.Disabled = true
 		})
 	require.NoError(s.T(), err)
@@ -748,10 +760,11 @@ func (s *userManagementTestSuite) TestUserDisabled() {
 
 	s.Run("re-enabled mur", func() {
 		// Re-enable MUR
-		mur, err = hostAwait.UpdateMasterUserRecordSpec(s.T(), mur.Name,
-			func(mur *toolchainv1alpha1.MasterUserRecord) {
-				mur.Spec.Disabled = false
-			})
+		mur, err = wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+			Update(mur.Name, hostAwait.Namespace,
+				func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Spec.Disabled = false
+				})
 		require.NoError(s.T(), err)
 
 		VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
@@ -785,7 +798,7 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 				DeactivateAndCheckUser(t, s.Awaitilities, userSignup)
 				// If TargetCluster is set it will override the last cluster annotation so remove TargetCluster
 				userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-					Update(userSignup.Name,
+					Update(userSignup.Name, hostAwait.Namespace,
 						func(us *toolchainv1alpha1.UserSignup) {
 							us.Spec.TargetCluster = ""
 						})
@@ -805,8 +818,12 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 }
 
 // TODO remove once UserTier migration is completed
-func (s *userManagementTestSuite) promoteToDefaultUserTier(cl client.Client, mur *toolchainv1alpha1.MasterUserRecord) {
-	mur.Spec.TierName = "deactivate30"
-	err := cl.Update(context.TODO(), mur)
+func (s *userManagementTestSuite) promoteToDefaultUserTier(mur *toolchainv1alpha1.MasterUserRecord) {
+	hostAwait := s.Awaitilities.Host()
+	_, err := wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+		Update(mur.Name, hostAwait.Namespace, func(m *toolchainv1alpha1.MasterUserRecord) {
+			m.Spec.TierName = "deactivate30"
+		})
+
 	require.NoError(s.T(), err)
 }
