@@ -455,6 +455,8 @@ func TestTierTemplateRevision(t *testing.T) {
 			// the parameter is copied from the NSTemplateTier
 			assert.NotNil(t, obj.Spec.Parameters)
 			assert.NotNil(t, customTier.Spec.Parameters)
+			// we only expect the static parameter DEPLOYMENT_QUOTA to be copied from the tier to the TTR.
+			// the SPACE_NAME is not a parameter, but a dynamic variable which will be evaluated when provisioning a namespace for the user.
 			assert.Equal(t, obj.Spec.Parameters[0].Name, customTier.Spec.Parameters[0].Name)
 			assert.Equal(t, obj.Spec.Parameters[0].Value, customTier.Spec.Parameters[0].Value)
 		}
