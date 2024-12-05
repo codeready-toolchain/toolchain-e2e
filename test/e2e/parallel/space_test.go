@@ -203,11 +203,11 @@ func TestSpaceRoles(t *testing.T) {
 	})
 
 	t.Run("set owner user as maintainer instead", func(t *testing.T) {
-		// given an appstudio space with `owner` user as an admin of it
-		ownerBinding.Spec.SpaceRole = "maintainer"
-
 		// when
-		err = hostAwait.Client.Update(context.TODO(), ownerBinding)
+		ownerBinding, err = hostAwait.UpdateSpaceBinding(t, ownerBinding.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
+			// given an appstudio space with `owner` user as an admin of it
+			sb.Spec.SpaceRole = "maintainer"
+		})
 		require.NoError(t, err)
 
 		// then
@@ -222,11 +222,11 @@ func TestSpaceRoles(t *testing.T) {
 	})
 
 	t.Run("set owner user as contributor instead", func(t *testing.T) {
-		// given an appstudio space with `owner` user as an admin of it
-		ownerBinding.Spec.SpaceRole = "contributor"
-
 		// when
-		err := hostAwait.Client.Update(context.TODO(), ownerBinding)
+		ownerBinding, err = hostAwait.UpdateSpaceBinding(t, ownerBinding.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
+			// given an appstudio space with `owner` user as an admin of it
+			sb.Spec.SpaceRole = "contributor"
+		})
 
 		// then
 		require.NoError(t, err)
@@ -335,13 +335,12 @@ func TestSubSpaces(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("we update role in parentSpaceBinding and expect change to be reflected in subSpaces", func(t *testing.T) {
-			// given
-			// the parentSpace role was "downgraded" to maintainer
-			parentSpaceBindings.Spec.SpaceRole = "maintainer"
-
 			// when
 			// we update the parentSpace bindings
-			err := hostAwait.Client.Update(context.TODO(), parentSpaceBindings)
+			parentSpaceBindings, err = hostAwait.UpdateSpaceBinding(t, parentSpaceBindings.Name, func(sb *toolchainv1alpha1.SpaceBinding) {
+				// the parentSpace role was "downgraded" to maintainer
+				sb.Spec.SpaceRole = "maintainer"
+			})
 
 			// then
 			// downgrade of the usernames is done in parentSpace
