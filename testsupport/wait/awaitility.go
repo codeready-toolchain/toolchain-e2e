@@ -892,3 +892,52 @@ func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
 		gvk:   gvks[0],
 	}
 }
+
+// doUpdate tries to update the Status or Spec of the given object
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated object
+func (w *Waiter[T]) doUpdate(status bool, objectName string, modify func(T)) (T, error) {
+	var objectToReturn T
+	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		obj := &unstructured.Unstructured{}
+		obj.SetGroupVersionKind(w.gvk)
+		if err := w.await.Client.Get(context.TODO(), types.NamespacedName{Namespace: w.await.Namespace, Name: objectName}, obj); err != nil {
+			return true, err
+		}
+		object, err := w.cast(obj)
+		if err != nil {
+			return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
+		}
+		modify(object)
+		if status {
+			// Update the Status
+			if err := w.await.Client.Status().Update(context.TODO(), object); err != nil {
+				w.t.Logf("error updating '%v' Status '%s': %s. Will retry again...", w.gvk, objectName, err.Error())
+				return false, nil
+			}
+		} else {
+			// Update the Spec
+			if err := w.await.Client.Update(context.TODO(), object); err != nil {
+				w.t.Logf("Error updating '%v' Spec '%s': %s. Will retry again...", w.gvk, objectName, err.Error())
+				return false, nil
+			}
+		}
+		objectToReturn = object
+		return true, nil
+	})
+	return objectToReturn, err
+}
+
+// Update tries to update the given object
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated object
+func (w *Waiter[T]) Update(objectName string, modify func(T)) (T, error) {
+	return w.doUpdate(false, objectName, modify)
+}
+
+// UpdateStatus tries to update the Status of the given object
+// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
+// Returns the updated object
+func (w *Waiter[T]) UpdateStatus(objectName string, modify func(T)) (T, error) {
+	return w.doUpdate(true, objectName, modify)
+}

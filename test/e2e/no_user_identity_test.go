@@ -83,10 +83,11 @@ func TestCreationOfUserAndIdentityIsSkipped(t *testing.T) {
 
 	t.Run("user and identity stay there when user is deactivated", func(t *testing.T) {
 		// when
-		userSignup, err := hostAwait.UpdateUserSignup(t, signup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(us, true)
-			})
+		userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(signup.Name,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
 		require.NoError(t, err)
 
 		// Wait until the UserSignup is deactivated
