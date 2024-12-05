@@ -1003,18 +1003,61 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if ns.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' in namespace #%d in NSTemplateTier '%s'", i, tier.Name)
 		}
-		if _, err := a.WaitForTierTemplate(t, ns.TemplateRef); err != nil {
+		tierTemplateNamespaces, err := a.WaitForTierTemplate(t, ns.TemplateRef)
+		if err != nil {
 			return nil, err
+		}
+		// if the tier template supports Tier Template Revisions then let's check those
+		if tierTemplateNamespaces.Spec.TemplateObjects != nil {
+			ttrName, found := tier.Status.Revisions[tierTemplateNamespaces.GetName()]
+			if !found {
+				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateNamespaces.GetName(), tier.Name)
+			}
+			if _, err := a.WaitForTierTemplateRevision(t, ttrName); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if tier.Spec.ClusterResources != nil {
 		if tier.Spec.ClusterResources.TemplateRef == "" {
 			return nil, fmt.Errorf("missing 'templateRef' for the cluster resources in NSTemplateTier '%s'", tier.Name)
 		}
-		if _, err := a.WaitForTierTemplate(t, tier.Spec.ClusterResources.TemplateRef); err != nil {
+		tierTemplateClusterResources, err := a.WaitForTierTemplate(t, tier.Spec.ClusterResources.TemplateRef)
+		if err != nil {
 			return nil, err
 		}
+		// if the tier template supports Tier Template Revisions then let's check those
+		if tierTemplateClusterResources.Spec.TemplateObjects != nil {
+			ttrName, found := tier.Status.Revisions[tierTemplateClusterResources.GetName()]
+			if !found {
+				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateClusterResources.GetName(), tier.Name)
+			}
+			if _, err := a.WaitForTierTemplateRevision(t, ttrName); err != nil {
+				return nil, err
+			}
+		}
 	}
+
+	for _, r := range tier.Spec.SpaceRoles {
+		if r.TemplateRef == "" {
+			return nil, fmt.Errorf("missing 'templateRef' in spaceRole %s in NSTemplateTier '%s'", r.TemplateRef, tier.Name)
+		}
+		tierTemplateSpaceRoles, err := a.WaitForTierTemplate(t, r.TemplateRef)
+		if err != nil {
+			return nil, err
+		}
+		// if the tier template supports Tier Template Revisions then let's check those
+		if tierTemplateSpaceRoles.Spec.TemplateObjects != nil {
+			ttrName, found := tier.Status.Revisions[tierTemplateSpaceRoles.GetName()]
+			if !found {
+				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateSpaceRoles.GetName(), tier.Name)
+			}
+			if _, err := a.WaitForTierTemplateRevision(t, ttrName); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return tier, err
 }
 
@@ -1039,6 +1082,69 @@ func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolch
 		t.Logf("failed to find TierTemplate '%s': %v", name, err)
 	}
 	return tierTemplate, err
+}
+
+// TierTemplateRevisionWaitCriterion a struct to compare with an expected TierTemplateRevision
+type TierTemplateRevisionWaitCriterion struct {
+	Match func(*toolchainv1alpha1.TierTemplateRevision) bool
+	Diff  func(*toolchainv1alpha1.TierTemplateRevision) string
+}
+
+func matchTierTemplateRevisionWaitCriterion(actual *toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) bool {
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) {
+	buf := &strings.Builder{}
+	if actual == nil {
+		buf.WriteString("failed to find TierTemplateRevision\n")
+	} else {
+		buf.WriteString("failed to find TierTemplateRevision with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		y, _ := StringifyObject(actual)
+		buf.Write(y)
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	// include also all TierTemplateRevisions in the host namespace, to help troubleshooting
+	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{})
+
+	t.Log(buf.String())
+}
+
+// WaitForTierTemplateRevision waits until a TierTemplateRevision with the given labels to exists
+// Returns an error if the resource did not exist (or something wrong happened)
+func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, ttrName string, criteria ...TierTemplateRevisionWaitCriterion) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
+	ttr := &toolchainv1alpha1.TierTemplateRevision{}
+	t.Logf("waiting until TierTemplateRevision with name '%s' exists in namespace '%s'...", ttrName, a.Namespace)
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		err = a.Client.Get(ctx, types.NamespacedName{
+			Namespace: a.Namespace,
+			Name:      ttrName,
+		}, ttr)
+		// no match found, print the diffs
+		if err != nil {
+			return false, err
+		}
+		return matchTierTemplateRevisionWaitCriterion(ttr, criteria...), nil
+	})
+	// log message if an error occurred
+	if err != nil {
+		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttr, criteria...)
+	}
+	return ttr, err
 }
 
 // NSTemplateTierWaitCriterion a struct to compare with an expected NSTemplateTier
@@ -1107,6 +1213,26 @@ func UntilNSTemplateTierStatusUpdates(expected int) NSTemplateTierWaitCriterion 
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
 			return fmt.Sprintf("expected status.updates count %d. Actual: %d", expected, len(actual.Status.Updates))
+		},
+	}
+}
+
+// HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
+func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
+	return NSTemplateTierWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+			if len(actual.Status.Revisions) != len(revisions) {
+				return false
+			}
+			for _, tierTemplateRef := range revisions {
+				if _, found := actual.Status.Revisions[tierTemplateRef]; !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
+			return fmt.Sprintf("expected revision keys %v not found in: %v", revisions, actual.Status.Revisions)
 		},
 	}
 }
