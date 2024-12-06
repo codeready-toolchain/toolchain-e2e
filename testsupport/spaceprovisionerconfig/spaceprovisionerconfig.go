@@ -39,11 +39,15 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 
 	originalSpc := spc.DeepCopy()
 
-	for _, opt := range opts {
-		opt(spc)
-	}
+	spc, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
+		Update(spc.Name, await.Namespace,
+			func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
+				for _, opt := range opts {
+					opt(spcfg)
+				}
+			})
+	require.NoError(t, err)
 
-	require.NoError(t, await.Client.Update(context.TODO(), spc))
 	// log spc values needed for debugging a problem with random capacity manager e2e test failures
 	t.Logf("SPC values before the update %+v", originalSpc)
 	t.Logf("SPC values after the update %+v", spc)
@@ -59,12 +63,13 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 			require.Fail(t, err.Error())
 		}
 
-		// make the originalSpc look like we freshly obtained it from the server and updated its fields
-		// to look like the original.
-		originalSpc.Generation = currentSpc.Generation
-		originalSpc.ResourceVersion = currentSpc.ResourceVersion
+		_, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
+			Update(originalSpc.Name, await.Namespace,
+				func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
+					spcfg.Spec = originalSpc.Spec
+				})
 
-		require.NoError(t, await.Client.Update(context.TODO(), originalSpc))
+		require.NoError(t, err)
 	})
 }
 

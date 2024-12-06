@@ -1372,88 +1372,6 @@ func (a *MemberAwaitility) WaitForIdler(t *testing.T, name string, criteria ...I
 	return idler, err
 }
 
-// UpdateIdlerSpec tries to update the Idler.Spec until success
-func (a *MemberAwaitility) UpdateIdlerSpec(t *testing.T, idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
-	var result *toolchainv1alpha1.Idler
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		obj := &toolchainv1alpha1.Idler{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: idler.Name}, obj); err != nil {
-			return false, err
-		}
-		obj.Spec = idler.Spec
-		if err := a.Client.Update(context.TODO(), obj); err != nil {
-			t.Logf("trying to update Idler %s. Error: %s. Will try to update again.", idler.Name, err.Error())
-			return false, nil
-		}
-		result = obj
-		return true, nil
-	})
-	return result, err
-}
-
-// UpdateNamespace tries to update the Spec of the given Namespace
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated Namespace
-func (a *MemberAwaitility) UpdateNamespace(t *testing.T, nsName string, modifyNamespace func(ns *corev1.Namespace)) (*corev1.Namespace, error) {
-	var ns *corev1.Namespace
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshNs := &corev1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: nsName}, freshNs); err != nil {
-			return true, err
-		}
-		modifyNamespace(freshNs)
-		if err := a.Client.Update(context.TODO(), freshNs); err != nil {
-			t.Logf("error updating Namespace '%s': %s. Will retry again...", nsName, err.Error())
-			return false, nil
-		}
-		ns = freshNs
-		return true, nil
-	})
-	return ns, err
-}
-
-// UpdateServiceAccount tries to update the given ServiceAccount
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated ServiceAccount
-func (a *MemberAwaitility) UpdateServiceAccount(t *testing.T, namespace, saName string, modifySA func(sa *corev1.ServiceAccount)) (*corev1.ServiceAccount, error) {
-	var sa *corev1.ServiceAccount
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshSA := &corev1.ServiceAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: saName}, freshSA); err != nil {
-			return true, err
-		}
-		modifySA(freshSA)
-		if err := a.Client.Update(context.TODO(), freshSA); err != nil {
-			t.Logf("error updating ServiceAccount '%s': %s. Will retry again...", saName, err.Error())
-			return false, nil
-		}
-		sa = freshSA
-		return true, nil
-	})
-	return sa, err
-}
-
-// UpdateSpaceRequest tries to update the Spec of the given SpaceRequest
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated SpaceRequest
-func (a *MemberAwaitility) UpdateSpaceRequest(t *testing.T, spaceRequestNamespacedName types.NamespacedName, modifySpaceRequest func(s *toolchainv1alpha1.SpaceRequest)) (*toolchainv1alpha1.SpaceRequest, error) {
-	var sr *toolchainv1alpha1.SpaceRequest
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshSpaceRequest := &toolchainv1alpha1.SpaceRequest{}
-		if err := a.Client.Get(context.TODO(), spaceRequestNamespacedName, freshSpaceRequest); err != nil {
-			return true, err
-		}
-		modifySpaceRequest(freshSpaceRequest)
-		if err := a.Client.Update(context.TODO(), freshSpaceRequest); err != nil {
-			t.Logf("error updating SpaceRequest '%s' in namespace '%s': %s. Will retry again...", spaceRequestNamespacedName.Name, spaceRequestNamespacedName.Name, err.Error())
-			return false, nil
-		}
-		sr = freshSpaceRequest
-		return true, nil
-	})
-	return sr, err
-}
-
 // UpdateSpaceBindingRequest tries to update the Spec of the given SpaceBindingRequest
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated SpaceBindingRequest
@@ -2561,46 +2479,6 @@ func (a *MemberAwaitility) waitForExpectedNumberOfResources(expected int, list f
 		return actual == expected, nil
 	})
 	return actual, err
-}
-
-func (a *MemberAwaitility) UpdatePod(t *testing.T, namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
-	var m *corev1.Pod
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshPod := &corev1.Pod{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: podName}, freshPod); err != nil {
-			return true, err
-		}
-
-		modifyPod(freshPod)
-		if err := a.Client.Update(context.TODO(), freshPod); err != nil {
-			t.Logf("error updating Pod '%s' Will retry again...", podName)
-			return false, nil // nolint:nilerr
-		}
-		m = freshPod
-		return true, nil
-	})
-	return m, err
-}
-
-func (a *MemberAwaitility) UpdateConfigMap(t *testing.T, namespace, cmName string, modifyCM func(*corev1.ConfigMap)) (*corev1.ConfigMap, error) {
-	var cm *corev1.ConfigMap
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		obj := &corev1.ConfigMap{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: namespace,
-			Name:      cmName},
-			obj); err != nil {
-			return true, err
-		}
-		modifyCM(obj)
-		if err := a.Client.Update(context.TODO(), obj); err != nil {
-			t.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
-			return false, nil // nolint:nilerr
-		}
-		cm = obj
-		return true, nil
-	})
-	return cm, err
 }
 
 func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name string, criteria ...LabelWaitCriterion) (*appstudiov1.Environment, error) {

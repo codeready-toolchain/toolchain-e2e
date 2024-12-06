@@ -160,8 +160,10 @@ func TestE2EFlow(t *testing.T) {
 			require.NoError(t, err)
 
 			// when
-			user.Identities = []string{}
-			err = memberAwait.Client.Update(context.TODO(), user)
+			_, err = wait.For(t, memberAwait.Awaitility, &userv1.User{}).
+				Update(user.Name, memberAwait.Namespace, func(u *userv1.User) {
+					u.Identities = []string{}
+				})
 
 			// then
 			require.NoError(t, err)
@@ -175,10 +177,12 @@ func TestE2EFlow(t *testing.T) {
 			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: identitypkg.NewIdentityNamingStandard(
 				johnSignup.Spec.IdentityClaims.Sub, "rhd").IdentityName()}, identity)
 			require.NoError(t, err)
-			identity.User = corev1.ObjectReference{Name: "", UID: ""}
 
 			// when
-			err = memberAwait.Client.Update(context.TODO(), identity)
+			_, err = wait.For(t, memberAwait.Awaitility, &userv1.Identity{}).
+				Update(identity.Name, memberAwait.Namespace, func(i *userv1.Identity) {
+					i.User = corev1.ObjectReference{Name: "", UID: ""}
+				})
 
 			// then
 			require.NoError(t, err)
@@ -321,9 +325,10 @@ func TestE2EFlow(t *testing.T) {
 
 		t.Run("remove finalizer", func(t *testing.T) {
 			// when removing the finalizer from the CM
-			_, err = memberAwait.UpdateConfigMap(t, cm.Namespace, cmName, func(cm *corev1.ConfigMap) {
-				cm.Finalizers = nil
-			})
+			_, err = wait.For(t, memberAwait.Awaitility, &corev1.ConfigMap{}).
+				Update(cmName, cm.Namespace, func(cm *corev1.ConfigMap) {
+					cm.Finalizers = nil
+				})
 			require.NoError(t, err)
 
 			// then check remaining resources are deleted
@@ -483,10 +488,11 @@ func TestE2EFlow(t *testing.T) {
 		require.Len(t, userList.Items, 1)
 
 		// Now deactivate the UserSignup
-		userSignup, err := hostAwait.UpdateUserSignup(t, originalSubJohnSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(us, true)
-			})
+		userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(originalSubJohnSignup.Name, hostAwait.Namespace,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
 		require.NoError(t, err)
 
 		// Wait until the UserSignup is deactivated

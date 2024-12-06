@@ -13,7 +13,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
-	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
@@ -170,112 +169,6 @@ func (a *HostAwaitility) GetMasterUserRecord(name string) (*toolchainv1alpha1.Ma
 		return nil, err
 	}
 	return mur, nil
-}
-
-// UpdateMasterUserRecordSpec tries to update the Spec of the given MasterUserRecord
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
-// Returns the updated MasterUserRecord
-func (a *HostAwaitility) UpdateMasterUserRecordSpec(t *testing.T, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
-	return a.UpdateMasterUserRecord(t, false, murName, modifyMur)
-}
-
-// UpdateMasterUserRecordStatus tries to update the Status of the given MasterUserRecord
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
-// Returns the updated MasterUserRecord
-func (a *HostAwaitility) UpdateMasterUserRecordStatus(t *testing.T, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
-	return a.UpdateMasterUserRecord(t, true, murName, modifyMur)
-}
-
-// UpdateMasterUserRecord tries to update the Spec or the Status of the given MasterUserRecord
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and and tries again
-// Returns the updated MasterUserRecord
-func (a *HostAwaitility) UpdateMasterUserRecord(t *testing.T, status bool, murName string, modifyMur func(mur *toolchainv1alpha1.MasterUserRecord)) (*toolchainv1alpha1.MasterUserRecord, error) {
-	var m *toolchainv1alpha1.MasterUserRecord
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshMur := &toolchainv1alpha1.MasterUserRecord{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: murName}, freshMur); err != nil {
-			return true, err
-		}
-
-		modifyMur(freshMur)
-		if status {
-			// Update status
-			if err := a.Client.Status().Update(context.TODO(), freshMur); err != nil {
-				t.Logf("error updating MasterUserRecord.Status '%s': %s. Will retry again...", murName, err.Error())
-				return false, nil
-			}
-		} else if err := a.Client.Update(context.TODO(), freshMur); err != nil {
-			t.Logf("error updating MasterUserRecord.Spec '%s': %s. Will retry again...", murName, err.Error())
-			return false, nil
-		}
-		m = freshMur
-		return true, nil
-	})
-	return m, err
-}
-
-// UpdateUserSignup tries to update the Spec of the given UserSignup
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated UserSignup
-func (a *HostAwaitility) UpdateUserSignup(t *testing.T, userSignupName string, modifyUserSignup func(us *toolchainv1alpha1.UserSignup)) (*toolchainv1alpha1.UserSignup, error) {
-	var userSignup *toolchainv1alpha1.UserSignup
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshUserSignup := &toolchainv1alpha1.UserSignup{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: userSignupName}, freshUserSignup); err != nil {
-			return true, err
-		}
-
-		modifyUserSignup(freshUserSignup)
-		if err := a.Client.Update(context.TODO(), freshUserSignup); err != nil {
-			t.Logf("error updating UserSignup '%s': %s. Will retry again...", userSignupName, err.Error())
-			return false, nil
-		}
-		userSignup = freshUserSignup
-		return true, nil
-	})
-	return userSignup, err
-}
-
-// UpdateSpace tries to update the Spec of the given Space
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated Space
-func (a *HostAwaitility) UpdateSpace(t *testing.T, spaceName string, modifySpace func(s *toolchainv1alpha1.Space)) (*toolchainv1alpha1.Space, error) {
-	var s *toolchainv1alpha1.Space
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshSpace := &toolchainv1alpha1.Space{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceName}, freshSpace); err != nil {
-			return true, err
-		}
-		modifySpace(freshSpace)
-		if err := a.Client.Update(context.TODO(), freshSpace); err != nil {
-			t.Logf("error updating Space '%s': %s. Will retry again...", spaceName, err.Error())
-			return false, nil
-		}
-		s = freshSpace
-		return true, nil
-	})
-	return s, err
-}
-
-// UpdateSpaceBinding tries to update the Spec of the given SpaceBinding
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated SpaceBinding
-func (a *HostAwaitility) UpdateSpaceBinding(t *testing.T, spaceBindingName string, modifySpaceBinding func(s *toolchainv1alpha1.SpaceBinding)) (*toolchainv1alpha1.SpaceBinding, error) {
-	var s *toolchainv1alpha1.SpaceBinding
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		freshSpaceBinding := &toolchainv1alpha1.SpaceBinding{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: spaceBindingName}, freshSpaceBinding); err != nil {
-			return true, err
-		}
-		modifySpaceBinding(freshSpaceBinding)
-		if err := a.Client.Update(context.TODO(), freshSpaceBinding); err != nil {
-			t.Logf("error updating SpaceBinding '%s': %s. Will retry again...", spaceBindingName, err.Error())
-			return false, nil
-		}
-		s = freshSpaceBinding
-		return true, nil
-	})
-	return s, err
 }
 
 // MasterUserRecordWaitCriterion a struct to compare with an expected MasterUserRecord
@@ -791,25 +684,28 @@ func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(t *testing.T, n
 	}
 }
 
-// WaitForBannedUser waits until there is a BannedUser available with the given email
-func (a *HostAwaitility) WaitForBannedUser(t *testing.T, email string) (*toolchainv1alpha1.BannedUser, error) {
-	t.Logf("waiting for BannedUser for user '%s' in namespace '%s'", email, a.Namespace)
+// WaitForBannedUser waits until there is a BannedUser available with the given email hash
+// !!! WARNING: for now, just used for WA
+func (a *HostAwaitility) WaitForBannedUser(t *testing.T, userEmailHash string) (*toolchainv1alpha1.BannedUser, error) {
+	t.Logf("waiting for BannedUser for user email hash '%s' in namespace '%s'", userEmailHash, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
-	labels := map[string]string{toolchainv1alpha1.BannedUserEmailHashLabelKey: hash.EncodeString(email)}
+	emailHashLabelMatch := client.MatchingLabels(map[string]string{
+		toolchainv1alpha1.BannedUserEmailHashLabelKey: userEmailHash,
+	})
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
-		if err = a.Client.List(context.TODO(), bannedUserList, client.MatchingLabels(labels), client.InNamespace(a.Namespace)); err != nil {
-			if len(bannedUserList.Items) == 0 {
-				return false, nil
-			}
+		if err := a.Client.List(ctx, bannedUserList, emailHashLabelMatch, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
 		}
-		bannedUser = &bannedUserList.Items[0]
-		return true, nil
+		if len(bannedUserList.Items) > 0 {
+			bannedUser = &bannedUserList.Items[0]
+			return true, nil
+		}
+		return false, nil
 	})
 	// log message if an error occurred
 	if err != nil {
-		t.Logf("failed to find Banned for email address '%s': %v", email, err)
+		t.Logf("failed to find Banned for email hash '%s': %v", userEmailHash, err)
 	}
 	return bannedUser, err
 }

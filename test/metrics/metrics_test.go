@@ -147,10 +147,11 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 
 	// when deactivating the users
 	for username, usersignup := range signupsMember2 {
-		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
-			func(usersignup *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(usersignup, true)
-			})
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(usersignup.Name, hostAwait.Namespace,
+				func(usersignup *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(usersignup, true)
+				})
 		require.NoError(t, err)
 
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
@@ -221,10 +222,11 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 
 	// when deactivating the users
 	for username, usersignup := range usersignups {
-		_, err := hostAwait.UpdateUserSignup(t, usersignup.Name,
-			func(usersignup *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(usersignup, true)
-			})
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(usersignup.Name, hostAwait.Namespace,
+				func(usersignup *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(usersignup, true)
+				})
 		require.NoError(t, err)
 
 		err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
@@ -310,10 +312,11 @@ func TestVerificationRequiredMetric(t *testing.T) {
 
 		t.Run("no change to metric when user deactivated", func(t *testing.T) {
 			// when deactivating the user
-			_, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
-				func(usersignup *toolchainv1alpha1.UserSignup) {
-					states.SetDeactivated(usersignup, true)
-				})
+			_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+				Update(userSignup.Name, hostAwait.Namespace,
+					func(usersignup *toolchainv1alpha1.UserSignup) {
+						states.SetDeactivated(usersignup, true)
+					})
 
 			// then
 			require.NoError(t, err)
@@ -371,10 +374,11 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 
 		for j := 1; j < i; j++ { // deactivate and reactivate as many times as necessary (based on its "number")
 			// deactivate the user
-			_, err := hostAwait.UpdateUserSignup(t, usersignups[username].Name,
-				func(usersignup *toolchainv1alpha1.UserSignup) {
-					states.SetDeactivated(usersignup, true)
-				})
+			_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+				Update(usersignups[username].Name, hostAwait.Namespace,
+					func(usersignup *toolchainv1alpha1.UserSignup) {
+						states.SetDeactivated(usersignup, true)
+					})
 			require.NoError(t, err)
 
 			err = hostAwait.WaitUntilMasterUserRecordAndSpaceBindingsDeleted(t, username)
@@ -591,10 +595,11 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no space on member2
 
 	// when disabling MUR
-	_, err := hostAwait.UpdateMasterUserRecordSpec(t, mur.Name,
-		func(mur *toolchainv1alpha1.MasterUserRecord) {
-			mur.Spec.Disabled = true
-		})
+	_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+		Update(mur.Name, hostAwait.Namespace,
+			func(mur *toolchainv1alpha1.MasterUserRecord) {
+				mur.Spec.Disabled = true
+			})
 	require.NoError(t, err)
 
 	// then
@@ -611,10 +616,11 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 
 	t.Run("re-enabled mur", func(t *testing.T) {
 		// When re-enabling MUR
-		mur, err = hostAwait.UpdateMasterUserRecordSpec(t, mur.Name,
-			func(mur *toolchainv1alpha1.MasterUserRecord) {
-				mur.Spec.Disabled = false
-			})
+		mur, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
+			Update(mur.Name, hostAwait.Namespace,
+				func(mur *toolchainv1alpha1.MasterUserRecord) {
+					mur.Spec.Disabled = false
+				})
 		require.NoError(t, err)
 
 		// then
