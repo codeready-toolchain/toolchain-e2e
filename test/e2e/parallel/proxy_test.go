@@ -21,7 +21,6 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -1084,9 +1083,10 @@ func TestSpaceLister(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, err = memberAwait.UpdateSpaceBindingRequest(t, test.NamespacedName(failingSBR.Namespace, failingSBR.Name), func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
-			sbr.Spec.SpaceRole = "admin"
-		})
+		_, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceBindingRequest{}).
+			Update(failingSBR.Name, failingSBR.Namespace, func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+				sbr.Spec.SpaceRole = "admin"
+			})
 
 		// then
 		require.NoError(t, err)
