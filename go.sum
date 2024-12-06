@@ -119,8 +119,8 @@ github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:z
 github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5/go.mod h1:h6jFvWxBdQXxjopDMZyH2UVceIRfR84bdzbkoKrsWNo=
 github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoCr5oaCLELYA=
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
-github.com/codeready-toolchain/api v0.0.0-20241114213029-44333bf24bcf h1:tOHKd4PT6gnV8lLh3kmqqK9YONvL6oFKHpi0kGzfsvw=
-github.com/codeready-toolchain/api v0.0.0-20241114213029-44333bf24bcf/go.mod h1:DUq1ffy9Mbersdgji48i/cm9Y+6NMwAdAQJNlfOrPRo=
+github.com/codeready-toolchain/api v0.0.0-20241119094246-f6581d52dc80 h1:OpZkP3OGAdrDHOb1TtHVnLSVuevEiQhOH//plnpVL/c=
+github.com/codeready-toolchain/api v0.0.0-20241119094246-f6581d52dc80/go.mod h1:DUq1ffy9Mbersdgji48i/cm9Y+6NMwAdAQJNlfOrPRo=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20241114215157-a6a85252b2f5 h1:vW0C32c6sI9ZUGcUw3e9ftE9hqJ/bMo+TtRHp84Hung=
 github.com/codeready-toolchain/toolchain-common v0.0.0-20241114215157-a6a85252b2f5/go.mod h1:wx/d4HVbDPOadwpbxn28ZGClC5OmzelIK8p4wupDJVI=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
