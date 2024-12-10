@@ -576,27 +576,6 @@ func UntilToolchainClusterHasNoTenantLabel() ToolchainClusterWaitCriterion {
 	}
 }
 
-// UpdateToolchainCluster tries to update the Spec of the given ToolchainCluster
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated ToolchainCluster
-func (a *Awaitility) UpdateToolchainCluster(t *testing.T, toolchainClusterName string, modifyToolchainCluster func(s *toolchainv1alpha1.ToolchainCluster)) (*toolchainv1alpha1.ToolchainCluster, error) {
-	var tc *toolchainv1alpha1.ToolchainCluster
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		newToolchainCluster := &toolchainv1alpha1.ToolchainCluster{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: toolchainClusterName}, newToolchainCluster); err != nil {
-			return true, err
-		}
-		modifyToolchainCluster(newToolchainCluster)
-		if err := a.Client.Update(context.TODO(), newToolchainCluster); err != nil {
-			t.Logf("error updating ToolchainCluster '%s': %s. Will retry again...", toolchainClusterName, err.Error())
-			return false, nil
-		}
-		tc = newToolchainCluster
-		return true, nil
-	})
-	return tc, err
-}
-
 // CreateWithCleanup creates the given object via client.Client.Create() and schedules the cleanup of the object at the end of the current test
 func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...client.CreateOption) error {
 	if err := a.Client.Create(context.TODO(), obj, opts...); err != nil {
@@ -896,12 +875,12 @@ func For[T client.Object](t *testing.T, a *Awaitility, obj T) *Waiter[T] {
 // doUpdate tries to update the Status or Spec of the given object
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated object
-func (w *Waiter[T]) doUpdate(status bool, objectName string, modify func(T)) (T, error) {
+func (w *Waiter[T]) doUpdate(status bool, objectName, objectNamespace string, modify func(T)) (T, error) {
 	var objectToReturn T
 	err := wait.PollUntilContextTimeout(context.TODO(), w.await.RetryInterval, w.await.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &unstructured.Unstructured{}
 		obj.SetGroupVersionKind(w.gvk)
-		if err := w.await.Client.Get(context.TODO(), types.NamespacedName{Namespace: w.await.Namespace, Name: objectName}, obj); err != nil {
+		if err := w.await.Client.Get(context.TODO(), types.NamespacedName{Namespace: objectNamespace, Name: objectName}, obj); err != nil {
 			return true, err
 		}
 		object, err := w.cast(obj)
@@ -931,13 +910,13 @@ func (w *Waiter[T]) doUpdate(status bool, objectName string, modify func(T)) (T,
 // Update tries to update the given object
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated object
-func (w *Waiter[T]) Update(objectName string, modify func(T)) (T, error) {
-	return w.doUpdate(false, objectName, modify)
+func (w *Waiter[T]) Update(objectName, objectNamespace string, modify func(T)) (T, error) {
+	return w.doUpdate(false, objectName, objectNamespace, modify)
 }
 
 // UpdateStatus tries to update the Status of the given object
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated object
-func (w *Waiter[T]) UpdateStatus(objectName string, modify func(T)) (T, error) {
-	return w.doUpdate(true, objectName, modify)
+func (w *Waiter[T]) UpdateStatus(objectName, objectNamespace string, modify func(T)) (T, error) {
+	return w.doUpdate(true, objectName, objectNamespace, modify)
 }

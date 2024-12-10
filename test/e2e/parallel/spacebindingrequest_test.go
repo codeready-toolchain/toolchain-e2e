@@ -17,7 +17,7 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	testsupportspace "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/spacebinding"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -51,12 +51,12 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 				// with the same name but different UID.
 				require.NoError(t, err)
 				spaceBinding, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-					UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
-					UntilSpaceBindingHasSpaceName(space.Name),
-					UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
-					UntilSpaceBindingHasDifferentUID(oldUID),
-					UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
-					UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
+					wait.UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
+					wait.UntilSpaceBindingHasSpaceName(space.Name),
+					wait.UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
+					wait.UntilSpaceBindingHasDifferentUID(oldUID),
+					wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
+					wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
 				)
 				require.NoError(t, err)
 
@@ -65,19 +65,20 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 					// something/someone updates the SpaceRole directly on the SpaceBinding object
 
 					// when
-					spaceBinding, err = hostAwait.UpdateSpaceBinding(t, spaceBinding.Name, func(s *toolchainv1alpha1.SpaceBinding) {
-						s.Spec.SpaceRole = "maintainer" // let's change the role
-					})
+					spaceBinding, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceBinding{}).
+						Update(spaceBinding.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.SpaceBinding) {
+							s.Spec.SpaceRole = "maintainer" // let's change the role
+						})
 					require.NoError(t, err)
 
 					// then
 					// spaceBindingRequest should reset back the SpaceRole
 					spaceBinding, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-						UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
-						UntilSpaceBindingHasSpaceName(space.Name),
-						UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole), // should have back the role from the SBR
-						UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
-						UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
+						wait.UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
+						wait.UntilSpaceBindingHasSpaceName(space.Name),
+						wait.UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole), // should have back the role from the SBR
+						wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
+						wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
 					)
 					require.NoError(t, err)
 
@@ -104,19 +105,19 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			user1 := NewSignupRequest(awaitilities).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
-				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				SpaceTier("appstudio").
 				EnsureMUR().
 				Execute(t)
 
 			// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
-			space, err := hostAwait.WaitForSpace(t, user1.Space.Name, UntilSpaceHasAnyProvisionedNamespaces())
+			space, err := hostAwait.WaitForSpace(t, user1.Space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
 			require.NoError(t, err)
 			// let's create a new MUR that will have access to the space
 			user2 := NewSignupRequest(awaitilities).
 				ManuallyApprove().
 				TargetCluster(memberAwait).
-				RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				NoSpace().
 				WaitForMUR().Execute(t)
 			// create the spacebinding request
@@ -129,7 +130,7 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 			// then
 			// wait for spacebinding request status to be set
 			_, err = memberAwait.WaitForSpaceBindingRequest(t, client.ObjectKeyFromObject(spaceBindingRequest),
-				UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
+				wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.UnableToCreateSpaceBinding(fmt.Sprintf("invalid role 'invalid' for space '%s'", space.Name))),
 			)
 			require.NoError(t, err)
 			bindings, err := hostAwait.ListSpaceBindings(space.Name)
@@ -138,14 +139,15 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 
 			t.Run("update SBR to fix invalid SpaceRole", func(t *testing.T) {
 				// when
-				_, err = memberAwait.UpdateSpaceBindingRequest(t, client.ObjectKeyFromObject(spaceBindingRequest), func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
-					sbr.Spec.SpaceRole = "admin"
-				})
+				_, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceBindingRequest{}).
+					Update(spaceBindingRequest.Name, spaceBindingRequest.Namespace, func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+						sbr.Spec.SpaceRole = "admin"
+					})
 
 				// then
 				require.NoError(t, err)
 				_, err = awaitilities.Host().WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-					UntilSpaceBindingHasSpaceRole("admin"))
+					wait.UntilSpaceBindingHasSpaceRole("admin"))
 				require.NoError(t, err)
 			})
 		})
@@ -163,27 +165,27 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 	t.Run("update space binding request SpaceRole", func(t *testing.T) {
 		// when
 		space, spaceBindingRequest, _ := NewSpaceBindingRequest(t, awaitilities, memberAwait, hostAwait, "contributor")
-		_, err := memberAwait.UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
-			func(s *toolchainv1alpha1.SpaceBindingRequest) {
-				s.Spec.SpaceRole = "admin" // set to admin from contributor
-			},
-		)
+		_, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceBindingRequest{}).
+			Update(spaceBindingRequest.Name, spaceBindingRequest.Namespace, func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+				sbr.Spec.SpaceRole = "admin"
+			})
+
 		require.NoError(t, err)
 
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same SpaceRole
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
-			UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
-			UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord),
+			wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
+			wait.UntilSpaceBindingRequestHasSpecSpaceRole("admin"), // has admin role
+			wait.UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord),
 		)
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-			UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
-			UntilSpaceBindingHasSpaceName(space.Name),
-			UntilSpaceBindingHasSpaceRole("admin"), // has admin role
-			UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
-			UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
+			wait.UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
+			wait.UntilSpaceBindingHasSpaceName(space.Name),
+			wait.UntilSpaceBindingHasSpaceRole("admin"), // has admin role
+			wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
+			wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
 		)
 		require.NoError(t, err)
 	})
@@ -198,12 +200,12 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 			Email(username + "@acme.com").
 			ManuallyApprove().
 			TargetCluster(memberAwait).
-			RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			NoSpace().
 			WaitForMUR().Execute(t)
 		// and we try to update the MUR in the SBR
 		// with lower timeout since it will fail as expected
-		_, err := memberAwait.WithRetryOptions(TimeoutOption(time.Second*2)).UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
+		_, err := memberAwait.WithRetryOptions(wait.TimeoutOption(time.Second*2)).UpdateSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.Namespace, Name: spaceBindingRequest.Name},
 			func(s *toolchainv1alpha1.SpaceBindingRequest) {
 				s.Spec.MasterUserRecord = newUser.MUR.GetName() // set to the new MUR
 			},
@@ -214,31 +216,31 @@ func TestUpdateSpaceBindingRequest(t *testing.T) {
 		//then
 		// wait for both SpaceBindingRequest and SpaceBinding to have same MUR
 		spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-			UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
-			UntilSpaceBindingRequestHasSpecSpaceRole(spaceBindingRequest.Spec.SpaceRole),
-			UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord), // MUR should be the same
+			wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
+			wait.UntilSpaceBindingRequestHasSpecSpaceRole(spaceBindingRequest.Spec.SpaceRole),
+			wait.UntilSpaceBindingRequestHasSpecMUR(spaceBindingRequest.Spec.MasterUserRecord), // MUR should be the same
 		)
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-			UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord), // MUR should be the same
-			UntilSpaceBindingHasSpaceName(space.Name),
-			UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
+			wait.UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord), // MUR should be the same
+			wait.UntilSpaceBindingHasSpaceName(space.Name),
+			wait.UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
 		)
 		require.NoError(t, err)
 	})
 }
 
-func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait *MemberAwaitility, hostAwait *HostAwaitility, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
+func NewSpaceBindingRequest(t *testing.T, awaitilities wait.Awaitilities, memberAwait *wait.MemberAwaitility, hostAwait *wait.HostAwaitility, spaceRole string) (*toolchainv1alpha1.Space, *toolchainv1alpha1.SpaceBindingRequest, *toolchainv1alpha1.SpaceBinding) {
 	user := NewSignupRequest(awaitilities).
 		ManuallyApprove().
 		TargetCluster(memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		SpaceTier("appstudio").
 		EnsureMUR().
 		Execute(t)
 	firstUserSignup := user.UserSignup
 	// wait for the namespace to be provisioned since we will be creating the SpaceBindingRequest into it.
-	space, err := hostAwait.WaitForSpace(t, user.Space.Name, UntilSpaceHasAnyProvisionedNamespaces())
+	space, err := hostAwait.WaitForSpace(t, user.Space.Name, wait.UntilSpaceHasAnyProvisionedNamespaces())
 	require.NoError(t, err)
 	// let's create a new MUR that will have access to the space
 	username := uuid.Must(uuid.NewV4()).String()
@@ -247,7 +249,7 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 		Email(username + "@acme.com").
 		ManuallyApprove().
 		TargetCluster(memberAwait).
-		RequireConditions(ConditionSet(Default(), ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		NoSpace().
 		WaitForMUR().Execute(t)
 	secondUserMUR := secondUser.MUR
@@ -261,16 +263,16 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 	// then
 	// check for the spaceBinding creation
 	spaceBinding, err := hostAwait.WaitForSpaceBinding(t, spaceBindingRequest.Spec.MasterUserRecord, space.Name,
-		UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
-		UntilSpaceBindingHasSpaceName(space.Name),
-		UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
-		UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
-		UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
+		wait.UntilSpaceBindingHasMurName(spaceBindingRequest.Spec.MasterUserRecord),
+		wait.UntilSpaceBindingHasSpaceName(space.Name),
+		wait.UntilSpaceBindingHasSpaceRole(spaceBindingRequest.Spec.SpaceRole),
+		wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestLabelKey, spaceBindingRequest.GetName()),
+		wait.UntilSpaceBindingHasLabel(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, spaceBindingRequest.GetNamespace()),
 	)
 	require.NoError(t, err)
 	// wait for spacebinding request status
 	spaceBindingRequest, err = memberAwait.WaitForSpaceBindingRequest(t, types.NamespacedName{Namespace: spaceBindingRequest.GetNamespace(), Name: spaceBindingRequest.GetName()},
-		UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
+		wait.UntilSpaceBindingRequestHasConditions(spacebindingrequesttestcommon.Ready()),
 	)
 	require.NoError(t, err)
 	tier, err := awaitilities.Host().WaitForNSTemplateTier(t, space.Spec.TierName)
@@ -279,14 +281,14 @@ func NewSpaceBindingRequest(t *testing.T, awaitilities Awaitilities, memberAwait
 		usernamesSorted := []string{firstUserSignup.Status.CompliantUsername, secondUserMUR.Name}
 		sort.Strings(usernamesSorted)
 		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
-			UntilNSTemplateSetHasSpaceRoles(
-				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, usernamesSorted[0], usernamesSorted[1])))
+			wait.UntilNSTemplateSetHasSpaceRoles(
+				wait.SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, usernamesSorted[0], usernamesSorted[1])))
 		require.NoError(t, err)
 	} else {
 		_, err = memberAwait.WaitForNSTmplSet(t, space.Name,
-			UntilNSTemplateSetHasSpaceRoles(
-				SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, firstUserSignup.Status.CompliantUsername),
-				SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, secondUserMUR.Name)))
+			wait.UntilNSTemplateSetHasSpaceRoles(
+				wait.SpaceRole(tier.Spec.SpaceRoles["admin"].TemplateRef, firstUserSignup.Status.CompliantUsername),
+				wait.SpaceRole(tier.Spec.SpaceRoles[spaceRole].TemplateRef, secondUserMUR.Name)))
 		require.NoError(t, err)
 	}
 	testsupportspace.VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)

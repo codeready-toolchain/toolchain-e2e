@@ -50,7 +50,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// when
 			// deactivate the UserSignup so that the MUR will be deleted
 			userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-				Update(userSignup.Name,
+				Update(userSignup.Name, hostAwait.Namespace,
 					func(us *toolchainv1alpha1.UserSignup) {
 						states.SetDeactivated(us, true)
 					})
@@ -76,7 +76,7 @@ func TestSpaceAndSpaceBindingCleanup(t *testing.T) {
 			// when
 			// we deactivate the UserSignup so that the MUR will be deleted
 			userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-				Update(userSignup.Name,
+				Update(userSignup.Name, hostAwait.Namespace,
 					func(us *toolchainv1alpha1.UserSignup) {
 						states.SetDeactivated(us, true)
 					})

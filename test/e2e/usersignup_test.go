@@ -406,7 +406,7 @@ func (s *userSignupIntegrationTest) TestUserResourcesUpdatedWhenPropagatedClaims
 
 	// Update the UserSignup
 	userSignup, err := wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-		Update(userSignup.Name, func(us *toolchainv1alpha1.UserSignup) {
+		Update(userSignup.Name, hostAwait.Namespace, func(us *toolchainv1alpha1.UserSignup) {
 			// Modify the user's AccountID
 			us.Spec.IdentityClaims.AccountID = "nnnbbb111234"
 		})
