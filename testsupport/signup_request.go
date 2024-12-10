@@ -270,7 +270,7 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 		}
 
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name, doUpdate)
+			Update(userSignup.Name, hostAwait.Namespace, doUpdate)
 		require.NoError(t, err)
 	}
 

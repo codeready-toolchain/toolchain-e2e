@@ -17,7 +17,7 @@ import (
 func DeactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSignup *toolchainv1alpha1.UserSignup) *toolchainv1alpha1.UserSignup {
 	hostAwait := awaitilities.Host()
 	userSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-		Update(userSignup.Name,
+		Update(userSignup.Name, hostAwait.Namespace,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetDeactivated(us, true)
 			})
@@ -64,7 +64,7 @@ func ReactivateAndCheckUser(t *testing.T, awaitilities wait.Awaitilities, userSi
 	require.NoError(t, err)
 
 	userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-		Update(userSignup.Name,
+		Update(userSignup.Name, hostAwait.Namespace,
 			func(us *toolchainv1alpha1.UserSignup) {
 				states.SetApprovedManually(us, true)
 			})

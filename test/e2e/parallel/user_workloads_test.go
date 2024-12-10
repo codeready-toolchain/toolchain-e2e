@@ -53,8 +53,12 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	externalNsPodsNoise := prepareWorkloads(t, await.Member1(), "workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
-	idler.Spec.TimeoutSeconds = 5
-	idler, err = memberAwait.UpdateIdlerSpec(t, idler) // The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
+	// The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
+	idler, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
+			i.Spec.TimeoutSeconds = 5
+		})
+
 	require.NoError(t, err)
 
 	// Wait for the pods to be deleted
