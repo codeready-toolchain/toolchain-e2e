@@ -35,7 +35,7 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 	originalSpc := spc.DeepCopy()
 
 	spc, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-		Update(spc.Name,
+		Update(spc.Name, await.Namespace,
 			func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
 				for _, opt := range opts {
 					opt(spcfg)
@@ -59,7 +59,7 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 		}
 
 		_, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
-			Update(originalSpc.Name,
+			Update(originalSpc.Name, await.Namespace,
 				func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
 					spcfg.Spec = originalSpc.Spec
 				})

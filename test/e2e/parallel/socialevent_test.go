@@ -8,7 +8,7 @@ import (
 	commonsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
-	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:   toolchainv1alpha1.ConditionReady,
 			Status: corev1.ConditionTrue,
 		}))
@@ -65,7 +65,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidUserTierReason,
@@ -75,15 +75,15 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// when
-			event, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				Update(event.Name,
+			event, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
+				Update(event.Name, hostAwait.Namespace,
 					func(ev *toolchainv1alpha1.SocialEvent) {
 						ev.Spec.UserTier = "deactivate30"
 					})
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			_, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
@@ -102,7 +102,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		event, err = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+		event, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 			Type:    toolchainv1alpha1.ConditionReady,
 			Status:  corev1.ConditionFalse,
 			Reason:  toolchainv1alpha1.SocialEventInvalidSpaceTierReason,
@@ -112,15 +112,15 @@ func TestCreateSocialEvent(t *testing.T) {
 
 		t.Run("update with valid tier name", func(t *testing.T) {
 			// when
-			event, err = For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
-				Update(event.Name,
+			event, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
+				Update(event.Name, hostAwait.Namespace,
 					func(ev *toolchainv1alpha1.SocialEvent) {
 						ev.Spec.SpaceTier = "base"
 					})
 
 			// then
 			require.NoError(t, err)
-			_, err = hostAwait.WaitForSocialEvent(t, event.Name, UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+			_, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
 				Type:   toolchainv1alpha1.ConditionReady,
 				Status: corev1.ConditionTrue,
 			}))
