@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
@@ -533,8 +534,13 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 		userSignup := user.UserSignup
 
+		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+
 		// then
 		s.userIsNotProvisioned(t, userSignup)
+		require.NoError(t, spcNotReadyError)
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when
@@ -566,8 +572,13 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 		userSignup := user.UserSignup
 
+		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+
 		// then
 		s.userIsNotProvisioned(t, userSignup)
+		require.NoError(t, spcNotReadyError)
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
@@ -601,6 +612,43 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+	})
+
+	s.T().Run("last provisioned space flips SpaceProvisionerConfig to not ready", func(t *testing.T) {
+		// given
+		// there are 4 already deployed spaces before this test is run, so we set the capacity to 5 so that 1 last space can be deployed.
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(5))
+		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+
+		_, spcReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.Ready()))
+		require.NoError(t, spcReadyError)
+
+		// when
+		user := NewSignupRequest(s.Awaitilities).
+			Username("manualwithcapacity5").
+			Email("manualwithcapacity5@redhat.com").
+			ManuallyApprove().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			Execute(s.T())
+		userSignup := user.UserSignup
+
+		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+
+		// then
+		// we provisioned the last space and the SPC got disabled afterwards
+
+		require.NoError(t, spcNotReadyError)
+
+		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
+			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
+		require.NoError(t, err)
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 	})
 }
 
