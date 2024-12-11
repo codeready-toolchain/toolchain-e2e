@@ -440,7 +440,6 @@ func (a *Awaitility) WaitForDeploymentToGetReady(t *testing.T, name string, repl
 	t.Logf("waiting until deployment '%s' in namespace '%s' is ready", name, a.Namespace)
 	deployment := &appsv1.Deployment{}
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 6*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-
 		obj := &appsv1.Deployment{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if apierrors.IsNotFound(err) {
