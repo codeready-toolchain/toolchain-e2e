@@ -580,8 +580,8 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			assertions.Is(testSpc.NotReady()))
 
 		// then
-		s.userIsNotProvisioned(t, userSignup)
 		require.NoError(t, spcNotReadyError)
+		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
 			// when
@@ -618,8 +618,8 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			assertions.Is(testSpc.NotReady()))
 
 		// then
-		s.userIsNotProvisioned(t, userSignup)
 		require.NoError(t, spcNotReadyError)
+		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
 			// when
