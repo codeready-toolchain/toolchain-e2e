@@ -100,7 +100,6 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-
 		t.Run("unable create space binding request with invalid SpaceRole", func(t *testing.T) {
 			user1 := NewSignupRequest(awaitilities).
 				ManuallyApprove().
