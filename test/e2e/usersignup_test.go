@@ -281,6 +281,47 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	})
 }
 
+func (s *userSignupIntegrationTest) TestFillingUpClusterCapacityFlipsSPCsToNotReady() {
+	t := s.T()
+	hostAwait := s.Host()
+	memberAwait1 := s.Member1()
+	memberAwait2 := s.Member2()
+
+	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false))
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+
+	t.Run("SPC with free capacity is ready", func(t *testing.T) {
+		// then
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.Ready()))
+		require.NoError(t, err)
+
+		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait2.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+		require.NoError(t, err)
+	})
+
+	t.Run("deploying a space fills up the member, flipping its SPC to not ready", func(t *testing.T) {
+		// when
+		user1 := NewSignupRequest(s.Awaitilities).
+			Username("fill-up-user-1").
+			Email("fillup1@redhat.com").
+			EnsureMUR().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+			Execute(s.T())
+
+			// then
+		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, user1.UserSignup)
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+		require.NoError(t, err)
+	})
+}
+
 func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	hostAwait := s.Host()
 
@@ -612,43 +653,6 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 
 		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
-	})
-
-	s.T().Run("last provisioned space flips SpaceProvisionerConfig to not ready", func(t *testing.T) {
-		// given
-		// there are 4 already deployed spaces before this test is run, so we set the capacity to 5 so that 1 last space can be deployed.
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(5))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
-
-		_, spcReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
-			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
-			assertions.Is(testSpc.Ready()))
-		require.NoError(t, spcReadyError)
-
-		// when
-		user := NewSignupRequest(s.Awaitilities).
-			Username("manualwithcapacity5").
-			Email("manualwithcapacity5@redhat.com").
-			ManuallyApprove().
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T())
-		userSignup := user.UserSignup
-
-		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
-			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
-			assertions.Is(testSpc.NotReady()))
-
-		// then
-		// we provisioned the last space and the SPC got disabled afterwards
-
-		require.NoError(t, spcNotReadyError)
-
-		userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-		require.NoError(t, err)
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
 	})
 }
 
