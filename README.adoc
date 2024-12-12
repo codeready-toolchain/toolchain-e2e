@@ -47,7 +47,7 @@ NOTE: You can also pair a toolchain-e2e PR with a PR from the https://github.com
 
 ==== Running in a Development Environment
 
-See the procedure to install the Dev Sandbox in a development environment link:dev_install.adoc[here].
+See the procedure to install the Dev Sandbox in a development environment https://kubesaw.github.io/contributing/[here].
 
 === Running End-to-End Tests
 
