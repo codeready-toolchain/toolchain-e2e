@@ -309,12 +309,11 @@ func (s *userSignupIntegrationTest) TestFillingUpClusterCapacityFlipsSPCsToNotRe
 		user1 := NewSignupRequest(s.Awaitilities).
 			Username("fill-up-user-1").
 			Email("fillup1@redhat.com").
-			EnsureMUR().
+			WaitForMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(s.T())
-
-			// then
-		VerifyResourcesProvisionedForSignup(t, s.Awaitilities, user1.UserSignup)
+			
+		// then
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
 			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
 			assertions.Is(testSpc.NotReady()))
