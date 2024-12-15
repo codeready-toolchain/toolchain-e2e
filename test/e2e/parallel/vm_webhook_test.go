@@ -70,7 +70,6 @@ func TestCreateVirtualMachine(t *testing.T) {
 		},
 	} {
 		t.Run(tcname, func(t *testing.T) {
-
 			// create a user for each scenario to avoid vm quota limit
 			username := fmt.Sprintf("test-vm-%d", userCounter)
 			useremail := fmt.Sprintf("%s@redhat.com", username)
