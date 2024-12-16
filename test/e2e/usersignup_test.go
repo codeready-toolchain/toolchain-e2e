@@ -306,13 +306,13 @@ func (s *userSignupIntegrationTest) TestFillingUpClusterCapacityFlipsSPCsToNotRe
 
 	t.Run("deploying a space fills up the member, flipping its SPC to not ready", func(t *testing.T) {
 		// when
-		user1 := NewSignupRequest(s.Awaitilities).
+		NewSignupRequest(s.Awaitilities).
 			Username("fill-up-user-1").
 			Email("fillup1@redhat.com").
 			WaitForMUR().
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 			Execute(s.T())
-			
+
 		// then
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
 			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
