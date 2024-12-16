@@ -1244,7 +1244,7 @@ func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsChe
 }
 
 func networkPolicyIngressAllowFromDevSandboxPolicyGroup() namespaceObjectsCheck {
-	return assertNetworkPolicyIngressForNamespaces("allow-from-dev-sandbox-managed-ns", metav1.LabelSelector{}, " dev-sandbox/policy-group", "ingress")
+	return assertNetworkPolicyIngressForNamespaces("allow-from-dev-sandbox-managed-ns", metav1.LabelSelector{}, "dev-sandbox/policy-group", "ingress")
 }
 
 func assertNetworkPolicyIngressForNamespaces(name string, podSelector metav1.LabelSelector, labelNameValuePairs ...string) namespaceObjectsCheck {
