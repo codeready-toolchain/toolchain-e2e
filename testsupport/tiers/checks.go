@@ -161,7 +161,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	case "stage":
 		otherNamespaceKind = "dev"
 	}
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(10))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), networkPolicyIngressAllowFromDevSandboxPolicyGroup(), numberOfNetworkPolicies(11))
 
 	return checks
 }
@@ -1240,6 +1240,10 @@ func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 
 func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
 	return assertNetworkPolicyIngressForNamespaces(name, metav1.LabelSelector{}, "network.openshift.io/policy-group", group)
+}
+
+func networkPolicyIngressAllowFromDevSandboxPolicyGroup() namespaceObjectsCheck {
+	return assertNetworkPolicyIngressForNamespaces("allow-from-dev-sandbox-managed-ns", metav1.LabelSelector{}, " dev-sandbox/policy-group", "ingress")
 }
 
 func assertNetworkPolicyIngressForNamespaces(name string, podSelector metav1.LabelSelector, labelNameValuePairs ...string) namespaceObjectsCheck {
