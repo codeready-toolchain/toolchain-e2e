@@ -161,7 +161,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	case "stage":
 		otherNamespaceKind = "dev"
 	}
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), networkPolicyIngressAllowFromDevSandboxPolicyGroup(), numberOfNetworkPolicies(11))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(11))
 
 	return checks
 }
@@ -381,6 +381,7 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 		networkPolicyAllowFromIngress(),
 		networkPolicyAllowFromOlmNamespaces(),
 		networkPolicyAllowFromConsoleNamespaces(),
+		networkPolicyIngressAllowFromDevSandboxPolicyGroup(),
 	}
 }
 
