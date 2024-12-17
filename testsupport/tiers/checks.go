@@ -466,7 +466,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaComputeBuild("120", "128Gi", "60", "64Gi"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
 	return checks
 }
 
@@ -559,7 +559,7 @@ func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespac
 		resourceQuotaStorage("50Gi", "400Gi", "50Gi", "180"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
 	return checks
 }
 
@@ -597,7 +597,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		appstudioWorkSpaceNameLabel(),
 	}
 
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
 	return checks
 }
 
