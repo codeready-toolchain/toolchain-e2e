@@ -242,6 +242,19 @@ objects:
     podSelector: {}
     policyTypes:
     - Ingress
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: allow-from-dev-sandbox-managed-ns
+    namespace: ${SPACE_NAME}-tenant
+  spec:
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            dev-sandbox/policy-group: ingress
+    policyTypes:
+      - Ingress
 # ServiceAccount and RoleBindings for running Pipelines.
 # appstudio-pipelines-runner-clusterrole is deployed by the pipeline-service component.
 - apiVersion: v1
