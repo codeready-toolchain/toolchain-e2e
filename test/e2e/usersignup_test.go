@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	commonauth "github.com/codeready-toolchain/toolchain-common/pkg/test/auth"
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
@@ -280,6 +281,46 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	})
 }
 
+func (s *userSignupIntegrationTest) TestFillingUpClusterCapacityFlipsSPCsToNotReady() {
+	t := s.T()
+	hostAwait := s.Host()
+	memberAwait1 := s.Member1()
+	memberAwait2 := s.Member2()
+
+	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false))
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+
+	t.Run("SPC with free capacity is ready", func(t *testing.T) {
+		// then
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.Ready()))
+		require.NoError(t, err)
+
+		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait2.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+		require.NoError(t, err)
+	})
+
+	t.Run("deploying a space fills up the member, flipping its SPC to not ready", func(t *testing.T) {
+		// when
+		NewSignupRequest(s.Awaitilities).
+			Username("fill-up-user-1").
+			Email("fillup1@redhat.com").
+			WaitForMUR().
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
+			Execute(s.T())
+
+		// then
+		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+		require.NoError(t, err)
+	})
+}
+
 func (s *userSignupIntegrationTest) TestUserIDAndAccountIDClaimsPropagated() {
 	hostAwait := s.Host()
 
@@ -533,7 +574,12 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 		userSignup := user.UserSignup
 
+		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+
 		// then
+		require.NoError(t, spcNotReadyError)
 		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
@@ -566,7 +612,12 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 		userSignup := user.UserSignup
 
+		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
+			assertions.Is(testSpc.NotReady()))
+
 		// then
+		require.NoError(t, spcNotReadyError)
 		s.userIsNotProvisioned(t, userSignup)
 
 		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
