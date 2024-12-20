@@ -6,7 +6,6 @@ NOTE: Follow the installation instructions https://sdk.operatorframework.io/docs
 * sed
 * yamllint
 * jq
-* podman +
-NOTE: If you need to use docker, then run the make targets with this variable set: `IMAGE_BUILDER=docker`.
+* podman
 * opm v1.26.3 +
 NOTE: To download the Operator Registry tool use either https://github.com/operator-framework/operator-registry/releases or https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/. The version should correspond with the OpenShift version you are running. To confirm that the Operator Registry tool is installed correctly: `$ opm version`
