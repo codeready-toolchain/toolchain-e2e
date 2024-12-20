@@ -7,7 +7,7 @@ There is a set of images that is built and pushed to quay repositories while dep
 . Make sure you have set the _QUAY_NAMESPACE_ variable: +
 `export QUAY_NAMESPACE=<quay-username>`
 . Log in to quay.io using +
-`docker login quay.io`
+`podman login quay.io`
 * Make sure that these repositories exist on quay.io and the visibility is set to `public` for all of them:
  * https://quay.io/repository/<quay-username>/host-operator
  * https://quay.io/repository/<quay-username>/host-operator-bundle
