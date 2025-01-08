@@ -994,69 +994,6 @@ func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolch
 	return tierTemplate, err
 }
 
-// TierTemplateRevisionWaitCriterion a struct to compare with an expected TierTemplateRevision
-type TierTemplateRevisionWaitCriterion struct {
-	Match func(*toolchainv1alpha1.TierTemplateRevision) bool
-	Diff  func(*toolchainv1alpha1.TierTemplateRevision) string
-}
-
-func matchTierTemplateRevisionWaitCriterion(actual *toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) bool {
-	for _, c := range criteria {
-		// if at least one criteria does not match, keep waiting
-		if !c.Match(actual) {
-			return false
-		}
-	}
-	return true
-}
-
-func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) {
-	buf := &strings.Builder{}
-	if actual == nil {
-		buf.WriteString("failed to find TierTemplateRevision\n")
-	} else {
-		buf.WriteString("failed to find TierTemplateRevision with matching criteria:\n")
-		buf.WriteString("actual:\n")
-		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
-		for _, c := range criteria {
-			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
-			}
-		}
-	}
-	// include also all TierTemplateRevisions in the host namespace, to help troubleshooting
-	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{})
-
-	t.Log(buf.String())
-}
-
-// WaitForTierTemplateRevision waits until a TierTemplateRevision with the given labels to exists
-// Returns an error if the resource did not exist (or something wrong happened)
-func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, ttrName string, criteria ...TierTemplateRevisionWaitCriterion) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
-	ttr := &toolchainv1alpha1.TierTemplateRevision{}
-	t.Logf("waiting until TierTemplateRevision with name '%s' exists in namespace '%s'...", ttrName, a.Namespace)
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		err = a.Client.Get(ctx, types.NamespacedName{
-			Namespace: a.Namespace,
-			Name:      ttrName,
-		}, ttr)
-		// no match found, print the diffs
-		if err != nil {
-			return false, err
-		}
-		return matchTierTemplateRevisionWaitCriterion(ttr, criteria...), nil
-	})
-	// log message if an error occurred
-	if err != nil {
-		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttr, criteria...)
-	}
-	return ttr, err
-}
-
 // NSTemplateTierWaitCriterion a struct to compare with an expected NSTemplateTier
 type NSTemplateTierWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateTier) bool
