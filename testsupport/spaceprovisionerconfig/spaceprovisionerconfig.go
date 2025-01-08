@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/test/assertions"
 	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -12,6 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func ReferenceToToolchainCluster(clusterName string) assertions.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig] {
+	return &referenceToToolchainCluster{clusterName: clusterName}
+}
 
 func CreateSpaceProvisionerConfig(t *testing.T, await *wait.Awaitility, opts ...testSpc.CreateOption) *toolchainv1alpha1.SpaceProvisionerConfig {
 	namePrefix := util.NewObjectNamePrefix(t)
@@ -34,11 +39,15 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 
 	originalSpc := spc.DeepCopy()
 
-	for _, opt := range opts {
-		opt(spc)
-	}
+	spc, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
+		Update(spc.Name, await.Namespace,
+			func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
+				for _, opt := range opts {
+					opt(spcfg)
+				}
+			})
+	require.NoError(t, err)
 
-	require.NoError(t, await.Client.Update(context.TODO(), spc))
 	// log spc values needed for debugging a problem with random capacity manager e2e test failures
 	t.Logf("SPC values before the update %+v", originalSpc)
 	t.Logf("SPC values after the update %+v", spc)
@@ -54,12 +63,13 @@ func UpdateForCluster(t *testing.T, await *wait.Awaitility, referencedClusterNam
 			require.Fail(t, err.Error())
 		}
 
-		// make the originalSpc look like we freshly obtained it from the server and updated its fields
-		// to look like the original.
-		originalSpc.Generation = currentSpc.Generation
-		originalSpc.ResourceVersion = currentSpc.ResourceVersion
+		_, err = wait.For(t, await, &toolchainv1alpha1.SpaceProvisionerConfig{}).
+			Update(originalSpc.Name, await.Namespace,
+				func(spcfg *toolchainv1alpha1.SpaceProvisionerConfig) {
+					spcfg.Spec = originalSpc.Spec
+				})
 
-		require.NoError(t, await.Client.Update(context.TODO(), originalSpc))
+		require.NoError(t, err)
 	})
 }
 
@@ -79,4 +89,22 @@ func findSpcForCluster(spcs []toolchainv1alpha1.SpaceProvisionerConfig, clusterN
 		}
 	}
 	return nil
+}
+
+var (
+	_ assertions.Predicate[*toolchainv1alpha1.SpaceProvisionerConfig]           = (*referenceToToolchainCluster)(nil)
+	_ assertions.PredicateMatchFixer[*toolchainv1alpha1.SpaceProvisionerConfig] = (*referenceToToolchainCluster)(nil)
+)
+
+type referenceToToolchainCluster struct {
+	clusterName string
+}
+
+func (r *referenceToToolchainCluster) FixToMatch(obj *toolchainv1alpha1.SpaceProvisionerConfig) *toolchainv1alpha1.SpaceProvisionerConfig {
+	obj.Spec.ToolchainCluster = r.clusterName
+	return obj
+}
+
+func (r *referenceToToolchainCluster) Matches(obj *toolchainv1alpha1.SpaceProvisionerConfig) bool {
+	return obj.Spec.ToolchainCluster == r.clusterName
 }

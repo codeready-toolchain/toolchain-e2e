@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,9 +17,10 @@ import (
 	"testing"
 	"time"
 
+	rbacv1 "k8s.io/api/rbac/v1"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	commonproxy "github.com/codeready-toolchain/toolchain-common/pkg/proxy"
-	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
 	spacebindingrequesttestcommon "github.com/codeready-toolchain/toolchain-common/pkg/test/spacebindingrequest"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -38,7 +38,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubewait "k8s.io/apimachinery/pkg/util/wait"
@@ -115,7 +114,7 @@ func (u *proxyUser) getWorkspace(t *testing.T, hostAwait *wait.HostAwaitility, w
 	workspace := &toolchainv1alpha1.Workspace{}
 	var cause error
 	// only wait up to 5 seconds because in some test cases the workspace is not expected to be found
-	_ = kubewait.Poll(wait.DefaultRetryInterval, 5*time.Second, func() (bool, error) {
+	_ = kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		cause = proxyCl.Get(context.TODO(), types.NamespacedName{Name: workspaceName}, workspace)
 		return cause == nil, nil
 	})
@@ -424,12 +423,12 @@ func TestProxyFlow(t *testing.T) {
 				proxyCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
 				require.NoError(t, err)
 				err = proxyCl.Create(context.TODO(), appToCreate)
-
-				// then
-				// note: the actual error message is "applications.appstudio.redhat.com is forbidden: User %s cannot create resource "applications" in the namespace %s" but clients make api discovery calls
-				// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
-				// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
-				require.EqualError(t, err, `no matches for kind "Application" in version "appstudio.redhat.com/v1alpha1"`)
+				// Sep 26 2024
+				// As mentioned in the issue -https://github.com/kubernetes-sigs/controller-runtime/issues/2354 introduced in controller-runtime v0.15
+				// for this test, instead of expecting the NoMatchError, discovery client fails and returns a server list error like 'failed to get API group resources: unable to retrieve the complete list of server APIs'
+				// The returned server error wraps around the actual error message of ""invalid workspace request", thus check error contains instead of error equals
+				// TO-DO : This issue is fixed in controller-runtime v0.17 - revisit it then
+				require.ErrorContains(t, err, fmt.Sprintf("invalid workspace request: access to workspace '%s' is forbidden", workspaceName))
 			})
 
 			t.Run("successful workspace context request", func(t *testing.T) {
@@ -498,10 +497,16 @@ func TestProxyFlow(t *testing.T) {
 			}) // end of successful workspace context request with proxy plugin
 
 			t.Run("invalid workspace context request", func(t *testing.T) {
+				// given
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext("notexist")
 				hostAwaitWithShorterTimeout := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second * 3)) // we expect an error so we can use a shorter timeout
-				_, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
-				require.EqualError(t, err, `an error on the server ("unable to get target cluster: access to workspace 'notexist' is forbidden") has prevented the request from succeeding`)
+				proxyCl, err := hostAwaitWithShorterTimeout.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL)
+				require.NoError(t, err)
+				expectedApp := &appstudiov1.Application{}
+				// when
+				err = proxyCl.Get(context.TODO(), types.NamespacedName{Namespace: "testNamespace", Name: "test"}, expectedApp)
+				// then
+				require.ErrorContains(t, err, `an error on the server ("unable to get target cluster: access to workspace 'notexist' is forbidden") has prevented the request from succeeding`)
 			})
 
 			t.Run("invalid request headers", func(t *testing.T) {
@@ -570,10 +575,12 @@ func TestProxyFlow(t *testing.T) {
 			err = proxyCl.Get(context.TODO(), types.NamespacedName{Name: applicationName, Namespace: primaryUserNamespace}, actualApp)
 
 			// then
-			// note: the actual error message is "invalid workspace request: access to workspace '%s' is forbidden" but clients make api discovery calls
-			// that fail because in this case the api discovery calls go through the proxyWorkspaceURL which is invalid. If using oc or kubectl and you
-			// enable verbose logging you would see Response Body: invalid workspace request: access to workspace 'proxymember2' is forbidden
-			require.EqualError(t, err, `no matches for kind "Application" in version "appstudio.redhat.com/v1alpha1"`)
+			// Sep 26 2024
+			// As mentioned in the issue -https://github.com/kubernetes-sigs/controller-runtime/issues/2354 introduced in controller-runtime v0.15
+			// for this test, instead of expecting the NoMatchError, discovery client fails and returns a server list error like 'failed to get API group resources: unable to retrieve the complete list of server APIs'
+			// The returned server error wraps around the actual error message of ""invalid workspace request", thus check error contains instead of error equals
+			// TO-DO : This issue is fixed in controller-runtime v0.17 - revisit it then
+			require.ErrorContains(t, err, "invalid workspace request: access to workspace 'proxymember2' is forbidden")
 
 			// Double check that the Application does exist using a regular client (non-proxy)
 			createdApp := &appstudiov1.Application{}
@@ -674,7 +681,7 @@ func TestProxyFlow(t *testing.T) {
 				cms := corev1.ConfigMapList{}
 
 				err = userProxyClient.List(context.TODO(), &cms, client.InNamespace(sp.Status.ProvisionedNamespaces[0].Name))
-				require.True(t, meta.IsNoMatchError(err), "expected List ConfigMap to return a NoMatch error, actual: %v", err)
+				require.ErrorContains(t, err, "user access is forbidden")
 			})
 
 			t.Run("banned user cannot create config maps into space", func(t *testing.T) {
@@ -686,7 +693,7 @@ func TestProxyFlow(t *testing.T) {
 				}
 
 				err = userProxyClient.Create(context.TODO(), &cm)
-				require.True(t, meta.IsNoMatchError(err), "expected Create ConfigMap to return a NoMatch error, actual: %v", err)
+				require.ErrorContains(t, err, "user access is forbidden")
 			})
 		})
 	})
@@ -1076,9 +1083,10 @@ func TestSpaceLister(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, err = memberAwait.UpdateSpaceBindingRequest(t, test.NamespacedName(failingSBR.Namespace, failingSBR.Name), func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
-			sbr.Spec.SpaceRole = "admin"
-		})
+		_, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.SpaceBindingRequest{}).
+			Update(failingSBR.Name, failingSBR.Namespace, func(sbr *toolchainv1alpha1.SpaceBindingRequest) {
+				sbr.Spec.SpaceRole = "admin"
+			})
 
 		// then
 		require.NoError(t, err)
@@ -1126,7 +1134,7 @@ func TestSpaceLister(t *testing.T) {
 			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
-			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+			require.ErrorContains(t, err, "user access is forbidden")
 		})
 
 		t.Run("cannot get shared workspace", func(t *testing.T) {
@@ -1134,14 +1142,14 @@ func TestSpaceLister(t *testing.T) {
 			err := proxyClDefault.Get(context.TODO(), workspaceNamespacedName, &toolchainv1alpha1.Workspace{})
 
 			require.Error(t, err)
-			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+			require.ErrorContains(t, err, "user access is forbidden")
 		})
 
 		t.Run("cannot list workspaces", func(t *testing.T) {
 			err := proxyClDefault.List(context.TODO(), &toolchainv1alpha1.WorkspaceList{})
 
 			require.Error(t, err)
-			require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+			require.ErrorContains(t, err, "user access is forbidden")
 		})
 
 		t.Run("cannot list resources", func(t *testing.T) {
@@ -1160,7 +1168,7 @@ func TestSpaceLister(t *testing.T) {
 						t.Run(k, func(t *testing.T) {
 							err := workspaceClient.List(context.TODO(), objList)
 							require.Error(t, err)
-							require.True(t, k8serr.IsForbidden(err), "expected Forbidden error, got %v", err)
+							require.ErrorContains(t, err, "user access is forbidden")
 						})
 					}
 				})
@@ -1325,7 +1333,7 @@ func (w *wsWatcher) receiveHandler() {
 
 func (w *wsWatcher) WaitForApplication(expectedAppName string) (*appstudiov1.Application, error) {
 	var foundApp *appstudiov1.Application
-	err := kubewait.Poll(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+	err := kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, wait.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
 		foundApp = w.receivedApps[expectedAppName]
@@ -1335,7 +1343,7 @@ func (w *wsWatcher) WaitForApplication(expectedAppName string) (*appstudiov1.App
 }
 
 func (w *wsWatcher) WaitForApplicationDeletion(expectedAppName string) error {
-	err := kubewait.PollImmediate(wait.DefaultRetryInterval, wait.DefaultTimeout, func() (bool, error) {
+	err := kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, wait.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		defer w.mu.RUnlock()
 		w.mu.RLock()
 		_, present := w.receivedApps[expectedAppName]

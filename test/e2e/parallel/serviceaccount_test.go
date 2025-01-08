@@ -49,23 +49,24 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		dummyPullSecretRefName := fmt.Sprintf("dummy-pull-secret-%d", i)
 
 		// update the ServiceAccount values so we can verify that some parts will stay and some will be reverted to the needed values
-		_, err := member.UpdateServiceAccount(t, nsName, "namespace-manager", func(sa *corev1.ServiceAccount) {
-			// when we add an annotation to the SA resource then it should stay there
-			sa.Annotations = map[string]string{
-				"should": "stay",
-			}
-			// add secret and ImagePullSecret refs and expect that they will stay there.
-			// the actual secrets don't exist, but that's fine - we need to check only if the refs stay in the SA resource
-			sa.Secrets = append(sa.Secrets, corev1.ObjectReference{
-				Name: dummySecretRefName,
-			})
-			sa.ImagePullSecrets = append(sa.ImagePullSecrets, corev1.LocalObjectReference{
-				Name: dummyPullSecretRefName,
-			})
+		_, err := wait.For(t, member.Awaitility, &corev1.ServiceAccount{}).
+			Update("namespace-manager", nsName, func(sa *corev1.ServiceAccount) {
+				// when we add an annotation to the SA resource then it should stay there
+				sa.Annotations = map[string]string{
+					"should": "stay",
+				}
+				// add secret and ImagePullSecret refs and expect that they will stay there.
+				// the actual secrets don't exist, but that's fine - we need to check only if the refs stay in the SA resource
+				sa.Secrets = append(sa.Secrets, corev1.ObjectReference{
+					Name: dummySecretRefName,
+				})
+				sa.ImagePullSecrets = append(sa.ImagePullSecrets, corev1.LocalObjectReference{
+					Name: dummyPullSecretRefName,
+				})
 
-			// also delete the space label key as we expect that this change should be reverted by the next reconcile loop
-			delete(sa.Labels, v1alpha1.SpaceLabelKey)
-		})
+				// also delete the space label key as we expect that this change should be reverted by the next reconcile loop
+				delete(sa.Labels, v1alpha1.SpaceLabelKey)
+			})
 		require.NoError(t, err)
 
 		// add the generated secret refs to the expected ones
@@ -77,12 +78,13 @@ func TestDoNotOverrideServiceAccount(t *testing.T) {
 		})
 
 		// Update the namespace annotations & labels to trigger the reconciliation
-		_, err = member.UpdateNamespace(t, nsName, func(ns *corev1.Namespace) {
-			// drop the last-applied-space-roles annotation, so we are sure that the content of the roles are re-applied
-			delete(ns.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
-			// change the tier name, so we are sure that the content of the tier template is re-applied
-			ns.Labels[v1alpha1.TierLabelKey] = "appstudio"
-		})
+		_, err = wait.For(t, member.Awaitility, &corev1.Namespace{}).
+			Update(nsName, member.Namespace, func(ns *corev1.Namespace) {
+				// drop the last-applied-space-roles annotation, so we are sure that the content of the roles are re-applied
+				delete(ns.Annotations, v1alpha1.LastAppliedSpaceRolesAnnotationKey)
+				// change the tier name, so we are sure that the content of the tier template is re-applied
+				ns.Labels[v1alpha1.TierLabelKey] = "appstudio"
+			})
 		require.NoError(t, err)
 
 		// then

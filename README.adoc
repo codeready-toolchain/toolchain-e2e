@@ -61,7 +61,7 @@ There are multiple Makefile targets that will execute the e2e tests, they just d
 * `make test-e2e-host-local` - this target clones only the https://github.com/codeready-toolchain/member-operator[member-operator] repo and builds an image from it. For host-operator, it builds the image from `../host-operator` directory. These images deploys to OpenShift and runs e2e tests against them.
 
 The e2e tests will take care of creating all needed namespaces with random names (or see below for enforcing some specific namespace names).
-It will also create all required CRDs, role and role bindings for the service accounts, build the Docker images for both operators and push them to the OpenShift container registry. Finally, it will deploy the operators and run the tests using the operator-sdk.
+It will also create all required CRDs, role and role bindings for the service accounts, build the container images for both operators and push them to the OpenShift container registry. Finally, it will deploy the operators and run the tests using the operator-sdk.
 
 
 NOTE: you can override the default namespace names where the end-to-end tests are going to be executed - eg.: `make test-e2e HOST_NS=my-host MEMBER_NS=my-member` file.
@@ -70,6 +70,8 @@ NOTE: you can disable SSL/TLS certificate verification in tests setting the `DIS
 
 NOTE: you can specify a regular expression to selectively run particular test cases by setting the `TESTS_RUN_FILTER_REGEXP` variable. eg.: `make test-e2e TESTS_RUN_FILTER_REGEXP="TestSetupMigration"`. For more information see the https://pkg.go.dev/cmd/go#hdr-Testing_flags[go test -run documentation].
 
+NOTE: you should not override `SECOND_MEMBER_MODE` in test-e2e, since the e2e tests require a second member operator.
+
 === Running/Debugging e2e tests from your IDE
 
 In order to run/debug tests from your IDE you'll need to export some required env variables, those will be used by the test framework to interact with the operator namespaces and the other toolchain resources in you cluster.
@@ -77,6 +79,8 @@ Following snippet of code should be TEMPORARILY added at the top of the test you
 
 ```
 os.Setenv("MEMBER_NS","toolchain-member-18161051")
+// `SECOND_MEMBER_MODE` should be set to true, since the e2e tests require a second member operator.
+os.Setenv("SECOND_MEMBER_MODE","true")
 os.Setenv("MEMBER_NS_2","toolchain-member2-18161051")
 os.Setenv("HOST_NS","toolchain-host-18161051")
 os.Setenv("REGISTRATION_SERVICE_NS","toolchain-host-18161051")
@@ -95,6 +99,7 @@ import (
 
 func TestCreateSpaceRequest(t *testing.T) {
 	os.Setenv("MEMBER_NS","toolchain-member-18161051")
+	os.Setenv("SECOND_MEMBER_MODE","true")
 	os.Setenv("MEMBER_NS_2","toolchain-member2-18161051")
 	os.Setenv("HOST_NS","toolchain-host-18161051")
 	os.Setenv("REGISTRATION_SERVICE_NS","toolchain-host-18161051")
@@ -144,19 +149,23 @@ If you are still confused by the different e2e/operator location, execution and 
 
 All e2e resources (host operator, member operator, registration-service, CRDs, etc) can be deployed without running tests:
 
-* `make dev-deploy-e2e-local` - deploys the same resources as `make test-e2e-local` but doesn't run tests.
+* `make dev-deploy-e2e-local` - deploys the same resources as `make test-e2e-local` in dev environment but doesn't run tests.
 
-* `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
+* `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` in dev environment but doesn't run tests.
 
-By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
+* `make deploy-toolchain-resources-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
+
+NOTE: By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 
 NOTE: If running in CodeReady Containers `eval $(crc oc-env)` is required.
+
+NOTE: By default, `SECOND_MEMBER_MODE` is set to false.
 
 == How to Test Mailgun/Twilio Notifications in a Dev Environment
 * Get a cluster and setup the following env vars
 ** `export QUAY_NAMESPACE=<your-quay-namespace>`
 ** `export KUBECONFIG=<location-to-kubeconfig>`
-* Run `docker login quay.io`
+* Run `podman login quay.io`
 * Create https://github.com/codeready-toolchain/toolchain-infra/tree/master/config/oauth[IdP]
 * If you need to change any of the default configuration, modify the ToolchainConfig in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/deploy/host-operator/dev/toolchainconfig.yaml[deploy/host-operator/dev/toolchainconfig.yaml]
 * To set working notification/verification secrets, modify them in https://github.com/codeready-toolchain/toolchain-e2e/blob/master/deploy/host-operator/dev/secrets.yaml[deploy/host-operator/dev/secrets.yaml]

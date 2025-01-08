@@ -169,10 +169,11 @@ func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(t)
 		// Set the deactivating state on the UserSignup
-		updatedUserSignup, err := hostAwait.UpdateUserSignup(t, user.UserSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivating(us, true)
-			})
+		updatedUserSignup, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(user.UserSignup.Name, hostAwait.Namespace,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivating(us, true)
+				})
 		require.NoError(t, err)
 
 		// Move the MUR to the user tier with longer deactivation time
@@ -343,9 +344,11 @@ func TestFeatureToggles(t *testing.T) {
 			// when
 
 			// Now let's disable the feature for the Space by removing the feature annotation
-			_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
-				delete(s.Annotations, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
-			})
+			_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+				Update(user.Space.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+					delete(s.Annotations, toolchainv1alpha1.FeatureToggleNameAnnotationKey)
+				})
+
 			require.NoError(t, err)
 
 			// then
@@ -358,12 +361,14 @@ func TestFeatureToggles(t *testing.T) {
 				// when
 
 				// Now let's re-enable the feature for the Space by restoring the feature annotation
-				_, err := hostAwait.UpdateSpace(t, user.Space.Name, func(s *toolchainv1alpha1.Space) {
-					if s.Annotations == nil {
-						s.Annotations = make(map[string]string)
-					}
-					s.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey] = "test-feature"
-				})
+				_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+					Update(user.Space.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+						if s.Annotations == nil {
+							s.Annotations = make(map[string]string)
+						}
+						s.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey] = "test-feature"
+					})
+
 				require.NoError(t, err)
 
 				// then

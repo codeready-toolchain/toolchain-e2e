@@ -26,6 +26,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -411,12 +412,13 @@ func TestSignupOK(t *testing.T) {
 			identity.ID, identity.Username), mp["message"])
 		assert.Equal(t, "error creating UserSignup resource", mp["details"])
 
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
-			func(instance *toolchainv1alpha1.UserSignup) {
-				// Approve usersignup.
-				states.SetApprovedManually(instance, true)
-				instance.Spec.TargetCluster = memberAwait.ClusterName
-			})
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, hostAwait.Namespace,
+				func(instance *toolchainv1alpha1.UserSignup) {
+					// Approve usersignup.
+					states.SetApprovedManually(instance, true)
+					instance.Spec.TargetCluster = memberAwait.ClusterName
+				})
 		require.NoError(t, err)
 
 		// Wait for the resources to be provisioned
@@ -443,10 +445,11 @@ func TestSignupOK(t *testing.T) {
 		t.Logf("Signed up new user %+v", userSignup)
 
 		// Deactivate the usersignup
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetDeactivated(us, true)
-			})
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, hostAwait.Namespace,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetDeactivated(us, true)
+				})
 		require.NoError(t, err)
 		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.DeactivatedWithoutPreDeactivation())...),
@@ -608,11 +611,12 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
 	require.False(t, mpStatus["verificationRequired"].(bool))
 
-	userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
-		func(instance *toolchainv1alpha1.UserSignup) {
-			// Now approve the usersignup.
-			states.SetApprovedManually(instance, true)
-		})
+	userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+		Update(userSignup.Name, hostAwait.Namespace,
+			func(instance *toolchainv1alpha1.UserSignup) {
+				// Now approve the usersignup.
+				states.SetApprovedManually(instance, true)
+			})
 	require.NoError(t, err)
 	transformedUsername := commonsignup.TransformUsername(userSignup.Spec.IdentityClaims.PreferredUsername, []string{"openshift", "kube", "default", "redhat", "sandbox"}, []string{"admin"})
 	// Confirm the MasterUserRecord is provisioned
@@ -665,11 +669,12 @@ func TestPhoneVerification(t *testing.T) {
 	userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name)
 	require.NoError(t, err)
 
-	userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
-		func(instance *toolchainv1alpha1.UserSignup) {
-			// Now mark the original UserSignup as deactivated
-			states.SetDeactivated(instance, true)
-		})
+	userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+		Update(userSignup.Name, hostAwait.Namespace,
+			func(instance *toolchainv1alpha1.UserSignup) {
+				// Now mark the original UserSignup as deactivated
+				states.SetDeactivated(instance, true)
+			})
 	require.NoError(t, err)
 
 	// Ensure the UserSignup is deactivated
@@ -719,10 +724,11 @@ func TestActivationCodeVerification(t *testing.T) {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
-		userSignup, err = hostAwait.UpdateUserSignup(t, userSignup.Name,
-			func(us *toolchainv1alpha1.UserSignup) {
-				states.SetApprovedManually(us, true)
-			})
+		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+			Update(userSignup.Name, hostAwait.Namespace,
+				func(us *toolchainv1alpha1.UserSignup) {
+					states.SetApprovedManually(us, true)
+				})
 		require.NoError(t, err)
 		t.Logf("user signup '%s' approved", userSignup.Name)
 
@@ -787,10 +793,16 @@ func TestActivationCodeVerification(t *testing.T) {
 				testsocialevent.WithTargetCluster(member2Await.ClusterName))
 			err := hostAwait.CreateWithCleanup(t, event)
 			require.NoError(t, err)
-			event, err = hostAwait.WaitForSocialEvent(t, event.Name) // need to reload event
+			event, err = hostAwait.WaitForSocialEvent(t, event.Name, wait.UntilSocialEventHasConditions(toolchainv1alpha1.Condition{
+				Type:   toolchainv1alpha1.ConditionReady,
+				Status: corev1.ConditionTrue,
+			})) // need to reload event
 			require.NoError(t, err)
-			event.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
-			err = hostAwait.Client.Status().Update(context.TODO(), event)
+			event, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SocialEvent{}).
+				UpdateStatus(event.Name, hostAwait.Namespace,
+					func(ev *toolchainv1alpha1.SocialEvent) {
+						ev.Status.ActivationCount = event.Spec.MaxAttendees // activation count identical to `MaxAttendees`
+					})
 			require.NoError(t, err)
 
 			userSignup, token := signup(t, hostAwait)
@@ -1023,7 +1035,7 @@ func assertRHODSClusterURL(t *testing.T, memberAwait *wait.MemberAwaitility, res
 func waitForUserSignupReadyInRegistrationService(t *testing.T, registrationServiceURL, name, bearerToken string) map[string]interface{} {
 	t.Logf("waiting and verifying that UserSignup '%s' is ready according to registration service", name)
 	var mp, mpStatus map[string]interface{}
-	err := k8swait.Poll(time.Second, time.Second*60, func() (done bool, err error) {
+	err := k8swait.PollUntilContextTimeout(context.TODO(), time.Second, time.Second*60, true, func(ctx context.Context) (done bool, err error) {
 		mp, mpStatus = ParseSignupResponse(t, NewHTTPRequest(t).InvokeEndpoint("GET", registrationServiceURL+"/api/v1/signup", bearerToken, "", http.StatusOK).UnmarshalMap())
 		// check if `ready` field is set
 		if _, ok := mpStatus["ready"]; !ok {

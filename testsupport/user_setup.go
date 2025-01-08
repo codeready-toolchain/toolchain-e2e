@@ -42,7 +42,6 @@ func createMultipleSignups(t *testing.T, awaitilities wait.Awaitilities, targetC
 
 		user := signupRequest.Execute(t)
 		signups[i] = user.UserSignup
-
 	}
 	return signups
 }

@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -104,7 +105,7 @@ func (g *Gatherer) StartGathering() chan struct{} {
 			for _, q := range g.mqueries {
 				var metricsErr error
 				// added retry mechanism since temporary metrics errors have been observed, poll until the query returns a non-error result or the poll times out
-				err := k8sutil.Poll(cfg.DefaultRetryInterval, cfg.DefaultTimeout, func() (bool, error) {
+				err := k8sutil.PollUntilContextTimeout(context.TODO(), cfg.DefaultRetryInterval, cfg.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 					metricsErr = g.sample(q)
 					return metricsErr == nil, nil
 				})

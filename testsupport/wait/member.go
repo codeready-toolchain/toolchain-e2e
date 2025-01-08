@@ -248,7 +248,7 @@ func UntilUserAccountIsCreatedAfter(timestamp metav1.Time) UserAccountWaitCriter
 // WaitForUserAccount waits until there is a UserAccount available with the given name, expected spec and the set of status conditions
 func (a *MemberAwaitility) WaitForUserAccount(t *testing.T, name string, criteria ...UserAccountWaitCriterion) (*toolchainv1alpha1.UserAccount, error) {
 	var userAccount *toolchainv1alpha1.UserAccount
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -275,7 +275,7 @@ type SpaceRequestWaitCriterion struct {
 // WaitForSpaceRequest waits until there is a SpaceRequest available with the given name, namespace, spec and the set of status conditions
 func (a *MemberAwaitility) WaitForSpaceRequest(t *testing.T, namespacedName types.NamespacedName, criteria ...SpaceRequestWaitCriterion) (*toolchainv1alpha1.SpaceRequest, error) {
 	var spaceRequest *toolchainv1alpha1.SpaceRequest
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.SpaceRequest{}
 		if err := a.Client.Get(context.TODO(), namespacedName, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -460,7 +460,7 @@ type SpaceBindingRequestWaitCriterion struct {
 // WaitForSpaceBindingRequest waits until there is a SpaceBindingRequest available with the given name, namespace, spec and the set of status conditions
 func (a *MemberAwaitility) WaitForSpaceBindingRequest(t *testing.T, namespacedName types.NamespacedName, criteria ...SpaceBindingRequestWaitCriterion) (*toolchainv1alpha1.SpaceBindingRequest, error) {
 	var spaceBindingRequest *toolchainv1alpha1.SpaceBindingRequest
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.SpaceBindingRequest{}
 		if err := a.Client.Get(context.TODO(), namespacedName, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -725,7 +725,7 @@ func UntilNSTemplateSetHasProvisionedNamespaces(expected []toolchainv1alpha1.Spa
 func (a *MemberAwaitility) WaitForNSTmplSet(t *testing.T, name string, criteria ...NSTemplateSetWaitCriterion) (*toolchainv1alpha1.NSTemplateSet, error) {
 	t.Logf("waiting for NSTemplateSet '%s' to match criteria", name)
 	var nsTmplSet *toolchainv1alpha1.NSTemplateSet
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -746,7 +746,7 @@ func (a *MemberAwaitility) WaitForNSTmplSet(t *testing.T, name string, criteria 
 // WaitUntilNSTemplateSetDeleted waits until the NSTemplateSet with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNSTemplateSetDeleted(t *testing.T, name string) error {
 	t.Logf("waiting for until NSTemplateSet '%s' in namespace '%s' is deleted", name, a.Namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		nsTmplSet := &toolchainv1alpha1.NSTemplateSet{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, nsTmplSet); err != nil {
 			if errors.IsNotFound(err) {
@@ -836,7 +836,7 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 	}
 	t.Logf("waiting for namespace with custom criteria and labels %v", labels)
 	var ns *corev1.Namespace
-	err = wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		nss := &corev1.NamespaceList{}
 		opts := client.MatchingLabels(labels)
 		if err := a.Client.List(context.TODO(), nss, opts); err != nil {
@@ -870,7 +870,7 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 // WaitForNamespaceWithName waits until a namespace with the given name
 func (a *MemberAwaitility) WaitForNamespaceWithName(t *testing.T, name string, criteria ...LabelWaitCriterion) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(wa context.Context) (done bool, err error) {
 		obj := &corev1.Namespace{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -924,7 +924,7 @@ func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(t *testing.T, actua
 // WaitForNamespaceInTerminating waits until a namespace with the given name has a deletion timestamp and in Terminating Phase
 func (a *MemberAwaitility) WaitForNamespaceInTerminating(t *testing.T, nsName string) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.Namespace{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: nsName}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -969,7 +969,7 @@ func (a *MemberAwaitility) printRoleBindingWaitCriterionDiffs(t *testing.T, actu
 func (a *MemberAwaitility) WaitForRoleBinding(t *testing.T, namespace *corev1.Namespace, name string, criteria ...LabelWaitCriterion) (*rbacv1.RoleBinding, error) {
 	t.Logf("waiting for RoleBinding '%s' in namespace '%s'", name, namespace.Name)
 	roleBinding := &rbacv1.RoleBinding{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &rbacv1.RoleBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -992,7 +992,7 @@ func (a *MemberAwaitility) WaitForRoleBinding(t *testing.T, namespace *corev1.Na
 // WaitUntilRoleBindingDeleted waits until a RoleBinding with the given name does not exist anymore in the given namespace
 func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(t *testing.T, namespace *corev1.Namespace, name string) error {
 	t.Logf("waiting for RoleBinding '%s' in namespace '%s' to be deleted", name, namespace.Name)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		roleBinding := &rbacv1.RoleBinding{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, roleBinding); err != nil {
 			if errors.IsNotFound(err) {
@@ -1007,7 +1007,7 @@ func (a *MemberAwaitility) WaitUntilRoleBindingDeleted(t *testing.T, namespace *
 func (a *MemberAwaitility) WaitForServiceAccount(t *testing.T, namespace string, name string, criteria ...LabelWaitCriterion) (*corev1.ServiceAccount, error) {
 	t.Logf("waiting for ServiceAccount '%s' in namespace '%s'", name, namespace)
 	serviceAccount := &corev1.ServiceAccount{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.ServiceAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1029,7 +1029,7 @@ func (a *MemberAwaitility) WaitForServiceAccount(t *testing.T, namespace string,
 func (a *MemberAwaitility) WaitForLimitRange(t *testing.T, namespace *corev1.Namespace, name string) (*corev1.LimitRange, error) {
 	t.Logf("waiting for LimitRange '%s' in namespace '%s'", name, namespace.Name)
 	lr := &corev1.LimitRange{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.LimitRange{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1054,7 +1054,7 @@ func (a *MemberAwaitility) WaitForLimitRange(t *testing.T, namespace *corev1.Nam
 func (a *MemberAwaitility) WaitForNetworkPolicy(t *testing.T, namespace *corev1.Namespace, name string) (*netv1.NetworkPolicy, error) {
 	t.Logf("waiting for NetworkPolicy '%s' in namespace '%s'", name, namespace.Name)
 	np := &netv1.NetworkPolicy{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &netv1.NetworkPolicy{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1079,7 +1079,7 @@ func (a *MemberAwaitility) WaitForNetworkPolicy(t *testing.T, namespace *corev1.
 func (a *MemberAwaitility) WaitForRole(t *testing.T, namespace *corev1.Namespace, name string, criteria ...LabelWaitCriterion) (*rbacv1.Role, error) {
 	t.Logf("waiting for Role '%s' in namespace '%s'", name, namespace.Name)
 	role := &rbacv1.Role{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &rbacv1.Role{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace.Name, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1100,7 +1100,7 @@ func (a *MemberAwaitility) WaitForRole(t *testing.T, namespace *corev1.Namespace
 // WaitUntilRoleDeleted waits until a Role with the given name does not exist anymore in the given namespace
 func (a *MemberAwaitility) WaitUntilRoleDeleted(t *testing.T, namespace *corev1.Namespace, name string) error {
 	t.Logf("waiting for Role '%s' in namespace '%s' to be deleted", name, namespace.Name)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		role := &rbacv1.Role{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: a.Namespace}, role); err != nil {
 			if errors.IsNotFound(err) {
@@ -1177,7 +1177,7 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(t *testin
 func (a *MemberAwaitility) WaitForClusterResourceQuota(t *testing.T, name string, criteria ...ClusterResourceQuotaWaitCriterion) (*quotav1.ClusterResourceQuota, error) {
 	t.Logf("waiting for ClusterResourceQuota '%s' to match criteria", name)
 	quota := &quotav1.ClusterResourceQuota{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &quotav1.ClusterResourceQuota{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1242,7 +1242,7 @@ func (a *MemberAwaitility) printResourceQuotaWaitCriterionDiffs(t *testing.T, ac
 func (a *MemberAwaitility) WaitForResourceQuota(t *testing.T, namespace, name string, criteria ...ResourceQuotaWaitCriterion) (*corev1.ResourceQuota, error) {
 	t.Logf("waiting for ResourceQuota '%s' in %s to match criteria", name, namespace)
 	quota := &corev1.ResourceQuota{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.ResourceQuota{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1354,7 +1354,7 @@ func IdlerHasLabel(key, value string) IdlerWaitCriterion {
 func (a *MemberAwaitility) WaitForIdler(t *testing.T, name string, criteria ...IdlerWaitCriterion) (*toolchainv1alpha1.Idler, error) {
 	t.Logf("waiting for Idler '%s' to match criteria", name)
 	idler := &toolchainv1alpha1.Idler{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.Idler{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1372,94 +1372,12 @@ func (a *MemberAwaitility) WaitForIdler(t *testing.T, name string, criteria ...I
 	return idler, err
 }
 
-// UpdateIdlerSpec tries to update the Idler.Spec until success
-func (a *MemberAwaitility) UpdateIdlerSpec(t *testing.T, idler *toolchainv1alpha1.Idler) (*toolchainv1alpha1.Idler, error) {
-	var result *toolchainv1alpha1.Idler
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &toolchainv1alpha1.Idler{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: idler.Name}, obj); err != nil {
-			return false, err
-		}
-		obj.Spec = idler.Spec
-		if err := a.Client.Update(context.TODO(), obj); err != nil {
-			t.Logf("trying to update Idler %s. Error: %s. Will try to update again.", idler.Name, err.Error())
-			return false, nil
-		}
-		result = obj
-		return true, nil
-	})
-	return result, err
-}
-
-// UpdateNamespace tries to update the Spec of the given Namespace
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated Namespace
-func (a *MemberAwaitility) UpdateNamespace(t *testing.T, nsName string, modifyNamespace func(ns *corev1.Namespace)) (*corev1.Namespace, error) {
-	var ns *corev1.Namespace
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		freshNs := &corev1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: nsName}, freshNs); err != nil {
-			return true, err
-		}
-		modifyNamespace(freshNs)
-		if err := a.Client.Update(context.TODO(), freshNs); err != nil {
-			t.Logf("error updating Namespace '%s': %s. Will retry again...", nsName, err.Error())
-			return false, nil
-		}
-		ns = freshNs
-		return true, nil
-	})
-	return ns, err
-}
-
-// UpdateServiceAccount tries to update the given ServiceAccount
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated ServiceAccount
-func (a *MemberAwaitility) UpdateServiceAccount(t *testing.T, namespace, saName string, modifySA func(sa *corev1.ServiceAccount)) (*corev1.ServiceAccount, error) {
-	var sa *corev1.ServiceAccount
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		freshSA := &corev1.ServiceAccount{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: saName}, freshSA); err != nil {
-			return true, err
-		}
-		modifySA(freshSA)
-		if err := a.Client.Update(context.TODO(), freshSA); err != nil {
-			t.Logf("error updating ServiceAccount '%s': %s. Will retry again...", saName, err.Error())
-			return false, nil
-		}
-		sa = freshSA
-		return true, nil
-	})
-	return sa, err
-}
-
-// UpdateSpaceRequest tries to update the Spec of the given SpaceRequest
-// If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
-// Returns the updated SpaceRequest
-func (a *MemberAwaitility) UpdateSpaceRequest(t *testing.T, spaceRequestNamespacedName types.NamespacedName, modifySpaceRequest func(s *toolchainv1alpha1.SpaceRequest)) (*toolchainv1alpha1.SpaceRequest, error) {
-	var sr *toolchainv1alpha1.SpaceRequest
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		freshSpaceRequest := &toolchainv1alpha1.SpaceRequest{}
-		if err := a.Client.Get(context.TODO(), spaceRequestNamespacedName, freshSpaceRequest); err != nil {
-			return true, err
-		}
-		modifySpaceRequest(freshSpaceRequest)
-		if err := a.Client.Update(context.TODO(), freshSpaceRequest); err != nil {
-			t.Logf("error updating SpaceRequest '%s' in namespace '%s': %s. Will retry again...", spaceRequestNamespacedName.Name, spaceRequestNamespacedName.Name, err.Error())
-			return false, nil
-		}
-		sr = freshSpaceRequest
-		return true, nil
-	})
-	return sr, err
-}
-
 // UpdateSpaceBindingRequest tries to update the Spec of the given SpaceBindingRequest
 // If it fails with an error (for example if the object has been modified) then it retrieves the latest version and tries again
 // Returns the updated SpaceBindingRequest
 func (a *MemberAwaitility) UpdateSpaceBindingRequest(t *testing.T, spaceBindingRequestNamespacedName types.NamespacedName, modifySpaceBindingRequest func(s *toolchainv1alpha1.SpaceBindingRequest)) (*toolchainv1alpha1.SpaceBindingRequest, error) {
 	var sr *toolchainv1alpha1.SpaceBindingRequest
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		freshSpaceBindingRequest := &toolchainv1alpha1.SpaceBindingRequest{}
 		if err := a.Client.Get(context.TODO(), spaceBindingRequestNamespacedName, freshSpaceBindingRequest); err != nil {
 			return true, err
@@ -1478,7 +1396,7 @@ func (a *MemberAwaitility) UpdateSpaceBindingRequest(t *testing.T, spaceBindingR
 // WaitUntilSpaceBindingRequestDeleted waits until a SpaceBindingRequest with the given name does not exist anymore in the given namespace
 func (a *MemberAwaitility) WaitUntilSpaceBindingRequestDeleted(t *testing.T, spaceBindingRequest *toolchainv1alpha1.SpaceBindingRequest) error {
 	t.Logf("waiting for SpaceBindingRequest '%s' in namespace '%s' to be deleted", spaceBindingRequest.GetName(), spaceBindingRequest.GetNamespace())
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		sbr := &toolchainv1alpha1.SpaceBindingRequest{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: spaceBindingRequest.GetName(), Namespace: spaceBindingRequest.GetNamespace()}, sbr); err != nil {
 			if errors.IsNotFound(err) {
@@ -1493,7 +1411,7 @@ func (a *MemberAwaitility) WaitUntilSpaceBindingRequestDeleted(t *testing.T, spa
 // Create tries to create the object until success
 // Workaround for https://github.com/kubernetes/kubernetes/issues/67761
 func (a *MemberAwaitility) Create(t *testing.T, obj client.Object) error {
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := a.Client.Create(context.TODO(), obj); err != nil {
 			t.Logf("trying to create %+v. Error: %s. Will try to create again.", obj, err.Error())
 			return false, nil
@@ -1538,7 +1456,7 @@ func (a *MemberAwaitility) printPodWaitCriterionDiffs(t *testing.T, actual *core
 func (a *MemberAwaitility) WaitForPod(t *testing.T, namespace, name string, criteria ...PodWaitCriterion) (*corev1.Pod, error) {
 	t.Logf("waiting for Pod '%s' in namespace '%s' with matching criteria", name, namespace)
 	var pod *corev1.Pod
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.Pod{}
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: namespace,
@@ -1565,7 +1483,7 @@ func (a *MemberAwaitility) WaitForPod(t *testing.T, namespace, name string, crit
 func (a *MemberAwaitility) WaitForConfigMap(t *testing.T, namespace, name string) (*corev1.ConfigMap, error) {
 	t.Logf("waiting for ConfigMap '%s' in namespace '%s'", name, namespace)
 	var cm *corev1.ConfigMap
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.ConfigMap{}
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: namespace,
@@ -1588,7 +1506,7 @@ func (a *MemberAwaitility) WaitForConfigMap(t *testing.T, namespace, name string
 func (a *MemberAwaitility) WaitForSecret(t *testing.T, name string) (*corev1.Secret, error) {
 	t.Logf("waiting for Secret '%s' in namespace '%s'", name, a.Namespace)
 	var cm *corev1.Secret
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.Secret{}
 		if err = a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: a.Namespace,
@@ -1611,7 +1529,7 @@ func (a *MemberAwaitility) WaitForSecret(t *testing.T, name string) (*corev1.Sec
 func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
 	t.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
 	pods := make([]corev1.Pod, 0, n)
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		pds := make([]corev1.Pod, 0, n)
 		foundPods := &corev1.PodList{}
 		if err := a.Client.List(context.TODO(), foundPods, client.InNamespace(namespace)); err != nil {
@@ -1638,7 +1556,7 @@ func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, cr
 // WaitUntilPodsDeleted waits until the pods are deleted from the given namespace
 func (a *MemberAwaitility) WaitUntilPodsDeleted(t *testing.T, namespace string, criteria ...PodWaitCriterion) error {
 	t.Logf("waiting until Pods with matching criteria in namespace '%s' are deleted", namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		foundPods := &corev1.PodList{}
 		if err := a.Client.List(context.TODO(), foundPods, &client.ListOptions{Namespace: namespace}); err != nil {
 			return false, err
@@ -1659,7 +1577,7 @@ func (a *MemberAwaitility) WaitUntilPodsDeleted(t *testing.T, namespace string, 
 // WaitUntilPodDeleted waits until the pod with the given name is deleted from the given namespace
 func (a *MemberAwaitility) WaitUntilPodDeleted(t *testing.T, namespace, name string) error {
 	t.Logf("waiting until Pod '%s' in namespace '%s' is deleted", name, namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &corev1.Pod{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj); err != nil {
 			if errors.IsNotFound(err) {
@@ -1746,7 +1664,7 @@ func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
 func (a *MemberAwaitility) WaitUntilWebhookDeleted(t *testing.T) error {
 	t.Logf("waiting until webhook member-operator-webhook in namespace '%s' is deleted", a.Namespace)
 	deployment := &appsv1.Deployment{}
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(a.Namespace, "member-operator-webhook"), deployment); err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -1760,7 +1678,7 @@ func (a *MemberAwaitility) WaitUntilWebhookDeleted(t *testing.T) error {
 // WaitUntilNamespaceDeleted waits until the namespace with the given name is deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typeName string) error {
 	t.Logf("waiting until namespace for user '%s' and type '%s' is deleted", username, typeName)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		labels := map[string]string{
 			toolchainv1alpha1.SpaceLabelKey: username,
 			toolchainv1alpha1.TypeLabelKey:  typeName,
@@ -1780,7 +1698,7 @@ func (a *MemberAwaitility) WaitUntilNamespaceDeleted(t *testing.T, username, typ
 // WaitUntilSecretsDeleted waits until the secrets with the given labels are deleted (ie, is not found)
 func (a *MemberAwaitility) WaitUntilSecretsDeleted(t *testing.T, namespace string, labels client.MatchingLabels) error {
 	t.Logf("waiting until secrets with lables '%v' in namespace '%s' is deleted", labels, namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		secretList := &corev1.SecretList{}
 		if err := a.Client.List(context.TODO(), secretList, labels); err != nil {
 			return false, err
@@ -1827,7 +1745,7 @@ func (a *MemberAwaitility) printUserWaitCriterionDiffs(t *testing.T, actual *use
 func (a *MemberAwaitility) WaitForUser(t *testing.T, name string, criteria ...UserWaitCriterion) (*userv1.User, error) {
 	t.Logf("waiting for User '%s'", name)
 	user := &userv1.User{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		user = &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
@@ -1893,7 +1811,7 @@ func matchIdentityWaitCriterion(actual *userv1.Identity, criteria ...IdentityWai
 func (a *MemberAwaitility) WaitForIdentity(t *testing.T, name string, criteria ...IdentityWaitCriterion) (*userv1.Identity, error) {
 	t.Logf("waiting for Identity '%s'", name)
 	identity := &userv1.Identity{}
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		identity = &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
@@ -1937,7 +1855,7 @@ func UntilIdentityHasLabel(key, value string) IdentityWaitCriterion {
 // WaitUntilUserAccountDeleted waits until the UserAccount with the given name is not found
 func (a *MemberAwaitility) WaitUntilUserAccountDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until UserAccount '%s' in namespace '%s' is deleted", name, a.Namespace)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		ua := &toolchainv1alpha1.UserAccount{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, ua); err != nil {
 			if errors.IsNotFound(err) {
@@ -1952,7 +1870,7 @@ func (a *MemberAwaitility) WaitUntilUserAccountDeleted(t *testing.T, name string
 // WaitUntilUserDeleted waits until the User with the given name is not found
 func (a *MemberAwaitility) WaitUntilUserDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until User is deleted '%s'", name)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		user := &userv1.User{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, user); err != nil {
 			if errors.IsNotFound(err) {
@@ -1970,7 +1888,7 @@ func (a *MemberAwaitility) WaitUntilUserDeleted(t *testing.T, name string) error
 // WaitUntilIdentityDeleted waits until the Identity with the given name is not found
 func (a *MemberAwaitility) WaitUntilIdentityDeleted(t *testing.T, name string) error {
 	t.Logf("waiting until Identity is deleted '%s'", name)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		identity := &userv1.Identity{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, identity); err != nil {
 			if errors.IsNotFound(err) {
@@ -1997,7 +1915,7 @@ func (a *MemberAwaitility) GetConsoleURL(t *testing.T) string {
 // WaitUntilClusterResourceQuotasDeleted waits until all ClusterResourceQuotas with the given owner label are deleted (ie, none is found)
 func (a *MemberAwaitility) WaitUntilClusterResourceQuotasDeleted(t *testing.T, username string) error {
 	t.Logf("waiting for deletion of ClusterResourceQuotas for user '%s'", username)
-	return wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		labels := map[string]string{
 			toolchainv1alpha1.SpaceLabelKey: username,
 		}
@@ -2109,7 +2027,7 @@ func (a *MemberAwaitility) WaitForMemberStatus(t *testing.T, criteria ...MemberS
 	t.Logf("waiting for MemberStatus '%s' to match criteria", name)
 	// there should only be one member status with the name toolchain-member-status
 	var memberStatus *toolchainv1alpha1.MemberStatus
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		// retrieve the memberstatus from the member namespace
 		obj := &toolchainv1alpha1.MemberStatus{}
 		err = a.Client.Get(context.TODO(),
@@ -2162,7 +2080,7 @@ func (a *MemberAwaitility) WaitForMemberOperatorConfig(t *testing.T, hostAwait *
 	name := "config"
 	t.Logf("waiting for MemberOperatorConfig '%s'", name)
 	memberOperatorConfig := &toolchainv1alpha1.MemberOperatorConfig{}
-	err := wait.Poll(a.RetryInterval, 2*a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, 2*a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &toolchainv1alpha1.MemberOperatorConfig{}
 		// retrieve the MemberOperatorConfig from the member namespace
 		err = a.Client.Get(context.TODO(),
@@ -2223,7 +2141,7 @@ func (a *MemberAwaitility) waitForUsersPodPriorityClass(t *testing.T) {
 }
 
 func (a *MemberAwaitility) waitForResource(t *testing.T, namespace, name string, object client.Object) {
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := a.Client.Get(context.TODO(), test.NamespacedName(namespace, name), object); err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -2340,7 +2258,7 @@ func (a *MemberAwaitility) verifyMutatingWebhookConfig(t *testing.T, ca []byte) 
 			Rule: Rule{
 				Operations:  []admv1.OperationType{"CREATE"},
 				APIGroups:   []string{"kubevirt.io"},
-				APIVersions: []string{"v1"},
+				APIVersions: []string{"*"},
 				Resources:   []string{"virtualmachines"},
 			},
 		},
@@ -2449,6 +2367,28 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	assert.Equal(t, []string{"*"}, ssprequestRule.APIVersions)
 	assert.Equal(t, []string{"ssps"}, ssprequestRule.Resources)
 	assert.Equal(t, admv1.NamespacedScope, *ssprequestRule.Scope)
+
+	vmrequestWebhook := actualValWbhConf.Webhooks[3]
+	assert.Equal(t, "users.virtualmachines.validating.webhook.sandbox", vmrequestWebhook.Name)
+	assert.Equal(t, []string{"v1"}, vmrequestWebhook.AdmissionReviewVersions)
+	assert.Equal(t, admv1.SideEffectClassNone, *vmrequestWebhook.SideEffects)
+	assert.Equal(t, int32(5), *vmrequestWebhook.TimeoutSeconds)
+	assert.Equal(t, admv1.Fail, *vmrequestWebhook.FailurePolicy)
+	assert.Equal(t, admv1.Equivalent, *vmrequestWebhook.MatchPolicy)
+	assert.Equal(t, codereadyToolchainProviderLabel, vmrequestWebhook.NamespaceSelector.MatchLabels)
+	assert.Equal(t, ca, vmrequestWebhook.ClientConfig.CABundle)
+	assert.Equal(t, "member-operator-webhook", vmrequestWebhook.ClientConfig.Service.Name)
+	assert.Equal(t, a.Namespace, vmrequestWebhook.ClientConfig.Service.Namespace)
+	assert.Equal(t, "/validate-vmrequests", *vmrequestWebhook.ClientConfig.Service.Path)
+	assert.Equal(t, int32(443), *vmrequestWebhook.ClientConfig.Service.Port)
+	require.Len(t, vmrequestWebhook.Rules, 1)
+
+	vmrequestRule := vmrequestWebhook.Rules[0]
+	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, vmrequestRule.Operations)
+	assert.Equal(t, []string{"kubevirt.io"}, vmrequestRule.APIGroups)
+	assert.Equal(t, []string{"*"}, vmrequestRule.APIVersions)
+	assert.Equal(t, []string{"virtualmachines"}, vmrequestRule.Resources)
+	assert.Equal(t, admv1.NamespacedScope, *vmrequestRule.Scope)
 }
 
 func (a *MemberAwaitility) WaitForAutoscalingBufferApp(t *testing.T) {
@@ -2530,7 +2470,7 @@ func (a *MemberAwaitility) WaitForExpectedNumberOfClusterResources(t *testing.T,
 
 func (a *MemberAwaitility) waitForExpectedNumberOfResources(expected int, list func() (int, error)) (int, error) {
 	var actual int
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		a, err := list()
 		if err != nil {
 			return false, err
@@ -2541,50 +2481,10 @@ func (a *MemberAwaitility) waitForExpectedNumberOfResources(expected int, list f
 	return actual, err
 }
 
-func (a *MemberAwaitility) UpdatePod(t *testing.T, namespace, podName string, modifyPod func(pod *corev1.Pod)) (*corev1.Pod, error) {
-	var m *corev1.Pod
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		freshPod := &corev1.Pod{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: podName}, freshPod); err != nil {
-			return true, err
-		}
-
-		modifyPod(freshPod)
-		if err := a.Client.Update(context.TODO(), freshPod); err != nil {
-			t.Logf("error updating Pod '%s' Will retry again...", podName)
-			return false, nil // nolint:nilerr
-		}
-		m = freshPod
-		return true, nil
-	})
-	return m, err
-}
-
-func (a *MemberAwaitility) UpdateConfigMap(t *testing.T, namespace, cmName string, modifyCM func(*corev1.ConfigMap)) (*corev1.ConfigMap, error) {
-	var cm *corev1.ConfigMap
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
-		obj := &corev1.ConfigMap{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{
-			Namespace: namespace,
-			Name:      cmName},
-			obj); err != nil {
-			return true, err
-		}
-		modifyCM(obj)
-		if err := a.Client.Update(context.TODO(), obj); err != nil {
-			t.Logf("error updating ConfigMap '%s' Will retry again...", cmName)
-			return false, nil // nolint:nilerr
-		}
-		cm = obj
-		return true, nil
-	})
-	return cm, err
-}
-
 func (a *MemberAwaitility) WaitForEnvironment(t *testing.T, namespace, name string, criteria ...LabelWaitCriterion) (*appstudiov1.Environment, error) {
 	t.Logf("waiting for Environment resource '%s' to exist in namespace '%s'", name, namespace)
 	var env *appstudiov1.Environment
-	err := wait.Poll(a.RetryInterval, a.Timeout, func() (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := &appstudiov1.Environment{}
 		if err := a.Client.Get(context.TODO(), types.NamespacedName{
 			Namespace: namespace,
