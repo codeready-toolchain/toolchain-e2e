@@ -77,6 +77,8 @@ func TestCreateSpace(t *testing.T) {
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 
+		// ensure that the space is reset back to the original (valid) target cluster
+		// so the cleanup logic can delete the Space
 		var resetOnce sync.Once
 		reset := func() {
 			resetOnce.Do(func() {
