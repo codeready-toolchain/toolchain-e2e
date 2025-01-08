@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -284,6 +285,20 @@ func TestE2EFlow(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, cm)
 
+		// ensure that the finalizer is removed in all cases, so the cleanup logic
+		// is not blocked and can delete the Space
+		var removeOnce sync.Once
+		removeFinalizer := func() {
+			removeOnce.Do(func() {
+				_, err = wait.For(t, memberAwait.Awaitility, &corev1.ConfigMap{}).
+					Update(cmName, cm.Namespace, func(cm *corev1.ConfigMap) {
+						cm.Finalizers = nil
+					})
+				require.NoError(t, err)
+			})
+		}
+		defer removeFinalizer()
+
 		deletePolicy := metav1.DeletePropagationForeground
 		deleteOpts := &client.DeleteOptions{
 			PropagationPolicy: &deletePolicy,
@@ -325,11 +340,7 @@ func TestE2EFlow(t *testing.T) {
 
 		t.Run("remove finalizer", func(t *testing.T) {
 			// when removing the finalizer from the CM
-			_, err = wait.For(t, memberAwait.Awaitility, &corev1.ConfigMap{}).
-				Update(cmName, cm.Namespace, func(cm *corev1.ConfigMap) {
-					cm.Finalizers = nil
-				})
-			require.NoError(t, err)
+			removeFinalizer()
 
 			// then check remaining resources are deleted
 			err = memberAwait.WaitUntilNamespaceDeleted(t, laraUserName, "dev")
