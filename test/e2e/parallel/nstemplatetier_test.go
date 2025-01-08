@@ -435,11 +435,8 @@ func TestTierTemplateRevision(t *testing.T) {
 	// when
 	// we verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
-	customTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr", wait.HasStatusTierTemplateRevisions([]string{
-		fmt.Sprintf("ttrfrom%s", baseTier.Spec.Namespaces[0].TemplateRef),       // check that the revision field is set using the expected tierTemplate refs as keys
-		fmt.Sprintf("ttrfrom%s", baseTier.Spec.SpaceRoles["admin"].TemplateRef), // we can safely use the template refs from base tier since the custom tier was created from base one.
-		fmt.Sprintf("ttrfrom%s", baseTier.Spec.ClusterResources.TemplateRef),
-	}))
+	customTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten()))
 	require.NoError(t, err)
 
 	// then
