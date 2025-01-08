@@ -161,7 +161,7 @@ func (a *baseTierChecks) GetNamespaceObjectChecks(nsType string) []namespaceObje
 	case "stage":
 		otherNamespaceKind = "dev"
 	}
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(10))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromOtherNamespace(otherNamespaceKind), numberOfNetworkPolicies(11))
 
 	return checks
 }
@@ -231,7 +231,7 @@ func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObject
 		crtadminViewRoleBinding(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
 	return checks
 }
 
@@ -381,6 +381,7 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 		networkPolicyAllowFromIngress(),
 		networkPolicyAllowFromOlmNamespaces(),
 		networkPolicyAllowFromConsoleNamespaces(),
+		networkPolicyIngressAllowFromDevSandboxPolicyGroup(),
 	}
 }
 
@@ -465,7 +466,7 @@ func (a *appstudioTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 		resourceQuotaComputeBuild("120", "128Gi", "60", "64Gi"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
 	return checks
 }
 
@@ -558,7 +559,7 @@ func (a *appstudiolargeTierChecks) GetNamespaceObjectChecks(_ string) []namespac
 		resourceQuotaStorage("50Gi", "400Gi", "50Gi", "180"),
 	}
 	checks = append(checks, commonAppstudioTierChecks()...)
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
 	return checks
 }
 
@@ -596,7 +597,7 @@ func (a *appstudioEnvTierChecks) GetNamespaceObjectChecks(_ string) []namespaceO
 		appstudioWorkSpaceNameLabel(),
 	}
 
-	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(6))...)
+	checks = append(checks, append(commonNetworkPolicyChecks(), networkPolicyAllowFromCRW(), numberOfNetworkPolicies(7))...)
 	return checks
 }
 
@@ -656,7 +657,7 @@ func (a *intelMediumTierChecks) GetNamespaceObjectChecks(_ string) []namespaceOb
 		crtadminViewRoleBinding(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
 	return checks
 }
 
@@ -736,7 +737,7 @@ func getNamespaceObjectChecksForIntelLarge(memoryLimit string) []namespaceObject
 		crtadminViewRoleBinding(),
 	}
 	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(9))
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
 	return checks
 }
 
@@ -1240,6 +1241,10 @@ func networkPolicyAllowFromCRW() namespaceObjectsCheck {
 
 func networkPolicyIngressFromPolicyGroup(name, group string) namespaceObjectsCheck {
 	return assertNetworkPolicyIngressForNamespaces(name, metav1.LabelSelector{}, "network.openshift.io/policy-group", group)
+}
+
+func networkPolicyIngressAllowFromDevSandboxPolicyGroup() namespaceObjectsCheck {
+	return assertNetworkPolicyIngressForNamespaces("allow-from-dev-sandbox-managed-ns", metav1.LabelSelector{}, "dev-sandbox/policy-group", "ingress")
 }
 
 func assertNetworkPolicyIngressForNamespaces(name string, podSelector metav1.LabelSelector, labelNameValuePairs ...string) namespaceObjectsCheck {
