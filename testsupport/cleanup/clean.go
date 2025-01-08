@@ -265,20 +265,10 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 		return true, nil
 	}
 	if delete {
-		for i := range ttrs.Items {
-			ttr := ttrs.Items[i]
-			c.t.Logf("deleting also the related TTR %s", ttr.GetName())
-			if err := c.client.Delete(context.TODO(), &ttr, propagationPolicyOpts); err != nil {
-				if errors.IsNotFound(err) {
-					continue
-				}
-				c.t.Logf("problem with deleting the related TTR %s: %s", ttr.GetName(), err)
-				return false, err
-			}
-		}
-	} else if len(ttrs.Items) > 0 {
-		// ttrs are still there
-		return false, nil
+		return false, c.client.DeleteAllOf(context.TODO(), &toolchainv1alpha1.TierTemplateRevision{},
+			client.InNamespace(nsTemplateTier.GetNamespace()),
+			client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()})
 	}
-	return true, nil
+	// ttrs are still there
+	return false, nil
 }

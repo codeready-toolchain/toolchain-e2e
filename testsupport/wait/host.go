@@ -923,15 +923,8 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if err != nil {
 			return nil, err
 		}
-		// if the tier template supports Tier Template Revisions then let's check those
-		if tierTemplateNamespaces.Spec.TemplateObjects != nil {
-			ttrName, found := tier.Status.Revisions[tierTemplateNamespaces.GetName()]
-			if !found {
-				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateNamespaces.GetName(), tier.Name)
-			}
-			if _, err := a.WaitForTierTemplateRevision(t, ttrName); err != nil {
-				return nil, err
-			}
+		if err := a.checkTTR(t, tier, tierTemplateNamespaces); err != nil {
+			return nil, err
 		}
 	}
 	if tier.Spec.ClusterResources != nil {
@@ -942,15 +935,8 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if err != nil {
 			return nil, err
 		}
-		// if the tier template supports Tier Template Revisions then let's check those
-		if tierTemplateClusterResources.Spec.TemplateObjects != nil {
-			ttrName, found := tier.Status.Revisions[tierTemplateClusterResources.GetName()]
-			if !found {
-				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateClusterResources.GetName(), tier.Name)
-			}
-			if _, err := a.WaitForTierTemplateRevision(t, ttrName); err != nil {
-				return nil, err
-			}
+		if err := a.checkTTR(t, tier, tierTemplateClusterResources); err != nil {
+			return nil, err
 		}
 	}
 
@@ -962,19 +948,27 @@ func (a *HostAwaitility) WaitForNSTemplateTierAndCheckTemplates(t *testing.T, na
 		if err != nil {
 			return nil, err
 		}
-		// if the tier template supports Tier Template Revisions then let's check those
-		if tierTemplateSpaceRoles.Spec.TemplateObjects != nil {
-			ttrName, found := tier.Status.Revisions[tierTemplateSpaceRoles.GetName()]
-			if !found {
-				return nil, fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplateSpaceRoles.GetName(), tier.Name)
-			}
-			if _, err := a.WaitForTierTemplateRevision(t, ttrName); err != nil {
-				return nil, err
-			}
+		if err := a.checkTTR(t, tier, tierTemplateSpaceRoles); err != nil {
+			return nil, err
 		}
 	}
 
 	return tier, err
+}
+
+func (a *HostAwaitility) checkTTR(t *testing.T, tier *toolchainv1alpha1.NSTemplateTier, tierTemplate *toolchainv1alpha1.TierTemplate) error {
+	// if the tier template supports Tier Template Revisions then let's check those
+	if tierTemplate.Spec.TemplateObjects != nil {
+		// TODO improve this since now it requires that WaitForNSTemplateTierAndCheckTemplates should be called with HasStatusTierTemplateRevisions,
+		ttrName, found := tier.Status.Revisions[tierTemplate.GetName()]
+		if !found {
+			return fmt.Errorf("missing revision for TierTemplate %s in NSTemplateTier '%s'", tierTemplate.GetName(), tier.Name)
+		}
+		if _, err := For(t, a.Awaitility, &toolchainv1alpha1.TierTemplateRevision{}).WithNameThat(ttrName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // WaitForTierTemplate waits until a TierTemplate with the given name exists

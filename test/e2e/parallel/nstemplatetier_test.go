@@ -424,11 +424,14 @@ func TestTierTemplateRevision(t *testing.T) {
 		template.Spec.TemplateObjects = rawTemplateObjects
 		return nil
 	}
-	namespaceResourcesWithTemplateObjects := tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects)
-	clusterResourcesWithTemplateObjects := tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects)
-	spaceRolesWithTemplateObjects := tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects)
-	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier, namespaceResourcesWithTemplateObjects, clusterResourcesWithTemplateObjects, spaceRolesWithTemplateObjects, tiers.WithParameter("DEPLOYMENT_QUOTA", "60"))
-
+	// for simplicity, we add the CRQ to all types of templates (both cluster scope and namespace scoped),
+	// even if the CRQ is cluster scoped.
+	// WARNING: thus THIS NSTemplateTier should NOT be sued to provision a user!!!
+	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier,
+		tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects),
+		tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects),
+		tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects),
+		tiers.WithParameter("DEPLOYMENT_QUOTA", "60"))
 	// when
 	// we verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
@@ -450,7 +453,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
 		// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
 		// thus we assert the number of TTRs doesn't exceed the double of the expected number.
-		assert.LessOrEqual(t, len(objs.Items), 6)
+		assert.LessOrEqual(t, len(objs.Items), len(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten())*2)
 		// we check that the TTR content has the parameters replaced with values from the NSTemplateTier
 		for _, obj := range objs.Items {
 			// the object should have all the variables still there since this one will be replaced when provisioning the Space
@@ -461,8 +464,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			assert.NotNil(t, customTier.Spec.Parameters)
 			// we only expect the static parameter DEPLOYMENT_QUOTA to be copied from the tier to the TTR.
 			// the SPACE_NAME is not a parameter, but a dynamic variable which will be evaluated when provisioning a namespace for the user.
-			assert.Equal(t, obj.Spec.Parameters[0].Name, customTier.Spec.Parameters[0].Name)
-			assert.Equal(t, obj.Spec.Parameters[0].Value, customTier.Spec.Parameters[0].Value)
+			assert.Equal(t, obj.Spec.Parameters, customTier.Spec.Parameters)
 		}
 		return true, nil
 	})
