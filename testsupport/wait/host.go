@@ -860,7 +860,7 @@ func (a *HostAwaitility) printUserTierWaitCriterionDiffs(t *testing.T, actual *t
 	t.Log(buf.String())
 }
 
-// UntilUserTierHasDeactivationTimeoutDays verify that the UserTier status.Updates has the specified number of entries
+// UntilUserTierHasDeactivationTimeoutDays verify that the UserTier spec.DeactivationTimeoutDays is equal to the expected nummber
 func UntilUserTierHasDeactivationTimeoutDays(expected int) UserTierWaitCriterion {
 	return UserTierWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.UserTier) bool {
@@ -1048,18 +1048,6 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
 			return matcher.Diff(actual.Spec)
-		},
-	}
-}
-
-// UntilNSTemplateTierStatusUpdates verify that the NSTemplateTier status.Updates has the specified number of entries
-func UntilNSTemplateTierStatusUpdates(expected int) NSTemplateTierWaitCriterion {
-	return NSTemplateTierWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
-			return len(actual.Status.Updates) == expected
-		},
-		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected status.updates count %d. Actual: %d", expected, len(actual.Status.Updates))
 		},
 	}
 }
