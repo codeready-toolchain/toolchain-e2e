@@ -151,7 +151,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 			wait.UntilUserHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name),
 			wait.UntilUserHasAnnotation(toolchainv1alpha1.EmailUserAnnotationKey,
 				userSignup.Spec.IdentityClaims.Email))
-		require.NoError(t, err, fmt.Sprintf("no user with name '%s' found", userAccount.Name))
+		require.NoError(t, err, "no user with name '%s' found", userAccount.Name)
 
 		userID := userSignup.Spec.IdentityClaims.UserID
 		if userID != "" {
@@ -173,14 +173,14 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 		_, err = memberAwait.WaitForIdentity(t, identityName,
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 			wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-		require.NoError(t, err, fmt.Sprintf("no identity with name '%s' found", identityName))
+		require.NoError(t, err, "no identity with name '%s' found", identityName)
 
 		// Verify the originalSub identity
 		if originalSubIdentityName != "" {
 			_, err = memberAwait.WaitForIdentity(t, originalSubIdentityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-			require.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
+			require.NoError(t, err, "no encoded identity with name '%s' found", identityName)
 		}
 
 		// Verify the userID identity

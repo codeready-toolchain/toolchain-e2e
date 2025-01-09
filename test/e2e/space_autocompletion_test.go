@@ -14,7 +14,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -117,9 +116,9 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 		require.NoError(t, err)
 		for _, m := range toolchainStatus.Status.Members {
 			if memberAwait1.ClusterName == m.ClusterName {
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)))
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount))) //nolint:gosec
 			} else if memberAwait2.ClusterName == m.ClusterName {
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1)))
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount+1))) //nolint:gosec
 			}
 		}
 
@@ -131,8 +130,9 @@ func TestAutomaticClusterAssignment(t *testing.T) {
 
 		t.Run("after both members marking as full then the new space won't be provisioned", func(t *testing.T) {
 			// given
+
 			for _, m := range toolchainStatus.Status.Members {
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, m.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount)))
+				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, m.ClusterName, testSpc.MaxNumberOfSpaces(uint(m.SpaceCount))) //nolint:gosec
 			}
 
 			// when

@@ -31,7 +31,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.15.0
 )
 
-require github.com/google/uuid v1.6.0
+require (
+	github.com/google/uuid v1.6.0
+	github.com/rwxe/overflow v1.0.0
+)
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
