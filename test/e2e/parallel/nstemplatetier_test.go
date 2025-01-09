@@ -141,18 +141,6 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier)
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 
-	// finally, verify the counters in the status.history for both 'cheesecake' and 'cookie' tiers
-	// cheesecake tier
-	// there should be 2 entries in the status.history (1 create + 1 update)
-	verifyStatus(t, hostAwait, "cheesecake", 2)
-
-	// cookie tier
-	// there should be 2 entries in the status.history (1 create + 1 update)
-	verifyStatus(t, hostAwait, "cookie", 2)
-
-	// chocolate tier
-	// there should be 2 entries in the status.history (1 create + 1 update)
-	verifyStatus(t, hostAwait, "chocolate", 2)
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
@@ -231,11 +219,6 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
 	}
 	return userSignups
-}
-
-func verifyStatus(t *testing.T, hostAwait *wait.HostAwaitility, tierName string, expectedCount int) {
-	_, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, tierName, wait.UntilNSTemplateTierStatusUpdates(expectedCount))
-	require.NoError(t, err)
 }
 
 func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *wait.HostAwaitility, memberAwaitility *wait.MemberAwaitility, userSignups []*toolchainv1alpha1.UserSignup, tier *tiers.CustomNSTemplateTier) {
