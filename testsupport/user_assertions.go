@@ -188,7 +188,7 @@ func verifyUserAccount(t *testing.T, awaitilities wait.Awaitilities, userSignup 
 			_, err = memberAwait.WaitForIdentity(t, userIDIdentityName,
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.ProviderLabelKey, toolchainv1alpha1.ProviderLabelValue),
 				wait.UntilIdentityHasLabel(toolchainv1alpha1.OwnerLabelKey, userAccount.Name))
-			require.NoError(t, err, fmt.Sprintf("no encoded identity with name '%s' found", identityName))
+			require.NoError(t, err, "no encoded identity with name '%s' found", identityName)
 		}
 	} else {
 		// we don't expect User nor Identity resources to be present for AppStudio tier

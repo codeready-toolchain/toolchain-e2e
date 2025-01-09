@@ -86,12 +86,12 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T())
 
-	s.T().Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
+	s.Run("set low max number of spaces and expect that space won't be approved nor provisioned but added on waiting list", func() {
 		// given
 		// update max number of spaces to current number of spaces provisioned
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 		// create additional user to reach max space limits on both members
 		user2 := NewSignupRequest(s.Awaitilities).
 			Username("automatic2").
@@ -103,8 +103,8 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		// TestProvisionToOtherClusterWhenOneIsFull
 		// checks that users will be provisioned to the other member when one is full.
 		// if one cluster if full, then a new space will be placed in the another cluster.
-		require.NotEqual(t, user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
-		require.NotEqual(t, user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
+		require.NotEqual(s.T(), user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
+		require.NotEqual(s.T(), user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
 
 		// when
 		waitingListUser1 := NewSignupRequest(s.Awaitilities).
@@ -124,78 +124,78 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		waitingList2 := waitingListUser2.UserSignup
 
 		// then
-		s.userIsNotProvisioned(t, waitingList1)
-		s.userIsNotProvisioned(t, waitingList2)
+		s.userIsNotProvisioned(s.T(), waitingList1)
+		s.userIsNotProvisioned(s.T(), waitingList2)
 
-		t.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func(t *testing.T) {
+		s.Run("increment the max number of spaces and expect the first unapproved user will be provisioned", func() {
 			// when
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(2))
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(2))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 			// then
-			userSignup, err := hostAwait.WaitForUserSignup(t, waitingList1.Name,
+			userSignup, err := hostAwait.WaitForUserSignup(s.T(), waitingList1.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(t, err)
+			require.NoError(s.T(), err)
 
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
-			s.userIsNotProvisioned(t, waitingList2)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
+			s.userIsNotProvisioned(s.T(), waitingList2)
 
-			t.Run("reset the max number of spaces and expect the second user will be provisioned as well", func(t *testing.T) {
+			s.Run("reset the max number of spaces and expect the second user will be provisioned as well", func() {
 				// when
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
-				spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500))
-				hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+				spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+				spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500))
+				hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 				// then
-				userSignup, err := hostAwait.WaitForUserSignup(t, waitingList2.Name,
+				userSignup, err := hostAwait.WaitForUserSignup(s.T(), waitingList2.Name,
 					wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 					wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-				require.NoError(t, err)
+				require.NoError(s.T(), err)
 
-				VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
+				VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 			})
 		})
 	})
 
-	s.T().Run("set low capacity threshold and expect that user won't be approved nor provisioned", func(t *testing.T) {
+	s.Run("set low capacity threshold and expect that user won't be approved nor provisioned", func() {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 		// when
 		user := NewSignupRequest(s.Awaitilities).
 			Username("automatic3").
 			Email("automatic3@redhat.com").
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval(), wait.PendingApprovalNoCluster())...).
-			Execute(t)
+			Execute(s.T())
 		userSignup := user.UserSignup
 
 		// then
-		s.userIsNotProvisioned(t, userSignup)
+		s.userIsNotProvisioned(s.T(), userSignup)
 
-		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
+		s.Run("reset the threshold and expect the user will be provisioned", func() {
 			// when
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 
 			// then
-			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
+			userSignup, err := hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
+			require.NoError(s.T(), err)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 		})
 	})
 
-	s.T().Run("add user not matching domains, expect that space won't be approved nor provisioned but added on waiting list", func(t *testing.T) {
+	s.Run("add user not matching domains, expect that space won't be approved nor provisioned but added on waiting list", func() {
 		domains := "anotherdomain.edu"
 		// when
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true).Domains(domains), testconfig.RegistrationService().Verification().Enabled(false))
-		VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains), wait.UntilToolchainConfigHasVerificationEnabled(false))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true).Domains(domains), testconfig.RegistrationService().Verification().Enabled(false))
+		VerifyToolchainConfig(s.T(), hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains), wait.UntilToolchainConfigHasVerificationEnabled(false))
 
 		// and
 		waitingListUser3 := NewSignupRequest(s.Awaitilities).
@@ -206,23 +206,23 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 		waitingList3 := waitingListUser3.UserSignup
 
 		// then
-		s.userIsNotProvisioned(t, waitingList3)
+		s.userIsNotProvisioned(s.T(), waitingList3)
 
-		t.Run("add matching domain to domains and expect the user will be provisioned", func(t *testing.T) {
+		s.Run("add matching domain to domains and expect the user will be provisioned", func() {
 			domains := "anotherdomain.edu,redhat.com"
 			// when
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true).Domains(domains))
-			VerifyToolchainConfig(t, hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains))
+			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true).Domains(domains))
+			VerifyToolchainConfig(s.T(), hostAwait, wait.UntilToolchainConfigHasAutoApprovalDomains(domains))
 
 			// then
-			userSignup, err := hostAwait.WaitForUserSignup(t, waitingList3.Name,
+			userSignup, err := hostAwait.WaitForUserSignup(s.T(), waitingList3.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
+			require.NoError(s.T(), err)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 		})
 
-		t.Run("add user with bad email format and expect the user will not be approved nor provisioned", func(t *testing.T) {
+		s.Run("add user with bad email format and expect the user will not be approved nor provisioned", func() {
 			msg := "unable to determine automatic approval: invalid email address: waitinglist4@somedomain.org@anotherdomain.com"
 			// when
 			waitingListUser4 := NewSignupRequest(s.Awaitilities).
@@ -233,7 +233,7 @@ func (s *userSignupIntegrationTest) TestAutomaticApproval() {
 			waitingList4 := waitingListUser4.UserSignup
 
 			// then
-			s.userIsNotProvisioned(t, waitingList4)
+			s.userIsNotProvisioned(s.T(), waitingList4)
 		})
 	})
 }
@@ -242,12 +242,12 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 	hostAwait := s.Host()
 	memberAwait1 := s.Member1()
 	memberAwait2 := s.Member2()
-	s.T().Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func(t *testing.T) {
+	s.Run("set per member clusters max number of users for both members and expect that users will be provisioned to the other member when one is full", func() {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
 
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
 		// when
 		user1 := NewSignupRequest(s.Awaitilities).
 			Username("multimember-1").
@@ -264,10 +264,10 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 			Execute(s.T())
 
 		// then
-		require.NotEqual(t, user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
-		require.NotEqual(t, user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
+		require.NotEqual(s.T(), user1.MUR.Status.UserAccounts[0].Cluster.Name, user2.MUR.Status.UserAccounts[0].Cluster.Name)
+		require.NotEqual(s.T(), user1.Space.Spec.TargetCluster, user2.Space.Spec.TargetCluster)
 
-		t.Run("after both members are full then new signups won't be approved nor provisioned", func(t *testing.T) {
+		s.Run("after both members are full then new signups won't be approved nor provisioned", func() {
 			// when
 			userPending := NewSignupRequest(s.Awaitilities).
 				Username("multimember-3").
@@ -276,7 +276,7 @@ func (s *userSignupIntegrationTest) TestProvisionToOtherClusterWhenOneIsFull() {
 				Execute(s.T())
 
 			// then
-			s.userIsNotProvisioned(t, userPending.UserSignup)
+			s.userIsNotProvisioned(s.T(), userPending.UserSignup)
 		})
 	})
 }
@@ -503,12 +503,12 @@ func (s *userSignupIntegrationTest) userIsNotProvisioned(t *testing.T, userSignu
 func (s *userSignupIntegrationTest) TestManualApproval() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
-	s.T().Run("default approval config - manual", func(t *testing.T) {
+	s.Run("default approval config - manual", func() {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxNumberOfSpaces(1000), testSpc.MaxMemoryUtilizationPercent(80))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxNumberOfSpaces(1000), testSpc.MaxMemoryUtilizationPercent(80))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
-		t.Run("user is approved manually", func(t *testing.T) {
+		s.Run("user is approved manually", func() {
 			// when & then
 			user := NewSignupRequest(s.Awaitilities).
 				Username("manual1").
@@ -518,9 +518,9 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 				RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 				Execute(s.T())
 
-			assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+			assert.Equal(s.T(), toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 		})
-		t.Run("user is not approved manually thus won't be provisioned", func(t *testing.T) {
+		s.Run("user is not approved manually thus won't be provisioned", func() {
 			// when
 			user := NewSignupRequest(s.Awaitilities).
 				Username("manual2").
@@ -529,7 +529,7 @@ func (s *userSignupIntegrationTest) TestManualApproval() {
 				Execute(s.T())
 
 			// then
-			s.userIsNotProvisioned(t, user.UserSignup)
+			s.userIsNotProvisioned(s.T(), user.UserSignup)
 		})
 	})
 }
@@ -552,11 +552,11 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(s.T())
 
-	s.T().Run("set low max number of spaces and expect that user won't be provisioned even when is approved manually", func(t *testing.T) {
+	s.Run("set low max number of spaces and expect that user won't be provisioned even when is approved manually", func() {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 		// create usersignup to reach max number of spaces on both members
 		NewSignupRequest(s.Awaitilities).
 			Username("manualwithcapacity2").
@@ -574,34 +574,34 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 		userSignup := user.UserSignup
 
-		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+		_, spcNotReadyError := wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
 			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
 			assertions.Is(testSpc.NotReady()))
 
 		// then
-		require.NoError(t, spcNotReadyError)
-		s.userIsNotProvisioned(t, userSignup)
+		require.NoError(s.T(), spcNotReadyError)
+		s.userIsNotProvisioned(s.T(), userSignup)
 
-		t.Run("reset the max number and expect the user will be provisioned", func(t *testing.T) {
+		s.Run("reset the max number and expect the user will be provisioned", func() {
 			// when
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500))
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxNumberOfSpaces(500))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxNumberOfSpaces(500))
+			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
 			// then
-			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
+			userSignup, err := hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
+			require.NoError(s.T(), err)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 		})
 	})
 
-	s.T().Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func(t *testing.T) {
+	s.Run("set low capacity threshold and expect that user won't provisioned even when is approved manually", func() {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
 		// when
 		user := NewSignupRequest(s.Awaitilities).
@@ -612,34 +612,34 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			Execute(s.T())
 		userSignup := user.UserSignup
 
-		_, spcNotReadyError := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
+		_, spcNotReadyError := wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.SpaceProvisionerConfig{}).FirstThat(
 			assertions.Has(spaceprovisionerconfig.ReferenceToToolchainCluster(memberAwait1.ClusterName)),
 			assertions.Is(testSpc.NotReady()))
 
 		// then
-		require.NoError(t, spcNotReadyError)
-		s.userIsNotProvisioned(t, userSignup)
+		require.NoError(s.T(), spcNotReadyError)
+		s.userIsNotProvisioned(s.T(), userSignup)
 
-		t.Run("reset the threshold and expect the user will be provisioned", func(t *testing.T) {
+		s.Run("reset the threshold and expect the user will be provisioned", func() {
 			// when
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
-			spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
-			hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(80))
+			hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
 			// then
-			userSignup, err := hostAwait.WaitForUserSignup(t, userSignup.Name,
+			userSignup, err := hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
 				wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...),
 				wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueApproved))
-			require.NoError(t, err)
-			VerifyResourcesProvisionedForSignup(t, s.Awaitilities, userSignup)
+			require.NoError(s.T(), err)
+			VerifyResourcesProvisionedForSignup(s.T(), s.Awaitilities, userSignup)
 		})
 	})
 
-	s.T().Run("when approved and set target cluster manually, then the limits will be ignored", func(t *testing.T) {
+	s.Run("when approved and set target cluster manually, then the limits will be ignored", func() {
 		// given
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.MaxNumberOfSpaces(1))
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.MaxNumberOfSpaces(1))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait1.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.MaxNumberOfSpaces(1))
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.MaxMemoryUtilizationPercent(1), testSpc.MaxNumberOfSpaces(1))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
 		// when & then
 		user := NewSignupRequest(s.Awaitilities).
@@ -651,18 +651,18 @@ func (s *userSignupIntegrationTest) TestCapacityManagementWithManualApproval() {
 			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 			Execute(s.T())
 
-		assert.Equal(t, toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
+		assert.Equal(s.T(), toolchainv1alpha1.UserSignupStateLabelValueApproved, user.UserSignup.Labels[toolchainv1alpha1.UserSignupStateLabelKey])
 	})
 }
 
 func (s *userSignupIntegrationTest) TestUserSignupVerificationRequired() {
 	hostAwait := s.Host()
 	memberAwait := s.Member1()
-	s.T().Run("automatic approval with verification required", func(t *testing.T) {
-		spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxMemoryUtilizationPercent(80), testSpc.MaxNumberOfSpaces(1000))
-		hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+	s.Run("automatic approval with verification required", func() {
+		spaceprovisionerconfig.UpdateForCluster(s.T(), hostAwait.Awaitility, memberAwait.ClusterName, testSpc.MaxMemoryUtilizationPercent(80), testSpc.MaxNumberOfSpaces(1000))
+		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
 
-		t.Run("verification required set to true", func(_ *testing.T) {
+		s.Run("verification required set to true", func() {
 			s.createUserSignupVerificationRequiredAndAssertNotProvisioned()
 		})
 	})
