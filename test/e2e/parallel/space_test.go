@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"sort"
+	"sync"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
@@ -13,7 +14,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -77,6 +77,20 @@ func TestCreateSpace(t *testing.T) {
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, space.Name)
 
+		// ensure that the space is reset back to the original (valid) target cluster
+		// so the cleanup logic can delete the Space
+		var resetOnce sync.Once
+		reset := func() {
+			resetOnce.Do(func() {
+				_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
+					Update(space.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
+						s.Spec.TargetCluster = memberAwait.ClusterName
+					})
+				require.NoError(t, err)
+			})
+		}
+		defer reset()
+
 		t.Run("unable to delete space that was already provisioned", func(t *testing.T) {
 			// given
 			s, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
@@ -97,11 +111,7 @@ func TestCreateSpace(t *testing.T) {
 
 			t.Run("update target cluster to unblock deletion", func(t *testing.T) {
 				// when
-				s, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.Space{}).
-					Update(s.Name, hostAwait.Namespace, func(s *toolchainv1alpha1.Space) {
-						s.Spec.TargetCluster = memberAwait.ClusterName
-					})
-				require.NoError(t, err)
+				reset()
 
 				// then
 				// space should be finally deleted
