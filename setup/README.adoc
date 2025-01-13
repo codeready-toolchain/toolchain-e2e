@@ -128,7 +128,7 @@ Copy these values to the Onboarding Performance Checklist spreadsheet. Add the r
 
 === Evaluate the Cluster and Operator(s)
 
-With the cluster now under load, it's time to evaluate the environment.
+Wait until all users have been created in the previous step. With the cluster now fully under load, it's time to evaluate the environment.
 
 1. Use your operators as a user would and evaluate the performance.
 2. Monitor the cluster's performance using the Monitoring view in the OpenShift Console.
