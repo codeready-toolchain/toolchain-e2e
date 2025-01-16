@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -117,15 +118,28 @@ func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 	createJob(t, memberAwait, namespace)
 	n++
 
-	dc := createDeploymentConfig(t, memberAwait, namespace)
+	dc := createDeploymentConfig(t, memberAwait, types.NamespacedName{Namespace: namespace, Name: "idler-test-dc"})
 	n = n + int(dc.Spec.Replicas)
+
+	// create another DeploymentConfig that will be paused to test that the idler will unpause it when scaling it down
+	dcPaused := createDeploymentConfig(t, memberAwait, types.NamespacedName{Namespace: namespace, Name: "idler-test-dc-paused"})
+	n = n + int(dcPaused.Spec.Replicas)
 
 	rc := createReplicationController(t, memberAwait, namespace)
 	n = n + int(*rc.Spec.Replicas)
 
 	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
 		wait.WithPodLabel("idler", "idler"))...)
+
+	podNames := []string{}
+	for _, p := range pods {
+		podNames = append(podNames, p.Name)
+	}
+	t.Log("waited for pods: ", podNames)
 	require.NoError(t, err)
+
+	// pause the dcPaused DeploymentConfig now that its pods are running
+	pauseDeploymentConfig(t, memberAwait, types.NamespacedName{Namespace: dcPaused.Namespace, Name: dcPaused.Name})
 	return pods
 }
 
@@ -193,12 +207,12 @@ func createJob(t *testing.T, memberAwait *wait.MemberAwaitility, namespace strin
 	return job
 }
 
-func createDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *openshiftappsv1.DeploymentConfig {
-	// Create a Deployment with two pods
+func createDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, namespacedName types.NamespacedName) *openshiftappsv1.DeploymentConfig {
+	// Create a DeploymentConfig with two pods
 	spec := podTemplateSpec("idler-dc")
 	replicas := int32(2)
 	dc := &openshiftappsv1.DeploymentConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: "idler-test-dc", Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: namespacedName.Name, Namespace: namespacedName.Namespace},
 		Spec: openshiftappsv1.DeploymentConfigSpec{
 			Selector: selectorLabels("idler-dc"),
 			Replicas: replicas,
@@ -208,6 +222,22 @@ func createDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, na
 	err := memberAwait.Create(t, dc)
 	require.NoError(t, err)
 
+	return dc
+}
+
+func pauseDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, namespacedName types.NamespacedName) *openshiftappsv1.DeploymentConfig {
+	// dc := &openshiftappsv1.DeploymentConfig{}
+	// err := memberAwait.Client.Get(context.TODO(), namespacedName, dc)
+	// require.NoError(t, err)
+
+	// dc.Spec.Paused = true
+
+	dc, err := wait.For(t, memberAwait.Awaitility, &openshiftappsv1.DeploymentConfig{}).
+		Update(namespacedName.Name, namespacedName.Namespace,
+			func(dc *openshiftappsv1.DeploymentConfig) {
+				dc.Spec.Paused = true
+			})
+	require.NoError(t, err)
 	return dc
 }
 
