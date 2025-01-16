@@ -130,12 +130,6 @@ func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 
 	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
 		wait.WithPodLabel("idler", "idler"))...)
-
-	podNames := []string{}
-	for _, p := range pods {
-		podNames = append(podNames, p.Name)
-	}
-	t.Log("waited for pods: ", podNames)
 	require.NoError(t, err)
 
 	// pause the dcPaused DeploymentConfig now that its pods are running
