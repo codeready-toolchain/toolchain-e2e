@@ -226,12 +226,6 @@ func createDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, na
 }
 
 func pauseDeploymentConfig(t *testing.T, memberAwait *wait.MemberAwaitility, namespacedName types.NamespacedName) *openshiftappsv1.DeploymentConfig {
-	// dc := &openshiftappsv1.DeploymentConfig{}
-	// err := memberAwait.Client.Get(context.TODO(), namespacedName, dc)
-	// require.NoError(t, err)
-
-	// dc.Spec.Paused = true
-
 	dc, err := wait.For(t, memberAwait.Awaitility, &openshiftappsv1.DeploymentConfig{}).
 		Update(namespacedName.Name, namespacedName.Namespace,
 			func(dc *openshiftappsv1.DeploymentConfig) {
