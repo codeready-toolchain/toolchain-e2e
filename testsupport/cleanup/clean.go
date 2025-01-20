@@ -165,6 +165,19 @@ func (c *cleanTask) cleanObject() {
 				message += c.checkIfStillPresent(&toolchainv1alpha1.Space{}, "Space", userSignup.GetNamespace(), userSignup.Status.CompliantUsername)
 			}
 			require.NoError(c.t, err, message)
+		} else if isNsTemplateTier {
+			message := spew.Sprintf("The proper cleanup of the NSTemplateTier '%s' and related resources wasn't finished within the given timeout\n", objToClean.GetName())
+			message += c.checkIfStillPresent(&toolchainv1alpha1.NSTemplateTier{}, "NSTemplateTier", nsTemplateTier.GetNamespace(), nsTemplateTier.Name)
+			ttrs := &toolchainv1alpha1.TierTemplateRevisionList{}
+			if err := c.client.List(context.TODO(), ttrs,
+				client.InNamespace(nsTemplateTier.GetNamespace()),
+				client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()}); err != nil {
+				message += fmt.Sprintf("unexpected error when getting the TTR CRs: %s \n", err.Error())
+			}
+			for _, ttr := range ttrs.Items {
+				message += fmt.Sprintf("the TTR CR '%s' is still present in the cluster: %+v \n", ttr.Name, ttr)
+			}
+			require.NoError(c.t, err, message)
 		} else {
 			require.NoError(c.t, err, "The object still exists after the time out expired: %s", spew.Sdump(objToClean))
 		}
