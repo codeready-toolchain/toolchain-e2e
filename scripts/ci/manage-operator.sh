@@ -126,7 +126,7 @@ Note: If you have already deleted one of the branches from your fork, it can tak
                 fi
 
                 git config --global user.email "devsandbox@redhat.com"
-                git config --global user.name "Developer Sandbox"
+                git config --global user.name "KubeSaw"
 
                 echo -e "repository: ${AUTHOR_LINK}/${REPOSITORY_NAME} \nbranch: ${BRANCH_NAME}" > ${WAS_ALREADY_PAIRED_FILE}
                 # add the user's fork as remote repo
