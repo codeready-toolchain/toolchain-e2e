@@ -47,8 +47,8 @@ ifneq ($(strip $(REMOTE_KSCTL_BRANCH)),)
 	# delete to have clear environment
 	rm -rf ${KSCTL_REPO_PATH}
 
-	git config --global user.email "devtools@redhat.com"
-	git config --global user.name "Devtools"
+	git config --global user.email "devsandbox@redhat.com"
+	git config --global user.name "Developer Sandbox"
 	# clone
 	git clone --depth=1 https://github.com/kubesaw/ksctl.git ${KSCTL_REPO_PATH}
 	# add the user's fork as remote repo
