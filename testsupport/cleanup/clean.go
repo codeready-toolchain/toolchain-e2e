@@ -265,10 +265,12 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 		return true, nil
 	}
 	if delete {
+		c.t.Log("deleting also the related TTR CRs", "tierName", nsTemplateTier.GetName())
 		return false, c.client.DeleteAllOf(context.TODO(), &toolchainv1alpha1.TierTemplateRevision{},
 			client.InNamespace(nsTemplateTier.GetNamespace()),
 			client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()})
 	}
+	c.t.Log("waiting until all TTR CRs are completely deleted", "tierName", nsTemplateTier.GetName(), "number of present TTR CRs", len(ttrs.Items))
 	// ttrs are still there
 	return false, nil
 }
