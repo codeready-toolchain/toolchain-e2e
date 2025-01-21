@@ -133,6 +133,6 @@ require (
 go 1.21
 
 replace (
-	github.com/codeready-toolchain/api v0.0.0-20241119094246-f6581d52dc80 => github.com/ranakan19/api v0.0.0-20250107102252-82f0c9b9a4b9
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20241114215157-a6a85252b2f5 => github.com/ranakan19/toolchain-common v0.0.0-20250107103332-9c6116d21bd0
+	github.com/codeready-toolchain/api v0.0.0-20250116110936-14cd9cc79fc6 => github.com/ranakan19/api v0.0.0-20250121091246-7a7d250373e5
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20241114215157-a6a85252b2f5 => github.com/ranakan19/toolchain-common v0.0.0-20250121092422-5fff10b563f5
 )
