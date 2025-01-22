@@ -617,7 +617,7 @@ func (a *Awaitility) Clean(t *testing.T) {
 }
 
 func (a *Awaitility) listAndPrint(t *testing.T, resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) {
-	t.Logf(a.listAndReturnContent(resourceKind, namespace, list, additionalOptions...))
+	t.Logf("%s", a.listAndReturnContent(resourceKind, namespace, list, additionalOptions...))
 }
 
 func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) string {
@@ -633,7 +633,7 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 }
 
 func (a *Awaitility) GetAndPrint(t *testing.T, resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) {
-	t.Logf(a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
+	t.Logf("%s", a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
 }
 
 func (a *Awaitility) getAndReturnContent(resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) string {
