@@ -106,6 +106,7 @@ func (c *cleanTask) cleanObject() {
 	objToClean, ok := c.objToClean.DeepCopyObject().(client.Object)
 	require.True(c.t, ok)
 	userSignup, isUserSignup := c.objToClean.(*toolchainv1alpha1.UserSignup)
+	nsTemplateTier, isNsTemplateTier := c.objToClean.(*toolchainv1alpha1.NSTemplateTier)
 	kind := objToClean.GetObjectKind().GroupVersionKind().Kind
 	if kind == "" {
 		kind = reflect.TypeOf(c.objToClean).Elem().Name()
@@ -126,10 +127,13 @@ func (c *cleanTask) cleanObject() {
 			}
 		}
 	}
+	// if the object was NSTemplateTier, then let's check that the TierTemplateRevisions were deleted as well
+	_, err := c.verifyTierTemplateRevisionsDeleted(isNsTemplateTier, nsTemplateTier, true)
+	require.NoError(c.t, err)
 
 	// wait until deletion is done
 	c.t.Logf("waiting until %s: %s is completely deleted", kind, objToClean.GetName())
-	err := wait.PollUntilContextTimeout(context.TODO(), defaultRetryInterval, defaultTimeout, true, func(ctx context.Context) (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), defaultRetryInterval, defaultTimeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := c.client.Get(context.TODO(), test.NamespacedName(objToClean.GetNamespace(), objToClean.GetName()), objToClean); err != nil {
 			if errors.IsNotFound(err) {
 				// if the object was UserSignup, then let's check that the MUR is deleted as well
@@ -138,6 +142,10 @@ func (c *cleanTask) cleanObject() {
 				}
 				// if the object was UserSignup, then let's check that the Space is deleted as well
 				if spaceDeleted, err := c.verifySpaceDeleted(isUserSignup, userSignup, false); !spaceDeleted || err != nil {
+					return false, err
+				}
+				// if the object was NSTemplateTier, then let's check that the TTRs were deleted as well
+				if ttrsDeleted, err := c.verifyTierTemplateRevisionsDeleted(isNsTemplateTier, nsTemplateTier, false); !ttrsDeleted || err != nil {
 					return false, err
 				}
 				return true, nil
@@ -155,6 +163,19 @@ func (c *cleanTask) cleanObject() {
 			if userSignup.Status.CompliantUsername != "" {
 				message += c.checkIfStillPresent(&toolchainv1alpha1.MasterUserRecord{}, "MasterUserRecord", userSignup.GetNamespace(), userSignup.Status.CompliantUsername)
 				message += c.checkIfStillPresent(&toolchainv1alpha1.Space{}, "Space", userSignup.GetNamespace(), userSignup.Status.CompliantUsername)
+			}
+			require.NoError(c.t, err, message)
+		} else if isNsTemplateTier {
+			message := spew.Sprintf("The proper cleanup of the NSTemplateTier '%s' and related resources wasn't finished within the given timeout\n", objToClean.GetName())
+			message += c.checkIfStillPresent(&toolchainv1alpha1.NSTemplateTier{}, "NSTemplateTier", nsTemplateTier.GetNamespace(), nsTemplateTier.Name)
+			ttrs := &toolchainv1alpha1.TierTemplateRevisionList{}
+			if err := c.client.List(context.TODO(), ttrs,
+				client.InNamespace(nsTemplateTier.GetNamespace()),
+				client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()}); err != nil {
+				message += fmt.Sprintf("unexpected error when getting the TTR CRs: %s \n", err.Error())
+			}
+			for _, ttr := range ttrs.Items {
+				message += fmt.Sprintf("the TTR CR '%s' is still present in the cluster: %+v \n", ttr.Name, ttr)
 			}
 			require.NoError(c.t, err, message)
 		} else {
@@ -239,4 +260,30 @@ func (c *cleanTask) verifySpaceDeleted(isUserSignup bool, userSignup *toolchainv
 		return true, nil
 	}
 	return true, nil
+}
+
+func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, nsTemplateTier *toolchainv1alpha1.NSTemplateTier, delete bool) (bool, error) {
+	if !isNsTemplateTier {
+		return true, nil
+	}
+	ttrs := &toolchainv1alpha1.TierTemplateRevisionList{}
+	if err := c.client.List(context.TODO(), ttrs,
+		client.InNamespace(nsTemplateTier.GetNamespace()),
+		client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()}); err != nil {
+		c.t.Logf("problem with getting the ttrs for tier %s: %s", nsTemplateTier.GetName(), err)
+		return false, err
+	}
+	if len(ttrs.Items) == 0 {
+		c.t.Logf("the NSTemplateTier %s doesn't have TTRs", nsTemplateTier.GetName())
+		return true, nil
+	}
+	if delete {
+		c.t.Log("deleting also the related TTR CRs", "tierName", nsTemplateTier.GetName())
+		return false, c.client.DeleteAllOf(context.TODO(), &toolchainv1alpha1.TierTemplateRevision{},
+			client.InNamespace(nsTemplateTier.GetNamespace()),
+			client.MatchingLabels{toolchainv1alpha1.TierLabelKey: nsTemplateTier.GetName()})
+	}
+	c.t.Log("waiting until all TTR CRs are completely deleted", "tierName", nsTemplateTier.GetName(), "number of present TTR CRs", len(ttrs.Items))
+	// ttrs are still there
+	return false, nil
 }
