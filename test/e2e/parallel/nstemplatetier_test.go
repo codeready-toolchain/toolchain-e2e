@@ -378,29 +378,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	require.NoError(t, err)
 	// for the tiertemplaterevisions to be created the tiertemplates need to have template objects populated
 	// we add the RawExtension objects to the TemplateObjects field
-	crq := unstructured.Unstructured{Object: map[string]interface{}{
-		"kind": "ClusterResourceQuota",
-		"metadata": map[string]interface{}{
-			"name": "for-{{.SPACE_NAME}}-deployments",
-		},
-		"spec": map[string]interface{}{
-			"quota": map[string]interface{}{
-				"hard": map[string]string{
-					"count/deploymentconfigs.apps": "{{.DEPLOYMENT_QUOTA}}",
-					"count/deployments.apps":       "{{.DEPLOYMENT_QUOTA}}",
-					"count/pods":                   "600",
-				},
-			},
-			"selector": map[string]interface{}{
-				"annotations": map[string]string{},
-				"labels": map[string]interface{}{
-					"matchLabels": map[string]string{
-						"toolchain.dev.openshift.com/space": "{{.SPACE_NAME}}",
-					},
-				},
-			},
-		},
-	}}
+	crq := getTestCRQ("600")
 	rawTemplateObjects := []runtime.RawExtension{{Object: &crq}}
 	updateTierTemplateObjects := func(template *toolchainv1alpha1.TierTemplate) error {
 		template.Spec.TemplateObjects = rawTemplateObjects
@@ -409,7 +387,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	// for simplicity, we add the CRQ to all types of templates (both cluster scope and namespace scoped),
 	// even if the CRQ is cluster scoped.
 	// WARNING: thus THIS NSTemplateTier should NOT be sued to provision a user!!!
-	tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier,
+	customTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier,
 		tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects),
 		tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects),
 		tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects),
@@ -417,22 +395,73 @@ func TestTierTemplateRevision(t *testing.T) {
 	// when
 	// we verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
 	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
-	customTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
+	_, err = hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
 		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten()))
 	require.NoError(t, err)
 
 	// then
 	// check the expected total number of ttr matches
-	err = apiwait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
+	// we IDEALLY expect one TTR per each tiertemplate to be created (clusterresource, namespace and spacerole), thus a total of 3 TTRs ideally.
+	// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
+	// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
+	// thus we assert the number of TTRs doesn't exceed the double of the expected number.
+	ttrCount, err := WaitForTTRsToMatch(t, hostAwait, customTier.NSTemplateTier, len(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten())*2, func(actualCount, expectedCount int) {
+		assert.LessOrEqual(t, actualCount, expectedCount)
+	})
+	require.NoError(t, err)
+
+	t.Run("update of tiertemplate should trigger creation of new TTR", func(t *testing.T) {
+		// given
+		// that the tiertemplates and nstemlpatetier are provisioned from the parent test
+
+		// when
+		// we update one tiertemplate
+		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.TierTemplate{}).
+			Update(customTier.Spec.ClusterResources.TemplateRef, hostAwait.Namespace, func(tiertemplate *toolchainv1alpha1.TierTemplate) {
+				// let's increase the pod count
+				updatedCRQ := getTestCRQ("100")
+				tiertemplate.Spec.TemplateObjects = []runtime.RawExtension{{Object: &updatedCRQ}}
+			})
+		require.NoError(t, err)
+
+		// then
+		// a new TTR was created
+		updatedTTrCount, err := WaitForTTRsToMatch(t, hostAwait, customTier.NSTemplateTier, ttrCount+1, func(actualCount, expectedCount int) {
+			assert.GreaterOrEqual(t, actualCount, expectedCount)
+		})
+		require.NoError(t, err)
+
+		t.Run("update of the NSTemplateTier parameters should trigger creation of new TTR", func(t *testing.T) {
+			// given
+			// that the tiertemplates and nstemlpatetier are provisioned from the parent test
+
+			// when
+			// we update a parameter in the NSTemplateTier
+			// by increasing the deployment quota
+			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier, tiers.WithParameter("DEPLOYMENT_QUOTA", "100"))
+			require.NoError(t, err)
+
+			// then
+			// an additional TTR was created
+			_, err := WaitForTTRsToMatch(t, hostAwait, customTier.NSTemplateTier, updatedTTrCount+1, func(actualCount, expectedCount int) {
+				assert.GreaterOrEqual(t, actualCount, expectedCount)
+			})
+			require.NoError(t, err)
+		})
+
+	})
+
+}
+
+func WaitForTTRsToMatch(t *testing.T, hostAwait *wait.HostAwaitility, customTier *toolchainv1alpha1.NSTemplateTier, expectedTTRsCount int, ttrCountComparisonFunc func(currentTTRsCount, expectedTTRsCount int)) (int, error) {
+	var ttrCount int
+	err := apiwait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
 		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
 		if err := hostAwait.Client.List(ctx, objs, client.InNamespace(hostAwait.Namespace)); err != nil {
 			return false, err
 		}
-		// we IDEALLY expect one TTR per each tiertemplate to be created (clusterresource, namespace and spacerole), thus a total of 3 TTRs ideally.
-		// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
-		// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
-		// thus we assert the number of TTRs doesn't exceed the double of the expected number.
-		assert.LessOrEqual(t, len(objs.Items), len(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten())*2)
+		ttrCount = len(objs.Items)
+		ttrCountComparisonFunc(ttrCount, expectedTTRsCount)
 		// we check that the TTR content has the parameters replaced with values from the NSTemplateTier
 		for _, obj := range objs.Items {
 			// the object should have all the variables still there since this one will be replaced when provisioning the Space
@@ -447,7 +476,34 @@ func TestTierTemplateRevision(t *testing.T) {
 		}
 		return true, nil
 	})
-	require.NoError(t, err)
+	return ttrCount, err
+}
+
+func getTestCRQ(podsCount string) unstructured.Unstructured {
+	crq := unstructured.Unstructured{Object: map[string]interface{}{
+		"kind": "ClusterResourceQuota",
+		"metadata": map[string]interface{}{
+			"name": "for-{{.SPACE_NAME}}-deployments",
+		},
+		"spec": map[string]interface{}{
+			"quota": map[string]interface{}{
+				"hard": map[string]string{
+					"count/deploymentconfigs.apps": "{{.DEPLOYMENT_QUOTA}}",
+					"count/deployments.apps":       "{{.DEPLOYMENT_QUOTA}}",
+					"count/pods":                   podsCount,
+				},
+			},
+			"selector": map[string]interface{}{
+				"annotations": map[string]string{},
+				"labels": map[string]interface{}{
+					"matchLabels": map[string]string{
+						"toolchain.dev.openshift.com/space": "{{.SPACE_NAME}}",
+					},
+				},
+			},
+		},
+	}}
+	return crq
 }
 
 func withClusterRoleBindings(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, feature string) tiers.CustomNSTemplateTierModifier {
