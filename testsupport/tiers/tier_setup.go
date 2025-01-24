@@ -47,13 +47,13 @@ func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateT
 	}
 }
 
-func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, modifiers ...TierTemplateModifier) CustomNSTemplateTierModifier {
 	return func(hostAwait *wait.HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.NamespaceResourcesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
 		tier.Spec.Namespaces = make([]toolchainv1alpha1.NSTemplateTierNamespace, len(otherTier.Spec.Namespaces))
 		for i, def := range otherTier.Spec.Namespaces {
-			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
+			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef, modifiers...)
 			if err != nil {
 				return err
 			}
@@ -63,13 +63,13 @@ func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 	}
 }
 
-func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, modifiers ...TierTemplateModifier) CustomNSTemplateTierModifier {
 	return func(hostAwait *wait.HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.SpaceRolesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
 		tier.Spec.SpaceRoles = make(map[string]toolchainv1alpha1.NSTemplateTierSpaceRole, len(otherTier.Spec.SpaceRoles))
 		for name, def := range otherTier.Spec.SpaceRoles {
-			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
+			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef, modifiers...)
 			if err != nil {
 				return err
 			}
@@ -77,6 +77,21 @@ func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) C
 				TemplateRef: tmplRef,
 			}
 		}
+		return nil
+	}
+}
+
+func WithParameter(name, value string) CustomNSTemplateTierModifier {
+	return func(hostAwait *wait.HostAwaitility, tier *CustomNSTemplateTier) error {
+		if tier.Spec.Parameters == nil {
+			tier.Spec.Parameters = []toolchainv1alpha1.Parameter{}
+		}
+		tier.Spec.Parameters = append(tier.Spec.Parameters,
+			toolchainv1alpha1.Parameter{
+				Name:  name,
+				Value: value,
+			},
+		)
 		return nil
 	}
 }
