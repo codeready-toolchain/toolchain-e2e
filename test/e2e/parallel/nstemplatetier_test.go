@@ -384,7 +384,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	}
 	// for simplicity, we add the CRQ to all types of templates (both cluster scope and namespace scoped),
 	// even if the CRQ is cluster scoped.
-	// WARNING: thus THIS NSTemplateTier should NOT be sued to provision a user!!!
+	// WARNING: thus THIS NSTemplateTier should NOT be used to provision a user!!!
 	customTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "ttr", baseTier,
 		tiers.WithNamespaceResources(t, baseTier, updateTierTemplateObjects),
 		tiers.WithClusterResources(t, baseTier, updateTierTemplateObjects),
@@ -432,7 +432,8 @@ func TestTierTemplateRevision(t *testing.T) {
 			// when
 			// we update a parameter in the NSTemplateTier
 			// by increasing the deployment quota
-			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier, tiers.WithParameter("DEPLOYMENT_QUOTA", "100"))
+			customTier.NSTemplateTier.Spec.Parameters = []toolchainv1alpha1.Parameter{{Name: "DEPLOYMENT_QUOTA", Value: "100"}}
+			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier)
 			require.NoError(t, err)
 
 			// then
