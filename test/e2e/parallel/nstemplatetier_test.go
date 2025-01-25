@@ -21,8 +21,6 @@ import (
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
-	apiwait "k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/labels"
@@ -405,9 +403,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
 	// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
 	// thus we assert the number of TTRs doesn't exceed the double of the expected number.
-	ttrCount, err := WaitForTTRsToMatch(t, hostAwait, customTier.NSTemplateTier, len(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten())*2, func(actualCount, expectedCount int) {
-		assert.LessOrEqual(t, actualCount, expectedCount)
-	})
+	ttrs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.LessOrEqual(len(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten())*2))
 	require.NoError(t, err)
 
 	t.Run("update of tiertemplate should trigger creation of new TTR", func(t *testing.T) {
@@ -426,14 +422,12 @@ func TestTierTemplateRevision(t *testing.T) {
 
 		// then
 		// a new TTR was created
-		updatedTTrCount, err := WaitForTTRsToMatch(t, hostAwait, customTier.NSTemplateTier, ttrCount+1, func(actualCount, expectedCount int) {
-			assert.GreaterOrEqual(t, actualCount, expectedCount)
-		})
+		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs)+1))
 		require.NoError(t, err)
 
 		t.Run("update of the NSTemplateTier parameters should trigger creation of new TTR", func(t *testing.T) {
 			// given
-			// that the tiertemplates and nstemlpatetier are provisioned from the parent test
+			// that the TierTemplates and NSTemplateTier are provisioned from the parent test
 
 			// when
 			// we update a parameter in the NSTemplateTier
@@ -443,40 +437,12 @@ func TestTierTemplateRevision(t *testing.T) {
 
 			// then
 			// an additional TTR was created
-			_, err := WaitForTTRsToMatch(t, hostAwait, customTier.NSTemplateTier, updatedTTrCount+1, func(actualCount, expectedCount int) {
-				assert.GreaterOrEqual(t, actualCount, expectedCount)
-			})
+			_, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
 			require.NoError(t, err)
 		})
 
 	})
 
-}
-
-func WaitForTTRsToMatch(t *testing.T, hostAwait *wait.HostAwaitility, customTier *toolchainv1alpha1.NSTemplateTier, expectedTTRsCount int, ttrCountComparisonFunc func(currentTTRsCount, expectedTTRsCount int)) (int, error) {
-	var ttrCount int
-	err := apiwait.PollUntilContextTimeout(context.TODO(), hostAwait.RetryInterval, hostAwait.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
-		if err := hostAwait.Client.List(ctx, objs, client.InNamespace(hostAwait.Namespace)); err != nil {
-			return false, err
-		}
-		ttrCount = len(objs.Items)
-		ttrCountComparisonFunc(ttrCount, expectedTTRsCount)
-		// we check that the TTR content has the parameters replaced with values from the NSTemplateTier
-		for _, obj := range objs.Items {
-			// the object should have all the variables still there since this one will be replaced when provisioning the Space
-			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), ".SPACE_NAME")
-			assert.Contains(t, string(obj.Spec.TemplateObjects[0].Raw), ".DEPLOYMENT_QUOTA")
-			// the parameter is copied from the NSTemplateTier
-			assert.NotNil(t, obj.Spec.Parameters)
-			assert.NotNil(t, customTier.Spec.Parameters)
-			// we only expect the static parameter DEPLOYMENT_QUOTA to be copied from the tier to the TTR.
-			// the SPACE_NAME is not a parameter, but a dynamic variable which will be evaluated when provisioning a namespace for the user.
-			assert.ElementsMatch(t, customTier.Spec.Parameters, obj.Spec.Parameters)
-		}
-		return true, nil
-	})
-	return ttrCount, err
 }
 
 func getTestCRQ(podsCount string) unstructured.Unstructured {
