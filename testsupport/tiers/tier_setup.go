@@ -87,7 +87,7 @@ func WithParameter(name, value string) CustomNSTemplateTierModifier {
 			tier.Spec.Parameters = []toolchainv1alpha1.Parameter{}
 		}
 
-		newParams := make([]toolchainv1alpha1.Parameter, len(tier.Spec.Parameters))
+		newParams := make([]toolchainv1alpha1.Parameter, 0, len(tier.Spec.Parameters))
 		// search for the param, in case it already exists, we need only to change its value
 		found := false
 		for _, param := range tier.Spec.Parameters {
