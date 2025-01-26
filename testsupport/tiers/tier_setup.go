@@ -86,12 +86,28 @@ func WithParameter(name, value string) CustomNSTemplateTierModifier {
 		if tier.Spec.Parameters == nil {
 			tier.Spec.Parameters = []toolchainv1alpha1.Parameter{}
 		}
-		tier.Spec.Parameters = append(tier.Spec.Parameters,
-			toolchainv1alpha1.Parameter{
-				Name:  name,
-				Value: value,
-			},
-		)
+
+		newParams := make([]toolchainv1alpha1.Parameter, len(tier.Spec.Parameters))
+		// search for the param, in case it already exists, we need only to change its value
+		found := false
+		for _, param := range tier.Spec.Parameters {
+			if param.Name == name {
+				// if the param already exists, let's set the new value
+				param.Value = value
+				found = true
+			}
+			newParams = append(newParams, param)
+		}
+		// if it's a new parameter, let's append it to the existing ones
+		if !found {
+			newParams = append(newParams,
+				toolchainv1alpha1.Parameter{
+					Name:  name,
+					Value: value,
+				},
+			)
+		}
+		tier.Spec.Parameters = newParams
 		return nil
 	}
 }

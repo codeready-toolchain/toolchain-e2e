@@ -432,8 +432,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			// when
 			// we update a parameter in the NSTemplateTier
 			// by increasing the deployment quota
-			customTier.NSTemplateTier.Spec.Parameters = []toolchainv1alpha1.Parameter{{Name: "DEPLOYMENT_QUOTA", Value: "100"}}
-			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier)
+			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier, tiers.WithParameter("DEPLOYMENT_QUOTA", "100"))
 			require.NoError(t, err)
 
 			// then
