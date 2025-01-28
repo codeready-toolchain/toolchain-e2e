@@ -267,10 +267,10 @@ setup-toolchainclusters: ksctl
 	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS_2)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${KSCTL_TLS_VERIFY_PARAM} --name-suffix="2" -y ; fi
 
 
-.PHONY: deploy-single-member-e2e
-## Deploy operators in e2e mode with single member without running tests
-deploy-single-member-e2e: 
-	$(MAKE) prepare-and-deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} MEMBER_NS=${DEFAULT_MEMBER_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS}
+.PHONY: deploy-single-member-e2e-latest
+## Deploy operators using the latest and greatest images of Toolchain operators in e2e mode with single member without running tests
+deploy-single-member-e2e-latest: 
+	$(MAKE) prepare-and-deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} MEMBER_NS=${DEFAULT_MEMBER_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} DEPLOY_LATEST=true
 
 
 ###########################################################
