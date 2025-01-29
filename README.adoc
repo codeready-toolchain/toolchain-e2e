@@ -153,7 +153,7 @@ All e2e resources (host operator, member operator, registration-service, CRDs, e
 
 * `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` in dev environment but doesn't run tests.
 
-* `make deploy-single-member-e2e` - deploys the same resources as `make test-e2e` but with only one member and doesn't run tests.
+* `make deploy-single-member-e2e-latest` - deploys the same resources (using the latest and greatest images of Toolchain operators) as `make test-e2e` but with only one member and doesn't run tests.
 
 NOTE: By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 
