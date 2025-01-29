@@ -414,7 +414,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// we update one tiertemplate
 		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.TierTemplate{}).
 			Update(customTier.Spec.ClusterResources.TemplateRef, hostAwait.Namespace, func(tiertemplate *toolchainv1alpha1.TierTemplate) {
-				// let's increase the pod count
+				// let's reduce the pod count
 				updatedCRQ := getTestCRQ("100")
 				tiertemplate.Spec.TemplateObjects = []runtime.RawExtension{{Object: &updatedCRQ}}
 			})

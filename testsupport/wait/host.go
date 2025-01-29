@@ -1010,7 +1010,7 @@ func matchTierTemplateRevisionWaitCriterion(actual []toolchainv1alpha1.TierTempl
 	return true
 }
 
-func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual []toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) {
+func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual []toolchainv1alpha1.TierTemplateRevision, tierName string, criteria ...TierTemplateRevisionWaitCriterion) {
 	buf := &strings.Builder{}
 	if len(actual) == 0 {
 		buf.WriteString("no ttrs found\n")
@@ -1030,8 +1030,15 @@ func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.
 			}
 		}
 	}
-	// include also all TierTemplateRevisions in the host namespace, to help troubleshooting
-	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{})
+	opts := client.MatchingLabels(map[string]string{
+		toolchainv1alpha1.TierLabelKey: tierName,
+	})
+	// include also all TierTemplateRevisions for the given tier, to help troubleshooting
+	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{}, opts)
+	// include also all TierTemplate for the given tiertemplate revisions, to help troubleshooting
+	for _, ttr := range actual {
+		a.GetAndPrint(t, "TierTemplate", a.Namespace, ttr.GetLabels()[toolchainv1alpha1.TemplateRefLabelKey], &toolchainv1alpha1.TierTemplate{})
+	}
 
 	t.Log(buf.String())
 }
@@ -1076,7 +1083,7 @@ func (a *HostAwaitility) WaitForTTRs(t *testing.T, tierName string, criteria ...
 	})
 	// no match found, print the diffs
 	if err != nil {
-		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttrs, criteria...)
+		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttrs, tierName, criteria...)
 	}
 	return ttrs, err
 }
