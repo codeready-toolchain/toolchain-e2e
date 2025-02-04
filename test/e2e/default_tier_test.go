@@ -3,7 +3,7 @@ package e2e
 import (
 	"testing"
 
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testcfg "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 )
@@ -26,7 +26,7 @@ func TestSetDefaultTier(t *testing.T) {
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
+		hostAwait.UpdateToolchainConfig(t, testcfg.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
 		// Create and approve a new user that should be provisioned to the advanced tier
 		NewSignupRequest(awaitilities).
 			Username("defaulttierchanged").
