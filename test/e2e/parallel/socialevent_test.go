@@ -5,7 +5,7 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	commonsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
+	commonsv "github.com/codeready-toolchain/toolchain-common/pkg/socialevent"
 	testsocialevent "github.com/codeready-toolchain/toolchain-common/pkg/test/socialevent"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -27,7 +27,7 @@ func TestCreateSocialEvent(t *testing.T) {
 		// given
 		start := time.Now().Add(time.Hour).Round(time.Second)
 		end := time.Now().Add(24 * time.Hour).Round(time.Second)
-		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsv.NewName(),
 			testsocialevent.WithUserTier("deactivate30"),
 			testsocialevent.WithSpaceTier("base"),
 			testsocialevent.WithStartTime(start),
@@ -56,7 +56,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with invalid user tier name", func(t *testing.T) {
 		// given
-		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsv.NewName(),
 			testsocialevent.WithUserTier("invalid"),
 			testsocialevent.WithSpaceTier("base"))
 
@@ -93,7 +93,7 @@ func TestCreateSocialEvent(t *testing.T) {
 
 	t.Run("create socialevent with invalid space tier name", func(t *testing.T) {
 		// given
-		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
+		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsv.NewName(),
 			testsocialevent.WithUserTier("deactivate30"),
 			testsocialevent.WithSpaceTier("invalid"))
 
