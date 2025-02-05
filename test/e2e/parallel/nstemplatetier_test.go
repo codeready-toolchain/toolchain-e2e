@@ -409,13 +409,16 @@ func TestTierTemplateRevision(t *testing.T) {
 	t.Run("update of tiertemplate should trigger creation of new TTR", func(t *testing.T) {
 		// given
 		// that the tiertemplates and nstemlpatetier are provisioned from the parent test
+		ttrToBeModified, found := customTier.Status.Revisions[customTier.Spec.ClusterResources.TemplateRef]
+		require.True(t, found)
+		checkThatTTRContainsCRQ(t, ttrToBeModified, ttrs, crq)
 
 		// when
 		// we update one tiertemplate
+		// let's reduce the pod count
+		updatedCRQ := getTestCRQ("100")
 		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.TierTemplate{}).
 			Update(customTier.Spec.ClusterResources.TemplateRef, hostAwait.Namespace, func(tiertemplate *toolchainv1alpha1.TierTemplate) {
-				// let's reduce the pod count
-				updatedCRQ := getTestCRQ("100")
 				tiertemplate.Spec.TemplateObjects = []runtime.RawExtension{{Object: &updatedCRQ}}
 			})
 		require.NoError(t, err)
@@ -424,6 +427,12 @@ func TestTierTemplateRevision(t *testing.T) {
 		// a new TTR was created
 		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs)+1))
 		require.NoError(t, err)
+		// get the updated nstemplatetier
+		updatedCustomTier, err := hostAwait.WaitForNSTemplateTier(t, customTier.Name)
+		newTTR, found := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
+		require.True(t, found)
+		// check that it has the updated crq
+		checkThatTTRContainsCRQ(t, newTTR, updatedTTRs, updatedCRQ)
 
 		t.Run("update of the NSTemplateTier parameters should trigger creation of new TTR", func(t *testing.T) {
 			// given
@@ -437,8 +446,12 @@ func TestTierTemplateRevision(t *testing.T) {
 
 			// then
 			// an additional TTR was created
-			_, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
+			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
 			require.NoError(t, err)
+			checkThatTTRsHaveParameter(t, customTier, ttrsWithNewParams, toolchainv1alpha1.Parameter{
+				Name:  "DEPLOYMENT_QUOTA",
+				Value: "100",
+			})
 		})
 
 	})
@@ -520,3 +533,24 @@ const (
 }
 `
 )
+
+// checkThatTTRContainsCRQ verifies if a given ttr from the list contains the CRQ in the templateObjects field
+func checkThatTTRContainsCRQ(t *testing.T, ttrName string, ttrs []toolchainv1alpha1.TierTemplateRevision, crq unstructured.Unstructured) {
+	for _, ttr := range ttrs {
+		if ttr.Name == ttrName {
+			assert.NotEmpty(t, ttr.Spec.TemplateObjects)
+			assert.Equal(t, []runtime.RawExtension{{Object: &crq}}, ttr.Spec.TemplateObjects)
+		}
+	}
+	require.FailNowf(t, "Unable to find a TTR with required crq", "ttr:%s CRQ:%+v", ttrName, crq)
+}
+
+// checkThatTTRsHaveParameter verifies that ttrs from the list have the required parameter
+func checkThatTTRsHaveParameter(t *testing.T, tier *tiers.CustomNSTemplateTier, ttrs []toolchainv1alpha1.TierTemplateRevision, parameters toolchainv1alpha1.Parameter) {
+	for _, ttr := range ttrs {
+		// if the ttr is still in the revisions field we check that it contains the required parameters
+		if ttrNameInRev, ttrFound := tier.Status.Revisions[ttr.GetLabels()[toolchainv1alpha1.TemplateRefLabelKey]]; ttrFound && ttrNameInRev == ttr.Name {
+			assert.Contains(t, ttr.Spec.Parameters, parameters, "Unable to find required parameters:%+v in the TTR:%s", parameters, ttr.Name)
+		}
+	}
+}
