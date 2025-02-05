@@ -41,7 +41,7 @@ func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateT
 			return err
 		}
 		tier.Spec.ClusterResources = &toolchainv1alpha1.NSTemplateTierClusterResources{
-			TemplateRef: tmplRef,
+			TemplateRef: tier.Status.Revisions[tmplRef],
 		}
 		return nil
 	}
@@ -57,7 +57,7 @@ func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 			if err != nil {
 				return err
 			}
-			tier.Spec.Namespaces[i].TemplateRef = tmplRef
+			tier.Spec.Namespaces[i].TemplateRef = tier.Status.Revisions[tmplRef]
 		}
 		return nil
 	}
@@ -74,7 +74,7 @@ func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, m
 				return err
 			}
 			tier.Spec.SpaceRoles[name] = toolchainv1alpha1.NSTemplateTierSpaceRole{
-				TemplateRef: tmplRef,
+				TemplateRef: tier.Status.Revisions[tmplRef],
 			}
 		}
 		return nil
@@ -109,6 +109,9 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, na
 			},
 			Spec: toolchainv1alpha1.NSTemplateTierSpec{
 				// default values
+			},
+			Status: toolchainv1alpha1.NSTemplateTierStatus{
+				//default values
 			},
 		},
 	}
@@ -146,6 +149,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, ti
 	_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
 		Update(tier.NSTemplateTier.Name, hostAwait.Namespace, func(nstt *toolchainv1alpha1.NSTemplateTier) {
 			nstt.Spec = tier.NSTemplateTier.Spec
+			nstt.Status.Revisions = tier.Status.Revisions
 		})
 	require.NoError(t, err)
 	return tier
