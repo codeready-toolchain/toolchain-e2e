@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gofrs/uuid"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
@@ -403,6 +404,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
 	// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
 	// thus we assert the number of TTRs doesn't exceed the double of the expected number.
+	// TODO check for exact match or remove the *2 and check for not empty revisions list, once we implement the cleanup controller
 	ttrs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.LessOrEqual(len(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten())*2))
 	require.NoError(t, err)
 
@@ -426,6 +428,7 @@ func TestTierTemplateRevision(t *testing.T) {
 
 		// then
 		// a new TTR was created
+		// TODO check for exact match or remove the +1 once we implement the cleanup controller
 		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs)+1))
 		require.NoError(t, err)
 		// get the updated nstemplatetier
@@ -451,7 +454,11 @@ func TestTierTemplateRevision(t *testing.T) {
 
 			// then
 			// an additional TTR will be created
+			// TODO check for exact match or remove the +1 once we implement the cleanup controller
 			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
+			require.NoError(t, err)
+			// retrieve new tier once the ttrs were created and the revision field updated
+			customTier.NSTemplateTier, err = hostAwait.WaitForNSTemplateTier(t, customTier.Name)
 			require.NoError(t, err)
 			// and the parameter is updated in all the ttrs
 			checkThatTTRsHaveParameter(t, customTier, ttrsWithNewParams, toolchainv1alpha1.Parameter{
@@ -472,16 +479,16 @@ func getTestCRQ(podsCount string) unstructured.Unstructured {
 		},
 		"spec": map[string]interface{}{
 			"quota": map[string]interface{}{
-				"hard": map[string]string{
+				"hard": map[string]interface{}{
 					"count/deploymentconfigs.apps": "{{.DEPLOYMENT_QUOTA}}",
 					"count/deployments.apps":       "{{.DEPLOYMENT_QUOTA}}",
 					"count/pods":                   podsCount,
 				},
 			},
 			"selector": map[string]interface{}{
-				"annotations": map[string]string{},
+				"annotations": map[string]interface{}{},
 				"labels": map[string]interface{}{
-					"matchLabels": map[string]string{
+					"matchLabels": map[string]interface{}{
 						"toolchain.dev.openshift.com/space": "{{.SPACE_NAME}}",
 					},
 				},
@@ -545,7 +552,11 @@ func checkThatTTRContainsCRQ(t *testing.T, ttrName string, ttrs []toolchainv1alp
 	for _, ttr := range ttrs {
 		if ttr.Name == ttrName {
 			assert.NotEmpty(t, ttr.Spec.TemplateObjects)
-			assert.Equal(t, []runtime.RawExtension{{Object: &crq}}, ttr.Spec.TemplateObjects)
+			unstructuredObj := &unstructured.Unstructured{}
+			_, _, err := scheme.Codecs.UniversalDeserializer().Decode(ttr.Spec.TemplateObjects[0].Raw, nil, unstructuredObj)
+			require.NoError(t, err)
+			assert.Equal(t, &crq, unstructuredObj)
+			return
 		}
 	}
 	require.FailNowf(t, "Unable to find a TTR with required crq", "ttr:%s CRQ:%+v", ttrName, crq)
@@ -557,6 +568,7 @@ func checkThatTTRsHaveParameter(t *testing.T, tier *tiers.CustomNSTemplateTier, 
 		// if the ttr is still in the revisions field we check that it contains the required parameters
 		if ttrNameInRev, ttrFound := tier.Status.Revisions[ttr.GetLabels()[toolchainv1alpha1.TemplateRefLabelKey]]; ttrFound && ttrNameInRev == ttr.Name {
 			assert.Contains(t, ttr.Spec.Parameters, parameters, "Unable to find required parameters:%+v in the TTR:%s", parameters, ttr.Name)
+			return
 		}
 	}
 }
