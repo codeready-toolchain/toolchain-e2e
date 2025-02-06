@@ -391,14 +391,14 @@ func TestTierTemplateRevision(t *testing.T) {
 		tiers.WithSpaceRoles(t, baseTier, updateTierTemplateObjects),
 		tiers.WithParameter("DEPLOYMENT_QUOTA", "60"))
 	// when
-	// we verify the counters in the status.history for 'tierUsingTierTemplateRevisions' tier
-	// and verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
-	_, err = hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
+	// we verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
+	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
 		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten()))
 	require.NoError(t, err)
+	customTier.NSTemplateTier = tier
 
 	// then
-	// check the expected total number of ttr matches
+	// check the expected total number of ttr matches,
 	// we IDEALLY expect one TTR per each tiertemplate to be created (clusterresource, namespace and spacerole), thus a total of 3 TTRs ideally.
 	// But since the creation of a TTR could be very quick and could trigger another reconcile of the NSTemplateTier before the status is actually updated with the reference,
 	// this might generate some copies of the TTRs. This is not a problem in production since the cleanup mechanism of TTRs will remove the extra ones but could cause some flakiness with the test,
@@ -411,6 +411,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// that the tiertemplates and nstemlpatetier are provisioned from the parent test
 		ttrToBeModified, found := customTier.Status.Revisions[customTier.Spec.ClusterResources.TemplateRef]
 		require.True(t, found)
+		// check that it has the crq before updating it
 		checkThatTTRContainsCRQ(t, ttrToBeModified, ttrs, crq)
 
 		// when
@@ -437,17 +438,22 @@ func TestTierTemplateRevision(t *testing.T) {
 		t.Run("update of the NSTemplateTier parameters should trigger creation of new TTR", func(t *testing.T) {
 			// given
 			// that the TierTemplates and NSTemplateTier are provisioned from the parent test
+			// and they have the initial parameter value for deployment quota
+			checkThatTTRsHaveParameter(t, customTier, updatedTTRs, toolchainv1alpha1.Parameter{
+				Name:  "DEPLOYMENT_QUOTA",
+				Value: "60",
+			})
 
 			// when
-			// we update a parameter in the NSTemplateTier
-			// by increasing the deployment quota
+			// we increase the parameter for the deployment quota
 			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier, tiers.WithParameter("DEPLOYMENT_QUOTA", "100"))
 			require.NoError(t, err)
 
 			// then
-			// an additional TTR was created
+			// an additional TTR will be created
 			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
 			require.NoError(t, err)
+			// and the parameter is updated in all the ttrs
 			checkThatTTRsHaveParameter(t, customTier, ttrsWithNewParams, toolchainv1alpha1.Parameter{
 				Name:  "DEPLOYMENT_QUOTA",
 				Value: "100",
