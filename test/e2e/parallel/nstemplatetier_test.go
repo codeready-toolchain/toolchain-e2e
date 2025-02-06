@@ -117,7 +117,6 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	cookieTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cookie", baseTier)
 	chocolateTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "chocolate", baseTier)
 
-	cheesecakeTier.Status.Revisions = map[string]string{}
 	// first group of users: the "cheesecake users"
 	cheesecakeUsers := setupAccounts(t, awaitilities, cheesecakeTier, "cheesecakeuser%02d", memberAwait, count)
 	// second group of users: the "cookie users"
