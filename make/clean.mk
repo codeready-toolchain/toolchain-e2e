@@ -8,9 +8,10 @@ clean:
 
 .PHONY: clean-users
 ## Delete usersignups in the OpenShift cluster. The deleted resources are:
-##    * all usersignups including user namespaces
+##    * all usersignups including user namespaces and banned users
 clean-users:
 	$(Q)-oc delete usersignups --all --all-namespaces
+	$(Q)-oc delete bannedusers --all --all-namespaces
 	$(Q)-oc delete spacerequests --all --all-namespaces
 	$(Q)-oc delete spaces --all --all-namespaces
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
