@@ -110,9 +110,6 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, na
 			Spec: toolchainv1alpha1.NSTemplateTierSpec{
 				// default values
 			},
-			Status: toolchainv1alpha1.NSTemplateTierStatus{
-				//default values
-			},
 		},
 	}
 	if len(modifiers) == 0 {
@@ -149,7 +146,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, ti
 	_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
 		Update(tier.NSTemplateTier.Name, hostAwait.Namespace, func(nstt *toolchainv1alpha1.NSTemplateTier) {
 			nstt.Spec = tier.NSTemplateTier.Spec
-			nstt.Status.Revisions = tier.Status.Revisions
+
 		})
 	require.NoError(t, err)
 	return tier
