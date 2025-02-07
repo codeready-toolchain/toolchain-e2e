@@ -25,16 +25,22 @@ func (a *Assertions) Assertions() []assertions.Assertion[*toolchainv1aplha1.Spac
 
 func That() *Assertions {
 	instance := &Assertions{assertions: []assertions.Assertion[*toolchainv1aplha1.SpaceProvisionerConfig]{}}
-	instance.EmbedInto(instance, &instance.assertions, func(spc *toolchainv1aplha1.SpaceProvisionerConfig) []toolchainv1aplha1.Condition {
-		return spc.Status.Conditions
+	instance.EmbedInto(instance, &instance.assertions, func(spc *toolchainv1aplha1.SpaceProvisionerConfig) *[]toolchainv1aplha1.Condition {
+		return &spc.Status.Conditions
 	})
 	instance.ObjectAssertions.EmbedInto(instance, &instance.assertions)
 	return instance
 }
 
 func (a *Assertions) ReferencesToolchainCluster(tc string) *Assertions {
-	a.assertions = append(a.assertions, func(t assertions.AssertT, spc *toolchainv1aplha1.SpaceProvisionerConfig) {
-		assert.Equal(t, tc, spc.Spec.ToolchainCluster)
+	a.assertions = append(a.assertions, &assertions.AssertAndFixFunc[*toolchainv1aplha1.SpaceProvisionerConfig]{
+		Assert: func(t assertions.AssertT, spc *toolchainv1aplha1.SpaceProvisionerConfig) {
+			assert.Equal(t, tc, spc.Spec.ToolchainCluster)
+		},
+		Fix: func(obj *toolchainv1aplha1.SpaceProvisionerConfig) *toolchainv1aplha1.SpaceProvisionerConfig {
+			obj.Spec.ToolchainCluster = tc
+			return obj
+		},
 	})
 	return a
 }

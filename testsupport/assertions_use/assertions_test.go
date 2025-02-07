@@ -32,7 +32,7 @@ func Test(t *testing.T) {
 	// this is the new WaitFor
 	assertions.WaitFor[*toolchainv1aplha1.SpaceProvisionerConfig](cl).
 		WithTimeout(1*time.Second). // defaults to wait.DefaultTimeout which is 2 minutes, so let's make it shorter here
-		ByObjectKey("default", "kachny").
+		WithObjectKey("default", "kachny").
 		Matching(context.TODO(), t,
 			spaceprovisionerconfig.That().HasLabel("asdf"))
 }
