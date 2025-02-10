@@ -259,7 +259,7 @@ func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfi
 }
 
 func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
-	s := scheme.Scheme
+	s := runtime.NewScheme()
 	builder := append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme,
 		userv1.Install,
 		templatev1.Install,
