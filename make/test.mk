@@ -39,10 +39,23 @@ endif
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
+HOST_OPERATOR_CLONE_DIR := "/tmp/host-operator"
+MEMBER_OPERATOR_CLONE_DIR := "/tmp/member-operator"
+REGISTRATION_SERVICE_CLONE_DIR := "/tmp/registration-service"
+KSCTL_CLONE_DIR := "/tmp/ksctl"
+
+.PHONY: pair-mechanism
+pair-mechanism:
+	@HOST_OPERATOR_CLONE_DIR=${HOST_OPERATOR_CLONE_DIR} \
+	MEMBER_OPERATOR_CLONE_DIR=${MEMBER_OPERATOR_CLONE_DIR} \
+	REGISTRATION_SERVICE_CLONE_DIR=${REGISTRATION_SERVICE_CLONE_DIR} \
+	KSCTL_CLONE_DIR=${KSCTL_CLONE_DIR} \
+	go run scripts/ci/pairing/pairing.go
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
+test-e2e: pair-mechanism prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -314,6 +327,11 @@ ifneq (${MEMBER_REPO_PATH},"")
 		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
     endif
 endif
+ifneq (${MEMBER_REPO_PATH_PARAM},"")
+    ifneq (${MEMBER_REPO_PATH_PARAM},)
+		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_OPERATOR_CLONE_DIR})
+    endif
+endif
 ifneq (${FORCED_TAG},"")
     ifneq (${FORCED_TAG},)
 		$(eval FORCED_TAG_PARAM = -ft ${FORCED_TAG})
@@ -338,9 +356,19 @@ ifneq (${REG_REPO_PATH},"")
 		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
     endif
 endif
+ifneq (${REG_REPO_PATH_PARAM},"")
+    ifneq (${REG_REPO_PATH_PARAM},)
+		$(eval REG_REPO_PATH_PARAM = -rr ${REGISTRATION_SERVICE_CLONE_DIR})
+    endif
+endif
 ifneq (${HOST_REPO_PATH},"")
     ifneq (${HOST_REPO_PATH},)
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
+    endif
+endif
+ifneq (${HOST_REPO_PATH_PARAM},"")
+    ifneq (${HOST_REPO_PATH_PARAM},)
+		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_OPERATOR_CLONE_DIR})
     endif
 endif
 ifneq (${FORCED_TAG},"")
