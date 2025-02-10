@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -20,7 +19,7 @@ type PullRequestMetadata struct {
 	RepoName     string
 	BranchName   string
 	CommitSHA    string
-	Number       int
+	Number       string
 	RemoteName   string
 }
 
@@ -64,12 +63,17 @@ func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchN
 func getCurrentPRInfo() (*PullRequestMetadata, error) {
 	jobSpecEnvVarData := os.Getenv("JOB_SPEC")
 	log.Printf("JOB_SPEC: '%s'", jobSpecEnvVarData)
+	log.Printf("GITHUB_HEAD_REF: '%s'", os.Getenv("GITHUB_HEAD_REF"))
 
-	pr := &PullRequestMetadata{}
-
-	if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
-		return pr, fmt.Errorf("error when parsing openshift job spec data: %v", err)
+	pr := &PullRequestMetadata{
+		RepoName:   os.Getenv("AUTHOR"),
+		Number:     os.Getenv("PULL_NUMBER"),
+		BranchName: os.Getenv(""),
 	}
+
+	// if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
+	// 	return pr, fmt.Errorf("error when parsing openshift job spec data: %v", err)
+	// }
 
 	return pr, nil
 }
