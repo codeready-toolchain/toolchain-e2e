@@ -50,10 +50,9 @@ func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchN
 	}
 
 	for _, pull := range pullRequests {
-		fmt.Println("pull.GetHead().GetRef()", pull.GetHead().GetRef())
-		fmt.Println("pull.GetUser().GetLogin()", pull.GetUser().GetLogin())
-
 		if pull.GetHead().GetRef() == currentBranchName && pull.GetUser().GetLogin() == currentRemoteName {
+			fmt.Println("pull.GetHead().GetRef()", pull.GetHead().GetRef())
+			fmt.Println("pull.GetUser().GetLogin()", pull.GetUser().GetLogin())
 			return true
 		}
 	}
