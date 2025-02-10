@@ -68,7 +68,7 @@ func getCurrentPRInfo() (*PullRequestMetadata, error) {
 	pr := &PullRequestMetadata{
 		RepoName:   os.Getenv("AUTHOR"),
 		Number:     os.Getenv("PULL_NUMBER"),
-		BranchName: os.Getenv(""),
+		BranchName: os.Getenv("GITHUB_HEAD_REF"),
 	}
 
 	// if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
