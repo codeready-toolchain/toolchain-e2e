@@ -132,8 +132,8 @@ func main() {
 		prRemoteName = pr.RemoteName
 	}
 
-	clone(HostOperatorCloneDir, "codeready-toolchain", "host-operator", prBranchName, prRemoteName)
-	clone(MemberOperatorCloneDir, "codeready-toolchain", "member-operator", prBranchName, prRemoteName)
-	clone(RegistrationServiceCloneDir, "codeready-toolchain", "registration-service", prBranchName, prRemoteName)
-	clone(KsctlCloneDir, "kubesaw", "ksctl", prBranchName, prRemoteName)
+	clone(HostOperatorCloneDir, "codeready-toolchain", "host-operator", prRemoteName, prBranchName)
+	clone(MemberOperatorCloneDir, "codeready-toolchain", "member-operator", prRemoteName, prBranchName)
+	clone(RegistrationServiceCloneDir, "codeready-toolchain", "registration-service", prRemoteName, prBranchName)
+	clone(KsctlCloneDir, "kubesaw", "ksctl", prRemoteName, prBranchName)
 }
