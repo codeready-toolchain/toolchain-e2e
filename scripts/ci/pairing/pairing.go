@@ -63,6 +63,7 @@ func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchN
 // getCurrentPRInfo gets the current info of the PR that triggered the e2e CI prow job
 func getCurrentPRInfo() (*PullRequestMetadata, error) {
 	jobSpecEnvVarData := os.Getenv("JOB_SPEC")
+	log.Printf("JOB_SPEC: '%s'", jobSpecEnvVarData)
 
 	pr := &PullRequestMetadata{}
 
