@@ -327,8 +327,7 @@ ifneq (${MEMBER_REPO_PATH},"")
 		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_REPO_PATH})
     endif
 endif
-ifneq (${MEMBER_REPO_PATH_PARAM},"")
-    ifneq (${MEMBER_REPO_PATH_PARAM},)
+ifeq ($(or ${MEMBER_REPO_PATH}, ""), "")
 		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_OPERATOR_CLONE_DIR})
     endif
 endif
@@ -356,8 +355,7 @@ ifneq (${REG_REPO_PATH},"")
 		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
     endif
 endif
-ifneq (${REG_REPO_PATH_PARAM},"")
-    ifneq (${REG_REPO_PATH_PARAM},)
+ifeq ($(or ${REG_REPO_PATH}, ""), "")
 		$(eval REG_REPO_PATH_PARAM = -rr ${REGISTRATION_SERVICE_CLONE_DIR})
     endif
 endif
@@ -366,8 +364,7 @@ ifneq (${HOST_REPO_PATH},"")
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
     endif
 endif
-ifneq (${HOST_REPO_PATH_PARAM},"")
-    ifneq (${HOST_REPO_PATH_PARAM},)
+ifeq ($(or ${HOST_REPO_PATH}, ""), "")
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_OPERATOR_CLONE_DIR})
     endif
 endif
