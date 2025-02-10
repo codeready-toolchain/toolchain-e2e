@@ -43,8 +43,8 @@ func listOpenPRs(owner, repo string) ([]*github.PullRequest, error) {
 
 // shouldPair returns true if ...
 func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchName string) bool {
-	log.Printf("currentRemoteName", currentRemoteName)
-	log.Printf("currentBranchName", currentBranchName)
+	log.Printf("currentRemoteName: %s", currentRemoteName)
+	log.Printf("currentBranchName: %s", currentBranchName)
 
 	pullRequests, err := listOpenPRs(orgForPairing, repoForPairing)
 	if err != nil {
