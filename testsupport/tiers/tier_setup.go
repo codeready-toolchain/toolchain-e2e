@@ -86,6 +86,15 @@ func WithParameter(name, value string) CustomNSTemplateTierModifier {
 		if tier.Spec.Parameters == nil {
 			tier.Spec.Parameters = []toolchainv1alpha1.Parameter{}
 		}
+
+		for i, param := range tier.Spec.Parameters {
+			if param.Name == name {
+				// if the param already exists, let's set the new value
+				tier.Spec.Parameters[i].Value = value
+				return nil
+			}
+		}
+		// if it's a new parameter, let's append it to the existing ones
 		tier.Spec.Parameters = append(tier.Spec.Parameters,
 			toolchainv1alpha1.Parameter{
 				Name:  name,
@@ -143,7 +152,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, ti
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
 	}
-	_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
+	tier.NSTemplateTier, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
 		Update(tier.NSTemplateTier.Name, hostAwait.Namespace, func(nstt *toolchainv1alpha1.NSTemplateTier) {
 			nstt.Spec = tier.NSTemplateTier.Spec
 		})

@@ -994,6 +994,100 @@ func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolch
 	return tierTemplate, err
 }
 
+// TierTemplateRevisionWaitCriterion a struct to compare with an expected TierTemplateRevision
+type TierTemplateRevisionWaitCriterion struct {
+	Match func([]toolchainv1alpha1.TierTemplateRevision) bool
+	Diff  func([]toolchainv1alpha1.TierTemplateRevision) string
+}
+
+func matchTierTemplateRevisionWaitCriterion(actual []toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) bool {
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual []toolchainv1alpha1.TierTemplateRevision, tierName string, criteria ...TierTemplateRevisionWaitCriterion) {
+	buf := &strings.Builder{}
+	if len(actual) == 0 {
+		buf.WriteString("no ttrs found\n")
+	} else {
+		buf.WriteString("failed to find ttrs with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		for _, obj := range actual {
+			y, _ := StringifyObject(&obj) // nolint:gosec
+			buf.Write(y)
+		}
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	opts := client.MatchingLabels(map[string]string{
+		toolchainv1alpha1.TierLabelKey: tierName,
+	})
+	// include also all TierTemplateRevisions for the given tier, to help troubleshooting
+	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{}, opts)
+	// include also all TierTemplate for the given tiertemplate revisions, to help troubleshooting
+	for _, ttr := range actual {
+		a.GetAndPrint(t, "TierTemplate", a.Namespace, ttr.GetLabels()[toolchainv1alpha1.TemplateRefLabelKey], &toolchainv1alpha1.TierTemplate{})
+	}
+
+	t.Log(buf.String())
+}
+
+// GreaterOrEqual checks if the number of TTRs is greater or equal than the expected one
+func GreaterOrEqual(count int) TierTemplateRevisionWaitCriterion {
+	return TierTemplateRevisionWaitCriterion{
+		Match: func(actual []toolchainv1alpha1.TierTemplateRevision) bool {
+			return len(actual) >= count
+		},
+		Diff: func(actual []toolchainv1alpha1.TierTemplateRevision) string {
+			return fmt.Sprintf("number of ttrs %d is not greater or equal than %d \n", len(actual), count)
+		},
+	}
+}
+
+// LessOrEqual checks if the number of TTRs is less or equal than the expected one
+func LessOrEqual(count int) TierTemplateRevisionWaitCriterion {
+	return TierTemplateRevisionWaitCriterion{
+		Match: func(actual []toolchainv1alpha1.TierTemplateRevision) bool {
+			return len(actual) <= count
+		},
+		Diff: func(actual []toolchainv1alpha1.TierTemplateRevision) string {
+			return fmt.Sprintf("number of ttrs %d is not less or equal than %d \n", len(actual), count)
+		},
+	}
+}
+
+func (a *HostAwaitility) WaitForTTRs(t *testing.T, tierName string, criteria ...TierTemplateRevisionWaitCriterion) ([]toolchainv1alpha1.TierTemplateRevision, error) {
+	t.Logf("waiting for ttrs to match criteria for tier '%s'", tierName)
+	var ttrs []toolchainv1alpha1.TierTemplateRevision
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
+		if err := a.Client.List(ctx, objs, client.InNamespace(a.Namespace), client.MatchingLabels{toolchainv1alpha1.TierLabelKey: tierName}); err != nil {
+			return false, err
+		}
+		if len(objs.Items) == 0 {
+			return false, nil
+		}
+		ttrs = objs.Items
+		return matchTierTemplateRevisionWaitCriterion(ttrs, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttrs, tierName, criteria...)
+	}
+	return ttrs, err
+}
+
 // NSTemplateTierWaitCriterion a struct to compare with an expected NSTemplateTier
 type NSTemplateTierWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateTier) bool
