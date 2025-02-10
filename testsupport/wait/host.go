@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -1734,7 +1733,7 @@ func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL 
 func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, userToken, proxyURL string) (client.Client, error) {
 	proxyKubeConfig := a.CreateAPIProxyConfig(t, userToken, proxyURL)
 
-	s := scheme.Scheme
+	s := runtime.NewScheme()
 	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
 	require.NoError(t, builder.AddToScheme(s))
 
