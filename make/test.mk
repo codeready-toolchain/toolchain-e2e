@@ -329,7 +329,6 @@ ifneq (${MEMBER_REPO_PATH},"")
 endif
 ifeq ($(or ${MEMBER_REPO_PATH}, ""), "")
 		$(eval MEMBER_REPO_PATH_PARAM = -mr ${MEMBER_OPERATOR_CLONE_DIR})
-    endif
 endif
 ifneq (${FORCED_TAG},"")
     ifneq (${FORCED_TAG},)
@@ -357,7 +356,6 @@ ifneq (${REG_REPO_PATH},"")
 endif
 ifeq ($(or ${REG_REPO_PATH}, ""), "")
 		$(eval REG_REPO_PATH_PARAM = -rr ${REGISTRATION_SERVICE_CLONE_DIR})
-    endif
 endif
 ifneq (${HOST_REPO_PATH},"")
     ifneq (${HOST_REPO_PATH},)
@@ -366,7 +364,6 @@ ifneq (${HOST_REPO_PATH},"")
 endif
 ifeq ($(or ${HOST_REPO_PATH}, ""), "")
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_OPERATOR_CLONE_DIR})
-    endif
 endif
 ifneq (${FORCED_TAG},"")
     ifneq (${FORCED_TAG},)
