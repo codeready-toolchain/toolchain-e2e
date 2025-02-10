@@ -686,13 +686,13 @@ func (a *HostAwaitility) WaitAndVerifyThatUserSignupIsNotCreated(t *testing.T, n
 
 // WaitForBannedUser waits until there is a BannedUser available with the given email hash
 // !!! WARNING: for now, just used for WA
-func (a *HostAwaitility) WaitForBannedUser(t *testing.T, userEmailHash string) (*toolchainv1alpha1.BannedUser, error) {
+func (a *HostAwaitility) WaitForBannedUser(t *testing.T, userEmailHash string, timeout time.Duration) (*toolchainv1alpha1.BannedUser, error) {
 	t.Logf("waiting for BannedUser for user email hash '%s' in namespace '%s'", userEmailHash, a.Namespace)
 	var bannedUser *toolchainv1alpha1.BannedUser
 	emailHashLabelMatch := client.MatchingLabels(map[string]string{
 		toolchainv1alpha1.BannedUserEmailHashLabelKey: userEmailHash,
 	})
-	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, timeout, true, func(ctx context.Context) (done bool, err error) {
 		bannedUserList := &toolchainv1alpha1.BannedUserList{}
 		if err := a.Client.List(ctx, bannedUserList, emailHashLabelMatch, client.InNamespace(a.Namespace)); err != nil {
 			return false, err
