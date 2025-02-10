@@ -9,7 +9,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v44/github"
-	"golang.org/x/oauth2"
 	"k8s.io/klog/v2"
 )
 
@@ -25,8 +24,7 @@ type PullRequestMetadata struct {
 
 // listOpenPRs lists open pull requests for the given repository using the provided GitHub token.
 func listOpenPRs(owner, repo string) ([]*github.PullRequest, error) {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: os.Getenv("GITHUB_TOKEN")})
-	client := github.NewClient(oauth2.NewClient(context.Background(), ts))
+	client := github.NewClient(nil) // No authentication needed
 
 	// list the open pull requests
 	opt := &github.PullRequestListOptions{
