@@ -91,6 +91,7 @@ source scripts/ci/manage-operator.sh
 if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=member-operator
     PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
+    REPOSITORY_PATH=${MEMBER_REPO_PATH}
     # get_repo
     # set_tags
 
