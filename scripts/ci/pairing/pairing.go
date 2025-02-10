@@ -43,6 +43,9 @@ func listOpenPRs(owner, repo string) ([]*github.PullRequest, error) {
 
 // shouldPair returns true if ...
 func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchName string) bool {
+	log.Printf("currentRemoteName", currentRemoteName)
+	log.Printf("currentBranchName", currentBranchName)
+
 	pullRequests, err := listOpenPRs(orgForPairing, repoForPairing)
 	if err != nil {
 		log.Fatalf("Error listing pull requests: %v", err)
@@ -66,7 +69,7 @@ func getCurrentPRInfo() (*PullRequestMetadata, error) {
 	log.Printf("GITHUB_HEAD_REF: '%s'", os.Getenv("GITHUB_HEAD_REF"))
 
 	pr := &PullRequestMetadata{
-		RepoName:   os.Getenv("AUTHOR"),
+		RemoteName: os.Getenv("AUTHOR"),
 		Number:     os.Getenv("PULL_NUMBER"),
 		BranchName: os.Getenv("GITHUB_HEAD_REF"),
 	}
