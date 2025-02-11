@@ -23,6 +23,7 @@ import (
 	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -279,6 +280,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		userv1.AddToScheme,
 		netv1.AddToScheme,
 		admv1.AddToScheme,
+		batchv1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
