@@ -168,7 +168,7 @@ func duplicateTierTemplate(t *testing.T, hostAwait *wait.HostAwaitility, namespa
 	newTierTemplate := &toolchainv1alpha1.TierTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      fmt.Sprintf("%sfrom%s", tierName, origTierTemplate.Name),
+			Name:      DuplicatedTierName(tierName, origTierTemplate.Name),
 			Labels:    map[string]string{"producer": "toolchain-e2e"},
 		},
 		Spec: origTierTemplate.Spec,
@@ -185,6 +185,10 @@ func duplicateTierTemplate(t *testing.T, hostAwait *wait.HostAwaitility, namespa
 		}
 	}
 	return newTierTemplate.Name, nil
+}
+
+func DuplicatedTierName(tierName, origTierTemplateName string) string {
+	return fmt.Sprintf("%sfrom%s", tierName, origTierTemplateName)
 }
 
 func MoveSpaceToTier(t *testing.T, hostAwait *wait.HostAwaitility, spacename, tierName string) {

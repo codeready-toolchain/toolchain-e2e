@@ -1154,7 +1154,7 @@ func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriter
 				return false
 			}
 			for _, tierTemplateRef := range revisions {
-				if _, found := actual.Status.Revisions[tierTemplateRef]; !found {
+				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
 					return false
 				}
 			}
