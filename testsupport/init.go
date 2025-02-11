@@ -20,6 +20,7 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -259,7 +260,7 @@ func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfi
 }
 
 func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
-	s := scheme.Scheme
+	s := runtime.NewScheme()
 	builder := append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme,
 		userv1.Install,
 		templatev1.Install,
@@ -270,6 +271,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		metrics.AddToScheme,
 		appstudiov1.AddToScheme,
 		rbacv1.AddToScheme,
+		appsv1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
