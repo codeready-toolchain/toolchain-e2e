@@ -92,7 +92,8 @@ source scripts/ci/manage-operator.sh
 if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=registration-service
     PROVIDED_REPOSITORY_PATH=${REG_REPO_PATH}
-    get_repo
+    REPOSITORY_PATH=${REG_REPO_PATH}
+    # get_repo
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
@@ -104,7 +105,8 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
 
     REPOSITORY_NAME=host-operator
     PROVIDED_REPOSITORY_PATH=${HOST_REPO_PATH}
-    get_repo
+    REPOSITORY_PATH=${HOST_REPO_PATH}
+    # get_repo
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
