@@ -18,6 +18,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	admv1 "k8s.io/api/admissionregistration/v1"
@@ -281,6 +282,7 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		netv1.AddToScheme,
 		admv1.AddToScheme,
 		batchv1.AddToScheme,
+		operatorsv1alpha1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
