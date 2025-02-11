@@ -20,10 +20,13 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -272,6 +275,10 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		appstudiov1.AddToScheme,
 		rbacv1.AddToScheme,
 		appsv1.AddToScheme,
+		schedulingv1.AddToScheme,
+		userv1.AddToScheme,
+		netv1.AddToScheme,
+		admv1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
