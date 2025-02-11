@@ -24,6 +24,7 @@ import (
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1828,7 +1829,7 @@ func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, userToken, proxyURL 
 	proxyKubeConfig := a.CreateAPIProxyConfig(t, userToken, proxyURL)
 
 	s := runtime.NewScheme()
-	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
+	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme, appsv1.AddToScheme)
 	require.NoError(t, builder.AddToScheme(s))
 
 	// Getting the proxy client can fail from time to time if the proxy's informer cache has not been
