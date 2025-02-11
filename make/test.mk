@@ -356,9 +356,9 @@ ifneq (${REG_REPO_PATH},"")
 		$(eval REG_REPO_PATH_PARAM = -rr ${REG_REPO_PATH})
     endif
 endif
-ifeq ($(or ${REG_REPO_PATH}, ""), "")
-		$(eval REG_REPO_PATH_PARAM = -rr ${REGISTRATION_SERVICE_CLONE_DIR})
-endif
+# ifeq ($(or ${REG_REPO_PATH}, ""), "")
+# 		$(eval REG_REPO_PATH_PARAM = -rr ${REGISTRATION_SERVICE_CLONE_DIR})
+# endif
 ifneq (${HOST_REPO_PATH},"")
     ifneq (${HOST_REPO_PATH},)
 		$(eval HOST_REPO_PATH_PARAM = -hr ${HOST_REPO_PATH})
