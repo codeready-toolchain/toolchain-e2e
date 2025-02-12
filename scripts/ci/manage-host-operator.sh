@@ -97,6 +97,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
+        cd ${REG_REPO_PATH} && ls -la
         push_image
         REG_SERV_IMAGE_LOC=${IMAGE_LOC}
         REG_REPO_PATH=${REPOSITORY_PATH}
