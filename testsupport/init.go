@@ -18,11 +18,17 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	admv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -259,7 +265,7 @@ func getMemberAwaitility(t *testing.T, hostAwait *wait.HostAwaitility, restconfi
 }
 
 func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
-	s := scheme.Scheme
+	s := runtime.NewScheme()
 	builder := append(runtime.SchemeBuilder{}, toolchainv1alpha1.AddToScheme,
 		userv1.Install,
 		templatev1.Install,
@@ -270,6 +276,13 @@ func schemeWithAllAPIs(t *testing.T) *runtime.Scheme {
 		metrics.AddToScheme,
 		appstudiov1.AddToScheme,
 		rbacv1.AddToScheme,
+		appsv1.AddToScheme,
+		schedulingv1.AddToScheme,
+		userv1.AddToScheme,
+		netv1.AddToScheme,
+		admv1.AddToScheme,
+		batchv1.AddToScheme,
+		operatorsv1alpha1.AddToScheme,
 	)
 	require.NoError(t, builder.AddToScheme(s))
 	return s
