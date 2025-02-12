@@ -80,6 +80,7 @@ func getCurrentPRInfo() (*PullRequestMetadata, error) {
 }
 
 func clone(cloneDir, org, repo, prRemoteName, prBranchName string) {
+	fmt.Println("cloneDir", cloneDir)
 	branch := "master"
 
 	cloneDirInfo, err := os.Stat(cloneDir)
@@ -107,11 +108,12 @@ func clone(cloneDir, org, repo, prRemoteName, prBranchName string) {
 
 	log.Printf("cloning '%s' with git ref '%s'", url, refName)
 
-	_, _ = git.PlainClone(cloneDir, false, &git.CloneOptions{
+	_, err = git.PlainClone(cloneDir, false, &git.CloneOptions{
 		URL:           url,
 		ReferenceName: plumbing.ReferenceName(refName),
 		Progress:      os.Stdout,
 	})
+	fmt.Println("err", err)
 }
 
 func main() {
