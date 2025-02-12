@@ -453,12 +453,22 @@ func TestTierTemplateRevision(t *testing.T) {
 			require.NoError(t, err)
 
 			// then
-			// an additional TTR will be created
-			// TODO check for exact match or remove the +1 once we implement the cleanup controller
-			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
-			require.NoError(t, err)
 			// retrieve new tier once the ttrs were created and the revision field updated
-			customTier.NSTemplateTier, err = hostAwait.WaitForNSTemplateTier(t, customTier.Name)
+			customTier.NSTemplateTier, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
+				WithNameMatching(customTier.Name, func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+					for _, oldValue := range updatedCustomTier.Status.Revisions {
+						for _, actualValue := range actual.Status.Revisions {
+							if oldValue == actualValue {
+								return false
+							}
+						}
+					}
+					return true
+				})
+			require.NoError(t, err)
+			// an additional TTRs will be created
+			// TODO check for exact match and remove the 2*len(ttrs)+1 once we implement the cleanup controller
+			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(2*len(ttrs)+1))
 			require.NoError(t, err)
 			// and the parameter is updated in all the ttrs
 			checkThatTTRsHaveParameter(t, customTier, ttrsWithNewParams, toolchainv1alpha1.Parameter{
