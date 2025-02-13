@@ -97,10 +97,9 @@ source scripts/ci/manage-operator.sh
 
 if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=member-operator
-    PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
     REPOSITORY_PATH=${MEMBER_REPO_PATH}
     
-    ${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository member-operator
+    ${PAIRING_EXEC} -clone-dir ${REPOSITORY_PATH} -organization codeready-toolchain -repository member-operator
 
     set_tags
 
@@ -108,8 +107,7 @@ if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g')
         push_image
 
         OPERATOR_IMAGE_LOC=${IMAGE_LOC}
-        echo PROVIDED_REPOSITORY_PATH=${PROVIDED_REPOSITORY_PATH}
-        make -C ${PROVIDED_REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE=${OPERATOR_IMAGE_LOC}
+        make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE=${OPERATOR_IMAGE_LOC}
     fi
 else
     INDEX_IMAGE_LOC="quay.io/codeready-toolchain/member-operator-index:latest"

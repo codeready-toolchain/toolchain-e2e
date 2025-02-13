@@ -98,10 +98,9 @@ source scripts/ci/manage-operator.sh
 
 if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=registration-service
-    PROVIDED_REPOSITORY_PATH=${REG_REPO_PATH}
     REPOSITORY_PATH=${REG_REPO_PATH}
     # get_repo
-    ${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository registration-service
+    ${PAIRING_EXEC} -clone-dir ${REPOSITORY_PATH} -organization codeready-toolchain -repository registration-service
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
@@ -113,17 +112,16 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
 
 
     REPOSITORY_NAME=host-operator
-    PROVIDED_REPOSITORY_PATH=${HOST_REPO_PATH}
     REPOSITORY_PATH=${HOST_REPO_PATH}
 
-    ${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository host-operator
+    ${PAIRING_EXEC} -clone-dir ${REPOSITORY_PATH} -organization codeready-toolchain -repository host-operator
 
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
         push_image
         OPERATOR_IMAGE_LOC=${IMAGE_LOC}
-        make -C ${PROVIDED_REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} OTHER_REPO_PATH=${REG_REPO_PATH} OTHER_REPO_IMAGE_LOC=${REG_SERV_IMAGE_LOC} IMAGE=${OPERATOR_IMAGE_LOC}
+        make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} OTHER_REPO_PATH=${REG_REPO_PATH} OTHER_REPO_IMAGE_LOC=${REG_SERV_IMAGE_LOC} IMAGE=${OPERATOR_IMAGE_LOC}
     fi
 else
     INDEX_IMAGE_LOC="quay.io/codeready-toolchain/host-operator-index:latest"
