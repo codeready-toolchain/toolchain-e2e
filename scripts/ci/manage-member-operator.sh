@@ -11,6 +11,7 @@ user_help () {
     echo "-mr, --member-repo-path   Path to the member operator repo"
     echo "-ds, --date-suffix        Date suffix to be added to some resources that are created"
     echo "-ft, --forced-tag         Forces a tag to be set to all built images. In the case deployment the tag is used for index image in the created CatalogSource"
+    echo "-pd, --pairing-dir        Directory for pairing-related resources"
     echo "-h,  --help               To show this help text"
     echo ""
     exit 0
@@ -67,6 +68,11 @@ read_arguments() {
                     FORCED_TAG=$1
                     shift
                     ;;
+                -pd|--pairing-dir)
+                    shift
+                    PAIRING_DIR=$1
+                    shift
+                    ;;
                 *)
                    echo "$1 is not a recognized flag!" >> /dev/stderr
                    user_help
@@ -75,6 +81,7 @@ read_arguments() {
           esac
     done
 }
+
 
 set -e
 

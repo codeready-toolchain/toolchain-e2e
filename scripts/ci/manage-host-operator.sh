@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 user_help () {
     echo "Publishes host operator to quay and deploys it to an OpenShift cluster"
     echo "options:"
@@ -8,9 +9,10 @@ user_help () {
     echo "-io, --install-operator  Installs the operator to an OpenShift cluster"
     echo "-hn, --host-namespace    Namespace the operator should be installed to"
     echo "-hr, --host-repo-path    Path to the host operator repo"
-    echo "-rr, --reg-repo-path     Path to the registation service repo"
+    echo "-rr, --reg-repo-path     Path to the registration service repo"
     echo "-ds, --date-suffix       Date suffix to be added to some resources that are created"
     echo "-ft, --forced-tag        Forces a tag to be set to all built images. In the case deployment the tag is used for index image in the created CatalogSource"
+    echo "-pd, --pairing-dir       Directory for pairing-related resources"
     echo "-h,  --help              To show this help text"
     echo ""
     exit 0
@@ -66,6 +68,11 @@ read_arguments() {
                 -ft|--forced-tag)
                     shift
                     FORCED_TAG=$1
+                    shift
+                    ;;
+                -pd|--pairing-dir)
+                    shift
+                    PAIRING_DIR=$1
                     shift
                     ;;
                 *)
