@@ -73,7 +73,7 @@ test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: prepare-and-deploy-e2e
-## Prepare and Deploy e2e environment. Usefull to reset without having to run a test
+## Prepare and Deploy e2e environment. Useful to reset without having to run a test
 prepare-and-deploy-e2e: prepare-e2e deploy-e2e
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 

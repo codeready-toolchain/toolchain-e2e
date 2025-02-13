@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 user_help () {
     echo "Publishes host operator to quay and deploys it to an OpenShift cluster"
     echo "options:"
@@ -111,7 +110,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
 
     REPOSITORY_NAME=host-operator
     PROVIDED_REPOSITORY_PATH=${HOST_REPO_PATH}
-    get_repo()
+    get_repo
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
