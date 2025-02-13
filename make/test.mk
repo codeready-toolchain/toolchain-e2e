@@ -33,8 +33,8 @@ endif
 
 E2E_TEST_EXECUTION ?= true
 
-ifneq ($(IS_OSD),true)
-LETS_ENCRYPT_PARAM := --lets-encrypt=false
+ifeq ($(DISABLE_KUBE_CLIENT_TLS_VERIFY),true)
+KSCTL_TLS_VERIFY_PARAM := --insecure-skip-tls-verify=true
 endif
 
 TESTS_RUN_FILTER_REGEXP ?= ""
@@ -78,7 +78,7 @@ e2e-migration-verify:
 
 .PHONY: e2e-deploy-latest
 e2e-deploy-latest:
-	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true LETS_ENCRYPT_PARAM=${LETS_ENCRYPT_PARAM}
+	$(MAKE) get-publish-install-and-register-operators MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} ENVIRONMENT=${ENVIRONMENT} INSTALL_OPERATOR=${INSTALL_OPERATOR} DEPLOY_LATEST=true KSCTL_TLS_VERIFY_PARAM=${KSCTL_TLS_VERIFY_PARAM}
 
 .PHONY: prepare-e2e
 prepare-e2e: build clean-e2e-files
@@ -263,14 +263,14 @@ print-operator-logs:
 
 .PHONY: setup-toolchainclusters
 setup-toolchainclusters: ksctl
-	${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} -y
-	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS_2)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${LETS_ENCRYPT_PARAM} --name-suffix="2" -y ; fi
+	${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${KSCTL_TLS_VERIFY_PARAM} -y
+	if [[ ${SECOND_MEMBER_MODE} == true ]]; then ${KSCTL_BIN_DIR}ksctl adm register-member --host-ns="$(HOST_NS)" --member-ns="$(MEMBER_NS_2)" --host-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --member-kubeconfig="$(or ${KUBECONFIG}, ${HOME}/.kube/config)" ${KSCTL_TLS_VERIFY_PARAM} --name-suffix="2" -y ; fi
 
 
-.PHONY: deploy-single-member-e2e
-## Deploy operators in e2e mode with single member without running tests
-deploy-single-member-e2e: 
-	$(MAKE) prepare-and-deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} MEMBER_NS=${DEFAULT_MEMBER_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS}
+.PHONY: deploy-single-member-e2e-latest
+## Deploy operators using the latest and greatest images of Toolchain operators in e2e mode with single member without running tests
+deploy-single-member-e2e-latest: 
+	$(MAKE) prepare-and-deploy-e2e SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} MEMBER_NS=${DEFAULT_MEMBER_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} DEPLOY_LATEST=true
 
 
 ###########################################################

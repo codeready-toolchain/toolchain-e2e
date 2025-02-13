@@ -408,8 +408,8 @@ func TestSignupOK(t *testing.T) {
 		mp := NewHTTPRequest(t).
 			InvokeEndpoint("POST", route+"/api/v1/signup", token, "", http.StatusConflict).
 			UnmarshalMap()
-		assert.Equal(t, fmt.Sprintf("Operation cannot be fulfilled on  \"\": UserSignup [id: %s; username: %s]. Unable to create UserSignup because there is already an active UserSignup with such ID",
-			identity.ID, identity.Username), mp["message"])
+		assert.Equal(t, fmt.Sprintf("Operation cannot be fulfilled on  \"\": UserSignup [username: %s]. Unable to create UserSignup because there is already an active UserSignup with such a username",
+			identity.Username), mp["message"])
 		assert.Equal(t, "error creating UserSignup resource", mp["details"])
 
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).

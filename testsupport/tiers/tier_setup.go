@@ -47,13 +47,13 @@ func WithClusterResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateT
 	}
 }
 
-func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, modifiers ...TierTemplateModifier) CustomNSTemplateTierModifier {
 	return func(hostAwait *wait.HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.NamespaceResourcesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
 		tier.Spec.Namespaces = make([]toolchainv1alpha1.NSTemplateTierNamespace, len(otherTier.Spec.Namespaces))
 		for i, def := range otherTier.Spec.Namespaces {
-			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
+			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef, modifiers...)
 			if err != nil {
 				return err
 			}
@@ -63,13 +63,13 @@ func WithNamespaceResources(t *testing.T, otherTier *toolchainv1alpha1.NSTemplat
 	}
 }
 
-func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) CustomNSTemplateTierModifier {
+func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier, modifiers ...TierTemplateModifier) CustomNSTemplateTierModifier {
 	return func(hostAwait *wait.HostAwaitility, tier *CustomNSTemplateTier) error {
 		tier.SpaceRolesTier = otherTier
 		// configure the "wrapped" NSTemplateTier
 		tier.Spec.SpaceRoles = make(map[string]toolchainv1alpha1.NSTemplateTierSpaceRole, len(otherTier.Spec.SpaceRoles))
 		for name, def := range otherTier.Spec.SpaceRoles {
-			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef)
+			tmplRef, err := duplicateTierTemplate(t, hostAwait, otherTier.Namespace, tier.Name, def.TemplateRef, modifiers...)
 			if err != nil {
 				return err
 			}
@@ -77,6 +77,30 @@ func WithSpaceRoles(t *testing.T, otherTier *toolchainv1alpha1.NSTemplateTier) C
 				TemplateRef: tmplRef,
 			}
 		}
+		return nil
+	}
+}
+
+func WithParameter(name, value string) CustomNSTemplateTierModifier {
+	return func(hostAwait *wait.HostAwaitility, tier *CustomNSTemplateTier) error {
+		if tier.Spec.Parameters == nil {
+			tier.Spec.Parameters = []toolchainv1alpha1.Parameter{}
+		}
+
+		for i, param := range tier.Spec.Parameters {
+			if param.Name == name {
+				// if the param already exists, let's set the new value
+				tier.Spec.Parameters[i].Value = value
+				return nil
+			}
+		}
+		// if it's a new parameter, let's append it to the existing ones
+		tier.Spec.Parameters = append(tier.Spec.Parameters,
+			toolchainv1alpha1.Parameter{
+				Name:  name,
+				Value: value,
+			},
+		)
 		return nil
 	}
 }
@@ -128,7 +152,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, ti
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
 	}
-	_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
+	tier.NSTemplateTier, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
 		Update(tier.NSTemplateTier.Name, hostAwait.Namespace, func(nstt *toolchainv1alpha1.NSTemplateTier) {
 			nstt.Spec = tier.NSTemplateTier.Spec
 		})
@@ -144,7 +168,7 @@ func duplicateTierTemplate(t *testing.T, hostAwait *wait.HostAwaitility, namespa
 	newTierTemplate := &toolchainv1alpha1.TierTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      fmt.Sprintf("%sfrom%s", tierName, origTierTemplate.Name),
+			Name:      DuplicatedTierName(tierName, origTierTemplate.Name),
 			Labels:    map[string]string{"producer": "toolchain-e2e"},
 		},
 		Spec: origTierTemplate.Spec,
@@ -161,6 +185,10 @@ func duplicateTierTemplate(t *testing.T, hostAwait *wait.HostAwaitility, namespa
 		}
 	}
 	return newTierTemplate.Name, nil
+}
+
+func DuplicatedTierName(tierName, origTierTemplateName string) string {
+	return fmt.Sprintf("%sfrom%s", tierName, origTierTemplateName)
 }
 
 func MoveSpaceToTier(t *testing.T, hostAwait *wait.HostAwaitility, spacename, tierName string) {

@@ -859,7 +859,7 @@ func (a *MemberAwaitility) WaitForNamespace(t *testing.T, owner, tmplRef, tierNa
 			return nil, err
 		}
 		for _, c := range criteria {
-			t.Logf(c.Diff(ns))
+			t.Logf("%s", c.Diff(ns))
 		}
 		return nil, err
 	}
@@ -1318,7 +1318,7 @@ func IdlerConditions(expected ...toolchainv1alpha1.Condition) IdlerWaitCriterion
 func IdlerHasTimeoutSeconds(timeoutSeconds int) IdlerWaitCriterion {
 	return IdlerWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Idler) bool {
-			return int32(timeoutSeconds) == actual.Spec.TimeoutSeconds
+			return int32(timeoutSeconds) == actual.Spec.TimeoutSeconds //nolint:gosec
 		},
 		Diff: func(actual *toolchainv1alpha1.Idler) string {
 			return fmt.Sprintf("expected Idler timeoutSeconds to be '%d' but it was '%d'", timeoutSeconds, actual.Spec.TimeoutSeconds)
@@ -1657,7 +1657,7 @@ func WithOriginalPriorityClass() PodWaitCriterion {
 }
 
 func checkPriorityClass(pod *corev1.Pod, name string, priority int) bool {
-	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority)
+	return pod.Spec.PriorityClassName == name && *pod.Spec.Priority == int32(priority) //nolint:gosec
 }
 
 // WaitUntilWebhookDeleted waits until the webhook app in member namespace is deleted (ie, is not found)

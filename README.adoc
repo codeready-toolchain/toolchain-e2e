@@ -7,7 +7,7 @@ This repo contains e2e tests for https://github.com/codeready-toolchain/host-ope
 
 == Build
 
-Requires Go version 1.20.x (1.20.11 or higher) - download for your development environment https://golang.org/dl/[here].
+Requires Go version 1.21.x (1.21.13 or higher) - download for your development environment https://golang.org/dl/[here].
 
 This repository uses https://github.com/golang/go/wiki/Modules[Go modules].
 
@@ -47,7 +47,7 @@ NOTE: You can also pair a toolchain-e2e PR with a PR from the https://github.com
 
 ==== Running in a Development Environment
 
-See the procedure to install the Dev Sandbox in a development environment link:dev_install.adoc[here].
+See the procedure to install the Dev Sandbox in a development environment https://kubesaw.github.io/contributing/[here].
 
 === Running End-to-End Tests
 
@@ -153,7 +153,7 @@ All e2e resources (host operator, member operator, registration-service, CRDs, e
 
 * `make dev-deploy-e2e` - deploys the same resources as `make test-e2e` in dev environment but doesn't run tests.
 
-* `make deploy-toolchain-resources-e2e` - deploys the same resources as `make test-e2e` but doesn't run tests.
+* `make deploy-single-member-e2e-latest` - deploys the same resources (using the latest and greatest images of Toolchain operators) as `make test-e2e` but with only one member and doesn't run tests.
 
 NOTE: By default these targets deploy resources to `toolchain-host-operator` and `toolchain-member-operator` namespaces.
 

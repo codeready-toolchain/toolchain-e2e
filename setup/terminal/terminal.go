@@ -54,7 +54,7 @@ type DefaultTerminal struct {
 }
 
 // Debugf prints a message (if verbose was enabled)
-func (t DefaultTerminal) Debugf(msg string, args ...interface{}) {
+func (t *DefaultTerminal) Debugf(msg string, args ...interface{}) {
 	if !t.verbose {
 		return
 	}
@@ -66,7 +66,7 @@ func (t DefaultTerminal) Debugf(msg string, args ...interface{}) {
 }
 
 // Infof displays a message with the default color
-func (t DefaultTerminal) Infof(msg string, args ...interface{}) {
+func (t *DefaultTerminal) Infof(msg string, args ...interface{}) {
 	if msg == "" {
 		fmt.Fprintln(t.OutOrStdout(), "")
 		return
@@ -75,12 +75,12 @@ func (t DefaultTerminal) Infof(msg string, args ...interface{}) {
 }
 
 // Errorf prints a message with the red color
-func (t DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
+func (t *DefaultTerminal) Errorf(err error, msg string, args ...interface{}) {
 	color.New(color.FgRed).Fprintln(t.OutOrStdout(), fmt.Sprintf("%s: %s", fmt.Sprintf(msg, args...), err.Error())) // nolint:errcheck
 }
 
 // Fatalf prints a message with the red color and exits the program with a `1` return code
-func (t DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
+func (t *DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
 	defer os.Exit(1)
 	for _, hook := range t.fatalExitHooks {
 		hook()
@@ -89,7 +89,7 @@ func (t DefaultTerminal) Fatalf(err error, msg string, args ...interface{}) {
 }
 
 // PromptBoolf prints a message and waits for the user's boolean response
-func (t DefaultTerminal) PromptBoolf(msg string, args ...interface{}) bool {
+func (t *DefaultTerminal) PromptBoolf(msg string, args ...interface{}) bool {
 	fmt.Fprintln(t.OutOrStdout(), fmt.Sprintf(msg, args...))
 	t.InOrStdin()
 

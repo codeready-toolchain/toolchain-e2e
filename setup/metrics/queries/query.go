@@ -30,7 +30,7 @@ type BaseQuery struct {
 	resultType ResultType
 }
 
-func (b BaseQuery) Name() string {
+func (b *BaseQuery) Name() string {
 	return b.name
 }
 
@@ -38,7 +38,7 @@ func (b *BaseQuery) Execute() (model.Value, prometheus.Warnings, error) {
 	return b.apiClient.Query(context.TODO(), b.query, time.Now())
 }
 
-func (b BaseQuery) ResultType() string {
+func (b *BaseQuery) ResultType() string {
 	return string(b.resultType)
 }
 

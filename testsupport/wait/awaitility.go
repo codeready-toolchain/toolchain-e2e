@@ -416,23 +416,12 @@ func (a *Awaitility) CreateNamespace(t *testing.T, name string) {
 			Name: name,
 		},
 	}
-	err := a.Client.Create(context.TODO(), ns)
+	err := a.CreateWithCleanup(t, ns)
 	require.NoError(t, err)
-	err = wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
-		ns := &corev1.Namespace{}
-		if err := a.Client.Get(context.TODO(), types.NamespacedName{Name: name}, ns); err != nil && apierrors.IsNotFound(err) {
-			return false, nil
-		} else if err != nil {
-			return false, err
-		}
-		return ns.Status.Phase == corev1.NamespaceActive, nil
+	_, err = For(t, a, &corev1.Namespace{}).WithNameMatching(name, func(c *corev1.Namespace) bool {
+		return ns.Status.Phase == corev1.NamespaceActive
 	})
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := a.Client.Delete(context.TODO(), ns); err != nil && !apierrors.IsNotFound(err) {
-			require.NoError(t, err)
-		}
-	})
 }
 
 // WaitForDeploymentToGetReady waits until the deployment with the given name is ready together with the given number of replicas
@@ -617,7 +606,7 @@ func (a *Awaitility) Clean(t *testing.T) {
 }
 
 func (a *Awaitility) listAndPrint(t *testing.T, resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) {
-	t.Logf(a.listAndReturnContent(resourceKind, namespace, list, additionalOptions...))
+	t.Logf("%s", a.listAndReturnContent(resourceKind, namespace, list, additionalOptions...))
 }
 
 func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list client.ObjectList, additionalOptions ...client.ListOption) string {
@@ -633,7 +622,7 @@ func (a *Awaitility) listAndReturnContent(resourceKind, namespace string, list c
 }
 
 func (a *Awaitility) GetAndPrint(t *testing.T, resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) {
-	t.Logf(a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
+	t.Logf("%s", a.getAndReturnContent(resourceKind, namespace, name, obj, additionalOptions...))
 }
 
 func (a *Awaitility) getAndReturnContent(resourceKind, namespace, name string, obj client.Object, additionalOptions ...client.GetOption) string {
@@ -730,6 +719,22 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 		w.t.Logf(sb.String(), args...)
 	}
 	return returnedObject, err
+}
+
+// WithNameMatching waits for a single object with the provided name in the namespace of the awaitality that additionally
+// matches the provided predicate function.
+func (w *Waiter[T]) WithNameMatching(name string, predicate func(T) bool) (T, error) {
+	return w.WithNameThat(name, &customPredicate[T]{
+		predicate: predicate,
+	})
+}
+
+type customPredicate[T client.Object] struct {
+	predicate func(T) bool
+}
+
+func (p *customPredicate[T]) Matches(object client.Object) bool {
+	return p.predicate(object.(T))
 }
 
 // WithNameThat waits for a single object with the provided name in the namespace of the awaitality that additionally
