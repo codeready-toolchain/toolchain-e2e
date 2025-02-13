@@ -101,7 +101,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     PROVIDED_REPOSITORY_PATH=${REG_REPO_PATH}
     REPOSITORY_PATH=${REG_REPO_PATH}
     # get_repo
-    ./${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository registration-service
+    ${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository registration-service
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
@@ -116,7 +116,7 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     PROVIDED_REPOSITORY_PATH=${HOST_REPO_PATH}
     REPOSITORY_PATH=${HOST_REPO_PATH}
 
-    ./${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository host-operator
+    ${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository host-operator
 
     set_tags
 
