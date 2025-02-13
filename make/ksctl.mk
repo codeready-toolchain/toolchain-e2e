@@ -18,9 +18,6 @@ get-ksctl-and-install:
 ifeq ($(strip $(KSCTL_REPO_PATH)),)
     ifneq ($(CI_DISABLE_PAIRING),true)
 		${PAIRING_EXEC} -clone-dir ${KSCTL_REPO_PATH} -organization kubesaw -repository ksctl
-        else
-			@echo "Either not running in openshift-ci or not in the codeready-toolchain org - no pairing"
-        endif
     else
 		@echo "Pairing explicitly disabled"
     endif
