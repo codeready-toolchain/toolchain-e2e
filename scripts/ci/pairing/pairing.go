@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -117,11 +118,19 @@ func clone(cloneDir, org, repo, prRemoteName, prBranchName string) {
 }
 
 func main() {
-	HostOperatorCloneDir := os.Getenv("HOST_OPERATOR_CLONE_DIR")
-	fmt.Println("HostOperatorCloneDir", HostOperatorCloneDir)
-	MemberOperatorCloneDir := os.Getenv("MEMBER_OPERATOR_CLONE_DIR")
-	RegistrationServiceCloneDir := os.Getenv("REGISTRATION_SERVICE_CLONE_DIR")
-	KsctlCloneDir := os.Getenv("KSCTL_CLONE_DIR")
+	cloneDir := flag.String("clone-dir", "", "Directory to clone into")
+	organization := flag.String("organization", "", "Organization for the repository")
+	repository := flag.String("repository", "", "Repository to clone")
+
+	// Parse the command-line flags
+	flag.Parse()
+
+	if *cloneDir == "" || *organization == "" || *repository == "" {
+		fmt.Println("Error: cloneDir, organization, and repository must be provided.")
+		flag.Usage()
+		return
+	}
+
 	prBranchName := ""
 	prRemoteName := ""
 
@@ -134,8 +143,5 @@ func main() {
 		prRemoteName = pr.RemoteName
 	}
 
-	clone(HostOperatorCloneDir, "codeready-toolchain", "host-operator", prRemoteName, prBranchName)
-	clone(MemberOperatorCloneDir, "codeready-toolchain", "member-operator", prRemoteName, prBranchName)
-	clone(RegistrationServiceCloneDir, "codeready-toolchain", "registration-service", prRemoteName, prBranchName)
-	clone(KsctlCloneDir, "kubesaw", "ksctl", prRemoteName, prBranchName)
+	clone(*cloneDir, *organization, *repository, prRemoteName, prBranchName)
 }

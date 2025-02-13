@@ -92,7 +92,9 @@ if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g')
     REPOSITORY_NAME=member-operator
     PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
     REPOSITORY_PATH=${MEMBER_REPO_PATH}
-    # get_repo
+    
+    go run scripts/ci/pairing/pairing.go -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository member-operator
+
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then

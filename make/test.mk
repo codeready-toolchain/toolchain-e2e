@@ -50,7 +50,7 @@ pair-mechanism:
 	MEMBER_OPERATOR_CLONE_DIR=${MEMBER_OPERATOR_CLONE_DIR} \
 	REGISTRATION_SERVICE_CLONE_DIR=${REGISTRATION_SERVICE_CLONE_DIR} \
 	KSCTL_CLONE_DIR=${KSCTL_CLONE_DIR} \
-	go run scripts/ci/pairing/pairing.go
+	go run scripts/ci/pairing/pairing.go -cloneDir /tmp/host-operator -organization codeready-toolchain -repository host-operator
 
 .PHONY: test-e2e
 ## Run the e2e tests
