@@ -479,6 +479,41 @@ func TestTierTemplateRevision(t *testing.T) {
 
 	})
 
+	t.Run("when updating one tiertemplate the revisions field should be cleaned up from old entries", func(t *testing.T) {
+		// given
+		// we create new NSTemplateTiers (derived from `base`)
+		updatingTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "updatingtier", baseTier)
+		// we use the advanced tier only for copying the namespace and space role resources
+		advancedTier, err := hostAwait.WaitForNSTemplateTier(t, "advanced")
+		require.NoError(t, err)
+
+		// when
+		// we verify that the new tier exists and the revisions field was populated
+		tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
+			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "updatingtier").Flatten()))
+		require.NoError(t, err)
+		updatingTier.NSTemplateTier = tier
+		// and we update the tier with the "advanced" template refs for namespace and space role resources
+		tiers.UpdateCustomNSTemplateTier(t, hostAwait, updatingTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
+
+		// then
+		// we ensure the new revisions are made by namespace and spaceroles from advanced tier + clusterResources from the updating tier
+		advancedRefs := tiers.GetTemplateRefs(t, hostAwait, advancedTier.Name)
+		expectedRefs := []string{updatingTier.Spec.ClusterResources.TemplateRef}
+		// the duplicated tiertemplates have a different prefix
+		for _, tierTemplateName := range advancedRefs.SpaceRolesFlatten() {
+			expectedRefs = append(expectedRefs, tiers.DuplicatedTierName(updatingTier.Name, tierTemplateName))
+		}
+		for _, tierTemplateName := range advancedRefs.Namespaces {
+			expectedRefs = append(expectedRefs, tiers.DuplicatedTierName(updatingTier.Name, tierTemplateName))
+		}
+		updatedTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
+			wait.HasStatusTierTemplateRevisions(expectedRefs))
+		require.NoError(t, err)
+		// revisions values should be different compared to the previous ones
+		assert.NotEqual(t, updatingTier.Status.Revisions, updatedTier.Status.Revisions)
+	})
+
 }
 
 func getTestCRQ(podsCount string) unstructured.Unstructured {
