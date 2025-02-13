@@ -113,8 +113,17 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// create new NSTemplateTiers (derived from `base`)
 	cheesecakeTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cheesecake", baseTier)
+	newCheese, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
+	cheesecakeTier.NSTemplateTier = newCheese
+	require.NoError(t, err)
 	cookieTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cookie", baseTier)
+	newCookie, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
+	cookieTier.NSTemplateTier = newCookie
+	require.NoError(t, err)
 	chocolateTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "chocolate", baseTier)
+	newChocolate, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
+	chocolateTier.NSTemplateTier = newChocolate
+	require.NoError(t, err)
 
 	// first group of users: the "cheesecake users"
 	cheesecakeUsers := setupAccounts(t, awaitilities, cheesecakeTier, "cheesecakeuser%02d", memberAwait, count)
@@ -288,7 +297,8 @@ func TestFeatureToggles(t *testing.T) {
 			withClusterRoleBindings(t, base1nsTier, "test-feature"),
 			tiers.WithNamespaceResources(t, base1nsTier),
 			tiers.WithSpaceRoles(t, base1nsTier))
-		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
+		newTierRv, err := hostAwait.WaitForNSTemplateTier(t, tier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ftier").Flatten()))
+		tier.NSTemplateTier = newTierRv
 		require.NoError(t, err)
 
 		// when
