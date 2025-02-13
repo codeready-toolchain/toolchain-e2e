@@ -100,7 +100,7 @@ if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g')
     PROVIDED_REPOSITORY_PATH=${MEMBER_REPO_PATH}
     REPOSITORY_PATH=${MEMBER_REPO_PATH}
     
-    {PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository member-operator
+    ${PAIRING_EXEC} -clone-dir ${PROVIDED_REPOSITORY_PATH} -organization codeready-toolchain -repository member-operator
 
     set_tags
 
