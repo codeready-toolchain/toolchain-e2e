@@ -98,13 +98,11 @@ source scripts/ci/manage-operator.sh
 
 if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=registration-service
-    REPOSITORY_PATH=${REG_REPO_PATH}
-    # get_repo
-    ${PAIRING_EXEC} -clone-dir ${REPOSITORY_PATH} -organization codeready-toolchain -repository registration-service
+    PROVIDED_REPOSITORY_PATH=${REG_REPO_PATH}
+    get_repo
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
-        cd ${REG_REPO_PATH} && ls -la
         push_image
         REG_SERV_IMAGE_LOC=${IMAGE_LOC}
         REG_REPO_PATH=${REPOSITORY_PATH}
@@ -112,10 +110,8 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
 
 
     REPOSITORY_NAME=host-operator
-    REPOSITORY_PATH=${HOST_REPO_PATH}
-
-    ${PAIRING_EXEC} -clone-dir ${REPOSITORY_PATH} -organization codeready-toolchain -repository host-operator
-
+    PROVIDED_REPOSITORY_PATH=${HOST_REPO_PATH}
+    get_repo()
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then

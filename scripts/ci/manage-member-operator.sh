@@ -97,10 +97,8 @@ source scripts/ci/manage-operator.sh
 
 if [[ -n "${CI}${MEMBER_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} | sed 's/"//g') != "release" ]]; then
     REPOSITORY_NAME=member-operator
-    REPOSITORY_PATH=${MEMBER_REPO_PATH}
-    
-    ${PAIRING_EXEC} -clone-dir ${REPOSITORY_PATH} -organization codeready-toolchain -repository member-operator
-
+    PROVIDED_REPOSITORY_PATH=${REG_REPO_PATH}
+    get_repo()  
     set_tags
 
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
