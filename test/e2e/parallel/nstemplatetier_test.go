@@ -138,12 +138,21 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 
 	t.Log("updating tiers")
-	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources
+	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources and spaceroles
 	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
+	newCheeseCake, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, cheesecakeTier.Name).Flatten()))
+	cheesecakeTier.NSTemplateTier = newCheeseCake
+	require.NoError(t, err)
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
 	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
+	newCookieTier, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, cookieTier.Name).Flatten()))
+	cookieTier.NSTemplateTier = newCookieTier
+	require.NoError(t, err)
 	// and when updating the "chocolate" tier to the "advanced" template refs for namespace resources
 	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
+	newChocolateTier, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, chocolateTier.Name).Flatten()))
+	chocolateTier.NSTemplateTier = newChocolateTier
+	require.NoError(t, err)
 
 	// then
 	t.Log("verifying users and spaces after tier updates")
