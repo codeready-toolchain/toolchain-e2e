@@ -30,7 +30,9 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 	if err != nil {
 		return -1, err
 	}
-	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", restConfig.BearerToken))
+	if restConfig.BearerToken != "" {
+		request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", restConfig.BearerToken))
+	}
 	resp, err := client.Do(request)
 	if err != nil {
 		return -1, err
