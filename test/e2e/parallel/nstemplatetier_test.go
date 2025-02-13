@@ -113,15 +113,18 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// create new NSTemplateTiers (derived from `base`)
 	cheesecakeTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cheesecake", baseTier)
-	newCheese, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
+	newCheese, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name,
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
 	cheesecakeTier.NSTemplateTier = newCheese
 	require.NoError(t, err)
 	cookieTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cookie", baseTier)
-	newCookie, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
+	newCookie, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name,
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
 	cookieTier.NSTemplateTier = newCookie
 	require.NoError(t, err)
 	chocolateTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "chocolate", baseTier)
-	newChocolate, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
+	newChocolate, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name,
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
 	chocolateTier.NSTemplateTier = newChocolate
 	require.NoError(t, err)
 
@@ -140,19 +143,24 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	t.Log("updating tiers")
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources and spaceroles
 	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
-	newCheeseCake, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, cheesecakeTier.Name).Flatten()))
-	cheesecakeTier.NSTemplateTier = newCheeseCake
+	newCheeseCake, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name,
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
 	require.NoError(t, err)
+	cheesecakeTier.NSTemplateTier = newCheeseCake
+
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
 	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
-	newCookieTier, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, cookieTier.Name).Flatten()))
-	cookieTier.NSTemplateTier = newCookieTier
+	newCookieTier, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name,
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
 	require.NoError(t, err)
+	cookieTier.NSTemplateTier = newCookieTier
+
 	// and when updating the "chocolate" tier to the "advanced" template refs for namespace resources
 	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
-	newChocolateTier, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, chocolateTier.Name).Flatten()))
-	chocolateTier.NSTemplateTier = newChocolateTier
+	newChocoTier, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name,
+		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
 	require.NoError(t, err)
+	chocolateTier.NSTemplateTier = newChocoTier
 
 	// then
 	t.Log("verifying users and spaces after tier updates")
@@ -306,9 +314,10 @@ func TestFeatureToggles(t *testing.T) {
 			withClusterRoleBindings(t, base1nsTier, "test-feature"),
 			tiers.WithNamespaceResources(t, base1nsTier),
 			tiers.WithSpaceRoles(t, base1nsTier))
-		newTierRv, err := hostAwait.WaitForNSTemplateTier(t, tier.Name, wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ftier").Flatten()))
-		tier.NSTemplateTier = newTierRv
+		newTierRv, err := hostAwait.WaitForNSTemplateTier(t, tier.Name,
+			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ftier").Flatten()))
 		require.NoError(t, err)
+		tier.NSTemplateTier = newTierRv
 
 		// when
 
