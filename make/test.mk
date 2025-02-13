@@ -288,7 +288,7 @@ deploy-single-member-e2e-latest:
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
 publish-current-bundles-for-e2e: 
 	@echo "CI env: ${CI}"
-	$(MAKE) pair-mechanism get-and-publish-operators
+	$(MAKE) get-and-publish-operators
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
