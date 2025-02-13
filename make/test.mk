@@ -43,6 +43,12 @@ HOST_OPERATOR_CLONE_DIR := "/tmp/host-operator"
 MEMBER_OPERATOR_CLONE_DIR := "/tmp/member-operator"
 REGISTRATION_SERVICE_CLONE_DIR := "/tmp/registration-service"
 KSCTL_CLONE_DIR := "/tmp/ksctl"
+PAIRING_DIR := "/tmp/pairing"
+
+.PHONY: build-pairing
+build-pairing:
+	@PAIRING_DIR=${PAIRING_DIR} \
+	go build -o ${PAIRING_DIR} ./scripts/ci/pairing/pairing.go
 
 .PHONY: test-e2e
 ## Run the e2e tests
@@ -288,7 +294,7 @@ deploy-single-member-e2e-latest:
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
 publish-current-bundles-for-e2e: 
 	@echo "CI env: ${CI}"
-	$(MAKE) get-and-publish-operators
+	$(MAKE) build-pairing get-and-publish-operators
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
