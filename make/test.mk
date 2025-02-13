@@ -39,10 +39,6 @@ endif
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
-HOST_OPERATOR_CLONE_DIR := "/tmp/host-operator"
-MEMBER_OPERATOR_CLONE_DIR := "/tmp/member-operator"
-REGISTRATION_SERVICE_CLONE_DIR := "/tmp/registration-service"
-KSCTL_CLONE_DIR := "/tmp/ksctl"
 PAIRING_DIR := "/tmp/pairing"
 PAIRING_EXEC := "/tmp/pairing/pairing"
 
