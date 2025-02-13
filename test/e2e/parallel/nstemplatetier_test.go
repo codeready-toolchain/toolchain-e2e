@@ -453,12 +453,22 @@ func TestTierTemplateRevision(t *testing.T) {
 			require.NoError(t, err)
 
 			// then
-			// an additional TTR will be created
-			// TODO check for exact match or remove the +1 once we implement the cleanup controller
-			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(updatedTTRs)+1))
-			require.NoError(t, err)
 			// retrieve new tier once the ttrs were created and the revision field updated
-			customTier.NSTemplateTier, err = hostAwait.WaitForNSTemplateTier(t, customTier.Name)
+			customTier.NSTemplateTier, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
+				WithNameMatching(customTier.Name, func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+					for _, oldValue := range updatedCustomTier.Status.Revisions {
+						for _, actualValue := range actual.Status.Revisions {
+							if oldValue == actualValue {
+								return false
+							}
+						}
+					}
+					return true
+				})
+			require.NoError(t, err)
+			// an additional TTRs will be created
+			// TODO check for exact match and remove the 2*len(ttrs)+1 once we implement the cleanup controller
+			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(2*len(ttrs)+1))
 			require.NoError(t, err)
 			// and the parameter is updated in all the ttrs
 			checkThatTTRsHaveParameter(t, customTier, ttrsWithNewParams, toolchainv1alpha1.Parameter{
@@ -467,6 +477,41 @@ func TestTierTemplateRevision(t *testing.T) {
 			})
 		})
 
+	})
+
+	t.Run("when updating one tiertemplate the revisions field should be cleaned up from old entries", func(t *testing.T) {
+		// given
+		// we create new NSTemplateTiers (derived from `base`)
+		updatingTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "updatingtier", baseTier)
+		// we use the advanced tier only for copying the namespace and space role resources
+		advancedTier, err := hostAwait.WaitForNSTemplateTier(t, "advanced")
+		require.NoError(t, err)
+
+		// when
+		// we verify that the new tier exists and the revisions field was populated
+		tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
+			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "updatingtier").Flatten()))
+		require.NoError(t, err)
+		updatingTier.NSTemplateTier = tier
+		// and we update the tier with the "advanced" template refs for namespace and space role resources
+		tiers.UpdateCustomNSTemplateTier(t, hostAwait, updatingTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
+
+		// then
+		// we ensure the new revisions are made by namespace and spaceroles from advanced tier + clusterResources from the updating tier
+		advancedRefs := tiers.GetTemplateRefs(t, hostAwait, advancedTier.Name)
+		expectedRefs := []string{updatingTier.Spec.ClusterResources.TemplateRef}
+		// the duplicated tiertemplates have a different prefix
+		for _, tierTemplateName := range advancedRefs.SpaceRolesFlatten() {
+			expectedRefs = append(expectedRefs, tiers.DuplicatedTierName(updatingTier.Name, tierTemplateName))
+		}
+		for _, tierTemplateName := range advancedRefs.Namespaces {
+			expectedRefs = append(expectedRefs, tiers.DuplicatedTierName(updatingTier.Name, tierTemplateName))
+		}
+		updatedTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
+			wait.HasStatusTierTemplateRevisions(expectedRefs))
+		require.NoError(t, err)
+		// revisions values should be different compared to the previous ones
+		assert.NotEqual(t, updatingTier.Status.Revisions, updatedTier.Status.Revisions)
 	})
 
 }
