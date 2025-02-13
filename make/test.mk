@@ -44,18 +44,10 @@ MEMBER_OPERATOR_CLONE_DIR := "/tmp/member-operator"
 REGISTRATION_SERVICE_CLONE_DIR := "/tmp/registration-service"
 KSCTL_CLONE_DIR := "/tmp/ksctl"
 
-.PHONY: pair-mechanism
-pair-mechanism:
-	@HOST_OPERATOR_CLONE_DIR=${HOST_OPERATOR_CLONE_DIR} \
-	MEMBER_OPERATOR_CLONE_DIR=${MEMBER_OPERATOR_CLONE_DIR} \
-	REGISTRATION_SERVICE_CLONE_DIR=${REGISTRATION_SERVICE_CLONE_DIR} \
-	KSCTL_CLONE_DIR=${KSCTL_CLONE_DIR} \
-	go run scripts/ci/pairing/pairing.go -cloneDir /tmp/host-operator -organization codeready-toolchain -repository host-operator
-
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: pair-mechanism prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
+test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
