@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -63,19 +64,24 @@ func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchN
 
 // getCurrentPRInfo gets the current info of the PR that triggered the e2e CI prow job
 func getCurrentPRInfo() (*PullRequestMetadata, error) {
+	pr := &PullRequestMetadata{}
 	jobSpecEnvVarData := os.Getenv("JOB_SPEC")
-	log.Printf("JOB_SPEC: '%s'", jobSpecEnvVarData)
-	log.Printf("GITHUB_HEAD_REF: '%s'", os.Getenv("GITHUB_HEAD_REF"))
 
-	pr := &PullRequestMetadata{
-		RemoteName: os.Getenv("AUTHOR"),
-		Number:     os.Getenv("PULL_NUMBER"),
-		BranchName: os.Getenv("GITHUB_HEAD_REF"),
+	// running CI job
+	if jobSpecEnvVarData != "" {
+		fmt.Println("running in CI job")
+		if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
+			return pr, fmt.Errorf("error when parsing openshift job spec data: %v", err)
+		}
+		// running GH action
+	} else {
+		fmt.Println("running in GH action")
+		pr = &PullRequestMetadata{
+			RemoteName: os.Getenv("AUTHOR"),
+			Number:     os.Getenv("PULL_NUMBER"),
+			BranchName: os.Getenv("GITHUB_HEAD_REF"),
+		}
 	}
-
-	// if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
-	// 	return pr, fmt.Errorf("error when parsing openshift job spec data: %v", err)
-	// }
 
 	return pr, nil
 }
