@@ -100,19 +100,21 @@ func newCleanTask(t *testing.T, cl client.Client, obj client.Object) *cleanTask 
 }
 
 func (c *cleanTask) cleanObject() {
+	if c.objToClean == nil {
+		return
+	}
+
+	objToClean, ok := c.objToClean.DeepCopyObject().(client.Object)
+	require.True(c.t, ok)
+	kind := objToClean.GetObjectKind().GroupVersionKind().Kind
+	if kind == "" {
+		kind = reflect.TypeOf(c.objToClean).Elem().Name()
+	}
+
 	// only clean if test passed
 	if !c.t.Failed() {
-		if c.objToClean == nil {
-			return
-		}
-		objToClean, ok := c.objToClean.DeepCopyObject().(client.Object)
-		require.True(c.t, ok)
 		userSignup, isUserSignup := c.objToClean.(*toolchainv1alpha1.UserSignup)
 		nsTemplateTier, isNsTemplateTier := c.objToClean.(*toolchainv1alpha1.NSTemplateTier)
-		kind := objToClean.GetObjectKind().GroupVersionKind().Kind
-		if kind == "" {
-			kind = reflect.TypeOf(c.objToClean).Elem().Name()
-		}
 		c.t.Logf("deleting %s: %s ...", kind, objToClean.GetName())
 		if err := c.client.Delete(context.TODO(), objToClean, propagationPolicyOpts); err != nil {
 			if errors.IsNotFound(err) {
@@ -186,7 +188,10 @@ func (c *cleanTask) cleanObject() {
 		}
 		// if test failed, print time
 	} else {
-		c.t.Logf("test %s failed at %s",
+		c.t.Logf(
+			"skipping object cleanup kind=%s name=%s test=%s failedTimestamp=%s",
+			kind,
+			objToClean.GetName(),
 			c.t.Name(),
 			time.Now().Format("2006-01-02_15:04:05"),
 		)
