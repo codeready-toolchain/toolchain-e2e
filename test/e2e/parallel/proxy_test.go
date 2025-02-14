@@ -759,24 +759,22 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 	waitForWatcher.Add(1)
 	// run the watch in a goroutine because it will take 40 seconds until the call is terminated
 	go func() {
-		t.Run("running the watcher", func(t *testing.T) {
-			defer waitForWatcher.Done()
-			withTimeout, cancelFunc := context.WithTimeout(context.Background(), contextTimeout)
-			defer cancelFunc()
+		defer waitForWatcher.Done()
+		withTimeout, cancelFunc := context.WithTimeout(context.Background(), contextTimeout)
+		defer cancelFunc()
 
-			started := time.Now()
-			t.Log("starting the watch call")
-			_, err := watcherClient.RESTClient().Get().
-				AbsPath(fmt.Sprintf("/api/v1/namespaces/%s/configmaps", tenantNsName(watchUser.compliantUsername))).
-				Param("resourceVersion", list.GetResourceVersion()).
-				Param("watch", "true").
-				Do(withTimeout).
-				Get()
-			t.Logf("stopping the watch after %s", time.Since(started))
+		started := time.Now()
+		t.Log("starting the watch call")
+		_, err := watcherClient.RESTClient().Get().
+			AbsPath(fmt.Sprintf("/api/v1/namespaces/%s/configmaps", tenantNsName(watchUser.compliantUsername))).
+			Param("resourceVersion", list.GetResourceVersion()).
+			Param("watch", "true").
+			Do(withTimeout).
+			Get()
+		t.Logf("stopping the watch after %s", time.Since(started))
 
-			require.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
-			assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
-		})
+		require.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
+		assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
 	}()
 	return &waitForWatcher
 }
@@ -848,9 +846,9 @@ func TestSpaceLister(t *testing.T) {
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
 					{MasterUserRecord: "bus", Role: "admin",
 						AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
-							Name:      busSBROnCarSpace.GetName(),
-							Namespace: busSBROnCarSpace.GetNamespace(),
-						}},
+						Name:      busSBROnCarSpace.GetName(),
+						Namespace: busSBROnCarSpace.GetNamespace(),
+					}},
 					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string(nil)}, // no actions since this is system generated binding
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"update", "delete"}, BindingRequest: &toolchainv1alpha1.BindingRequest{
 						Name:      bicycleSBROnCarSpace.GetName(),
@@ -893,8 +891,8 @@ func TestSpaceLister(t *testing.T) {
 			// for bicycle user
 			verifyHasExpectedWorkspace(t, expectedWorkspaceFor(t, awaitilities.Host(), subSpace.GetName(), commonproxy.WithOwner("car"), appStudioTierRolesWSOption,
 				commonproxy.WithBindings([]toolchainv1alpha1.Binding{
-					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"override"}},           // bus has SBR on parentSpace, so the binding can only be overridden
-					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"override"}},           // car is owner of the parentSpace, so it can only be overridden
+					{MasterUserRecord: "bus", Role: "admin", AvailableActions: []string{"override"}}, // bus has SBR on parentSpace, so the binding can only be overridden
+					{MasterUserRecord: "car", Role: "admin", AvailableActions: []string{"override"}}, // car is owner of the parentSpace, so it can only be overridden
 					{MasterUserRecord: "road-bicycle", Role: "admin", AvailableActions: []string{"override"}}}, // bicycle has SBR on parentSpace, so the binding can only be overridden
 				)),
 				*workspaceForBicycleUser)
