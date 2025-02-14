@@ -142,31 +142,31 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	t.Log("updating tiers")
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources and spaceroles
-	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
-	newCheeseCake, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name,
+	cheesecakeTier1 := tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
+	newCheeseCake, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier1.Name,
 		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
 	require.NoError(t, err)
-	cheesecakeTier.NSTemplateTier = newCheeseCake
+	cheesecakeTier1.NSTemplateTier = newCheeseCake
 
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
-	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
-	newCookieTier, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name,
+	cookieTier1 := tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
+	newCookieTier, err := hostAwait.WaitForNSTemplateTier(t, cookieTier1.Name,
 		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
 	require.NoError(t, err)
-	cookieTier.NSTemplateTier = newCookieTier
+	cookieTier1.NSTemplateTier = newCookieTier
 
 	// and when updating the "chocolate" tier to the "advanced" template refs for namespace resources
-	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
-	newChocoTier, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name,
+	chocolateTier1 := tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
+	newChocoTier, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier1.Name,
 		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
 	require.NoError(t, err)
-	chocolateTier.NSTemplateTier = newChocoTier
+	chocolateTier1.NSTemplateTier = newChocoTier
 
 	// then
 	t.Log("verifying users and spaces after tier updates")
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeUsers, cheesecakeTier)
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier)
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeUsers, cheesecakeTier1)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier1)
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier1)
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
