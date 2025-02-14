@@ -16,16 +16,28 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	appstudiov1 "github.com/codeready-toolchain/toolchain-e2e/testsupport/appstudio/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	testutil "github.com/codeready-toolchain/toolchain-e2e/testsupport/util"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
+	openshiftappsv1 "github.com/openshift/api/apps/v1"
+	quotav1 "github.com/openshift/api/quota/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	templatev1 "github.com/openshift/api/template/v1"
+	userv1 "github.com/openshift/api/user/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	goerr "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	admv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/scheme"
+	"k8s.io/metrics/pkg/apis/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -994,6 +1006,100 @@ func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolch
 	return tierTemplate, err
 }
 
+// TierTemplateRevisionWaitCriterion a struct to compare with an expected TierTemplateRevision
+type TierTemplateRevisionWaitCriterion struct {
+	Match func([]toolchainv1alpha1.TierTemplateRevision) bool
+	Diff  func([]toolchainv1alpha1.TierTemplateRevision) string
+}
+
+func matchTierTemplateRevisionWaitCriterion(actual []toolchainv1alpha1.TierTemplateRevision, criteria ...TierTemplateRevisionWaitCriterion) bool {
+	for _, c := range criteria {
+		// if at least one criteria does not match, keep waiting
+		if !c.Match(actual) {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.T, actual []toolchainv1alpha1.TierTemplateRevision, tierName string, criteria ...TierTemplateRevisionWaitCriterion) {
+	buf := &strings.Builder{}
+	if len(actual) == 0 {
+		buf.WriteString("no ttrs found\n")
+	} else {
+		buf.WriteString("failed to find ttrs with matching criteria:\n")
+		buf.WriteString("actual:\n")
+		for _, obj := range actual {
+			y, _ := StringifyObject(&obj) // nolint:gosec
+			buf.Write(y)
+		}
+		buf.WriteString("\n----\n")
+		buf.WriteString("diffs:\n")
+		for _, c := range criteria {
+			if !c.Match(actual) {
+				buf.WriteString(c.Diff(actual))
+				buf.WriteString("\n")
+			}
+		}
+	}
+	opts := client.MatchingLabels(map[string]string{
+		toolchainv1alpha1.TierLabelKey: tierName,
+	})
+	// include also all TierTemplateRevisions for the given tier, to help troubleshooting
+	a.listAndPrint(t, "TierTemplateRevisions", a.Namespace, &toolchainv1alpha1.TierTemplateRevisionList{}, opts)
+	// include also all TierTemplate for the given tiertemplate revisions, to help troubleshooting
+	for _, ttr := range actual {
+		a.GetAndPrint(t, "TierTemplate", a.Namespace, ttr.GetLabels()[toolchainv1alpha1.TemplateRefLabelKey], &toolchainv1alpha1.TierTemplate{})
+	}
+
+	t.Log(buf.String())
+}
+
+// GreaterOrEqual checks if the number of TTRs is greater or equal than the expected one
+func GreaterOrEqual(count int) TierTemplateRevisionWaitCriterion {
+	return TierTemplateRevisionWaitCriterion{
+		Match: func(actual []toolchainv1alpha1.TierTemplateRevision) bool {
+			return len(actual) >= count
+		},
+		Diff: func(actual []toolchainv1alpha1.TierTemplateRevision) string {
+			return fmt.Sprintf("number of ttrs %d is not greater or equal than %d \n", len(actual), count)
+		},
+	}
+}
+
+// LessOrEqual checks if the number of TTRs is less or equal than the expected one
+func LessOrEqual(count int) TierTemplateRevisionWaitCriterion {
+	return TierTemplateRevisionWaitCriterion{
+		Match: func(actual []toolchainv1alpha1.TierTemplateRevision) bool {
+			return len(actual) <= count
+		},
+		Diff: func(actual []toolchainv1alpha1.TierTemplateRevision) string {
+			return fmt.Sprintf("number of ttrs %d is not less or equal than %d \n", len(actual), count)
+		},
+	}
+}
+
+func (a *HostAwaitility) WaitForTTRs(t *testing.T, tierName string, criteria ...TierTemplateRevisionWaitCriterion) ([]toolchainv1alpha1.TierTemplateRevision, error) {
+	t.Logf("waiting for ttrs to match criteria for tier '%s'", tierName)
+	var ttrs []toolchainv1alpha1.TierTemplateRevision
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		objs := &toolchainv1alpha1.TierTemplateRevisionList{}
+		if err := a.Client.List(ctx, objs, client.InNamespace(a.Namespace), client.MatchingLabels{toolchainv1alpha1.TierLabelKey: tierName}); err != nil {
+			return false, err
+		}
+		if len(objs.Items) == 0 {
+			return false, nil
+		}
+		ttrs = objs.Items
+		return matchTierTemplateRevisionWaitCriterion(ttrs, criteria...), nil
+	})
+	// no match found, print the diffs
+	if err != nil {
+		a.printTierTemplateRevisionWaitCriterionDiffs(t, ttrs, tierName, criteria...)
+	}
+	return ttrs, err
+}
+
 // NSTemplateTierWaitCriterion a struct to compare with an expected NSTemplateTier
 type NSTemplateTierWaitCriterion struct {
 	Match func(*toolchainv1alpha1.NSTemplateTier) bool
@@ -1060,7 +1166,7 @@ func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriter
 				return false
 			}
 			for _, tierTemplateRef := range revisions {
-				if _, found := actual.Status.Revisions[tierTemplateRef]; !found {
+				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
 					return false
 				}
 			}
@@ -1734,8 +1840,27 @@ func (a *HostAwaitility) CreateAPIProxyConfig(t *testing.T, usertoken, proxyURL 
 func (a *HostAwaitility) CreateAPIProxyClient(t *testing.T, userToken, proxyURL string) (client.Client, error) {
 	proxyKubeConfig := a.CreateAPIProxyConfig(t, userToken, proxyURL)
 
-	s := scheme.Scheme
-	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme)
+	s := runtime.NewScheme()
+	builder := append(runtime.SchemeBuilder{}, corev1.AddToScheme,
+		appsv1.AddToScheme,
+		toolchainv1alpha1.AddToScheme,
+		userv1.Install,
+		templatev1.Install,
+		routev1.Install,
+		quotav1.Install,
+		openshiftappsv1.Install,
+		corev1.AddToScheme,
+		metrics.AddToScheme,
+		appstudiov1.AddToScheme,
+		v1.AddToScheme,
+		appsv1.AddToScheme,
+		schedulingv1.AddToScheme,
+		userv1.AddToScheme,
+		netv1.AddToScheme,
+		admv1.AddToScheme,
+		batchv1.AddToScheme,
+		operatorsv1alpha1.AddToScheme,
+	)
 	require.NoError(t, builder.AddToScheme(s))
 
 	// Getting the proxy client can fail from time to time if the proxy's informer cache has not been
