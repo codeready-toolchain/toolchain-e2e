@@ -46,6 +46,14 @@ func (r TemplateRefs) Flatten() []string {
 	return refs
 }
 
+func (r TemplateRefs) SpaceRolesFlatten() []string {
+	refs := make([]string, 0, len(r.SpaceRoles))
+	for _, ref := range r.SpaceRoles {
+		refs = append(refs, ref)
+	}
+	return refs
+}
+
 func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
 	if tier.Spec.ClusterResources != nil {
 		return &(tier.Spec.ClusterResources.TemplateRef)
