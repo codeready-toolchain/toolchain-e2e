@@ -17,7 +17,8 @@ endif
 get-ksctl-and-install:
 ifeq ($(strip $(KSCTL_REPO_PATH)),)
     ifneq ($(CI_DISABLE_PAIRING),true)
-		${PAIRING_EXEC} -clone-dir ${KSCTL_REPO_PATH} -organization kubesaw -repository ksctl
+		${PAIRING_EXEC} -clone-dir /tmp/ksctl -organization kubesaw -repository ksctl
+		$(eval KSCTL_REPO_PATH=/tmp/ksctl)
     else
 		@echo "Pairing explicitly disabled"
     endif
