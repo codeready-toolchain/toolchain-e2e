@@ -113,20 +113,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	// create new NSTemplateTiers (derived from `base`)
 	cheesecakeTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cheesecake", baseTier)
-	newCheese, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier.Name,
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
-	cheesecakeTier.NSTemplateTier = newCheese
-	require.NoError(t, err)
 	cookieTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "cookie", baseTier)
-	newCookie, err := hostAwait.WaitForNSTemplateTier(t, cookieTier.Name,
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
-	cookieTier.NSTemplateTier = newCookie
-	require.NoError(t, err)
 	chocolateTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "chocolate", baseTier)
-	newChocolate, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier.Name,
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
-	chocolateTier.NSTemplateTier = newChocolate
-	require.NoError(t, err)
 
 	// first group of users: the "cheesecake users"
 	cheesecakeUsers := setupAccounts(t, awaitilities, cheesecakeTier, "cheesecakeuser%02d", memberAwait, count)
@@ -142,31 +130,17 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	t.Log("updating tiers")
 	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources and spaceroles
-	cheesecakeTier1 := tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
-	newCheeseCake, err := hostAwait.WaitForNSTemplateTier(t, cheesecakeTier1.Name,
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cheesecake").Flatten()))
-	require.NoError(t, err)
-	cheesecakeTier1.NSTemplateTier = newCheeseCake
-
+	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
-	cookieTier1 := tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
-	newCookieTier, err := hostAwait.WaitForNSTemplateTier(t, cookieTier1.Name,
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "cookie").Flatten()))
-	require.NoError(t, err)
-	cookieTier1.NSTemplateTier = newCookieTier
-
+	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
 	// and when updating the "chocolate" tier to the "advanced" template refs for namespace resources
-	chocolateTier1 := tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
-	newChocoTier, err := hostAwait.WaitForNSTemplateTier(t, chocolateTier1.Name,
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "chocolate").Flatten()))
-	require.NoError(t, err)
-	chocolateTier1.NSTemplateTier = newChocoTier
+	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
 
 	// then
 	t.Log("verifying users and spaces after tier updates")
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeUsers, cheesecakeTier1)
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier1)
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier1)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeUsers, cheesecakeTier)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier)
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
