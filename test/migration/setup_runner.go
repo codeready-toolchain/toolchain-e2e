@@ -62,6 +62,10 @@ func (r *SetupMigrationRunner) Run(t *testing.T) {
 	}
 
 	wg.Wait()
+
+	// wait until the ToolchainStatus is updated to make sure that all counters are in sync
+	_, err := r.Awaitilities.Host().WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
 }
 
 func (r *SetupMigrationRunner) prepareAppStudioProvisionedSpace(t *testing.T) {
