@@ -49,7 +49,7 @@ build-pairing:
 	# Create the directory
 	mkdir -p ${PAIRING_DIR}
 	# Build the Go binary into the specified directory
-	go build -o ${PAIRING_DIR} ./scripts/ci/pairing/pairing.go
+	go build -o ${PAIRING_DIR} ./scripts/ci/pairing
 
 .PHONY: test-e2e
 ## Run the e2e tests
