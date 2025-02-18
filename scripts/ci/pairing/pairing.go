@@ -14,16 +14,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type PullRequestMetadata struct {
-	Author       string
-	Organization string
-	RepoName     string
-	BranchName   string
-	CommitSHA    string
-	Number       string
-	RemoteName   string
-}
-
 // listOpenPRs lists open pull requests for the given repository using the provided GitHub token.
 func listOpenPRs(owner, repo string) ([]*github.PullRequest, error) {
 	client := github.NewClient(nil) // No authentication needed
@@ -71,8 +61,19 @@ func getCurrentPRInfo() (*PullRequestMetadata, error) {
 	// running CI job
 	if jobSpecEnvVarData != "" {
 		fmt.Println("running in CI job")
-		if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
+		jobSpec := &JobSpec{}
+		if err := json.Unmarshal([]byte(jobSpecEnvVarData), jobSpec); err != nil {
 			return pr, fmt.Errorf("error when parsing openshift job spec data: %v", err)
+		}
+		if len(jobSpec.Refs.Pulls) == 1 {
+			pull := jobSpec.Refs.Pulls[0]
+			pr = &PullRequestMetadata{
+				RemoteName: pull.Author,
+				Number:     string(pull.Number),
+				BranchName: pull.HeadRef,
+			}
+		} else {
+			fmt.Println("No pull request data found.")
 		}
 		fmt.Println("pr.BranchName", pr.BranchName)
 		// running GH action
