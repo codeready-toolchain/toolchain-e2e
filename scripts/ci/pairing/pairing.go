@@ -66,6 +66,7 @@ func shouldPair(orgForPairing, repoForPairing, currentRemoteName, currentBranchN
 func getCurrentPRInfo() (*PullRequestMetadata, error) {
 	pr := &PullRequestMetadata{}
 	jobSpecEnvVarData := os.Getenv("JOB_SPEC")
+	fmt.Println("jobSpecEnvVarData", jobSpecEnvVarData)
 
 	// running CI job
 	if jobSpecEnvVarData != "" {
@@ -73,6 +74,7 @@ func getCurrentPRInfo() (*PullRequestMetadata, error) {
 		if err := json.Unmarshal([]byte(jobSpecEnvVarData), pr); err != nil {
 			return pr, fmt.Errorf("error when parsing openshift job spec data: %v", err)
 		}
+		fmt.Println("pr.BranchName", pr.BranchName)
 		// running GH action
 	} else {
 		fmt.Println("running in GH action")
