@@ -39,10 +39,22 @@ endif
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
+PAIRING_DIR := "/tmp/pairing"
+PAIRING_EXEC := "/tmp/pairing/pairing"
+
+.PHONY: build-pairing
+build-pairing:
+	# Clean the directory if it exists
+	if [ -d "${PAIRING_DIR}" ]; then rm -rf ${PAIRING_DIR}; fi
+	# Create the directory
+	mkdir -p ${PAIRING_DIR}
+	# Build the Go binary into the specified directory
+	go build -o ${PAIRING_DIR} ./scripts/ci/pairing
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
+test-e2e: build-pairing prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -57,7 +69,7 @@ test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: prepare-and-deploy-e2e
-## Prepare and Deploy e2e environment. Usefull to reset without having to run a test
+## Prepare and Deploy e2e environment. Useful to reset without having to run a test
 prepare-and-deploy-e2e: prepare-e2e deploy-e2e
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -281,7 +293,9 @@ deploy-single-member-e2e-latest:
 
 .PHONY: publish-current-bundles-for-e2e
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
-publish-current-bundles-for-e2e: get-and-publish-operators
+publish-current-bundles-for-e2e: 
+	@echo "CI env: ${CI}"
+	$(MAKE) build-pairing get-and-publish-operators
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
@@ -328,7 +342,7 @@ ifeq ($(DEPLOY_LATEST),true)
    endif
 else
 	@echo "Installing specific version of the member-operator"
-	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}
+	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM} -pe ${PAIRING_EXEC}
 endif
 
 .PHONY: get-and-publish-host-operator
@@ -353,7 +367,7 @@ ifeq ($(DEPLOY_LATEST),true)
 	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
 else
 	@echo "Installing specific version of the host-operator"
-	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}
+	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM} -pe ${PAIRING_EXEC}
 endif
 
 ###########################################################
