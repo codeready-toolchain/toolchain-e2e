@@ -495,6 +495,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "updatingtier").Flatten()))
 		require.NoError(t, err)
 		updatingTier.NSTemplateTier = tier
+		revisionsBeforeUpdate := updatingTier.Status.Revisions
 		// and we update the tier with the "advanced" template refs for namespace and space role resources
 		tiers.UpdateCustomNSTemplateTier(t, hostAwait, updatingTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
 
@@ -513,7 +514,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			wait.HasStatusTierTemplateRevisions(expectedRefs))
 		require.NoError(t, err)
 		// revisions values should be different compared to the previous ones
-		assert.NotEqual(t, updatingTier.Status.Revisions, updatedTier.Status.Revisions)
+		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
 	})
 
 }
