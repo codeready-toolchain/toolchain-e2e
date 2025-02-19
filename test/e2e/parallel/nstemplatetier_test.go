@@ -288,11 +288,8 @@ func TestFeatureToggles(t *testing.T) {
 			withClusterRoleBindings(t, base1nsTier, "test-feature"),
 			tiers.WithNamespaceResources(t, base1nsTier),
 			tiers.WithSpaceRoles(t, base1nsTier))
-		newTierRv, err := hostAwait.WaitForNSTemplateTier(t, tier.Name,
-			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ftier").Flatten()))
+		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
 		require.NoError(t, err)
-		tier.NSTemplateTier = newTierRv
-
 		// when
 
 		// Now let's create a Space
