@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	toolchaincommon "github.com/codeready-toolchain/toolchain-common/pkg/client"
@@ -238,6 +239,12 @@ func WaitForDeployments(t *testing.T) wait.Awaitilities {
 		// check that the default user tier exists and is updated to the current version, an outdated version is applied from deploy/e2e-tests/usertier-base.yaml as
 		// part of the e2e test setup make target for the purpose of verifying the user tier update mechanism on startup of the host operator
 		err = initHostAwait.WaitUntilBaseUserTierIsUpdated(t)
+		require.NoError(t, err)
+
+		// wait until the controller has started, counter is initialized, and ToolchainStatus is updated & ready
+		_, err = initHostAwait.WaitForToolchainStatus(t,
+			wait.UntilToolchainStatusHasConditions(wait.ToolchainStatusReadyAndUnreadyNotificationNotCreated()...),
+			wait.UntilToolchainStatusUpdatedAfter(time.Now()))
 		require.NoError(t, err)
 	})
 
