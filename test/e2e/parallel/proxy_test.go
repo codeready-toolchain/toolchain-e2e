@@ -759,24 +759,22 @@ func runWatcher(t *testing.T, awaitilities wait.Awaitilities) *sync.WaitGroup {
 	waitForWatcher.Add(1)
 	// run the watch in a goroutine because it will take 40 seconds until the call is terminated
 	go func() {
-		t.Run("running the watcher", func(t *testing.T) {
-			defer waitForWatcher.Done()
-			withTimeout, cancelFunc := context.WithTimeout(context.Background(), contextTimeout)
-			defer cancelFunc()
+		defer waitForWatcher.Done()
+		withTimeout, cancelFunc := context.WithTimeout(context.Background(), contextTimeout)
+		defer cancelFunc()
 
-			started := time.Now()
-			t.Log("starting the watch call")
-			_, err := watcherClient.RESTClient().Get().
-				AbsPath(fmt.Sprintf("/api/v1/namespaces/%s/configmaps", tenantNsName(watchUser.compliantUsername))).
-				Param("resourceVersion", list.GetResourceVersion()).
-				Param("watch", "true").
-				Do(withTimeout).
-				Get()
-			t.Logf("stopping the watch after %s", time.Since(started))
+		started := time.Now()
+		t.Log("starting the watch call")
+		_, err := watcherClient.RESTClient().Get().
+			AbsPath(fmt.Sprintf("/api/v1/namespaces/%s/configmaps", tenantNsName(watchUser.compliantUsername))).
+			Param("resourceVersion", list.GetResourceVersion()).
+			Param("watch", "true").
+			Do(withTimeout).
+			Get()
+		t.Logf("stopping the watch after %s", time.Since(started))
 
-			require.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout")
-			assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
-		})
+		require.EqualError(t, err, "unexpected error when reading response body. Please retry. Original error: context deadline exceeded", "The call should be terminated by the context timeout") // nolint:testifylint
+		assert.NotContains(t, err.Error(), "unexpected EOF", "If it contains 'unexpected EOF' then the call was terminated on the server side, which is not expected.")
 	}()
 	return &waitForWatcher
 }
