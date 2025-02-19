@@ -106,6 +106,10 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 	wg.Wait()
 
 	cleanup.ExecuteAllCleanTasks(t)
+
+	// wait until the ToolchainStatus is updated to make sure that all counters are in sync
+	_, err := awaitilities.Host().WaitForToolchainStatus(t, wait.UntilToolchainStatusUpdatedAfter(time.Now()))
+	require.NoError(t, err)
 }
 
 func verifyAppStudioProvisionedSpace(t *testing.T, awaitilities wait.Awaitilities) {
