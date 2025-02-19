@@ -11,8 +11,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	identitypkg "github.com/codeready-toolchain/toolchain-common/pkg/identity"
-	testtier "github.com/codeready-toolchain/toolchain-common/pkg/test/tier"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
@@ -237,7 +237,7 @@ func VerifySpaceRelatedResources(t *testing.T, awaitilities wait.Awaitilities, u
 
 	tier, err := hostAwait.WaitForNSTemplateTier(t, spaceTierName)
 	require.NoError(t, err)
-	hash, err := testtier.ComputeTemplateRefsHash(tier) // we can assume the JSON marshalling will always work
+	hash, err := hash.ComputeHashForNSTemplateTier(tier) // we can assume the JSON marshalling will always work
 	require.NoError(t, err)
 
 	space, err := hostAwait.WaitForSpace(t, userSignup.Status.CompliantUsername,
