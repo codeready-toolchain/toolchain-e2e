@@ -132,4 +132,4 @@ require (
 
 go 1.21
 
-replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20250219102514-e40790d4c60e
+replace github.com/codeready-toolchain/toolchain-common => github.com/fbm3307/toolchain-common v0.0.0-20250220120644-6801b14609a1
