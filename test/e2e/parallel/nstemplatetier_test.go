@@ -432,9 +432,13 @@ func TestTierTemplateRevision(t *testing.T) {
 		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs)+1))
 		require.NoError(t, err)
 		// get the updated nstemplatetier
-		updatedCustomTier, err := hostAwait.WaitForNSTemplateTier(t, customTier.Name)
-		newTTR, found := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
-		require.True(t, found)
+		updatedCustomTier, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
+			WithNameMatching(customTier.Name, func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+				newTTR, found := actual.Status.Revisions[actual.Spec.ClusterResources.TemplateRef]
+				return found && newTTR != "" && newTTR != ttrToBeModified
+			})
+		newTTR := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
+
 		// check that it has the updated crq
 		checkThatTTRContainsCRQ(t, newTTR, updatedTTRs, updatedCRQ)
 
