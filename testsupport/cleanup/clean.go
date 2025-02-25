@@ -68,15 +68,23 @@ func (c *cleanManager) clean(t *testing.T) func() {
 	return func() {
 		c.Lock()
 		defer c.Unlock()
-		var wg sync.WaitGroup
-		for _, task := range c.cleanTasks[t] {
-			wg.Add(1)
-			go func(cleanTask *cleanTask) {
-				defer wg.Done()
-				cleanTask.clean()
-			}(task)
+		if !t.Failed() {
+			var wg sync.WaitGroup
+			for _, task := range c.cleanTasks[t] {
+				wg.Add(1)
+				go func(cleanTask *cleanTask) {
+					defer wg.Done()
+					cleanTask.clean()
+				}(task)
+			}
+			wg.Wait()
+		} else {
+			t.Logf(
+				"skipping object cleanup, test=%s failedTimestamp=%s",
+				t.Name(),
+				time.Now().Format(time.StampMilli),
+			)
 		}
-		wg.Wait()
 		c.cleanTasks[t] = nil
 	}
 }
