@@ -14,8 +14,24 @@ import (
 )
 
 func GetMetricValue(restConfig *rest.Config, url string, family string, expectedLabels []string) (float64, error) {
+	value, err := getMetricValue(restConfig, url, family, expectedLabels, getValue)
+	if value == nil {
+		return -1, err
+	}
+	return *value, err
+}
+
+func GetHistogramBuckets(restConfig *rest.Config, url string, family string, expectedLabels []string) ([]*dto.Bucket, error) {
+	value, err := getMetricValue(restConfig, url, family, expectedLabels, getBuckets)
+	if value == nil {
+		return nil, err
+	}
+	return *value, err
+}
+
+func getMetricValue[T any](restConfig *rest.Config, url string, family string, expectedLabels []string, getValue func(dto.MetricType, *dto.Metric) (*T, error)) (*T, error) {
 	if len(expectedLabels)%2 != 0 {
-		return -1, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")
+		return nil, fmt.Errorf("received odd number of label arguments, labels must be key-value pairs")
 	}
 	uri := fmt.Sprintf("https://%s/metrics", url)
 	var metrics []byte
@@ -28,28 +44,28 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 	}
 	request, err := http.NewRequest("Get", uri, nil)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	if restConfig.BearerToken != "" {
 		request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", restConfig.BearerToken))
 	}
 	resp, err := client.Do(request)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 	metrics, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	// parse the metrics
 	parser := expfmt.TextParser{}
 	families, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	for _, f := range families {
 		if f.GetName() == family {
@@ -82,19 +98,32 @@ func GetMetricValue(restConfig *rest.Config, url string, family string, expected
 		}
 	}
 	// here we can return `0` is the metric does not exist, which may be valid if the expected value is `0`, too.
-	return 0, fmt.Errorf("metric '%s{%v}' not found", family, expectedLabels)
+	return new(T), fmt.Errorf("metric '%s{%v}' not found", family, expectedLabels)
 }
 
-func getValue(t dto.MetricType, m *dto.Metric) (float64, error) {
+func getValue(t dto.MetricType, m *dto.Metric) (*float64, error) {
 	switch t { // nolint:exhaustive
 	case dto.MetricType_COUNTER:
-		return m.GetCounter().GetValue(), nil
+		value := m.GetCounter().GetValue()
+		return &value, nil
 	case dto.MetricType_GAUGE:
-		return m.GetGauge().GetValue(), nil
+		value := m.GetGauge().GetValue()
+		return &value, nil
 	case dto.MetricType_UNTYPED:
-		return m.GetUntyped().GetValue(), nil
+		value := m.GetUntyped().GetValue()
+		return &value, nil
 	default:
-		return -1, fmt.Errorf("unknown or unsupported metric type %s", t.String())
+		return nil, fmt.Errorf("unknown or unsupported metric type %s", t.String())
+	}
+}
+
+func getBuckets(t dto.MetricType, m *dto.Metric) (*[]*dto.Bucket, error) {
+	switch t { // nolint:exhaustive
+	case dto.MetricType_HISTOGRAM:
+		value := m.GetHistogram().GetBucket()
+		return &value, nil
+	default:
+		return nil, fmt.Errorf("unknown or unsupported metric type %s", t.String())
 	}
 }
 

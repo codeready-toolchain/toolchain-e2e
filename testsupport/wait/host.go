@@ -106,6 +106,8 @@ const (
 	UsersPerActivationsAndDomainMetric = "sandbox_users_per_activations_and_domain"
 
 	HostOperatorVersionMetric = "sandbox_host_operator_version"
+
+	SignupProvisionTimeMetric = "sandbox_user_signup_provision_time"
 )
 
 // InitMetricsAssertion waits for any pending usersignups and then initialized the metrics assertion helper with baseline values
@@ -151,6 +153,11 @@ func (a *HostAwaitility) InitMetrics(t *testing.T, memberClusterNames ...string)
 	}
 
 	t.Logf("captured baselines:\n%s", spew.Sdump(a.baselineValues))
+
+	// histogram
+	a.baselineHistogramValues = map[string]map[float64]uint64{}
+	a.baselineHistogramValues[SignupProvisionTimeMetric] = a.GetHistogramValues(t, SignupProvisionTimeMetric)
+	t.Logf("captured histogram baselines:\n%s", spew.Sdump(a.baselineHistogramValues))
 }
 
 // WaitForMasterUserRecord waits until there is a MasterUserRecord available with the given name and the optional conditions
