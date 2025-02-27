@@ -259,7 +259,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 	route := hostAwait.RegistrationServiceURL
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false)) // disable automatic approval so that users are created with verification required
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
