@@ -356,7 +356,7 @@ func TestMetricsWhenUsersDeactivatedAndReactivated(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
