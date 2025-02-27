@@ -312,6 +312,8 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			require.NotEmpty(t, verificationCode)
 			// Attempt to verify with an incorrect verification code
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
+			// verify with the correct code
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s", verificationCode), token0, "", http.StatusOK)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1)  // no change after verification initiated
 			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0) // no tracking of provision time for users with phone verification step
 		})
