@@ -259,7 +259,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 	route := hostAwait.RegistrationServiceURL
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false)) // disable automatic approval so that users are created with verification required
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
@@ -312,8 +312,17 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			require.NotEmpty(t, verificationCode)
 			// Attempt to verify with an incorrect verification code
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1)  // no change after verification initiated
-			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0) // no tracking of provision time for users with phone verification step
+			// verify with the correct code
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s", verificationCode), token0, "", http.StatusOK)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1)                                         // no change after verification initiated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)                                                            // user provisioned
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal") // never incremented
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // user activated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                                    // user approved
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic")                   // user automatically approved
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // not deactivated
+			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of provision time for users with phone verification step
 		})
 
 		t.Run("no change to metric when user deactivated", func(t *testing.T) {
@@ -331,6 +340,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
 			require.NoError(t, err)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1) // no change
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)         // user deactivated
 		})
 
 		t.Run("metric incremented when user reactivated", func(t *testing.T) {
@@ -343,6 +353,15 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 2) // additional pending verification since user was reactivated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                    // reactivated UserSignup
+			// no other changes
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal")
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external")
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic")
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)
+			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)
 		})
 	})
 }
