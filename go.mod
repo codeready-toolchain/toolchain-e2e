@@ -135,5 +135,5 @@ toolchain go1.22.12
 replace (
 	github.com/codeready-toolchain/api => github.com/rsoaresd/api v0.0.0-20250228080234-cb35a07d92d1
 
-	github.com/codeready-toolchain/toolchain-common => github.com/rsoaresd/toolchain-common v0.0.0-20250228142733-79ee5c94c8cc
+	github.com/codeready-toolchain/toolchain-common => github.com/rsoaresd/toolchain-common v0.0.0-20250303111007-486bbf1ebe05
 )

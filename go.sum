@@ -232,8 +232,8 @@ github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDN
 github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
 github.com/rsoaresd/api v0.0.0-20250228080234-cb35a07d92d1 h1:gjKtZFgGOwpPEBziz+g/JR5JaGk0qTgji6RDe063mkA=
 github.com/rsoaresd/api v0.0.0-20250228080234-cb35a07d92d1/go.mod h1:shTTQ+bYWinbdF/oK+ly4DO5jdXtIASZ+uPZElsmsKg=
-github.com/rsoaresd/toolchain-common v0.0.0-20250228142733-79ee5c94c8cc h1:Q/0FdZ+QpLH0rHhy0nqchS2fOuJc2jZBUeKxS0xK//E=
-github.com/rsoaresd/toolchain-common v0.0.0-20250228142733-79ee5c94c8cc/go.mod h1:rIjfK1zAVNfKMSWXqL3Ykg+fzztnlNqESj/Yf5jCZks=
+github.com/rsoaresd/toolchain-common v0.0.0-20250303111007-486bbf1ebe05 h1:EDTI5ykQCJ556yhvQ08hiwG/OHzhzGq2JGyRBzyGVCU=
+github.com/rsoaresd/toolchain-common v0.0.0-20250303111007-486bbf1ebe05/go.mod h1:rIjfK1zAVNfKMSWXqL3Ykg+fzztnlNqESj/Yf5jCZks=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sergi/go-diff v1.1.0 h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
