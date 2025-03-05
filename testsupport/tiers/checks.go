@@ -134,10 +134,15 @@ func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwa
 	for i, ns := range c.tier.NSTemplateTier.Spec.Namespaces {
 		namespaceTmplRefs[i] = ns.TemplateRef
 	}
+	spaceRolesTmplRefs := make(map[string]string)
+	for i, ns := range c.tier.NSTemplateTier.Spec.SpaceRoles {
+		spaceRolesTmplRefs[i] = ns.TemplateRef
+	}
 
 	return TemplateRefs{
 		ClusterResources: clusterResourcesTmplRef,
 		Namespaces:       namespaceTmplRefs,
+		SpaceRoles:       spaceRolesTmplRefs,
 	}
 }
 
