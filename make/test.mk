@@ -39,10 +39,24 @@ endif
 
 TESTS_RUN_FILTER_REGEXP ?= ""
 
+PAIRING_DIR := "/tmp/pairing"
+PAIRING_EXEC := "/tmp/pairing/pairing"
+TOOLCHAIN_CICD := "/tmp/toolchain-cicd"
+
+.PHONY: build-pairing
+build-pairing:
+	# Clean the directory if it exists
+	if [ -d "${TOOLCHAIN_CICD}" ]; then rm -rf ${TOOLCHAIN_CICD}; fi
+	# Clone 
+	git clone --branch add_pairing_go_script https://github.com/rsoaresd/toolchain-cicd.git ${TOOLCHAIN_CICD}
+	# Build the Go binary into the specified directory
+	make -C ${TOOLCHAIN_CICD}/pairing build-pairing PAIRING_DIR=${PAIRING_DIR}
+
+
 .PHONY: test-e2e
 ## Run the e2e tests
 test-e2e: INSTALL_OPERATOR=true
-test-e2e: prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
+test-e2e: build-pairing prepare-e2e verify-migration-and-deploy-e2e e2e-run-parallel e2e-run e2e-run-metrics
 	@echo "The tests successfully finished"
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -57,7 +71,7 @@ test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: prepare-and-deploy-e2e
-## Prepare and Deploy e2e environment. Usefull to reset without having to run a test
+## Prepare and Deploy e2e environment. Useful to reset without having to run a test
 prepare-and-deploy-e2e: prepare-e2e deploy-e2e
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -91,7 +105,7 @@ deploy-published-operators-e2e: clean-e2e-files deploy-e2e
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
 deploy-e2e: prepare-projects get-publish-install-and-register-operators
-	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
+	@echo "Operators are successfully deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
 label-olm-ns:
@@ -281,7 +295,8 @@ deploy-single-member-e2e-latest:
 
 .PHONY: publish-current-bundles-for-e2e
 ## Target that is supposed to be called from CI - it builds & publishes the current operator bundles
-publish-current-bundles-for-e2e: get-and-publish-operators
+publish-current-bundles-for-e2e: 
+	$(MAKE) build-pairing get-and-publish-operators
 
 .PHONY: get-and-publish-operators
 get-and-publish-operators: PUBLISH_OPERATOR=true
@@ -328,7 +343,7 @@ ifeq ($(DEPLOY_LATEST),true)
    endif
 else
 	@echo "Installing specific version of the member-operator"
-	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM}
+	scripts/ci/manage-member-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -mn ${MEMBER_NS} ${MEMBER_REPO_PATH_PARAM} -qn ${QUAY_NAMESPACE} -ds ${DATE_SUFFIX} ${MEMBER_NS_2_PARAM} ${FORCED_TAG_PARAM} -pe ${PAIRING_EXEC}
 endif
 
 .PHONY: get-and-publish-host-operator
@@ -353,7 +368,7 @@ ifeq ($(DEPLOY_LATEST),true)
 	${KSCTL_BIN_DIR}ksctl adm install-operator host --kubeconfig "$(or ${KUBECONFIG}, ${HOME}/.kube/config)" --namespace ${HOST_NS} ${KSCTL_INSTALL_TIMEOUT_PARAM} -y
 else
 	@echo "Installing specific version of the host-operator"
-	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM}
+	scripts/ci/manage-host-operator.sh -po ${PUBLISH_OPERATOR} -io ${INSTALL_OPERATOR} -hn ${HOST_NS} ${HOST_REPO_PATH_PARAM} -ds ${DATE_SUFFIX} -qn ${QUAY_NAMESPACE} ${REG_REPO_PATH_PARAM} ${FORCED_TAG_PARAM} -pe ${PAIRING_EXEC}
 endif
 
 ###########################################################
