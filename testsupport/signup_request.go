@@ -248,8 +248,9 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	userSignup, err := hostAwait.WaitForUserSignup(t, wait.EncodeUserIdentifier(userIdentity.Username))
 	require.NoError(t, err, "failed to find UserSignup %s", userIdentity.Username)
 
-	if r.targetCluster != nil && hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled != nil {
-		require.False(t, *hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval.Enabled,
+	autoApproval := hostAwait.GetToolchainConfig(t).Spec.Host.AutomaticApproval
+	if r.targetCluster != nil && autoApproval.Enabled != nil {
+		require.False(t, *autoApproval.Enabled,
 			"cannot specify a target cluster for new signup requests while automatic approval is enabled")
 	}
 
