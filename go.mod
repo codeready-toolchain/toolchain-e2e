@@ -1,8 +1,8 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20250227073728-5999971adb48
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20250227105612-03e9ebab49c7
+	github.com/codeready-toolchain/api v0.0.0-20250313170542-4e3c4147cb80
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20250313171924-6e80c15da5c6
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.16.0
 	github.com/ghodss/yaml v1.0.0
@@ -91,6 +91,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/onsi/gomega v1.33.0 // indirect
 	github.com/openshift/library-go v0.0.0-20241118144106-bfd968d8eef4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
@@ -131,9 +132,3 @@ require (
 go 1.22.0
 
 toolchain go1.22.12
-
-replace (
-	github.com/codeready-toolchain/api => github.com/rsoaresd/api v0.0.0-20250304130858-a7bdb1d138cc
-
-	github.com/codeready-toolchain/toolchain-common => github.com/rsoaresd/toolchain-common v0.0.0-20250310105006-c636fa25fa34
-)
