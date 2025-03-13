@@ -6,7 +6,6 @@ import (
 	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	openshiftappsv1 "github.com/openshift/api/apps/v1"
@@ -26,8 +25,6 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
-	// Provision a user to idle with a short idling timeout
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 	NewSignupRequest(await).
 		Username("test-idler").
 		Email("test-idler@redhat.com").
