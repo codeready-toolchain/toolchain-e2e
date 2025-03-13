@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -27,16 +26,12 @@ func TestCreateVirtualMachine(t *testing.T) {
 
 	// make sure everything is ready before running the actual tests
 	awaitilities := WaitForDeployments(t)
-	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 
 	client, err := dynamic.NewForConfig(memberAwait.RestConfig)
 	if err != nil {
 		panic(err)
 	}
-
-	// Provision a user to create the vm
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
 
 	userCounter := 1
 
