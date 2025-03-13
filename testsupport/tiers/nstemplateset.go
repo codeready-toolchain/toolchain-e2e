@@ -133,21 +133,24 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 			if !reflect.DeepEqual(actualNamespaceTmplRefs, expectedRevisions.Namespaces) {
 				return false
 			}
-			// checks that the actual SpaceRole templates match (ie, they are present in `expectedRevisions.SpaceRoles`)
-		spaceroles:
-			for _, r := range actual.Spec.SpaceRoles {
-				// look-up the templateRef
-				for _, ref := range expectedRevisions.SpaceRoles {
-					if r.TemplateRef == ref {
-						continue spaceroles
-					}
-					return false
-				}
-			}
-			return true
+			// checks that the actual spaceroles are at least subSet of the expected spaceroles ones
+			return IsSpaceRoleSubset(expectedRevisions.SpaceRoles, actual.Spec.SpaceRoles)
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
 			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec))
 		},
 	}
+}
+
+func IsSpaceRoleSubset(superset map[string]string, subset []toolchainv1alpha1.NSTemplateSetSpaceRole) bool {
+	checkset := make(map[string]bool)
+	for _, element := range subset {
+		checkset[element.TemplateRef] = true
+	}
+	for _, value := range superset {
+		if checkset[value] {
+			delete(checkset, value)
+		}
+	}
+	return len(checkset) == 0 //this implies that checkset is subset of superset
 }
