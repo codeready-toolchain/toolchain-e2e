@@ -61,7 +61,7 @@ check_command()
 
 run_wait_until_is_installed() {
     PARAMS="-crd keycloak.org -cs '' -n ${DEV_SSO_NS} -s ${SUBSCRIPTION_NAME}"
-    scripts/ci/wait-until-is-installed.sh ${PARAMS}
+    ./wait-until-is-installed.sh ${PARAMS}
 }
 
 setup_oauth_generic()
