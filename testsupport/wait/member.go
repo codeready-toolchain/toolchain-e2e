@@ -2384,7 +2384,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	require.Len(t, vmrequestWebhook.Rules, 1)
 
 	vmrequestRule := vmrequestWebhook.Rules[0]
-	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, vmrequestRule.Operations)
+	assert.Equal(t, []admv1.OperationType{admv1.Update}, vmrequestRule.Operations)
 	assert.Equal(t, []string{"kubevirt.io"}, vmrequestRule.APIGroups)
 	assert.Equal(t, []string{"*"}, vmrequestRule.APIVersions)
 	assert.Equal(t, []string{"virtualmachines"}, vmrequestRule.Resources)
