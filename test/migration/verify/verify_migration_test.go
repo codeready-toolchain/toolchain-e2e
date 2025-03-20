@@ -16,8 +16,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -92,6 +95,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		func() { verifyAppStudioProvisionedSignup(t, awaitilities, appstudioProvisionedSignup) },
 		func() { verifyDeactivatedSignup(t, awaitilities, deactivatedSignup) },
 		func() { verifyBannedSignup(t, awaitilities, bannedSignup) },
+		func() { verifyAdditionalDeploymentsCreatedUsingSSA(t, &awaitilities) },
 	}
 
 	// when & then - run all functions in parallel
@@ -229,6 +233,34 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 
 	// verify that it's unbanned
 	VerifyResourcesProvisionedForSignup(t, awaitilities, signup)
+}
+
+func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait.Awaitilities) {
+	testDeployment := func(t *testing.T, deploymentName, ns, originalFieldManager, expectedFieldManager string) {
+		// when
+		deployment := &appsv1.Deployment{}
+		require.NoError(t, awaitilities.Host().Client.Get(context.TODO(), client.ObjectKey{Name: deploymentName, Namespace: ns}, deployment))
+
+		var applyEntry *metav1.ManagedFieldsEntry
+		var updateEntry *metav1.ManagedFieldsEntry
+		for _, mf := range deployment.ManagedFields {
+			if mf.Manager == expectedFieldManager {
+				applyEntry = &mf
+			}
+			if mf.Manager == originalFieldManager {
+				updateEntry = &mf
+			}
+		}
+
+		// then
+		assert.NotNil(t, applyEntry)
+		assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
+		assert.Nil(t, updateEntry)
+	}
+
+	t.Run("verify registration service deployed using SSA in host", func(t *testing.T) {
+		testDeployment(t, "registration-service", awaitilities.Host().RegistrationServiceNs, "host-operator", "kubesaw-host-operator")
+	})
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
