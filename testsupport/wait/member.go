@@ -2437,7 +2437,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 		}
 		c := d.Spec.Template.Spec.Containers[0]
 		return c.Name == "autoscaling-buffer" &&
-			c.Image == "gcr.io/google_containers/pause-amd64:3.2" &&
+			c.Image == "registry.k8s.io/pause:3.9" &&
 			c.ImagePullPolicy == corev1.PullIfNotPresent
 	}, func(d *appsv1.Deployment) bool {
 		c := d.Spec.Template.Spec.Containers[0]
