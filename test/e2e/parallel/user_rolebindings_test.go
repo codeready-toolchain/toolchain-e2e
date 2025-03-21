@@ -114,7 +114,6 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		}
 		for k, tc := range tests {
-			tc := tc
 			t.Run(k, func(t *testing.T) {
 				// when
 				err = clientset.Create(context.TODO(), &tc.RoleBinding)
@@ -160,7 +159,6 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		}
 		for k, tc := range tests {
-			tc := tc
 			t.Run(k, func(t *testing.T) {
 				// when
 				err = awaitilities.Host().Client.Create(context.TODO(), &tc.RoleBinding)
@@ -209,7 +207,6 @@ func TestUserCreatingRoleBindings(t *testing.T) {
 			},
 		}
 		for k, tc := range tests {
-			tc := tc
 			t.Run(k, func(t *testing.T) {
 				// when
 				err = clientset.Create(context.TODO(), &tc.RoleBinding)

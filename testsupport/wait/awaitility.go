@@ -691,7 +691,6 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 			return false, err
 		}
 		for _, obj := range list.Items {
-			obj := obj // required due to memory aliasing until we upgrade to Go 1.22 which fixes this.
 			object, err := w.cast(&obj)
 			if err != nil {
 				return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
@@ -718,7 +717,6 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 		} else {
 			sb.WriteString("\nlisting the objects found in cluster with the differences from the expected state for each:")
 			for _, o := range list.Items {
-				o := o
 				obj, _ := w.cast(&o)
 				key := client.ObjectKeyFromObject(obj)
 
