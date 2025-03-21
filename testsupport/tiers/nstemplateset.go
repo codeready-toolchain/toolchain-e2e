@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -19,9 +20,9 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 
 	var err error
 	if space.Spec.DisableInheritance {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), UntilNSTemplateSetHasStatusTemplateRefs(expectedTemplateRefs))
 	} else {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles(), UntilNSTemplateSetHasStatusTemplateRefs(expectedTemplateRefs))
 	}
 	require.NoError(t, err)
 
@@ -140,6 +141,53 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec))
 		},
 	}
+}
+
+// UntilNSTemplateSetHasStatusTemplateRefs checks if the NSTemplateTier has the expected template refs in the Status
+func UntilNSTemplateSetHasStatusTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
+	return wait.NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			if expectedRevisions.ClusterResources == nil ||
+				actual.Status.ClusterResources == nil ||
+				*expectedRevisions.ClusterResources != actual.Status.ClusterResources.TemplateRef {
+				return false
+			}
+			actualNamespaceTmplRefs := make([]string, len(actual.Status.Namespaces))
+			for i, r := range actual.Status.Namespaces {
+				actualNamespaceTmplRefs[i] = r.TemplateRef
+			}
+			sort.Strings(actualNamespaceTmplRefs)
+			sort.Strings(expectedRevisions.Namespaces)
+			if !reflect.DeepEqual(actualNamespaceTmplRefs, expectedRevisions.Namespaces) {
+				return false
+			}
+
+			// check expected feature toggles, if any
+			featureAnnotation, featureAnnotationFound := actual.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey]
+			if featureAnnotationFound {
+				if !reflect.DeepEqual(SplitCommaSeparatedList(featureAnnotation), actual.Status.FeatureToggles) {
+					return false
+				}
+			}
+
+			// checks that the actual spaceroles are at least subSet of the expected spaceroles ones
+			return IsSpaceRoleSubset(expectedRevisions.SpaceRoles, actual.Status.SpaceRoles)
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole/feature toggles revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Status))
+		},
+	}
+}
+
+// SplitCommaSeparatedList acts exactly the same as strings.Split(s, ",") but returns an empty slice for empty strings.
+// To be used when, for example, we want to get an empty slice for empty comma separated list:
+// strings.Split("", ",") returns [""] while SplitCommaSeparatedList("") returns []
+// TODO move this to common
+func SplitCommaSeparatedList(s string) []string {
+	if len(s) == 0 {
+		return []string{}
+	}
+	return strings.Split(s, ",")
 }
 
 func IsSpaceRoleSubset(superset map[string]string, subset []toolchainv1alpha1.NSTemplateSetSpaceRole) bool {
