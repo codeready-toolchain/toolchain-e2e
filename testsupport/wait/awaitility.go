@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,14 +52,15 @@ const (
 )
 
 type Awaitility struct {
-	Client         client.Client
-	RestConfig     *rest.Config
-	ClusterName    string
-	Namespace      string
-	RetryInterval  time.Duration
-	Timeout        time.Duration
-	MetricsURL     string
-	baselineValues map[string]float64
+	Client                  client.Client
+	RestConfig              *rest.Config
+	ClusterName             string
+	Namespace               string
+	RetryInterval           time.Duration
+	Timeout                 time.Duration
+	MetricsURL              string
+	baselineValues          map[string]float64
+	baselineHistogramValues map[string]map[float64]uint64
 }
 
 func (a *Awaitility) GetClient() client.Client {
@@ -110,6 +112,23 @@ func (a *Awaitility) WaitForMetricDelta(t *testing.T, family string, delta float
 	key := a.baselineKey(t, family, labels...)
 	adjustedValue := a.baselineValues[key] + delta
 	a.WaitUntiltMetricHasValue(t, family, adjustedValue, labels...)
+}
+
+// WaitForHistogramInfBucketDelta waits for the histogram +Inf bucket value to reach the adjusted value.
+// The adjusted value is the delta value combined with the baseline value of the +Inf bucket
+func (a *Awaitility) WaitForHistogramInfBucketDelta(t *testing.T, family string, delta uint64, labels ...string) {
+	key := a.baselineKey(t, family, labels...)
+
+	baseline := a.baselineHistogramValues[key][math.Inf(1)]
+	expectedValue := baseline + delta
+	t.Logf("waiting for the +Inf bucket in histogram '%s{%v}' to reach '%v'", family, labels, expectedValue)
+	var actualValues map[float64]uint64
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		actualValues = a.GetHistogramValues(t, family, labels...)
+		return actualValues[math.Inf(1)] == expectedValue, nil
+	})
+	require.NoError(t, err, "waited for the +Inf bucket in histogram '%s{%v}' to reach '%v'. Current value: %v. Whole histogram: %v",
+		family, labels, expectedValue, actualValues[math.Inf(1)], actualValues)
 }
 
 // WaitForMetricBaseline waits for the metric value to reach the baseline value back (to be used during the cleanup)
@@ -300,6 +319,18 @@ func (a *Awaitility) GetMetricValue(t *testing.T, family string, labelAndValues 
 	value, err := metrics.GetMetricValue(a.RestConfig, a.MetricsURL, family, labelAndValues)
 	require.NoError(t, err)
 	return value
+}
+
+// GetHistogramValues gets the value of the histogram with the given family and label key-value pair
+// fails if the histogram with the given labelAndValues does not exist
+func (a *Awaitility) GetHistogramValues(t *testing.T, family string, labelAndValues ...string) map[float64]uint64 {
+	buckets, err := metrics.GetHistogramBuckets(a.RestConfig, a.MetricsURL, family, labelAndValues)
+	require.NoError(t, err)
+	values := make(map[float64]uint64, len(buckets))
+	for _, bucket := range buckets {
+		values[bucket.GetUpperBound()] = bucket.GetCumulativeCount()
+	}
+	return values
 }
 
 // GetMetricValue gets the value of the metric with the given family and label key-value pair
@@ -660,7 +691,6 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 			return false, err
 		}
 		for _, obj := range list.Items {
-			obj := obj // required due to memory aliasing until we upgrade to Go 1.22 which fixes this.
 			object, err := w.cast(&obj)
 			if err != nil {
 				return false, fmt.Errorf("failed to cast the object to GVK %v: %w", w.gvk, err)
@@ -687,7 +717,6 @@ func (w *Waiter[T]) FirstThat(predicates ...assertions.Predicate[client.Object])
 		} else {
 			sb.WriteString("\nlisting the objects found in cluster with the differences from the expected state for each:")
 			for _, o := range list.Items {
-				o := o
 				obj, _ := w.cast(&o)
 				key := client.ObjectKeyFromObject(obj)
 

@@ -3,7 +3,7 @@ package conditions
 import (
 	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions"
+	assertions "github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2"
 	"github.com/stretchr/testify/assert"
 )
 

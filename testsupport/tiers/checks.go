@@ -134,10 +134,15 @@ func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwa
 	for i, ns := range c.tier.NSTemplateTier.Spec.Namespaces {
 		namespaceTmplRefs[i] = ns.TemplateRef
 	}
+	spaceRolesTmplRefs := make(map[string]string)
+	for i, ns := range c.tier.NSTemplateTier.Spec.SpaceRoles {
+		spaceRolesTmplRefs[i] = ns.TemplateRef
+	}
 
 	return TemplateRefs{
 		ClusterResources: clusterResourcesTmplRef,
 		Namespaces:       namespaceTmplRefs,
+		SpaceRoles:       spaceRolesTmplRefs,
 	}
 }
 
@@ -221,9 +226,9 @@ type base1nsTierChecks struct {
 
 func (a *base1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("20", "18Gi", "3", "18Gi"),
+		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi"),
 		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
-		resourceQuotaStorage("15Gi", "60Gi", "15Gi", "5"),
+		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
 		execPodsRole(),

@@ -12,9 +12,11 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testconfig "github.com/codeready-toolchain/toolchain-common/pkg/test/config"
+	testSpc "github.com/codeready-toolchain/toolchain-common/pkg/test/spaceprovisionerconfig"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	authsupport "github.com/codeready-toolchain/toolchain-e2e/testsupport/auth"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 
 	"github.com/google/uuid"
@@ -135,6 +137,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space created on member-1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 2, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces created on member-2
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of the provision time for manual approval
 
 	// check if the MUR and Space counts match in ToolchainStatus
 	_, err = hostAwait.WaitForToolchainStatus(t,
@@ -171,6 +174,7 @@ func TestMetricsWhenUsersManuallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // two deactivated
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)                        // 1 space still in member-1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)                       // 2 spaces deleted from member-2
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no change when deactivated
 
 	// check if the MUR and Space counts match in ToolchainStatus
 	_, err = hostAwait.WaitForToolchainStatus(t,
@@ -219,7 +223,7 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // both automatically approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // none deactivated
-
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 2)                                        // one record for both automatically approved users
 	// when deactivating the users
 	for username, usersignup := range usersignups {
 		_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
@@ -244,6 +248,7 @@ func TestMetricsWhenUsersAutomaticallyApprovedAndThenDeactivated(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 2, "method", "automatic")                   // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // all deactivated (but counters are never decremented)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 2)                                                 // all deactivated
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 2)                                        // no change when deactivated
 }
 
 // TestVerificationRequiredMetric verifies that `UserSignupVerificationRequiredMetric` counters are increased only once when users are created/reactivated
@@ -254,7 +259,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
 	route := hostAwait.RegistrationServiceURL
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false)) // disable automatic approval so that users are created with verification required
+	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(true))
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
@@ -307,7 +312,17 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			require.NotEmpty(t, verificationCode)
 			// Attempt to verify with an incorrect verification code
 			NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup/verification/invalid", token0, "", http.StatusForbidden)
-			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1) // no change after verification initiated
+			// verify with the correct code
+			NewHTTPRequest(t).InvokeEndpoint("GET", route+fmt.Sprintf("/api/v1/signup/verification/%s", verificationCode), token0, "", http.StatusOK)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1)                                         // no change after verification initiated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)                                                            // user provisioned
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal") // never incremented
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external") // user activated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                                    // user approved
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic")                   // user automatically approved
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")                      // not manually approved
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 0)                                                 // not deactivated
+			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                                        // no tracking of provision time for users with phone verification step
 		})
 
 		t.Run("no change to metric when user deactivated", func(t *testing.T) {
@@ -325,6 +340,7 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(t, username)
 			require.NoError(t, err)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 1) // no change
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)         // user deactivated
 		})
 
 		t.Run("metric incremented when user reactivated", func(t *testing.T) {
@@ -337,6 +353,15 @@ func TestVerificationRequiredMetric(t *testing.T) {
 			// then
 			require.NoError(t, err)
 			hostAwait.WaitForMetricDelta(t, wait.UserSignupVerificationRequiredMetric, 2) // additional pending verification since user was reactivated
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 2)                    // reactivated UserSignup
+			// no other changes
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 0, "activations", "1", "domain", "internal")
+			hostAwait.WaitForMetricDelta(t, wait.UsersPerActivationsAndDomainMetric, 1, "activations", "1", "domain", "external")
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic")
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")
+			hostAwait.WaitForMetricDelta(t, wait.UserSignupsDeactivatedMetric, 1)
+			hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)
 		})
 	})
 }
@@ -530,6 +555,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait.ClusterName)
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0) // manual approval and banning is not recorded in provisioned time
 
 	t.Run("unban the banned user", func(t *testing.T) {
 		// when unbaning the user
@@ -555,6 +581,7 @@ func TestMetricsWhenUsersBanned(t *testing.T) {
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space provisioned on member1
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no spaces on member2
+		hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 0)                  // unbanning manually approved user is not recorded in provisioned time
 	})
 }
 
@@ -565,7 +592,9 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	hostAwait := awaitilities.Host()
 	memberAwait := awaitilities.Member1()
 	memberAwait2 := awaitilities.Member2()
-	hostAwait.UpdateToolchainConfig(t, testconfig.AutomaticApproval().Enabled(false))
+	hostAwait.UpdateToolchainConfig(t,
+		testconfig.AutomaticApproval().Enabled(true),
+		testconfig.RegistrationService().Verification().Enabled(false))
 	// host metrics should be available at this point
 	hostAwait.InitMetrics(t, awaitilities.Member1().ClusterName, awaitilities.Member2().ClusterName)
 	t.Cleanup(func() {
@@ -573,26 +602,27 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait.ClusterName)  // wait until counter is back to 0
 		hostAwait.WaitForMetricBaseline(t, wait.SpacesMetric, "cluster_name", memberAwait2.ClusterName) // wait until counter is back to 0
 	})
+	// disable member2 so the user is provisioned to member1
+	spaceprovisionerconfig.UpdateForCluster(t, hostAwait.Awaitility, memberAwait2.ClusterName, testSpc.Enabled(false))
 
 	// Create UserSignup
 	user := NewSignupRequest(awaitilities).
 		Username("janedoe").
-		ManuallyApprove().
-		TargetCluster(memberAwait).
 		EnsureMUR().
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(t)
 	mur := user.MUR
 
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // approved
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // not automatically approved
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "manual")    // manually approved
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic") // automatically approved
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // not manually approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0)
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space present on member1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no space on member2
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 1)                  // automatically approved user is measured
 
 	// when disabling MUR
 	_, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
@@ -606,13 +636,14 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 	// verify the metrics
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // still approved even though (temporarily) disabled
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // not automatically approved
-	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "manual")    // manually approved
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic") // automatically approved
+	hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // not manually approved
 	hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0)
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 	hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external")
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // space is on member1
 	hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName) // no space on member2
+	hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 1)                  // disabling has no impact
 
 	t.Run("re-enabled mur", func(t *testing.T) {
 		// When re-enabling MUR
@@ -627,13 +658,14 @@ func TestMetricsWhenUserDisabled(t *testing.T) {
 		// verify the metrics
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsMetric, 1)                                          // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedMetric, 1)                                  // unchanged, user was already provisioned
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "automatic") // unchanged, user was already provisioned
-		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "manual")    // unchanged, user was already provisioned
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 1, "method", "automatic") // unchanged, user was already provisioned
+		hostAwait.WaitForMetricDelta(t, wait.UserSignupsApprovedWithMethodMetric, 0, "method", "manual")    // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.UserSignupsBannedMetric, 0)
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 0, "domain", "internal")
 		hostAwait.WaitForMetricDelta(t, wait.MasterUserRecordsPerDomainMetric, 1, "domain", "external") // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 1, "cluster_name", memberAwait.ClusterName)  // unchanged, user was already provisioned
 		hostAwait.WaitForMetricDelta(t, wait.SpacesMetric, 0, "cluster_name", memberAwait2.ClusterName)
+		hostAwait.WaitForHistogramInfBucketDelta(t, wait.SignupProvisionTimeMetric, 1) // re-enabling has no impact
 	})
 }
 

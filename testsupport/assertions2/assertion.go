@@ -1,4 +1,4 @@
-package assertions
+package assertions2
 
 var _ Assertion[bool] = (AssertionFunc[bool])(nil)
 
@@ -18,6 +18,51 @@ type WithAssertions[T any] interface {
 func Test[T any, A WithAssertions[T]](t AssertT, obj T, assertions A) {
 	t.Helper()
 	testInner(t, obj, assertions, false)
+}
+
+func CastAssertion[Type any, SubType any](a Assertion[Type]) Assertion[SubType] {
+	if af, ok := a.(AssertionFixer[Type]); ok {
+		// convert the assertion fixer, too
+		return &AssertAndFixFunc[SubType]{
+			Assert: func(t AssertT, obj SubType) {
+				t.Helper()
+				tobj, ok := cast[Type](obj)
+				if !ok {
+					t.Errorf("invalid cast")
+				}
+
+				a.Test(t, tobj)
+			},
+			Fix: func(obj SubType) SubType {
+				tobj, ok := cast[Type](obj)
+				if ok {
+					tobj = af.AdaptToMatch(tobj)
+					obj, _ = cast[SubType](tobj)
+				}
+				return obj
+			},
+		}
+	} else {
+		// simple
+		return AssertionFunc[SubType](func(t AssertT, obj SubType) {
+			t.Helper()
+			sobj, ok := cast[Type](obj)
+			if !ok {
+				t.Errorf("invalid cast")
+			}
+
+			a.Test(t, sobj)
+		})
+	}
+}
+
+// cast casts the obj into T. This is strangely required in cases where you want to cast
+// object that is typed using a type parameter into a type specified by another type parameter.
+// The compiler rejects such casts but doesn't complain if the cast is done using
+// an indirection using this function.
+func cast[T any](obj any) (T, bool) {
+	ret, ok := obj.(T)
+	return ret, ok
 }
 
 func testInner[T any, A WithAssertions[T]](t AssertT, obj T, assertions A, suppressLogAround bool) {

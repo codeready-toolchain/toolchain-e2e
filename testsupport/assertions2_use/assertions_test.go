@@ -1,4 +1,4 @@
-package assertions_use
+package assertions2_use
 
 import (
 	"context"
@@ -6,8 +6,9 @@ import (
 	"time"
 
 	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/spaceprovisionerconfig"
+	assertions "github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2/metadata"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2/spaceprovisionerconfig"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,9 +29,8 @@ func Test(t *testing.T) {
 
 	// use the assertions in a simple immediate call
 	spaceprovisionerconfig.Asserting().
-		Metadata.HasLabel("asdf").
-		Metadata.HasName("kachny").
-		Metadata.IsInNamespace("default").
+		Metadata.Like(metadata.With().Label("asdf").Name("kachny").Namespace("default")).
+		Metadata.With().Label("asdf").Name("kachny").Namespace("default").Done().
 		Conditions.HasConditionWithType(toolchainv1aplha1.ConditionReady).
 		Test(t, spcUnderTest)
 
@@ -39,5 +39,5 @@ func Test(t *testing.T) {
 		WithTimeout(1*time.Second). // defaults to wait.DefaultTimeout which is 2 minutes, so let's make it shorter here
 		WithObjectKey("default", "kachny").
 		Matching(context.TODO(), t,
-			spaceprovisionerconfig.Asserting().Metadata.HasLabel("asdf"))
+			spaceprovisionerconfig.Asserting().Metadata.Like(metadata.With().Label("asdf")))
 }

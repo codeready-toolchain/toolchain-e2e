@@ -15,11 +15,11 @@ type objectT struct {
 	objectReported bool
 }
 
-func (t *objectT) Errorf(format string, args ...interface{}) {
+func (t *objectT) Errorf(format string, args ...any) {
 	t.Helper()
 	if !t.objectReported {
 		t.Errorf("Object failed one or more assertions\n%+v", t.Object) //nolint: testifylint
 		t.objectReported = true
 	}
-	t.Errorf(format, args...)
+	t.AssertT.Errorf(format, args...)
 }

@@ -2,9 +2,9 @@ package spaceprovisionerconfig
 
 import (
 	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/conditions"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/metadata"
+	assertions "github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2/conditions"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions2/metadata"
 	"github.com/stretchr/testify/assert"
 )
 

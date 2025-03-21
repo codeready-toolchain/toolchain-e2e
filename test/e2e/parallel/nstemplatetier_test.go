@@ -129,7 +129,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 
 	t.Log("updating tiers")
-	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources
+	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources and spaceroles
 	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
 	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
@@ -290,7 +290,6 @@ func TestFeatureToggles(t *testing.T) {
 			tiers.WithSpaceRoles(t, base1nsTier))
 		_, err := hostAwait.WaitForNSTemplateTier(t, tier.Name)
 		require.NoError(t, err)
-
 		// when
 
 		// Now let's create a Space
@@ -432,9 +431,13 @@ func TestTierTemplateRevision(t *testing.T) {
 		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs)+1))
 		require.NoError(t, err)
 		// get the updated nstemplatetier
-		updatedCustomTier, err := hostAwait.WaitForNSTemplateTier(t, customTier.Name)
-		newTTR, found := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
-		require.True(t, found)
+		updatedCustomTier, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
+			WithNameMatching(customTier.Name, func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+				newTTR, found := actual.Status.Revisions[actual.Spec.ClusterResources.TemplateRef]
+				return found && newTTR != "" && newTTR != ttrToBeModified
+			})
+		newTTR := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
+
 		// check that it has the updated crq
 		checkThatTTRContainsCRQ(t, newTTR, updatedTTRs, updatedCRQ)
 
@@ -493,6 +496,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "updatingtier").Flatten()))
 		require.NoError(t, err)
 		updatingTier.NSTemplateTier = tier
+		revisionsBeforeUpdate := updatingTier.Status.Revisions
 		// and we update the tier with the "advanced" template refs for namespace and space role resources
 		tiers.UpdateCustomNSTemplateTier(t, hostAwait, updatingTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
 
@@ -511,7 +515,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			wait.HasStatusTierTemplateRevisions(expectedRefs))
 		require.NoError(t, err)
 		// revisions values should be different compared to the previous ones
-		assert.NotEqual(t, updatingTier.Status.Revisions, updatedTier.Status.Revisions)
+		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
 	})
 
 }

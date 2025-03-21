@@ -2384,7 +2384,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	require.Len(t, vmrequestWebhook.Rules, 1)
 
 	vmrequestRule := vmrequestWebhook.Rules[0]
-	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, vmrequestRule.Operations)
+	assert.Equal(t, []admv1.OperationType{admv1.Update}, vmrequestRule.Operations)
 	assert.Equal(t, []string{"kubevirt.io"}, vmrequestRule.APIGroups)
 	assert.Equal(t, []string{"*"}, vmrequestRule.APIVersions)
 	assert.Equal(t, []string{"virtualmachines"}, vmrequestRule.Resources)
@@ -2437,7 +2437,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 		}
 		c := d.Spec.Template.Spec.Containers[0]
 		return c.Name == "autoscaling-buffer" &&
-			c.Image == "gcr.io/google_containers/pause-amd64:3.2" &&
+			c.Image == "registry.k8s.io/pause:3.9" &&
 			c.ImagePullPolicy == corev1.PullIfNotPresent
 	}, func(d *appsv1.Deployment) bool {
 		c := d.Spec.Template.Spec.Containers[0]
