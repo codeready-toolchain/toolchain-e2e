@@ -231,10 +231,7 @@ func verifyResourceUpdatesForUserSignups(t *testing.T, hostAwait *wait.HostAwait
 		require.NoError(t, err)
 		require.NotNil(t, userAccount)
 
-		checks, err := tiers.NewChecksForTier(tier.NSTemplateTier)
-		require.NoError(t, err)
-		require.NotNil(t, checks)
-		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, wait.UntilNSTemplateSetHasTier(tier.Name), tiers.UntilNSTemplateSetHasStatusTemplateRefs(checks.GetExpectedTemplateRefs(t, hostAwait)))
+		nsTemplateSet, err := memberAwaitility.WaitForNSTmplSet(t, usersignup.Status.CompliantUsername, wait.UntilNSTemplateSetHasTier(tier.Name), tiers.UntilNSTemplateSetHasStatusTemplateRefs(tiers.GetTemplateRefs(t, hostAwait, tier.Name)))
 		if err != nil {
 			t.Logf("getting NSTemplateSet '%s' failed with: %s", usersignup.Status.CompliantUsername, err)
 		}
