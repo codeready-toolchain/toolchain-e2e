@@ -20,9 +20,9 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 
 	var err error
 	if space.Spec.DisableInheritance {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), UntilNSTemplateSetHasStatusTemplateRefs(expectedTemplateRefs))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
 	} else {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles(), UntilNSTemplateSetHasStatusTemplateRefs(expectedTemplateRefs))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
 	}
 	require.NoError(t, err)
 
