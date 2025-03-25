@@ -32,8 +32,6 @@ github.com/cloudflare/circl v1.3.7 h1:qlCDlTPz2n9fu58M0Nh1J/JzcFpfgkFHHX3O35r5vc
 github.com/cloudflare/circl v1.3.7/go.mod h1:sRTcRWXGLrKw6yIGJ+l7amYJFfAXbZG0kBSc8r4zxgA=
 github.com/codeready-toolchain/api v0.0.0-20250313170542-4e3c4147cb80 h1:wh41dZ7VkyClQWiMJbMypku6xTxtxNZTgQJUAcodgUo=
 github.com/codeready-toolchain/api v0.0.0-20250313170542-4e3c4147cb80/go.mod h1:shTTQ+bYWinbdF/oK+ly4DO5jdXtIASZ+uPZElsmsKg=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20250313203311-0bce6563576f h1:qBUZ/xBNgDMf5Y0tObJ85/9GcDSgtUf8WFfCrNSxaZ4=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20250313203311-0bce6563576f/go.mod h1:0dopWh1MWi9eg2d5RAd4uSUmXfDMqz4Yk2oNPHF15+Y=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -79,8 +77,8 @@ github.com/gofrs/uuid v3.3.0+incompatible h1:8K4tyRfvU1CYPgJsveYFQMhpFd/wXNM7iK6
 github.com/gofrs/uuid v3.3.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cvc58UF3b5XjBnZv7+opcTcQFZebYjWzi34vdm4Q=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
-github.com/golang-jwt/jwt/v5 v5.2.0 h1:d/ix8ftRUorsN+5eMIlF4T6J8CAt9rch3My2winC1Jw=
-github.com/golang-jwt/jwt/v5 v5.2.0/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
+github.com/golang-jwt/jwt/v5 v5.2.2 h1:Rl4B7itRWVtYIHFrSNd7vhTiz9UpLdi6gZhZ3wEeDy8=
+github.com/golang-jwt/jwt/v5 v5.2.2/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
@@ -187,6 +185,8 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.7 h1:Ei8KR0497xHyKJPAv59M1dkC+rOZCMBJ+t3fZ+twI54=
 github.com/mattn/go-runewidth v0.0.7/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
+github.com/mfrancisc/toolchain-common v0.0.0-20250325110421-0c2976c7f662 h1:RUQvBatHeDO/kbjhrQiP0nYk/mZSQD9KljEKRIHFyWQ=
+github.com/mfrancisc/toolchain-common v0.0.0-20250325110421-0c2976c7f662/go.mod h1:Rd64iFrlcocihpLq4qIsCMkjN/1invHHaU1AMq19OWA=
 github.com/migueleliasweb/go-github-mock v0.0.18 h1:0lWt9MYmZQGnQE2rFtjlft/YtD6hzxuN6JJRFpujzEI=
 github.com/migueleliasweb/go-github-mock v0.0.18/go.mod h1:CcgXcbMoRnf3rRVHqGssuBquZDIcaplxL2W6G+xs7kM=
 github.com/mitchellh/copystructure v1.0.0 h1:Laisrj+bAB6b/yJwB5Bt3ITZhGJdqmxquMKeZ+mmkFQ=

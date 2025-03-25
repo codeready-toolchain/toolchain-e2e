@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strings"
 	"sync"
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/utils"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
@@ -165,7 +165,7 @@ func UntilNSTemplateSetHasStatusTemplateRefs(expectedRevisions TemplateRefs) wai
 			// check expected feature toggles, if any
 			featureAnnotation, featureAnnotationFound := actual.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey]
 			if featureAnnotationFound {
-				if !reflect.DeepEqual(SplitCommaSeparatedList(featureAnnotation), actual.Status.FeatureToggles) {
+				if !reflect.DeepEqual(utils.SplitCommaSeparatedList(featureAnnotation), actual.Status.FeatureToggles) {
 					return false
 				}
 			}
@@ -177,17 +177,6 @@ func UntilNSTemplateSetHasStatusTemplateRefs(expectedRevisions TemplateRefs) wai
 			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole/feature toggles revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Status))
 		},
 	}
-}
-
-// SplitCommaSeparatedList acts exactly the same as strings.Split(s, ",") but returns an empty slice for empty strings.
-// To be used when, for example, we want to get an empty slice for empty comma separated list:
-// strings.Split("", ",") returns [""] while SplitCommaSeparatedList("") returns []
-// TODO move this to common
-func SplitCommaSeparatedList(s string) []string {
-	if len(s) == 0 {
-		return []string{}
-	}
-	return strings.Split(s, ",")
 }
 
 func IsSpaceRoleSubset(superset map[string]string, subset []toolchainv1alpha1.NSTemplateSetSpaceRole) bool {
