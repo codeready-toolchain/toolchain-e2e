@@ -120,8 +120,8 @@ func getExpectedProvisionedNamespaces(namespaces []string) []toolchainv1alpha1.S
 func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
 	return wait.NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
-			if expectedRevisions.ClusterResources == nil ||
-				actual.Spec.ClusterResources == nil ||
+			if (expectedRevisions.ClusterResources == nil && actual.Spec.ClusterResources != nil) ||
+				(expectedRevisions.ClusterResources != nil && actual.Spec.ClusterResources == nil) ||
 				*expectedRevisions.ClusterResources != actual.Spec.ClusterResources.TemplateRef {
 				return false
 			}
@@ -144,24 +144,18 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 }
 
 // UntilNSTemplateSetHasStatusTemplateRefs checks if the NSTemplateTier has the expected template refs in the Status
-func UntilNSTemplateSetHasStatusTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
+func UntilNSTemplateSetHasStatusTemplateRefs() wait.NSTemplateSetWaitCriterion {
 	return wait.NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
-			if expectedRevisions.ClusterResources == nil ||
-				actual.Status.ClusterResources == nil ||
-				*expectedRevisions.ClusterResources != actual.Status.ClusterResources.TemplateRef {
+			// check that the status was updated with the expected template ref.
+			if (actual.Status.ClusterResources == nil && actual.Spec.ClusterResources != nil) ||
+				(actual.Status.ClusterResources != nil && actual.Spec.ClusterResources == nil) ||
+				actual.Status.ClusterResources.TemplateRef != actual.Spec.ClusterResources.TemplateRef {
 				return false
 			}
-			actualNamespaceTmplRefs := make([]string, len(actual.Status.Namespaces))
-			for i, r := range actual.Status.Namespaces {
-				actualNamespaceTmplRefs[i] = r.TemplateRef
-			}
-			sort.Strings(actualNamespaceTmplRefs)
-			sort.Strings(expectedRevisions.Namespaces)
-			if !reflect.DeepEqual(actualNamespaceTmplRefs, expectedRevisions.Namespaces) {
+			if !reflect.DeepEqual(actual.Status.Namespaces, actual.Spec.Namespaces) {
 				return false
 			}
-
 			// check expected feature toggles, if any
 			featureAnnotation, featureAnnotationFound := actual.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey]
 			if featureAnnotationFound {
@@ -169,12 +163,10 @@ func UntilNSTemplateSetHasStatusTemplateRefs(expectedRevisions TemplateRefs) wai
 					return false
 				}
 			}
-
-			// checks that the actual spaceroles are at least subSet of the expected spaceroles ones
-			return IsSpaceRoleSubset(expectedRevisions.SpaceRoles, actual.Status.SpaceRoles)
+			return reflect.DeepEqual(actual.Status.SpaceRoles, actual.Status.SpaceRoles)
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
-			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole/feature toggles revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Status))
+			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole/feature toggles revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(actual.Spec), spew.Sdump(actual.Status))
 		},
 	}
 }
