@@ -556,66 +556,6 @@ func (s *userManagementTestSuite) TestUserDeactivation() {
 }
 
 func (s *userManagementTestSuite) TestUserBanning() {
-	s.Run("ban provisioned usersignup", func() {
-		hostAwait := s.Host()
-		memberAwait := s.Member1()
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(false))
-
-		// Create a new UserSignup and approve it manually
-		user := NewSignupRequest(s.Awaitilities).
-			Username("banprovisioned").
-			Email("banprovisioned@test.com").
-			ManuallyApprove().
-			TargetCluster(memberAwait).
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			Execute(s.T())
-		userSignup := user.UserSignup
-
-		// Create the BannedUser
-		CreateBannedUser(s.T(), s.Host(), userSignup.Spec.IdentityClaims.Email)
-
-		// Confirm the user is banned
-		_, err := hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*15)).WaitForUserSignup(s.T(), userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...))
-		require.NoError(s.T(), err)
-
-		// Confirm that a MasterUserRecord is deleted
-		_, err = hostAwait.WithRetryOptions(wait.TimeoutOption(time.Second*10)).WaitForMasterUserRecord(s.T(), userSignup.Spec.IdentityClaims.PreferredUsername)
-		require.Error(s.T(), err)
-		// confirm usersignup
-		_, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name,
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin(), wait.Banned())...),
-			wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
-		require.NoError(s.T(), err)
-	})
-
-	s.Run("manually created usersignup with preexisting banneduser", func() {
-		hostAwait := s.Host()
-		memberAwait := s.Member1()
-		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
-
-		id := uuid.Must(uuid.NewV4()).String()
-		email := "testuser" + id + "@test.com"
-		CreateBannedUser(s.T(), s.Host(), email)
-
-		// For this test, we don't want to create the UserSignup via the registration service (the next test does this)
-		// Instead, we want to confirm the behaviour when a UserSignup with a banned email address is created manually
-		userSignup := NewUserSignup(hostAwait.Namespace, "testuser"+id, email)
-		userSignup.Spec.TargetCluster = memberAwait.ClusterName
-
-		// Create the UserSignup via the Kubernetes API
-		err := hostAwait.CreateWithCleanup(s.T(), userSignup)
-		require.NoError(s.T(), err)
-		s.T().Logf("user signup '%s' created", userSignup.Name)
-
-		// Check the UserSignup is created and confirm that the user is banned
-		_, err = hostAwait.WaitForUserSignup(s.T(), userSignup.Name, wait.UntilUserSignupHasStateLabel(toolchainv1alpha1.UserSignupStateLabelValueBanned))
-		require.NoError(s.T(), err)
-
-		err = hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(s.T(), "testuser"+id)
-		require.NoError(s.T(), err)
-	})
-
 	s.Run("register new user with preexisting ban", func() {
 		hostAwait := s.Host()
 		hostAwait.UpdateToolchainConfig(s.T(), testconfig.AutomaticApproval().Enabled(true))
@@ -628,29 +568,7 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		// to avoid token used before issued error.
 		_, token0, err := authsupport.NewToken(authsupport.WithEmail(email))
 		require.NoError(s.T(), err)
-
-		route := hostAwait.RegistrationServiceURL
-
-		// Call signup endpoint with a valid token to initiate a signup process
-		req, err := http.NewRequest("POST", route+"/api/v1/signup", nil)
-		require.NoError(s.T(), err)
-		req.Header.Set("Authorization", "Bearer "+token0)
-		req.Header.Set("content-type", "application/json")
-
-		resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
-		require.NoError(s.T(), err)
-		defer Close(s.T(), resp)
-
-		body, err := io.ReadAll(resp.Body)
-		require.NoError(s.T(), err)
-		require.NotNil(s.T(), body)
-		assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
-
-		// Check the error.
-		statusErr := make(map[string]interface{})
-		err = json.Unmarshal([]byte(body), &statusErr)
-		require.NoError(s.T(), err)
-		require.Equal(s.T(), "forbidden: user has been banned", statusErr["message"])
+		s.verifyRegServiceForBannedUser(http.MethodPost, token0)
 	})
 
 	s.Run("ban provisioned usersignup", func() {
@@ -687,6 +605,8 @@ func (s *userManagementTestSuite) TestUserBanning() {
 		require.NoError(s.T(), err)
 		require.NoError(s.T(), hostAwait.WaitUntilSpaceAndSpaceBindingsDeleted(s.T(), user.Space.Name))
 
+		s.verifyRegServiceForBannedUser(http.MethodGet, user.Token)
+
 		s.Run("unban the banned user", func() {
 			// Unban the user
 			err = hostAwait.Client.Delete(context.TODO(), bannedUser)
@@ -707,6 +627,31 @@ func (s *userManagementTestSuite) TestUserBanning() {
 			require.NoError(s.T(), err)
 		})
 	})
+}
+
+func (s *userManagementTestSuite) verifyRegServiceForBannedUser(method, token string) {
+	hostAwait := s.Host()
+	route := hostAwait.RegistrationServiceURL
+	// Call signup endpoint with a valid token to initiate a signup process
+	req, err := http.NewRequest(method, route+"/api/v1/signup", nil)
+	require.NoError(s.T(), err)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("content-type", "application/json")
+
+	resp, err := httpClient.Do(req) // nolint:bodyclose // see `defer Close(t, resp)`
+	require.NoError(s.T(), err)
+	defer Close(s.T(), resp)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), body)
+	assert.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
+
+	// Check the error.
+	statusErr := make(map[string]interface{})
+	err = json.Unmarshal(body, &statusErr)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), "forbidden: Access to the Developer Sandbox has been suspended due to suspicious activity or detected abuse.", statusErr["message"])
 }
 
 func (s *userManagementTestSuite) TestUserDisabled() {
