@@ -127,15 +127,15 @@ func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 
 func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwaitility) TemplateRefs {
 	var clusterResourcesTmplRef *string
-	if c.tier.NSTemplateTier.Spec.ClusterResources != nil {
-		clusterResourcesTmplRef = &c.tier.NSTemplateTier.Spec.ClusterResources.TemplateRef
+	if c.tier.Spec.ClusterResources != nil {
+		clusterResourcesTmplRef = &c.tier.Spec.ClusterResources.TemplateRef
 	}
-	namespaceTmplRefs := make([]string, len(c.tier.NSTemplateTier.Spec.Namespaces))
-	for i, ns := range c.tier.NSTemplateTier.Spec.Namespaces {
+	namespaceTmplRefs := make([]string, len(c.tier.Spec.Namespaces))
+	for i, ns := range c.tier.Spec.Namespaces {
 		namespaceTmplRefs[i] = ns.TemplateRef
 	}
 	spaceRolesTmplRefs := make(map[string]string)
-	for i, ns := range c.tier.NSTemplateTier.Spec.SpaceRoles {
+	for i, ns := range c.tier.Spec.SpaceRoles {
 		spaceRolesTmplRefs[i] = ns.TemplateRef
 	}
 
@@ -1107,7 +1107,7 @@ func limitRange(cpuLimit, memoryLimit, cpuRequest, memoryRequest string) namespa
 		require.NoError(t, err)
 		defReq[corev1.ResourceMemory], err = resource.ParseQuantity(memoryRequest)
 		require.NoError(t, err)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, lr.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, lr.Labels[toolchainv1alpha1.ProviderLabelKey])
 		expected := &corev1.LimitRange{
 			Spec: corev1.LimitRangeSpec{
 				Limits: []corev1.LimitRangeItem{
@@ -1128,7 +1128,7 @@ func networkPolicySameNamespace() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-same-namespace")
 		require.NoError(t, err)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.Labels[toolchainv1alpha1.ProviderLabelKey])
 		expected := &netv1.NetworkPolicy{
 			Spec: netv1.NetworkPolicySpec{
 				Ingress: []netv1.NetworkPolicyIngressRule{
@@ -1199,7 +1199,7 @@ func networkPolicyAllowFromRedHatODSNamespaceToMariaDB() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, userName string) {
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, "allow-from-redhat-ods-app-to-mariadb")
 		require.NoError(t, err)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.Labels[toolchainv1alpha1.ProviderLabelKey])
 
 		tcpProtocol := corev1.ProtocolTCP
 		port := intstr.FromInt(3306)
@@ -1257,7 +1257,7 @@ func assertNetworkPolicyIngressForNamespaces(name string, podSelector metav1.Lab
 		require.Equal(t, 0, len(labelNameValuePairs)%2, "labelNameValuePairs must be a list of key-value pairs")
 		np, err := memberAwait.WaitForNetworkPolicy(t, ns, name)
 		require.NoError(t, err)
-		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.ObjectMeta.Labels[toolchainv1alpha1.ProviderLabelKey])
+		assert.Equal(t, toolchainv1alpha1.ProviderLabelValue, np.Labels[toolchainv1alpha1.ProviderLabelKey])
 
 		ingressRules := []netv1.NetworkPolicyIngressRule{}
 		for labelNameValuePairsIndex := 0; labelNameValuePairsIndex < len(labelNameValuePairs); labelNameValuePairsIndex += 2 {

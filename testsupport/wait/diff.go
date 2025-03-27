@@ -10,17 +10,16 @@ import (
 func Diff(expected, actual interface{}) string {
 	msg := &strings.Builder{}
 
-	msg.WriteString("\nexpected:\n")
-	msg.WriteString("----\n")
-	msg.WriteString(fmt.Sprintf("%s", expected))
-	msg.WriteString("----\n")
-	msg.WriteString("actual:\n")
-	msg.WriteString("----\n")
-	msg.WriteString(fmt.Sprintf("%s", actual))
-	msg.WriteString("----\n")
-
-	msg.WriteString("-expected\n")
-	msg.WriteString("+actual\n")
+	fmt.Fprintln(msg, "\nexpected:")
+	fmt.Fprintln(msg, "----")
+	fmt.Fprintf(msg, "%s", expected)
+	fmt.Fprintln(msg, "----")
+	fmt.Fprintln(msg, "\nactual:")
+	fmt.Fprintln(msg, "----")
+	fmt.Fprintf(msg, "%s", actual)
+	fmt.Fprintln(msg, "----")
+	fmt.Fprintln(msg, "-expected")
+	fmt.Fprintln(msg, "+actual")
 	msg.WriteString(cmp.Diff(expected, actual))
 	return msg.String()
 }
