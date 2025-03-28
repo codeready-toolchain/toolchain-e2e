@@ -27,7 +27,7 @@ func WithSpecMasterUserRecord(mur string) SpaceBindingRequestOption {
 
 func WithNamespace(ns string) SpaceBindingRequestOption {
 	return func(s *toolchainv1alpha1.SpaceBindingRequest) {
-		s.ObjectMeta.Namespace = ns
+		s.Namespace = ns
 	}
 }
 

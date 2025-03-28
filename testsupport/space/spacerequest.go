@@ -36,14 +36,14 @@ func WithSpecDisableInheritance(disableInheritance bool) SpaceRequestOption {
 
 func WithNamespace(namespace string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
-		s.ObjectMeta.Namespace = namespace
+		s.Namespace = namespace
 	}
 }
 
 func WithName(name string) SpaceRequestOption {
 	return func(s *toolchainv1alpha1.SpaceRequest) {
-		s.ObjectMeta.GenerateName = ""
-		s.ObjectMeta.Name = name
+		s.GenerateName = ""
+		s.Name = name
 	}
 }
 
