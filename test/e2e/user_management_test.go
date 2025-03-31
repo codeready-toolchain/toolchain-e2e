@@ -764,7 +764,7 @@ func (s *userManagementTestSuite) TestReturningUsersProvisionedToLastCluster() {
 
 // TODO remove once UserTier migration is completed
 func (s *userManagementTestSuite) promoteToDefaultUserTier(mur *toolchainv1alpha1.MasterUserRecord) {
-	hostAwait := s.Awaitilities.Host()
+	hostAwait := s.Host()
 	_, err := wait.For(s.T(), hostAwait.Awaitility, &toolchainv1alpha1.MasterUserRecord{}).
 		Update(mur.Name, hostAwait.Namespace, func(m *toolchainv1alpha1.MasterUserRecord) {
 			m.Spec.TierName = "deactivate30"
