@@ -208,19 +208,18 @@ func matchMasterUserRecordWaitCriterion(actual *toolchainv1alpha1.MasterUserReco
 func (a *HostAwaitility) printMasterUserRecordWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.MasterUserRecord, criteria ...MasterUserRecordWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
-		buf.WriteString("failed to find MasterUserRecord\n")
+		fmt.Fprintln(buf, "failed to find MasterUserRecord")
 	} else {
-		buf.WriteString("failed to find MasterUserRecord with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "failed to find MasterUserRecord with matching criteria:")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) && c.Diff != nil {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -383,15 +382,14 @@ func (a *HostAwaitility) printUserSignupWaitCriterionDiffs(t *testing.T, actual 
 		buf.WriteString("failed to find UserSignup\n")
 	} else {
 		buf.WriteString("failed to find UserSignup with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) && c.Diff != nil {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -863,15 +861,14 @@ func (a *HostAwaitility) printUserTierWaitCriterionDiffs(t *testing.T, actual *t
 		buf.WriteString("failed to find UserTier\n")
 	} else {
 		buf.WriteString("failed to find UserTier with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1035,17 +1032,16 @@ func (a *HostAwaitility) printTierTemplateRevisionWaitCriterionDiffs(t *testing.
 		buf.WriteString("no ttrs found\n")
 	} else {
 		buf.WriteString("failed to find ttrs with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		for _, obj := range actual {
 			y, _ := StringifyObject(&obj) // nolint:gosec
-			buf.Write(y)
+			fmt.Fprintln(buf, string(y))
 		}
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1129,15 +1125,14 @@ func (a *HostAwaitility) printNSTemplateTierWaitCriterionDiffs(t *testing.T, act
 		buf.WriteString("failed to find NSTemplateTier\n")
 	} else {
 		buf.WriteString("failed to find NSTemplateTier with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1241,18 +1236,17 @@ func (a *HostAwaitility) printNotificationWaitCriterionDiffs(t *testing.T, actua
 		buf.WriteString("no notification found\n")
 	} else {
 		buf.WriteString("failed to find notifications with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		for _, obj := range actual {
 			y, _ := StringifyObject(&obj) // nolint:gosec
-			buf.Write(y)
+			fmt.Fprintln(buf, string(y))
 		}
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, n := range actual {
 			for _, c := range criteria {
 				if !c.Match(n) {
 					buf.WriteString(c.Diff(n))
-					buf.WriteString("\n")
 				}
 			}
 		}
@@ -1399,15 +1393,14 @@ func (a *HostAwaitility) printToolchainStatusWaitCriterionDiffs(t *testing.T, ac
 		buf.WriteString("failed to find Toolchainstatus\n")
 	} else {
 		buf.WriteString("failed to find ToolchainStatus with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1651,15 +1644,14 @@ func (a *HostAwaitility) printToolchainConfigWaitCriterionDiffs(t *testing.T, ac
 		buf.WriteString("failed to find ToolchainConfig\n")
 	} else {
 		buf.WriteString("failed to find ToolchainConfig with matching criteria:\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1961,16 +1953,15 @@ func (a *HostAwaitility) printSpaceWaitCriterionDiffs(t *testing.T, actual *tool
 		buf.WriteString("failed to find Space\n")
 	} else {
 		buf.WriteString("failed to find Space with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -2020,7 +2011,7 @@ func UntilSpaceHasCreationTimestampOlderThan(expectedElapsedTime time.Duration) 
 func UntilSpaceHasCreationTimestampGreaterThan(creationTimestamp time.Time) SpaceWaitCriterion {
 	return SpaceWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.Space) bool {
-			return actual.CreationTimestamp.Time.After(creationTimestamp)
+			return actual.CreationTimestamp.After(creationTimestamp)
 		},
 		Diff: func(actual *toolchainv1alpha1.Space) string {
 			return fmt.Sprintf("expected space to be created after %s; Actual creation timestamp %s", creationTimestamp.String(), actual.CreationTimestamp.String())
@@ -2249,11 +2240,10 @@ func (a *HostAwaitility) WaitUntilSpaceBindingsWithLabelDeleted(t *testing.T, ke
 	// print the listed spacebindings
 	if err != nil {
 		buf := &strings.Builder{}
-		buf.WriteString(fmt.Sprintf("spacebindings still found with labels %v:\n", labels))
+		fmt.Fprintf(buf, "spacebindings still found with labels %v:\n", labels)
 		for _, sb := range spaceBindingList.Items {
 			y, _ := yaml.Marshal(sb)
-			buf.Write(y)
-			buf.WriteString("\n")
+			fmt.Fprintln(buf, string(y))
 		}
 	}
 	return err
@@ -2352,16 +2342,15 @@ func (a *HostAwaitility) printSpaceBindingWaitCriterionDiffs(t *testing.T, actua
 		buf.WriteString("failed to find SpaceBinding\n")
 	} else {
 		buf.WriteString("failed to find SpaceBinding with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -2437,7 +2426,7 @@ func UntilSpaceBindingHasDifferentUID(uid types.UID) SpaceBindingWaitCriterion {
 func UntilSpaceBindingHasCreationTimestampGreaterThan(creationTimestamp time.Time) SpaceBindingWaitCriterion {
 	return SpaceBindingWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.SpaceBinding) bool {
-			return actual.CreationTimestamp.Time.After(creationTimestamp)
+			return actual.CreationTimestamp.After(creationTimestamp)
 		},
 		Diff: func(actual *toolchainv1alpha1.SpaceBinding) string {
 			return fmt.Sprintf("expected SpaceBinding to be created after %s; Actual creation timestamp %s", creationTimestamp.String(), actual.CreationTimestamp.String())
@@ -2531,19 +2520,18 @@ func UntilSocialEventHasConditions(expected ...toolchainv1alpha1.Condition) Soci
 func (a *HostAwaitility) printSocialEventWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.SocialEvent, criteria ...SocialEventWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
-		buf.WriteString("failed to find SocialEvent\n")
+		fmt.Fprintln(buf, "failed to find SocialEvent")
 	} else {
-		buf.WriteString("failed to find SocialEvent with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "failed to find SocialEvent with matching criteria:")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
