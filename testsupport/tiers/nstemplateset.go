@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	"github.com/codeready-toolchain/toolchain-common/pkg/utils"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
@@ -19,9 +20,9 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 
 	var err error
 	if space.Spec.DisableInheritance {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs))
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), UntilNSTemplateSetHasStatusTemplateRefs())
 	} else {
-		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles())
+		nsTmplSet, err = memberAwait.WaitForNSTmplSet(t, nsTmplSet.Name, UntilNSTemplateSetHasTemplateRefs(expectedTemplateRefs), wait.UntilNSTemplateSetHasAnySpaceRoles(), UntilNSTemplateSetHasStatusTemplateRefs())
 	}
 	require.NoError(t, err)
 
@@ -119,8 +120,8 @@ func getExpectedProvisionedNamespaces(namespaces []string) []toolchainv1alpha1.S
 func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTemplateSetWaitCriterion {
 	return wait.NSTemplateSetWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
-			if expectedRevisions.ClusterResources == nil ||
-				actual.Spec.ClusterResources == nil ||
+			if (expectedRevisions.ClusterResources == nil && actual.Spec.ClusterResources != nil) ||
+				(expectedRevisions.ClusterResources != nil && actual.Spec.ClusterResources == nil) ||
 				*expectedRevisions.ClusterResources != actual.Spec.ClusterResources.TemplateRef {
 				return false
 			}
@@ -138,6 +139,34 @@ func UntilNSTemplateSetHasTemplateRefs(expectedRevisions TemplateRefs) wait.NSTe
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
 			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(expectedRevisions), spew.Sdump(actual.Spec))
+		},
+	}
+}
+
+// UntilNSTemplateSetHasStatusTemplateRefs checks if the NSTemplateTier has the expected template refs in the Status
+func UntilNSTemplateSetHasStatusTemplateRefs() wait.NSTemplateSetWaitCriterion {
+	return wait.NSTemplateSetWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateSet) bool {
+			// check that the status was updated with the expected template ref.
+			if (actual.Status.ClusterResources == nil && actual.Spec.ClusterResources != nil) ||
+				(actual.Status.ClusterResources != nil && actual.Spec.ClusterResources == nil) ||
+				actual.Status.ClusterResources.TemplateRef != actual.Spec.ClusterResources.TemplateRef {
+				return false
+			}
+			if !reflect.DeepEqual(actual.Status.Namespaces, actual.Spec.Namespaces) {
+				return false
+			}
+			// check expected feature toggles, if any
+			featureAnnotation, featureAnnotationFound := actual.Annotations[toolchainv1alpha1.FeatureToggleNameAnnotationKey]
+			if featureAnnotationFound {
+				if !reflect.DeepEqual(utils.SplitCommaSeparatedList(featureAnnotation), actual.Status.FeatureToggles) {
+					return false
+				}
+			}
+			return reflect.DeepEqual(actual.Status.SpaceRoles, actual.Status.SpaceRoles)
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateSet) string {
+			return fmt.Sprintf("expected NSTemplateSet '%s' to match the following cluster/namespace/spacerole/feature toggles revisions: %s\nbut it contained: %s", actual.Name, spew.Sdump(actual.Spec), spew.Sdump(actual.Status))
 		},
 	}
 }
