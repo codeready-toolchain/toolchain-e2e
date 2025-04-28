@@ -115,16 +115,15 @@ func (a *MemberAwaitility) printUserAccountWaitCriterionDiffs(t *testing.T, actu
 		buf.WriteString(a.listAndReturnContent("UserAccount", a.Namespace, &toolchainv1alpha1.UserAccountList{}))
 	} else {
 		buf.WriteString("failed to find UserAccount with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) && c.Diff != nil {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -435,16 +434,15 @@ func (a *MemberAwaitility) printSpaceRequestWaitCriterionDiffs(t *testing.T, act
 		buf.WriteString(a.listAndReturnContent("SpaceRequest", a.Namespace, &toolchainv1alpha1.SpaceRequestList{}))
 	} else {
 		buf.WriteString("failed to find SpaceRequest with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) && c.Diff != nil {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -533,16 +531,15 @@ func (a *MemberAwaitility) printSpaceBindingRequestWaitCriterionDiffs(t *testing
 		buf.WriteString(a.listAndReturnContent("SpaceBindingRequest", a.Namespace, &toolchainv1alpha1.SpaceBindingRequestList{}))
 	} else {
 		buf.WriteString("failed to find SpaceBindingRequest with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) && c.Diff != nil {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -575,20 +572,19 @@ func matchNSTemplateSetWaitCriterion(actual *toolchainv1alpha1.NSTemplateSet, cr
 func (a *MemberAwaitility) printNSTemplateSetWaitCriterionDiffs(t *testing.T, actual *toolchainv1alpha1.NSTemplateSet, criteria ...NSTemplateSetWaitCriterion) {
 	buf := &strings.Builder{}
 	if actual == nil {
-		buf.WriteString("failed to find NSTemplateSet at all\n")
-		buf.WriteString(a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
+		fmt.Fprintln(buf, "failed to find NSTemplateSet at all")
+		fmt.Fprint(buf, a.listAndReturnContent("NSTemplateSet", a.Namespace, &toolchainv1alpha1.NSTemplateSetList{}))
 	} else {
-		buf.WriteString(fmt.Sprintf("failed to find NSTemplateSet with matching criteria after %fs:\n", a.Timeout.Seconds()))
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintf(buf, "failed to find NSTemplateSet with matching criteria after %fs:\n", a.Timeout.Seconds())
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -905,16 +901,15 @@ func (a *MemberAwaitility) printNamespaceLabelCriterionDiffs(t *testing.T, actua
 		buf.WriteString(a.listAndReturnContent("Namespace", "", &corev1.NamespaceList{}))
 	} else {
 		buf.WriteString("failed to find Namespace with matching label criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual.ObjectMeta) {
 				buf.WriteString(c.Diff(actual.ObjectMeta))
-				buf.WriteString("\n")
 			}
 		}
 	}
@@ -949,16 +944,15 @@ func (a *MemberAwaitility) printRoleBindingWaitCriterionDiffs(t *testing.T, actu
 		buf.WriteString(a.listAndReturnContent("RoleBinding", "", &rbacv1.RoleBindingList{}))
 	} else {
 		buf.WriteString("failed to find RoleBinding with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual.ObjectMeta) {
 				buf.WriteString(c.Diff(actual.ObjectMeta))
-				buf.WriteString("\n")
 			}
 		}
 	}
@@ -1119,16 +1113,15 @@ func (a *MemberAwaitility) printRoleWaitCriterionDiffs(t *testing.T, actual *rba
 		buf.WriteString(a.listAndReturnContent("Role", "", &rbacv1.RoleList{}))
 	} else {
 		buf.WriteString("failed to find Role with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual.ObjectMeta) {
 				buf.WriteString(c.Diff(actual.ObjectMeta))
-				buf.WriteString("\n")
 			}
 		}
 	}
@@ -1157,16 +1150,15 @@ func (a *MemberAwaitility) printClusterResourceQuotaWaitCriterionDiffs(t *testin
 		buf.WriteString(a.listAndReturnContent("ClusterResourceQuota", "", &quotav1.ClusterResourceQuotaList{}))
 	} else {
 		buf.WriteString("failed to find ClusterResourceQuota with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1222,16 +1214,15 @@ func (a *MemberAwaitility) printResourceQuotaWaitCriterionDiffs(t *testing.T, ac
 		buf.WriteString(a.listAndReturnContent("ResourceQuota", "", &corev1.ResourceQuotaList{}))
 	} else {
 		buf.WriteString("failed to find ResourceQuota with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1284,17 +1275,16 @@ func (a *MemberAwaitility) printIdlerWaitCriteriaDiffs(t *testing.T, actual *too
 		buf.WriteString(a.listAndReturnContent("Idler", "", &toolchainv1alpha1.IdlerList{}))
 	} else {
 		buf.WriteString("failed to find Idler with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			// if at least one criteria does not match, keep waiting
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1444,8 +1434,7 @@ func (a *MemberAwaitility) printPodWaitCriterionDiffs(t *testing.T, actual *core
 		buf.WriteString("failed to find Pod with matching criteria:\n")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1733,8 +1722,7 @@ func (a *MemberAwaitility) printUserWaitCriterionDiffs(t *testing.T, actual *use
 		buf.WriteString("failed to find User with matching criteria:\n")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -1835,8 +1823,8 @@ func (a *MemberAwaitility) WaitForIdentity(t *testing.T, name string, criteria .
 
 func (a *MemberAwaitility) printIdentities(t *testing.T, expectedName string) {
 	buf := &strings.Builder{}
-	buf.WriteString(fmt.Sprintf("failed to find Identity '%s'\n", expectedName))
-	buf.WriteString(a.listAndReturnContent("Identity", "", &userv1.IdentityList{}))
+	fmt.Fprintf(buf, "failed to find Identity '%s'\n", expectedName)
+	fmt.Fprint(buf, a.listAndReturnContent("Identity", "", &userv1.IdentityList{}))
 	t.Log(buf.String())
 }
 
@@ -1954,16 +1942,15 @@ func (a *MemberAwaitility) printMemberStatusWaitCriterionDiffs(t *testing.T, act
 		buf.WriteString(a.listAndReturnContent("ToolchainCluster", "", &toolchainv1alpha1.ToolchainClusterList{}))
 	} else {
 		buf.WriteString("failed to find MemberStatus with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual) {
-				buf.WriteString(c.Diff(actual))
-				buf.WriteString("\n")
+				fmt.Fprintln(buf, c.Diff(actual))
 			}
 		}
 	}
@@ -2179,8 +2166,8 @@ func (a *MemberAwaitility) waitForWebhookDeployment(t *testing.T, image string) 
 	assert.Equal(t, appMemberOperatorWebhookLabel, actualDeployment.Spec.Selector.MatchLabels)
 
 	template := actualDeployment.Spec.Template
-	assert.Equal(t, "member-operator-webhook", template.ObjectMeta.Name)
-	assert.Equal(t, appMemberOperatorWebhookLabel, template.ObjectMeta.Labels)
+	assert.Equal(t, "member-operator-webhook", template.Name)
+	assert.Equal(t, appMemberOperatorWebhookLabel, template.Labels)
 	require.Len(t, template.Spec.Volumes, 1)
 	assert.Equal(t, "webhook-certs", template.Spec.Volumes[0].Name)
 	assert.Equal(t, "webhook-certs", template.Spec.Volumes[0].Secret.SecretName)
@@ -2384,7 +2371,7 @@ func (a *MemberAwaitility) verifyValidatingWebhookConfig(t *testing.T, ca []byte
 	require.Len(t, vmrequestWebhook.Rules, 1)
 
 	vmrequestRule := vmrequestWebhook.Rules[0]
-	assert.Equal(t, []admv1.OperationType{admv1.Create, admv1.Update}, vmrequestRule.Operations)
+	assert.Equal(t, []admv1.OperationType{admv1.Update}, vmrequestRule.Operations)
 	assert.Equal(t, []string{"kubevirt.io"}, vmrequestRule.APIGroups)
 	assert.Equal(t, []string{"*"}, vmrequestRule.APIVersions)
 	assert.Equal(t, []string{"virtualmachines"}, vmrequestRule.Resources)
@@ -2425,7 +2412,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 	}, func(d *appsv1.Deployment) bool {
 		return d.Spec.Selector != nil && len(d.Spec.Selector.MatchLabels) == 1 && d.Spec.Selector.MatchLabels["app"] == "autoscaling-buffer"
 	}, func(d *appsv1.Deployment) bool {
-		return len(d.Spec.Template.ObjectMeta.Labels) == 1 && d.Spec.Template.ObjectMeta.Labels["app"] == "autoscaling-buffer"
+		return len(d.Spec.Template.Labels) == 1 && d.Spec.Template.Labels["app"] == "autoscaling-buffer"
 	}, func(d *appsv1.Deployment) bool {
 		return d.Spec.Template.Spec.PriorityClassName == "member-operator-autoscaling-buffer"
 	}, func(d *appsv1.Deployment) bool {
@@ -2437,7 +2424,7 @@ func (a *MemberAwaitility) verifyAutoscalingBufferDeployment(t *testing.T) {
 		}
 		c := d.Spec.Template.Spec.Containers[0]
 		return c.Name == "autoscaling-buffer" &&
-			c.Image == "gcr.io/google_containers/pause-amd64:3.2" &&
+			c.Image == "registry.k8s.io/pause:3.9" &&
 			c.ImagePullPolicy == corev1.PullIfNotPresent
 	}, func(d *appsv1.Deployment) bool {
 		c := d.Spec.Template.Spec.Containers[0]
@@ -2513,16 +2500,15 @@ func (a *MemberAwaitility) printEnvironmentWaitCriterionDiffs(t *testing.T, actu
 		buf.WriteString(a.listAndReturnContent("Environment", "", &appstudiov1.EnvironmentList{}))
 	} else {
 		buf.WriteString("failed to find Environment with matching criteria:\n")
-		buf.WriteString("----\n")
-		buf.WriteString("actual:\n")
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "actual:")
 		y, _ := StringifyObject(actual)
-		buf.Write(y)
-		buf.WriteString("\n----\n")
-		buf.WriteString("diffs:\n")
+		fmt.Fprintln(buf, string(y))
+		fmt.Fprintln(buf, "----")
+		fmt.Fprintln(buf, "diffs:")
 		for _, c := range criteria {
 			if !c.Match(actual.ObjectMeta) {
 				buf.WriteString(c.Diff(actual.ObjectMeta))
-				buf.WriteString("\n")
 			}
 		}
 	}

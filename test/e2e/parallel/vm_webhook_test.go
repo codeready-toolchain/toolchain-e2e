@@ -128,6 +128,12 @@ func TestCreateVirtualMachine(t *testing.T) {
 			require.True(t, userDataFound, "user data not found")
 			require.Equal(t, "#cloud-config\nchpasswd:\n  expire: false\npassword: abcd-1234-ef56\nssh_authorized_keys:\n- |\n  ssh-rsa PcHUNFXhysGvTnvORVbR70EVZA test@host-operator\nuser: cloud-user\n", userData)
 
+			// verify runStrategy is reset to Manual
+			runStrategy, runStrategyFound, runStrategyErr := unstructured.NestedString(result.Object, "spec", "runStrategy")
+			require.NoError(t, runStrategyErr)
+			require.True(t, runStrategyFound)
+			require.Equal(t, "Manual", runStrategy)
+
 			// delete VM after verifying to avoid hitting VM quota limit
 			err = client.Resource(vmRes).Namespace(vmNamespace).Delete(context.TODO(), tc.vmName, metav1.DeleteOptions{})
 			require.NoError(t, err)
@@ -155,6 +161,7 @@ func vmResourceWithRequestsAndCloudInitVolume(name string, domain map[string]int
 						},
 					},
 				},
+				"runStrategy": "Always",
 			},
 		},
 	}
