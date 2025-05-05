@@ -1,4 +1,4 @@
-package assertions2
+package assertions
 
 import (
 	"context"
@@ -18,28 +18,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func WaitFor[T client.Object](cl client.Client) *Finder[T] {
-	return &Finder[T]{
-		cl:      cl,
-		timeout: wait.DefaultTimeout,
-		tick:    wait.DefaultRetryInterval,
-	}
+type AddressableObjectAssertions[T client.Object] struct {
+	Assertions[T]
 }
 
-type Finder[T client.Object] struct {
-	cl      client.Client
-	timeout time.Duration
-	tick    time.Duration
+type ObjectNameAssertion interface {
+	Name() string
 }
 
-type FinderInNamespace[T client.Object] struct {
-	Finder[T]
-	namespace string
+type ObjectNamespaceAssertion interface {
+	Namespace() string
 }
 
-type FinderByObjectKey[T client.Object] struct {
-	Finder[T]
-	key client.ObjectKey
+type Await[T client.Object] struct {
+	cl         client.Client
+	timeout    time.Duration
+	tick       time.Duration
+	assertions Assertions[T]
 }
 
 type logger interface {
@@ -52,54 +47,32 @@ type errorCollectingT struct {
 	failed bool
 }
 
-func (f *Finder[T]) WithTimeout(timeout time.Duration) *Finder[T] {
+func (oa *AddressableObjectAssertions[T]) Await(cl client.Client) *Await[T] {
+	return &Await[T]{
+		cl:         cl,
+		timeout:    wait.DefaultTimeout,
+		tick:       wait.DefaultRetryInterval,
+		assertions: oa.Assertions,
+	}
+}
+
+func (f *Await[T]) WithTimeout(timeout time.Duration) *Await[T] {
 	f.timeout = timeout
 	return f
 }
 
-func (f *Finder[T]) WithRetryInterval(interval time.Duration) *Finder[T] {
+func (f *Await[T]) WithRetryInterval(interval time.Duration) *Await[T] {
 	f.tick = interval
 	return f
 }
 
-func (f *Finder[T]) WithObjectKey(namespace, name string) *FinderByObjectKey[T] {
-	return &FinderByObjectKey[T]{
-		Finder: *f,
-		key:    client.ObjectKey{Name: name, Namespace: namespace},
-	}
-}
-
-func (f *Finder[T]) InNamespace(ns string) *FinderInNamespace[T] {
-	return &FinderInNamespace[T]{
-		Finder:    *f,
-		namespace: ns,
-	}
-}
-
-func (f *FinderInNamespace[T]) WithName(name string) *FinderByObjectKey[T] {
-	return &FinderByObjectKey[T]{
-		Finder: f.Finder,
-		key:    client.ObjectKey{Name: name, Namespace: f.namespace},
-	}
-}
-
-func (t *errorCollectingT) Errorf(format string, args ...interface{}) {
-	t.failed = true
-	t.errors = append(t.errors, fmt.Errorf(format, args...))
-}
-
-func (f *errorCollectingT) Helper() {
-	// we cannot call any inner Helper() because that wouldn't work anyway
-}
-
-func (f *errorCollectingT) FailNow() {
-	panic("assertion failed")
-}
-
-func (f *FinderInNamespace[T]) First(ctx context.Context, t RequireT, assertions WithAssertions[T]) T {
+func (f *Await[T]) First(ctx context.Context, t RequireT) T {
 	t.Helper()
 
-	t.Logf("waiting for the first object of type %T in namespace '%s' to match criteria", newObject[T](), f.namespace)
+	namespace, found := findNamespaceFromAssertions(f.assertions)
+	require.True(t, found, "no ObjectNamespaceAssertion found in the assertions but one required")
+
+	t.Logf("waiting for the first object of type %T in namespace '%s' to match criteria", newObject[T](), namespace)
 
 	possibleGvks, _, err := f.cl.Scheme().ObjectKinds(newObject[T]())
 	require.NoError(t, err)
@@ -115,7 +88,7 @@ func (f *FinderInNamespace[T]) First(ctx context.Context, t RequireT, assertions
 		list := &unstructured.UnstructuredList{}
 		list.SetGroupVersionKind(gvk)
 		ft.errors = nil
-		if err := f.cl.List(ctx, list, client.InNamespace(f.namespace)); err != nil {
+		if err := f.cl.List(ctx, list, client.InNamespace(namespace)); err != nil {
 			return false, err
 		}
 		for _, uobj := range list.Items {
@@ -125,7 +98,7 @@ func (f *FinderInNamespace[T]) First(ctx context.Context, t RequireT, assertions
 				return false, fmt.Errorf("failed to cast object with GVK %v to object %T: %w", gvk, newObject[T](), err)
 			}
 
-			testInner(ft, obj, assertions, true)
+			f.assertions.Test(ft, obj)
 
 			if !ft.failed {
 				returnedObject = obj
@@ -136,10 +109,10 @@ func (f *FinderInNamespace[T]) First(ctx context.Context, t RequireT, assertions
 	if err != nil {
 		sb := strings.Builder{}
 		sb.WriteString("failed to find objects (of GVK '%s') in namespace '%s' matching the criteria: %s")
-		args := []any{gvk, f.namespace, err.Error()}
+		args := []any{gvk, namespace, err.Error()}
 		list := &unstructured.UnstructuredList{}
 		list.SetGroupVersionKind(gvk)
-		if err := f.cl.List(context.TODO(), list, client.InNamespace(f.namespace)); err != nil {
+		if err := f.cl.List(context.TODO(), list, client.InNamespace(namespace)); err != nil {
 			sb.WriteString(" and also failed to retrieve the object at all with error: %s")
 			args = append(args, err)
 		} else {
@@ -152,10 +125,7 @@ func (f *FinderInNamespace[T]) First(ctx context.Context, t RequireT, assertions
 				sb.WriteRune('\n')
 				sb.WriteString("object ")
 				sb.WriteString(key.String())
-				sb.WriteString(":\n")
-				format, oargs := doExplainAfterTestFailure(obj, assertions)
-				sb.WriteString(format)
-				args = append(args, oargs...)
+				sb.WriteString(":\nSome of the assertions failed to match the object (see output above).")
 			}
 		}
 		t.Logf(sb.String(), args...)
@@ -164,10 +134,18 @@ func (f *FinderInNamespace[T]) First(ctx context.Context, t RequireT, assertions
 	return returnedObject
 }
 
-func (f *FinderByObjectKey[T]) Matching(ctx context.Context, t AssertT, assertions WithAssertions[T]) T {
+func (f *Await[T]) Matching(ctx context.Context, t RequireT) T {
 	t.Helper()
 
-	t.Logf("waiting for %T with name '%s' in namespace '%s' to match additional criteria", newObject[T](), f.key.Name, f.key.Namespace)
+	name, found := findNameFromAssertions(f.assertions)
+	require.True(t, found, "ObjectNameAssertion not found in the list of assertions but one is required")
+
+	namespace, found := findNamespaceFromAssertions(f.assertions)
+	require.True(t, found, "ObjectNamespaceAssertion not found in the list of assertions but one is required")
+
+	key := client.ObjectKey{Name: name, Namespace: namespace}
+
+	t.Logf("waiting for %T with name '%s' in namespace '%s' to match additional criteria", newObject[T](), key.Name, key.Namespace)
 
 	var returnedObject T
 
@@ -177,13 +155,13 @@ func (f *FinderByObjectKey[T]) Matching(ctx context.Context, t AssertT, assertio
 		t.Helper()
 		ft.errors = nil
 		obj := newObject[T]()
-		err = f.cl.Get(ctx, f.key, obj)
+		err = f.cl.Get(ctx, key, obj)
 		if err != nil {
-			assert.NoError(ft, err, "failed to find the object by key %s", f.key)
+			assert.NoError(ft, err, "failed to find the object by key %s", key)
 			return false, err
 		}
 
-		testInner(ft, obj, assertions, true)
+		f.assertions.Test(ft, obj)
 
 		if !ft.failed {
 			returnedObject = obj
@@ -197,34 +175,54 @@ func (f *FinderByObjectKey[T]) Matching(ctx context.Context, t AssertT, assertio
 				t.Errorf("%s", e) //nolint: testifylint
 			}
 			obj := newObject[T]()
-			err := f.cl.Get(ctx, f.key, obj)
+			err := f.cl.Get(ctx, key, obj)
 			if err != nil {
-				t.Errorf("failed to find the object while reporting the failure to match by criteria using object key %s", f.key)
+				t.Errorf("failed to find the object while reporting the failure to match by criteria using object key %s", key)
 				return returnedObject
 			}
-			format, args := doExplainAfterTestFailure(obj, assertions)
-			t.Logf(format, args...)
+			t.Logf("Some of the assertions failed to match the object (see output above).")
 		}
-		t.Logf("couldn't match %T with name '%s' in namespace '%s' with additional criteria because of: %s", newObject[T](), f.key.Name, f.key.Namespace, err)
+		t.Logf("couldn't match %T with name '%s' in namespace '%s' with additional criteria because of: %s", newObject[T](), key.Name, key.Namespace, err)
 	}
 
 	return returnedObject
 }
 
-func (f *FinderByObjectKey[T]) Deleted(ctx context.Context, t AssertT) {
+func (f *Await[T]) Deleted(ctx context.Context, t RequireT) {
 	t.Helper()
+
+	name, found := findNameFromAssertions(f.assertions)
+	require.True(t, found, "ObjectNameAssertion not found in the list of assertions but one is required")
+
+	namespace, found := findNamespaceFromAssertions(f.assertions)
+	require.True(t, found, "ObjectNamespaceAssertion not found in the list of assertions but one is required")
+
+	key := client.ObjectKey{Name: name, Namespace: namespace}
 
 	err := kwait.PollUntilContextTimeout(ctx, f.tick, f.timeout, true, func(ctx context.Context) (done bool, err error) {
 		obj := newObject[T]()
-		err = f.cl.Get(ctx, f.key, obj)
+		err = f.cl.Get(ctx, key, obj)
 		if err != nil && apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
 	})
 	if err != nil {
-		assert.Fail(t, "object with key %s still present or other error happened: %s", f.key, err)
+		assert.Fail(t, "object with key %s still present or other error happened: %s", key, err)
 	}
+}
+
+func (t *errorCollectingT) Errorf(format string, args ...any) {
+	t.failed = true
+	t.errors = append(t.errors, fmt.Errorf(format, args...))
+}
+
+func (f *errorCollectingT) Helper() {
+	// we cannot call any inner Helper() because that wouldn't work anyway
+}
+
+func (f *errorCollectingT) FailNow() {
+	panic("assertion failed")
 }
 
 func remarshal[T client.Object](scheme *runtime.Scheme, obj *unstructured.Unstructured) (T, error) {
@@ -258,4 +256,22 @@ func newObject[T client.Object]() T {
 	zero := ptrToZeroV.Interface()
 
 	return zero.(T)
+}
+
+func findNameFromAssertions[T any](as []Assertion[T]) (string, bool) {
+	for _, a := range as {
+		if oa, ok := a.(ObjectNameAssertion); ok {
+			return oa.Name(), true
+		}
+	}
+	return "", false
+}
+
+func findNamespaceFromAssertions[T any](as []Assertion[T]) (string, bool) {
+	for _, a := range as {
+		if oa, ok := a.(ObjectNamespaceAssertion); ok {
+			return oa.Namespace(), true
+		}
+	}
+	return "", false
 }

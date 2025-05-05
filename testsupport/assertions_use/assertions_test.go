@@ -3,10 +3,10 @@ package assertions_use
 import (
 	"context"
 	"testing"
-	"time"
 
 	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/conditions"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/metadata"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/spaceprovisionerconfig"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,20 +24,19 @@ func Test(t *testing.T) {
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, toolchainv1aplha1.AddToScheme(scheme))
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(spcUnderTest).Build()
 
 	// use the assertions in a simple immediate call
 	spaceprovisionerconfig.Asserting().
-		Metadata.HasLabel("asdf").
-		Metadata.HasName("kachny").
-		Metadata.IsInNamespace("default").
-		Conditions.HasConditionWithType(toolchainv1aplha1.ConditionReady).
+		ObjectMeta(metadata.With().Name("asdf").Label("kachny")).
+		Conditions(conditions.With().Type(toolchainv1aplha1.ConditionReady)).
 		Test(t, spcUnderTest)
 
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(spcUnderTest).Build()
+
 	// this is the new WaitFor
-	assertions.WaitFor[*toolchainv1aplha1.SpaceProvisionerConfig](cl).
-		WithTimeout(1*time.Second). // defaults to wait.DefaultTimeout which is 2 minutes, so let's make it shorter here
-		WithObjectKey("default", "kachny").
-		Matching(context.TODO(), t,
-			spaceprovisionerconfig.Asserting().Metadata.HasLabel("asdf"))
+	spaceprovisionerconfig.Asserting().
+		ObjectMeta(metadata.With().Name("asdf").Namespace("default").Label("kachny")).
+		Conditions(conditions.With().Type(toolchainv1aplha1.ConditionReady)).
+		Await(cl).
+		Matching(context.TODO(), t)
 }

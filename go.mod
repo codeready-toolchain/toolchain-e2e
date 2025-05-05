@@ -31,7 +31,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.18.4
 )
 
-require github.com/google/uuid v1.6.0
+require (
+	github.com/google/uuid v1.6.0
+	gotest.tools v2.2.0+incompatible
+)
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect

@@ -1,29 +1,25 @@
 package conditions
 
 import (
-	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions"
 	"github.com/stretchr/testify/assert"
 )
 
-type Assertions[Self any, T any] struct {
-	assertions.EmbeddableAssertions[Self, T]
-
-	accessor func(T) *[]toolchainv1aplha1.Condition
+type ConditionAssertions struct {
+	assertions.Assertions[[]toolchainv1alpha1.Condition]
 }
 
-func (a *Assertions[Self, T]) WireUp(self *Self, assertions *[]assertions.Assertion[T], accessor func(T) *[]toolchainv1aplha1.Condition) {
-	a.EmbeddableAssertions.WireUp(self, assertions)
-	a.accessor = accessor
+func With() *ConditionAssertions {
+	return &ConditionAssertions{}
 }
 
-func (a *Assertions[Self, T]) HasConditionWithType(typ toolchainv1aplha1.ConditionType) *Self {
-	a.AddAssertionFunc(func(t assertions.AssertT, obj T) {
+func (cas *ConditionAssertions) Type(typ toolchainv1alpha1.ConditionType) *ConditionAssertions {
+	cas.Assertions = assertions.AppendFunc(cas.Assertions, func(t assertions.AssertT, conds []toolchainv1alpha1.Condition) {
 		t.Helper()
-		conds := a.accessor(obj)
-		_, found := condition.FindConditionByType(*conds, typ)
-		assert.True(t, found, "condition with the type %s not found", typ)
+		_, found := condition.FindConditionByType(conds, typ)
+		assert.True(t, found, "didn't find a condition with the type '%v'", typ)
 	})
-	return a.Self()
+	return cas
 }

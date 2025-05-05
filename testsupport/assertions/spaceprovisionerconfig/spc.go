@@ -4,33 +4,33 @@ import (
 	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/conditions"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/metadata"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/object"
 	"github.com/stretchr/testify/assert"
 )
 
-type Assertions struct {
-	Metadata   metadata.Assertions[Assertions, *toolchainv1aplha1.SpaceProvisionerConfig]
-	Conditions conditions.Assertions[Assertions, *toolchainv1aplha1.SpaceProvisionerConfig]
-	assertions.EmbeddableObjectAssertions[Assertions, *toolchainv1aplha1.SpaceProvisionerConfig]
+type SpaceProvisionerConfigAssertions struct {
+	object.ObjectAssertions[SpaceProvisionerConfigAssertions, *toolchainv1aplha1.SpaceProvisionerConfig]
 }
 
-func Asserting() *Assertions {
-	assertions := []assertions.Assertion[*toolchainv1aplha1.SpaceProvisionerConfig]{}
-	instance := &Assertions{}
-	instance.Conditions.WireUp(instance, &assertions, func(spc *toolchainv1aplha1.SpaceProvisionerConfig) *[]toolchainv1aplha1.Condition {
-		return &spc.Status.Conditions
+func Asserting() *SpaceProvisionerConfigAssertions {
+	spc := &SpaceProvisionerConfigAssertions{}
+	spc.SetFluentSelf(spc)
+	return spc
+}
+
+func (spc *SpaceProvisionerConfigAssertions) Conditions(cas *conditions.ConditionAssertions) *SpaceProvisionerConfigAssertions {
+	spc.Assertions = assertions.AppendLifted(getConditions, spc.Assertions, cas.Assertions...)
+	return spc
+}
+
+func (spc *SpaceProvisionerConfigAssertions) ToolchainClusterName(name string) *SpaceProvisionerConfigAssertions {
+	spc.Assertions = assertions.AppendFunc(spc.Assertions, func(t assertions.AssertT, obj *toolchainv1aplha1.SpaceProvisionerConfig) {
+		t.Helper()
+		assert.Equal(t, name, obj.Spec.ToolchainCluster, "unexpected toolchainCluster")
 	})
-	instance.Metadata.WireUp(instance, &assertions)
-	instance.WireUp(instance, &assertions)
-
-	return instance
+	return spc
 }
 
-func (a *Assertions) ReferencesToolchainCluster(tc string) *Assertions {
-	a.AddAssertionFunc(func(t assertions.AssertT, spc *toolchainv1aplha1.SpaceProvisionerConfig) {
-		assert.Equal(t, tc, spc.Spec.ToolchainCluster)
-	})
-	return a
+func getConditions(spc *toolchainv1aplha1.SpaceProvisionerConfig) ([]toolchainv1aplha1.Condition, bool) {
+	return spc.Status.Conditions, true
 }
-
-var _ assertions.WithAssertions[*toolchainv1aplha1.SpaceProvisionerConfig] = (*Assertions)(nil)

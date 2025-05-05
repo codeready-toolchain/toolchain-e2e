@@ -6,43 +6,78 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Assertions[Self any, T client.Object] struct {
-	assertions.EmbeddableAssertions[Self, T]
+// MetadataAssertions is a set of assertions on the metadata of any client.Object.
+type MetadataAssertions struct {
+	assertions.Assertions[client.Object]
 }
 
-func (o *Assertions[Self, T]) HasLabel(label string) *Self {
-	o.AddAssertionFunc(func(t assertions.AssertT, o T) {
+// With is a "readable" constructor of MetadataAssertions. It is meant to be used
+// to construct the MetadataAssertions instance so that the call reads like an English
+// sentence: "metadata.With().Name().Namespace()..."
+func With() *MetadataAssertions {
+	return &MetadataAssertions{}
+}
+
+// objectName is a special impl of an assertion on object name that also implements
+// the assertions.ObjectNameAssertion so that it can be used in await methods to
+// identify the object.
+type objectName struct {
+	name string
+}
+
+// objectName is a special impl of an assertion on object name that also implements
+// the assertions.ObjectNamespaceAssertion so that it can be used in await methods to
+// identify the object.
+type objectNamespace struct {
+	namespace string
+}
+
+// Name adds an assertion on the objects name being equal to the provided value.
+// The assertion also implements the assertions.ObjectNameAssertion so that it can be
+// transparently used to identify the object during the assertions.Await calls.
+func (ma *MetadataAssertions) Name(name string) *MetadataAssertions {
+	ma.Assertions = assertions.Append(ma.Assertions, &objectName{name: name})
+	return ma
+}
+
+// Name adds an assertion on the objects namespace being equal to the provided value.
+// The assertion also implements the assertions.ObjectNamespaceAssertion so that it can be
+// transparently used to identify the object during the assertions.Await calls.
+func (ma *MetadataAssertions) Namespace(ns string) *MetadataAssertions {
+	ma.Assertions = assertions.Append(ma.Assertions, &objectNamespace{namespace: ns})
+	return ma
+}
+
+// Label adds an assertion for the presence of the label on the object.
+func (ma *MetadataAssertions) Label(name string) *MetadataAssertions {
+	ma.Assertions = assertions.AppendFunc(ma.Assertions, func(t assertions.AssertT, obj client.Object) {
 		t.Helper()
-		assert.Contains(t, o.GetLabels(), label, "label '%s' not found", label)
+		assert.Contains(t, obj.GetLabels(), name, "no label called '%s' found on the object", name)
 	})
-	return o.Self()
+	return ma
 }
 
-func (o *Assertions[Self, T]) HasLabelWithValue(label string, value string) *Self {
-	o.AddAssertionFunc(func(t assertions.AssertT, o T) {
-		t.Helper()
-		assert.Equal(t, value, o.GetLabels()[label])
-	})
-	return o.Self()
+func (a *objectName) Test(t assertions.AssertT, obj client.Object) {
+	t.Helper()
+	assert.Equal(t, a.name, obj.GetName(), "object name doesn't match")
 }
 
-func (o *Assertions[Self, T]) HasName(name string) *Self {
-	o.AddAssertionFunc(func(t assertions.AssertT, o T) {
-		t.Helper()
-		assert.Equal(t, name, o.GetName())
-	})
-	return o.Self()
+func (a *objectName) Name() string {
+	return a.name
 }
 
-func (o *Assertions[Self, T]) IsInNamespace(namespace string) *Self {
-	o.AddAssertionFunc(func(t assertions.AssertT, o T) {
-		t.Helper()
-		assert.Equal(t, namespace, o.GetNamespace())
-	})
-	return o.Self()
+func (a *objectNamespace) Test(t assertions.AssertT, obj client.Object) {
+	t.Helper()
+	assert.Equal(t, a.namespace, obj.GetNamespace(), "object namespace doesn't match")
 }
 
-func (o *Assertions[Self, T]) WithNameAndNamespace(name, ns string) *Self {
-	o.HasName(name)
-	return o.IsInNamespace(ns)
+func (a *objectNamespace) Namespace() string {
+	return a.namespace
 }
+
+var (
+	_ assertions.Assertion[client.Object] = (*objectName)(nil)
+	_ assertions.Assertion[client.Object] = (*objectNamespace)(nil)
+	_ assertions.ObjectNameAssertion      = (*objectName)(nil)
+	_ assertions.ObjectNamespaceAssertion = (*objectNamespace)(nil)
+)
