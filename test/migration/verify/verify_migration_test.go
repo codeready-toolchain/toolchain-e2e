@@ -261,6 +261,11 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 	t.Run("verify registration service deployed using SSA in host", func(t *testing.T) {
 		testDeployment(t, "registration-service", awaitilities.Host().RegistrationServiceNs, "host-operator", "kubesaw-host-operator")
 	})
+
+	// no webhook is deployed in member2, see the "create-host-resources" make target
+	t.Run("verify webhook deployed using SSA in member1", func(t *testing.T) {
+		testDeployment(t, "member-operator-webhook", awaitilities.Member1().Namespace, "member-operator", "kubesaw-member-operator")
+	})
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
