@@ -27,9 +27,9 @@ func AppendGeneric[SuperType any, Type any](assertionList Assertions[Type], asse
 	return assertionList
 }
 
-// AppendLifted is a convenience function to first lift all the assertions to the "To" type and then append them to the provided list.
-func AppendLifted[From any, To any](conversion func(To) (From, bool), assertionList Assertions[To], assertions ...Assertion[From]) Assertions[To] {
-	return Append(assertionList, LiftAll(conversion, assertions...)...)
+// AppendConverted is a convenience function to first lift all the assertions to the "To" type and then append them to the provided list.
+func AppendConverted[From any, To any](conversion func(To) (From, bool), assertionList Assertions[To], assertions ...Assertion[From]) Assertions[To] {
+	return Append(assertionList, ConvertAll(conversion, assertions...)...)
 }
 
 // AppendFunc is a convenience function that is able to take in the assertions as simple functions.

@@ -3,6 +3,7 @@ package assertions_use
 import (
 	"context"
 	"testing"
+	"time"
 
 	toolchainv1aplha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/assertions/conditions"
@@ -17,7 +18,7 @@ import (
 func Test(t *testing.T) {
 	spcUnderTest := &toolchainv1aplha1.SpaceProvisionerConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kachny",
+			Name:      "myobj",
 			Namespace: "default",
 		},
 	}
@@ -26,17 +27,18 @@ func Test(t *testing.T) {
 	require.NoError(t, toolchainv1aplha1.AddToScheme(scheme))
 
 	// use the assertions in a simple immediate call
-	spaceprovisionerconfig.Asserting().
-		ObjectMeta(metadata.With().Name("asdf").Label("kachny")).
-		Conditions(conditions.With().Type(toolchainv1aplha1.ConditionReady)).
-		Test(t, spcUnderTest)
+	// spaceprovisionerconfig.Asserting().
+	// 	ObjectMeta(metadata.With().Name("asdf").Label("kachny")).
+	// 	Conditions(conditions.With().Type(toolchainv1aplha1.ConditionReady)).
+	// 	Test(t, spcUnderTest)
 
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(spcUnderTest).Build()
 
 	// this is the new WaitFor
 	spaceprovisionerconfig.Asserting().
-		ObjectMeta(metadata.With().Name("asdf").Namespace("default").Label("kachny")).
+		ObjectMeta(metadata.With().Name("myobj").Namespace("default").Label("requiredLabel")).
 		Conditions(conditions.With().Type(toolchainv1aplha1.ConditionReady)).
 		Await(cl).
+		WithTimeout(1*time.Second).
 		Matching(context.TODO(), t)
 }

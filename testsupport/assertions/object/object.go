@@ -6,8 +6,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ObjectAssertions is a common base for assertions on client.Object subtypes.
+// ObjectAssertions is a common base for assertions on client.Object subtypes
+// and is meant to be embedded in other structs.
+//
 // It provides assertions on the object metadata.
+//
+// It is necessary to initialize this using the SetFluentSelf method so that
+// the methods defined on this struct can participate in the fluent call-chains
+// defined on the struct that embeds it.
 type ObjectAssertions[Self any, T client.Object] struct {
 	assertions.AddressableObjectAssertions[T]
 	self *Self

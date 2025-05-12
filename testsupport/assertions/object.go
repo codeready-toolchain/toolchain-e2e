@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +15,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kwait "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	DefaultRetryInterval = time.Millisecond * 100 // make it short because a "retry interval" is waited before the first test
+	DefaultTimeout       = time.Second * 120
 )
 
 type AddressableObjectAssertions[T client.Object] struct {
@@ -50,8 +54,8 @@ type errorCollectingT struct {
 func (oa *AddressableObjectAssertions[T]) Await(cl client.Client) *Await[T] {
 	return &Await[T]{
 		cl:         cl,
-		timeout:    wait.DefaultTimeout,
-		tick:       wait.DefaultRetryInterval,
+		timeout:    DefaultTimeout,
+		tick:       DefaultRetryInterval,
 		assertions: oa.Assertions,
 	}
 }

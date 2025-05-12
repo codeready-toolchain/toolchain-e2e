@@ -9,28 +9,28 @@ func CastAssertion[SuperType any, Type any](a Assertion[SuperType]) Assertion[Ty
 		return cast[SuperType](o)
 	}
 
-	return Lift(conversion, a)
+	return Convert(conversion, a)
 }
 
-// Lift converts from one assertion type to another by converting the tested value.
+// Convert converts from one assertion type to another by converting the tested value.
 // It respectes the ObjectNameAssertion and ObjectNamespaceAssertion so that assertions
-// can still be used to identify the object after lifting.
+// can still be used to identify the object after conversion.
 // The provided accessor can be fallible, returning false on the failure to convert the object.
-func Lift[From any, To any](accessor func(To) (From, bool), assertion Assertion[From]) Assertion[To] {
+func Convert[From any, To any](accessor func(To) (From, bool), assertion Assertion[From]) Assertion[To] {
 	if _, ok := assertion.(ObjectNameAssertion); ok {
-		return &liftedObjectName[From, To]{liftedAssertion: liftedAssertion[From, To]{accessor: accessor, assertion: assertion}}
+		return &convertedObjectName[From, To]{convertedAssertion: convertedAssertion[From, To]{accessor: accessor, assertion: assertion}}
 	} else if _, ok := assertion.(ObjectNamespaceAssertion); ok {
-		return &liftedObjectNamespace[From, To]{liftedAssertion: liftedAssertion[From, To]{accessor: accessor, assertion: assertion}}
+		return &convertedObjectNamespace[From, To]{convertedAssertion: convertedAssertion[From, To]{accessor: accessor, assertion: assertion}}
 	} else {
-		return &liftedAssertion[From, To]{accessor: accessor, assertion: assertion}
+		return &convertedAssertion[From, To]{accessor: accessor, assertion: assertion}
 	}
 }
 
-// LiftAll performs Lift on all the provided assertions.
-func LiftAll[From any, To any](accessor func(To) (From, bool), assertions ...Assertion[From]) Assertions[To] {
+// ConvertAll performs Convert on all the provided assertions.
+func ConvertAll[From any, To any](accessor func(To) (From, bool), assertions ...Assertion[From]) Assertions[To] {
 	tos := make(Assertions[To], len(assertions))
 	for i, a := range assertions {
-		tos[i] = Lift(accessor, a)
+		tos[i] = Convert(accessor, a)
 	}
 	return tos
 }
@@ -44,33 +44,33 @@ func cast[T any](obj any) (T, bool) {
 	return ret, ok
 }
 
-type liftedAssertion[From any, To any] struct {
+type convertedAssertion[From any, To any] struct {
 	assertion Assertion[From]
 	accessor  func(To) (From, bool)
 }
 
-func (lon *liftedAssertion[From, To]) Test(t AssertT, obj To) {
+func (ca *convertedAssertion[From, To]) Test(t AssertT, obj To) {
 	t.Helper()
-	o, ok := lon.accessor(obj)
+	o, ok := ca.accessor(obj)
 	if !ok {
 		t.Errorf("invalid conversion")
 		return
 	}
-	lon.assertion.Test(t, o)
+	ca.assertion.Test(t, o)
 }
 
-type liftedObjectName[From any, To any] struct {
-	liftedAssertion[From, To]
+type convertedObjectName[From any, To any] struct {
+	convertedAssertion[From, To]
 }
 
-func (lon *liftedObjectName[From, To]) Name() string {
-	return lon.assertion.(ObjectNameAssertion).Name()
+func (con *convertedObjectName[From, To]) Name() string {
+	return con.assertion.(ObjectNameAssertion).Name()
 }
 
-type liftedObjectNamespace[From any, To any] struct {
-	liftedAssertion[From, To]
+type convertedObjectNamespace[From any, To any] struct {
+	convertedAssertion[From, To]
 }
 
-func (lon *liftedObjectNamespace[From, To]) Namespace() string {
-	return lon.assertion.(ObjectNamespaceAssertion).Namespace()
+func (con *convertedObjectNamespace[From, To]) Namespace() string {
+	return con.assertion.(ObjectNamespaceAssertion).Namespace()
 }

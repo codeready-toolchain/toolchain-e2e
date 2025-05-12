@@ -57,6 +57,14 @@ func (ma *MetadataAssertions) Label(name string) *MetadataAssertions {
 	return ma
 }
 
+func (ma *MetadataAssertions) NoLabel(name string) *MetadataAssertions {
+	ma.Assertions = assertions.AppendFunc(ma.Assertions, func(t assertions.AssertT, obj client.Object) {
+		t.Helper()
+		assert.NotContains(t, obj.GetLabels(), name, "a label called '%s' found on the object but none expected", name)
+	})
+	return ma
+}
+
 func (a *objectName) Test(t assertions.AssertT, obj client.Object) {
 	t.Helper()
 	assert.Equal(t, a.name, obj.GetName(), "object name doesn't match")
