@@ -57,7 +57,7 @@ test-e2e-sequential-only: prepare-e2e deploy-e2e e2e-run e2e-run-metrics
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
 .PHONY: prepare-and-deploy-e2e
-## Prepare and Deploy e2e environment. Usefull to reset without having to run a test
+## Prepare and Deploy e2e environment. Useful to reset without having to run a test
 prepare-and-deploy-e2e: prepare-e2e deploy-e2e
 	@echo "To clean the cluster run 'make clean-e2e-resources'"
 
@@ -156,6 +156,15 @@ e2e-run-metrics:
 	@echo "Running e2e metrics tests..."
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/metrics"
 	@echo "The e2e metrics tests successfully finished"
+
+.PHONY: e2e-run-sandbox-ui-setup
+e2e-run-sandbox-ui-setup:
+	@echo "Running Developer Sandbox UI setup e2e tests..."
+	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -p 1 -v -timeout=90m -failfast
+	@echo "The Developer Sandbox UI setup e2e tests successfully finished"
+
+.PHONY: deploy-and-test-sandbox-ui
+deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui-setup
 
 .PHONY: execute-tests
 execute-tests:

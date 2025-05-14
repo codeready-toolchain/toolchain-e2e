@@ -1,0 +1,15 @@
+= Sandbox UI E2E Tests
+The e2e tests are executed against the Developer Sandbox UI running in OpenShift.
+
+*Prerequisites*:
+
+* Node.js (version 20)
+
+=== Running E2E Tests
+
+1. Ensure you have the toolchain resources deployed in your cluster (you can run `make prepare-and-deploy-e2e`)
+2. Ensure you are using Node.js version 20
+    - to easily manage it, you can run `nvm use 20`
+3. Deploy and test the Developer Sandbox UI: `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS>`
+
+

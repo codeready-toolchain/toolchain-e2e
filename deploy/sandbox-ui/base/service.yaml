@@ -1,0 +1,21 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: rhdh
+  namespace: ${SANDBOX_UI_NS}
+  labels:
+    app.kubernetes.io/instance: rhdh
+spec:
+  ports:
+    - name: http-backend
+      protocol: TCP
+      port: 7007
+      targetPort: backend
+    - name: http-metrics
+      protocol: TCP
+      port: 9464
+      targetPort: 9464
+  type: ClusterIP
+  sessionAffinity: None
+  selector:
+    app.kubernetes.io/instance: rhdh
