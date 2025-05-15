@@ -266,6 +266,14 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 	t.Run("verify webhook deployed using SSA in member1", func(t *testing.T) {
 		testDeployment(t, "member-operator-webhook", awaitilities.Member1().Namespace, "member-operator", "kubesaw-member-operator")
 	})
+
+	t.Run("verify autoscaler deployed using SSA in member1", func(t *testing.T) {
+		testDeployment(t, "autoscaling-buffer", awaitilities.Member1().Namespace, "member-operator", "kubesaw-member-operator")
+	})
+
+	t.Run("verify autoscaler deployed using SSA in member2", func(t *testing.T) {
+		testDeployment(t, "autoscaling-buffer", awaitilities.Member2().Namespace, "member-operator", "kubesaw-member-operator")
+	})
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
