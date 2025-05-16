@@ -166,6 +166,10 @@ e2e-run-sandbox-ui-setup:
 .PHONY: deploy-and-test-sandbox-ui
 deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui-setup
 
+.PHONY: deploy-and-test-sandbox-ui-local
+deploy-and-test-sandbox-ui-local: 
+	$(MAKE) deploy-sandbox-ui-local e2e-run-sandbox-ui-setup
+
 .PHONY: execute-tests
 execute-tests:
 	@echo "Present Spaces"

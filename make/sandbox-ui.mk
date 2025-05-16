@@ -2,7 +2,7 @@ SANDBOX_UI_NS := sandbox-ui
 SANDBOX_PLUGIN_IMAGE_NAME := sandbox-rhdh-plugin
 TAG := latest
 PLATFORM = linux/amd64
-RHDH_PLUGINS_DIR := "$(TMPDIR)rhdh-plugins"
+RHDH_PLUGINS_DIR = $(TMPDIR)rhdh-plugins
 AUTH_FILE := /tmp/auth.json
 
 .PHONY: deploy-sandbox-ui
@@ -32,6 +32,11 @@ deploy-sandbox-ui:
 		RHDH=${RHDH} envsubst | oc apply -f -
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
 
+
+.PHONY: deploy-sandbox-ui-local
+deploy-sandbox-ui-local:
+	$(MAKE) deploy-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins
+
 create-namespace:
 	@if ! oc get project ${SANDBOX_UI_NS} >/dev/null 2>&1; then \
 		echo "Creating namespace ${SANDBOX_UI_NS}"; \
@@ -40,6 +45,16 @@ create-namespace:
 		echo "Namespace ${SANDBOX_UI_NS} already exists"; \
 	fi
 	@oc project ${SANDBOX_UI_NS} >/dev/null 2>&1
+
+
+.PHONY: get-rhdh-plugins
+get-rhdh-plugins:
+ifeq ($(strip $(RHDH_PLUGINS_DIR)), $(TMPDIR)rhdh-plugins)
+	echo "using rhdh-plugins repo from master"
+	@$(MAKE) clone-rhdh-plugins
+else
+	echo "using local rhdh-plugins repo: ${RHDH_PLUGINS_DIR}"
+endif
 
 .PHONY: clone-rhdh-plugins
 clone-rhdh-plugins:
@@ -52,7 +67,7 @@ push-sandbox-plugin: check-registry
 push-sandbox-plugin: OS_IMAGE_REGISTRY=$(shell oc get route default-route -n openshift-image-registry --template='{{ .spec.host }}' 2>/dev/null || true)
 push-sandbox-plugin: IMAGE_TO_PUSH=${OS_IMAGE_REGISTRY}/${SANDBOX_UI_NS}/${SANDBOX_PLUGIN_IMAGE_NAME}:${TAG}
 push-sandbox-plugin:
-	$(MAKE) clone-rhdh-plugins
+	$(MAKE) get-rhdh-plugins
 	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
 	echo "podman push ${IMAGE_TO_PUSH} --creds=${OC_WHOAMI}:${OC_WHOAMI_TOKEN} --tls-verify=false" && \
 	yarn install && \

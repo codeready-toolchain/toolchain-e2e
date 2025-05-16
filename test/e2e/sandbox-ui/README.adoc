@@ -11,5 +11,6 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 2. Ensure you are using Node.js version 20
     - to easily manage it, you can run `nvm use 20`
 3. Deploy and test the Developer Sandbox UI: `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS>`
+    - if you want to run and text the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS>`
 
 
