@@ -253,7 +253,7 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 		}
 
 		// then
-		assert.NotNil(t, applyEntry)
+		require.NotNil(t, applyEntry)
 		assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
 		assert.Nil(t, updateEntry)
 	}
