@@ -2,7 +2,6 @@ package parallel
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -28,13 +27,6 @@ import (
 
 func TestIdlerAndPriorityClass(t *testing.T) {
 	t.Parallel()
-	os.Setenv("KUBECONFIG", "/home/mjobanek/.kube/config")
-	os.Setenv("MEMBER_NS", "toolchain-member-20122840")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-20122840")
-	os.Setenv("SECOND_MEMBER_MODE", "true")
-	os.Setenv("HOST_NS", "toolchain-host-20122840")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-20122840")
-
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
