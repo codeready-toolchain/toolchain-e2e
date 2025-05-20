@@ -20,7 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -236,43 +235,38 @@ func verifyBannedSignup(t *testing.T, awaitilities wait.Awaitilities, signup *to
 }
 
 func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait.Awaitilities) {
-	testDeployment := func(t *testing.T, deploymentName, ns, originalFieldManager, expectedFieldManager string) {
-		// when
-		deployment := &appsv1.Deployment{}
-		require.NoError(t, awaitilities.Host().Client.Get(context.TODO(), client.ObjectKey{Name: deploymentName, Namespace: ns}, deployment))
-
-		var applyEntry *metav1.ManagedFieldsEntry
-		var updateEntry *metav1.ManagedFieldsEntry
-		for _, mf := range deployment.ManagedFields {
-			if mf.Manager == expectedFieldManager {
-				applyEntry = &mf
+	testDeployment := func(t *testing.T, a *wait.Awaitility, deploymentName, originalFieldManager, expectedFieldManager string) {
+		_, err := wait.For(t, a, &appsv1.Deployment{}).WithNameMatching(deploymentName, func(d *appsv1.Deployment) bool {
+			var applyEntry *metav1.ManagedFieldsEntry
+			var updateEntry *metav1.ManagedFieldsEntry
+			for _, mf := range d.ManagedFields {
+				if mf.Manager == expectedFieldManager {
+					applyEntry = &mf
+				}
+				if mf.Manager == originalFieldManager {
+					updateEntry = &mf
+				}
 			}
-			if mf.Manager == originalFieldManager {
-				updateEntry = &mf
-			}
-		}
-
-		// then
-		require.NotNil(t, applyEntry)
-		assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
-		assert.Nil(t, updateEntry)
+			return applyEntry != nil && applyEntry.Operation == metav1.ManagedFieldsOperationApply && updateEntry == nil
+		})
+		require.NoError(t, err)
 	}
 
 	t.Run("verify registration service deployed using SSA in host", func(t *testing.T) {
-		testDeployment(t, "registration-service", awaitilities.Host().RegistrationServiceNs, "host-operator", "kubesaw-host-operator")
+		testDeployment(t, awaitilities.Host().Awaitility, "registration-service", "host-operator", "kubesaw-host-operator")
 	})
 
 	// no webhook is deployed in member2, see the "create-host-resources" make target
 	t.Run("verify webhook deployed using SSA in member1", func(t *testing.T) {
-		testDeployment(t, "member-operator-webhook", awaitilities.Member1().Namespace, "member-operator", "kubesaw-member-operator")
+		testDeployment(t, awaitilities.Member1().Awaitility, "member-operator-webhook", "member-operator", "kubesaw-member-operator")
 	})
 
 	t.Run("verify autoscaler deployed using SSA in member1", func(t *testing.T) {
-		testDeployment(t, "autoscaling-buffer", awaitilities.Member1().Namespace, "member-operator", "kubesaw-member-operator")
+		testDeployment(t, awaitilities.Member1().Awaitility, "autoscaling-buffer", "member-operator", "kubesaw-member-operator")
 	})
 
 	t.Run("verify autoscaler deployed using SSA in member2", func(t *testing.T) {
-		testDeployment(t, "autoscaling-buffer", awaitilities.Member2().Namespace, "member-operator", "kubesaw-member-operator")
+		testDeployment(t, awaitilities.Member2().Awaitility, "autoscaling-buffer", "member-operator", "kubesaw-member-operator")
 	})
 }
 
