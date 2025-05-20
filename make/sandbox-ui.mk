@@ -26,10 +26,13 @@ deploy-sandbox-ui:
 		--namespace=${SANDBOX_UI_NS}
 	rm ${AUTH_FILE}
 	kustomize build deploy/sandbox-ui/e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
-		HOST_OPERATOR_API=${HOST_OPERATOR_API} \
-		SANDBOX_UI_NS=${SANDBOX_UI_NS} \
-		SANDBOX_PLUGIN_IMAGE=${OS_IMAGE_REGISTRY}/${SANDBOX_UI_NS}/${SANDBOX_PLUGIN_IMAGE_NAME}:${TAG} \
-		RHDH=${RHDH} envsubst | oc apply -f -
+			HOST_NS=${HOST_NS} \
+			HOST_OPERATOR_API=${HOST_OPERATOR_API} \
+			SANDBOX_UI_NS=${SANDBOX_UI_NS} \
+			SANDBOX_PLUGIN_IMAGE=${OS_IMAGE_REGISTRY}/${SANDBOX_UI_NS}/${SANDBOX_PLUGIN_IMAGE_NAME}:${TAG} \
+			RHDH=${RHDH} envsubst | oc apply -f -
+	@echo "restarting registration-service to apply toolchainconfig changes"
+	@oc -n ${HOST_NS} rollout restart deploy/registration-service
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
 
 
@@ -69,10 +72,11 @@ push-sandbox-plugin: IMAGE_TO_PUSH=${OS_IMAGE_REGISTRY}/${SANDBOX_UI_NS}/${SANDB
 push-sandbox-plugin:
 	$(MAKE) get-rhdh-plugins
 	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
-	echo "podman push ${IMAGE_TO_PUSH} --creds=${OC_WHOAMI}:${OC_WHOAMI_TOKEN} --tls-verify=false" && \
+	rm -rf plugins/sandbox/dist-dynamic && \
+	rm -rf red-hat-developer-hub-backstage-plugin-sandbox && \
 	yarn install && \
 	npx @janus-idp/cli@3.3.1 package package-dynamic-plugins \
 		--tag ${IMAGE_TO_PUSH} \
 		--platform ${PLATFORM} && \
+	echo "podman push ${IMAGE_TO_PUSH} --creds=${OC_WHOAMI}:${OC_WHOAMI_TOKEN} --tls-verify=false" && \
 	podman push ${IMAGE_TO_PUSH} --creds=${OC_WHOAMI}:${OC_WHOAMI_TOKEN} --tls-verify=false
-

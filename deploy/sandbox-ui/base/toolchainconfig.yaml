@@ -1,0 +1,61 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: ToolchainConfig
+metadata:
+  name: config
+  namespace: ${HOST_NS}
+spec:
+  host:
+    automaticApproval:
+      enabled: true
+    deactivation:
+      deactivationDomainsExcluded: "@excluded.com"
+    environment: "e2e-tests"
+    notifications:
+      durationBeforeNotificationDeletion: "5s"
+    registrationService:
+      analytics:
+        devSpaces:
+          segmentWriteKey: "test devspaces segment write key"
+        segmentWriteKey: "test sandbox segment write key"
+      auth:
+        authClientConfigRaw: '{ "realm": "sandbox-dev", "auth-server-url": "https://sso.devsandbox.dev/auth", "ssl-required": "none", "resource": "sandbox-public", "clientId": "sandbox-public", "public-client": true }'
+        authClientLibraryURL: "https://sso.devsandbox.dev/auth/js/keycloak.js"
+        authClientPublicKeysURL: "https://sso.devsandbox.dev/auth/realms/sandbox-dev/protocol/openid-connect/certs"
+        ssoBaseURL: "https://sso.devsandbox.dev"
+        ssoRealm: sandbox-dev
+      environment: dev
+      # same number that is set in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/registration-service/registration-service.yaml#L272-L273
+      replicas: 3
+      verification:
+        enabled: true
+        excludedEmailDomains: "redhat.com,acme.com"
+        secret:
+          ref: "host-operator-secret"
+          twilioAccountSID: "twilio.account.sid"
+          twilioAuthToken: "twilio.auth.token"
+          twilioFromNumber: "twilio.from_number"
+    spaceConfig:
+      spaceRequestEnabled: true
+      spaceBindingRequestEnabled: true
+    tiers:
+      durationBeforeChangeTierRequestDeletion: "5s"
+      defaultSpaceTier: "base1ns"
+      featureToggles:
+        - name: "test-feature"
+          weight: 100
+    toolchainStatus:
+      toolchainStatusRefreshTime: "1s"
+  members:
+    default:
+      autoscaler:
+        bufferMemory: "50Mi"
+        bufferCPU: "15m"
+        bufferReplicas: 2
+        deploy: true
+      memberStatus:
+        refreshPeriod: "1s"
+      webhook:
+        secret:
+          ref: "member-operator-secret"
+          virtualMachineAccessKey: "vm.access"
+      environment: "e2e-tests"
