@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/dynamic"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/dynamic"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
@@ -1518,6 +1519,7 @@ func (a *MemberAwaitility) WaitForSecret(t *testing.T, name string) (*corev1.Sec
 
 // WaitForAAP waits for the AAP resource to get into the expected idled state (Spec.Idle_aap)
 func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapRes dynamic.NamespaceableResourceInterface, expectedIdled bool) (*unstructured.Unstructured, error) {
+	t.Logf("waiting for AAP '%s' in namespace '%s'", name, a.Namespace)
 	var aap *unstructured.Unstructured
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
 		var err error

@@ -2,10 +2,14 @@ package parallel
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/dynamic"
+	"os"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
@@ -24,33 +28,35 @@ import (
 
 func TestIdlerAndPriorityClass(t *testing.T) {
 	t.Parallel()
+	os.Setenv("KUBECONFIG", "/home/mjobanek/.kube/config")
+	os.Setenv("MEMBER_NS", "toolchain-member-20122840")
+	os.Setenv("MEMBER_NS_2", "toolchain-member2-20122840")
+	os.Setenv("SECOND_MEMBER_MODE", "true")
+	os.Setenv("HOST_NS", "toolchain-host-20122840")
+	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-20122840")
 
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
-	NewSignupRequest(await).
-		Username("test-idler").
-		Email("test-idler@redhat.com").
-		ManuallyApprove().
-		EnsureMUR().
-		TargetCluster(memberAwait).
-		SpaceTier("base"). // let's move it to base to have to namespaces to monitor
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
 
-	idler, err := memberAwait.WaitForIdler(t, "test-idler-dev", wait.IdlerConditions(wait.Running()))
+	// start the AAP workloads at first, because the idler timeout is longer for this case
+	aapIdler, _ := prepareIdlerUser(t, await, "test-aap-idler")
+	// Create an Ansible Automation Platform resource
+	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", aapIdler.Name, wait.WithSandboxPriorityClass())
+	// Set a short timeout for one of the idler to trigger pod idling. It has to stay long enough, so there is
+	// a significant difference between the AAP and the standard timeout (for AAP workloads the half of the standard timeout is used)
+	aapIdler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+		Update(aapIdler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
+			i.Spec.TimeoutSeconds = 60
+		})
 	require.NoError(t, err)
 
-	// Noise
-	idlerNoise, err := memberAwait.WaitForIdler(t, "test-idler-stage", wait.IdlerConditions(wait.Running()))
-	require.NoError(t, err)
+	// user & idlers for standard workloads
+	idler, idlerNoise := prepareIdlerUser(t, await, "test-idler")
 
 	// Create payloads for both users
 	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
 	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
-
-	// Create an Ansible Automation Platform resource
-	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", idler.Name, wait.WithSandboxPriorityClass())
 
 	// Create more noise pods in non-user namespace
 	memberAwait.CreateNamespace(t, "workloads-noise")
@@ -62,7 +68,6 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
 			i.Spec.TimeoutSeconds = 5
 		})
-
 	require.NoError(t, err)
 
 	// Wait for the pods to be deleted
@@ -70,14 +75,6 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 		err := memberAwait.WaitUntilPodsDeleted(t, p.Namespace, wait.WithPodName(p.Name))
 		require.NoError(t, err)
 	}
-
-	// Wait for the AAP resource to be idled.
-	// The pods which owned by this AAP are still running because there is no AAP controller to shut them down.
-	// So we just need to verify that aap.Spec.Idle_aap is set to "true" by the idler.
-	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
-	require.NoError(t, err)
-	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", idler.Name, clnt.Resource(aapRes), true)
-	require.NoError(t, err)
 
 	// check notification was created
 	_, err = hostAwait.WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
@@ -111,6 +108,36 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// There should not be any pods left in the namespace
 	err = memberAwait.WaitUntilPodsDeleted(t, idler.Name, wait.WithPodLabel("idler", "idler"))
 	require.NoError(t, err)
+
+	// Wait for the AAP resource to be idled.
+	// The pods which owned by this AAP are still running because there is no AAP controller to shut them down.
+	// So we just need to verify that aap.Spec.Idle_aap is set to "true" by the idler.
+	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", aapIdler.Name, clnt.Resource(aapRes), true)
+	require.NoError(t, err)
+}
+
+func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*toolchainv1alpha1.Idler, *toolchainv1alpha1.Idler) {
+	memberAwait := await.Member1()
+
+	NewSignupRequest(await).
+		Username(name).
+		Email(name + "@redhat.com").
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(memberAwait).
+		SpaceTier("base"). // let's move it to base to have two namespaces to monitor
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t)
+
+	idler, err := memberAwait.WaitForIdler(t, name+"-dev", wait.IdlerConditions(wait.Running()))
+	require.NoError(t, err)
+
+	// Noise
+	idlerNoise, err := memberAwait.WaitForIdler(t, name+"-stage", wait.IdlerConditions(wait.Running()))
+	require.NoError(t, err)
+	return idler, idlerNoise
 }
 
 // prepareAAPWorkloads prepares an Ansible Automation Platform instance with one deployment owned by it and waits for the pods to run
@@ -197,9 +224,6 @@ func createAAP(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(createdAAP, createdAAP.GroupVersionKind()),
-			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels(name)},
@@ -207,6 +231,8 @@ func createAAP(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace
 			Template: podTemplateSpec(name),
 		},
 	}
+	err = controllerutil.SetOwnerReference(createdAAP, deployment, scheme.Scheme)
+	require.NoError(t, err)
 	err = memberAwait.Create(t, deployment)
 	require.NoError(t, err)
 
