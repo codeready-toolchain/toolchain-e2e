@@ -5,6 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
@@ -15,38 +20,37 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestIdlerAndPriorityClass(t *testing.T) {
 	t.Parallel()
-
 	await := WaitForDeployments(t)
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
-	NewSignupRequest(await).
-		Username("test-idler").
-		Email("test-idler@redhat.com").
-		ManuallyApprove().
-		EnsureMUR().
-		TargetCluster(memberAwait).
-		SpaceTier("base"). // let's move it to base to have to namespaces to monitor
-		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-		Execute(t)
 
-	idler, err := memberAwait.WaitForIdler(t, "test-idler-dev", wait.IdlerConditions(wait.Running()))
+	// start the AAP workloads at first, because the idler timeout is longer for this case
+	aapIdler, _ := prepareIdlerUser(t, await, "test-aap-idler")
+	// Create an Ansible Automation Platform resource
+	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", aapIdler.Name, wait.WithSandboxPriorityClass())
+	// Set a short timeout for one of the idler to trigger pod idling. It has to stay long enough, so there is
+	// a significant difference between the AAP and the standard timeout (for AAP workloads the half of the standard timeout is used)
+	aapIdler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+		Update(aapIdler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
+			i.Spec.TimeoutSeconds = 60
+		})
 	require.NoError(t, err)
 
-	// Noise
-	idlerNoise, err := memberAwait.WaitForIdler(t, "test-idler-stage", wait.IdlerConditions(wait.Running()))
-	require.NoError(t, err)
+	// user & idlers for standard workloads
+	idler, idlerNoise := prepareIdlerUser(t, await, "test-idler")
 
 	// Create payloads for both users
 	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
 	podsNoise := prepareWorkloads(t, await.Member1(), idlerNoise.Name, wait.WithSandboxPriorityClass())
 
-	// Create another noise pods in non-user namespace
+	// Create more noise pods in non-user namespace
 	memberAwait.CreateNamespace(t, "workloads-noise")
 	externalNsPodsNoise := prepareWorkloads(t, await.Member1(), "workloads-noise", wait.WithOriginalPriorityClass())
 
@@ -56,7 +60,6 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
 			i.Spec.TimeoutSeconds = 5
 		})
-
 	require.NoError(t, err)
 
 	// Wait for the pods to be deleted
@@ -64,6 +67,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 		err := memberAwait.WaitUntilPodsDeleted(t, p.Namespace, wait.WithPodName(p.Name))
 		require.NoError(t, err)
 	}
+
 	// check notification was created
 	_, err = hostAwait.WaitForNotificationWithName(t, "test-idler-dev-idled", toolchainv1alpha1.NotificationTypeIdled, wait.UntilNotificationHasConditions(wait.Sent()))
 	require.NoError(t, err)
@@ -81,7 +85,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create another pod and make sure it's deleted.
-	// In the tests above the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
+	// In the tests above, the Idler reconcile was triggered after we changed the Idler resource (to set a short timeout).
 	// Now we want to verify that the idler reconcile is triggered without modifying the Idler resource.
 	// Notification shouldn't be created again.
 	pod := createStandalonePod(t, await.Member1(), idler.Name, "idler-test-pod-2") // create just one standalone pod. No need to create all possible pod controllers which may own pods.
@@ -96,6 +100,48 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// There should not be any pods left in the namespace
 	err = memberAwait.WaitUntilPodsDeleted(t, idler.Name, wait.WithPodLabel("idler", "idler"))
 	require.NoError(t, err)
+
+	// Wait for the AAP resource to be idled.
+	// The pods which owned by this AAP are still running because there is no AAP controller to shut them down.
+	// So we just need to verify that aap.Spec.Idle_aap is set to "true" by the idler.
+	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", aapIdler.Name, clnt.Resource(aapRes), true)
+	require.NoError(t, err)
+}
+
+func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*toolchainv1alpha1.Idler, *toolchainv1alpha1.Idler) {
+	memberAwait := await.Member1()
+
+	NewSignupRequest(await).
+		Username(name).
+		Email(name + "@redhat.com").
+		ManuallyApprove().
+		EnsureMUR().
+		TargetCluster(memberAwait).
+		SpaceTier("base"). // let's move it to base to have two namespaces to monitor
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t)
+
+	idler, err := memberAwait.WaitForIdler(t, name+"-dev", wait.IdlerConditions(wait.Running()))
+	require.NoError(t, err)
+
+	// Noise
+	idlerNoise, err := memberAwait.WaitForIdler(t, name+"-stage", wait.IdlerConditions(wait.Running()))
+	require.NoError(t, err)
+	return idler, idlerNoise
+}
+
+// prepareAAPWorkloads prepares an Ansible Automation Platform instance with one deployment owned by it and waits for the pods to run
+func prepareAAPWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
+	aapDeployment := createAAP(t, memberAwait, name, namespace)
+	n := int(*aapDeployment.Spec.Replicas) // total number of created pods
+
+	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
+		wait.WithPodLabel("app", name))...)
+	require.NoError(t, err)
+
+	return pods
 }
 
 func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
@@ -146,6 +192,40 @@ func createDeployment(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 		},
 	}
 	err := memberAwait.Create(t, deployment)
+	require.NoError(t, err)
+
+	return deployment
+}
+
+var aapRes = schema.GroupVersionResource{Group: "aap.ansible.com", Version: "v1alpha1", Resource: "ansibleautomationplatforms"}
+
+// createAAP creates an instance of ansibleautomationplatforms.aap.ansible.com with one deployment owned by this instance
+// returns the underlying deployment
+func createAAP(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *appsv1.Deployment {
+	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+
+	// Create an AAP instance
+	aap := aapResource(name)
+	createdAAP, err := clnt.Resource(aapRes).Namespace(namespace).Create(context.TODO(), aap, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Create a Deployment with two replicas and the AAP instance as the owner
+	replicas := int32(2)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels(name)},
+			Replicas: &replicas,
+			Template: podTemplateSpec(name),
+		},
+	}
+	err = controllerutil.SetOwnerReference(createdAAP, deployment, scheme.Scheme)
+	require.NoError(t, err)
+	err = memberAwait.Create(t, deployment)
 	require.NoError(t, err)
 
 	return deployment
@@ -294,4 +374,19 @@ func podTemplateSpec(app string) corev1.PodTemplateSpec {
 
 func selectorLabels(app string) map[string]string {
 	return map[string]string{"app": app}
+}
+
+func aapResource(name string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "aap.ansible.com/v1alpha1",
+			"kind":       "AnsibleAutomationPlatform",
+			"metadata": map[string]interface{}{
+				"name": name,
+			},
+			"spec": map[string]interface{}{
+				"idle_aap": false,
+			},
+		},
+	}
 }
