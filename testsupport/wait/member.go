@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/dynamic"
 	"reflect"
 	"sort"
 	"strings"
@@ -1512,6 +1514,27 @@ func (a *MemberAwaitility) WaitForSecret(t *testing.T, name string) (*corev1.Sec
 		return true, nil
 	})
 	return cm, err
+}
+
+// WaitForAAP waits for the AAP resource to get into the expected idled state (Spec.Idle_aap)
+func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapRes dynamic.NamespaceableResourceInterface, expectedIdled bool) (*unstructured.Unstructured, error) {
+	var aap *unstructured.Unstructured
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
+		var err error
+		aap, err = aapRes.Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		idled, _, err := unstructured.NestedBool(aap.UnstructuredContent(), "spec", "idle_aap")
+		if err != nil {
+			return true, err
+		}
+		return expectedIdled == idled, nil
+	})
+	return aap, err
 }
 
 // WaitForPods waits until "n" number of pods exist in the given namespace
