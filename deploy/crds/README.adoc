@@ -5,3 +5,6 @@ Copy/paste relevant definitions from https://raw.githubusercontent.com/redhat-ap
 
 == virtualmachines CRD
 Copy from a cluster with CNV operator installed
+
+== ansibleautomationplatforms CRD
+Copy from a cluster with Ansible Automation Platform operator installed
