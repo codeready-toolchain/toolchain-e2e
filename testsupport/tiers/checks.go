@@ -385,31 +385,6 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	}
 }
 
-type advancedTierChecks struct {
-	baseTierChecks
-}
-
-func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "60Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServicesNoLoadBalancers(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
-		idlers(0, "dev", "stage"))
-}
-
-func (a *advancedTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
-	verifyNsTypes(t, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
 // testTierChecks checks only that the "test" tier exists and has correct template references.
 // It does not check the test tier resources
 type testTierChecks struct {
