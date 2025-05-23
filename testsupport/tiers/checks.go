@@ -25,19 +25,18 @@ import (
 
 const (
 	// tier names
-	appstudio          = "appstudio"
-	appstudiolarge     = "appstudiolarge"
-	appstudioEnv       = "appstudio-env"
-	base               = "base"
-	base1ns            = "base1ns"
-	base1ns6didler     = "base1ns6didler"
-	base1nsnoidling    = "base1nsnoidling"
-	baseextendedidling = "baseextendedidling"
-	baselarge          = "baselarge"
-	testTier           = "test"
-	intelMedium        = "intelmedium"
-	intelLarge         = "intellarge"
-	intelXLarge        = "intelxlarge"
+	appstudio       = "appstudio"
+	appstudiolarge  = "appstudiolarge"
+	appstudioEnv    = "appstudio-env"
+	base            = "base"
+	base1ns         = "base1ns"
+	base1ns6didler  = "base1ns6didler"
+	base1nsnoidling = "base1nsnoidling"
+	baselarge       = "baselarge"
+	testTier        = "test"
+	intelMedium     = "intelmedium"
+	intelLarge      = "intellarge"
+	intelXLarge     = "intelxlarge"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -64,8 +63,6 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
 	case baselarge:
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
-	case baseextendedidling:
-		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
 	case appstudiolarge:
@@ -335,25 +332,6 @@ func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(9),
 		idlers(43200, "dev", "stage"))
-}
-
-type baseextendedidlingTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baseextendedidlingTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "28Gi", "60Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServicesNoLoadBalancers(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
-		idlers(518400, "dev", "stage"))
 }
 
 // toolchainLabelsWaitCriterion create a slice of LabelWaitCriterion containing all the required toolchain labels and values.
