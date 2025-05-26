@@ -50,7 +50,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
+	tiersToCheck := []string{"baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -90,7 +90,7 @@ func TestNSTemplateTiers(t *testing.T) {
 func TestUpdateNSTemplateTier(t *testing.T) {
 	t.Parallel()
 	// in this test, we have 2 groups of users, configured with their own tier (both using the "base1ns" tier templates)
-	// then, the first tier is updated with the "advanced" templates, whereas the second one is updated using the "baseextendedidling" templates
+	// then, the first tier is updated with the "base1nsnoidling" templates, whereas the second one is updated using the "baseextendedidling" templates
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
@@ -106,7 +106,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
 	require.NoError(t, err)
-	advancedTier, err := hostAwait.WaitForNSTemplateTier(t, "advanced")
+	base1nsnoidlingTier, err := hostAwait.WaitForNSTemplateTier(t, "base1nsnoidling")
 	require.NoError(t, err)
 	baseextendedidlingTier, err := hostAwait.WaitForNSTemplateTier(t, "baseextendedidling")
 	require.NoError(t, err)
@@ -129,12 +129,12 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 
 	t.Log("updating tiers")
-	// when updating the "cheesecakeTier" tier with the "advanced" template refs for namespace resources and spaceroles
-	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
+	// when updating the "cheesecakeTier" tier with the "base1nsnoidling" template refs for namespace resources and spaceroles
+	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, base1nsnoidlingTier), tiers.WithSpaceRoles(t, base1nsnoidlingTier))
 	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
 	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
-	// and when updating the "chocolate" tier to the "advanced" template refs for namespace resources
-	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, advancedTier))
+	// and when updating the "chocolate" tier to the "base1nsnoidling" template refs for namespace resources
+	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, base1nsnoidlingTier))
 
 	// then
 	t.Log("verifying users and spaces after tier updates")
@@ -479,15 +479,14 @@ func TestTierTemplateRevision(t *testing.T) {
 				Value: "100",
 			})
 		})
-
 	})
 
 	t.Run("when updating one tiertemplate the revisions field should be cleaned up from old entries", func(t *testing.T) {
 		// given
 		// we create new NSTemplateTiers (derived from `base`)
 		updatingTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "updatingtier", baseTier)
-		// we use the advanced tier only for copying the namespace and space role resources
-		advancedTier, err := hostAwait.WaitForNSTemplateTier(t, "advanced")
+		// we use the base1nsnoidling tier only for copying the namespace and space role resources
+		base1nsnoidlingTier, err := hostAwait.WaitForNSTemplateTier(t, "base1nsnoidling")
 		require.NoError(t, err)
 
 		// when
@@ -497,12 +496,12 @@ func TestTierTemplateRevision(t *testing.T) {
 		require.NoError(t, err)
 		updatingTier.NSTemplateTier = tier
 		revisionsBeforeUpdate := updatingTier.Status.Revisions
-		// and we update the tier with the "advanced" template refs for namespace and space role resources
-		tiers.UpdateCustomNSTemplateTier(t, hostAwait, updatingTier, tiers.WithNamespaceResources(t, advancedTier), tiers.WithSpaceRoles(t, advancedTier))
+		// and we update the tier with the "base1nsnoidling" template refs for namespace and space role resources
+		tiers.UpdateCustomNSTemplateTier(t, hostAwait, updatingTier, tiers.WithNamespaceResources(t, base1nsnoidlingTier), tiers.WithSpaceRoles(t, base1nsnoidlingTier))
 
 		// then
 		// we ensure the new revisions are made by namespace and spaceroles from advanced tier + clusterResources from the updating tier
-		advancedRefs := tiers.GetTemplateRefs(t, hostAwait, advancedTier.Name)
+		advancedRefs := tiers.GetTemplateRefs(t, hostAwait, base1nsnoidlingTier.Name)
 		expectedRefs := []string{updatingTier.Spec.ClusterResources.TemplateRef}
 		// the duplicated tiertemplates have a different prefix
 		for _, tierTemplateName := range advancedRefs.SpaceRolesFlatten() {
@@ -517,7 +516,6 @@ func TestTierTemplateRevision(t *testing.T) {
 		// revisions values should be different compared to the previous ones
 		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
 	})
-
 }
 
 func getTestCRQ(podsCount string) unstructured.Unstructured {
