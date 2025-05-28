@@ -180,7 +180,7 @@ func CreateMurWithAdminSpaceBindingForSpace(t *testing.T, awaitilities wait.Awai
 	user := builder.Execute(t)
 	signup := user.UserSignup
 	mur := user.MUR
-	t.Logf("The UserSignup %s and MUR %s were created", signup.Name, mur.Name)
+	t.Logf("The UserSignup %s and MUR %s were created", wait.SafeStringifyObject(signup), wait.SafeStringifyObject(mur))
 	var binding *toolchainv1alpha1.SpaceBinding
 	if cleanup {
 		binding = testsupportsb.CreateSpaceBinding(t, awaitilities.Host(), mur, space, "admin")

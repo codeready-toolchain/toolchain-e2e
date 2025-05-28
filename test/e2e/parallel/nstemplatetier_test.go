@@ -18,6 +18,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -50,7 +51,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
+	tiersToCheck := testsupport.E2eNSTemplateTiers
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -479,7 +480,6 @@ func TestTierTemplateRevision(t *testing.T) {
 				Value: "100",
 			})
 		})
-
 	})
 
 	t.Run("when updating one tiertemplate the revisions field should be cleaned up from old entries", func(t *testing.T) {
@@ -517,7 +517,6 @@ func TestTierTemplateRevision(t *testing.T) {
 		// revisions values should be different compared to the previous ones
 		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
 	})
-
 }
 
 func getTestCRQ(podsCount string) unstructured.Unstructured {

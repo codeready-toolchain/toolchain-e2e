@@ -649,6 +649,7 @@ func (a *HostAwaitility) WaitForUserSignup(t *testing.T, name string, criteria .
 	if err != nil {
 		a.printUserSignupWaitCriterionDiffs(t, userSignup, criteria...)
 	}
+	t.Logf("UserSignup matching the criteria found: %v", SafeStringifyObject(userSignup))
 	return userSignup, err
 }
 

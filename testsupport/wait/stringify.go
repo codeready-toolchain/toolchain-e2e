@@ -1,6 +1,7 @@
 package wait
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/ghodss/yaml"
@@ -8,6 +9,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func SafeStringifyObject(obj client.Object) string {
+	yaml, err := StringifyObject(obj)
+	if err != nil {
+		return fmt.Sprintf("<<< strigification failed with: %s >>>", err.Error())
+	}
+	return string(yaml)
+}
 
 // StringifyObject renders the object in YAML while omitting the soup of `metadata.managedFields`
 func StringifyObject(obj client.Object) ([]byte, error) {
