@@ -34,6 +34,7 @@ deploy-sandbox-ui:
 	@echo "restarting registration-service to apply toolchainconfig changes"
 	@oc -n ${HOST_NS} rollout restart deploy/registration-service
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
+	@echo "Developer Sandbox UI running at ${RHDH}"
 
 
 .PHONY: deploy-sandbox-ui-local
