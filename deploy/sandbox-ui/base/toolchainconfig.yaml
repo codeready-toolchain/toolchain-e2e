@@ -27,7 +27,7 @@ spec:
       # same number that is set in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/registration-service/registration-service.yaml#L272-L273
       replicas: 3
       verification:
-        enabled: true
+        enabled: false
         excludedEmailDomains: "redhat.com,acme.com"
         secret:
           ref: "host-operator-secret"
