@@ -7,10 +7,10 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 
 === Running E2E Tests
 
-1. Ensure you have the toolchain resources deployed in your cluster (you can run `make prepare-and-deploy-e2e`)
-2. Ensure you are using Node.js version 20
+1. You need a OCP cluster 
+    - ROSA cluster from ClusterBot will not work since we are not able to modify the OAuth configuration of ROSA clusters created by the ClusterBot.
+2. Ensure you have the toolchain resources deployed in your cluster (you can run `make prepare-and-deploy-e2e`)
+3. Ensure you are using Node.js version 20
     - to easily manage it, you can run `nvm use 20`
-3. Deploy and test the Developer Sandbox UI: `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS>`
+4. Deploy and test the Developer Sandbox UI: `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS>`
     - if you want to run and text the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS>`
-
-
