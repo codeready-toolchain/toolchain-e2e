@@ -8,6 +8,7 @@ resources:
   - service.yaml
   - route.yaml
   - toolchainconfig.yaml
+  - oauth-idp.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

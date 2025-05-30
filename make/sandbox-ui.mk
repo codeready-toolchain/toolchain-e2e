@@ -11,21 +11,11 @@ deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registr
 deploy-sandbox-ui: HOST_OPERATOR_API=https://$(shell oc get route api -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')
 deploy-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
 deploy-sandbox-ui: check-registry
-deploy-sandbox-ui: OS_IMAGE_REGISTRY=$(shell oc get route default-route -n openshift-image-registry --template='{{ .spec.host }}' 2>/dev/null || true)
 deploy-sandbox-ui:
 	@echo "sandbox ui will be deployed in '${SANDBOX_UI_NS}' namespace"
 	$(MAKE) create-namespace SANDBOX_UI_NS=${SANDBOX_UI_NS}
 	$(MAKE) push-sandbox-plugin
-	@oc create secret docker-registry pull-secret \
-		--docker-server=${OS_IMAGE_REGISTRY} \
-		--docker-username=${OC_WHOAMI} \
-		--docker-password=${OC_WHOAMI_TOKEN} \
-		--namespace=${SANDBOX_UI_NS}
-	@oc extract secret/pull-secret -n ${SANDBOX_UI_NS} --keys=.dockerconfigjson --to=- > ${AUTH_FILE}
-	@oc create secret generic rhdh-dynamic-plugins-registry-auth \
-		--from-file=auth.json=${AUTH_FILE} \
-		--namespace=${SANDBOX_UI_NS}
-	rm ${AUTH_FILE}
+	$(MAKE) create-pull-secret
 	kustomize build deploy/sandbox-ui/e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
 			HOST_NS=${HOST_NS} \
 			HOST_OPERATOR_API=${HOST_OPERATOR_API} \
@@ -40,6 +30,18 @@ deploy-sandbox-ui:
 
 # SANDBOX_PLUGIN_IMAGE=${OS_IMAGE_REGISTRY}/${SANDBOX_UI_NS}/${SANDBOX_PLUGIN_IMAGE_NAME}:${TAG} \
 
+create-pull-secret: OS_IMAGE_REGISTRY=$(shell oc get route default-route -n openshift-image-registry --template='{{ .spec.host }}' 2>/dev/null || true)
+create-pull-secret:
+	@oc create secret docker-registry pull-secret \
+		--docker-server=${OS_IMAGE_REGISTRY} \
+		--docker-username=${OC_WHOAMI} \
+		--docker-password=${OC_WHOAMI_TOKEN} \
+		--namespace=${SANDBOX_UI_NS}
+	@oc extract secret/pull-secret -n ${SANDBOX_UI_NS} --keys=.dockerconfigjson --to=- > ${AUTH_FILE}
+	@oc create secret generic rhdh-dynamic-plugins-registry-auth \
+		--from-file=auth.json=${AUTH_FILE} \
+		--namespace=${SANDBOX_UI_NS}
+	rm ${AUTH_FILE}
 
 .PHONY: deploy-sandbox-ui-local
 deploy-sandbox-ui-local:
