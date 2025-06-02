@@ -99,10 +99,17 @@ e2e-run-sandbox-ui-setup:
 	@echo "Running Developer Sandbox UI setup e2e tests..."
 	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -p 1 -v -timeout=90m -failfast
 	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} envsubst < deploy/sandbox-ui/e2e-tests/.env > $(RHDH_PLUGINS_DIR)/workspaces/sandbox/.env
+	@echo "Running Developer Sandbox UI e2e tests using playwright..."
 	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
+		echo "Running Developer Sandbox UI e2e tests in chrome..." && \
 		yarn playwright test --project=chrome && \
 		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS} && \
-		yarn playwright test --project=firefox
+		echo "Running Developer Sandbox UI e2e tests in firefox..." && \
+		yarn playwright test --project=firefox && \
+		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS} && \
+		echo "Running Developer Sandbox UI e2e tests in safari..." && \
+		yarn playwright test --project=safari && \
+		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 	@echo "The Developer Sandbox UI setup e2e tests successfully finished"
 
 .PHONY: deploy-and-test-sandbox-ui
