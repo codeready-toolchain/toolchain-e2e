@@ -110,4 +110,4 @@ deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui-setup
 
 .PHONY: deploy-and-test-sandbox-ui-local
 deploy-and-test-sandbox-ui-local: 
-	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui-setup RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins-1
+	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui-setup RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins
