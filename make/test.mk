@@ -157,19 +157,6 @@ e2e-run-metrics:
 	$(MAKE) execute-tests MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} TESTS_TO_EXECUTE="./test/metrics"
 	@echo "The e2e metrics tests successfully finished"
 
-.PHONY: e2e-run-sandbox-ui-setup
-e2e-run-sandbox-ui-setup:
-	@echo "Running Developer Sandbox UI setup e2e tests..."
-	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -p 1 -v -timeout=90m -failfast
-	@echo "The Developer Sandbox UI setup e2e tests successfully finished"
-
-.PHONY: deploy-and-test-sandbox-ui
-deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui-setup
-
-.PHONY: deploy-and-test-sandbox-ui-local
-deploy-and-test-sandbox-ui-local: 
-	$(MAKE) deploy-sandbox-ui-local e2e-run-sandbox-ui-setup
-
 .PHONY: execute-tests
 execute-tests:
 	@echo "Present Spaces"

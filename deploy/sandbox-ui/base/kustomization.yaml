@@ -7,8 +7,6 @@ resources:
   - dynamic-plugins-root-pvc.yaml
   - service.yaml
   - route.yaml
-  - toolchainconfig.yaml
-  - oauth-idp.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

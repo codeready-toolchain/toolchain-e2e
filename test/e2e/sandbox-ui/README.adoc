@@ -3,14 +3,37 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 
 *Prerequisites*:
 
-* Node.js (version 20)
-
-=== Running E2E Tests
-
 1. You need a OCP cluster 
     - ROSA cluster from ClusterBot will not work since we are not able to modify the OAuth configuration of ROSA clusters created by the ClusterBot.
 2. Ensure you have the toolchain resources deployed in your cluster (you can run `make prepare-and-deploy-e2e`)
 3. Ensure you are using Node.js version 20
     - to easily manage it, you can run `nvm use 20`
-4. Deploy and test the Developer Sandbox UI: `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS>`
-    - if you want to run and text the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS>`
+
+=== Running E2E Tests
+The E2E tests for the Developer Sandbox UI are organized in two locations:
+
+- toolchain-e2e: contains a basic test to verify that the initial setup is correctly configured.
+
+- rhdh-plugins: hosts the main E2E tests for the Developer Sandbox UI written using playwright. For detailed instructions and usage, please read this https://github.com/redhat-developer/rhdh-plugins/blob/main/workspaces/sandbox/packages/app/e2e-tests/README.md[documentation].
+
+`make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+
+If you want to run and text the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+
+
+=== Deploy Developer Sandbox UI in E2E mode
+`make deploy-sandbox-ui HOST_NS=<HOST_NS>`
+
+Please note that OCP cluster does not have a valid CA, so when accessing the Developer Sandbox UI, you need to:
+ 
+- accept to proceed unsafely
+
+image::https://github.com/user-attachments/assets/5b35a65f-6703-42cf-a165-b7326fd4faab[private-connection, width=1195]
+
+- access `<registration-service-route>/api/v1/signup` to tell your browser that the registration service route can be accessible
+
+image::https://github.com/user-attachments/assets/6c2f7446-1de2-4701-ace7-2d6796f49eeb[registration-service, width=1094]
+
+
+=== Clean Developer Sandbox UI
+`make clean-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME>`
