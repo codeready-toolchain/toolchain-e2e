@@ -310,7 +310,6 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 		r.mur = mur
 	}
 
-	t.Logf("Cleanup for the usersignup '%s' is disabled: %v", &userSignup.Name, r.cleanupDisabled)
 	// We also need to ensure that the UserSignup is deleted at the end of the test (if the test itself doesn't delete it)
 	// and if cleanup hasn't been disabled
 	if !r.cleanupDisabled {
