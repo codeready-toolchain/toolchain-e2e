@@ -1,5 +1,11 @@
 = CodeReady Toolchain E2E Tests
 
+THIS CHANGE NOT MEANT FOR MERGING!!!
+It only is here so that the ksctl PR https://github.com/kubesaw/ksctl/pull/117 is used in an e2e test run.
+
+Once we have a successful test run, we can close this e2e PR and merge the above mentioned Ksctl PR.
+
+
 image:https://goreportcard.com/badge/github.com/codeready-toolchain/toolchain-e2e[Go Report Card, link="https://goreportcard.com/report/github.com/codeready-toolchain/toolchain-e2e"]
 image:https://godoc.org/github.com/codeready-toolchain/toolchain-e2e?status.png[GoDoc,link="https://godoc.org/github.com/codeready-toolchain/toolchain-e2e"]
 
