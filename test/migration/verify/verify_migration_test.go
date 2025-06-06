@@ -3,6 +3,7 @@ package verify
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-e2e/test/migration"
+	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
@@ -20,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -95,6 +98,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		func() { verifyDeactivatedSignup(t, awaitilities, deactivatedSignup) },
 		func() { verifyBannedSignup(t, awaitilities, bannedSignup) },
 		func() { verifyAdditionalDeploymentsCreatedUsingSSA(t, &awaitilities) },
+		func() { verifyBundledNSTemplateTiersAnnotated(t, &awaitilities) },
 	}
 
 	// when & then - run all functions in parallel
@@ -268,6 +272,27 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 	t.Run("verify autoscaler deployed using SSA in member2", func(t *testing.T) {
 		testDeployment(t, awaitilities.Member2().Awaitility, "autoscaling-buffer", "member-operator", "kubesaw-member-operator")
 	})
+}
+
+func verifyBundledNSTemplateTiersAnnotated(t *testing.T, awaitilities *wait.Awaitilities) {
+	list := &toolchainv1alpha1.NSTemplateTierList{}
+	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
+
+	// e2e tests have custom appstudio tiers
+	assert.GreaterOrEqual(t, len(list.Items), len(testsupport.BundledNSTemplateTiers))
+
+	unmatchedBundledTiers := make([]string, len(testsupport.BundledNSTemplateTiers))
+	copy(unmatchedBundledTiers, testsupport.BundledNSTemplateTiers)
+
+	for _, tier := range list.Items {
+		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
+			if i := slices.Index(unmatchedBundledTiers, tier.Name); i >= 0 {
+				unmatchedBundledTiers = slices.Delete(unmatchedBundledTiers, i, i+1)
+			}
+		}
+	}
+
+	assert.Empty(t, unmatchedBundledTiers)
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
