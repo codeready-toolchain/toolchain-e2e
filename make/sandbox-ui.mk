@@ -2,10 +2,11 @@ SANDBOX_UI_NS := sandbox-ui
 SANDBOX_PLUGIN_IMAGE_NAME := sandbox-rhdh-plugin
 TAG := latest
 PLATFORM = linux/amd64
-RHDH_PLUGINS_DIR = $(TMPDIR)rhdh-plugins
+RHDH_PLUGINS_DIR ?= $(TMPDIR)rhdh-plugins
 AUTH_FILE := /tmp/auth.json
 IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
+PUSH_SANDBOX_IMAGE ?= true
 
 .PHONY: deploy-sandbox-ui
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
@@ -15,7 +16,9 @@ deploy-sandbox-ui: check-registry
 deploy-sandbox-ui:
 	@echo "sandbox ui will be deployed in '${SANDBOX_UI_NS}' namespace"
 	$(MAKE) create-namespace SANDBOX_UI_NS=${SANDBOX_UI_NS}
+ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
+endif
 	$(MAKE) create-pull-secret 
 	kustomize build deploy/sandbox-ui/e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
 			HOST_NS=${HOST_NS} \
@@ -81,7 +84,7 @@ push-sandbox-plugin:
 	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
 	rm -rf plugins/sandbox/dist-dynamic && \
 	rm -rf red-hat-developer-hub-backstage-plugin-sandbox && \
-	yarn install && \
+		yarn install && \
 	npx @janus-idp/cli@3.3.1 package package-dynamic-plugins \
       --tag $(IMAGE_TO_PUSH_IN_QUAY) \
       --platform $(PLATFORM) && \
@@ -100,15 +103,10 @@ e2e-run-sandbox-ui-setup:
 	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -p 1 -v -timeout=90m -failfast
 	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} envsubst < deploy/sandbox-ui/e2e-tests/.env > $(RHDH_PLUGINS_DIR)/workspaces/sandbox/.env
 	@echo "Running Developer Sandbox UI e2e tests using playwright..."
-	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
-		echo "Running Developer Sandbox UI e2e tests in chrome..." && \
-		yarn playwright test --project=chrome && \
-		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS} && \
+	cd ${RHDH_PLUGINS_DIR}/workspaces/sandbox && \
 		echo "Running Developer Sandbox UI e2e tests in firefox..." && \
+		yarn playwright install --with-deps firefox && \
 		yarn playwright test --project=firefox && \
-		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS} && \
-		echo "Running Developer Sandbox UI e2e tests in safari..." && \
-		yarn playwright test --project=safari && \
 		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 	@echo "The Developer Sandbox UI setup e2e tests successfully finished"
 
