@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestAfterMigration(t *testing.T) {
@@ -97,7 +98,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		func() { verifyDeactivatedSignup(t, awaitilities, deactivatedSignup) },
 		func() { verifyBannedSignup(t, awaitilities, bannedSignup) },
 		func() { verifyAdditionalDeploymentsCreatedUsingSSA(t, &awaitilities) },
-		func() { verifyBundledNSTemplateTiersAnnotated(t, &awaitilities) },
+		func() { verifyBundledNSTemplateTiersHaveFinalizer(t, &awaitilities) },
 	}
 
 	// when & then - run all functions in parallel
@@ -273,7 +274,7 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 	})
 }
 
-func verifyBundledNSTemplateTiersAnnotated(t *testing.T, awaitilities *wait.Awaitilities) {
+func verifyBundledNSTemplateTiersHaveFinalizer(t *testing.T, awaitilities *wait.Awaitilities) {
 	list := &toolchainv1alpha1.NSTemplateTierList{}
 	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
@@ -283,8 +284,9 @@ func verifyBundledNSTemplateTiersAnnotated(t *testing.T, awaitilities *wait.Awai
 	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiers))
 	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiers)
 
+	finalizerName := toolchainv1alpha1.LabelKeyPrefix + toolchainv1alpha1.LabelKeyPrefix + "bundled-tier"
 	for _, tier := range list.Items {
-		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
+		if controllerutil.ContainsFinalizer(&tier, finalizerName) {
 			if i := slices.Index(unmatchedBundledTiers, tier.Name); i >= 0 {
 				unmatchedBundledTiers = slices.Delete(unmatchedBundledTiers, i, i+1)
 			}
