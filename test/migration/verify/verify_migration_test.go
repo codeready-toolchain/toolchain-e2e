@@ -278,10 +278,10 @@ func verifyBundledNSTemplateTiersAnnotated(t *testing.T, awaitilities *wait.Awai
 	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
 	// e2e tests have custom appstudio tiers
-	assert.GreaterOrEqual(t, len(list.Items), len(wait.BundledNSTemplateTiersInHost))
+	assert.GreaterOrEqual(t, len(list.Items), len(wait.BundledNSTemplateTiers))
 
-	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiersInHost))
-	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiersInHost)
+	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiers))
+	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiers)
 
 	for _, tier := range list.Items {
 		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
