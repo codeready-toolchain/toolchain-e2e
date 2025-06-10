@@ -59,7 +59,6 @@ func WaitForOperators(t *testing.T) wait.Awaitilities {
 	})
 	return wait.NewAwaitilities(initHostAwait, initMemberAwait, initMember2Await)
 }
-
 func waitForOperators(t *testing.T) {
 	memberNs := os.Getenv(wait.MemberNsVar)
 	memberNs2 := os.Getenv(wait.MemberNsVar2)
@@ -83,7 +82,7 @@ func waitForOperators(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// updating the kubeconfig with the bearer token created
+	//updating the kubeconfig with the bearer token created
 	kubeconfig.BearerToken = getE2EServiceAccountToken(t, hostNs, apiConfig, cl)
 
 	initHostAwait = wait.NewHostAwaitility(kubeconfig, cl, hostNs, registrationServiceNs)
@@ -121,7 +120,7 @@ func waitForOperators(t *testing.T) {
 
 func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Config, sacl client.Client) string {
 	// creating another config which is used for creating only resclient,
-	// so that the main kubeconfig is not altered
+	//so that the main kubeconfig is not altered
 	restkubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfigsa)
 	require.NoError(t, err)
 
@@ -133,9 +132,7 @@ func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Con
 		err := sacl.Create(context.TODO(), &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "e2e-test",
-				Namespace: hostNs,
-			},
-		})
+				Namespace: hostNs}})
 		require.NoError(t, err, "Error in creating Service account for e2e test")
 	} else if err != nil {
 		require.NoError(t, err, "Error fetching service accounts")
@@ -169,17 +166,18 @@ func getE2EServiceAccountToken(t *testing.T, hostNs string, apiConfigsa *api.Con
 		require.NoError(t, err, "Error fetching clusterrolebinding")
 	}
 
-	// upating the restkubeconfig ,which requires groupversion to create restclient
-	restkubeconfig.ContentConfig = rest.ContentConfig{
-		GroupVersion:         &authv1.SchemeGroupVersion,
-		NegotiatedSerializer: scheme.Codecs,
-	}
+	//upating the restkubeconfig ,which requires groupversion to create restclient
+	restkubeconfig.ContentConfig =
+		rest.ContentConfig{
+			GroupVersion:         &authv1.SchemeGroupVersion,
+			NegotiatedSerializer: scheme.Codecs,
+		}
 
-	// Creating a Restclient to be used in creation and checking of bearer token required for authentication
+	//Creating a Restclient to be used in creation and checking of bearer token required for authentication
 	rclient, err := rest.RESTClientFor(restkubeconfig)
 	require.NoError(t, err, "Error in creating restclient")
 
-	// Creating a bearer token to be used for authentication(which is valid for 24 hrs)
+	//Creating a bearer token to be used for authentication(which is valid for 24 hrs)
 	bt, err := toolchaincommon.CreateTokenRequest(context.TODO(), rclient, types.NamespacedName{Namespace: hostNs, Name: "e2e-test"}, 86400)
 	require.NoError(t, err, "Error in creating Token")
 	return bt
