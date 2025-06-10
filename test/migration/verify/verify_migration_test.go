@@ -284,7 +284,7 @@ func verifyBundledNSTemplateTiersHaveFinalizer(t *testing.T, awaitilities *wait.
 	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiers))
 	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiers)
 
-	finalizerName := toolchainv1alpha1.LabelKeyPrefix + toolchainv1alpha1.LabelKeyPrefix + "bundled-tier"
+	finalizerName := toolchainv1alpha1.LabelKeyPrefix + "bundled-tier"
 	for _, tier := range list.Items {
 		if controllerutil.ContainsFinalizer(&tier, finalizerName) {
 			if i := slices.Index(unmatchedBundledTiers, tier.Name); i >= 0 {
