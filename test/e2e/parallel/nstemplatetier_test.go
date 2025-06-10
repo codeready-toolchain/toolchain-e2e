@@ -18,7 +18,6 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	testspace "github.com/codeready-toolchain/toolchain-common/pkg/test/space"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/tiers"
@@ -51,7 +50,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := testsupport.E2eNSTemplateTiers
+	tiersToCheck := wait.E2eNSTemplateTiersInHost
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}

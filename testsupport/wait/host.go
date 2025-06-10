@@ -49,6 +49,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var (
+	BundledNSTemplateTiersInHost []string = []string{"advanced", "baseextendedidling", "baselarge", "test", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
+	E2eNSTemplateTiersInHost     []string = append(BundledNSTemplateTiersInHost, "appstudio", "appstudiolarge", "appstudio-env")
+)
+
 // HostAwaitility the Awaitility for the Host cluster
 type HostAwaitility struct {
 	*Awaitility

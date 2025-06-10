@@ -13,7 +13,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/states"
 	"github.com/codeready-toolchain/toolchain-e2e/test/migration"
-	"github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/cleanup"
 	. "github.com/codeready-toolchain/toolchain-e2e/testsupport/space"
@@ -279,10 +278,10 @@ func verifyBundledNSTemplateTiersAnnotated(t *testing.T, awaitilities *wait.Awai
 	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
 	// e2e tests have custom appstudio tiers
-	assert.GreaterOrEqual(t, len(list.Items), len(testsupport.BundledNSTemplateTiers))
+	assert.GreaterOrEqual(t, len(list.Items), len(wait.BundledNSTemplateTiersInHost))
 
-	unmatchedBundledTiers := make([]string, len(testsupport.BundledNSTemplateTiers))
-	copy(unmatchedBundledTiers, testsupport.BundledNSTemplateTiers)
+	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiersInHost))
+	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiersInHost)
 
 	for _, tier := range list.Items {
 		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {

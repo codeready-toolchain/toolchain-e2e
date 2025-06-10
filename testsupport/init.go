@@ -43,12 +43,10 @@ import (
 )
 
 var (
-	initHostAwait          *wait.HostAwaitility
-	initMemberAwait        *wait.MemberAwaitility
-	initMember2Await       *wait.MemberAwaitility
-	initOnce               sync.Once
-	BundledNSTemplateTiers []string = []string{"advanced", "baseextendedidling", "baselarge", "test", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
-	E2eNSTemplateTiers     []string = append(BundledNSTemplateTiers, "appstudio", "appstudiolarge", "appstudio-env")
+	initHostAwait    *wait.HostAwaitility
+	initMemberAwait  *wait.MemberAwaitility
+	initMember2Await *wait.MemberAwaitility
+	initOnce         sync.Once
 )
 
 // WaitForOperators initializes test context, registers schemes and waits until both operators (host, member)
