@@ -702,7 +702,7 @@ func TestActivationCodeVerification(t *testing.T) {
 	member2Await := await.Member2()
 	route := hostAwait.RegistrationServiceURL
 
-	verifySuccessful := func(t *testing.T, targetCluster string) {
+	verifySuccessful := func(t *testing.T, targetCluster string, existingUserSignup, deactivateSignup bool) {
 		// given
 		event := testsocialevent.NewSocialEvent(hostAwait.Namespace, commonsocialevent.NewName(),
 			testsocialevent.WithUserTier("deactivate80"),
@@ -710,7 +710,30 @@ func TestActivationCodeVerification(t *testing.T) {
 			testsocialevent.WithTargetCluster(targetCluster))
 		err := hostAwait.CreateWithCleanup(t, event)
 		require.NoError(t, err)
-		userSignup, token := signup(t, hostAwait)
+		userSignup := &toolchainv1alpha1.UserSignup{}
+		token, userName := "", ""
+		if existingUserSignup {
+			// create a user signup before using the activation code
+			userSignup, token = signup(t, hostAwait)
+			userName = userSignup.Name
+
+			if deactivateSignup {
+				// deactivate the UserSignup to test the deactivation path
+				userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+					Update(userName, hostAwait.Namespace,
+						func(us *toolchainv1alpha1.UserSignup) {
+							states.SetDeactivated(us, true)
+						})
+				require.NoError(t, err)
+				t.Logf("user signup '%s' deactivated", userName)
+			}
+		} else {
+			// create only the identity and token for calling the activation-code endpoint.
+			// the signup should be created by the activation-code endpoint.
+			identity, _, tokenValue := userToken(t)
+			token = tokenValue
+			userName = identity.Username
+		}
 
 		// when call verification endpoint with a valid activation code
 		NewHTTPRequest(t).
@@ -719,22 +742,22 @@ func TestActivationCodeVerification(t *testing.T) {
 		// then
 		// ensure the UserSignup is in "pending approval" condition,
 		// because in these series of parallel tests, automatic approval is disabled ¯\_(ツ)_/¯
-		_, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
+		_, err = hostAwait.WaitForUserSignup(t, userName,
 			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
 		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
-			Update(userSignup.Name, hostAwait.Namespace,
+			Update(userName, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetApprovedManually(us, true)
 				})
 		require.NoError(t, err)
-		t.Logf("user signup '%s' approved", userSignup.Name)
+		t.Logf("user signup '%s' approved", userName)
 
 		// check that the MUR and Space are configured as expected
 		// Wait for the UserSignup to have the desired state
-		userSignup, err = hostAwait.WaitForUserSignup(t, userSignup.Name,
+		userSignup, err = hostAwait.WaitForUserSignup(t, userName,
 			wait.UntilUserSignupHasCompliantUsername(),
 			wait.UntilUserSignupHasTargetCluster(targetCluster))
 		require.NoError(t, err)
@@ -761,11 +784,19 @@ func TestActivationCodeVerification(t *testing.T) {
 	}
 
 	t.Run("verification successful with no target cluster", func(t *testing.T) {
-		verifySuccessful(t, "")
+		verifySuccessful(t, "", true, false)
 	})
 
 	t.Run("verification successful with target cluster", func(t *testing.T) {
-		verifySuccessful(t, member2Await.ClusterName)
+		verifySuccessful(t, member2Await.ClusterName, true, false)
+	})
+
+	t.Run("UserSignup doesn't exist yet it should be created", func(t *testing.T) {
+		verifySuccessful(t, member2Await.ClusterName, false, false)
+	})
+
+	t.Run("UserSignup is deactivated it should be reactivated", func(t *testing.T) {
+		verifySuccessful(t, member2Await.ClusterName, true, true)
 	})
 
 	t.Run("verification failed", func(t *testing.T) {
@@ -930,11 +961,7 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	route := hostAwait.RegistrationServiceURL
 
 	// Create a token and identity to sign up with
-	identity := commonauth.NewIdentity()
-	emailValue := identity.Username + "@some.domain"
-	emailClaim := commonauth.WithEmailClaim(emailValue)
-	token, err := commonauth.GenerateSignedE2ETestToken(*identity, emailClaim)
-	require.NoError(t, err)
+	identity, emailValue, token := userToken(t)
 
 	// Call the signup endpoint
 	NewHTTPRequest(t).InvokeEndpoint("POST", route+"/api/v1/signup", token, "", http.StatusAccepted)
@@ -948,6 +975,15 @@ func signup(t *testing.T, hostAwait *wait.HostAwaitility) (*toolchainv1alpha1.Us
 	email := userSignup.Spec.IdentityClaims.Email
 	assert.Equal(t, emailValue, email)
 	return userSignup, token
+}
+
+func userToken(t *testing.T) (*commonauth.Identity, string, string) {
+	identity := commonauth.NewIdentity()
+	emailValue := identity.Username + "@some.domain"
+	emailClaim := commonauth.WithEmailClaim(emailValue)
+	token, err := commonauth.GenerateSignedE2ETestToken(*identity, emailClaim)
+	require.NoError(t, err)
+	return identity, emailValue, token
 }
 
 func signupHasExpectedDates(startDate, endDate time.Time) func(c *GetSignupClient) {
