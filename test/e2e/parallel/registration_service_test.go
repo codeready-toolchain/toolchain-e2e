@@ -719,7 +719,7 @@ func TestActivationCodeVerification(t *testing.T) {
 
 			if deactivateSignup {
 				// deactivate the UserSignup to test the deactivation path
-				userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+				_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
 					Update(userName, hostAwait.Namespace,
 						func(us *toolchainv1alpha1.UserSignup) {
 							states.SetDeactivated(us, true)
@@ -747,7 +747,7 @@ func TestActivationCodeVerification(t *testing.T) {
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
-		userSignup, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
+		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
 			Update(userName, hostAwait.Namespace,
 				func(us *toolchainv1alpha1.UserSignup) {
 					states.SetApprovedManually(us, true)
