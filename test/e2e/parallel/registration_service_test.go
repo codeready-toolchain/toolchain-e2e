@@ -715,6 +715,7 @@ func TestActivationCodeVerification(t *testing.T) {
 		if existingUserSignup {
 			// create a user signup before using the activation code
 			userSignup, token = signup(t, hostAwait)
+			cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 			userName = userSignup.Name
 
 			if deactivateSignup {
@@ -742,9 +743,10 @@ func TestActivationCodeVerification(t *testing.T) {
 		// then
 		// ensure the UserSignup is in "pending approval" condition,
 		// because in these series of parallel tests, automatic approval is disabled ¯\_(ツ)_/¯
-		_, err = hostAwait.WaitForUserSignup(t, userName,
+		userSignup, err = hostAwait.WaitForUserSignup(t, userName,
 			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
 			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
+		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
 		_, err = wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.UserSignup{}).
