@@ -1,0 +1,435 @@
+building the sandbox-ui-e2e-tests image with podman...
+podman build --arch amd64 --os linux -t sandbox-ui-e2e-tests -f build/sandbox-ui/Dockerfile .
+STEP 1/16: FROM mcr.microsoft.com/playwright:v1.44.0-jammy AS build-tools
+STEP 2/16: LABEL maintainer="Developer Sandbox <devsandbox@redhat.com>"
+--> Using cache 1ff4e47f07d5f5e37756fb22270995680aeb818a61c195d0c132258bc84515b1
+--> 1ff4e47f07d5
+STEP 3/16: LABEL author="Developer Sandbox <devsandbox@redhat.com>"
+--> Using cache 466459ced4cd6820db16542c1d4da2f37a191d003e668f1570481c55b1d98e0e
+--> 466459ced4cd
+STEP 4/16: ENV DEBIAN_FRONTEND=noninteractive     GOPATH=/tmp/go     GOCACHE=/tmp/.cache     PATH=$PATH:$GOPATH/bin     GIT_COMMITTER_NAME="Developer Sandbox"     GIT_COMMITTER_EMAIL=devsandbox@redhat.com     GOLANG_VERSION=go1.22.12     GOLANG_SHA256=4fa4f869b0f7fc6bb1eb2660e74657fbf04cdd290b5aef905585c86051b34d43
+--> Using cache b13401f9ed6c6e6a8adde2e7736de0a9f2d8d32acbe509da468bc51202228dad
+--> b13401f9ed6c
+STEP 5/16: RUN apt-get update && apt-get install -y     make     gettext     jq     && apt-get clean && rm -rf /var/lib/apt/lists/*
+--> Using cache 348f3248571407ef5b44487b70ad967b69a31b4a738191c93b670dbd0f3efe93
+--> 348f32485714
+STEP 6/16: RUN curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash     && mv kustomize /usr/local/bin
+--> Using cache c657cba41411087e153b083d45e9f098215c42f29a2aab16144904a745fe7204
+--> c657cba41411
+STEP 7/16: RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /usr/share/keyrings/yarn-archive-keyring.gpg &&     echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian stable main" | tee /etc/apt/sources.list.d/yarn.list &&     apt-get update && apt-get install -y yarn &&     apt-get clean && rm -rf /var/lib/apt/lists/*
+--> Using cache b3324cd2a48fd28d660ea448406209894eb73b04886ace30a27fb0188a35df40
+--> b3324cd2a48f
+STEP 8/16: RUN curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.15.0/openshift-client-linux.tar.gz &&     tar -xzvf openshift-client-linux.tar.gz -C /usr/local/bin oc &&     chmod +x /usr/local/bin/oc &&     rm -f openshift-client-linux.tar.gz
+--> Using cache 6887cdb9aa6fd4f2f9ce305931b27c45aec9ad7bbdded6c466915190dfa38e9f
+--> 6887cdb9aa6f
+STEP 9/16: ENV PATH=$PATH:/usr/local/go/bin
+--> Using cache b80577fd2cd1ba3696fc9c2b72418defecfe2a7b0d35def555326b0e8283db2c
+--> b80577fd2cd1
+STEP 10/16: WORKDIR /tmp
+--> Using cache 68fd23091f38ec0cefb1af1bdba4598125ec91d35754da6f69732215114431a3
+--> 68fd23091f38
+STEP 11/16: RUN curl -Lo ${GOLANG_VERSION}.linux-amd64.tar.gz https://dl.google.com/go/${GOLANG_VERSION}.linux-amd64.tar.gz     && echo "${GOLANG_SHA256} ${GOLANG_VERSION}.linux-amd64.tar.gz" > ${GOLANG_VERSION}.linux-amd64.sha256     && sha256sum -c ${GOLANG_VERSION}.linux-amd64.sha256     && tar -C /usr/local -xzf ${GOLANG_VERSION}.linux-amd64.tar.gz     && rm -f ${GOLANG_VERSION}.linux-amd64.tar.gz     && go version
+--> Using cache 319f24fb3f0cda936d268944ad1b0a1cc055b6e4b483b41162c7f85547736294
+--> 319f24fb3f0c
+STEP 12/16: WORKDIR /app
+--> Using cache de40983297745a530e339b7b96eec3ef0e56a609b1e3d57e5feb566fe4812015
+--> de4098329774
+STEP 13/16: COPY . .
+--> 9ba811f1590b
+STEP 14/16: RUN PWGO_VER=$(grep -oE "playwright-go v\S+" go.mod | sed 's/playwright-go //g')     && go install github.com/playwright-community/playwright-go/cmd/playwright@${PWGO_VER}
+go: downloading github.com/playwright-community/playwright-go v0.5200.0
+go: downloading github.com/deckarep/golang-set/v2 v2.7.0
+go: downloading github.com/go-jose/go-jose/v3 v3.0.4
+go: downloading github.com/go-stack/stack v1.8.1
+--> 121452015ea7
+STEP 15/16: RUN $GOPATH/bin/playwright install --with-deps
+Installing dependencies...
+Get:1 http://security.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
+Get:2 https://deb.nodesource.com/node_20.x nodistro InRelease [12.1 kB]
+Get:3 http://archive.ubuntu.com/ubuntu jammy InRelease [270 kB]
+Get:4 https://dl.yarnpkg.com/debian stable InRelease
+Get:5 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
+Get:6 http://archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+Get:7 https://deb.nodesource.com/node_20.x nodistro/main amd64 Packages [11.6 kB]
+Get:8 https://dl.yarnpkg.com/debian stable/main all Packages [11.8 kB]
+Get:9 https://dl.yarnpkg.com/debian stable/main amd64 Packages [11.8 kB]
+Get:10 http://security.ubuntu.com/ubuntu jammy-security/main amd64 Packages [2986 kB]
+Get:11 http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages [47.7 kB]
+Get:12 http://security.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages [4476 kB]
+Get:13 http://security.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [1250 kB]
+Get:14 http://archive.ubuntu.com/ubuntu jammy/restricted amd64 Packages [164 kB]
+Get:15 http://archive.ubuntu.com/ubuntu jammy/main amd64 Packages [1792 kB]
+Get:16 http://archive.ubuntu.com/ubuntu jammy/universe amd64 Packages [17.5 MB]
+Get:17 http://archive.ubuntu.com/ubuntu jammy/multiverse amd64 Packages [266 kB]
+Get:18 http://archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages [55.7 kB]
+Get:19 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [3296 kB]
+Get:20 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1557 kB]
+Get:21 http://archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [4630 kB]
+Get:22 http://archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [35.2 kB]
+Get:23 http://archive.ubuntu.com/ubuntu jammy-backports/main amd64 Packages [83.2 kB]
+Fetched 38.8 MB in 6s (7052 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+fonts-freefont-ttf is already the newest version (20120503-10build1).
+fonts-liberation is already the newest version (1:1.07.4-11).
+libasound2 is already the newest version (1.2.6.1-1ubuntu1).
+libatk-bridge2.0-0 is already the newest version (2.38.0-3).
+libatk1.0-0 is already the newest version (2.36.0-3build1).
+libatspi2.0-0 is already the newest version (2.44.0-3).
+libcairo-gobject2 is already the newest version (1.16.0-5ubuntu2).
+libcairo2 is already the newest version (1.16.0-5ubuntu2).
+libdbus-glib-1-2 is already the newest version (0.112-2build1).
+libegl1 is already the newest version (1.4.0-1).
+libenchant-2-2 is already the newest version (2.3.2-1ubuntu2).
+libepoxy0 is already the newest version (1.5.10-1).
+libevdev2 is already the newest version (1.12.1+dfsg-1).
+libevent-2.1-7 is already the newest version (2.1.12-stable-1build3).
+libfontconfig1 is already the newest version (2.13.1-4.2ubuntu5).
+libgles2 is already the newest version (1.4.0-1).
+libglx0 is already the newest version (1.4.0-1).
+libgudev-1.0-0 is already the newest version (1:237-2build1).
+libhyphen0 is already the newest version (2.8.8-7build2).
+libicu70 is already the newest version (70.1-2).
+libjpeg-turbo8 is already the newest version (2.1.2-0ubuntu1).
+liblcms2-2 is already the newest version (2.12~rc1-2build2).
+libmanette-0.2-0 is already the newest version (0.2.6-3build1).
+libopengl0 is already the newest version (1.4.0-1).
+libopus0 is already the newest version (1.3.1-0.1build2).
+libpng16-16 is already the newest version (1.6.37-3build5).
+libproxy1v5 is already the newest version (0.4.17-2).
+libsecret-1-0 is already the newest version (0.20.5-2).
+libwoff1 is already the newest version (1.0.2-1build4).
+libxcb-shm0 is already the newest version (1.14-3ubuntu3).
+libxcb1 is already the newest version (1.14-3ubuntu3).
+libxcomposite1 is already the newest version (1:0.4.5-1build2).
+libxcursor1 is already the newest version (1:1.2.0-2build4).
+libxdamage1 is already the newest version (1:1.1.5-2build2).
+libxext6 is already the newest version (2:1.3.4-1build1).
+libxfixes3 is already the newest version (1:6.0.0-1).
+libxi6 is already the newest version (2:1.8-1build1).
+libxkbcommon0 is already the newest version (1.4.0-1).
+libxrandr2 is already the newest version (2:1.5.2-1build1).
+libxrender1 is already the newest version (1:0.9.10-1build4).
+libxtst6 is already the newest version (2:1.2.3-1build4).
+xfonts-scalable is already the newest version (1:1.0.3-1.2ubuntu1).
+fonts-ipafont-gothic is already the newest version (00303-21ubuntu1).
+fonts-tlwg-loma-otf is already the newest version (1:0.7.3-1).
+fonts-unifont is already the newest version (1:14.0.01-1).
+fonts-wqy-zenhei is already the newest version (0.9.45-8).
+libffi7 is already the newest version (3.3-5ubuntu1).
+libx264-163 is already the newest version (2:0.163.3060+git5db6aa6-2build1).
+xfonts-cyrillic is already the newest version (1:1.0.5).
+libatomic1 is already the newest version (12.3.0-1ubuntu1~22.04).
+libdbus-1-3 is already the newest version (1.12.20-2ubuntu4.1).
+libdrm2 is already the newest version (2.4.113-2~ubuntu0.22.04.1).
+libnotify4 is already the newest version (0.7.9-3ubuntu5.22.04.1).
+libnspr4 is already the newest version (2:4.35-0ubuntu0.22.04.1).
+libnss3 is already the newest version (2:3.98-0ubuntu0.22.04.2).
+libpango-1.0-0 is already the newest version (1.50.6+ds-2ubuntu1).
+libpangocairo-1.0-0 is already the newest version (1.50.6+ds-2ubuntu1).
+libwayland-client0 is already the newest version (1.20.0-1ubuntu0.1).
+libwayland-egl1 is already the newest version (1.20.0-1ubuntu0.1).
+libwayland-server0 is already the newest version (1.20.0-1ubuntu0.1).
+libwebpdemux2 is already the newest version (1.2.2-2ubuntu0.22.04.2).
+libx11-6 is already the newest version (2:1.7.5-1ubuntu0.3).
+libx11-xcb1 is already the newest version (2:1.7.5-1ubuntu0.3).
+ffmpeg is already the newest version (7:4.4.2-0ubuntu0.22.04.1).
+gstreamer1.0-libav is already the newest version (1.20.3-0ubuntu1).
+gstreamer1.0-plugins-bad is already the newest version (1.20.3-0ubuntu1.1).
+libsoup-3.0-0 is already the newest version (3.0.7-0ubuntu1).
+The following additional packages will be installed:
+  libabsl20210324 libcairo-script-interpreter2 libegl-mesa0 libgav1-0
+  libgdk-pixbuf2.0-common libgl1-mesa-dri libglapi-mesa libglx-mesa0
+  libgraphene-1.0-0 libgstreamer-plugins-good1.0-0 libgtk-3-common
+  libgtk-4-common liblzo2-2 libyuv0 xserver-common
+Suggested packages:
+  gvfs cups-common libvisual-0.4-plugins gstreamer1.0-tools
+  libgtk-4-media-gstreamer | libgtk-4-media-ffmpeg
+Recommended packages:
+  gstreamer1.0-x libgdk-pixbuf2.0-bin libgl1-amber-dri libglib2.0-data
+  xdg-user-dirs gstreamer1.0-gl libgtk-3-bin librsvg2-common libgtk-4-bin
+  xfonts-base
+The following NEW packages will be installed:
+  libabsl20210324 libavif13 libcairo-script-interpreter2 libgav1-0
+  libgraphene-1.0-0 libgtk-4-1 libgtk-4-common liblzo2-2 libyuv0
+The following packages will be upgraded:
+  fonts-noto-color-emoji gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+  libcups2 libegl-mesa0 libfreetype6 libgbm1 libgdk-pixbuf-2.0-0
+  libgdk-pixbuf2.0-common libgl1-mesa-dri libglapi-mesa libglib2.0-0
+  libglx-mesa0 libgstreamer-gl1.0-0 libgstreamer-plugins-base1.0-0
+  libgstreamer-plugins-good1.0-0 libgstreamer1.0-0 libgtk-3-0 libgtk-3-common
+  libharfbuzz-icu0 libharfbuzz0b libopenjp2-7 libxml2 libxslt1.1
+  xserver-common xvfb
+26 upgraded, 9 newly installed, 0 to remove and 80 not upgraded.
+Need to get 36.6 MB of archives.
+After this operation, 15.2 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libglib2.0-0 amd64 2.72.4-0ubuntu2.5 [1466 kB]
+Get:2 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libxml2 amd64 2.9.13+dfsg-1ubuntu0.7 [763 kB]
+Get:3 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 fonts-noto-color-emoji all 2.047-0ubuntu0.22.04.1 [10.0 MB]
+Get:4 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgstreamer1.0-0 amd64 1.20.3-0ubuntu1.1 [984 kB]
+Get:5 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgstreamer-plugins-base1.0-0 amd64 1.20.1-1ubuntu0.4 [848 kB]
+Get:6 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 gstreamer1.0-plugins-base amd64 1.20.1-1ubuntu0.4 [712 kB]
+Get:7 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgdk-pixbuf2.0-common all 2.42.8+dfsg-1ubuntu0.3 [5630 B]
+Get:8 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgdk-pixbuf-2.0-0 amd64 2.42.8+dfsg-1ubuntu0.3 [148 kB]
+Get:9 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 gstreamer1.0-plugins-good amd64 1.20.3-0ubuntu1.3 [2010 kB]
+Get:10 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgstreamer-plugins-good1.0-0 amd64 1.20.3-0ubuntu1.3 [30.1 kB]
+Get:11 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libabsl20210324 amd64 0~20210324.2-2ubuntu0.2 [386 kB]
+Get:12 http://archive.ubuntu.com/ubuntu jammy/universe amd64 libgav1-0 amd64 0.17.0-1build1 [336 kB]
+Get:13 http://archive.ubuntu.com/ubuntu jammy/universe amd64 libyuv0 amd64 0.0~git20220104.b91df1a-2 [154 kB]
+Get:14 http://archive.ubuntu.com/ubuntu jammy/universe amd64 libavif13 amd64 0.9.3-3 [69.5 kB]
+Get:15 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libfreetype6 amd64 2.11.1+dfsg-1ubuntu0.3 [388 kB]
+Get:16 http://archive.ubuntu.com/ubuntu jammy/main amd64 liblzo2-2 amd64 2.10-2build3 [53.7 kB]
+Get:17 http://archive.ubuntu.com/ubuntu jammy/main amd64 libcairo-script-interpreter2 amd64 1.16.0-5ubuntu2 [62.0 kB]
+Get:18 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libcups2 amd64 2.4.1op1-1ubuntu4.11 [263 kB]
+Get:19 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libegl-mesa0 amd64 23.2.1-1ubuntu3.1~22.04.3 [118 kB]
+Get:20 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgbm1 amd64 23.2.1-1ubuntu3.1~22.04.3 [33.5 kB]
+Get:21 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgl1-mesa-dri amd64 23.2.1-1ubuntu3.1~22.04.3 [8860 kB]
+Get:22 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libglx-mesa0 amd64 23.2.1-1ubuntu3.1~22.04.3 [158 kB]
+Get:23 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libglapi-mesa amd64 23.2.1-1ubuntu3.1~22.04.3 [35.4 kB]
+Get:24 http://archive.ubuntu.com/ubuntu jammy/main amd64 libgraphene-1.0-0 amd64 1.10.8-1 [48.2 kB]
+Get:25 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgstreamer-gl1.0-0 amd64 1.20.1-1ubuntu0.4 [204 kB]
+Get:26 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libharfbuzz0b amd64 2.7.4-1ubuntu3.2 [353 kB]
+Get:27 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgtk-3-common all 3.24.33-1ubuntu2.2 [239 kB]
+Get:28 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgtk-3-0 amd64 3.24.33-1ubuntu2.2 [3053 kB]
+Get:29 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgtk-4-common all 4.6.9+ds-0ubuntu0.22.04.2 [662 kB]
+Get:30 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libgtk-4-1 amd64 4.6.9+ds-0ubuntu0.22.04.2 [2866 kB]
+Get:31 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libharfbuzz-icu0 amd64 2.7.4-1ubuntu3.2 [5890 B]
+Get:32 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libxslt1.1 amd64 1.1.34-4ubuntu0.22.04.3 [164 kB]
+Get:33 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 xserver-common all 2:21.1.4-2ubuntu1.7~22.04.14 [29.2 kB]
+Get:34 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 xvfb amd64 2:21.1.4-2ubuntu1.7~22.04.14 [866 kB]
+Get:35 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 libopenjp2-7 amd64 2.4.0-6ubuntu0.3 [158 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 36.6 MB in 2s (15.0 MB/s)
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 34548 files and directories currently installed.)
+Preparing to unpack .../00-libglib2.0-0_2.72.4-0ubuntu2.5_amd64.deb ...
+Unpacking libglib2.0-0:amd64 (2.72.4-0ubuntu2.5) over (2.72.4-0ubuntu2.2) ...
+Preparing to unpack .../01-libxml2_2.9.13+dfsg-1ubuntu0.7_amd64.deb ...
+Unpacking libxml2:amd64 (2.9.13+dfsg-1ubuntu0.7) over (2.9.13+dfsg-1ubuntu0.4) ...
+Preparing to unpack .../02-fonts-noto-color-emoji_2.047-0ubuntu0.22.04.1_all.deb ...
+Unpacking fonts-noto-color-emoji (2.047-0ubuntu0.22.04.1) over (2.042-0ubuntu0.22.04.1) ...
+Preparing to unpack .../03-libgstreamer1.0-0_1.20.3-0ubuntu1.1_amd64.deb ...
+Unpacking libgstreamer1.0-0:amd64 (1.20.3-0ubuntu1.1) over (1.20.3-0ubuntu1) ...
+Preparing to unpack .../04-libgstreamer-plugins-base1.0-0_1.20.1-1ubuntu0.4_amd64.deb ...
+Unpacking libgstreamer-plugins-base1.0-0:amd64 (1.20.1-1ubuntu0.4) over (1.20.1-1ubuntu0.1) ...
+Preparing to unpack .../05-gstreamer1.0-plugins-base_1.20.1-1ubuntu0.4_amd64.deb ...
+Unpacking gstreamer1.0-plugins-base:amd64 (1.20.1-1ubuntu0.4) over (1.20.1-1ubuntu0.1) ...
+Preparing to unpack .../06-libgdk-pixbuf2.0-common_2.42.8+dfsg-1ubuntu0.3_all.deb ...
+Unpacking libgdk-pixbuf2.0-common (2.42.8+dfsg-1ubuntu0.3) over (2.42.8+dfsg-1ubuntu0.2) ...
+Preparing to unpack .../07-libgdk-pixbuf-2.0-0_2.42.8+dfsg-1ubuntu0.3_amd64.deb ...
+Unpacking libgdk-pixbuf-2.0-0:amd64 (2.42.8+dfsg-1ubuntu0.3) over (2.42.8+dfsg-1ubuntu0.2) ...
+Preparing to unpack .../08-gstreamer1.0-plugins-good_1.20.3-0ubuntu1.3_amd64.deb ...
+Unpacking gstreamer1.0-plugins-good:amd64 (1.20.3-0ubuntu1.3) over (1.20.3-0ubuntu1.1) ...
+Preparing to unpack .../09-libgstreamer-plugins-good1.0-0_1.20.3-0ubuntu1.3_amd64.deb ...
+Unpacking libgstreamer-plugins-good1.0-0:amd64 (1.20.3-0ubuntu1.3) over (1.20.3-0ubuntu1.1) ...
+Selecting previously unselected package libabsl20210324:amd64.
+Preparing to unpack .../10-libabsl20210324_0~20210324.2-2ubuntu0.2_amd64.deb ...
+Unpacking libabsl20210324:amd64 (0~20210324.2-2ubuntu0.2) ...
+Selecting previously unselected package libgav1-0:amd64.
+Preparing to unpack .../11-libgav1-0_0.17.0-1build1_amd64.deb ...
+Unpacking libgav1-0:amd64 (0.17.0-1build1) ...
+Selecting previously unselected package libyuv0:amd64.
+Preparing to unpack .../12-libyuv0_0.0~git20220104.b91df1a-2_amd64.deb ...
+Unpacking libyuv0:amd64 (0.0~git20220104.b91df1a-2) ...
+Selecting previously unselected package libavif13:amd64.
+Preparing to unpack .../13-libavif13_0.9.3-3_amd64.deb ...
+Unpacking libavif13:amd64 (0.9.3-3) ...
+Preparing to unpack .../14-libfreetype6_2.11.1+dfsg-1ubuntu0.3_amd64.deb ...
+Unpacking libfreetype6:amd64 (2.11.1+dfsg-1ubuntu0.3) over (2.11.1+dfsg-1ubuntu0.2) ...
+Selecting previously unselected package liblzo2-2:amd64.
+Preparing to unpack .../15-liblzo2-2_2.10-2build3_amd64.deb ...
+Unpacking liblzo2-2:amd64 (2.10-2build3) ...
+Selecting previously unselected package libcairo-script-interpreter2:amd64.
+Preparing to unpack .../16-libcairo-script-interpreter2_1.16.0-5ubuntu2_amd64.deb ...
+Unpacking libcairo-script-interpreter2:amd64 (1.16.0-5ubuntu2) ...
+Preparing to unpack .../17-libcups2_2.4.1op1-1ubuntu4.11_amd64.deb ...
+Unpacking libcups2:amd64 (2.4.1op1-1ubuntu4.11) over (2.4.1op1-1ubuntu4.8) ...
+Preparing to unpack .../18-libegl-mesa0_23.2.1-1ubuntu3.1~22.04.3_amd64.deb ...
+Unpacking libegl-mesa0:amd64 (23.2.1-1ubuntu3.1~22.04.3) over (23.2.1-1ubuntu3.1~22.04.2) ...
+Preparing to unpack .../19-libgbm1_23.2.1-1ubuntu3.1~22.04.3_amd64.deb ...
+Unpacking libgbm1:amd64 (23.2.1-1ubuntu3.1~22.04.3) over (23.2.1-1ubuntu3.1~22.04.2) ...
+Preparing to unpack .../20-libgl1-mesa-dri_23.2.1-1ubuntu3.1~22.04.3_amd64.deb ...
+Unpacking libgl1-mesa-dri:amd64 (23.2.1-1ubuntu3.1~22.04.3) over (23.2.1-1ubuntu3.1~22.04.2) ...
+Preparing to unpack .../21-libglx-mesa0_23.2.1-1ubuntu3.1~22.04.3_amd64.deb ...
+Unpacking libglx-mesa0:amd64 (23.2.1-1ubuntu3.1~22.04.3) over (23.2.1-1ubuntu3.1~22.04.2) ...
+Preparing to unpack .../22-libglapi-mesa_23.2.1-1ubuntu3.1~22.04.3_amd64.deb ...
+Unpacking libglapi-mesa:amd64 (23.2.1-1ubuntu3.1~22.04.3) over (23.2.1-1ubuntu3.1~22.04.2) ...
+Selecting previously unselected package libgraphene-1.0-0:amd64.
+Preparing to unpack .../23-libgraphene-1.0-0_1.10.8-1_amd64.deb ...
+Unpacking libgraphene-1.0-0:amd64 (1.10.8-1) ...
+Preparing to unpack .../24-libgstreamer-gl1.0-0_1.20.1-1ubuntu0.4_amd64.deb ...
+Unpacking libgstreamer-gl1.0-0:amd64 (1.20.1-1ubuntu0.4) over (1.20.1-1ubuntu0.1) ...
+Preparing to unpack .../25-libharfbuzz0b_2.7.4-1ubuntu3.2_amd64.deb ...
+Unpacking libharfbuzz0b:amd64 (2.7.4-1ubuntu3.2) over (2.7.4-1ubuntu3.1) ...
+Preparing to unpack .../26-libgtk-3-common_3.24.33-1ubuntu2.2_all.deb ...
+Unpacking libgtk-3-common (3.24.33-1ubuntu2.2) over (3.24.33-1ubuntu2) ...
+Preparing to unpack .../27-libgtk-3-0_3.24.33-1ubuntu2.2_amd64.deb ...
+Unpacking libgtk-3-0:amd64 (3.24.33-1ubuntu2.2) over (3.24.33-1ubuntu2) ...
+Selecting previously unselected package libgtk-4-common.
+Preparing to unpack .../28-libgtk-4-common_4.6.9+ds-0ubuntu0.22.04.2_all.deb ...
+Unpacking libgtk-4-common (4.6.9+ds-0ubuntu0.22.04.2) ...
+Selecting previously unselected package libgtk-4-1:amd64.
+Preparing to unpack .../29-libgtk-4-1_4.6.9+ds-0ubuntu0.22.04.2_amd64.deb ...
+Unpacking libgtk-4-1:amd64 (4.6.9+ds-0ubuntu0.22.04.2) ...
+Preparing to unpack .../30-libharfbuzz-icu0_2.7.4-1ubuntu3.2_amd64.deb ...
+Unpacking libharfbuzz-icu0:amd64 (2.7.4-1ubuntu3.2) over (2.7.4-1ubuntu3.1) ...
+Preparing to unpack .../31-libxslt1.1_1.1.34-4ubuntu0.22.04.3_amd64.deb ...
+Unpacking libxslt1.1:amd64 (1.1.34-4ubuntu0.22.04.3) over (1.1.34-4ubuntu0.22.04.1) ...
+Preparing to unpack .../32-xserver-common_2%3a21.1.4-2ubuntu1.7~22.04.14_all.deb ...
+Unpacking xserver-common (2:21.1.4-2ubuntu1.7~22.04.14) over (2:21.1.4-2ubuntu1.7~22.04.10) ...
+Preparing to unpack .../33-xvfb_2%3a21.1.4-2ubuntu1.7~22.04.14_amd64.deb ...
+Unpacking xvfb (2:21.1.4-2ubuntu1.7~22.04.14) over (2:21.1.4-2ubuntu1.7~22.04.10) ...
+Preparing to unpack .../34-libopenjp2-7_2.4.0-6ubuntu0.3_amd64.deb ...
+Unpacking libopenjp2-7:amd64 (2.4.0-6ubuntu0.3) over (2.4.0-6) ...
+Setting up libgbm1:amd64 (23.2.1-1ubuntu3.1~22.04.3) ...
+Setting up fonts-noto-color-emoji (2.047-0ubuntu0.22.04.1) ...
+Setting up libglib2.0-0:amd64 (2.72.4-0ubuntu2.5) ...
+Setting up libgdk-pixbuf2.0-common (2.42.8+dfsg-1ubuntu0.3) ...
+Setting up liblzo2-2:amd64 (2.10-2build3) ...
+Setting up libfreetype6:amd64 (2.11.1+dfsg-1ubuntu0.3) ...
+Setting up libabsl20210324:amd64 (0~20210324.2-2ubuntu0.2) ...
+Setting up libglapi-mesa:amd64 (23.2.1-1ubuntu3.1~22.04.3) ...
+Setting up libcups2:amd64 (2.4.1op1-1ubuntu4.11) ...
+Setting up libopenjp2-7:amd64 (2.4.0-6ubuntu0.3) ...
+Setting up libharfbuzz0b:amd64 (2.7.4-1ubuntu3.2) ...
+Setting up libgdk-pixbuf-2.0-0:amd64 (2.42.8+dfsg-1ubuntu0.3) ...
+Setting up xserver-common (2:21.1.4-2ubuntu1.7~22.04.14) ...
+Setting up libgtk-4-common (4.6.9+ds-0ubuntu0.22.04.2) ...
+Setting up libyuv0:amd64 (0.0~git20220104.b91df1a-2) ...
+Setting up libxml2:amd64 (2.9.13+dfsg-1ubuntu0.7) ...
+Setting up libgstreamer1.0-0:amd64 (1.20.3-0ubuntu1.1) ...
+Setcap worked! gst-ptp-helper is not suid!
+Setting up libgtk-3-common (3.24.33-1ubuntu2.2) ...
+Setting up libgraphene-1.0-0:amd64 (1.10.8-1) ...
+Setting up libcairo-script-interpreter2:amd64 (1.16.0-5ubuntu2) ...
+Setting up libharfbuzz-icu0:amd64 (2.7.4-1ubuntu3.2) ...
+Setting up libgtk-3-0:amd64 (3.24.33-1ubuntu2.2) ...
+Setting up xvfb (2:21.1.4-2ubuntu1.7~22.04.14) ...
+Setting up libgl1-mesa-dri:amd64 (23.2.1-1ubuntu3.1~22.04.3) ...
+Setting up libgstreamer-plugins-base1.0-0:amd64 (1.20.1-1ubuntu0.4) ...
+Setting up libgstreamer-plugins-good1.0-0:amd64 (1.20.3-0ubuntu1.3) ...
+Setting up libegl-mesa0:amd64 (23.2.1-1ubuntu3.1~22.04.3) ...
+Setting up libgstreamer-gl1.0-0:amd64 (1.20.1-1ubuntu0.4) ...
+Setting up gstreamer1.0-plugins-base:amd64 (1.20.1-1ubuntu0.4) ...
+Setting up libgav1-0:amd64 (0.17.0-1build1) ...
+Setting up libavif13:amd64 (0.9.3-3) ...
+Setting up libgtk-4-1:amd64 (4.6.9+ds-0ubuntu0.22.04.2) ...
+Setting up libxslt1.1:amd64 (1.1.34-4ubuntu0.22.04.3) ...
+Setting up libglx-mesa0:amd64 (23.2.1-1ubuntu3.1~22.04.3) ...
+Setting up gstreamer1.0-plugins-good:amd64 (1.20.3-0ubuntu1.3) ...
+Processing triggers for fontconfig (2.13.1-4.2ubuntu5) ...
+Processing triggers for libc-bin (2.35-0ubuntu3.7) ...
+Removing unused browser at /ms-playwright/chromium-1117
+Removing unused browser at /ms-playwright/ffmpeg-1009
+Removing unused browser at /ms-playwright/firefox-1449
+Removing unused browser at /ms-playwright/webkit-2003
+Downloading Chromium 136.0.7103.25 (playwright build v1169) from https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1169/chromium-linux.zip
+|                                                                                |   0% of 167.7 MiB
+|■■■■■■■■                                                                        |  10% of 167.7 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 167.7 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 167.7 MiB
+Chromium 136.0.7103.25 (playwright build v1169) downloaded to /ms-playwright/chromium-1169
+Downloading Chromium Headless Shell 136.0.7103.25 (playwright build v1169) from https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1169/chromium-headless-shell-linux.zip
+|                                                                                |   0% of 101.4 MiB
+|■■■■■■■■                                                                        |  10% of 101.4 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 101.4 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 101.4 MiB
+Chromium Headless Shell 136.0.7103.25 (playwright build v1169) downloaded to /ms-playwright/chromium_headless_shell-1169
+Downloading Firefox 137.0 (playwright build v1482) from https://cdn.playwright.dev/dbazure/download/playwright/builds/firefox/1482/firefox-ubuntu-22.04.zip
+|                                                                                |   0% of 91 MiB
+|■■■■■■■■                                                                        |  10% of 91 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 91 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 91 MiB
+Firefox 137.0 (playwright build v1482) downloaded to /ms-playwright/firefox-1482
+Downloading Webkit 18.4 (playwright build v2158) from https://cdn.playwright.dev/dbazure/download/playwright/builds/webkit/2158/webkit-ubuntu-22.04.zip
+|                                                                                |   0% of 93.8 MiB
+|■■■■■■■■                                                                        |  10% of 93.8 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 93.8 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 93.8 MiB
+Webkit 18.4 (playwright build v2158) downloaded to /ms-playwright/webkit-2158
+Downloading FFMPEG playwright build v1011 from https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1011/ffmpeg-linux.zip
+|                                                                                |   0% of 2.3 MiB
+|■■■■■■■■                                                                        |  10% of 2.3 MiB
+|■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB
+|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB
+FFMPEG playwright build v1011 downloaded to /ms-playwright/ffmpeg-1011
+--> 5ceec66dc215
+STEP 16/16: CMD ["make", "e2e-run-sandbox-ui"]
+COMMIT sandbox-ui-e2e-tests
+--> df576d7499ec
+Successfully tagged localhost/sandbox-ui-e2e-tests:latest
+df576d7499ec8051927c0b413aa799c99c22946883389e7a93e26cf79b42dd6e
+pushing Developer Sandbox UI image...
+/Library/Developer/CommandLineTools/usr/bin/make push-sandbox-plugin
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              login.go:74: 
+        	Error Trace:	/app/testsupport/sandbox-ui/login.go:74
+        	            				/app/testsupport/sandbox-ui/setup.go:61
+        	            				/app/test/e2e/sandbox-ui/activities_page_test.go:14
+        	Error:      	Received unexpected error:
+        	            	playwright: timeout: Timeout 30000ms exceeded.
+        	Test:       	TestActivitiesPage
+    login.go:78: 
+        	Error Trace:	/app/testsupport/sandbox-ui/login.go:78
+        	            				/app/testsupport/sandbox-ui/setup.go:61
+        	            				/app/test/e2e/sandbox-ui/activities_page_test.go:14
+        	Error:      	Received unexpected error:
+        	            	playwright: timeout: Timeout 30000ms exceeded.
+        	Test:       	TestActivitiesPage
+    login.go:81: 
+        	Error Trace:	/app/testsupport/sandbox-ui/login.go:81
+        	            				/app/testsupport/sandbox-ui/setup.go:61
+        	            				/app/test/e2e/sandbox-ui/activities_page_test.go:14
+        	Error:      	Received unexpected error:
+        	            	playwright: timeout: Timeout 30000ms exceeded.
+        	Test:       	TestActivitiesPage
+    login.go:82: 
+        	Error Trace:	/app/testsupport/sandbox-ui/login.go:82
+        	            				/app/testsupport/sandbox-ui/setup.go:61
+        	            				/app/test/e2e/sandbox-ui/activities_page_test.go:14
+        	Error:      	"" does not contain "Developer Sandbox"
+        	Test:       	TestActivitiesPage
+    activities_page_test.go:21: 
+        	Error Trace:	/app/test/e2e/sandbox-ui/activities_page_test.go:21
+        	Error:      	Received unexpected error:
+        	            	playwright: timeout: Timeout 30000ms exceeded.
+        	Test:       	TestActivitiesPage
+--- FAIL: TestActivitiesPage (187.99s)
+FAIL
+FAIL	github.com/codeready-toolchain/toolchain-e2e/test/e2e/sandbox-ui	188.432s
+FAIL

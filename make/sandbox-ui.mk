@@ -12,14 +12,12 @@ PUSH_SANDBOX_IMAGE ?= true
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
 deploy-sandbox-ui: HOST_OPERATOR_API=https://$(shell oc get route api -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')
 deploy-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
-deploy-sandbox-ui: check-registry
 deploy-sandbox-ui:
 	@echo "sandbox ui will be deployed in '${SANDBOX_UI_NS}' namespace"
 	$(MAKE) create-namespace SANDBOX_UI_NS=${SANDBOX_UI_NS}
 ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
 endif
-	$(MAKE) create-pull-secret 
 	kustomize build deploy/sandbox-ui/e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
 			HOST_NS=${HOST_NS} \
 			HOST_OPERATOR_API=${HOST_OPERATOR_API} \
@@ -31,19 +29,6 @@ endif
 	@oc -n ${HOST_NS} rollout restart deploy/registration-service
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
 	@echo "Developer Sandbox UI running at ${RHDH}"
-
-create-pull-secret: OS_IMAGE_REGISTRY=$(shell oc get route default-route -n openshift-image-registry --template='{{ .spec.host }}' 2>/dev/null || true)
-create-pull-secret:
-	@oc create secret docker-registry pull-secret \
-		--docker-server=${OS_IMAGE_REGISTRY} \
-		--docker-username=${OC_WHOAMI} \
-		--docker-password=${OC_WHOAMI_TOKEN} \
-		--namespace=${SANDBOX_UI_NS}
-	@oc extract secret/pull-secret -n ${SANDBOX_UI_NS} --keys=.dockerconfigjson --to=- > ${AUTH_FILE}
-	@oc create secret generic rhdh-dynamic-plugins-registry-auth \
-		--from-file=auth.json=${AUTH_FILE} \
-		--namespace=${SANDBOX_UI_NS}
-	rm ${AUTH_FILE}
 
 configure-oauth-idp:
 	@echo "configuring DevSandbox identity provider"
@@ -96,23 +81,53 @@ clean-sandbox-ui:
 	@oc delete secret ${OPENID_SECRET_NAME} -n openshift-config
 	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 
-.PHONY: e2e-run-sandbox-ui-setup
-e2e-run-sandbox-ui-setup: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
-e2e-run-sandbox-ui-setup:
+.PHONY: e2e-run-sandbox-ui
+e2e-run-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
+e2e-run-sandbox-ui:
 	@echo "Running Developer Sandbox UI setup e2e tests..."
-	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -p 1 -v -timeout=10m -failfast
-	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} envsubst < deploy/sandbox-ui/e2e-tests/.env > $(RHDH_PLUGINS_DIR)/workspaces/sandbox/.env
-	@echo "Running Developer Sandbox UI e2e tests using playwright..."
-	cd ${RHDH_PLUGINS_DIR}/workspaces/sandbox && \
-		echo "Running Developer Sandbox UI e2e tests in firefox..." && \
-		yarn playwright install --with-deps firefox && \
-		yarn playwright test --project=firefox && \
-		oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
-	@echo "The Developer Sandbox UI setup e2e tests successfully finished"
+	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast
+	
+	@echo "Running Developer Sandbox UI e2e tests in firefox..."
+	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/e2e-tests/.env > testsupport/sandbox-ui/.env
+	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast
+	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
+
+	@echo "The Developer Sandbox UI e2e tests successfully finished"
 
 .PHONY: deploy-and-test-sandbox-ui
-deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui-setup
+deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui
 
 .PHONY: deploy-and-test-sandbox-ui-local
 deploy-and-test-sandbox-ui-local: 
-	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui-setup RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins
+	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins
+
+
+UNIT_TEST_IMAGE_NAME=sandbox-ui-e2e-tests
+UNIT_TEST_DOCKERFILE=build/sandbox-ui/Dockerfile
+
+# Build Developer Sandbox UI e2e tests image using podman
+.PHONY: build-sandbox-ui-e2e-tests
+build-sandbox-ui-e2e-tests:
+	@echo "building the $(UNIT_TEST_IMAGE_NAME) image with podman..."
+	podman build --arch amd64 --os linux -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
+
+# Run Developer Sandbox UI e2e tests image using podman
+PHONY: test-in-container
+test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
+	@echo "pushing Developer Sandbox UI image..."
+	$(MAKE) push-sandbox-plugin
+	@echo "running the e2e tests in podman container..."
+	podman run --arch amd64 --os linux --rm \
+	  -v $(KUBECONFIG):/root/.kube/config \
+	  -e KUBECONFIG=/root/.kube/config \
+	  -v ${PWD}:/root/toolchain-e2e \
+	  -e E2E_REPO_PATH=/root/toolchain-e2e \
+	  -v $(RHDH_PLUGINS_DIR):/root/rhdh-plugins \
+	  -e RHDH_PLUGINS_DIR=/root/rhdh-plugins \
+	  -e SSO_USERNAME=$(SSO_USERNAME) \
+	  -e SSO_PASSWORD=$(SSO_PASSWORD) \
+	  -e QUAY_NAMESPACE=$(QUAY_NAMESPACE) \
+	  -e HOST_NS=$(HOST_NS) \
+	  -e TMP=/tmp/ \
+	  -e PUSH_SANDBOX_IMAGE=false \
+	  $(UNIT_TEST_IMAGE_NAME)
