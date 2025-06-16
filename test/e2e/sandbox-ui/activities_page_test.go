@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestActivitiesPage opens and verifies that activities cards links are not broken
 func TestActivitiesPage(t *testing.T) {
 	page := sandboxui.Setup(t, "test-activities-page")
 
