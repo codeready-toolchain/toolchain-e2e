@@ -9,13 +9,7 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 3. Ensure you are using Node.js version 20
     - to easily manage it, you can run `nvm use 20`
 
-=== Running E2E Tests
-The E2E tests for the Developer Sandbox UI are organized in two locations:
-
-- toolchain-e2e: contains a basic test to verify that the initial setup is correctly configured.
-
-- rhdh-plugins: hosts the main E2E tests for the Developer Sandbox UI written using playwright. For detailed instructions and usage, please read this https://github.com/redhat-developer/rhdh-plugins/blob/main/workspaces/sandbox/packages/app/e2e-tests/README.md[documentation].
-
+=== Running E2E Tests locally
 `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
