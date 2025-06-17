@@ -1,4 +1,4 @@
-= Sandbox UI E2E Tests
+# Developer Sandbox UI E2E Tests
 The e2e tests are executed against the Developer Sandbox UI running in OpenShift.
 
 *Prerequisites*:
@@ -10,31 +10,30 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
     - to easily manage it, you can run `nvm use 20`
 4. You should have access to an account in https://sso.devsandbox.dev/auth/realms/sandbox-dev (SSO_USERNAME and SSO_PASSWORD)
 
-=== Running E2E Tests locally
+### Running E2E Tests locally
 `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 For now, the e2e tests are running only through firefox browser.
 
-=== Running E2E Tests in Container
-Please, do not forget that you need to have the toolchain resources deployed before running:
-`make test-sandbox-ui-in-container HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
-
-
-=== Deploy Developer Sandbox UI in E2E mode
+### Deploy Developer Sandbox UI in E2E mode
 `make deploy-sandbox-ui HOST_NS=<HOST_NS>`
 
 Please note that OCP cluster does not have a valid CA, so when accessing the Developer Sandbox UI, you need to:
  
 - accept to proceed unsafely
 
-image::https://github.com/user-attachments/assets/5b35a65f-6703-42cf-a165-b7326fd4faab[private-connection, width=1195]
+![private-connection](https://github.com/user-attachments/assets/5b35a65f-6703-42cf-a165-b7326fd4faab)
 
-- access `<registration-service-route>/api/v1/signup` to tell your browser that the registration service route can be accessible
+- access `<registration-service-route>/api/v1/signup` to tell your browser that the registration service route can be accessed
 
-image::https://github.com/user-attachments/assets/6c2f7446-1de2-4701-ace7-2d6796f49eeb[registration-service, width=1094]
+![registration-service](https://github.com/user-attachments/assets/6c2f7446-1de2-4701-ace7-2d6796f49eeb)
 
+### Running E2E Tests in Container
+Please, do not forget that you need to have the toolchain resources deployed before running:
 
-=== Clean Developer Sandbox UI
+`make test-sandbox-ui-in-container HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+
+### Clean Developer Sandbox UI
 `make clean-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME>`

@@ -136,8 +136,7 @@ spec:
       serviceAccount: rhdh
       volumes:
         - name: dynamic-plugins-root
-          persistentVolumeClaim:
-            claimName: rhdh-dynamic-plugins-root
+          emptyDir: {}
         - name: dynamic-plugins
           configMap:
             name: rhdh-dynamic-plugins

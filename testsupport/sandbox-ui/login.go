@@ -1,10 +1,12 @@
 package sandboxui
 
 import (
+	"log"
 	"testing"
 
 	"github.com/playwright-community/playwright-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type LoginPage struct {
@@ -23,7 +25,8 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 		Env:  environment,
 	}
 
-	if environment == "dev" {
+	switch environment {
+	case "dev":
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Red Hat login or email",
 		})
@@ -36,7 +39,7 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 		lp.LoginBtn = page.GetByRole("button", playwright.PageGetByRoleOptions{
 			Name: "Log in",
 		})
-	} else if environment == "e2e-tests" {
+	case "e2e-tests":
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Username or email",
 		})
@@ -46,6 +49,8 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 		lp.LoginBtn = page.GetByRole("button", playwright.PageGetByRoleOptions{
 			Name: "Sign in",
 		})
+	default:
+		log.Fatalf("unsupported environment: %s", environment)
 	}
 
 	lp.Header = page.Locator("header")
@@ -55,28 +60,28 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 
 func (lp *LoginPage) Navigate(t *testing.T, url string) {
 	_, err := lp.Page.Goto(url)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func (lp *LoginPage) Login(t *testing.T, loginUsername, loginPw string) {
 	err := lp.LoginUsernameLoc.Fill(loginUsername)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if lp.Env == "dev" {
 		err := lp.NextBtn.Click()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	err = lp.LoginPwLoc.Fill(loginPw)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = lp.LoginBtn.Click()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = lp.Header.WaitFor()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	text, err := lp.Header.TextContent()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, text, "Developer Sandbox")
 }

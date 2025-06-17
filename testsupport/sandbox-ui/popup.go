@@ -3,6 +3,7 @@ package sandboxui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/playwright-community/playwright-go"
@@ -17,8 +18,13 @@ func ClickAndWaitForPopup(currentPage playwright.Page, locator playwright.Locato
 		popup, err = currentPage.ExpectPopup(func() error {
 			return locator.Click()
 		})
-		if err != nil || popup == nil {
-			return false, nil
+
+		if err != nil {
+			// only retry on timeout-like errors
+			if strings.Contains(err.Error(), "Timeout") || popup == nil {
+				return false, nil
+			}
+			return false, err // stop polling on fatal errors
 		}
 		return true, nil
 	})

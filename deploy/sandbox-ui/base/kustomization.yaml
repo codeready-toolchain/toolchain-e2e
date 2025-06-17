@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - service-accounts.yaml
   - deployment.yaml
-  - dynamic-plugins-root-pvc.yaml
   - service.yaml
   - route.yaml
 

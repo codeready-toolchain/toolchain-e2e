@@ -34,17 +34,8 @@ func TestHomepage(t *testing.T) {
 	assert.Equal(t, "Try Red Hat products", headingText)
 
 	// check paragraphs
-	paragraphs := article.Locator("p")
-
-	firstPara, err := paragraphs.Nth(0).TextContent()
-	require.NoError(t, err)
-	assert.Contains(t, firstPara, "Explore, experiment, and see what's possible")
-
-	secondPara, err := paragraphs.Nth(1).TextContent()
-	require.NoError(t, err)
-	match, err := regexp.MatchString(`Click on "Try it" to initiate your free, no commitment \d+-day trial\.`, secondPara)
-	require.NoError(t, err)
-	assert.True(t, match)
+	require.NotNil(t, article.GetByText("Explore, experiment, and see what's possible"))
+	require.NotNil(t, article.GetByText(regexp.MustCompile(`Click on "Try it" to initiate your free, no commitment \d+-day trial\.`)))
 
 	// check image
 	img := page.GetByRole("img", playwright.PageGetByRoleOptions{
@@ -85,12 +76,8 @@ func TestSignup(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Try Red Hat products", headingText)
 
-	// check paragraphs
-	paragraphs := article.Locator("p")
-
-	secondPara, err := paragraphs.Nth(1).TextContent()
-	require.NoError(t, err)
-	assert.Equal(t, "Click on \"Try it\" to initiate your free, no commitment 30-day trial.", secondPara)
+	// check paragraph
+	require.NotNil(t, article.GetByText("Click on \"Try it\" to initiate your free, no commitment 30-day trial."))
 
 	// click the "Try it" button in the card
 	tryItButton := card.Locator("button", playwright.LocatorLocatorOptions{

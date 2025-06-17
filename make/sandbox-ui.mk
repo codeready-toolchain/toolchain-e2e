@@ -1,7 +1,7 @@
 SANDBOX_UI_NS := sandbox-ui
 SANDBOX_PLUGIN_IMAGE_NAME := sandbox-rhdh-plugin
 TAG := latest
-PLATFORM = linux/amd64
+PLATFORM ?= linux/amd64
 RHDH_PLUGINS_DIR ?= $(TMPDIR)rhdh-plugins
 AUTH_FILE := /tmp/auth.json
 IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
@@ -109,15 +109,15 @@ UNIT_TEST_DOCKERFILE=build/sandbox-ui/Dockerfile
 .PHONY: build-sandbox-ui-e2e-tests
 build-sandbox-ui-e2e-tests:
 	@echo "building the $(UNIT_TEST_IMAGE_NAME) image with podman..."
-	podman build --arch amd64 --os linux -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
+	podman build --platform $(PLATFORM) -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
 
 # Run Developer Sandbox UI e2e tests image using podman
-PHONY: test-in-container
+PHONY: test-sandbox-ui-in-container
 test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
 	@echo "pushing Developer Sandbox UI image..."
 	$(MAKE) push-sandbox-plugin
 	@echo "running the e2e tests in podman container..."
-	podman run --arch amd64 --os linux --rm \
+	podman run --platform $(PLATFORM) --rm \
 	  -v $(KUBECONFIG):/root/.kube/config \
 	  -e KUBECONFIG=/root/.kube/config \
 	  -v ${PWD}:/root/toolchain-e2e \
