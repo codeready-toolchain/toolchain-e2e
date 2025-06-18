@@ -34,7 +34,8 @@ func ClickAndWaitForPopup(currentPage playwright.Page, locator playwright.Locato
 	}
 
 	waitErr := popup.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
-		State: playwright.LoadStateLoad,
+		State:   playwright.LoadStateLoad,
+		Timeout: playwright.Float(60000), // 1 minute
 	})
 	if waitErr != nil {
 		return nil, fmt.Errorf("popup did not finish loading: %w", waitErr)
