@@ -8,7 +8,8 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 2. Ensure you have the toolchain resources deployed in your cluster (you can run `make prepare-and-deploy-e2e`)
 3. Ensure you are using Node.js version 20
     - to easily manage it, you can run `nvm use 20`
-4. You should have access to an account in https://sso.devsandbox.dev/auth/realms/sandbox-dev (SSO_USERNAME and SSO_PASSWORD)
+4. Ensure you have `yarn` installed
+5. Make sure you can log in at https://sso.devsandbox.dev/auth/realms/sandbox-dev/account using your SSO_USERNAME and SSO_PASSWORD
 
 ### Running E2E Tests locally
 `make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`

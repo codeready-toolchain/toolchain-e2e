@@ -13,6 +13,7 @@ deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registr
 deploy-sandbox-ui: HOST_OPERATOR_API=https://$(shell oc get route api -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')
 deploy-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
 deploy-sandbox-ui:
+	$(MAKE) check-sso-credentials
 	@echo "sandbox ui will be deployed in '${SANDBOX_UI_NS}' namespace"
 	$(MAKE) create-namespace SANDBOX_UI_NS=${SANDBOX_UI_NS}
 ifeq ($(PUSH_SANDBOX_IMAGE),true)
@@ -29,6 +30,24 @@ endif
 	@oc -n ${HOST_NS} rollout restart deploy/registration-service
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
 	@echo "Developer Sandbox UI running at ${RHDH}"
+
+
+check-sso-credentials:
+	@echo "checking SSO credentials..."
+	@if [ -z "$$SSO_USERNAME" ] || [ -z "$$SSO_PASSWORD" ]; then \
+		echo "SSO_USERNAME or SSO_PASSWORD not set"; \
+		exit 1; \
+	fi
+	@status=$$(curl -s -o /dev/null -w "%{http_code}" \
+	  -X POST "https://sso.devsandbox.dev/auth/realms/sandbox-dev/protocol/openid-connect/token" \
+	  -d "grant_type=password" \
+	  -d "client_id=sandbox-public" \
+	  -d "username=$$SSO_USERNAME" \
+	  -d "password=$$SSO_PASSWORD"); \
+	if [ "$$status" != "200" ]; then \
+	  echo "failed trying to login to 'https://sso.devsandbox.dev/auth/realms/sandbox-dev' ($$status) — check your SSO credentials."; \
+	  exit 1; \
+	fi
 
 configure-oauth-idp:
 	@echo "configuring DevSandbox identity provider"
