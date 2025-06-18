@@ -184,12 +184,6 @@ func setupSpaces(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Custo
 		name := fmt.Sprintf(nameFmt, i)
 		s, _, _ := CreateSpace(t, awaitilities, testspace.WithName(name), testspace.WithTierNameAndHashLabelFor(tier.NSTemplateTier), testspace.WithSpecTargetCluster(targetCluster.ClusterName))
 		spaces = append(spaces, s.Name)
-		t.Cleanup(func() {
-			cl := awaitilities.Host().Client
-			fresh := &toolchainv1alpha1.Space{}
-			require.NoError(t, cl.Get(context.TODO(), client.ObjectKeyFromObject(s), fresh))
-			require.NoError(t, cl.Delete(context.TODO(), fresh))
-		})
 	}
 	return spaces
 }
@@ -485,6 +479,7 @@ func TestTierTemplateRevision(t *testing.T) {
 				Value: "100",
 			})
 		})
+
 	})
 
 	t.Run("when updating one tiertemplate the revisions field should be cleaned up from old entries", func(t *testing.T) {
@@ -522,6 +517,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// revisions values should be different compared to the previous ones
 		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
 	})
+
 }
 
 func getTestCRQ(podsCount string) unstructured.Unstructured {
