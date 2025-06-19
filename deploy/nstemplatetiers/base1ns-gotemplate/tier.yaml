@@ -1,0 +1,45 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: NSTemplateTier
+metadata:
+  name: ttr-go-template
+spec:
+  clusterResources:
+    templateRef: ttr-clusterresources-go-template
+  namespaces:
+  - templateRef: ttr-ns-dev-go-template
+  spaceRoles:
+    admin:
+      templateRef: ttr-spacerole-admin-go-template
+  parameters:
+  - name: DEPLOYMENT_QUOTA
+    value: "30"
+  - name: IDLER_TIMEOUT_SECONDS
+    value: "43200"
+  - name: POD_COUNT
+    value: "50"
+  - name: VIRTUAL_MACHINES
+    value: "2"
+  - name: LOAD_BALANCER
+    value: "0"
+  - name: SECRETS_COUNT
+    value: "100"
+  - name: MEMORY_LIMIT
+    value: "30Gi"
+  - name: MEMORY_REQUEST
+    value: "30Gi"
+  - name: MEMORY_BUILD_LIMIT
+    value: "14Gi"
+  - name: MEMORY_BUILD_REQUEST
+    value: "14Gi"
+  - name: CPU_LIMIT
+    value: "30000m"
+  - name: CPU_REQUEST
+    value: "3000m"
+  - name: EPHEMERAL_STORAGE_LIMIT
+    value: "15Gi"
+  - name: EPHEMERAL_STORAGE_REQUEST
+    value: "15Gi"
+  - name: STORAGE_REQUEST
+    value: "80Gi"
+  - name: PERSISTENT_VOLUME_CLAIM
+    value: "10"
