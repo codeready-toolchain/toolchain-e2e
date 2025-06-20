@@ -604,6 +604,14 @@ func (a *Awaitility) CreateWithCleanup(t *testing.T, obj client.Object, opts ...
 	return nil
 }
 
+func (a *Awaitility) CreateWithCleanupTimeout(t *testing.T, obj client.Object, timeout time.Duration, opts ...client.CreateOption) error {
+	if err := a.Client.Create(context.TODO(), obj, opts...); err != nil {
+		return err
+	}
+	cleanup.AddCleanTasksWithTimeout(t, a.GetClient(), timeout, obj)
+	return nil
+}
+
 // Creates a copy of the object specified using the `from` parameter. The created copy is named using the `to` parameter and is cleaned up
 // after the test. The object can be modified using the optionally supplied modifiers before it is created. The `object` is an "output parameter"
 // that will contain the object as it was created in the cluster.
