@@ -479,7 +479,6 @@ func TestTierTemplateRevision(t *testing.T) {
 				Value: "100",
 			})
 		})
-
 	})
 
 	t.Run("when updating one tiertemplate the revisions field should be cleaned up from old entries", func(t *testing.T) {
@@ -517,7 +516,6 @@ func TestTierTemplateRevision(t *testing.T) {
 		// revisions values should be different compared to the previous ones
 		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
 	})
-
 }
 
 func getTestCRQ(podsCount string) unstructured.Unstructured {
