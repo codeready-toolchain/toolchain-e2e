@@ -137,7 +137,7 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, na
 		require.NoError(t, err)
 	}
 	// NSTemplateTier can take a long time to delete because they wait for all their spaces to be deleted first...
-	err := hostAwait.CreateWithCleanupTimeout(t, tier.NSTemplateTier, 10*time.Minute)
+	err := hostAwait.CreateWithCleanupTimeout(t, tier.NSTemplateTier, 2*time.Minute)
 	require.NoError(t, err)
 	newTTier, err := hostAwait.WaitForNSTemplateTier(t, tier.Name,
 		wait.HasStatusTierTemplateRevisions(GetTemplateRefs(t, hostAwait, tier.Name).Flatten()))
