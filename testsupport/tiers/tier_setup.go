@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/configuration"
@@ -135,7 +136,8 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, na
 		err := modify(hostAwait, tier)
 		require.NoError(t, err)
 	}
-	err := hostAwait.CreateWithCleanup(t, tier.NSTemplateTier)
+	// NSTemplateTier can take a long time to delete because they wait for all their spaces to be deleted first...
+	err := hostAwait.CreateWithCleanupTimeout(t, tier.NSTemplateTier, 2*time.Minute)
 	require.NoError(t, err)
 	newTTier, err := hostAwait.WaitForNSTemplateTier(t, tier.Name,
 		wait.HasStatusTierTemplateRevisions(GetTemplateRefs(t, hostAwait, tier.Name).Flatten()))
