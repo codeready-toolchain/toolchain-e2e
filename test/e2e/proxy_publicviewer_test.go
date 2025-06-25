@@ -316,5 +316,6 @@ func CreateCommunitySpaceBinding(
 	hostAwait *wait.HostAwaitility,
 	spaceName, spaceNamespace string,
 ) *toolchainv1alpha1.SpaceBinding {
+
 	return spacebinding.CreateSpaceBindingStr(t, hostAwait, toolchainv1alpha1.KubesawAuthenticatedUsername, spaceName, spaceNamespace, "viewer")
 }
