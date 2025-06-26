@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -695,6 +696,13 @@ func TestPhoneVerification(t *testing.T) {
 }
 
 func TestActivationCodeVerification(t *testing.T) {
+	os.Setenv("KUBECONFIG", "/home/mjobanek/.kube/config")
+	os.Setenv("MEMBER_NS", "toolchain-member-26150035")
+	os.Setenv("MEMBER_NS_2", "toolchain-member2-26150035")
+	os.Setenv("SECOND_MEMBER_MODE", "true")
+	os.Setenv("HOST_NS", "toolchain-host-26150035")
+	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-26150035")
+
 	// given
 	t.Parallel()
 	await := WaitForDeployments(t)
@@ -741,11 +749,9 @@ func TestActivationCodeVerification(t *testing.T) {
 			InvokeEndpoint("POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusOK)
 
 		// then
-		// ensure the UserSignup is in "pending approval" condition,
-		// because in these series of parallel tests, automatic approval is disabled ¯\_(ツ)_/¯
 		userSignup, err = hostAwait.WaitForUserSignup(t, userName,
 			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...))
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
