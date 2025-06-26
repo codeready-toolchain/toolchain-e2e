@@ -54,18 +54,18 @@ func TestEnsureOperatorsInstalled(t *testing.T) {
 		t.Run("error when creating subscription", func(t *testing.T) {
 			// given
 			cl := test.NewFakeClient(t)
-			cl.MockCreate = func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+			cl.MockPatch = func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 				if obj.GetObjectKind().GroupVersionKind().Kind == "Subscription" {
 					return fmt.Errorf("Test client error")
 				}
-				return cl.Client.Create(ctx, obj, opts...)
+				return cl.Client.Patch(ctx, obj, patch, opts...)
 			}
 
 			// when
 			err := EnsureOperatorsInstalled(context.TODO(), cl, scheme, []string{"installtemplates/kiali.yaml"})
 
 			// then
-			require.EqualError(t, err, "could not apply resource 'kiali-ossm' in namespace 'openshift-operators': unable to create resource of kind: Subscription, version: v1alpha1: Test client error")
+			require.EqualError(t, err, "could not apply resource 'kiali-ossm' in namespace 'openshift-operators': unable to patch 'operators.coreos.com/v1alpha1, Kind=Subscription' called 'kiali-ossm' in namespace 'openshift-operators': Test client error")
 		})
 		t.Run("error when getting subscription", func(t *testing.T) {
 			// given
