@@ -696,7 +696,6 @@ func TestPhoneVerification(t *testing.T) {
 }
 
 func TestActivationCodeVerification(t *testing.T) {
-
 	// given
 	t.Parallel()
 	await := WaitForDeployments(t)
