@@ -696,12 +696,6 @@ func TestPhoneVerification(t *testing.T) {
 }
 
 func TestActivationCodeVerification(t *testing.T) {
-	os.Setenv("KUBECONFIG", "/home/mjobanek/.kube/config")
-	os.Setenv("MEMBER_NS", "toolchain-member-26150035")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-26150035")
-	os.Setenv("SECOND_MEMBER_MODE", "true")
-	os.Setenv("HOST_NS", "toolchain-host-26150035")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-26150035")
 
 	// given
 	t.Parallel()
