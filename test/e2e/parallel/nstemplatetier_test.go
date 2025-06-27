@@ -50,7 +50,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1ns-gotemplate", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
+	tiersToCheck := []string{"advanced", "baseextendedidling", "baselarge", "test", "appstudio", "appstudiolarge", "appstudio-env", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
@@ -141,6 +141,32 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeUsers, cheesecakeTier)
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier)
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
+}
+
+func TestGoTemplate(t *testing.T) {
+	t.Parallel()
+
+	count := 2*MaxPoolSize + 1
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
+	memberAwait = memberAwait.WithRetryOptions(wait.TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
+
+	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
+	baseGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns-gotemplate")
+	require.NoError(t, err)
+	goBaseTestTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "gobasetesttier", baseTier)
+	goUsers := setupAccounts(t, awaitilities, goBaseTestTier, "gotemplateuser%02d", memberAwait, count)
+
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, goBaseTestTier)
+	t.Log("updating go tiers")
+	updatedGoBaseTestTier := tiers.UpdateCustomNSTemplateTier(t, hostAwait, goBaseTestTier, tiers.WithNamespaceResources(t, baseGoTemplateTier), tiers.WithSpaceRoles(t, baseGoTemplateTier))
+
+	t.Log("verifying go users after go tier updates")
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, updatedGoBaseTestTier)
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
