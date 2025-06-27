@@ -198,7 +198,7 @@ func TestProxyFlow(t *testing.T) {
 		t.Run(user.username, func(t *testing.T) {
 			// Start a new websocket watcher
 			w := newWsWatcher(t, *user, user.compliantUsername, hostAwait.APIProxyURL)
-			closeConnection := w.Start(t)
+			closeConnection := w.Start()
 			defer closeConnection()
 			proxyCl := user.createProxyClient(t, hostAwait)
 			applicationList := &appstudiov1.ApplicationList{}
@@ -449,7 +449,7 @@ func TestProxyFlow(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				w := newWsWatcher(t, *user, user.compliantUsername, proxyWorkspaceURL)
-				closeConnection := w.Start(t)
+				closeConnection := w.Start()
 				defer closeConnection()
 				workspaceCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // proxy client with workspace context
 				require.NoError(t, err)
@@ -615,7 +615,7 @@ func TestProxyFlow(t *testing.T) {
 
 			// Start a new websocket watcher which watches for Application CRs in the user's namespace
 			w := newWsWatcher(t, *guestUser, primaryUser.compliantUsername, primaryUserWorkspaceURL)
-			closeConnection := w.Start(t)
+			closeConnection := w.Start()
 			defer closeConnection()
 			guestUserPrimaryWsCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, primaryUserWorkspaceURL)
 			require.NoError(t, err)
@@ -1239,7 +1239,7 @@ type wsWatcher struct {
 }
 
 // start creates a new WebSocket connection. The method returns a function which is to be used to close the connection when done.
-func (w *wsWatcher) Start(t *testing.T) func() {
+func (w *wsWatcher) Start() func() {
 	w.done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
 	w.interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
 
@@ -1287,7 +1287,7 @@ func (w *wsWatcher) Start(t *testing.T) func() {
 		w.connection = conn
 		return true, nil
 	})
-	require.NoError(t, err)
+	require.NoError(w.t, err)
 
 	w.connection = conn
 	w.receivedApps = make(map[string]*appstudiov1.Application)
