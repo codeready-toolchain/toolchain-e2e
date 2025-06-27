@@ -198,7 +198,7 @@ func TestProxyFlow(t *testing.T) {
 		t.Run(user.username, func(t *testing.T) {
 			// Start a new websocket watcher
 			w := newWsWatcher(t, *user, user.compliantUsername, hostAwait.APIProxyURL)
-			closeConnection := w.Start()
+			closeConnection := w.Start(t)
 			defer closeConnection()
 			proxyCl := user.createProxyClient(t, hostAwait)
 			applicationList := &appstudiov1.ApplicationList{}
@@ -449,7 +449,7 @@ func TestProxyFlow(t *testing.T) {
 				proxyWorkspaceURL := hostAwait.ProxyURLWithWorkspaceContext(user.compliantUsername)
 				// Start a new websocket watcher which watches for Application CRs in the user's namespace
 				w := newWsWatcher(t, *user, user.compliantUsername, proxyWorkspaceURL)
-				closeConnection := w.Start()
+				closeConnection := w.Start(t)
 				defer closeConnection()
 				workspaceCl, err := hostAwait.CreateAPIProxyClient(t, user.token, proxyWorkspaceURL) // proxy client with workspace context
 				require.NoError(t, err)
@@ -615,7 +615,7 @@ func TestProxyFlow(t *testing.T) {
 
 			// Start a new websocket watcher which watches for Application CRs in the user's namespace
 			w := newWsWatcher(t, *guestUser, primaryUser.compliantUsername, primaryUserWorkspaceURL)
-			closeConnection := w.Start()
+			closeConnection := w.Start(t)
 			defer closeConnection()
 			guestUserPrimaryWsCl, err := hostAwait.CreateAPIProxyClient(t, guestUser.token, primaryUserWorkspaceURL)
 			require.NoError(t, err)
@@ -1239,7 +1239,7 @@ type wsWatcher struct {
 }
 
 // start creates a new WebSocket connection. The method returns a function which is to be used to close the connection when done.
-func (w *wsWatcher) Start() func() {
+func (w *wsWatcher) Start(t *testing.T) func() {
 	w.done = make(chan interface{})    // Channel to indicate that the receiverHandler is done
 	w.interrupt = make(chan os.Signal) // Channel to listen for interrupt signal to terminate gracefully
 
@@ -1258,16 +1258,37 @@ func (w *wsWatcher) Start() func() {
 		},
 	}
 
-	extraHeaders := make(http.Header, 1)
-	extraHeaders.Add("Origin", "http://localhost")
+	var conn *websocket.Conn
+	var resp *http.Response
+	var err error
 
-	conn, resp, err := dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
-	if errors.Is(err, websocket.ErrBadHandshake) {
-		r, _ := io.ReadAll(resp.Body)
-		defer resp.Body.Close()
-		w.t.Logf("handshake failed with status %d / response %s", resp.StatusCode, string(r))
-	}
-	require.NoError(w.t, err)
+	err = kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, wait.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
+		extraHeaders := make(http.Header, 1)
+		extraHeaders.Add("Origin", "http://localhost")
+
+		conn, resp, err = dialer.Dial(socketURL, extraHeaders) // nolint:bodyclose // see `return func() {...}`
+
+		if err != nil {
+			r, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if errors.Is(err, websocket.ErrBadHandshake) {
+				// handle status 429
+				// from Openshift 4.19 (using k8s 1.32), ResilientWatchCacheInitialization feature is enabled
+				if resp.StatusCode == 429 {
+					w.t.Logf("rate limited, retrying: %s", string(r))
+					return false, nil
+				}
+			} else {
+				w.t.Logf("connection failed with status %d / response %s", resp.StatusCode, string(r))
+				return false, err
+			}
+		}
+
+		w.connection = conn
+		return true, nil
+	})
+	require.NoError(t, err)
+
 	w.connection = conn
 	w.receivedApps = make(map[string]*appstudiov1.Application)
 
