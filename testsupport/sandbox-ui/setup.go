@@ -54,6 +54,9 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	login.Navigate(t, baseURL)
 	login.Login(t, username, password)
 
+	// handle cookie consent
+	handleCookiesConsent(t, page)
+
 	return page
 }
 
@@ -76,4 +79,31 @@ func lunchBrowser(t *testing.T, pw *playwright.Playwright) playwright.Browser {
 	require.NoError(t, err)
 
 	return browser
+}
+
+func handleCookiesConsent(t *testing.T, page playwright.Page) {
+	// wait for the iframe to appear
+	iframe := page.Locator("iframe[name=\"trustarc_cm\"]")
+
+	// check if iframe exists
+	err := iframe.WaitFor(playwright.LocatorWaitForOptions{
+		State: playwright.WaitForSelectorStateVisible,
+	})
+
+	if err != nil {
+		// no cookie consent appeared, skip
+		return
+	}
+
+	// get the content frame
+	contentFrame := iframe.ContentFrame()
+	require.NotNil(t, contentFrame)
+
+	// find the agree button
+	agreeButton := contentFrame.GetByRole("button", playwright.FrameLocatorGetByRoleOptions{
+		Name: "Agree and proceed with",
+	})
+
+	err = agreeButton.Click()
+	require.NoError(t, err)
 }
