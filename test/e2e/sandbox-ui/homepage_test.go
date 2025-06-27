@@ -129,6 +129,7 @@ func TestDevSandbox(t *testing.T) {
 
 	isVisible(t, tryItBtn)
 
+	// open the article in a new popup and wait for it to fully load
 	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(page, tryItBtn)
 	require.NoError(t, err)
 
