@@ -21,8 +21,10 @@ func TestActivitiesPage(t *testing.T) {
 	err := activitiesLink.Click()
 	require.NoError(t, err)
 
-	h3 := page.Locator("h3")
-	text, err := h3.TextContent()
+	featuredHeading := page.GetByRole("heading", playwright.PageGetByRoleOptions{
+		Name: "Featured",
+	})
+	text, err := featuredHeading.TextContent()
 	require.NoError(t, err)
 	assert.Contains(t, text, "Featured")
 

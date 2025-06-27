@@ -1,10 +1,9 @@
-FROM mcr.microsoft.com/playwright:v1.44.0-jammy as build-tools
+FROM registry.access.redhat.com/ubi9/ubi:latest as build-tools
 
 LABEL maintainer="Developer Sandbox <devsandbox@redhat.com>"
 LABEL author="Developer Sandbox <devsandbox@redhat.com>"
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    GOPATH=/tmp/go \
+ENV GOPATH=/tmp/go \
     GOCACHE=/tmp/.cache \
     PATH=$PATH:$GOPATH/bin \
     GIT_COMMITTER_NAME="Developer Sandbox" \
@@ -14,21 +13,33 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Install additional tools
 # gettext for envsubst
-RUN apt-get update && apt-get install -y \
-    make \
-    gettext \
-    jq \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN yum install -y \
+        findutils \
+        git \
+        make \
+        gettext \
+        procps-ng \
+        tar \
+        wget \
+        which \
+        jq \
+        gcc \
+        gcc-c++ \
+        python3 \
+        python3-devel \
+        sqlite-devel && \
+    yum clean all
 
 # Install kustomize
 RUN curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash \
     && mv kustomize /usr/local/bin
 
-# Install yarn
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /usr/share/keyrings/yarn-archive-keyring.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    apt-get update && apt-get install -y yarn && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install Node.js 20 and yarn
+RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - && \
+    yum install -y nodejs && \
+    curl -sL https://dl.yarnpkg.com/rpm/yarn.repo -o /etc/yum.repos.d/yarn.repo && \
+    yum install -y yarn && \
+    yum clean all
 
 # Install oc CLI
 RUN curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.15.0/openshift-client-linux.tar.gz && \
@@ -48,13 +59,36 @@ RUN curl -Lo ${GOLANG_VERSION}.linux-amd64.tar.gz https://dl.google.com/go/${GOL
 
 WORKDIR /app
 
+# Increase shared memory for browsers (recommended for Playwright)
+RUN mkdir -p /dev/shm && chmod 1777 /dev/shm
+
 COPY . .
 
-# Install Playwright CLI using the correct version
+# Install Playwright CLI and drivers
 RUN PWGO_VER=$(grep -oE "playwright-go v\S+" go.mod | sed 's/playwright-go //g') \
-    && go install github.com/playwright-community/playwright-go/cmd/playwright@${PWGO_VER}
+    && go install github.com/playwright-community/playwright-go/cmd/playwright@${PWGO_VER} \
+    && $GOPATH/bin/playwright install firefox
 
-# Install browser dependencies and Playwright browsers
-RUN $GOPATH/bin/playwright install --with-deps
+# Install Firefox required dependencies
+RUN yum install -y \
+        libxcb \
+        libX11 \
+        libXext \
+        libXrandr \
+        libXcomposite \
+        libXcursor \
+        libXdamage \
+        libXfixes \
+        libXi \
+        gtk3 \
+        pango \
+        atk \
+        cairo \
+        gdk-pixbuf2 \
+        libXrender \
+        alsa-lib \
+        freetype \
+        fontconfig && \
+    yum clean all
 
 CMD ["make", "deploy-and-test-sandbox-ui"]

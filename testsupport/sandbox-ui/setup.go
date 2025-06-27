@@ -24,9 +24,6 @@ func Setup(t *testing.T, testName string) playwright.Page {
 		err = viper.ReadInConfig()
 		require.NoError(t, err)
 		viper.AutomaticEnv()
-
-		err = playwright.Install()
-		require.NoError(t, err)
 	})
 
 	env := viper.GetString("ENVIRONMENT")

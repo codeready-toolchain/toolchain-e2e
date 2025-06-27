@@ -88,7 +88,7 @@ push-sandbox-plugin:
 	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
 	rm -rf plugins/sandbox/dist-dynamic && \
 	rm -rf red-hat-developer-hub-backstage-plugin-sandbox && \
-		yarn install && \
+	yarn install && \
 	npx @janus-idp/cli@3.3.1 package package-dynamic-plugins \
       --tag $(IMAGE_TO_PUSH_IN_QUAY) \
       --platform $(PLATFORM) && \

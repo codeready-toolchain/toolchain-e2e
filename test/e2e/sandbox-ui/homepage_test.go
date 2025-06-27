@@ -110,21 +110,28 @@ func TestDevSandbox(t *testing.T) {
 		logMessage = "Log in with"
 	}
 
-	// click on the 'Try it' button
-	tryItBtn := page.GetByRole("button", playwright.PageGetByRoleOptions{
-		Name: "Try it",
-	}).First()
+	err := page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateLoad,
+	})
+	require.NoError(t, err)
 
-	err := tryItBtn.WaitFor()
+	card := page.GetByText("OpenShift Comprehensive cloud")
+	isVisible(t, card)
+
+	tryItBtn := card.Locator("button", playwright.LocatorLocatorOptions{
+		HasText: "Try it",
+	})
+
+	err = tryItBtn.WaitFor(playwright.LocatorWaitForOptions{
+		State: playwright.WaitForSelectorStateVisible,
+	})
 	require.NoError(t, err)
 
 	isVisible(t, tryItBtn)
 
-	// open the article in a new popup and wait for it to fully load
 	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(page, tryItBtn)
 	require.NoError(t, err)
 
-	// wait for a specific element that should be visible after the page is fully loaded
 	img := devSandboxPage.GetByRole("img", playwright.PageGetByRoleOptions{
 		Name: imgName,
 	})
