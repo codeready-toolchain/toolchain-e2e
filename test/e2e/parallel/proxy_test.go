@@ -1262,6 +1262,9 @@ func (w *wsWatcher) Start() func() {
 	var resp *http.Response
 	var err error
 
+	// Retry websocket connection to handle rate limiting issues
+	// From OpenShift 4.19+ (using k8s 1.32), the ResilientWatchCacheInitialization feature is enabled
+	// which can cause 429 rate limiting responses when watchcache is still under initialization
 	err = kubewait.PollUntilContextTimeout(context.TODO(), wait.DefaultRetryInterval, wait.DefaultTimeout, true, func(ctx context.Context) (bool, error) {
 		extraHeaders := make(http.Header, 1)
 		extraHeaders.Add("Origin", "http://localhost")
@@ -1272,8 +1275,6 @@ func (w *wsWatcher) Start() func() {
 			r, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
 			if errors.Is(err, websocket.ErrBadHandshake) {
-				// handle status 429
-				// from Openshift 4.19 (using k8s 1.32), ResilientWatchCacheInitialization feature is enabled
 				if resp.StatusCode == 429 {
 					w.t.Logf("rate limited, retrying: %s", string(r))
 					return false, nil
