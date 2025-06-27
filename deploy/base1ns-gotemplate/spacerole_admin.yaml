@@ -28,34 +28,8 @@ spec:
         - update
         - patch
         - delete
-    - apiVersion: rbac.authorization.k8s.io/v1
-      kind: RoleBinding
-      metadata:
-        name: ${USERNAME}-rbac-edit
-        namespace: ${NAMESPACE}
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: Role
-        name: rbac-edit
-      subjects:
-      - kind: User
-        name: ${USERNAME}
-    - apiVersion: rbac.authorization.k8s.io/v1
-      kind: RoleBinding
-      metadata:
-        name: ${USERNAME}-edit
-        namespace: ${NAMESPACE}
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: edit
-      subjects:
-      - kind: User
-        name: ${USERNAME}
     parameters:
     - name: NAMESPACE
-      required: true
-    - name: USERNAME
       required: true
   templateObjects:
   - apiVersion: rbac.authorization.k8s.io/v1
