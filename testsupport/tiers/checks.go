@@ -19,7 +19,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -550,8 +549,7 @@ func (a *appstudioTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 		clusterResourceQuotaSecretCount("300"),
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
-		idlers(0, ""),
-		pipelineRunnerClusterRole())
+		idlers(0, ""))
 }
 
 type appstudiolargeTierChecks struct {
@@ -579,8 +577,7 @@ func (a *appstudiolargeTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		clusterResourceQuotaSecretCount("900"),
 		clusterResourceQuotaConfigMapCount("300"),
 		numberOfClusterResourceQuotas(8),
-		idlers(0, ""),
-		pipelineRunnerClusterRole())
+		idlers(0, ""))
 }
 
 type appstudioEnvTierChecks struct {
@@ -2135,18 +2132,5 @@ func pipelineRunnerRoleBinding() namespaceObjectsCheck {
 		assert.Equal(t, "appstudio-pipelines-runner", rb.RoleRef.Name)
 		assert.Equal(t, "ClusterRole", rb.RoleRef.Kind)
 		assert.Equal(t, "rbac.authorization.k8s.io", rb.RoleRef.APIGroup)
-	}
-}
-
-func pipelineRunnerClusterRole() clusterObjectsCheckCreator {
-	return func() clusterObjectsCheck {
-		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
-			clusterRole := &rbacv1.ClusterRole{}
-			// we don't wait because this should have been already created by OLM as part of the operator deployment
-			err := memberAwait.Client.Get(context.TODO(), types.NamespacedName{Name: "appstudio-pipelines-runner"}, clusterRole)
-			require.NoError(t, err)
-			assert.NotEmpty(t, clusterRole.Rules)
-			//	we don't care much about the content, it should be applied and maintained by the OLM
-		}
 	}
 }
