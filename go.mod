@@ -1,12 +1,12 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20250506092100-39b4862e1271
+	github.com/codeready-toolchain/api v0.0.0-20250605152105-383ffe6cac27
 	github.com/codeready-toolchain/toolchain-common v0.0.0-20250506093954-2b65ad3a2e12
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/fatih/color v1.18.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/google/go-cmp v0.6.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/gosuri/uiprogress v0.0.1
@@ -43,7 +43,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.2 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
