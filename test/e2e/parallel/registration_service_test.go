@@ -741,11 +741,9 @@ func TestActivationCodeVerification(t *testing.T) {
 			InvokeEndpoint("POST", route+"/api/v1/signup/verification/activation-code", token, fmt.Sprintf(`{"code":"%s"}`, event.Name), http.StatusOK)
 
 		// then
-		// ensure the UserSignup is in "pending approval" condition,
-		// because in these series of parallel tests, automatic approval is disabled ¯\_(ツ)_/¯
 		userSignup, err = hostAwait.WaitForUserSignup(t, userName,
 			wait.UntilUserSignupHasLabel(toolchainv1alpha1.SocialEventUserSignupLabelKey, event.Name),
-			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.PendingApproval())...))
+			wait.UntilUserSignupHasConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...))
 		cleanup.AddCleanTasks(t, hostAwait.Client, userSignup)
 		require.NoError(t, err)
 		// explicitly approve the usersignup (see above, config for parallel test has automatic approval disabled)
