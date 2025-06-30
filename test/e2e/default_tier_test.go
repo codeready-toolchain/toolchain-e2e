@@ -26,8 +26,8 @@ func TestSetDefaultTier(t *testing.T) {
 	})
 
 	t.Run("changed default tier configuration", func(t *testing.T) {
-		hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("advanced"))
-		// Create and approve a new user that should be provisioned to the advanced tier
+		hostAwait.UpdateToolchainConfig(t, testconfig.Tiers().DefaultUserTier("deactivate30").DefaultSpaceTier("base1nsnoidling"))
+		// Create and approve a new user that should be provisioned to the base1nsnoidling tier
 		NewSignupRequest(awaitilities).
 			Username("defaulttierchanged").
 			ManuallyApprove().
