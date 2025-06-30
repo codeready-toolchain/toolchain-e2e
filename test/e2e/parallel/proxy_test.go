@@ -1279,6 +1279,8 @@ func (w *wsWatcher) Start() func() {
 					w.t.Logf("rate limited, retrying: %s", string(r))
 					return false, nil
 				}
+				w.t.Logf("handshake failed with status %d / response %s", resp.StatusCode, string(r))
+				return false, err
 			} else {
 				w.t.Logf("connection failed with status %d / response %s", resp.StatusCode, string(r))
 				return false, err
