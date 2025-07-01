@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"os"
 	"testing"
 	"time"
 
@@ -392,13 +391,7 @@ func TestFeatureToggles(t *testing.T) {
 }
 
 func TestTierTemplateRevision(t *testing.T) {
-	//t.Parallel()
-	os.Setenv("KUBECONFIG", "/home/fmehta/.kube/config")
-	os.Setenv("MEMBER_NS", "toolchain-member-30124447")
-	os.Setenv("MEMBER_NS_2", "toolchain-member2-30124447")
-	os.Setenv("SECOND_MEMBER_MODE", "true")
-	os.Setenv("HOST_NS", "toolchain-host-30124447")
-	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-30124447")
+	t.Parallel()
 
 	// given
 	awaitilities := WaitForDeployments(t)
