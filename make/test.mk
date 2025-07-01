@@ -432,7 +432,7 @@ tiers-via-ksctl: ksctl
 
 .PHONY: tiers-go-templates
 tiers-go-templates: 
-	oc apply -f deploy/base1ns-gotemplate/ || true
+	oc apply -f deploy/base1ns-gotemplate/ -n ${HOST_NS} || true
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:

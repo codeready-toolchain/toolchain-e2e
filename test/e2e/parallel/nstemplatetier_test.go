@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"os"
 	"testing"
 	"time"
 
@@ -145,7 +146,6 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 func TestGoTemplate(t *testing.T) {
 	t.Parallel()
-
 	count := 2*MaxPoolSize + 1
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -156,17 +156,17 @@ func TestGoTemplate(t *testing.T) {
 
 	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
 	require.NoError(t, err)
-	baseGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns-gotemplate")
+	baseGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
 	require.NoError(t, err)
 	goBaseTestTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "gobasetesttier", baseTier)
 	goUsers := setupAccounts(t, awaitilities, goBaseTestTier, "gotemplateuser%02d", memberAwait, count)
-
+	goSpaces := setupSpaces(t, awaitilities, goBaseTestTier, "gospacetemplateuser%02d", memberAwait, count)
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, goBaseTestTier)
 	t.Log("updating go tiers")
 	updatedGoBaseTestTier := tiers.UpdateCustomNSTemplateTier(t, hostAwait, goBaseTestTier, tiers.WithNamespaceResources(t, baseGoTemplateTier), tiers.WithSpaceRoles(t, baseGoTemplateTier))
 
 	t.Log("verifying go users after go tier updates")
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, updatedGoBaseTestTier)
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, goSpaces, updatedGoBaseTestTier)
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
@@ -392,7 +392,13 @@ func TestFeatureToggles(t *testing.T) {
 }
 
 func TestTierTemplateRevision(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
+	os.Setenv("KUBECONFIG", "/home/fmehta/.kube/config")
+	os.Setenv("MEMBER_NS", "toolchain-member-30124447")
+	os.Setenv("MEMBER_NS_2", "toolchain-member2-30124447")
+	os.Setenv("SECOND_MEMBER_MODE", "true")
+	os.Setenv("HOST_NS", "toolchain-host-30124447")
+	os.Setenv("REGISTRATION_SERVICE_NS", "toolchain-host-30124447")
 
 	// given
 	awaitilities := WaitForDeployments(t)
