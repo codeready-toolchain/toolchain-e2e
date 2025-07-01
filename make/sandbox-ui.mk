@@ -149,4 +149,5 @@ test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
 	  -e HOST_NS=$(HOST_NS) \
 	  -e TMP=/tmp/ \
 	  -e PUSH_SANDBOX_IMAGE=false \
+	  -e RUNNING_IN_CONTAINER=true \
 	  $(UNIT_TEST_IMAGE_NAME)

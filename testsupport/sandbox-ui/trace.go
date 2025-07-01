@@ -22,8 +22,12 @@ func trace(t *testing.T, context playwright.BrowserContext, testName string) {
 
 	dir, err := os.Getwd()
 	require.NoError(t, err)
-
 	tracePath := filepath.Join(dir, fmt.Sprintf("../../trace/trace-%s.zip", testName))
+
+	if os.Getenv("RUNNING_IN_CONTAINER") == "true" {
+		tracePath = filepath.Join(os.Getenv("E2E_REPO_PATH"), fmt.Sprintf("/trace/trace-%s.zip", testName))
+	}
+
 	t.Cleanup(func() {
 		if t.Failed() {
 			if err := context.Tracing().Stop(tracePath); err != nil {

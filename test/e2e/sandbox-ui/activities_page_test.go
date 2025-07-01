@@ -18,7 +18,14 @@ func TestActivitiesPage(t *testing.T) {
 	activitiesLink := page.GetByRole("link", playwright.PageGetByRoleOptions{
 		Name: "Activities",
 	})
+	sandboxui.IsVisible(t, activitiesLink)
 	err := activitiesLink.Click()
+	require.NoError(t, err)
+
+	// wait for page to load
+	err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateLoad,
+	})
 	require.NoError(t, err)
 
 	featuredHeading := page.GetByRole("heading", playwright.PageGetByRoleOptions{
@@ -32,6 +39,10 @@ func TestActivitiesPage(t *testing.T) {
 	cards := page.GetByRole("heading", playwright.PageGetByRoleOptions{
 		Level: playwright.Int(5),
 	})
+
+	//wait for the 6th card (index 5) to appear - if it's there, all 6 are loaded
+	err = cards.Nth(5).WaitFor()
+	require.NoError(t, err)
 
 	noOfCards, err := cards.Count()
 	require.NoError(t, err)

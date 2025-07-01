@@ -19,9 +19,7 @@ func TestHomepage(t *testing.T) {
 	homeLink := page.Locator("a").Filter(playwright.LocatorFilterOptions{
 		HasText: "Home",
 	})
-	isVisible, err := homeLink.IsVisible()
-	require.NoError(t, err)
-	assert.True(t, isVisible)
+	sandboxui.IsVisible(t, homeLink)
 
 	article := page.GetByRole("article")
 
@@ -54,7 +52,7 @@ func TestSignup(t *testing.T) {
 	loadingIcon := page.Locator("svg.v5-MuiCircularProgress-svg").First()
 
 	card := page.GetByText("OpenShift Comprehensive cloud")
-	isVisible(t, card)
+	sandboxui.IsVisible(t, card)
 
 	// check cards
 	cardsToCheck := []string{
@@ -65,7 +63,7 @@ func TestSignup(t *testing.T) {
 	}
 	for _, text := range cardsToCheck {
 		elem := page.GetByText(text)
-		isVisible(t, elem)
+		sandboxui.IsVisible(t, elem)
 	}
 
 	// check heading
@@ -83,6 +81,7 @@ func TestSignup(t *testing.T) {
 	tryItButton := card.Locator("button", playwright.LocatorLocatorOptions{
 		HasText: "Try it",
 	})
+	sandboxui.IsVisible(t, tryItButton)
 	err = tryItButton.Click()
 	require.NoError(t, err)
 
@@ -90,12 +89,19 @@ func TestSignup(t *testing.T) {
 	err = loadingIcon.WaitFor(playwright.LocatorWaitForOptions{State: playwright.WaitForSelectorStateHidden})
 	require.NoError(t, err)
 
-	// verify texts in article header after click
-	updatedText, err := article.TextContent()
+	// wait for network to be idle (ensures all updates are complete)
+	err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateNetworkidle,
+	})
 	require.NoError(t, err)
 
-	assert.Contains(t, updatedText, "Welcome")
-	assert.Contains(t, updatedText, "Your free trial expires in 30 days")
+	welcomeText := article.GetByText("Welcome")
+	err = welcomeText.WaitFor()
+	require.NoError(t, err)
+
+	trialText := article.GetByText("Your free trial expires in 30 days")
+	err = trialText.WaitFor()
+	require.NoError(t, err)
 }
 
 // TestDevSandbox tests the access to Openshift after the user is signed up
@@ -116,7 +122,7 @@ func TestDevSandbox(t *testing.T) {
 	require.NoError(t, err)
 
 	card := page.GetByText("OpenShift Comprehensive cloud")
-	isVisible(t, card)
+	sandboxui.IsVisible(t, card)
 
 	tryItBtn := card.Locator("button", playwright.LocatorLocatorOptions{
 		HasText: "Try it",
@@ -127,7 +133,7 @@ func TestDevSandbox(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	isVisible(t, tryItBtn)
+	sandboxui.IsVisible(t, tryItBtn)
 
 	// open the article in a new popup and wait for it to fully load
 	devSandboxPage, err := sandboxui.ClickAndWaitForPopup(page, tryItBtn)
@@ -150,10 +156,4 @@ func TestDevSandbox(t *testing.T) {
 	require.Contains(t, listText, "DevSandbox")
 
 	require.NoError(t, devSandboxPage.Close())
-}
-
-func isVisible(t *testing.T, elem playwright.Locator) {
-	visible, err := elem.IsVisible()
-	require.NoError(t, err)
-	assert.True(t, visible)
 }

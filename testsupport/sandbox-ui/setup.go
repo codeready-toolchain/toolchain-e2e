@@ -106,4 +106,16 @@ func handleCookiesConsent(t *testing.T, page playwright.Page) {
 
 	err = agreeButton.Click()
 	require.NoError(t, err)
+
+	// wait for iframe to disappear (indicates cookie acceptance complete)
+	err = iframe.WaitFor(playwright.LocatorWaitForOptions{
+		State: playwright.WaitForSelectorStateDetached,
+	})
+	require.NoError(t, err)
+
+	// wait for page to stabilize
+	err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{
+		State: playwright.LoadStateLoad,
+	})
+	require.NoError(t, err)
 }

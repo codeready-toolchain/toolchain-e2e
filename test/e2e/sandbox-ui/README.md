@@ -34,7 +34,7 @@ Please note that OCP cluster does not have a valid CA, so when accessing the Dev
 ### Running E2E Tests in Container
 Please, do not forget that you need to have the toolchain resources deployed before running:
 
-`make test-sandbox-ui-in-container HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+`make test-sandbox-ui-in-container HOST_NS=toolchain-host-01110459 SSO_USERNAME=sandboxtest-1 SSO_PASSWORD=sandboxtest-1`
 
 ### Clean Developer Sandbox UI
 `make clean-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME>`

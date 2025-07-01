@@ -17,6 +17,8 @@ func TestHeader(t *testing.T) {
 	rhdhLink := page.GetByRole("link", playwright.PageGetByRoleOptions{
 		Name: "Red Hat Developer Hub , Opens",
 	})
+	sandboxui.IsVisible(t, rhdhLink)
+
 	rhdhPage, err := sandboxui.ClickAndWaitForPopup(page, rhdhLink)
 	require.NoError(t, err)
 
