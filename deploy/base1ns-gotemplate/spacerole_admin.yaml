@@ -3,6 +3,7 @@ kind: TierTemplate
 metadata:
   name: ttr-spacerole-admin-go-template
 spec:
+  revision: 8b0d542-8b0d542
   template:
     apiVersion: template.openshift.io/v1
     kind: Template
@@ -55,7 +56,7 @@ spec:
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
-      name: '{{.USERNAME}}'-rbac-edit
+      name: ${{.USERNAME}}-rbac-edit
       namespace: '{{.NAMESPACE}}'
     roleRef:
       apiGroup: rbac.authorization.k8s.io
@@ -67,7 +68,7 @@ spec:
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
-      name: '{{.USERNAME}}'-edit
+      name: ${{.USERNAME}}-edit
       namespace: '{{.NAMESPACE}}'
     roleRef:
       apiGroup: rbac.authorization.k8s.io

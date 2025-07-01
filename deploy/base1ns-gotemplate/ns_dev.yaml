@@ -3,6 +3,7 @@ kind: TierTemplate
 metadata:
   name: ttr-ns-dev-go-template
 spec:
+  revision: 8b0d542-8b0d542
   template:
     apiVersion: template.openshift.io/v1
     kind: Template
@@ -20,7 +21,7 @@ spec:
           name: ${SPACE_NAME}-dev
           opendatahub.io/dashboard: "true"
         name: ${SPACE_NAME}-dev
-     parameters:
+    parameters:
     - name: SPACE_NAME
       required: true
   templateObjects:
@@ -28,19 +29,19 @@ spec:
     kind: Namespace
     metadata:
       annotations:
-        openshift.io/description: '{{.SPACE_NAME}}'-dev
-        openshift.io/display-name: '{{.SPACE_NAME}}'-dev
+        openshift.io/description: ${{.SPACE_NAME}}-dev
+        openshift.io/display-name: ${{.SPACE_NAME}}-dev
         openshift.io/requester: '{{.SPACE_NAME}}'
       labels:
         modelmesh-enabled: "true"
-        name: '{{.SPACE_NAME}}'-dev
+        name: ${{.SPACE_NAME}}-dev
         opendatahub.io/dashboard: "true"
-      name: '{{.SPACE_NAME}}'-dev
+      name: ${{.SPACE_NAME}}-dev
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
       name: exec-pods
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     rules:
       - apiGroups:
           - ""
@@ -57,7 +58,7 @@ spec:
     kind: RoleBinding
     metadata:
       name: crtadmin-view
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     roleRef:
       apiGroup: rbac.authorization.k8s.io
       kind: ClusterRole
@@ -70,7 +71,7 @@ spec:
     kind: RoleBinding
     metadata:
       name: crtadmin-pods
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     roleRef:
       apiGroup: rbac.authorization.k8s.io
       kind: Role
@@ -83,7 +84,7 @@ spec:
     kind: ResourceQuota
     metadata:
       name: compute-deploy
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       hard:
         limits.cpu: '{{.CPU_LIMIT}}'
@@ -96,7 +97,7 @@ spec:
     kind: ResourceQuota
     metadata:
       name: compute-build
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       hard:
         limits.cpu: '{{.CPU_LIMIT}}'
@@ -109,7 +110,7 @@ spec:
     kind: ResourceQuota
     metadata:
       name: storage
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       hard:
         count/persistentvolumeclaims: '{{.PERSISTENT_VOLUME_CLAIM}}'
@@ -120,7 +121,7 @@ spec:
     kind: LimitRange
     metadata:
       name: resource-limits
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       limits:
         - default:
@@ -134,7 +135,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-same-namespace
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -144,7 +145,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-openshift-ingress
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -158,7 +159,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-openshift-monitoring
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -172,7 +173,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-codeready-workspaces-operator
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -186,7 +187,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-olm-namespaces
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -200,7 +201,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-console-namespaces
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -214,7 +215,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-openshift-virtualization-namespaces
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -232,7 +233,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-redhat-ods-app-to-mariadb
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -254,7 +255,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-redhat-ods-app-to-mm
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
@@ -270,7 +271,7 @@ spec:
     kind: NetworkPolicy
     metadata:
       name: allow-from-dev-sandbox-managed-ns
-      namespace: '{{.SPACE_NAME}}'-dev
+      namespace: ${{.SPACE_NAME}}-dev
     spec:
       ingress:
         - from:
