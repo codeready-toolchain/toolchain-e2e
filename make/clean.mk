@@ -16,6 +16,9 @@ clean-users:
 	$(Q)-oc delete spaces --all --all-namespaces
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
 
+clean-nstemplatetiers:
+	$(Q)-oc delete nstemplatetier --all --all-namespaces
+
 .PHONY: clean-cluster-wide-config
 ## Delete all cluster-wide configuration resources like PriorityClass, MutatingWebhookConfiguration, and ClusterRoleBinding for e2e SA
 clean-cluster-wide-config:
@@ -43,7 +46,7 @@ clean-toolchain-dev-sso-resources:
 ##    * all user-related resources
 ##    * operator namespaces created during both the dev and e2e test setup (for both operators host and member)
 ##    * cluster-wide config
-clean-e2e-resources: clean-users clean-toolchain-namespaces-in-e2e clean-cluster-wide-config
+clean-e2e-resources: clean-users clean-nstemplatetiers clean-toolchain-namespaces-in-e2e clean-cluster-wide-config
 
 .PHONY: clean-toolchain-namespaces-in-dev
 ## Delete dev namespaces
