@@ -3,7 +3,6 @@ package verify
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/assert"
@@ -274,29 +274,24 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 }
 
 func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitilities) {
-	testList := func(t *testing.T, a *wait.Awaitility, list client.ObjectList, originalFieldManager, expectedFieldManager string) {
+	testList := func(t *testing.T, obj client.Object) {
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.NoError(t, a.Client.List(context.TODO(), list, client.InNamespace("default")))
+			a := awaitilities.Host().Awaitility
+			list := &unstructured.UnstructuredList{}
+			gvks, _, err := a.Client.Scheme().ObjectKinds(obj)
+			require.NoError(t, err)
+			require.Len(t, gvks, 1)
+			list.SetGroupVersionKind(gvks[0])
+			assert.NoError(t, a.Client.List(context.TODO(), list, client.InNamespace(a.Namespace)))
 
-			// I have yet to find a generic way of iterating over the list of
-			// any client.ObjectList without resorting to manual REST requests to the API.
-			// Let's not do it here and just hack our way using reflection.
-			listPtr := reflect.ValueOf(list)
-			listVal := listPtr.Elem()
-			itemsVal := listVal.FieldByName("Items")
-			itemsLen := itemsVal.Len()
-			for i := range itemsLen {
-				itemVal := itemsVal.Index(i)
-				itemPtr := itemVal.Addr()
-				item := itemPtr.Interface().(client.Object)
-				require.NotNil(t, item)
+			for _, o := range list.Items {
 				var applyEntry *metav1.ManagedFieldsEntry
 				var updateEntry *metav1.ManagedFieldsEntry
-				for _, mf := range item.GetManagedFields() {
-					if mf.Manager == expectedFieldManager {
+				for _, mf := range o.GetManagedFields() {
+					if mf.Manager == "kubesaw-host-operator" {
 						applyEntry = &mf
 					}
-					if mf.Manager == originalFieldManager {
+					if mf.Manager == "host-operator" {
 						updateEntry = &mf
 					}
 				}
@@ -309,17 +304,11 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 	}
 
 	t.Run("verify bundled UserTiers deployed using SSA", func(t *testing.T) {
-		testList(t, awaitilities.Host().Awaitility,
-			&toolchainv1alpha1.UserTierList{},
-			"host-operator",
-			"kubesaw-host-operator")
+		testList(t, &toolchainv1alpha1.UserTier{})
 	})
 
 	t.Run("verify bundled NSTemplateTiers deployed using SSA", func(t *testing.T) {
-		testList(t, awaitilities.Host().Awaitility,
-			&toolchainv1alpha1.NSTemplateTierList{},
-			"host-operator",
-			"kubesaw-host-operator")
+		testList(t, &toolchainv1alpha1.NSTemplateTier{})
 	})
 }
 

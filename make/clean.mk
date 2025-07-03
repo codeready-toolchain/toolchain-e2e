@@ -17,7 +17,7 @@ clean-users:
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
 
 clean-nstemplatetiers:
-	$(Q)-oc delete nstemplatetier --all --all-namespaces
+	$(Q)-oc wait --for=delete nstemplatetier --all --all-namespaces
 
 .PHONY: clean-cluster-wide-config
 ## Delete all cluster-wide configuration resources like PriorityClass, MutatingWebhookConfiguration, and ClusterRoleBinding for e2e SA
