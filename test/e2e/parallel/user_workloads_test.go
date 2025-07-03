@@ -31,15 +31,17 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 
-	// start the AAP workloads at first, because the idler timeout is longer for this case
-	aapIdler, _ := prepareIdlerUser(t, await, "test-aap-idler")
+	// create a special idler for the workloads whose pods won't be removed - their operators are not running in the cluster
+	podsNotDeletedIdler, _ := prepareIdlerUser(t, await, "pods-not-deleted-idler")
 	// Create an Ansible Automation Platform resource
-	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", aapIdler.Name, wait.WithSandboxPriorityClass())
-	// Set a short timeout for one of the idler to trigger pod idling. It has to stay long enough, so there is
-	// a significant difference between the AAP and the standard timeout (for AAP workloads the half of the standard timeout is used)
-	aapIdler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
-		Update(aapIdler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
-			i.Spec.TimeoutSeconds = 60
+	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", podsNotDeletedIdler.Name, wait.WithSandboxPriorityClass())
+	// Create a Kubeflow Notebook resource
+	prepareNotebookWorkloads(t, await.Member1(), "test-idler-notebook", podsNotDeletedIdler.Name, wait.WithSandboxPriorityClass())
+
+	// Set a short timeout for one of the idlers to trigger pod idling
+	podsNotDeletedIdler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+		Update(podsNotDeletedIdler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
+			i.Spec.TimeoutSeconds = 5
 		})
 	require.NoError(t, err)
 
@@ -55,7 +57,6 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	externalNsPodsNoise := prepareWorkloads(t, await.Member1(), "workloads-noise", wait.WithOriginalPriorityClass())
 
 	// Set a short timeout for one of the idler to trigger pod idling
-	// The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
 	idler, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
 		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
 			i.Spec.TimeoutSeconds = 5
@@ -106,14 +107,20 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// So we just need to verify that aap.Spec.Idle_aap is set to "true" by the idler.
 	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
 	require.NoError(t, err)
-	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", aapIdler.Name, clnt.Resource(aapRes), true)
+	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", podsNotDeletedIdler.Name, clnt.Resource(aapRes), true)
+	require.NoError(t, err)
+
+	// Wait for the Notebook resource to be idled.
+	// The pods which owned by this Notebook are still running because there is no Notebook controller to shut them down.
+	// So we just need to verify that notebook has the "kubeflow-resource-stopped" annotation set by the idler.
+	_, err = memberAwait.WaitForNotebook(t, "test-idler-notebook", podsNotDeletedIdler.Name, clnt.Resource(notebookRes), true)
 	require.NoError(t, err)
 }
 
 func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*toolchainv1alpha1.Idler, *toolchainv1alpha1.Idler) {
 	memberAwait := await.Member1()
 
-	NewSignupRequest(await).
+	result := NewSignupRequest(await).
 		Username(name).
 		Email(name + "@redhat.com").
 		ManuallyApprove().
@@ -123,25 +130,32 @@ func prepareIdlerUser(t *testing.T, await wait.Awaitilities, name string) (*tool
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
-	idler, err := memberAwait.WaitForIdler(t, name+"-dev", wait.IdlerConditions(wait.Running()))
+	idler, err := memberAwait.WaitForIdler(t, result.MUR.Name+"-dev", wait.IdlerConditions(wait.Running()))
 	require.NoError(t, err)
 
 	// Noise
-	idlerNoise, err := memberAwait.WaitForIdler(t, name+"-stage", wait.IdlerConditions(wait.Running()))
+	idlerNoise, err := memberAwait.WaitForIdler(t, result.MUR.Name+"-stage", wait.IdlerConditions(wait.Running()))
 	require.NoError(t, err)
 	return idler, idlerNoise
 }
 
 // prepareAAPWorkloads prepares an Ansible Automation Platform instance with one deployment owned by it and waits for the pods to run
-func prepareAAPWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
+func prepareAAPWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) {
 	aapDeployment := createAAP(t, memberAwait, name, namespace)
 	n := int(*aapDeployment.Spec.Replicas) // total number of created pods
 
-	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
+	_, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
 		wait.WithPodLabel("app", name))...)
 	require.NoError(t, err)
+}
 
-	return pods
+// prepareNotebookWorkloads prepares a Kubeflow Notebook instance with one StatefulSet owned by it and waits for the pods to run
+func prepareNotebookWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) {
+	createNotebook(t, memberAwait, name, namespace)
+
+	_, err := memberAwait.WaitForPods(t, namespace, 1, append(additionalPodCriteria, wait.PodRunning(),
+		wait.WithPodLabel("app", name))...)
+	require.NoError(t, err)
 }
 
 func prepareWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
@@ -199,6 +213,8 @@ func createDeployment(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 
 var aapRes = schema.GroupVersionResource{Group: "aap.ansible.com", Version: "v1alpha1", Resource: "ansibleautomationplatforms"}
 
+var notebookRes = schema.GroupVersionResource{Group: "kubeflow.org", Version: "v1", Resource: "notebooks"}
+
 // createAAP creates an instance of ansibleautomationplatforms.aap.ansible.com with one deployment owned by this instance
 // returns the underlying deployment
 func createAAP(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *appsv1.Deployment {
@@ -229,6 +245,39 @@ func createAAP(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace
 	require.NoError(t, err)
 
 	return deployment
+}
+
+// createNotebook creates an instance of notebooks.kubeflow.org with one StatefulSet owned by this instance
+// returns the underlying StatefulSet
+func createNotebook(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *appsv1.StatefulSet {
+	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+
+	// Create a Notebook instance
+	notebook := notebookResource(name)
+	createdNotebook, err := clnt.Resource(notebookRes).Namespace(namespace).Create(context.TODO(), notebook, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Create a StatefulSet with one replica and the Notebook instance as the owner
+	replicas := int32(1)
+	statefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName: name,
+			Selector:    &metav1.LabelSelector{MatchLabels: selectorLabels(name)},
+			Replicas:    &replicas,
+			Template:    podTemplateSpec(name),
+		},
+	}
+	err = controllerutil.SetOwnerReference(createdNotebook, statefulSet, scheme.Scheme)
+	require.NoError(t, err)
+	err = memberAwait.Create(t, statefulSet)
+	require.NoError(t, err)
+
+	return statefulSet
 }
 
 func createReplicaSet(t *testing.T, memberAwait *wait.MemberAwaitility, namespace string) *appsv1.ReplicaSet {
@@ -386,6 +435,18 @@ func aapResource(name string) *unstructured.Unstructured {
 			},
 			"spec": map[string]interface{}{
 				"idle_aap": false,
+			},
+		},
+	}
+}
+
+func notebookResource(name string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "kubeflow.org/v1",
+			"kind":       "Notebook",
+			"metadata": map[string]interface{}{
+				"name": name,
 			},
 		},
 	}
