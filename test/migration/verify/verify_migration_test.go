@@ -3,6 +3,7 @@ package verify
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -95,6 +97,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		func() { verifyDeactivatedSignup(t, awaitilities, deactivatedSignup) },
 		func() { verifyBannedSignup(t, awaitilities, bannedSignup) },
 		func() { verifyAdditionalDeploymentsCreatedUsingSSA(t, &awaitilities) },
+		func() { verifyNSTemplateTiers(t, &awaitilities) },
 	}
 
 	// when & then - run all functions in parallel
@@ -268,6 +271,42 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 	t.Run("verify autoscaler deployed using SSA in member2", func(t *testing.T) {
 		testDeployment(t, awaitilities.Member2().Awaitility, "autoscaling-buffer", "member-operator", "kubesaw-member-operator")
 	})
+}
+
+func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
+	// Let's make sure we have the correct idea about the NSTemplateTIers
+	// present in the cluster.
+	//
+	// We need to make sure that the cluster contains exactly the tiers we expect
+	// (wait.E2eNSTemplateTiers) and also that all the bundled NSTemplateTiers
+	// are annotated as such in the cluster (wait.BundledNSTemplateTiers).
+	//
+	// This makes sure that the setup in the cluster is exactly how the e2e tests
+	// expect it to be.
+
+	list := &toolchainv1alpha1.NSTemplateTierList{}
+	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
+
+	assert.Len(t, list.Items, len(wait.E2eNSTemplateTiers))
+
+	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiers))
+	unmatchedTiers := make([]string, len(wait.E2eNSTemplateTiers))
+	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiers)
+	copy(unmatchedTiers, wait.E2eNSTemplateTiers)
+
+	for _, tier := range list.Items {
+		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
+			if i := slices.Index(unmatchedBundledTiers, tier.Name); i >= 0 {
+				unmatchedBundledTiers = slices.Delete(unmatchedBundledTiers, i, i+1)
+			}
+		}
+		if i := slices.Index(unmatchedTiers, tier.Name); i >= 0 {
+			unmatchedTiers = slices.Delete(unmatchedTiers, i, i+1)
+		}
+	}
+
+	assert.Empty(t, unmatchedBundledTiers)
+	assert.Empty(t, unmatchedTiers)
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {
