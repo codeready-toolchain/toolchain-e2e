@@ -143,6 +143,31 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 }
 
+func TestGoTemplate(t *testing.T) {
+	t.Parallel()
+	count := 2*MaxPoolSize + 1
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	memberAwait := awaitilities.Member1()
+
+	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
+	memberAwait = memberAwait.WithRetryOptions(wait.TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
+
+	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
+	baseGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
+	require.NoError(t, err)
+	goBaseTestTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "gobasetesttier", baseTier)
+	goUsers := setupAccounts(t, awaitilities, goBaseTestTier, "gotemplateuser%02d", memberAwait, count)
+	goSpaces := setupSpaces(t, awaitilities, goBaseTestTier, "gospacetemplateuser%02d", memberAwait, count)
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, goBaseTestTier)
+	t.Log("updating go tiers")
+	updatedGoBaseTestTier := tiers.UpdateCustomNSTemplateTier(t, hostAwait, goBaseTestTier, tiers.WithNamespaceResources(t, baseGoTemplateTier), tiers.WithSpaceRoles(t, baseGoTemplateTier))
+
+	t.Log("verifying go users after go tier updates")
+	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, goSpaces, updatedGoBaseTestTier)
+}
+
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
