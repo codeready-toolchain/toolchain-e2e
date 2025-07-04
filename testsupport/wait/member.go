@@ -1539,6 +1539,26 @@ func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapR
 	return aap, err
 }
 
+// WaitForNotebook waits for the Notebook resource to get into the expected idled state (annotation kubeflow-resource-stopped)
+func (a *MemberAwaitility) WaitForNotebook(t *testing.T, name, namespace string, notebookRes dynamic.NamespaceableResourceInterface, expectedIdled bool) (*unstructured.Unstructured, error) {
+	t.Logf("waiting for Notebook '%s' in namespace '%s'", name, a.Namespace)
+	var notebook *unstructured.Unstructured
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
+		var err error
+		notebook, err = notebookRes.Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		stoppedAnnotation, hasStoppedAnnotation := notebook.GetAnnotations()["kubeflow-resource-stopped"]
+		isIdled := hasStoppedAnnotation && stoppedAnnotation != ""
+		return expectedIdled == isIdled, nil
+	})
+	return notebook, err
+}
+
 // WaitForPods waits until "n" number of pods exist in the given namespace
 func (a *MemberAwaitility) WaitForPods(t *testing.T, namespace string, n int, criteria ...PodWaitCriterion) ([]corev1.Pod, error) {
 	t.Logf("waiting for Pods in namespace '%s' with matching criteria", namespace)
