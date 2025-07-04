@@ -31,7 +31,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 
-	// create a special idler for the workloads whose pods won't be removed - their operators are not running in the cluster
+	// create a special idler for the workloads whose pods won't be removed in this e2e environment because  the corresponding operators (like AAP, RHOAI) are not running in the test cluster. The idler is expected to mark the corresponding pod's owners (aap, notebooks, etc. CRs) as to-be-idled but there is no operators to act upon it and actually delete the pods. 
 	podsNotDeletedIdler, _ := prepareIdlerUser(t, await, "pods-not-deleted-idler")
 	// Create an Ansible Automation Platform resource
 	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", podsNotDeletedIdler.Name, wait.WithSandboxPriorityClass())
