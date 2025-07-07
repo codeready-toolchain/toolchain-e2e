@@ -1541,7 +1541,7 @@ func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapR
 
 // WaitForNotebook waits for the Notebook resource to get into the expected idled state (annotation kubeflow-resource-stopped)
 func (a *MemberAwaitility) WaitForNotebook(t *testing.T, name, namespace string, notebookRes dynamic.NamespaceableResourceInterface, expectedIdled bool) (*unstructured.Unstructured, error) {
-	t.Logf("waiting for Notebook '%s' in namespace '%s'", name, a.Namespace)
+	t.Logf("waiting for Notebook '%s' in namespace '%s'", name, namespace)
 	var notebook *unstructured.Unstructured
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
 		var err error
