@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -145,6 +146,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 
 func TestGoTemplate(t *testing.T) {
 	t.Parallel()
+
 	count := 2*MaxPoolSize + 1
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -153,19 +155,27 @@ func TestGoTemplate(t *testing.T) {
 	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2)))       // 3 batches of `count` accounts, with 2s of interval between each update
 	memberAwait = memberAwait.WithRetryOptions(wait.TimeoutOption(memberAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
-	baseTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	goTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
 	require.NoError(t, err)
-	baseGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
-	require.NoError(t, err)
-	goBaseTestTier := tiers.CreateCustomNSTemplateTier(t, hostAwait, "gobasetesttier", baseTier)
-	goUsers := setupAccounts(t, awaitilities, goBaseTestTier, "gotemplateuser%02d", memberAwait, count)
-	goSpaces := setupSpaces(t, awaitilities, goBaseTestTier, "gospacetemplateuser%02d", memberAwait, count)
-	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, goBaseTestTier)
-	t.Log("updating go tiers")
-	updatedGoBaseTestTier := tiers.UpdateCustomNSTemplateTier(t, hostAwait, goBaseTestTier, tiers.WithNamespaceResources(t, baseGoTemplateTier), tiers.WithSpaceRoles(t, baseGoTemplateTier))
 
-	t.Log("verifying go users after go tier updates")
-	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, goSpaces, updatedGoBaseTestTier)
+	customGoBaseTestTier := &tiers.CustomNSTemplateTier{
+		NSTemplateTier: &toolchainv1alpha1.NSTemplateTier{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: goTemplateTier.Namespace,
+				Name:      goTemplateTier.Name,
+				Labels:    map[string]string{"producer": "toolchain-e2e"},
+			},
+			Spec: goTemplateTier.Spec,
+		},
+		ClusterResourcesTier:   goTemplateTier,
+		NamespaceResourcesTier: goTemplateTier,
+		SpaceRolesTier:         goTemplateTier,
+	}
+
+	goUsers := setupGoAccounts(t, awaitilities, customGoBaseTestTier, "gotemplateuser%02d", memberAwait, count)
+
+	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, goUsers, customGoBaseTestTier)
+
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
@@ -240,6 +250,34 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 	// let's promote to users the new tier
 	for i := range userSignups {
 		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i])
+		username := fmt.Sprintf(nameFmt, i)
+		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
+	}
+	return userSignups
+}
+
+func setupGoAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *wait.MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
+	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
+	hostAwait := awaitilities.Host()
+
+	// let's create a few users (more than `maxPoolSize`)
+	// and wait until they are all provisioned by calling EnsureMUR()
+	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
+	for i := 0; i < count; i++ {
+		user := NewSignupRequest(awaitilities).
+			Username(fmt.Sprintf(nameFmt, i)).
+			ManuallyApprove().
+			WaitForMUR().
+			UserID(uuid.Must(uuid.NewV4()).String()).
+			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+			TargetCluster(targetCluster).
+			Execute(t)
+		userSignups[i] = user.UserSignup
+	}
+
+	// let's promote to users the new tier
+	for i := range userSignups {
+		VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, userSignups[i], "deactivate30", "ttr-go-template")
 		username := fmt.Sprintf(nameFmt, i)
 		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
 	}
