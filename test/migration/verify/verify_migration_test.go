@@ -274,7 +274,8 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 }
 
 func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitilities) {
-	testList := func(t *testing.T, obj client.Object) {
+	testList := func(t *testing.T, obj client.Object, isEligible func(client.Object) bool) {
+		t.Helper()
 		assert.EventuallyWithT(t, func(t *assert.CollectT) {
 			a := awaitilities.Host().Awaitility
 			list := &unstructured.UnstructuredList{}
@@ -285,6 +286,9 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 			assert.NoError(t, a.Client.List(context.TODO(), list, client.InNamespace(a.Namespace)))
 
 			for _, o := range list.Items {
+				if !isEligible(&o) {
+					continue
+				}
 				var applyEntry *metav1.ManagedFieldsEntry
 				var updateEntry *metav1.ManagedFieldsEntry
 				for _, mf := range o.GetManagedFields() {
@@ -296,7 +300,7 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 					}
 				}
 
-				require.NotNil(t, applyEntry)
+				require.NotNil(t, applyEntry, "NSTemplateTier '%s' doesn't have the expected Apply operation in the managed fields", o.GetName())
 				assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
 				assert.Nil(t, updateEntry)
 			}
@@ -304,11 +308,15 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 	}
 
 	t.Run("verify bundled UserTiers deployed using SSA", func(t *testing.T) {
-		testList(t, &toolchainv1alpha1.UserTier{})
+		testList(t, &toolchainv1alpha1.UserTier{}, func(_ client.Object) bool {
+			return true
+		})
 	})
 
 	t.Run("verify bundled NSTemplateTiers deployed using SSA", func(t *testing.T) {
-		testList(t, &toolchainv1alpha1.NSTemplateTier{})
+		testList(t, &toolchainv1alpha1.NSTemplateTier{}, func(o client.Object) bool {
+			return o.GetAnnotations()[toolchainv1alpha1.BundledAnnotationKey] == "host-operator"
+		})
 	})
 }
 
