@@ -283,7 +283,7 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 			require.NoError(t, err)
 			require.Len(t, gvks, 1)
 			list.SetGroupVersionKind(gvks[0])
-			assert.NoError(t, a.Client.List(context.TODO(), list, client.InNamespace(a.Namespace)))
+			require.NoError(t, a.Client.List(context.TODO(), list, client.InNamespace(a.Namespace)))
 
 			for _, o := range list.Items {
 				if !isEligible(&o) {
@@ -302,7 +302,7 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 
 				require.NotNil(t, applyEntry, "NSTemplateTier '%s' doesn't have the expected Apply operation in the managed fields", o.GetName())
 				assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
-				assert.Nil(t, updateEntry)
+				assert.Nil(t, updateEntry, "NSTemplateTier '%s' has an unexpected Update operation in the managed fields", o.GetName())
 			}
 		}, 1*time.Minute, 1*time.Second)
 	}
