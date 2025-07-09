@@ -170,7 +170,9 @@ func (c *cleanTask) cleanObject() {
 			return false, err
 		}
 		// if the object was NSTemplateTier and is still not deleted, prod it to retry the finalization attempt
-		return false, c.prodTierDeletion(objToClean)
+		c.prodTierDeletion(objToClean)
+
+		return false, nil
 	})
 	if err != nil {
 		if isUserSignup {
@@ -307,9 +309,9 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 
 // prodTierDeletion updates the obj (assumed freshly loaded from the cluster) with a new "random" annotation value to
 // force its reconciliation if it is an NSTemplateTier. It does nothing if the object is not an NSTemplateTier.
-func (c *cleanTask) prodTierDeletion(obj client.Object) error {
+func (c *cleanTask) prodTierDeletion(obj client.Object) {
 	if _, ok := obj.(*toolchainv1alpha1.NSTemplateTier); !ok {
-		return nil
+		return
 	}
 
 	if obj.GetAnnotations() == nil {
@@ -318,5 +320,10 @@ func (c *cleanTask) prodTierDeletion(obj client.Object) error {
 
 	obj.GetAnnotations()["cleanTaskReconciliationEnforcement"] = uuid.NewString()
 
-	return c.client.Update(context.TODO(), obj)
+	if err := c.client.Update(context.TODO(), obj); err != nil {
+		// let's not propagate this kind of error - this is just trying to speed up
+		// the finalization of the NSTemplateTiers. A failure to update the object
+		// will just cause a longer pause before the next finalization attempt.
+		c.t.Logf("failed to force reconciliation of the NSTemplateTier %s: %s", obj.GetName(), err.Error())
+	}
 }
