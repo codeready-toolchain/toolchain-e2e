@@ -290,19 +290,17 @@ func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitiliti
 					continue
 				}
 				var applyEntry *metav1.ManagedFieldsEntry
-				var updateEntry *metav1.ManagedFieldsEntry
 				for _, mf := range o.GetManagedFields() {
 					if mf.Manager == "kubesaw-host-operator" {
 						applyEntry = &mf
 					}
-					if mf.Manager == "host-operator" {
-						updateEntry = &mf
-					}
 				}
 
+				// note that we only check for the presence of the Apply operation here. Unlike in the case of
+				// the deployments tested above, the NSTemplateTiers are updated by the controller, so we're going
+				// to see updates made by it.
 				require.NotNil(t, applyEntry, "NSTemplateTier '%s' doesn't have the expected Apply operation in the managed fields", o.GetName())
 				assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
-				assert.Nil(t, updateEntry, "NSTemplateTier '%s' has an unexpected Update operation in the managed fields", o.GetName())
 			}
 		}, 1*time.Minute, 1*time.Second)
 	}
