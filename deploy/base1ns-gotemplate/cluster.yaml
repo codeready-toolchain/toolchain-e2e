@@ -143,8 +143,8 @@ spec:
   - apiVersion: toolchain.dev.openshift.com/v1alpha1
     kind: Idler
     metadata:
-      name: ${{.SPACE_NAME}}-dev
+      name: dev-{{.SPACE_NAME}}
     spec:
-      timeoutSeconds: '{{.IDLER_TIMEOUT_SECONDS}}'
+      timeoutSeconds: 43200
   tierName: ttr-go-template
   type: clusterresources
