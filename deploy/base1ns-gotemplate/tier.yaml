@@ -13,8 +13,6 @@ spec:
   parameters:
   - name: DEPLOYMENT_QUOTA
     value: "30"
-  - name: IDLER_TIMEOUT_SECONDS
-    value: "43200"
   - name: POD_COUNT
     value: "50"
   - name: VIRTUAL_MACHINES
