@@ -59,7 +59,12 @@ func TestNSTemplateTiers(t *testing.T) {
 	notCreatedByE2e := client.MatchingLabelsSelector{
 		Selector: labels.NewSelector().Add(*e2eProducer),
 	}
-	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
+	GoTemplate, err := labels.NewRequirement("go-template", selection.Equals, []string{"toolchain-e2e"})
+	require.NoError(t, err)
+	notGoTemplate := client.MatchingLabelsSelector{
+		Selector: labels.NewSelector().Add(*GoTemplate),
+	}
+	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e, notGoTemplate)
 	require.NoError(t, err)
 	assert.Len(t, allTiers.Items, len(tiersToCheck))
 
@@ -243,37 +248,6 @@ func setupAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.Cus
 		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i])
 		username := fmt.Sprintf(nameFmt, i)
 		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
-	}
-	return userSignups
-}
-
-func setupGoAccounts(t *testing.T, awaitilities wait.Awaitilities, tier *tiers.CustomNSTemplateTier, nameFmt string, targetCluster *wait.MemberAwaitility, count int) []*toolchainv1alpha1.UserSignup {
-	// first, let's create the a new NSTemplateTier (to avoid messing with other tiers)
-	hostAwait := awaitilities.Host()
-
-	// let's create a few users (more than `maxPoolSize`)
-	// and wait until they are all provisioned by calling EnsureMUR()
-	userSignups := make([]*toolchainv1alpha1.UserSignup, count)
-	for i := 0; i < count; i++ {
-		user := NewSignupRequest(awaitilities).
-			Username(fmt.Sprintf(nameFmt, i)).
-			ManuallyApprove().
-			WaitForMUR().
-			UserID(uuid.Must(uuid.NewV4()).String()).
-			RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
-			TargetCluster(targetCluster).
-			Execute(t)
-		userSignups[i] = user.UserSignup
-	}
-
-	// let's promote to users the new tier
-	for i := range userSignups {
-
-		VerifyResourcesProvisionedForSignup(t, awaitilities, userSignups[i])
-
-		username := fmt.Sprintf(nameFmt, i)
-		tiers.MoveSpaceToTier(t, hostAwait, username, tier.Name)
-		VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, userSignups[i], "deactivate30", "ttr-go-template")
 	}
 	return userSignups
 }

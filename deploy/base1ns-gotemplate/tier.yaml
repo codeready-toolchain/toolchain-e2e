@@ -2,6 +2,8 @@ apiVersion: toolchain.dev.openshift.com/v1alpha1
 kind: NSTemplateTier
 metadata:
   name: ttr-go-template
+  labels:
+    go-template: toolchain-e2e
 spec:
   clusterResources:
     templateRef: ttr-clusterresources-go-template
