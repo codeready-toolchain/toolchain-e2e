@@ -13,7 +13,7 @@ spec:
       kind: Role
       metadata:
         name: rbac-edit
-        namespace: ${NAMESPACE}
+        namespace: '{{.NAMESPACE}}'
       rules:
       - apiGroups:
         - authorization.openshift.io
@@ -56,7 +56,7 @@ spec:
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
-      name: ${{.USERNAME}}-rbac-edit
+      name: '{{.USERNAME}}-rbac-edit'
       namespace: '{{.NAMESPACE}}'
     roleRef:
       apiGroup: rbac.authorization.k8s.io
@@ -68,7 +68,7 @@ spec:
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
-      name: ${{.USERNAME}}-edit
+      name: '{{.USERNAME}}-edit'
       namespace: '{{.NAMESPACE}}'
     roleRef:
       apiGroup: rbac.authorization.k8s.io
