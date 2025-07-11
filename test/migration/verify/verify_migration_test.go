@@ -97,6 +97,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		func() { verifyDeactivatedSignup(t, awaitilities, deactivatedSignup) },
 		func() { verifyBannedSignup(t, awaitilities, bannedSignup) },
 		func() { verifyAdditionalDeploymentsCreatedUsingSSA(t, &awaitilities) },
+		func() { verifyNSTemplateTiers(t, &awaitilities) },
 		func() { verifyResourcesDeployedUsingSSA(t, &awaitilities) },
 	}
 
@@ -271,6 +272,37 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 	t.Run("verify autoscaler deployed using SSA in member2", func(t *testing.T) {
 		testDeployment(t, awaitilities.Member2().Awaitility, "autoscaling-buffer", "member-operator", "kubesaw-member-operator")
 	})
+}
+
+func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
+	// Let's make sure we have the correct idea about the NSTemplateTIers
+	// present in the cluster.
+	//
+	// We need to make sure that the cluster contains exactly the tiers we expect
+	// (wait.E2eNSTemplateTiers) and also that all the bundled NSTemplateTiers
+	// are annotated as such in the cluster (wait.BundledNSTemplateTiers).
+	//
+	// This makes sure that the setup in the cluster is exactly how the e2e tests
+	// expect it to be.
+
+	list := &toolchainv1alpha1.NSTemplateTierList{}
+	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
+
+	assert.Len(t, list.Items, len(wait.AllE2eNSTemplateTiers))
+
+	bundledInCluster := []string{}
+	customInCluster := []string{}
+
+	for _, tier := range list.Items {
+		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
+			bundledInCluster = append(bundledInCluster, tier.Name)
+		} else {
+			customInCluster = append(customInCluster, tier.Name)
+		}
+	}
+
+	assert.ElementsMatch(t, wait.BundledNSTemplateTiers, bundledInCluster)
+	assert.ElementsMatch(t, wait.CustomNSTemplateTiers, customInCluster)
 }
 
 func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitilities) {
