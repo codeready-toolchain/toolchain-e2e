@@ -11,6 +11,7 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/test"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -161,6 +162,9 @@ func (c *cleanTask) cleanObject() {
 			c.t.Logf("problem with getting the related %s '%s': %s", kind, objToClean.GetName(), err)
 			return false, err
 		}
+		// if the object was NSTemplateTier and is still not deleted, prod it to retry the finalization attempt
+		c.prodTierDeletion(objToClean)
+
 		return false, nil
 	})
 	if err != nil {
@@ -294,4 +298,25 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 	c.t.Log("waiting until all TTR CRs are completely deleted", "tierName", nsTemplateTier.GetName(), "number of present TTR CRs", len(ttrs.Items))
 	// ttrs are still there
 	return false, nil
+}
+
+// prodTierDeletion updates the obj (assumed freshly loaded from the cluster) with a new "random" annotation value to
+// force its reconciliation if it is an NSTemplateTier. It does nothing if the object is not an NSTemplateTier.
+func (c *cleanTask) prodTierDeletion(obj client.Object) {
+	if _, ok := obj.(*toolchainv1alpha1.NSTemplateTier); !ok {
+		return
+	}
+
+	if obj.GetAnnotations() == nil {
+		obj.SetAnnotations(map[string]string{})
+	}
+
+	obj.GetAnnotations()["cleanTaskReconciliationEnforcement"] = uuid.NewString()
+
+	if err := c.client.Update(context.TODO(), obj); err != nil {
+		// let's not propagate this kind of error - this is just trying to speed up
+		// the finalization of the NSTemplateTiers. A failure to update the object
+		// will just cause a longer pause before the next finalization attempt.
+		c.t.Logf("failed to force reconciliation of the NSTemplateTier %s: %s", obj.GetName(), err.Error())
+	}
 }
