@@ -18,8 +18,10 @@ import (
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -95,6 +97,7 @@ func runVerifyFunctions(t *testing.T, awaitilities wait.Awaitilities) {
 		func() { verifyDeactivatedSignup(t, awaitilities, deactivatedSignup) },
 		func() { verifyBannedSignup(t, awaitilities, bannedSignup) },
 		func() { verifyAdditionalDeploymentsCreatedUsingSSA(t, &awaitilities) },
+		func() { verifyResourcesDeployedUsingSSA(t, &awaitilities) },
 	}
 
 	// when & then - run all functions in parallel
@@ -267,6 +270,51 @@ func verifyAdditionalDeploymentsCreatedUsingSSA(t *testing.T, awaitilities *wait
 
 	t.Run("verify autoscaler deployed using SSA in member2", func(t *testing.T) {
 		testDeployment(t, awaitilities.Member2().Awaitility, "autoscaling-buffer", "member-operator", "kubesaw-member-operator")
+	})
+}
+
+func verifyResourcesDeployedUsingSSA(t *testing.T, awaitilities *wait.Awaitilities) {
+	testList := func(t *testing.T, obj client.Object, isEligible func(client.Object) bool) {
+		t.Helper()
+		assert.EventuallyWithT(t, func(t *assert.CollectT) {
+			a := awaitilities.Host().Awaitility
+			list := &unstructured.UnstructuredList{}
+			gvks, _, err := a.Client.Scheme().ObjectKinds(obj)
+			require.NoError(t, err)
+			require.Len(t, gvks, 1)
+			list.SetGroupVersionKind(gvks[0])
+			require.NoError(t, a.Client.List(context.TODO(), list, client.InNamespace(a.Namespace)))
+
+			for _, o := range list.Items {
+				if !isEligible(&o) {
+					continue
+				}
+				var applyEntry *metav1.ManagedFieldsEntry
+				for _, mf := range o.GetManagedFields() {
+					if mf.Manager == "kubesaw-host-operator" {
+						applyEntry = &mf
+					}
+				}
+
+				// note that we only check for the presence of the Apply operation here. Unlike in the case of
+				// the deployments tested above, the NSTemplateTiers are updated by the controller, so we're going
+				// to see updates made by it.
+				require.NotNil(t, applyEntry, "NSTemplateTier '%s' doesn't have the expected Apply operation in the managed fields", o.GetName())
+				assert.Equal(t, metav1.ManagedFieldsOperationApply, applyEntry.Operation)
+			}
+		}, 1*time.Minute, 1*time.Second)
+	}
+
+	t.Run("verify bundled UserTiers deployed using SSA", func(t *testing.T) {
+		testList(t, &toolchainv1alpha1.UserTier{}, func(_ client.Object) bool {
+			return true
+		})
+	})
+
+	t.Run("verify bundled NSTemplateTiers deployed using SSA", func(t *testing.T) {
+		testList(t, &toolchainv1alpha1.NSTemplateTier{}, func(o client.Object) bool {
+			return o.GetAnnotations()[toolchainv1alpha1.BundledAnnotationKey] == "host-operator"
+		})
 	})
 }
 

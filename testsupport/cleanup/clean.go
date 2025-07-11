@@ -45,17 +45,21 @@ type AwaitilityInt interface {
 
 // AddCleanTasks adds cleaning tasks for the given objects that will be automatically performed at the end of the test execution
 func AddCleanTasks(t *testing.T, cl client.Client, objects ...client.Object) {
-	cleaning.addCleanTasks(t, cl, objects...)
+	AddCleanTasksWithTimeout(t, cl, defaultTimeout, objects...)
 }
 
-func (c *cleanManager) addCleanTasks(t *testing.T, cl client.Client, objects ...client.Object) {
+func AddCleanTasksWithTimeout(t *testing.T, cl client.Client, timeout time.Duration, objects ...client.Object) {
+	cleaning.addCleanTasks(t, cl, timeout, objects...)
+}
+
+func (c *cleanManager) addCleanTasks(t *testing.T, cl client.Client, timeout time.Duration, objects ...client.Object) {
 	c.Lock()
 	defer c.Unlock()
 	for _, obj := range objects {
 		if len(c.cleanTasks[t]) == 0 {
 			t.Cleanup(c.clean(t))
 		}
-		c.cleanTasks[t] = append(c.cleanTasks[t], newCleanTask(t, cl, obj))
+		c.cleanTasks[t] = append(c.cleanTasks[t], newCleanTask(t, cl, obj, timeout))
 	}
 }
 
@@ -94,16 +98,19 @@ type cleanTask struct {
 	objToClean client.Object
 	client     client.Client
 	t          *testing.T
+	timeout    time.Duration
 }
 
 func (c *cleanTask) clean() {
 	c.Do(c.cleanObject)
 }
-func newCleanTask(t *testing.T, cl client.Client, obj client.Object) *cleanTask {
+
+func newCleanTask(t *testing.T, cl client.Client, obj client.Object, timeout time.Duration) *cleanTask {
 	return &cleanTask{
 		t:          t,
 		client:     cl,
 		objToClean: obj,
+		timeout:    timeout,
 	}
 }
 
@@ -141,7 +148,7 @@ func (c *cleanTask) cleanObject() {
 
 	// wait until deletion is done
 	c.t.Logf("waiting until %s: %s is completely deleted", kind, objToClean.GetName())
-	err = wait.PollUntilContextTimeout(context.TODO(), defaultRetryInterval, defaultTimeout, true, func(ctx context.Context) (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.TODO(), defaultRetryInterval, c.timeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := c.client.Get(context.TODO(), test.NamespacedName(objToClean.GetNamespace(), objToClean.GetName()), objToClean); err != nil {
 			if errors.IsNotFound(err) {
 				// if the object was UserSignup, then let's check that the MUR is deleted as well
