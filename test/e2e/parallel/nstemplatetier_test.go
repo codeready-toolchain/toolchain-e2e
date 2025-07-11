@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -59,7 +60,12 @@ func TestNSTemplateTiers(t *testing.T) {
 	notCreatedByE2e := client.MatchingLabelsSelector{
 		Selector: labels.NewSelector().Add(*e2eProducer),
 	}
-	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
+	GoTemplate, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
+	require.NoError(t, err)
+	notGoTemplate := client.MatchingLabelsSelector{
+		Selector: labels.NewSelector().Add(*GoTemplate),
+	}
+	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e, notGoTemplate)
 	require.NoError(t, err)
 	assert.Len(t, allTiers.Items, len(tiersToCheck))
 
@@ -141,6 +147,49 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cheesecakeUsers, cheesecakeTier)
 	verifyResourceUpdatesForUserSignups(t, hostAwait, memberAwait, cookieUsers, cookieTier)
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
+}
+
+func TestGoTemplate(t *testing.T) {
+	t.Parallel()
+
+	count := 2*MaxPoolSize + 1
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+
+	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
+
+	goTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
+	require.NoError(t, err)
+
+	goCustomeTier := &tiers.CustomNSTemplateTier{
+		NSTemplateTier: &toolchainv1alpha1.NSTemplateTier{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: goTemplateTier.Namespace,
+				Name:      goTemplateTier.Name,
+				Labels:    map[string]string{"producer": "toolchain-e2e"},
+			},
+			Spec: toolchainv1alpha1.NSTemplateTierSpec{
+				Namespaces:       goTemplateTier.Spec.Namespaces,
+				ClusterResources: goTemplateTier.Spec.ClusterResources,
+				SpaceRoles:       goTemplateTier.Spec.SpaceRoles,
+			},
+		},
+		ClusterResourcesTier:   goTemplateTier,
+		NamespaceResourcesTier: goTemplateTier,
+		SpaceRolesTier:         goTemplateTier,
+	}
+
+	user := NewSignupRequest(awaitilities).
+		Username("gouserttrtempplate").
+		ManuallyApprove().
+		TargetCluster(awaitilities.Member1()).
+		SpaceTier(goCustomeTier.Name).
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t)
+	testingtiers := user.UserSignup
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", goCustomeTier.Name)
+
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
