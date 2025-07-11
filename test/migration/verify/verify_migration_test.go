@@ -3,7 +3,6 @@ package verify
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -287,26 +286,21 @@ func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
 	list := &toolchainv1alpha1.NSTemplateTierList{}
 	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
-	assert.Len(t, list.Items, len(wait.E2eNSTemplateTiers))
+	assert.Len(t, list.Items, len(wait.AllE2eNSTemplateTiers))
 
-	unmatchedBundledTiers := make([]string, len(wait.BundledNSTemplateTiers))
-	unmatchedTiers := make([]string, len(wait.E2eNSTemplateTiers))
-	copy(unmatchedBundledTiers, wait.BundledNSTemplateTiers)
-	copy(unmatchedTiers, wait.E2eNSTemplateTiers)
+	bundledInCluster := []string{}
+	customInCluster := []string{}
 
 	for _, tier := range list.Items {
 		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
-			if i := slices.Index(unmatchedBundledTiers, tier.Name); i >= 0 {
-				unmatchedBundledTiers = slices.Delete(unmatchedBundledTiers, i, i+1)
-			}
-		}
-		if i := slices.Index(unmatchedTiers, tier.Name); i >= 0 {
-			unmatchedTiers = slices.Delete(unmatchedTiers, i, i+1)
+			bundledInCluster = append(bundledInCluster, tier.Name)
+		} else {
+			customInCluster = append(customInCluster, tier.Name)
 		}
 	}
 
-	assert.Empty(t, unmatchedBundledTiers)
-	assert.Empty(t, unmatchedTiers)
+	assert.ElementsMatch(t, wait.BundledNSTemplateTiers, bundledInCluster)
+	assert.ElementsMatch(t, wait.CustomNSTemplateTiers, customInCluster)
 }
 
 func checkMURMigratedAndGetSignup(t *testing.T, hostAwait *wait.HostAwaitility, murName string) *toolchainv1alpha1.UserSignup {

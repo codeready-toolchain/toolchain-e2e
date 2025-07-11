@@ -50,7 +50,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	space := user.Space
 
 	// all tiers to check - keep the base as the last one, it will verify downgrade back to the default tier at the end of the test
-	tiersToCheck := wait.E2eNSTemplateTiers
+	tiersToCheck := wait.AllE2eNSTemplateTiers
 
 	// when the tiers are created during the startup then we can verify them
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}

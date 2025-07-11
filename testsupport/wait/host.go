@@ -51,7 +51,8 @@ import (
 
 var (
 	BundledNSTemplateTiers []string = []string{"advanced", "baseextendedidling", "baselarge", "test", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
-	E2eNSTemplateTiers     []string = append(BundledNSTemplateTiers, "appstudio", "appstudiolarge", "appstudio-env")
+	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env"}
+	AllE2eNSTemplateTiers  []string = append(BundledNSTemplateTiers, CustomNSTemplateTiers...)
 )
 
 // HostAwaitility the Awaitility for the Host cluster
