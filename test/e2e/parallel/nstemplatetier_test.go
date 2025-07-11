@@ -60,7 +60,7 @@ func TestNSTemplateTiers(t *testing.T) {
 	notCreatedByE2e := client.MatchingLabelsSelector{
 		Selector: labels.NewSelector().Add(*e2eProducer),
 	}
-	GoTemplate, err := labels.NewRequirement("go-template", selection.Equals, []string{"toolchain-e2e"})
+	GoTemplate, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
 	notGoTemplate := client.MatchingLabelsSelector{
 		Selector: labels.NewSelector().Add(*GoTemplate),
