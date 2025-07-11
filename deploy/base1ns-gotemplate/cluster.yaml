@@ -12,7 +12,7 @@ spec:
     - apiVersion: quota.openshift.io/v1
       kind: ClusterResourceQuota
       metadata:
-        name: for-${SPACE_NAME}-deployments
+        name: 'for-{{SPACE_NAME}}-deployments'
       spec:
         quota:
           hard:
@@ -24,7 +24,7 @@ spec:
           annotations: null
           labels:
             matchLabels:
-              toolchain.dev.openshift.com/space: ${SPACE_NAME}
+              toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
     parameters:
     - name: SPACE_NAME
       required: true
@@ -131,7 +131,7 @@ spec:
     metadata:
       annotations:
         toolchain.dev.openshift.com/feature: openshift-lightspeed
-      name: osl-access-{{.SPACE_NAME}}
+      name: 'osl-access-{{.SPACE_NAME}}'
     roleRef:
       apiGroup: rbac.authorization.k8s.io
       kind: ClusterRole
@@ -143,7 +143,7 @@ spec:
   - apiVersion: toolchain.dev.openshift.com/v1alpha1
     kind: Idler
     metadata:
-      name: dev-{{.SPACE_NAME}}
+      name: '{{.SPACE_NAME}}-dev' 
     spec:
       timeoutSeconds: 43200
   tierName: ttr-go-template
