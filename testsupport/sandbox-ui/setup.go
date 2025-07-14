@@ -34,7 +34,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	pw, err := playwright.Run()
 	require.NoError(t, err)
 
-	browser := lunchBrowser(t, pw)
+	browser := launchBrowser(t, pw)
 
 	opts := playwright.BrowserNewContextOptions{}
 	if env == "e2e-tests" {
@@ -60,7 +60,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	return page
 }
 
-func lunchBrowser(t *testing.T, pw *playwright.Playwright) playwright.Browser {
+func launchBrowser(t *testing.T, pw *playwright.Playwright) playwright.Browser {
 	var browser playwright.Browser
 	var err error
 

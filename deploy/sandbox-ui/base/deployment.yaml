@@ -59,7 +59,7 @@ spec:
             - name: npmcacache
               mountPath: /opt/app-root/src/.npm/_cacache
           terminationMessagePolicy: File
-          image: "registry.redhat.io/rhdh/rhdh-hub-rhel9@sha256:56bfbb2328f42e91d0462e142f3434e5d771737defbc07d8a21dbdf50e468665"
+          image: "registry.redhat.io/rhdh/rhdh-hub-rhel9@sha256:79618b38d6f02457954b227d538e238fdebbb72a220af5bd6be3cfab3ad0f262"
           workingDir: /opt/app-root/src
       serviceAccountName: rhdh
       schedulerName: default-scheduler
