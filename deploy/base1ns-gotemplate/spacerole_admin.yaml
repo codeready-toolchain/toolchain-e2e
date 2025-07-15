@@ -1,7 +1,7 @@
 apiVersion: toolchain.dev.openshift.com/v1alpha1
 kind: TierTemplate
 metadata:
-  name: ttr-spacerole-admin-go-template
+  name: spacerole-admin-go
 spec:
   revision: 8b0d542-8b0d542
   template:

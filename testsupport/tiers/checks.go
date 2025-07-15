@@ -30,6 +30,7 @@ const (
 	appstudiolarge     = "appstudiolarge"
 	appstudioEnv       = "appstudio-env"
 	base               = "base"
+	gobase1ns          = "ttr-go-template"
 	base1ns            = "base1ns"
 	base1ns6didler     = "base1ns6didler"
 	base1nsnoidling    = "base1nsnoidling"
@@ -63,6 +64,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &base1nsTierChecks{tierName: base1ns}, nil
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
+	case gobase1ns:
+		return &goBase1nsTierChecks{tierName: gobase1ns}, nil
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
 	case baselarge:
@@ -387,6 +390,74 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 		networkPolicyAllowFromConsoleNamespaces(),
 		networkPolicyIngressAllowFromDevSandboxPolicyGroup(),
 	}
+}
+
+type goBase1nsTierChecks struct {
+	tierName string
+}
+
+func (a *goBase1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+	checks := []namespaceObjectsCheck{
+		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi"),
+		resourceQuotaComputeBuild("30", "14Gi", "3", "14Gi"),
+		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
+		limitRange("1", "1000Mi", "10m", "64Mi"),
+		numberOfLimitRanges(1),
+		execPodsRole(),
+		crtadminPodsRoleBinding(),
+		crtadminViewRoleBinding(),
+	}
+	checks = append(checks, commonNetworkPolicyChecks()...)
+	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
+	return checks
+}
+
+func (a *goBase1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
+	checks := []spaceRoleObjectsCheck{}
+	roles := 0
+	rolebindings := 0
+	for role, usernames := range spaceRoles {
+		switch role {
+		case "admin":
+			checks = append(checks, rbacEditRole())
+			roles++
+			for _, userName := range usernames {
+				checks = append(checks,
+					rbacEditRoleBinding(userName),
+					userEditRoleBinding(userName),
+				)
+				rolebindings += 2
+			}
+		default:
+			return nil, fmt.Errorf("unexpected template name: '%s'", role)
+		}
+	}
+	// also count the roles, rolebindings
+	checks = append(checks,
+		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
+		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
+	)
+	return checks, nil
+}
+
+func (a *goBase1nsTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
+	verifyNsTypes(t, a.tierName, templateRefs, "dev")
+	return templateRefs
+}
+
+func (a *goBase1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+	return clusterObjectsChecks(
+		goClusterResourceQuotaDeployments(),
+		goClusterResourceQuotaReplicas(),
+		goClusterResourceQuotaRoutes(),
+		goClusterResourceQuotaJobs(),
+		goClusterResourceQuotaServicesNoLoadBalancers(),
+		goClusterResourceQuotaBuildConfig(),
+		goClusterResourceQuotaSecrets(),
+		goClusterResourceQuotaConfigMap(),
+		numberOfClusterResourceQuotas(8),
+		idlers(43200, "dev"))
 }
 
 type advancedTierChecks struct {
@@ -1547,6 +1618,189 @@ func clusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
 }
 
 func clusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(map[corev1.ResourceName]resource.Quantity)
+			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity(configMapCount)
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaDeployments() clusterObjectsCheckCreator {
+	return goClusterResourceQuotaDeploymentCount("50", "30", "2")
+}
+
+func goClusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount string) clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count("deployments.apps")], err = resource.ParseQuantity(deploymentCount)
+			require.NoError(t, err)
+			hard[count("deploymentconfigs.apps")], err = resource.ParseQuantity(deploymentCount)
+			require.NoError(t, err)
+			hard[count(corev1.ResourcePods)], err = resource.ParseQuantity(podCount)
+			require.NoError(t, err)
+			if vmCount != "" {
+				hard[count("virtualmachines.kubevirt.io")], err = resource.ParseQuantity(vmCount)
+				require.NoError(t, err)
+			}
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaReplicas() clusterObjectsCheckCreator {
+	return goClusterResourceQuotaReplicaCount("30")
+}
+
+func goClusterResourceQuotaReplicaCount(replicaCount string) clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count("replicasets.apps")], err = resource.ParseQuantity(replicaCount)
+			require.NoError(t, err)
+			hard[count(corev1.ResourceReplicationControllers)], err = resource.ParseQuantity(replicaCount)
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaRoutes() clusterObjectsCheckCreator {
+	return goClusterResourceQuotaRouteCount("30")
+}
+
+func goClusterResourceQuotaRouteCount(routeCount string) clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count("routes.route.openshift.io")], err = resource.ParseQuantity(routeCount)
+			require.NoError(t, err)
+			hard[count("ingresses.extensions")], err = resource.ParseQuantity(routeCount)
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaJobs() clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count("daemonsets.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("statefulsets.apps")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("jobs.batch")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+			hard[count("cronjobs.batch")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-jobs", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaServicesNoLoadBalancers() clusterObjectsCheckCreator {
+	zero := "0"
+	return goClusterResourceQuotaServiceCount("30", &zero)
+}
+
+func goClusterResourceQuotaServiceCount(serviceCount string, loadbalancerCount *string) clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity(serviceCount)
+			if loadbalancerCount != nil {
+				hard["services.loadbalancers"], err = resource.ParseQuantity(*loadbalancerCount)
+			}
+
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count("buildconfigs.build.openshift.io")], err = resource.ParseQuantity("30")
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-bc", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaSecrets() clusterObjectsCheckCreator {
+	return goClusterResourceQuotaSecretCount("100")
+}
+
+func goClusterResourceQuotaSecretCount(secretCount string) clusterObjectsCheckCreator {
+	return func() clusterObjectsCheck {
+		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
+			var err error
+			hard := make(corev1.ResourceList)
+			hard[count(corev1.ResourceSecrets)], err = resource.ParseQuantity(secretCount)
+			require.NoError(t, err)
+
+			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName),
+				crqToolchainLabelsWaitCriterion(userName),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
+			)
+			require.NoError(t, err)
+		}
+	}
+}
+
+func goClusterResourceQuotaConfigMap() clusterObjectsCheckCreator {
+	return goClusterResourceQuotaConfigMapCount("100")
+}
+
+func goClusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsCheckCreator {
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
