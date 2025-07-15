@@ -1,7 +1,7 @@
 apiVersion: toolchain.dev.openshift.com/v1alpha1
 kind: TierTemplate
 metadata:
-  name: ttr-clusterresources-go-template
+  name: cluster-resources-go
 spec:
   revision: 8b0d542-8b0d542
   template:
@@ -68,6 +68,22 @@ spec:
         hard:
           count/ingresses.extensions: '{{.DEPLOYMENT_QUOTA}}'
           count/routes.route.openshift.io: '{{.DEPLOYMENT_QUOTA}}'
+      selector:
+        annotations: {}
+        labels:
+          matchLabels:
+            toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
+  - apiVersion: quota.openshift.io/v1
+    kind: ClusterResourceQuota
+    metadata:
+      name: for-{{.SPACE_NAME}}-jobs
+    spec:
+      quota:
+        hard:
+          count/jobs.batch: '{{.DEPLOYMENT_QUOTA}}'
+          count/daemonsets.apps: '{{.DEPLOYMENT_QUOTA}}'
+          count/cronjobs.batch: '{{.DEPLOYMENT_QUOTA}}'
+          count/statefulsets.apps: '{{.DEPLOYMENT_QUOTA}}'
       selector:
         annotations: {}
         labels:

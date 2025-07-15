@@ -20,12 +20,25 @@ func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName stri
 	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
 	require.NoError(t, err)
 	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
-	for _, ns := range templateTier.Spec.Namespaces {
-		nsRefs = append(nsRefs, ns.TemplateRef)
-	}
 	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
-	for role, ns := range templateTier.Spec.SpaceRoles {
-		spaceRoleRefs[role] = ns.TemplateRef
+	if tierName == "ttr-go-template" {
+		for key, ns := range templateTier.Status.Revisions {
+			if key == "dev-go" {
+				nsRefs = append(nsRefs, ns)
+			}
+		}
+		for role, ns := range templateTier.Status.Revisions {
+			if role == "spacerole-admin-go" {
+				spaceRoleRefs[role] = ns
+			}
+		}
+	} else {
+		for _, ns := range templateTier.Spec.Namespaces {
+			nsRefs = append(nsRefs, ns.TemplateRef)
+		}
+		for role, ns := range templateTier.Spec.SpaceRoles {
+			spaceRoleRefs[role] = ns.TemplateRef
+		}
 	}
 
 	return TemplateRefs{
@@ -55,7 +68,11 @@ func (r TemplateRefs) SpaceRolesFlatten() []string {
 }
 
 func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
-	if tier.Spec.ClusterResources != nil {
+	if tier.Name == "ttr-go-template" {
+		if rev, ok := tier.Status.Revisions["cluster-resources-go"]; ok {
+			return &rev
+		}
+	} else if tier.Spec.ClusterResources != nil {
 		return &(tier.Spec.ClusterResources.TemplateRef)
 	}
 	return nil

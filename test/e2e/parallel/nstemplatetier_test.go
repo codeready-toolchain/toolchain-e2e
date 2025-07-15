@@ -36,6 +36,7 @@ const (
 
 func TestNSTemplateTiers(t *testing.T) {
 	t.Parallel()
+
 	// given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
@@ -60,10 +61,10 @@ func TestNSTemplateTiers(t *testing.T) {
 	notCreatedByE2e := client.MatchingLabelsSelector{
 		Selector: labels.NewSelector().Add(*e2eProducer),
 	}
-	GoTemplate, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
+	selectorRequirement, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
 	notGoTemplate := client.MatchingLabelsSelector{
-		Selector: labels.NewSelector().Add(*GoTemplate),
+		Selector: labels.NewSelector().Add(*selectorRequirement),
 	}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e, notGoTemplate)
 	require.NoError(t, err)
@@ -180,7 +181,7 @@ func TestGoTemplate(t *testing.T) {
 	}
 
 	user := NewSignupRequest(awaitilities).
-		Username("gouserttrtempplate").
+		Username("gotemplateuser").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		SpaceTier(goCustomeTier.Name).

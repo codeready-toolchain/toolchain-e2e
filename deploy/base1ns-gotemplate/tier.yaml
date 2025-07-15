@@ -6,12 +6,12 @@ metadata:
     go-template: toolchain-e2e
 spec:
   clusterResources:
-    templateRef: ttr-clusterresources-go-template
+    templateRef: cluster-resources-go
   namespaces:
-  - templateRef: ttr-ns-dev-go-template
+  - templateRef: dev-go
   spaceRoles:
     admin:
-      templateRef: ttr-spacerole-admin-go-template
+      templateRef: spacerole-admin-go
   parameters:
   - name: DEPLOYMENT_QUOTA
     value: "30"
