@@ -19,8 +19,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/assert"
@@ -288,13 +286,8 @@ func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
 	// expect it to be.
 
 	list := &toolchainv1alpha1.NSTemplateTierList{}
-	selectorRequirement, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
-	require.NoError(t, err)
-	notGoTemplate := client.MatchingLabelsSelector{
-		Selector: labels.NewSelector().Add(*selectorRequirement),
-	}
-	//removing from the list the go-template tiers, as they will be present but not in the list of expected tiers
-	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)), notGoTemplate)
+
+	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
 	assert.Len(t, list.Items, len(wait.AllE2eNSTemplateTiers))
 
