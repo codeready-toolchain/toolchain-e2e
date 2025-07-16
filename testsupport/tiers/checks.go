@@ -1656,7 +1656,7 @@ func goClusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount st
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1679,7 +1679,7 @@ func goClusterResourceQuotaReplicaCount(replicaCount string) clusterObjectsCheck
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1702,7 +1702,7 @@ func goClusterResourceQuotaRouteCount(routeCount string) clusterObjectsCheckCrea
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1725,7 +1725,7 @@ func goClusterResourceQuotaJobs() clusterObjectsCheckCreator {
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-jobs", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1743,15 +1743,15 @@ func goClusterResourceQuotaServiceCount(serviceCount string, loadbalancerCount *
 			var err error
 			hard := make(corev1.ResourceList)
 			hard[count(corev1.ResourceServices)], err = resource.ParseQuantity(serviceCount)
-			if loadbalancerCount != nil {
-				hard["services.loadbalancers"], err = resource.ParseQuantity(*loadbalancerCount)
-			}
-
 			require.NoError(t, err)
+			if loadbalancerCount != nil {
+				hard[corev1.ResourceName("services.loadbalancers")], err = resource.ParseQuantity(*loadbalancerCount)
+				require.NoError(t, err)
+			}
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1768,7 +1768,7 @@ func goClusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-bc", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1789,7 +1789,7 @@ func goClusterResourceQuotaSecretCount(secretCount string) clusterObjectsCheckCr
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1804,13 +1804,13 @@ func goClusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsC
 	return func() clusterObjectsCheck {
 		return func(t *testing.T, memberAwait *wait.MemberAwaitility, userName, tierLabel string) {
 			var err error
-			hard := make(map[corev1.ResourceName]resource.Quantity)
+			hard := make(corev1.ResourceList)
 			hard[count(corev1.ResourceConfigMaps)], err = resource.ParseQuantity(configMapCount)
 			require.NoError(t, err)
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				clusterResourceQuotaMatches(userName, tierLabel, hard),
+				goClusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1834,6 +1834,57 @@ func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.Reso
 			}
 			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
 				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
+		},
+		Diff: func(actual *quotav1.ClusterResourceQuota) string {
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
+		},
+	}
+}
+
+func goClusterResourceQuotaMatches(userName, tierName string, hard corev1.ResourceList) wait.ClusterResourceQuotaWaitCriterion {
+	return wait.ClusterResourceQuotaWaitCriterion{
+		Match: func(actual *quotav1.ClusterResourceQuota) bool {
+			// Check tier label
+			if actual.Labels == nil || tierName != actual.Labels["toolchain.dev.openshift.com/tier"] {
+				return false
+			}
+
+			// Check selector - only check the LabelSelector part, not annotations
+			if actual.Spec.Selector.LabelSelector == nil {
+				return false
+			}
+
+			expectedMatchLabels := map[string]string{
+				toolchainv1alpha1.SpaceLabelKey: userName,
+			}
+
+			// Compare the MatchLabels specifically
+			if !reflect.DeepEqual(expectedMatchLabels, actual.Spec.Selector.LabelSelector.MatchLabels) {
+				return false
+			}
+
+			// Check quota hard limits - compare resource by resource
+			actualHard := actual.Spec.Quota.Hard
+
+			// Check that both have the same number of resources
+			if len(hard) != len(actualHard) {
+				return false
+			}
+
+			// Compare each resource quantity
+			for resourceName, expectedQuantity := range hard {
+				actualQuantity, exists := actualHard[resourceName]
+				if !exists {
+					return false
+				}
+
+				// Compare the quantities using the Equal method which is more reliable
+				if !expectedQuantity.Equal(actualQuantity) {
+					return false
+				}
+			}
+
+			return true
 		},
 		Diff: func(actual *quotav1.ClusterResourceQuota) string {
 			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
