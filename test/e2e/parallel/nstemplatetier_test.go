@@ -153,6 +153,13 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 func TestGoTemplate(t *testing.T) {
 	t.Parallel()
 
+	// This test verifies that a go-template NSTemplateTier can be used to provision a user.
+	// It creates a custom NSTemplateTier based on the "ttr-go-template" tier, labels it as produced by "toolchain-e2e",
+	// and provisions a user with this tier. It then verifies that the resources are provisioned as expected.
+	//
+	// count: Number of users to provision, set to 2*MaxPoolSize + 1 to ensure the test covers pool size boundaries.
+	// awaitilities: Helper struct that provides Awaitility instances for host and member clusters, used for waiting on resources.
+	// hostAwait: Awaitility instance for the host cluster, used to interact with and wait for resources in the host namespace.
 	count := 2*MaxPoolSize + 1
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
