@@ -289,20 +289,12 @@ func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
 
 	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
-	// Filter out ttr-go-template from the total count
-	filteredTiers := []toolchainv1alpha1.NSTemplateTier{}
-	for _, tier := range list.Items {
-		if tier.Name != "ttr-go-template" {
-			filteredTiers = append(filteredTiers, tier)
-		}
-	}
-
-	assert.Len(t, filteredTiers, len(wait.AllE2eNSTemplateTiers))
+	assert.Len(t, list.Items, len(wait.AllE2eNSTemplateTiers))
 
 	bundledInCluster := []string{}
 	customInCluster := []string{}
 
-	for _, tier := range filteredTiers {
+	for _, tier := range list.Items {
 		if tier.Annotations[toolchainv1alpha1.BundledAnnotationKey] == "host-operator" {
 			bundledInCluster = append(bundledInCluster, tier.Name)
 		} else {
