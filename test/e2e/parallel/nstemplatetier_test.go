@@ -9,7 +9,6 @@ import (
 	"time"
 
 	v1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -58,10 +57,8 @@ func TestNSTemplateTiers(t *testing.T) {
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
-	goTemplateRequirement, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
-	require.NoError(t, err)
 	notCreatedByE2e := client.MatchingLabelsSelector{
-		Selector: labels.NewSelector().Add(*e2eProducer, *goTemplateRequirement),
+		Selector: labels.NewSelector().Add(*e2eProducer),
 	}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	require.NoError(t, err)
@@ -163,37 +160,19 @@ func TestGoTemplate(t *testing.T) {
 
 	hostAwait = hostAwait.WithRetryOptions(wait.TimeoutOption(hostAwait.Timeout + time.Second*time.Duration(3*count*2))) // 3 batches of `count` accounts, with 2s of interval between each update
 
-	goTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
+	_, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
 	require.NoError(t, err)
-
-	goCustomeTier := &tiers.CustomNSTemplateTier{
-		NSTemplateTier: &toolchainv1alpha1.NSTemplateTier{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: goTemplateTier.Namespace,
-				Name:      goTemplateTier.Name,
-				Labels:    map[string]string{"producer": "toolchain-e2e"},
-			},
-			Spec: toolchainv1alpha1.NSTemplateTierSpec{
-				Namespaces:       goTemplateTier.Spec.Namespaces,
-				ClusterResources: goTemplateTier.Spec.ClusterResources,
-				SpaceRoles:       goTemplateTier.Spec.SpaceRoles,
-			},
-		},
-		ClusterResourcesTier:   goTemplateTier,
-		NamespaceResourcesTier: goTemplateTier,
-		SpaceRolesTier:         goTemplateTier,
-	}
 
 	user := NewSignupRequest(awaitilities).
 		Username("gotemplateuser").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
-		SpaceTier(goCustomeTier.Name).
+		SpaceTier("ttr-go-template").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 	testingtiers := user.UserSignup
-	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", goCustomeTier.Name)
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", "ttr-go-template")
 
 }
 
