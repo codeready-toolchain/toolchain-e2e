@@ -655,8 +655,8 @@ func UntilNSTemplateSetHasSpaceRolesFromBindings(tier *toolchainv1alpha1.NSTempl
 			TemplateRef: tmpl.TemplateRef,
 			Usernames:   []string{},
 		}
-		if tier.Name == "ttr-go-template" {
-			spaceRole.TemplateRef = tier.Status.Revisions["spacerole-admin-go"]
+		if tier.Labels["go-template"] == "toolchain-e2e" {
+			spaceRole.TemplateRef = tier.Status.Revisions[tmpl.TemplateRef]
 		}
 		for _, b := range bindings {
 			if b.Spec.SpaceRole == role {
