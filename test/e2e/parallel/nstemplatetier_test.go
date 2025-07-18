@@ -143,6 +143,35 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 }
 
+func TestGoTemplate(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies that a go-template NSTemplateTier can be used to provision a user.
+	// It creates a custom NSTemplateTier based on the "ttr-go-template" tier, labels it as produced by "toolchain-e2e",
+	// and provisions a user with this tier. It then verifies that the resources are provisioned as expected.
+
+	// awaitilities: Helper struct that provides Awaitility instances for host and member clusters, used for waiting on resources.
+	// hostAwait: Awaitility instance for the host cluster, used to interact with and wait for resources in the host namespace.
+
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+
+	_, err := hostAwait.WaitForNSTemplateTier(t, "ttr-go-template")
+	require.NoError(t, err)
+
+	user := NewSignupRequest(awaitilities).
+		Username("gotemplateuser").
+		ManuallyApprove().
+		TargetCluster(awaitilities.Member1()).
+		SpaceTier("ttr-go-template").
+		EnsureMUR().
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t)
+	testingtiers := user.UserSignup
+	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", "ttr-go-template")
+
+}
+
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
