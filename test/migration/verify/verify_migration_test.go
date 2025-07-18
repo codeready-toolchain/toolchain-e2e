@@ -286,7 +286,6 @@ func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
 	// expect it to be.
 
 	list := &toolchainv1alpha1.NSTemplateTierList{}
-
 	require.NoError(t, awaitilities.Host().Client.List(context.TODO(), list, client.InNamespace(awaitilities.Host().Namespace)))
 
 	assert.Len(t, list.Items, len(wait.AllE2eNSTemplateTiers))
