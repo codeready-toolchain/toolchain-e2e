@@ -89,7 +89,7 @@ func TestStringifyObjects(t *testing.T) {
 					},
 				},
 				Spec: toolchainv1alpha1.SpaceSpec{
-					TierName: "advanced",
+					TierName: "base1nsnoidling",
 				},
 			},
 		},
@@ -110,7 +110,7 @@ func TestStringifyObjects(t *testing.T) {
     creationTimestamp: "2021-12-16T10:45:30Z"
     name: oddity-2
   spec:
-    tierName: advanced
+    tierName: base1nsnoidling
   status: {}
 `, string(result))
 }

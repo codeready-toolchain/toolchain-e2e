@@ -25,7 +25,6 @@ import (
 
 const (
 	// tier names
-	advanced           = "advanced"
 	appstudio          = "appstudio"
 	appstudiolarge     = "appstudiolarge"
 	appstudioEnv       = "appstudio-env"
@@ -44,9 +43,7 @@ const (
 	baseCPULimit = "40000m"
 )
 
-var (
-	providerMatchingLabels = client.MatchingLabels(map[string]string{toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue})
-)
+var providerMatchingLabels = client.MatchingLabels(map[string]string{toolchainv1alpha1.ProviderLabelKey: toolchainv1alpha1.ProviderLabelValue})
 
 type TierChecks interface {
 	GetClusterObjectChecks() []clusterObjectsCheck
@@ -69,8 +66,6 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
 	case baseextendedidling:
 		return &baseextendedidlingTierChecks{baseTierChecks{tierName: baseextendedidling}}, nil
-	case advanced:
-		return &advancedTierChecks{baseTierChecks{tierName: advanced}}, nil
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
 	case appstudiolarge:
@@ -389,31 +384,6 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	}
 }
 
-type advancedTierChecks struct {
-	baseTierChecks
-}
-
-func (a *advancedTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "60Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServicesNoLoadBalancers(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
-		idlers(0, "dev", "stage"))
-}
-
-func (a *advancedTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
-	verifyNsTypes(t, a.tierName, templateRefs, "dev", "stage")
-	return templateRefs
-}
-
 // testTierChecks checks only that the "test" tier exists and has correct template references.
 // It does not check the test tier resources
 type testTierChecks struct {
@@ -611,7 +581,7 @@ func (a *appstudioEnvTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]stri
 		case "maintainer":
 			// no permissions granted
 		case "contributor":
-			//no permissions granted
+			// no permissions granted
 		default:
 			return nil, fmt.Errorf("unexpected template name: '%s'", role)
 		}
@@ -1705,7 +1675,6 @@ func gitOpsServiceLabel() namespaceObjectsCheck {
 
 func appstudioWorkSpaceNameLabel() namespaceObjectsCheck {
 	return func(t *testing.T, ns *corev1.Namespace, memberAwait *wait.MemberAwaitility, owner string) {
-
 		labelWaitCriterion := []wait.LabelWaitCriterion{}
 		labelWaitCriterion = append(labelWaitCriterion, wait.UntilObjectHasLabel("appstudio.redhat.com/workspace_name", owner))
 
