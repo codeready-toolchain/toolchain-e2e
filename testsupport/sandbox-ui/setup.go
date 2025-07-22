@@ -13,6 +13,8 @@ import (
 
 var (
 	setupOnce sync.Once
+
+	UIE2ETestsEnv = "ui-e2e-tests"
 )
 
 func Setup(t *testing.T, testName string) playwright.Page {
@@ -37,7 +39,7 @@ func Setup(t *testing.T, testName string) playwright.Page {
 	browser := launchBrowser(t, pw)
 
 	opts := playwright.BrowserNewContextOptions{}
-	if env == "e2e-tests" {
+	if env == UIE2ETestsEnv {
 		opts.IgnoreHttpsErrors = playwright.Bool(true)
 	}
 

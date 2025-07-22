@@ -20,7 +20,7 @@ endif
 
 REGISTRATION_SERVICE_NS := $(HOST_NS)
 
-ENVIRONMENT := e2e-tests
+ENVIRONMENT ?= e2e-tests
 IMAGE_NAMES_DIR := /tmp/crt-e2e-image-names
 
 DEPLOY_LATEST := false
@@ -91,7 +91,7 @@ deploy-published-operators-e2e: clean-e2e-files deploy-e2e
 .PHONY: deploy-e2e
 deploy-e2e: INSTALL_OPERATOR=true
 deploy-e2e: prepare-projects get-publish-install-and-register-operators
-	@echo "Operators are successfuly deployed using the ${ENVIRONMENT} environment."
+	@echo "Operators are successfully deployed using the ${ENVIRONMENT} environment."
 	@echo ""
 
 label-olm-ns:

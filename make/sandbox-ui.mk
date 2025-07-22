@@ -7,6 +7,7 @@ AUTH_FILE := /tmp/auth.json
 IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
 PUSH_SANDBOX_IMAGE ?= true
+UI_ENVIRONMENT := ui-e2e-tests
 
 .PHONY: deploy-sandbox-ui
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
@@ -113,12 +114,14 @@ e2e-run-sandbox-ui:
 
 	@echo "The Developer Sandbox UI e2e tests successfully finished"
 
-.PHONY: deploy-and-test-sandbox-ui
-deploy-and-test-sandbox-ui: deploy-sandbox-ui e2e-run-sandbox-ui
 
-.PHONY: deploy-and-test-sandbox-ui-local
-deploy-and-test-sandbox-ui-local: 
-	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins
+.PHONY: test-ui-e2e
+test-ui-e2e:
+	$(MAKE) prepare-and-deploy-e2e deploy-sandbox-ui e2e-run-sandbox-ui ENVIRONMENT=${UI_ENVIRONMENT}
+
+.PHONY: test-ui-e2e-local
+test-ui-e2e-local:
+	$(MAKE) prepare-and-deploy-e2e deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT}
 
 
 UNIT_TEST_IMAGE_NAME=sandbox-ui-e2e-tests
@@ -146,7 +149,6 @@ test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
 	  -e SSO_USERNAME=$(SSO_USERNAME) \
 	  -e SSO_PASSWORD=$(SSO_PASSWORD) \
 	  -e QUAY_NAMESPACE=$(QUAY_NAMESPACE) \
-	  -e HOST_NS=$(HOST_NS) \
 	  -e TMP=/tmp/ \
 	  -e PUSH_SANDBOX_IMAGE=false \
 	  -e RUNNING_IN_CONTAINER=true \

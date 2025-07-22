@@ -2,14 +2,13 @@ apiVersion: toolchain.dev.openshift.com/v1alpha1
 kind: ToolchainConfig
 metadata:
   name: config
-  namespace: ${HOST_NS}
 spec:
   host:
     automaticApproval:
       enabled: true
     deactivation:
       deactivationDomainsExcluded: "@excluded.com"
-    environment: "e2e-tests"
+    environment: "ui-e2e-tests"
     notifications:
       durationBeforeNotificationDeletion: "5s"
     registrationService:
@@ -58,4 +57,4 @@ spec:
         secret:
           ref: "member-operator-secret"
           virtualMachineAccessKey: "vm.access"
-      environment: "e2e-tests"
+      environment: "ui-e2e-tests"

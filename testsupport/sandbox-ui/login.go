@@ -39,7 +39,7 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 		lp.LoginBtn = page.GetByRole("button", playwright.PageGetByRoleOptions{
 			Name: "Log in",
 		})
-	case "e2e-tests":
+	case UIE2ETestsEnv:
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Username or email",
 		})

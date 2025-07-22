@@ -5,16 +5,16 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 
 1. You need a OCP cluster 
     - ROSA cluster from ClusterBot will not work since we are not able to modify the OAuth configuration of ROSA clusters created by the ClusterBot.
-2. Ensure you have the toolchain resources deployed in your cluster (you can run `make prepare-and-deploy-e2e`)
-3. Ensure you are using Node.js version 22
+2. Ensure you are using Node.js version 22
     - to easily manage it, you can run `nvm use 22`
-4. Ensure you have `yarn` installed
-5. Make sure you can log in at https://sso.devsandbox.dev/auth/realms/sandbox-dev/account using your SSO_USERNAME and SSO_PASSWORD
+3. Ensure you have `yarn` installed
+4. Make sure you can log in at https://sso.devsandbox.dev/auth/realms/sandbox-dev/account using your SSO_USERNAME and SSO_PASSWORD
+5. Make sure you do not have any toolchain resources deployed on your cluster
 
 ### Running E2E Tests locally
-`make deploy-and-test-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+`make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
-If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make deploy-and-test-sandbox-ui-local HOST_NS=<HOST_NS> SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 For now, the e2e tests are running only through firefox browser.
 
@@ -34,7 +34,7 @@ Please note that OCP cluster does not have a valid CA, so when accessing the Dev
 ### Running E2E Tests in Container
 Please, do not forget that you need to have the toolchain resources deployed before running:
 
-`make test-sandbox-ui-in-container HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
+`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
 
 ### Clean Developer Sandbox UI
 `make clean-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME>`

@@ -111,7 +111,7 @@ func TestDevSandbox(t *testing.T) {
 
 	imgName := "Red Hat OpenShift Service on"
 	logMessage := "Log in with…"
-	if env == "e2e-tests" {
+	if env == sandboxui.UIE2ETestsEnv {
 		imgName = "Red Hat OpenShift"
 		logMessage = "Log in with"
 	}

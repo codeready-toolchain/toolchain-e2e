@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - ../base
-  - toolchainconfig.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

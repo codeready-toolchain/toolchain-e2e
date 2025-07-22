@@ -91,4 +91,4 @@ RUN yum install -y \
         fontconfig && \
     yum clean all
 
-CMD ["make", "deploy-and-test-sandbox-ui"]
+CMD ["make", "test-ui-e2e"]
