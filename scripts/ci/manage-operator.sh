@@ -16,9 +16,7 @@ get_repo() {
         # clone
         git clone https://github.com/codeready-toolchain/${REPOSITORY_NAME}.git ${REPOSITORY_PATH}
 
-        if [[ "${CI_DISABLE_PAIRING}" != "true" ]]; then
-            pair_repo_if_needed
-        fi
+        pair_repo_if_needed
     else
         REPOSITORY_PATH=${PROVIDED_REPOSITORY_PATH}
     fi

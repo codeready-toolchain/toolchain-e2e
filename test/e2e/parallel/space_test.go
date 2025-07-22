@@ -271,9 +271,9 @@ func TestPromoteSpace(t *testing.T) {
 		Execute(t)
 	spaceName := user.Space.Name
 
-	t.Run("to advanced tier", func(t *testing.T) {
+	t.Run("to base1nsnoidling tier", func(t *testing.T) {
 		// when
-		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "advanced")
+		tiers.MoveSpaceToTier(t, hostAwait, spaceName, "base1nsnoidling")
 
 		// then
 		VerifyResourcesProvisionedForSpace(t, awaitilities, spaceName)
