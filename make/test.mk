@@ -393,7 +393,7 @@ create-host-project:
 	-oc label ns --overwrite=true ${HOST_NS} app=host-operator
 
 .PHONY: create-host-resources
-create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksctl
+create-host-resources: create-spaceprovisionerconfigs-for-members tiers-via-ksctl tiers-go-templates
 	# apply the environment resources instead of creating them in case they have been changed. It may affect migration tests.
 	-oc apply -f deploy/host-operator/${ENVIRONMENT}/ -n ${HOST_NS}
 	# patch toolchainconfig to prevent webhook deploy for 2nd member, a 2nd webhook deploy causes the webhook verification in e2e tests to fail
@@ -429,6 +429,10 @@ tiers-via-ksctl: ksctl
 	rm -rf /tmp/e2e-tiers-out 2>/dev/null || true
 	${KSCTL_BIN_DIR}ksctl generate nstemplatetiers --source deploy/nstemplatetiers --out-dir /tmp/e2e-tiers-out
 	oc kustomize /tmp/e2e-tiers-out | sed 's/toolchain-host-operator/${HOST_NS}/g' | oc apply -f -
+
+.PHONY: tiers-go-templates
+tiers-go-templates: 
+	oc apply -f deploy/base1ns-gotemplate/ -n ${HOST_NS} || true
 
 .PHONY: create-thirdparty-crds
 create-thirdparty-crds:

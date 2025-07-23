@@ -51,7 +51,7 @@ import (
 
 var (
 	BundledNSTemplateTiers []string = []string{"baseextendedidling", "baselarge", "test", "base1ns", "base1nsnoidling", "base1ns6didler", "intelmedium", "intellarge", "intelxlarge", "base"}
-	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env"}
+	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env", "ttr-go-template"}
 	AllE2eNSTemplateTiers  []string = append(BundledNSTemplateTiers, CustomNSTemplateTiers...)
 )
 
@@ -1014,6 +1014,27 @@ func (a *HostAwaitility) WaitForTierTemplate(t *testing.T, name string) (*toolch
 		t.Logf("failed to find TierTemplate '%s': %v", name, err)
 	}
 	return tierTemplate, err
+}
+
+func (a *HostAwaitility) WaitForTierTemplateRevision(t *testing.T, name string) (*toolchainv1alpha1.TierTemplateRevision, error) { // nolint:unparam
+	tierTemplateRevision := &toolchainv1alpha1.TierTemplateRevision{}
+	t.Logf("waiting until TierTemplateRevision '%s' exists in namespace '%s'...", name, a.Namespace)
+	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (done bool, err error) {
+		obj := &toolchainv1alpha1.TierTemplateRevision{}
+		if err := a.Client.Get(context.TODO(), types.NamespacedName{Namespace: a.Namespace, Name: name}, obj); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		tierTemplateRevision = obj
+		return true, nil
+	})
+	// log message if an error occurred
+	if err != nil {
+		t.Logf("failed to find TierTemplate '%s': %v", name, err)
+	}
+	return tierTemplateRevision, err
 }
 
 // TierTemplateRevisionWaitCriterion a struct to compare with an expected TierTemplateRevision

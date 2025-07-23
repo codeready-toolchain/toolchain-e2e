@@ -1,0 +1,81 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: TierTemplate
+metadata:
+  name: spacerole-admin-go
+spec:
+  revision: 8b0d542-8b0d542
+  template:
+    apiVersion: template.openshift.io/v1
+    kind: Template
+    metadata: {}
+    objects:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: rbac-edit
+        namespace: '{{.NAMESPACE}}'
+      rules:
+      - apiGroups:
+        - authorization.openshift.io
+        - rbac.authorization.k8s.io
+        resources:
+        - roles
+        - rolebindings
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
+    parameters:
+    - name: NAMESPACE
+      required: true
+  templateObjects:
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: rbac-edit
+      namespace: '{{.NAMESPACE}}'
+    rules:
+      - apiGroups:
+          - authorization.openshift.io
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: '{{.USERNAME}}-rbac-edit'
+      namespace: '{{.NAMESPACE}}'
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: rbac-edit
+    subjects:
+      - kind: User
+        name: '{{.USERNAME}}'
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: '{{.USERNAME}}-edit'
+      namespace: '{{.NAMESPACE}}'
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: edit
+    subjects:
+      - kind: User
+        name: '{{.USERNAME}}'
+  tierName: ttr-go-template
+  type: admin

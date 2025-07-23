@@ -46,10 +46,19 @@ func VerifyNSTemplateSet(t *testing.T, hostAwait *wait.HostAwaitility, memberAwa
 		}
 		spaceRoles := map[string][]string{}
 		for _, r := range nsTmplSet.Spec.SpaceRoles {
-			tmpl, err := hostAwait.WaitForTierTemplate(t, r.TemplateRef)
-			require.NoError(t, err)
-			t.Logf("space role template '%s' for usernames '%v' in NSTemplateSet '%s'", tmpl.GetName(), r.Usernames, nsTmplSet.Name)
-			spaceRoles[tmpl.Spec.Type] = r.Usernames
+			if nsTmplSet.Spec.TierName == "ttr-go-template" {
+				tmpl, err := hostAwait.WaitForTierTemplateRevision(t, r.TemplateRef)
+				require.NoError(t, err)
+				_, nsType, err := wait.TierAndType(r.TemplateRef)
+				require.NoError(t, err)
+				t.Logf("space role template '%s' for usernames '%v' in NSTemplateSet '%s'", tmpl.GetName(), r.Usernames, nsTmplSet.Name)
+				spaceRoles[nsType] = r.Usernames
+			} else {
+				tmpl, err := hostAwait.WaitForTierTemplate(t, r.TemplateRef)
+				require.NoError(t, err)
+				t.Logf("space role template '%s' for usernames '%v' in NSTemplateSet '%s'", tmpl.GetName(), r.Usernames, nsTmplSet.Name)
+				spaceRoles[tmpl.Spec.Type] = r.Usernames
+			}
 		}
 		spaceRoleChecks, err := checks.GetSpaceRoleChecks(spaceRoles)
 		require.NoError(t, err)
