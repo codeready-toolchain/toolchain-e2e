@@ -533,22 +533,6 @@ func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck 
 		idlers(0, "env"))
 }
 
-func getNamespaceObjectChecksForIntelLarge(memoryLimit string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("16", memoryLimit, "16", memoryLimit),
-		resourceQuotaComputeBuild("16", memoryLimit, "16", memoryLimit),
-		resourceQuotaStorage("15Gi", "100Gi", "15Gi", "5"),
-		limitRange("1", "1000Mi", "10m", "64Mi"),
-		numberOfLimitRanges(1),
-		execPodsRole(),
-		crtadminPodsRoleBinding(),
-		crtadminViewRoleBinding(),
-	}
-	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
-	return checks
-}
-
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
 func verifyNsTypes(t *testing.T, tier string, templateRefs TemplateRefs, expectedNSTypes ...string) {
 	require.Len(t, templateRefs.Namespaces, len(expectedNSTypes))
