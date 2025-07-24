@@ -19,7 +19,6 @@ If you want to run and test the Developer Sandbox UI from your local rhdh-plugin
 For now, the e2e tests are running only through firefox browser.
 
 ### Running E2E Tests in Container
-Please, do not forget that you need to have the toolchain resources deployed before running:
 
 `make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
 
