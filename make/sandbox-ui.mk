@@ -104,6 +104,13 @@ clean-sandbox-ui:
 .PHONY: e2e-run-sandbox-ui
 e2e-run-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
 e2e-run-sandbox-ui:
+	@echo "Installing Playwright..."
+	$(eval PWGO_VER := $(shell grep -oE "playwright-go v\S+" go.mod | sed 's/playwright-go //g'))
+	@echo "Installing Playwright CLI version: $(PWGO_VER)"
+	go install github.com/playwright-community/playwright-go/cmd/playwright@$(PWGO_VER)
+	@echo "Installing Firefox browser for Playwright..."
+	$(GOPATH)/bin/playwright install firefox
+
 	@echo "Running Developer Sandbox UI setup e2e tests..."
 	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast
 	

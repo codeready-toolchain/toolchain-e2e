@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:latest as build-tools
+FROM registry.access.redhat.com/ubi9/ubi:latest as build-tools
 
 LABEL maintainer "KubeSaw <devsandbox@redhat.com>"
 LABEL author "KubeSaw <devsandbox@redhat.com>"
@@ -25,7 +25,51 @@ RUN yum install -y \
     bc \
     jq \
     gcc \
+    gettext \
+    gcc-c++ \
+    python3 \
+    python3-devel \
+    sqlite-devel \
     && yum clean all
+
+# Install Firefox required dependencies
+RUN yum install -y \
+        libxcb \
+        libX11 \
+        libXext \
+        libXrandr \
+        libXcomposite \
+        libXcursor \
+        libXdamage \
+        libXfixes \
+        libXi \
+        gtk3 \
+        pango \
+        atk \
+        cairo \
+        gdk-pixbuf2 \
+        libXrender \
+        alsa-lib \
+        freetype \
+        fontconfig && \
+    yum clean all
+
+# Install kustomize
+RUN curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash \
+    && mv kustomize /usr/local/bin
+
+# Install Node.js 22 and yarn
+RUN curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - && \
+    yum install -y nodejs && \
+    curl -sL https://dl.yarnpkg.com/rpm/yarn.repo -o /etc/yum.repos.d/yarn.repo && \
+    yum install -y yarn && \
+    yum clean all
+
+# Install oc CLI
+RUN curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz && \
+    tar -xzvf openshift-client-linux.tar.gz -C /usr/local/bin oc && \
+    chmod +x /usr/local/bin/oc && \
+    rm -f openshift-client-linux.tar.gz
 
 WORKDIR /tmp
 
@@ -40,6 +84,9 @@ RUN curl -Lo ${GOLANG_VERSION}.linux-amd64.tar.gz https://dl.google.com/go/${GOL
     && go version
 
 RUN mkdir -p ${GOPATH}/src/${GO_PACKAGE_PATH}/
+
+# Increase shared memory for browsers (recommended for Playwright)
+RUN mkdir -p /dev/shm && chmod 1777 /dev/shm
 
 WORKDIR ${GOPATH}/src/${GO_PACKAGE_PATH}
 

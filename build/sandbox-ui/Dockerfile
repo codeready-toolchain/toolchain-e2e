@@ -64,11 +64,6 @@ RUN mkdir -p /dev/shm && chmod 1777 /dev/shm
 
 COPY . .
 
-# Install Playwright CLI and drivers
-RUN PWGO_VER=$(grep -oE "playwright-go v\S+" go.mod | sed 's/playwright-go //g') \
-    && go install github.com/playwright-community/playwright-go/cmd/playwright@${PWGO_VER} \
-    && $GOPATH/bin/playwright install firefox
-
 # Install Firefox required dependencies
 RUN yum install -y \
         libxcb \
