@@ -1,7 +1,7 @@
 apiVersion: toolchain.dev.openshift.com/v1alpha1
 kind: NSTemplateTier
 metadata:
-  name: ttr-go-template
+  name: base1ns-gotemplate
   labels:
     go-template: toolchain-e2e
 spec:

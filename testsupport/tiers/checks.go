@@ -30,7 +30,7 @@ const (
 	appstudioEnv       = "appstudio-env"
 	base               = "base"
 	base1ns            = "base1ns"
-	gobase1ns          = "ttr-go-template"
+	gobase1ns          = "base1ns-gotemplate"
 	base1ns6didler     = "base1ns6didler"
 	base1nsnoidling    = "base1nsnoidling"
 	baseextendedidling = "baseextendedidling"

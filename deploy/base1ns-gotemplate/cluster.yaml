@@ -162,5 +162,5 @@ spec:
       name: '{{.SPACE_NAME}}-dev' 
     spec:
       timeoutSeconds: 43200
-  tierName: ttr-go-template
+  tierName: base1ns-gotemplate
   type: clusterresources

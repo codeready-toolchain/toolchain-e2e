@@ -280,5 +280,5 @@ spec:
                   dev-sandbox/policy-group: ingress
       policyTypes:
         - Ingress
-  tierName: ttr-go-template
+  tierName: base1ns-gotemplate
   type: dev
