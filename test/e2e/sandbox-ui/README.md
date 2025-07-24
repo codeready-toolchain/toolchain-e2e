@@ -18,6 +18,26 @@ If you want to run and test the Developer Sandbox UI from your local rhdh-plugin
 
 For now, the e2e tests are running only through firefox browser.
 
+### Running E2E Tests in Container
+Please, do not forget that you need to have the toolchain resources deployed before running:
+
+`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
+
+### Running E2E Tests against prod
+If you want to run the E2E tests against prod, please follow the next steps:
+- have a new Red Hat account or an account that was deactivated
+- fill `testsupport/sandbox-ui/.env`
+```
+SSO_USERNAME=<your-username>
+SSO_PASSWORD=<your-password>
+BASE_URL=https://sandbox.redhat.com/
+ENVIRONMENT=dev
+BROWSER=firefox
+```
+- run `go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast`
+
+`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
+
 ### Deploy Developer Sandbox UI in E2E mode
 `make deploy-sandbox-ui HOST_NS=<HOST_NS>`
 
@@ -30,11 +50,6 @@ Please note that OCP cluster does not have a valid CA, so when accessing the Dev
 - access `<registration-service-route>/api/v1/signup` to tell your browser that the registration service route can be accessed
 
 ![registration-service](https://github.com/user-attachments/assets/6c2f7446-1de2-4701-ace7-2d6796f49eeb)
-
-### Running E2E Tests in Container
-Please, do not forget that you need to have the toolchain resources deployed before running:
-
-`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
 
 ### Clean Developer Sandbox UI
 `make clean-sandbox-ui HOST_NS=<HOST_NS> SSO_USERNAME=<SSO_USERNAME>`

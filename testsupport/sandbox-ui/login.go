@@ -28,7 +28,7 @@ func NewLoginPage(page playwright.Page, environment string) *LoginPage {
 	switch environment {
 	case "dev":
 		lp.LoginUsernameLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
-			Name: "Red Hat login or email",
+			Name: "Red Hat login",
 		})
 		lp.LoginPwLoc = page.GetByRole("textbox", playwright.PageGetByRoleOptions{
 			Name: "Password",

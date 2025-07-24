@@ -54,6 +54,13 @@ func Setup(t *testing.T, testName string) playwright.Page {
 
 	login := NewLoginPage(page, env)
 	login.Navigate(t, baseURL)
+
+	if env == "dev" {
+		// handle cookie consent
+		// on dev environment, the cookie consent appears after the login page is loaded
+		handleCookiesConsent(t, page)
+	}
+
 	login.Login(t, username, password)
 
 	// handle cookie consent
