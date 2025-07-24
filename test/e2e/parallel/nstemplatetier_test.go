@@ -90,7 +90,7 @@ func TestNSTemplateTiers(t *testing.T) {
 func TestUpdateNSTemplateTier(t *testing.T) {
 	t.Parallel()
 	// in this test, we have 2 groups of users, configured with their own tier (both using the "base1ns" tier templates)
-	// then, the first tier is updated with the "base1nsnoidling" templates, whereas the second one is updated using the "baseextendedidling" templates
+	// then, the first tier is updated with the "base1nsnoidling" templates, whereas the second one is updated using the "base1ns6didler" templates
 	// finally, all user namespaces are verified.
 	// So, in this test, we verify that namespace resources and cluster resources are updated, on 2 groups of users with different tiers ;)
 
@@ -108,7 +108,7 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	require.NoError(t, err)
 	base1nsnoidlingTier, err := hostAwait.WaitForNSTemplateTier(t, "base1nsnoidling")
 	require.NoError(t, err)
-	baseextendedidlingTier, err := hostAwait.WaitForNSTemplateTier(t, "baseextendedidling")
+	base1ns6dilderTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns6didler")
 	require.NoError(t, err)
 
 	// create new NSTemplateTiers (derived from `base`)
@@ -131,8 +131,8 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	t.Log("updating tiers")
 	// when updating the "cheesecakeTier" tier with the "base1nsnoidling" template refs for namespace resources and spaceroles
 	cheesecakeTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cheesecakeTier, tiers.WithNamespaceResources(t, base1nsnoidlingTier), tiers.WithSpaceRoles(t, base1nsnoidlingTier))
-	// and when updating the "cookie" tier with the "baseextendedidling" template refs for both namespace resources and cluster-wide resources
-	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, baseextendedidlingTier), tiers.WithClusterResources(t, baseextendedidlingTier))
+	// and when updating the "cookie" tier with the "base1ns6didler" template refs for both namespace resources and cluster-wide resources
+	cookieTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, cookieTier, tiers.WithNamespaceResources(t, base1ns6dilderTier), tiers.WithClusterResources(t, base1ns6dilderTier))
 	// and when updating the "chocolate" tier to the "base1nsnoidling" template refs for namespace resources
 	chocolateTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, chocolateTier, tiers.WithNamespaceResources(t, base1nsnoidlingTier))
 
@@ -265,7 +265,7 @@ func TestTierTemplates(t *testing.T) {
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	require.NoError(t, err)
-	// We have 29 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, baseextendedidling: 3, advanced: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3, intelmedium: 2, intellarge: 2, intelxlarge: 2)
+	// We have 23 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3, intelmedium: 2, intellarge: 2, intelxlarge: 2)
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
 	assert.GreaterOrEqual(t, len(allTiers.Items), 33)
 }
