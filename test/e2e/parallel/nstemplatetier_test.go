@@ -265,9 +265,9 @@ func TestTierTemplates(t *testing.T) {
 	allTiers := &toolchainv1alpha1.TierTemplateList{}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	require.NoError(t, err)
-	// We have 23 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, baselarge: 3, test: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3, intelmedium: 2, intellarge: 2, intelxlarge: 2)
+	// We have 19 tier templates (base: 3, base1ns: 2, base1nsnoidling: 2, base1ns6didler: 3, appstudio: 3, appstudiolarge: 3, appstudio-env: 3)
 	// But we cannot verify the exact number of tiers, because during the operator update it may happen that more TierTemplates are created
-	assert.GreaterOrEqual(t, len(allTiers.Items), 33)
+	assert.GreaterOrEqual(t, len(allTiers.Items), 38)
 }
 
 func TestFeatureToggles(t *testing.T) {

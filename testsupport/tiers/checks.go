@@ -32,11 +32,6 @@ const (
 	base1ns         = "base1ns"
 	base1ns6didler  = "base1ns6didler"
 	base1nsnoidling = "base1nsnoidling"
-	baselarge       = "baselarge"
-	testTier        = "test"
-	intelMedium     = "intelmedium"
-	intelLarge      = "intellarge"
-	intelXLarge     = "intelxlarge"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -61,22 +56,12 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
-	case baselarge:
-		return &baselargeTierChecks{baseTierChecks{tierName: baselarge}}, nil
 	case appstudio:
 		return &appstudioTierChecks{tierName: appstudio}, nil
 	case appstudiolarge:
 		return &appstudiolargeTierChecks{appstudioTierChecks{tierName: appstudiolarge}}, nil
 	case appstudioEnv:
 		return &appstudioEnvTierChecks{tierName: appstudioEnv}, nil
-	case testTier:
-		return &testTierChecks{tierName: testTier}, nil
-	case intelMedium:
-		return &intelMediumTierChecks{tierName: intelMedium}, nil
-	case intelLarge:
-		return &intelLargeTierChecks{intelMediumTierChecks{tierName: intelLarge}}, nil
-	case intelXLarge:
-		return &intelXLargeTierChecks{intelLargeTierChecks{intelMediumTierChecks{tierName: intelXLarge}}}, nil
 	default:
 		return nil, fmt.Errorf("no assertion implementation found for %s", tier.Name)
 	}
@@ -315,25 +300,6 @@ func (a *base1ns6didlerTierChecks) GetClusterObjectChecks() []clusterObjectsChec
 		idlers(518400, "dev"))
 }
 
-type baselargeTierChecks struct {
-	baseTierChecks
-}
-
-func (a *baselargeTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaCompute(baseCPULimit, "6000m", "32Gi", "60Gi"),
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServicesNoLoadBalancers(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(9),
-		idlers(43200, "dev", "stage"))
-}
-
 // toolchainLabelsWaitCriterion create a slice of LabelWaitCriterion containing all the required toolchain labels and values.
 func toolchainLabelsWaitCriterion(userName string) []wait.LabelWaitCriterion {
 	var labelsWaitCriterion []wait.LabelWaitCriterion
@@ -360,30 +326,6 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 		networkPolicyAllowFromConsoleNamespaces(),
 		networkPolicyIngressAllowFromDevSandboxPolicyGroup(),
 	}
-}
-
-// testTierChecks checks only that the "test" tier exists and has correct template references.
-// It does not check the test tier resources
-type testTierChecks struct {
-	tierName string
-}
-
-func (a *testTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	return []namespaceObjectsCheck{}
-}
-
-func (a *testTierChecks) GetSpaceRoleChecks(_ map[string][]string) ([]spaceRoleObjectsCheck, error) {
-	return []spaceRoleObjectsCheck{}, nil
-}
-
-func (a *testTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
-	verifyNsTypes(t, a.tierName, templateRefs, "dev")
-	return templateRefs
-}
-
-func (a *testTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return []clusterObjectsCheck{}
 }
 
 type appstudioTierChecks struct {
@@ -589,106 +531,6 @@ func (a *appstudioEnvTierChecks) GetClusterObjectChecks() []clusterObjectsCheck 
 		clusterResourceQuotaConfigMap(),
 		numberOfClusterResourceQuotas(8),
 		idlers(0, "env"))
-}
-
-type intelMediumTierChecks struct {
-	tierName string
-}
-
-func (a *intelMediumTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("8", "16Gi", "8", "16Gi"),
-		resourceQuotaComputeBuild("8", "16Gi", "8", "16Gi"),
-		resourceQuotaStorage("15Gi", "50Gi", "15Gi", "5"),
-		limitRange("1", "1000Mi", "10m", "64Mi"),
-		numberOfLimitRanges(1),
-		execPodsRole(),
-		crtadminPodsRoleBinding(),
-		crtadminViewRoleBinding(),
-	}
-	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
-	return checks
-}
-
-func (a *intelMediumTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
-	checks := []spaceRoleObjectsCheck{}
-	roles := 0
-	rolebindings := 0
-	for role, usernames := range spaceRoles {
-		switch role {
-		case "admin":
-			checks = append(checks, rbacEditRole())
-			roles++
-			for _, userName := range usernames {
-				checks = append(checks,
-					rbacEditRoleBinding(userName),
-					userEditRoleBinding(userName),
-				)
-				rolebindings += 2
-			}
-		default:
-			return nil, fmt.Errorf("unexpected template name: '%s'", role)
-		}
-	}
-	// also count the roles, rolebindings
-	checks = append(checks,
-		numberOfToolchainRoles(roles+1),               // +1 for `exec-pods`
-		numberOfToolchainRoleBindings(rolebindings+2), // +2 for `crtadmin-pods` and `crtadmin-view`
-	)
-	return checks, nil
-}
-
-func (a *intelMediumTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
-	verifyNsTypes(t, a.tierName, templateRefs, "dev")
-	return templateRefs
-}
-
-func (a *intelMediumTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
-	return clusterObjectsChecks(
-		clusterResourceQuotaDeployments(),
-		clusterResourceQuotaReplicas(),
-		clusterResourceQuotaRoutes(),
-		clusterResourceQuotaJobs(),
-		clusterResourceQuotaServicesNoLoadBalancers(),
-		clusterResourceQuotaBuildConfig(),
-		clusterResourceQuotaSecrets(),
-		clusterResourceQuotaConfigMap(),
-		numberOfClusterResourceQuotas(8),
-		idlers(172800, "dev"))
-}
-
-type intelLargeTierChecks struct {
-	intelMediumTierChecks
-}
-
-func (a *intelLargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	return getNamespaceObjectChecksForIntelLarge("32Gi")
-}
-
-type intelXLargeTierChecks struct {
-	intelLargeTierChecks
-}
-
-func (a *intelXLargeTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
-	return getNamespaceObjectChecksForIntelLarge("64Gi")
-}
-
-func getNamespaceObjectChecksForIntelLarge(memoryLimit string) []namespaceObjectsCheck {
-	checks := []namespaceObjectsCheck{
-		resourceQuotaComputeDeploy("16", memoryLimit, "16", memoryLimit),
-		resourceQuotaComputeBuild("16", memoryLimit, "16", memoryLimit),
-		resourceQuotaStorage("15Gi", "100Gi", "15Gi", "5"),
-		limitRange("1", "1000Mi", "10m", "64Mi"),
-		numberOfLimitRanges(1),
-		execPodsRole(),
-		crtadminPodsRoleBinding(),
-		crtadminViewRoleBinding(),
-	}
-	checks = append(checks, commonNetworkPolicyChecks()...)
-	checks = append(checks, networkPolicyAllowFromCRW(), networkPolicyAllowFromVirtualizationNamespaces(), networkPolicyAllowFromRedHatODSNamespaceToMariaDB(), networkPolicyAllowFromRedHatODSNamespaceToModelMesh(), numberOfNetworkPolicies(10))
-	return checks
 }
 
 // verifyNsTypes checks that there's a namespace.TemplateRef that begins with `<tier>-<type>` for each given templateRef (and no more, no less)
