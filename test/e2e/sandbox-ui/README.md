@@ -1,5 +1,5 @@
 # Developer Sandbox UI E2E Tests
-The e2e tests are executed against the Developer Sandbox UI running in OpenShift.
+The UI E2E tests are executed against the Developer Sandbox UI running in OpenShift.
 
 *Prerequisites*:
 
@@ -11,21 +11,21 @@ The e2e tests are executed against the Developer Sandbox UI running in OpenShift
 4. Make sure you can log in at https://sso.devsandbox.dev/auth/realms/sandbox-dev/account using your SSO_USERNAME and SSO_PASSWORD
 5. Make sure you do not have any toolchain resources deployed on your cluster
 
-### Running E2E Tests locally
+### Running UI E2E Tests locally
 `make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
 If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
 
-For now, the e2e tests are running only through firefox browser.
+For now, the UI E2E tests are running only through the Firefox browser.
 
-### Running E2E Tests in Container
+### Running UI E2E Tests in Container
 
 `make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
 
-### Running E2E Tests against prod
-If you want to run the E2E tests against prod, please follow the next steps:
+### Running UI E2E Tests against dev/stage/prod
+If you want to run the UI E2E tests against dev/stage/prod, please follow the next steps:
 - have a new Red Hat account or an account that was deactivated
-- fill `testsupport/sandbox-ui/.env`
+- fill `testsupport/sandbox-ui/.env`, note that to run the UI E2E tests against dev/stage/prod, you need to set the ENVIRONMENT to dev.
 ```
 SSO_USERNAME=<your-username>
 SSO_PASSWORD=<your-password>

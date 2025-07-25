@@ -20,7 +20,7 @@ deploy-sandbox-ui:
 ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
 endif
-	kustomize build deploy/sandbox-ui/e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
+	kustomize build deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
 			HOST_NS=${HOST_NS} \
 			HOST_OPERATOR_API=${HOST_OPERATOR_API} \
 			SANDBOX_UI_NS=${SANDBOX_UI_NS} \
@@ -55,7 +55,7 @@ configure-oauth-idp:
 	@oc create secret generic ${OPENID_SECRET_NAME} \
 		--from-literal=clientSecret=dummy \
 		--namespace=openshift-config
-	OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/sandbox-ui/e2e-tests/oauth-idp-patch.yaml | \
+	OPENID_SECRET_NAME=${OPENID_SECRET_NAME} envsubst < deploy/sandbox-ui/ui-e2e-tests/oauth-idp-patch.yaml | \
 		oc patch oauths.config.openshift.io/cluster --type=merge --patch-file=/dev/stdin
 
 create-namespace:
@@ -115,7 +115,7 @@ e2e-run-sandbox-ui:
 	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast
 	
 	@echo "Running Developer Sandbox UI e2e tests in firefox..."
-	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/e2e-tests/.env > testsupport/sandbox-ui/.env
+	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
 	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast
 	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 
