@@ -51,7 +51,7 @@ import (
 
 var (
 	BundledNSTemplateTiers []string = []string{"base1ns", "base1nsnoidling", "base1ns6didler", "base"}
-	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env"}
+	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env", "base1ns-gotemplate"}
 	AllE2eNSTemplateTiers  []string = append(BundledNSTemplateTiers, CustomNSTemplateTiers...)
 )
 
@@ -1174,14 +1174,21 @@ func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriter
 				return false
 			}
 			for _, tierTemplateRef := range revisions {
-				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
+				found := false
+				for _, value := range actual.Status.Revisions {
+					if value == tierTemplateRef {
+						found = true
+						break
+					}
+				}
+				if !found {
 					return false
 				}
 			}
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected revision keys %v not found in: %v", revisions, actual.Status.Revisions)
+			return fmt.Sprintf("expected revision values %v not found in: %v", revisions, actual.Status.Revisions)
 		},
 	}
 }
