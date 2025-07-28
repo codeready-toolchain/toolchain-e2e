@@ -25,14 +25,14 @@ import (
 
 const (
 	// tier names
-	appstudio       = "appstudio"
-	appstudiolarge  = "appstudiolarge"
-	appstudioEnv    = "appstudio-env"
-	base            = "base"
-	base1ns         = "base1ns"
-	gobase1ns       = "base1ns-gotemplate"
-	base1ns6didler  = "base1ns6didler"
-	base1nsnoidling = "base1nsnoidling"
+	appstudio         = "appstudio"
+	appstudiolarge    = "appstudiolarge"
+	appstudioEnv      = "appstudio-env"
+	base              = "base"
+	base1ns           = "base1ns"
+	base1nsGoTemplate = "base1ns-gotemplate"
+	base1ns6didler    = "base1ns6didler"
+	base1nsnoidling   = "base1nsnoidling"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -55,8 +55,8 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &base1nsTierChecks{tierName: base1ns}, nil
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
-	case gobase1ns:
-		return &goBase1nsTierChecks{tierName: gobase1ns}, nil
+	case base1nsGoTemplate:
+		return &base1nsGoTemplateTierChecks{tierName: base1nsGoTemplate}, nil
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
 	case appstudio:
@@ -331,11 +331,11 @@ func commonNetworkPolicyChecks() []namespaceObjectsCheck {
 	}
 }
 
-type goBase1nsTierChecks struct {
+type base1nsGoTemplateTierChecks struct {
 	tierName string
 }
 
-func (a *goBase1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
+func (a *base1nsGoTemplateTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi"),
 		resourceQuotaComputeBuild("30", "14Gi", "3", "14Gi"),
@@ -351,7 +351,7 @@ func (a *goBase1nsTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObje
 	return checks
 }
 
-func (a *goBase1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
+func (a *base1nsGoTemplateTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string) ([]spaceRoleObjectsCheck, error) {
 	checks := []spaceRoleObjectsCheck{}
 	roles := 0
 	rolebindings := 0
@@ -379,13 +379,13 @@ func (a *goBase1nsTierChecks) GetSpaceRoleChecks(spaceRoles map[string][]string)
 	return checks, nil
 }
 
-func (a *goBase1nsTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+func (a *base1nsGoTemplateTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
 	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
 	verifyNsTypes(t, a.tierName, templateRefs, "dev")
 	return templateRefs
 }
 
-func (a *goBase1nsTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
+func (a *base1nsGoTemplateTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return clusterObjectsChecks(
 		goClusterResourceQuotaDeployments(),
 		goClusterResourceQuotaReplicas(),
