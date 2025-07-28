@@ -17,32 +17,24 @@ type TemplateRefs struct {
 
 // GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
 func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
-	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
+	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")), wait.HasAnyStatusTierTemplateRevisions())
 	require.NoError(t, err)
 	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
 	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
 
 	for _, ns := range templateTier.Spec.Namespaces {
-		if templateTier.Labels["go-template"] == "toolchain-e2e" {
-			for key, value := range templateTier.Status.Revisions {
-				if key == ns.TemplateRef {
-					nsRefs = append(nsRefs, value)
-				}
+		for key, value := range templateTier.Status.Revisions {
+			if key == ns.TemplateRef {
+				nsRefs = append(nsRefs, value)
 			}
-		} else {
-			nsRefs = append(nsRefs, ns.TemplateRef)
 		}
 	}
 
 	for role, spaceRole := range templateTier.Spec.SpaceRoles {
-		if templateTier.Labels["go-template"] == "toolchain-e2e" {
-			for templateRef, revision := range templateTier.Status.Revisions {
-				if templateRef == spaceRole.TemplateRef {
-					spaceRoleRefs[role] = revision
-				}
+		for templateRef, revision := range templateTier.Status.Revisions {
+			if templateRef == spaceRole.TemplateRef {
+				spaceRoleRefs[role] = revision
 			}
-		} else {
-			spaceRoleRefs[role] = spaceRole.TemplateRef
 		}
 	}
 	return TemplateRefs{
@@ -72,12 +64,8 @@ func (r TemplateRefs) SpaceRolesFlatten() []string {
 }
 
 func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
-	if tier.Labels["go-template"] == "toolchain-e2e" {
-		if rev, ok := tier.Status.Revisions[tier.Spec.ClusterResources.TemplateRef]; ok {
-			return &rev
-		}
-	} else if tier.Spec.ClusterResources != nil {
-		return &(tier.Spec.ClusterResources.TemplateRef)
+	if rev, ok := tier.Status.Revisions[tier.Spec.ClusterResources.TemplateRef]; ok {
+		return &rev
 	}
 	return nil
 }
