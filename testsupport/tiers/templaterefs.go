@@ -23,18 +23,26 @@ func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName stri
 	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
 
 	for _, ns := range templateTier.Spec.Namespaces {
-		for key, value := range templateTier.Status.Revisions {
-			if key == ns.TemplateRef {
-				nsRefs = append(nsRefs, value)
+		if templateTier.Labels["go-template"] == "toolchain-e2e" {
+			for key, value := range templateTier.Status.Revisions {
+				if key == ns.TemplateRef {
+					nsRefs = append(nsRefs, value)
+				}
 			}
+		} else {
+			nsRefs = append(nsRefs, ns.TemplateRef)
 		}
 	}
 
 	for role, spaceRole := range templateTier.Spec.SpaceRoles {
-		for templateRef, revision := range templateTier.Status.Revisions {
-			if templateRef == spaceRole.TemplateRef {
-				spaceRoleRefs[role] = revision
+		if templateTier.Labels["go-template"] == "toolchain-e2e" {
+			for templateRef, revision := range templateTier.Status.Revisions {
+				if templateRef == spaceRole.TemplateRef {
+					spaceRoleRefs[role] = revision
+				}
 			}
+		} else {
+			spaceRoleRefs[role] = spaceRole.TemplateRef
 		}
 	}
 	return TemplateRefs{
@@ -64,8 +72,12 @@ func (r TemplateRefs) SpaceRolesFlatten() []string {
 }
 
 func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
-	if rev, ok := tier.Status.Revisions[tier.Spec.ClusterResources.TemplateRef]; ok {
-		return &rev
+	if tier.Labels["go-template"] == "toolchain-e2e" {
+		if rev, ok := tier.Status.Revisions[tier.Spec.ClusterResources.TemplateRef]; ok {
+			return &rev
+		}
+	} else if tier.Spec.ClusterResources != nil {
+		return &(tier.Spec.ClusterResources.TemplateRef)
 	}
 	return nil
 }
