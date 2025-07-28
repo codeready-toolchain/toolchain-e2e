@@ -1169,7 +1169,7 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 func HasAnyStatusTierTemplateRevisions() NSTemplateTierWaitCriterion {
 	return NSTemplateTierWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
-			return len(actual.Status.Revisions) > 0
+			return len(actual.Status.Revisions) > 3
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
 			return "expected tier template revisions to be set, but found none"
