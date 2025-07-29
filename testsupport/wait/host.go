@@ -1166,6 +1166,49 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 	}
 }
 
+func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
+	var revisions []string
+	return NSTemplateTierWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+
+			for _, ns := range actual.Spec.Namespaces {
+				revisions = append(revisions, ns.TemplateRef)
+			}
+			if actual.Spec.ClusterResources != nil {
+				revisions = append(revisions, actual.Spec.ClusterResources.TemplateRef)
+			}
+
+			roles := make([]string, 0, len(actual.Spec.SpaceRoles))
+			for r := range actual.Spec.SpaceRoles {
+				roles = append(roles, r)
+			}
+			for _, r := range roles {
+				revisions = append(revisions, actual.Spec.SpaceRoles[r].TemplateRef)
+			}
+
+			if len(actual.Status.Revisions) != len(revisions) {
+				return false
+			}
+			for _, revKey := range revisions {
+				found := false
+				for actKey, _ := range actual.Status.Revisions {
+					if actKey == revKey {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
+			return fmt.Sprintf("expected revision values %v not found in: %v", revisions, actual.Status.Revisions)
+		},
+	}
+}
+
 // HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
 func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
 	return NSTemplateTierWaitCriterion{
