@@ -301,3 +301,44 @@ func IsSecondMemberMode(t *testing.T) bool {
 
 	return secondMemberMode == "true"
 }
+
+// WaitForSandboxUI waits for the Developer Sandbox UI to be ready.
+func WaitForSandboxUI(t *testing.T) {
+	ns := os.Getenv("SANDBOX_UI_NS")
+	require.NotEmpty(t, ns)
+
+	initOnce.Do(func() {
+		// get client
+		apiConfig, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+		require.NoError(t, err)
+
+		kubeconfig, err := util.BuildKubernetesRESTConfig(*apiConfig)
+		require.NoError(t, err)
+
+		scheme := runtime.NewScheme()
+		builder := append(
+			runtime.SchemeBuilder{},
+			routev1.AddToScheme,
+			appsv1.AddToScheme,
+			corev1.AddToScheme,
+		)
+		err = builder.AddToScheme(scheme)
+		require.NoError(t, err)
+
+		cl, err := client.New(kubeconfig, client.Options{Scheme: scheme})
+		require.NoError(t, err)
+
+		initAwait := &wait.Awaitility{
+			Client:        cl,
+			Namespace:     ns,
+			RetryInterval: wait.DefaultRetryInterval,
+			Timeout:       wait.DefaultTimeout,
+			RestConfig:    kubeconfig,
+		}
+
+		initAwait.WaitForDeploymentToGetReady(t, "rhdh", 1)
+
+		_, err = initAwait.WaitForRouteToBeAvailable(t, ns, "rhdh", "/proxyhealth")
+		require.NoError(t, err)
+	})
+}

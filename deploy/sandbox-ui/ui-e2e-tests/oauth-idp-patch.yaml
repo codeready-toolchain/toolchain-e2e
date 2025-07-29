@@ -1,0 +1,17 @@
+spec:
+  identityProviders:
+    - mappingMethod: claim
+      name: DevSandbox
+      openID:
+        claims:
+          email:
+            - email
+          name:
+            - username
+          preferredUsername:
+            - preferred_username
+        clientID: sandbox-public
+        clientSecret:
+          name: ${OPENID_SECRET_NAME}
+        issuer: 'https://sso.devsandbox.dev/auth/realms/sandbox-dev'
+      type: OpenID
