@@ -1191,7 +1191,7 @@ func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
 			}
 			for _, revKey := range revisions {
 				found := false
-				for actKey, _ := range actual.Status.Revisions {
+				for actKey := range actual.Status.Revisions {
 					if actKey == revKey {
 						found = true
 						break
