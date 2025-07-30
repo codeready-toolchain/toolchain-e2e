@@ -110,22 +110,16 @@ if [[ -n "${CI}${REG_REPO_PATH}${HOST_REPO_PATH}" ]] && [[ $(echo ${REPO_NAME} |
     if [[ ${PUBLISH_OPERATOR} == "true" ]]; then
         push_image
         OPERATOR_IMAGE_LOC=${IMAGE_LOC}
-        make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_NAME=${REPO_NAME_FOR_IMAGE}-index INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} OTHER_REPO_PATH=${REG_REPO_PATH} OTHER_REPO_IMAGE_LOC=${REG_SERV_IMAGE_LOC} IMAGE=${OPERATOR_IMAGE_LOC}
+        make -C ${REPOSITORY_PATH} publish-current-bundle INDEX_IMAGE_TAG=${BUNDLE_AND_INDEX_TAG} BUNDLE_TAG=${BUNDLE_AND_INDEX_TAG} QUAY_NAMESPACE=${QUAY_NAMESPACE} OTHER_REPO_PATH=${REG_REPO_PATH} OTHER_REPO_IMAGE_LOC=${REG_SERV_IMAGE_LOC} IMAGE=${OPERATOR_IMAGE_LOC}
     fi
 else
     INDEX_IMAGE_LOC="quay.io/codeready-toolchain/host-operator-index:latest"
-    if [[ "${ENVIRONMENT}" == "ui-e2e-tests" ]]; then
-        INDEX_IMAGE_LOC="quay.io/codeready-toolchain/host-operator-ui-e2e-tests-index:latest"
-    fi
 fi
 
 if [[ ${INSTALL_OPERATOR} == "true" ]]; then
     OPERATOR_RESOURCE_NAME=host-operator
     OPERATOR_NAME=toolchain-host-operator
     INDEX_IMAGE_NAME=host-operator-index
-    if [[ "${ENVIRONMENT}" == "ui-e2e-tests" ]]; then
-        INDEX_IMAGE_NAME=host-operator-ui-e2e-tests-index
-    fi
     NAMESPACE=${HOST_NS}
     EXPECT_CRD=toolchainconfigs.toolchain.dev.openshift.com
     install_operator

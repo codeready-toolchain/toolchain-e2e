@@ -46,18 +46,11 @@ set_tags() {
 
 push_image() {
     GIT_COMMIT_ID=$(git --git-dir=${REPOSITORY_PATH}/.git --work-tree=${REPOSITORY_PATH} rev-parse --short HEAD)
-    
-    REPO_NAME_FOR_IMAGE=${REPOSITORY_NAME}
-    # Use different repository name for ui-e2e-tests environment
-    if [[ "${ENVIRONMENT}" == "ui-e2e-tests" ]]; then
-        REPO_NAME_FOR_IMAGE="${REPOSITORY_NAME}-ui-e2e-tests"
-    fi
-    
-    IMAGE_LOC=quay.io/codeready-toolchain/${REPO_NAME_FOR_IMAGE}:${GIT_COMMIT_ID}
+    IMAGE_LOC=quay.io/codeready-toolchain/${REPOSITORY_NAME}:${GIT_COMMIT_ID}
     if is_provided_or_paired; then
         IMAGE_BUILDER=${IMAGE_BUILDER:-"podman"}
         make -C ${REPOSITORY_PATH} ${IMAGE_BUILDER}-push QUAY_NAMESPACE=${QUAY_NAMESPACE} IMAGE_TAG=${TAGS}
-        IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/${REPO_NAME_FOR_IMAGE}:${TAGS}
+        IMAGE_LOC=quay.io/${QUAY_NAMESPACE}/${REPOSITORY_NAME}:${TAGS}
     fi
 }
 
