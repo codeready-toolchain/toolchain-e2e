@@ -2,11 +2,15 @@ name: publish-sandbox-ui-for-ui-e2e-tests
 on:
   issue_comment:
     types: [created]
-  pull_request_target:
+  # temporary, just to test the workflow
+  pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+env:
+  GOPATH: /tmp/go
+
 jobs:
-  publish-sandbox-ui-for-ui-e2e-tests:
+  binary:
     name: Build & push Developer Sandbox UI image for UI e2e tests
 
     runs-on: ubuntu-24.04
@@ -62,37 +66,28 @@ jobs:
       - name: Prepare tools
         uses: codeready-toolchain/toolchain-cicd/prepare-tools-action@master
 
-      # Single login step - runs for both PR and comment events
-      - name: Login to quay
-        run: |
-          set -e
-          export XDG_RUNTIME_DIR=/run/user/${UID}
-          mkdir -p ${XDG_RUNTIME_DIR}/containers || true
-          echo "{
-                      \"auths\": {
-                              \"quay.io\": {
-                                      \"auth\": \"${{ secrets.TEST_QUAY_TOKEN }}\"
-                              }
-                      }
-                  }"> ${XDG_RUNTIME_DIR}/containers/auth.json
-          podman login --get-login quay.io
-
-      # Publish Developer Sandbox UI for PR events
-      - name: Publish current Developer Sandbox UI (PR event)
+      # Execute composite action using values from PR event
+      # Is executed only for PR events - in that case the comment field is empty
+      - name: Publish current Developer Sandbox UI image
+        uses: rsoaresd/toolchain-cicd/publish-sandbox-ui-for-ui-e2e-tests@add_actions_to_ui_e2e_tests
         if: ${{ github.event.comment == '' }}
-        run: |
-          PROVIDED_REF=${{ github.event.pull_request.head.ref }}
-          if [[ -n ${PROVIDED_REF} ]]; then
-            GH_HEAD_REF_PARAM="GITHUB_HEAD_REF=${PROVIDED_REF}"
-          fi
-          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ github.event.pull_request.head.sha }} PULL_NUMBER=${{ github.event.pull_request.number }} AUTHOR=${{ github.event.pull_request.head.user.login }} GITHUB_BRANCH="${PROVIDED_REF}" ${GH_HEAD_REF_PARAM}
+        with:
+          quay-token: ${{ secrets.TEST_QUAY_TOKEN }}
+          quay-namespace: codeready-toolchain-test
+          sha: ${{ github.event.pull_request.head.sha }}
+          pr-number: ${{ github.event.pull_request.number }}
+          author: ${{ github.event.pull_request.head.user.login }}
+          gh-head-ref: ${{ github.event.pull_request.head.ref }}
 
-      # Publish Developer Sandbox UI for comment events  
-      - name: Publish current Developer Sandbox UI (comment event)
+      # Execute composite action using values from PR event
+      # Is executed only for comment events - in that case the pull_request field is empty
+      - name: Publish current Developer Sandbox UI image
+        uses: rsoaresd/toolchain-cicd/publish-sandbox-ui-for-ui-e2e-tests@add_actions_to_ui_e2e_tests
         if: ${{ github.event.pull_request == '' }}
-        run: |
-          PROVIDED_REF=${{ fromJson(steps.request.outputs.data).head.ref }}
-          if [[ -n ${PROVIDED_REF} ]]; then
-            GH_HEAD_REF_PARAM="GITHUB_HEAD_REF=${PROVIDED_REF}"
-          fi
-          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ fromJson(steps.request.outputs.data).head.sha }} PULL_NUMBER=${{ fromJson(steps.request.outputs.data).number }} AUTHOR=${{ fromJson(steps.request.outputs.data).head.user.login }} GITHUB_BRANCH="${PROVIDED_REF}" ${GH_HEAD_REF_PARAM}
+        with:
+          quay-token: ${{ secrets.TEST_QUAY_TOKEN }}
+          quay-namespace: codeready-toolchain-test
+          sha: ${{ fromJson(steps.request.outputs.data).head.sha }}
+          pr-number: ${{ fromJson(steps.request.outputs.data).number }}
+          author: ${{ fromJson(steps.request.outputs.data).head.user.login }}
+          gh-head-ref: ${{ fromJson(steps.request.outputs.data).head.ref }}
