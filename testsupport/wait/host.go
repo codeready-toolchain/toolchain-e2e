@@ -1167,15 +1167,16 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 }
 
 func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
-	var revisions []string
 	return NSTemplateTierWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+			// Collect expected template refs from the tier spec
+			var expectedRevisions []string
 
 			for _, ns := range actual.Spec.Namespaces {
-				revisions = append(revisions, ns.TemplateRef)
+				expectedRevisions = append(expectedRevisions, ns.TemplateRef)
 			}
 			if actual.Spec.ClusterResources != nil {
-				revisions = append(revisions, actual.Spec.ClusterResources.TemplateRef)
+				expectedRevisions = append(expectedRevisions, actual.Spec.ClusterResources.TemplateRef)
 			}
 
 			roles := make([]string, 0, len(actual.Spec.SpaceRoles))
@@ -1183,28 +1184,33 @@ func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
 				roles = append(roles, r)
 			}
 			for _, r := range roles {
-				revisions = append(revisions, actual.Spec.SpaceRoles[r].TemplateRef)
+				expectedRevisions = append(expectedRevisions, actual.Spec.SpaceRoles[r].TemplateRef)
 			}
 
-			if len(actual.Status.Revisions) != len(revisions) {
+			// Check if all expected template refs exist as keys in Status.Revisions
+			if len(actual.Status.Revisions) != len(expectedRevisions) {
 				return false
 			}
-			for _, revKey := range revisions {
-				found := false
-				for actKey := range actual.Status.Revisions {
-					if actKey == revKey {
-						found = true
-						break
-					}
-				}
-				if !found {
+			for _, expectedKey := range expectedRevisions {
+				if _, found := actual.Status.Revisions[expectedKey]; !found {
 					return false
 				}
 			}
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected revision values %v not found in: %v", revisions, actual.Status.Revisions)
+			// Recalculate expected revisions for error message
+			var expectedRevisions []string
+			for _, ns := range actual.Spec.Namespaces {
+				expectedRevisions = append(expectedRevisions, ns.TemplateRef)
+			}
+			if actual.Spec.ClusterResources != nil {
+				expectedRevisions = append(expectedRevisions, actual.Spec.ClusterResources.TemplateRef)
+			}
+			for r := range actual.Spec.SpaceRoles {
+				expectedRevisions = append(expectedRevisions, actual.Spec.SpaceRoles[r].TemplateRef)
+			}
+			return fmt.Sprintf("expected revision keys %v not found in: %v", expectedRevisions, actual.Status.Revisions)
 		},
 	}
 }
