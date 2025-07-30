@@ -16,12 +16,7 @@ spec:
         devSpaces:
           segmentWriteKey: "test devspaces segment write key"
         segmentWriteKey: "test sandbox segment write key"
-      auth:
-        authClientConfigRaw: '{ "realm": "sandbox-dev", "auth-server-url": "https://sso.devsandbox.dev/auth", "ssl-required": "none", "resource": "sandbox-public", "clientId": "sandbox-public", "public-client": true }'
-        authClientLibraryURL: "https://sso.devsandbox.dev/auth/js/keycloak.js"
-        authClientPublicKeysURL: "https://sso.devsandbox.dev/auth/realms/sandbox-dev/protocol/openid-connect/certs"
-        ssoBaseURL: "https://sso.devsandbox.dev"
-        ssoRealm: sandbox-dev
+      # default auth in dev environment points to the devsandbox sso
       environment: dev
       # same number that is set in https://github.com/codeready-toolchain/host-operator/blob/master/deploy/registration-service/registration-service.yaml#L272-L273
       replicas: 3

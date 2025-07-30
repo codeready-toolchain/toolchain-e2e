@@ -132,7 +132,7 @@ endif
 .PHONY: clone-rhdh-plugins
 clone-rhdh-plugins:
 	rm -rf ${RHDH_PLUGINS_DIR}; \
-	git clone https://github.com/redhat-developer/rhdh-plugins $(RHDH_PLUGINS_DIR) && \
+	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins $(RHDH_PLUGINS_DIR) && \
 	echo "cloned to $(RHDH_PLUGINS_DIR)"
 
 .PHONY: push-sandbox-plugin
