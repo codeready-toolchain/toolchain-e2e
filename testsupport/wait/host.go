@@ -1178,12 +1178,7 @@ func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
 			if actual.Spec.ClusterResources != nil {
 				expectedRevisions = append(expectedRevisions, actual.Spec.ClusterResources.TemplateRef)
 			}
-
-			roles := make([]string, 0, len(actual.Spec.SpaceRoles))
 			for r := range actual.Spec.SpaceRoles {
-				roles = append(roles, r)
-			}
-			for _, r := range roles {
 				expectedRevisions = append(expectedRevisions, actual.Spec.SpaceRoles[r].TemplateRef)
 			}
 
@@ -1223,14 +1218,7 @@ func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriter
 				return false
 			}
 			for _, tierTemplateRef := range revisions {
-				found := false
-				for _, value := range actual.Status.Revisions {
-					if value == tierTemplateRef {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
 					return false
 				}
 			}

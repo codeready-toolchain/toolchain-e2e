@@ -380,7 +380,7 @@ func (a *base1nsGoTemplateTierChecks) GetSpaceRoleChecks(spaceRoles map[string][
 }
 
 func (a *base1nsGoTemplateTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
+	templateRefs := GetGoTemplateRefs(t, hostAwait, a.tierName)
 	verifyNsTypes(t, a.tierName, templateRefs, "dev")
 	return templateRefs
 }
