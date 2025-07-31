@@ -15,7 +15,7 @@ type TemplateRefs struct {
 	SpaceRoles       map[string]string
 }
 
-// GetTierTemplateRefs returns the expected templateRefs populated from the NSTemplateTier.Status.Revisions field
+// GetGoTemplateRefs returns the expected templateRefs populated from the NSTemplateTier.Status.Revisions field
 func GetGoTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
 	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")), wait.HasStatusTierTemplateRevisionKeys())
 	require.NoError(t, err)
@@ -55,12 +55,10 @@ func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName stri
 	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
 	require.NoError(t, err)
 	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
-
 	for _, ns := range templateTier.Spec.Namespaces {
 		nsRefs = append(nsRefs, ns.TemplateRef)
 	}
 	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
-
 	for role, ns := range templateTier.Spec.SpaceRoles {
 		spaceRoleRefs[role] = ns.TemplateRef
 	}
