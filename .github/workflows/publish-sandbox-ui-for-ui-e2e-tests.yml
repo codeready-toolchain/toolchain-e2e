@@ -10,12 +10,17 @@ jobs:
     name: Build & push Developer Sandbox UI image for UI e2e tests
 
     runs-on: ubuntu-24.04
-    if: ${{ github.event.comment == '' || contains(github.event.comment.body, '/retest') || contains(github.event.comment.body, '/test all') || contains(github.event.comment.body, '/test e2e') }}
+    if: >-
+      ${{ github.event_name == 'pull_request_target' ||
+          (github.event_name == 'issue_comment' &&
+            (contains(github.event.comment.body, '/retest') ||
+             contains(github.event.comment.body, '/test all') ||
+             contains(github.event.comment.body, '/test e2e'))) }}
     steps:
       # Checkout from PR event - in that case the comment field is empty
       - name: Checkout code from PR event
         uses: actions/checkout@v4
-        if: ${{ github.event.comment == '' }}
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
@@ -26,7 +31,7 @@ jobs:
       - name: Send Github API Request to get PR data
         id: request
         uses: octokit/request-action@v2.4.0
-        if: ${{ github.event.pull_request == '' }}
+        if: ${{ github.event_name == 'issue_comment' }}
         with:
           route: ${{ github.event.issue.pull_request.url }}
         env:
@@ -36,7 +41,7 @@ jobs:
       # Is executed only for comment events - in that case the pull_request field is empty
       - name: Checkout code from PR
         uses: actions/checkout@v4
-        if: ${{ github.event.pull_request == '' }}
+        if: ${{ github.event_name == 'issue_comment' }}
         with:
           repository: ${{ fromJson(steps.request.outputs.data).head.repo.full_name }}
           ref: ${{ fromJson(steps.request.outputs.data).head.ref }}
@@ -64,7 +69,7 @@ jobs:
 
       # Login to quay for PR events
       - name: Login to quay (PR event)
-        if: ${{ github.event.comment == '' }}
+        if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           set -e
           export XDG_RUNTIME_DIR=/run/user/${UID}
@@ -80,7 +85,7 @@ jobs:
 
       # Publish Developer Sandbox UI for PR events
       - name: Publish current Developer Sandbox UI (PR event)
-        if: ${{ github.event.comment == '' }}
+        if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           PROVIDED_REF=${{ github.event.pull_request.head.ref }}
           if [[ -n ${PROVIDED_REF} ]]; then
@@ -90,7 +95,7 @@ jobs:
 
       # Publish Developer Sandbox UI for comment events
       - name: Publish current Developer Sandbox UI (comment event)
-        if: ${{ github.event.pull_request == '' }}
+        if: ${{ github.event_name == 'issue_comment' }}
         run: |
           PROVIDED_REF=${{ fromJson(steps.request.outputs.data).head.ref }}
           if [[ -n ${PROVIDED_REF} ]]; then
