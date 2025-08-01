@@ -15,6 +15,39 @@ type TemplateRefs struct {
 	SpaceRoles       map[string]string
 }
 
+// GetGoTemplateRefs returns the expected templateRefs populated from the NSTemplateTier.Status.Revisions field
+func GetGoTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
+	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")), wait.HasStatusTierTemplateRevisionKeys())
+	require.NoError(t, err)
+
+	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
+	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
+	var clusterResources *string
+
+	for _, ns := range templateTier.Spec.Namespaces {
+		if revision, ok := templateTier.Status.Revisions[ns.TemplateRef]; ok {
+			nsRefs = append(nsRefs, revision)
+		}
+	}
+
+	for role, spaceRole := range templateTier.Spec.SpaceRoles {
+		if revision, ok := templateTier.Status.Revisions[spaceRole.TemplateRef]; ok {
+			spaceRoleRefs[role] = revision
+		}
+	}
+
+	if templateTier.Spec.ClusterResources != nil {
+		if rev, ok := templateTier.Status.Revisions[templateTier.Spec.ClusterResources.TemplateRef]; ok {
+			clusterResources = &rev
+		}
+	}
+	return TemplateRefs{
+		Namespaces:       nsRefs,
+		ClusterResources: clusterResources,
+		SpaceRoles:       spaceRoleRefs,
+	}
+}
+
 // GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
 func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
 	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))

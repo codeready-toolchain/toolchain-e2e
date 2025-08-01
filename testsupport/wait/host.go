@@ -51,7 +51,7 @@ import (
 
 var (
 	BundledNSTemplateTiers []string = []string{"base1ns", "base1nsnoidling", "base1ns6didler", "base"}
-	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env"}
+	CustomNSTemplateTiers  []string = []string{"appstudio", "appstudiolarge", "appstudio-env", "base1ns-gotemplate"}
 	AllE2eNSTemplateTiers  []string = append(BundledNSTemplateTiers, CustomNSTemplateTiers...)
 )
 
@@ -1166,6 +1166,50 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 	}
 }
 
+func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
+	return NSTemplateTierWaitCriterion{
+		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
+			// Collect expected template refs from the tier spec
+			var expectedRevisions []string
+
+			for _, ns := range actual.Spec.Namespaces {
+				expectedRevisions = append(expectedRevisions, ns.TemplateRef)
+			}
+			if actual.Spec.ClusterResources != nil {
+				expectedRevisions = append(expectedRevisions, actual.Spec.ClusterResources.TemplateRef)
+			}
+			for r := range actual.Spec.SpaceRoles {
+				expectedRevisions = append(expectedRevisions, actual.Spec.SpaceRoles[r].TemplateRef)
+			}
+
+			// Check if all expected template refs exist as keys in Status.Revisions
+			if len(actual.Status.Revisions) != len(expectedRevisions) {
+				return false
+			}
+			for _, expectedKey := range expectedRevisions {
+				if _, found := actual.Status.Revisions[expectedKey]; !found {
+					return false
+				}
+			}
+			return true
+		},
+		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
+			// Recalculate expected revisions for error message
+			var expectedRevisions []string
+			for _, ns := range actual.Spec.Namespaces {
+				expectedRevisions = append(expectedRevisions, ns.TemplateRef)
+			}
+			if actual.Spec.ClusterResources != nil {
+				expectedRevisions = append(expectedRevisions, actual.Spec.ClusterResources.TemplateRef)
+			}
+			for r := range actual.Spec.SpaceRoles {
+				expectedRevisions = append(expectedRevisions, actual.Spec.SpaceRoles[r].TemplateRef)
+			}
+			return fmt.Sprintf("expected revision keys %v not found in: %v", expectedRevisions, actual.Status.Revisions)
+		},
+	}
+}
+
 // HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
 func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
 	return NSTemplateTierWaitCriterion{
@@ -1181,7 +1225,7 @@ func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriter
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected revision keys %v not found in: %v", revisions, actual.Status.Revisions)
+			return fmt.Sprintf("expected revision values %v not found in: %v", revisions, actual.Status.Revisions)
 		},
 	}
 }
