@@ -25,23 +25,21 @@ func GetGoTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName st
 	var clusterResources *string
 
 	for _, ns := range templateTier.Spec.Namespaces {
-		for key, value := range templateTier.Status.Revisions {
-			if key == ns.TemplateRef {
-				nsRefs = append(nsRefs, value)
-			}
+		if revision, ok := templateTier.Status.Revisions[ns.TemplateRef]; ok {
+			nsRefs = append(nsRefs, revision)
 		}
 	}
 
 	for role, spaceRole := range templateTier.Spec.SpaceRoles {
-		for templateRef, revision := range templateTier.Status.Revisions {
-			if templateRef == spaceRole.TemplateRef {
-				spaceRoleRefs[role] = revision
-			}
+		if revision, ok := templateTier.Status.Revisions[spaceRole.TemplateRef]; ok {
+			spaceRoleRefs[role] = revision
 		}
 	}
 
-	if rev, ok := templateTier.Status.Revisions[templateTier.Spec.ClusterResources.TemplateRef]; ok {
-		clusterResources = &rev
+	if templateTier.Spec.ClusterResources != nil {
+		if rev, ok := templateTier.Status.Revisions[templateTier.Spec.ClusterResources.TemplateRef]; ok {
+			clusterResources = &rev
+		}
 	}
 	return TemplateRefs{
 		Namespaces:       nsRefs,
