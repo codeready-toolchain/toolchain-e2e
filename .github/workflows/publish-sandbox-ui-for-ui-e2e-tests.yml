@@ -20,7 +20,7 @@ jobs:
              contains(github.event.comment.body, '/test all') ||
              contains(github.event.comment.body, '/test e2e'))) }}
     steps:
-      # Checkout from PR event - in that case the comment field is empty
+      # Checkout from PR event
       - name: Checkout code from PR event
         uses: actions/checkout@v4
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -30,7 +30,6 @@ jobs:
           fetch-depth: 0
 
       # If the workflow was triggered based on comment, then we need to get the information about the PR
-      # Is executed only for comment events - in that case the pull_request field is empty
       - name: Send Github API Request to get PR data
         id: request
         uses: octokit/request-action@v2.4.0
@@ -41,7 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Checkout the code based on the data retrieved from the previous step
-      # Is executed only for comment events - in that case the pull_request field is empty
+      # Is executed only for comment events
       - name: Checkout code from PR
         uses: actions/checkout@v4
         if: ${{ github.event_name == 'issue_comment' }}
@@ -91,17 +90,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           PROVIDED_REF=${{ github.event.pull_request.head.ref }}
-          if [[ -n ${PROVIDED_REF} ]]; then
-            GH_HEAD_REF_PARAM="GITHUB_HEAD_REF=${PROVIDED_REF}"
-          fi
-          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ github.event.pull_request.head.sha }} PULL_NUMBER=${{ github.event.pull_request.number }} AUTHOR=${{ github.event.pull_request.head.user.login }} GITHUB_BRANCH="${PROVIDED_REF}" ${GH_HEAD_REF_PARAM}
+          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ github.event.pull_request.head.sha }} PULL_NUMBER=${{ github.event.pull_request.number }} AUTHOR=${{ github.event.pull_request.head.user.login }} BRANCH_NAME="${PROVIDED_REF}"
 
       # Publish Developer Sandbox UI for comment events
       - name: Publish current Developer Sandbox UI (comment event)
         if: ${{ github.event_name == 'issue_comment' }}
         run: |
           PROVIDED_REF=${{ fromJson(steps.request.outputs.data).head.ref }}
-          if [[ -n ${PROVIDED_REF} ]]; then
-            GH_HEAD_REF_PARAM="GITHUB_HEAD_REF=${PROVIDED_REF}"
-          fi
-          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ fromJson(steps.request.outputs.data).head.sha }} PULL_NUMBER=${{ fromJson(steps.request.outputs.data).number }} AUTHOR=${{ fromJson(steps.request.outputs.data).head.user.login }} GITHUB_BRANCH="${PROVIDED_REF}" ${GH_HEAD_REF_PARAM}
+          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ fromJson(steps.request.outputs.data).head.sha }} PULL_NUMBER=${{ fromJson(steps.request.outputs.data).number }} AUTHOR=${{ fromJson(steps.request.outputs.data).head.user.login }} BRANCH_NAME="${PROVIDED_REF}"
