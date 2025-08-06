@@ -35,6 +35,8 @@ spec:
     value: "20000m"
   - name: CPU_LIMIT
     value: "30000m"
+  - name: CPU_REQUEST
+    value: "3000m"
   - name: EPHEMERAL_STORAGE_LIMIT
     value: "15Gi"
   - name: EPHEMERAL_STORAGE_REQUEST
