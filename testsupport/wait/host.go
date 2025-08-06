@@ -1210,26 +1210,6 @@ func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
 	}
 }
 
-// HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
-func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
-	return NSTemplateTierWaitCriterion{
-		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
-			if len(actual.Status.Revisions) != len(revisions) {
-				return false
-			}
-			for _, tierTemplateRef := range revisions {
-				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
-					return false
-				}
-			}
-			return true
-		},
-		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected revision values %v not found in: %v", revisions, actual.Status.Revisions)
-		},
-	}
-}
-
 // HasNoTemplateRefWithSuffix checks that ALL namespaces' `TemplateRef` doesn't have the suffix
 func HasNoTemplateRefWithSuffix(suffix string) NSTemplateTierSpecMatcher {
 	return NSTemplateTierSpecMatcher{

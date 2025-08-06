@@ -100,7 +100,7 @@ spec:
       namespace: '{{.SPACE_NAME}}-dev'
     spec:
       hard:
-        limits.cpu: '{{.CPU_LIMIT}}'
+        limits.cpu: '{{.CPU_BUILD_LIMIT}}'
         limits.memory: '{{.MEMORY_BUILD_LIMIT}}'
         requests.cpu: '{{.CPU_REQUEST}}'
         requests.memory: '{{.MEMORY_BUILD_REQUEST}}'

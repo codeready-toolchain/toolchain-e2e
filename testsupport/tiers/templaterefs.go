@@ -3,7 +3,6 @@ package tiers
 import (
 	"testing"
 
-	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-e2e/testsupport/wait"
 	"github.com/stretchr/testify/require"
 )
@@ -15,8 +14,8 @@ type TemplateRefs struct {
 	SpaceRoles       map[string]string
 }
 
-// GetGoTemplateRefs returns the expected templateRefs populated from the NSTemplateTier.Status.Revisions field
-func GetGoTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
+// GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
+func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
 	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")), wait.HasStatusTierTemplateRevisionKeys())
 	require.NoError(t, err)
 
@@ -48,26 +47,6 @@ func GetGoTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName st
 	}
 }
 
-// GetTemplateRefs returns the expected templateRefs for all the namespace templates and the optional cluster resources template for the given tier
-func GetTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility, tierName string) TemplateRefs { // nolint:unparam // false positive on unused return param `0`??
-	templateTier, err := hostAwait.WaitForNSTemplateTier(t, tierName, wait.UntilNSTemplateTierSpec(wait.HasNoTemplateRefWithSuffix("-000000a")))
-	require.NoError(t, err)
-	nsRefs := make([]string, 0, len(templateTier.Spec.Namespaces))
-	for _, ns := range templateTier.Spec.Namespaces {
-		nsRefs = append(nsRefs, ns.TemplateRef)
-	}
-	spaceRoleRefs := make(map[string]string, len(templateTier.Spec.SpaceRoles))
-	for role, ns := range templateTier.Spec.SpaceRoles {
-		spaceRoleRefs[role] = ns.TemplateRef
-	}
-
-	return TemplateRefs{
-		Namespaces:       nsRefs,
-		ClusterResources: clusterResourcesRevision(*templateTier),
-		SpaceRoles:       spaceRoleRefs,
-	}
-}
-
 func (r TemplateRefs) Flatten() []string {
 	refs := r.Namespaces
 	if r.ClusterResources != nil {
@@ -85,11 +64,4 @@ func (r TemplateRefs) SpaceRolesFlatten() []string {
 		refs = append(refs, ref)
 	}
 	return refs
-}
-
-func clusterResourcesRevision(tier toolchainv1alpha1.NSTemplateTier) *string {
-	if tier.Spec.ClusterResources != nil {
-		return &(tier.Spec.ClusterResources.TemplateRef)
-	}
-	return nil
 }

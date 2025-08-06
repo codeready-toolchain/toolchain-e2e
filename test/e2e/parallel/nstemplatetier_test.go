@@ -422,7 +422,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	// when
 	// we verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
 	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten()))
+		wait.HasStatusTierTemplateRevisionKeys())
 	require.NoError(t, err)
 	customTier.NSTemplateTier = tier
 
@@ -521,7 +521,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// when
 		// we verify that the new tier exists and the revisions field was populated
 		tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
-			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "updatingtier").Flatten()))
+			wait.HasStatusTierTemplateRevisionKeys())
 		require.NoError(t, err)
 		updatingTier.NSTemplateTier = tier
 		revisionsBeforeUpdate := updatingTier.Status.Revisions
@@ -540,7 +540,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			expectedRefs = append(expectedRefs, tiers.DuplicatedTierName(updatingTier.Name, tierTemplateName))
 		}
 		updatedTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
-			wait.HasStatusTierTemplateRevisions(expectedRefs))
+			wait.HasStatusTierTemplateRevisionKeys())
 		require.NoError(t, err)
 		// revisions values should be different compared to the previous ones
 		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)

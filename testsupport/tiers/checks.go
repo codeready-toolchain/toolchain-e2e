@@ -338,7 +338,7 @@ type base1nsGoTemplateTierChecks struct {
 func (a *base1nsGoTemplateTierChecks) GetNamespaceObjectChecks(_ string) []namespaceObjectsCheck {
 	checks := []namespaceObjectsCheck{
 		resourceQuotaComputeDeploy("30", "30Gi", "3", "30Gi"),
-		resourceQuotaComputeBuild("30", "14Gi", "3", "14Gi"),
+		resourceQuotaComputeBuild("20", "14Gi", "3", "14Gi"),
 		resourceQuotaStorage("15Gi", "80Gi", "15Gi", "10"),
 		limitRange("1", "1000Mi", "10m", "64Mi"),
 		numberOfLimitRanges(1),
@@ -380,7 +380,7 @@ func (a *base1nsGoTemplateTierChecks) GetSpaceRoleChecks(spaceRoles map[string][
 }
 
 func (a *base1nsGoTemplateTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
-	templateRefs := GetGoTemplateRefs(t, hostAwait, a.tierName)
+	templateRefs := GetTemplateRefs(t, hostAwait, a.tierName)
 	verifyNsTypes(t, a.tierName, templateRefs, "dev")
 	return templateRefs
 }
@@ -1446,7 +1446,7 @@ func goClusterResourceQuotaDeploymentCount(podCount, deploymentCount, vmCount st
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-deployments", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1469,7 +1469,7 @@ func goClusterResourceQuotaReplicaCount(replicaCount string) clusterObjectsCheck
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-replicas", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1492,7 +1492,7 @@ func goClusterResourceQuotaRouteCount(routeCount string) clusterObjectsCheckCrea
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-routes", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1515,7 +1515,7 @@ func goClusterResourceQuotaJobs() clusterObjectsCheckCreator {
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-jobs", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1541,7 +1541,7 @@ func goClusterResourceQuotaServiceCount(serviceCount string, loadbalancerCount *
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-services", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1558,7 +1558,7 @@ func goClusterResourceQuotaBuildConfig() clusterObjectsCheckCreator {
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-bc", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1579,7 +1579,7 @@ func goClusterResourceQuotaSecretCount(secretCount string) clusterObjectsCheckCr
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-secrets", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1600,7 +1600,7 @@ func goClusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsC
 
 			_, err = memberAwait.WaitForClusterResourceQuota(t, fmt.Sprintf("for-%s-cm", userName),
 				crqToolchainLabelsWaitCriterion(userName),
-				goClusterResourceQuotaMatches(userName, tierLabel, hard),
+				clusterResourceQuotaMatches(userName, tierLabel, hard),
 			)
 			require.NoError(t, err)
 		}
@@ -1608,30 +1608,6 @@ func goClusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsC
 }
 
 func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
-	return wait.ClusterResourceQuotaWaitCriterion{
-		Match: func(actual *quotav1.ClusterResourceQuota) bool {
-			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
-				Selector: quotav1.ClusterResourceQuotaSelector{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							toolchainv1alpha1.SpaceLabelKey: userName,
-						},
-					},
-				},
-				Quota: corev1.ResourceQuotaSpec{
-					Hard: hard,
-				},
-			}
-			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
-				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
-		},
-		Diff: func(actual *quotav1.ClusterResourceQuota) string {
-			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
-		},
-	}
-}
-
-func goClusterResourceQuotaMatches(userName, tierName string, hard corev1.ResourceList) wait.ClusterResourceQuotaWaitCriterion {
 	return wait.ClusterResourceQuotaWaitCriterion{
 		Match: func(actual *quotav1.ClusterResourceQuota) bool {
 			// Check tier label

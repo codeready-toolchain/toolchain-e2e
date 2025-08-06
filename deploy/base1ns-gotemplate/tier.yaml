@@ -31,10 +31,10 @@ spec:
     value: "14Gi"
   - name: MEMORY_BUILD_REQUEST
     value: "14Gi"
+  - name: CPU_BUILD_LIMIT
+    value: "20000m"
   - name: CPU_LIMIT
     value: "30000m"
-  - name: CPU_REQUEST
-    value: "3000m"
   - name: EPHEMERAL_STORAGE_LIMIT
     value: "15Gi"
   - name: EPHEMERAL_STORAGE_REQUEST
