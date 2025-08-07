@@ -105,23 +105,31 @@ func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 }
 
 func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwaitility) TemplateRefs {
-	var clusterResourcesTmplRef *string
-	if c.tier.Spec.ClusterResources != nil {
-		clusterResourcesTmplRef = &c.tier.Spec.ClusterResources.TemplateRef
-	}
-	namespaceTmplRefs := make([]string, len(c.tier.Spec.Namespaces))
-	for i, ns := range c.tier.Spec.Namespaces {
-		namespaceTmplRefs[i] = ns.TemplateRef
-	}
-	spaceRolesTmplRefs := make(map[string]string)
-	for i, ns := range c.tier.Spec.SpaceRoles {
-		spaceRolesTmplRefs[i] = ns.TemplateRef
+	nsRefs := make([]string, 0, len(c.tier.Spec.Namespaces))
+	spaceRoleRefs := make(map[string]string, len(c.tier.Spec.SpaceRoles))
+	var clusterResources *string
+
+	for _, ns := range c.tier.Spec.Namespaces {
+		if revision, ok := c.tier.Status.Revisions[ns.TemplateRef]; ok {
+			nsRefs = append(nsRefs, revision)
+		}
 	}
 
+	for role, spaceRole := range c.tier.Spec.SpaceRoles {
+		if revision, ok := c.tier.Status.Revisions[spaceRole.TemplateRef]; ok {
+			spaceRoleRefs[role] = revision
+		}
+	}
+
+	if c.tier.Spec.ClusterResources != nil {
+		if rev, ok := c.tier.Status.Revisions[c.tier.Spec.ClusterResources.TemplateRef]; ok {
+			clusterResources = &rev
+		}
+	}
 	return TemplateRefs{
-		ClusterResources: clusterResourcesTmplRef,
-		Namespaces:       namespaceTmplRefs,
-		SpaceRoles:       spaceRolesTmplRefs,
+		Namespaces:       nsRefs,
+		ClusterResources: clusterResources,
+		SpaceRoles:       spaceRoleRefs,
 	}
 }
 

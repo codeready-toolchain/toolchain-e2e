@@ -156,7 +156,7 @@ func TestGoTemplate(t *testing.T) {
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
 
-	_, err := hostAwait.WaitForNSTemplateTier(t, "base1ns-gotemplate")
+	base1nsGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns-gotemplate")
 	require.NoError(t, err)
 
 	user := NewSignupRequest(awaitilities).
@@ -167,9 +167,15 @@ func TestGoTemplate(t *testing.T) {
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	testingtiers := user.UserSignup
-	VerifyResourcesProvisionedForSignupWithTiers(t, awaitilities, testingtiers, "deactivate30", "base1ns-gotemplate")
+	base1Ns, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
 
+	VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, awaitilities.Member1(), user.Space.Name, &tiers.CustomNSTemplateTier{
+		NSTemplateTier:         base1nsGoTemplateTier,
+		ClusterResourcesTier:   base1Ns,
+		NamespaceResourcesTier: base1Ns,
+		SpaceRolesTier:         base1Ns,
+	})
 }
 
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
