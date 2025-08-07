@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -1358,7 +1357,6 @@ func clusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsChe
 }
 
 func clusterResourceQuotaMatches(userName, tierName string, hard corev1.ResourceList) wait.ClusterResourceQuotaWaitCriterion {
-	var a, b, c, d string
 	return wait.ClusterResourceQuotaWaitCriterion{
 		Match: func(actual *quotav1.ClusterResourceQuota) bool {
 			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{
@@ -1373,16 +1371,12 @@ func clusterResourceQuotaMatches(userName, tierName string, hard corev1.Resource
 					Hard: hard,
 				},
 			}
-			a = fmt.Sprintf("%v", expectedQuotaSpec)
-			b = fmt.Sprintf("%v", actual.Spec)
-			c = fmt.Sprintf("%v", actual.Labels)
-			d = fmt.Sprintf("%v", actual.Name)
 			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
-				equality.Semantic.DeepEqual(expectedQuotaSpec, actual.Spec)
+				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
 
 		},
 		Diff: func(actual *quotav1.ClusterResourceQuota) string {
-			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s, expected %s, actual %s, labels %s, name %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard), a, b, c, d)
+			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
 		},
 	}
 }

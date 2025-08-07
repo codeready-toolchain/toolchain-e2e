@@ -41,7 +41,7 @@ spec:
           count/pods: '{{.POD_COUNT}}'
           count/virtualmachines.kubevirt.io: '{{.VIRTUAL_MACHINES}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -55,7 +55,7 @@ spec:
           count/replicasets.apps: '{{.DEPLOYMENT_QUOTA}}'
           count/replicationcontrollers: '{{.DEPLOYMENT_QUOTA}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -69,7 +69,7 @@ spec:
           count/ingresses.extensions: '{{.DEPLOYMENT_QUOTA}}'
           count/routes.route.openshift.io: '{{.DEPLOYMENT_QUOTA}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -85,7 +85,7 @@ spec:
           count/cronjobs.batch: '{{.DEPLOYMENT_QUOTA}}'
           count/statefulsets.apps: '{{.DEPLOYMENT_QUOTA}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -99,7 +99,7 @@ spec:
           count/services: '{{.DEPLOYMENT_QUOTA}}'
           services.loadbalancers: '{{.LOAD_BALANCER}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -112,7 +112,7 @@ spec:
         hard:
           count/buildconfigs.build.openshift.io: '{{.DEPLOYMENT_QUOTA}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -125,7 +125,7 @@ spec:
         hard:
           count/secrets: '{{.SECRETS_COUNT}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
@@ -138,7 +138,7 @@ spec:
         hard:
           count/configmaps: '{{.SECRETS_COUNT}}'
       selector:
-        annotations: {}
+        annotations: null
         labels:
           matchLabels:
             toolchain.dev.openshift.com/space: '{{.SPACE_NAME}}'
