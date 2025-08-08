@@ -143,33 +143,31 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 }
 
+// TestGoTemplate verifies that a go-template NSTemplateTier can be used to provision a user successfully.
+// This test validates the complete workflow of using Go templates in NSTemplateTier configurations
+// and verifies that all expected resources are correctly provisioned using the custom tier configuration
 func TestGoTemplate(t *testing.T) {
 	t.Parallel()
 
-	// This test verifies that a go-template NSTemplateTier can be used to provision a user.
-	// It creates a custom NSTemplateTier based on the "base1ns-gotemplate" tier, labels it as produced by "toolchain-e2e",
-	// and provisions a user with this tier. It then verifies that the resources are provisioned as expected.
-
-	// awaitilities: Helper struct that provides Awaitility instances for host and member clusters, used for waiting on resources.
-	// hostAwait: Awaitility instance for the host cluster, used to interact with and wait for resources in the host namespace.
-
+	//given
 	awaitilities := WaitForDeployments(t)
 	hostAwait := awaitilities.Host()
-
+	base1Ns, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
 	base1nsGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns-gotemplate")
 	require.NoError(t, err)
 
+	//when
 	user := NewSignupRequest(awaitilities).
-		Username("gotemplateuser").
+		Username("gotemplateuser1").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
 		SpaceTier("base1ns-gotemplate").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
-	base1Ns, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
-	require.NoError(t, err)
 
+	//then
 	VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, awaitilities.Member1(), user.Space.Name, &tiers.CustomNSTemplateTier{
 		NSTemplateTier:         base1nsGoTemplateTier,
 		ClusterResourcesTier:   base1Ns,

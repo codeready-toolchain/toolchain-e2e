@@ -139,8 +139,8 @@ spec:
     spec:
       ingress:
         - from:
-            - podSelector: { }
-      podSelector: { }
+            - podSelector: {}
+      podSelector: {}
   - apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
@@ -152,7 +152,7 @@ spec:
             - namespaceSelector:
                 matchLabels:
                   network.openshift.io/policy-group: ingress
-      podSelector: { }
+      podSelector: {}
       policyTypes:
         - Ingress
   - apiVersion: networking.k8s.io/v1
@@ -166,7 +166,7 @@ spec:
             - namespaceSelector:
                 matchLabels:
                   network.openshift.io/policy-group: monitoring
-      podSelector: { }
+      podSelector: {}
       policyTypes:
         - Ingress
   - apiVersion: networking.k8s.io/v1
@@ -180,7 +180,7 @@ spec:
             - namespaceSelector:
                 matchLabels:
                   network.openshift.io/policy-group: codeready-workspaces
-      podSelector: { }
+      podSelector: {}
       policyTypes:
         - Ingress
   - apiVersion: networking.k8s.io/v1
@@ -194,7 +194,7 @@ spec:
             - namespaceSelector:
                 matchLabels:
                   openshift.io/scc: anyuid
-      podSelector: { }
+      podSelector: {}
       policyTypes:
         - Ingress
   - apiVersion: networking.k8s.io/v1
@@ -208,7 +208,7 @@ spec:
             - namespaceSelector:
                 matchLabels:
                   network.openshift.io/policy-group: console
-      podSelector: { }
+      podSelector: {}
       policyTypes:
         - Ingress
   - apiVersion: networking.k8s.io/v1
@@ -226,7 +226,7 @@ spec:
             - namespaceSelector:
                 matchLabels:
                   kubernetes.io/metadata.name: openshift-cnv
-      podSelector: { }
+      podSelector: {}
       policyTypes:
         - Ingress
   - apiVersion: networking.k8s.io/v1

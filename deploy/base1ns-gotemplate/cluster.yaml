@@ -153,13 +153,13 @@ spec:
       kind: ClusterRole
       name: lightspeed-operator-query-access
     subjects:
-      - apiGroup: rbac.authorization.k8s.io
-        kind: User
-        name: '{{.SPACE_NAME}}'
+    - apiGroup: rbac.authorization.k8s.io
+      kind: User
+      name: '{{.SPACE_NAME}}'
   - apiVersion: toolchain.dev.openshift.com/v1alpha1
     kind: Idler
     metadata:
-      name: '{{.SPACE_NAME}}-dev' 
+      name: '{{.SPACE_NAME}}-dev'
     spec:
       timeoutSeconds: 43200
   tierName: base1ns-gotemplate

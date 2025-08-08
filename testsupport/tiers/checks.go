@@ -104,33 +104,8 @@ func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return checks.GetClusterObjectChecks()
 }
 
-func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwaitility) TemplateRefs {
-	nsRefs := make([]string, 0, len(c.tier.Spec.Namespaces))
-	spaceRoleRefs := make(map[string]string, len(c.tier.Spec.SpaceRoles))
-	var clusterResources *string
-
-	for _, ns := range c.tier.Spec.Namespaces {
-		if revision, ok := c.tier.Status.Revisions[ns.TemplateRef]; ok {
-			nsRefs = append(nsRefs, revision)
-		}
-	}
-
-	for role, spaceRole := range c.tier.Spec.SpaceRoles {
-		if revision, ok := c.tier.Status.Revisions[spaceRole.TemplateRef]; ok {
-			spaceRoleRefs[role] = revision
-		}
-	}
-
-	if c.tier.Spec.ClusterResources != nil {
-		if rev, ok := c.tier.Status.Revisions[c.tier.Spec.ClusterResources.TemplateRef]; ok {
-			clusterResources = &rev
-		}
-	}
-	return TemplateRefs{
-		Namespaces:       nsRefs,
-		ClusterResources: clusterResources,
-		SpaceRoles:       spaceRoleRefs,
-	}
+func (c *customTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	return GetTemplateRefs(t, hostAwait, c.tier.Name)
 }
 
 type baseTierChecks struct {
@@ -1381,7 +1356,6 @@ func clusterResourceQuotaMatches(userName, tierName string, hard corev1.Resource
 			}
 			return actual.Labels != nil && tierName == actual.Labels["toolchain.dev.openshift.com/tier"] &&
 				reflect.DeepEqual(expectedQuotaSpec, actual.Spec)
-
 		},
 		Diff: func(actual *quotav1.ClusterResourceQuota) string {
 			return fmt.Sprintf("expected ClusterResourceQuota to match for %s/%s: %s", userName, tierName, wait.Diff(hard, actual.Spec.Quota.Hard))
