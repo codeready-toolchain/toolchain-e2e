@@ -25,14 +25,13 @@ import (
 
 const (
 	// tier names
-	appstudio         = "appstudio"
-	appstudiolarge    = "appstudiolarge"
-	appstudioEnv      = "appstudio-env"
-	base              = "base"
-	base1ns           = "base1ns"
-	base1nsGoTemplate = "base1ns-gotemplate"
-	base1ns6didler    = "base1ns6didler"
-	base1nsnoidling   = "base1nsnoidling"
+	appstudio       = "appstudio"
+	appstudiolarge  = "appstudiolarge"
+	appstudioEnv    = "appstudio-env"
+	base            = "base"
+	base1ns         = "base1ns"
+	base1ns6didler  = "base1ns6didler"
+	base1nsnoidling = "base1nsnoidling"
 
 	// common CPU limits
 	baseCPULimit = "40000m"
@@ -55,8 +54,6 @@ func NewChecksForTier(tier *toolchainv1alpha1.NSTemplateTier) (TierChecks, error
 		return &base1nsTierChecks{tierName: base1ns}, nil
 	case base1nsnoidling:
 		return &base1nsnoidlingTierChecks{base1nsTierChecks{tierName: base1nsnoidling}}, nil
-	case base1nsGoTemplate:
-		return &base1nsTierChecks{tierName: base1nsGoTemplate}, nil
 	case base1ns6didler:
 		return &base1ns6didlerTierChecks{base1nsTierChecks{tierName: base1ns6didler}}, nil
 	case appstudio:

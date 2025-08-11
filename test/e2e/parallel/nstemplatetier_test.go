@@ -56,8 +56,10 @@ func TestNSTemplateTiers(t *testing.T) {
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
+	goTemplateRequirement, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"true"})
+	require.NoError(t, err)
 	notCreatedByE2e := client.MatchingLabelsSelector{
-		Selector: labels.NewSelector().Add(*e2eProducer),
+		Selector: labels.NewSelector().Add(*e2eProducer, *goTemplateRequirement),
 	}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	require.NoError(t, err)
@@ -159,16 +161,18 @@ func TestGoTemplate(t *testing.T) {
 
 	//when
 	user := NewSignupRequest(awaitilities).
-		Username("gotemplateuser1").
+		Username("gotemplateuser").
 		ManuallyApprove().
 		TargetCluster(awaitilities.Member1()).
-		SpaceTier("base1ns-gotemplate").
-		EnsureMUR().
+		WaitForMUR().
+		UserID(uuid.Must(uuid.NewV4()).String()).
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
 		Execute(t)
 
-	//then
-	VerifyResourcesProvisionedForSpaceWithCustomTier(t, hostAwait, awaitilities.Member1(), user.Space.Name, &tiers.CustomNSTemplateTier{
+	VerifyResourcesProvisionedForSignup(t, awaitilities, user.UserSignup)
+	tiers.MoveSpaceToTier(t, hostAwait, user.UserSignup.Name, base1nsGoTemplateTier.Name)
+
+	verifyResourceUpdatesForUserSignups(t, hostAwait, awaitilities.Member1(), []*toolchainv1alpha1.UserSignup{user.UserSignup}, &tiers.CustomNSTemplateTier{
 		NSTemplateTier:         base1nsGoTemplateTier,
 		ClusterResourcesTier:   base1Ns,
 		NamespaceResourcesTier: base1Ns,
