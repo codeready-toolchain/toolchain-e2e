@@ -1166,22 +1166,66 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 	}
 }
 
-// HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
-func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
+func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
 	return NSTemplateTierWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
-			if len(actual.Status.Revisions) != len(revisions) {
+			// Build a set of expected revision keys from the tier spec
+			expected := make(map[string]struct{}, len(actual.Spec.Namespaces)+1+len(actual.Spec.SpaceRoles))
+			for _, ns := range actual.Spec.Namespaces {
+				if ns.TemplateRef != "" {
+					expected[ns.TemplateRef] = struct{}{}
+				}
+			}
+			if cr := actual.Spec.ClusterResources; cr != nil && cr.TemplateRef != "" {
+				expected[cr.TemplateRef] = struct{}{}
+			}
+			for _, r := range actual.Spec.SpaceRoles {
+				if r.TemplateRef != "" {
+					expected[r.TemplateRef] = struct{}{}
+				}
+			}
+			// Compare sets: size must match and all expected keys must exist in status
+			if len(actual.Status.Revisions) != len(expected) {
 				return false
 			}
-			for _, tierTemplateRef := range revisions {
-				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
+			for key := range expected {
+				if _, found := actual.Status.Revisions[key]; !found {
 					return false
 				}
 			}
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected revision keys %v not found in: %v", revisions, actual.Status.Revisions)
+			// Recalculate expected keys and compute set diffs for clarity
+			expected := make(map[string]struct{}, len(actual.Spec.Namespaces)+1+len(actual.Spec.SpaceRoles))
+			for _, ns := range actual.Spec.Namespaces {
+				if ns.TemplateRef != "" {
+					expected[ns.TemplateRef] = struct{}{}
+				}
+			}
+			if cr := actual.Spec.ClusterResources; cr != nil && cr.TemplateRef != "" {
+				expected[cr.TemplateRef] = struct{}{}
+			}
+			for _, r := range actual.Spec.SpaceRoles {
+				if r.TemplateRef != "" {
+					expected[r.TemplateRef] = struct{}{}
+				}
+			}
+			var missing, extra, expectedKeys, actualKeys []string
+			for k := range expected {
+				expectedKeys = append(expectedKeys, k)
+				if _, ok := actual.Status.Revisions[k]; !ok {
+					missing = append(missing, k)
+				}
+			}
+			for k := range actual.Status.Revisions {
+				actualKeys = append(actualKeys, k)
+				if _, ok := expected[k]; !ok {
+					extra = append(extra, k)
+				}
+			}
+			return fmt.Sprintf("revision key mismatch: missing=%v extra=%v expectedKeys=%v actualKeys=%v",
+				missing, extra, expectedKeys, actualKeys)
 		},
 	}
 }

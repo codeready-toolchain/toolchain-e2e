@@ -140,7 +140,7 @@ func CreateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, na
 	err := hostAwait.CreateWithCleanupTimeout(t, tier.NSTemplateTier, 2*time.Minute)
 	require.NoError(t, err)
 	newTTier, err := hostAwait.WaitForNSTemplateTier(t, tier.Name,
-		wait.HasStatusTierTemplateRevisions(GetTemplateRefs(t, hostAwait, tier.Name).Flatten()))
+		wait.HasStatusTierTemplateRevisionKeys())
 	require.NoError(t, err)
 	tier.NSTemplateTier = newTTier
 	return tier
@@ -164,7 +164,7 @@ func UpdateCustomNSTemplateTier(t *testing.T, hostAwait *wait.HostAwaitility, ti
 		})
 	require.NoError(t, err)
 	newTTier, err := hostAwait.WaitForNSTemplateTier(t, tier.Name,
-		wait.HasStatusTierTemplateRevisions(GetTemplateRefs(t, hostAwait, tier.Name).Flatten()))
+		wait.HasStatusTierTemplateRevisionKeys())
 	require.NoError(t, err)
 	tier.NSTemplateTier = newTTier
 	return tier
