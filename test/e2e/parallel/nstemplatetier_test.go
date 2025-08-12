@@ -172,6 +172,7 @@ func TestGoTemplate(t *testing.T) {
 	VerifyResourcesProvisionedForSignup(t, awaitilities, user.UserSignup)
 	tiers.MoveSpaceToTier(t, hostAwait, user.UserSignup.Name, base1nsGoTemplateTier.Name)
 
+	//then
 	verifyResourceUpdatesForUserSignups(t, hostAwait, awaitilities.Member1(), []*toolchainv1alpha1.UserSignup{user.UserSignup}, &tiers.CustomNSTemplateTier{
 		NSTemplateTier:         base1nsGoTemplateTier,
 		ClusterResourcesTier:   base1Ns,
