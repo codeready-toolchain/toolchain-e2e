@@ -4,10 +4,29 @@ TAG := latest
 PLATFORM ?= linux/amd64
 RHDH_PLUGINS_DIR ?= $(TMPDIR)rhdh-plugins
 AUTH_FILE := /tmp/auth.json
-IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
 PUSH_SANDBOX_IMAGE ?= true
 UI_ENVIRONMENT := ui-e2e-tests
+
+TAG := $(shell \
+    if [ -n "$(CI)$(CLONEREFS_OPTIONS)" ]; then \
+        if [ -n "$(GITHUB_ACTIONS)" ]; then \
+            REPOSITORY_NAME=$$(basename "$(GITHUB_REPOSITORY)"); \
+            COMMIT_ID_SUFFIX=$$(echo "$(PULL_PULL_SHA)" | cut -c1-7); \
+            echo "from.$${REPOSITORY_NAME}.PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
+        else \
+            AUTHOR=$$(jq -r '.refs[0].pulls[0].author' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]'); \
+            PULL_PULL_SHA=$${PULL_PULL_SHA:-$$(jq -r '.refs[0].pulls[0].sha' <<< $${CLONEREFS_OPTIONS} | tr -d '[:space:]')}; \
+            COMMIT_ID_SUFFIX=$$(echo "$${PULL_PULL_SHA}" | cut -c1-7); \
+            echo "from.$(REPO_NAME).PR$(PULL_NUMBER).$${COMMIT_ID_SUFFIX}"; \
+        fi; \
+    else \
+        echo "latest"; \
+    fi)
+
+
+IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
+
 
 .PHONY: deploy-sandbox-ui
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
@@ -21,11 +40,11 @@ ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
 endif
 	kustomize build deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
-			HOST_NS=${HOST_NS} \
-			HOST_OPERATOR_API=${HOST_OPERATOR_API} \
-			SANDBOX_UI_NS=${SANDBOX_UI_NS} \
-			SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
-			RHDH=${RHDH} envsubst | oc apply -f -
+		HOST_NS=${HOST_NS} \
+		HOST_OPERATOR_API=${HOST_OPERATOR_API} \
+		SANDBOX_UI_NS=${SANDBOX_UI_NS} \
+		SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
+		RHDH=${RHDH} envsubst | oc apply -f -
 	$(MAKE) configure-oauth-idp
 	@echo "restarting registration-service to apply toolchainconfig changes"
 	@oc -n ${HOST_NS} rollout restart deploy/registration-service
@@ -71,16 +90,49 @@ create-namespace:
 .PHONY: get-rhdh-plugins
 get-rhdh-plugins:
 ifeq ($(strip $(RHDH_PLUGINS_DIR)), $(TMPDIR)rhdh-plugins)
-	echo "using rhdh-plugins repo from master"
-	@$(MAKE) clone-rhdh-plugins
+ifeq ($(GITHUB_ACTIONS),true)
+	@echo "using author ${AUTHOR}"
+	$(eval AUTHOR_LINK = https://github.com/${AUTHOR})
+	@echo "detected branch ${BRANCH_NAME}"
+	# check if a branch with the same ref exists in the user's fork of rhdh-plugins repo
+	@echo "branches of ${AUTHOR_LINK}/rhdh-plugins - checking if there is a branch ${BRANCH_NAME} we could pair with."
+	curl ${AUTHOR_LINK}/rhdh-plugins.git/info/refs?service=git-upload-pack --output -
+	$(eval REMOTE_RHDH_PLUGINS_BRANCH := $(shell curl ${AUTHOR_LINK}/rhdh-plugins.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a "refs/heads/${BRANCH_NAME}$$" | awk '{print $$2}'))
+	
+	# check if the branch with the same name exists, if so then merge it with master and use the merge branch, if not then use master
+	@echo "REMOTE_RHDH_PLUGINS_BRANCH: ${REMOTE_RHDH_PLUGINS_BRANCH}"
+	@$(MAKE) pair-if-needed REMOTE_RHDH_PLUGINS_BRANCH=${REMOTE_RHDH_PLUGINS_BRANCH} AUTHOR_LINK=${AUTHOR_LINK}
 else
-	echo "using local rhdh-plugins repo: ${RHDH_PLUGINS_DIR}"
+	@echo "using rhdh-plugins repo from master"
+	@$(MAKE) clone-rhdh-plugins
+endif
+else
+	@echo "using local rhdh-plugins repo, no pairing needed: ${RHDH_PLUGINS_DIR}"
+endif
+
+pair-if-needed:
+ifneq ($(strip $(REMOTE_RHDH_PLUGINS_BRANCH)),)
+	@echo "Branch ref of the user's fork to be used for pairing: \"${REMOTE_RHDH_PLUGINS_BRANCH}\""
+	git config --global user.email "devsandbox@redhat.com"
+	git config --global user.name "KubeSaw"
+	# clone
+	rm -rf ${RHDH_PLUGINS_DIR}
+	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins.git ${RHDH_PLUGINS_DIR}
+	# add the user's fork as remote repo
+	git --git-dir=${RHDH_PLUGINS_DIR}/.git --work-tree=${RHDH_PLUGINS_DIR} remote add external ${AUTHOR_LINK}/rhdh-plugins.git
+	# fetch the branch
+	git --git-dir=${RHDH_PLUGINS_DIR}/.git --work-tree=${RHDH_PLUGINS_DIR} fetch external ${REMOTE_RHDH_PLUGINS_BRANCH}
+	# merge the branch with master
+	git --git-dir=${RHDH_PLUGINS_DIR}/.git --work-tree=${RHDH_PLUGINS_DIR} merge --allow-unrelated-histories --no-commit FETCH_HEAD
+else
+	@echo "no pairing needed, using rhdh-plugins repo from master"
+	@$(MAKE) clone-rhdh-plugins 
 endif
 
 .PHONY: clone-rhdh-plugins
 clone-rhdh-plugins:
 	rm -rf ${RHDH_PLUGINS_DIR}; \
-	git clone https://github.com/redhat-developer/rhdh-plugins $(RHDH_PLUGINS_DIR) && \
+	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins $(RHDH_PLUGINS_DIR) && \
 	echo "cloned to $(RHDH_PLUGINS_DIR)"
 
 .PHONY: push-sandbox-plugin
@@ -91,9 +143,9 @@ push-sandbox-plugin:
 	rm -rf red-hat-developer-hub-backstage-plugin-sandbox && \
 	yarn install && \
 	npx @janus-idp/cli@3.3.1 package package-dynamic-plugins \
-      --tag $(IMAGE_TO_PUSH_IN_QUAY) \
-      --platform $(PLATFORM) && \
-  podman push $(IMAGE_TO_PUSH_IN_QUAY)
+	  --tag $(IMAGE_TO_PUSH_IN_QUAY) \
+	  --platform $(PLATFORM) && \
+	podman push $(IMAGE_TO_PUSH_IN_QUAY)
 
 .PHONY: clean-sandbox-ui
 clean-sandbox-ui:
@@ -141,7 +193,7 @@ build-sandbox-ui-e2e-tests:
 	podman build --platform $(PLATFORM) -t $(UNIT_TEST_IMAGE_NAME) -f $(UNIT_TEST_DOCKERFILE) .
 
 # Run Developer Sandbox UI e2e tests image using podman
-PHONY: test-sandbox-ui-in-container
+.PHONY: test-sandbox-ui-in-container
 test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
 	@echo "pushing Developer Sandbox UI image..."
 	$(MAKE) push-sandbox-plugin
