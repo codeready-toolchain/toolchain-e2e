@@ -286,7 +286,7 @@ func verifyNSTemplateTiers(t *testing.T, awaitilities *wait.Awaitilities) {
 	//
 	// This makes sure that the setup in the cluster is exactly how the e2e tests
 	// expect it to be.
-	goTemplateRequirement, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
+	goTemplateRequirement, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
 	notCreatedByGoTemplate := client.MatchingLabelsSelector{
 		Selector: labels.NewSelector().Add(*goTemplateRequirement),

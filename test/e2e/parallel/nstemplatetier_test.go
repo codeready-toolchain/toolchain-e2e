@@ -56,10 +56,8 @@ func TestNSTemplateTiers(t *testing.T) {
 	allTiers := &toolchainv1alpha1.NSTemplateTierList{}
 	e2eProducer, err := labels.NewRequirement("producer", selection.NotEquals, []string{"toolchain-e2e"})
 	require.NoError(t, err)
-	goTemplateRequirement, err := labels.NewRequirement("go-template", selection.NotEquals, []string{"toolchain-e2e"})
-	require.NoError(t, err)
 	notCreatedByE2e := client.MatchingLabelsSelector{
-		Selector: labels.NewSelector().Add(*e2eProducer, *goTemplateRequirement),
+		Selector: labels.NewSelector().Add(*e2eProducer),
 	}
 	err = hostAwait.Client.List(context.TODO(), allTiers, client.InNamespace(hostAwait.Namespace), notCreatedByE2e)
 	require.NoError(t, err)
