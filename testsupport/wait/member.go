@@ -650,11 +650,13 @@ func UntilNSTemplateSetHasSpaceRoles(expected ...toolchainv1alpha1.NSTemplateSet
 // NSTemlateSet has the expected roles for the given users
 func UntilNSTemplateSetHasSpaceRolesFromBindings(tier *toolchainv1alpha1.NSTemplateTier, bindings []toolchainv1alpha1.SpaceBinding) NSTemplateSetWaitCriterion {
 	expected := []toolchainv1alpha1.NSTemplateSetSpaceRole{}
+
 	for role, tmpl := range tier.Spec.SpaceRoles {
 		spaceRole := toolchainv1alpha1.NSTemplateSetSpaceRole{
-			TemplateRef: tmpl.TemplateRef,
+			TemplateRef: tier.Status.Revisions[tmpl.TemplateRef],
 			Usernames:   []string{},
 		}
+
 		for _, b := range bindings {
 			if b.Spec.SpaceRole == role {
 				spaceRole.Usernames = append(spaceRole.Usernames, b.Spec.MasterUserRecord)

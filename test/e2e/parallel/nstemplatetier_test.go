@@ -143,6 +143,42 @@ func TestUpdateNSTemplateTier(t *testing.T) {
 	verifyResourceUpdatesForSpaces(t, hostAwait, memberAwait, spaces, chocolateTier)
 }
 
+// TestGoTemplate verifies that a go-template NSTemplateTier can be used to provision a user successfully.
+// This test validates the complete workflow of using Go templates in NSTemplateTier configurations
+// and verifies that all expected resources are correctly provisioned using the custom tier configuration
+func TestGoTemplate(t *testing.T) {
+	t.Parallel()
+
+	//given
+	awaitilities := WaitForDeployments(t)
+	hostAwait := awaitilities.Host()
+	base1Ns, err := hostAwait.WaitForNSTemplateTier(t, "base1ns")
+	require.NoError(t, err)
+	base1nsGoTemplateTier, err := hostAwait.WaitForNSTemplateTier(t, "base1ns-gotemplate")
+	require.NoError(t, err)
+
+	//when
+	user := NewSignupRequest(awaitilities).
+		Username("gotemplateuser").
+		ManuallyApprove().
+		TargetCluster(awaitilities.Member1()).
+		WaitForMUR().
+		UserID(uuid.Must(uuid.NewV4()).String()).
+		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedByAdmin())...).
+		Execute(t)
+
+	VerifyResourcesProvisionedForSignup(t, awaitilities, user.UserSignup)
+	tiers.MoveSpaceToTier(t, hostAwait, user.UserSignup.Name, base1nsGoTemplateTier.Name)
+
+	//then
+	verifyResourceUpdatesForUserSignups(t, hostAwait, awaitilities.Member1(), []*toolchainv1alpha1.UserSignup{user.UserSignup}, &tiers.CustomNSTemplateTier{
+		NSTemplateTier:         base1nsGoTemplateTier,
+		ClusterResourcesTier:   base1Ns,
+		NamespaceResourcesTier: base1Ns,
+		SpaceRolesTier:         base1Ns,
+	})
+}
+
 func TestResetDeactivatingStateWhenPromotingUser(t *testing.T) {
 	t.Parallel()
 	awaitilities := WaitForDeployments(t)
@@ -393,7 +429,7 @@ func TestTierTemplateRevision(t *testing.T) {
 	// when
 	// we verify that TierTemplateRevision CRs were created, since all the tiertemplates now have templateObjects field populated
 	tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "ttr",
-		wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "ttr").Flatten()))
+		wait.HasStatusTierTemplateRevisionKeys())
 	require.NoError(t, err)
 	customTier.NSTemplateTier = tier
 
@@ -427,8 +463,7 @@ func TestTierTemplateRevision(t *testing.T) {
 
 		// then
 		// a new TTR was created
-		// TODO check for exact match or remove the +1 once we implement the cleanup controller
-		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs)+1))
+		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs))) //there is already a cleanup controller
 		require.NoError(t, err)
 		// get the updated nstemplatetier
 		updatedCustomTier, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
@@ -470,8 +505,7 @@ func TestTierTemplateRevision(t *testing.T) {
 				})
 			require.NoError(t, err)
 			// an additional TTRs will be created
-			// TODO check for exact match and remove the 2*len(ttrs)+1 once we implement the cleanup controller
-			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(2*len(ttrs)+1))
+			ttrsWithNewParams, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs))) //there is already a cleanup controller
 			require.NoError(t, err)
 			// and the parameter is updated in all the ttrs
 			checkThatTTRsHaveParameter(t, customTier, ttrsWithNewParams, toolchainv1alpha1.Parameter{
@@ -492,7 +526,7 @@ func TestTierTemplateRevision(t *testing.T) {
 		// when
 		// we verify that the new tier exists and the revisions field was populated
 		tier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
-			wait.HasStatusTierTemplateRevisions(tiers.GetTemplateRefs(t, hostAwait, "updatingtier").Flatten()))
+			wait.HasStatusTierTemplateRevisionKeys())
 		require.NoError(t, err)
 		updatingTier.NSTemplateTier = tier
 		revisionsBeforeUpdate := updatingTier.Status.Revisions
@@ -511,7 +545,7 @@ func TestTierTemplateRevision(t *testing.T) {
 			expectedRefs = append(expectedRefs, tiers.DuplicatedTierName(updatingTier.Name, tierTemplateName))
 		}
 		updatedTier, err := hostAwait.WaitForNSTemplateTierAndCheckTemplates(t, "updatingtier",
-			wait.HasStatusTierTemplateRevisions(expectedRefs))
+			wait.HasStatusTierTemplateRevisionKeys())
 		require.NoError(t, err)
 		// revisions values should be different compared to the previous ones
 		assert.NotEqual(t, revisionsBeforeUpdate, updatedTier.Status.Revisions)
