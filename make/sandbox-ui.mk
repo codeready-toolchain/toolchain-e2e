@@ -116,6 +116,7 @@ e2e-run-sandbox-ui:
 	
 	@echo "Running Developer Sandbox UI e2e tests in firefox..."
 	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
+	# NOTE: The "-count=1" is the idiomatic way of turning off the test result cache according to https://pkg.go.dev/cmd/go#hdr-Testing_flags.
 	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast -count=1
 	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 
