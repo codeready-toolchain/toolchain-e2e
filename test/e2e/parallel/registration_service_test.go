@@ -187,6 +187,11 @@ func TestAnalytics(t *testing.T) {
 		// Call segment write key endpoint.
 		assertNotSecuredGetResponseEquals("segment-write-key", "test devspaces segment write key")
 	})
+
+	t.Run("get sandbox segment write key 200 OK", func(_ *testing.T) {
+		// Call sandbox segment write key endpoint.
+		assertNotSecuredGetResponseEquals("analytics/segment-write-key", "test sandbox segment write key")
+	})
 }
 
 func TestAuthConfig(t *testing.T) {
