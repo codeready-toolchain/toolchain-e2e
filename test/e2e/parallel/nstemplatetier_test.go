@@ -488,7 +488,6 @@ func TestTierTemplateRevision(t *testing.T) {
 			// when
 			// we increase the parameter for the deployment quota
 			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier, tiers.WithParameter("DEPLOYMENT_QUOTA", "100"))
-			require.NoError(t, err)
 
 			// then
 			// retrieve new tier once the ttrs were created and the revision field updated
