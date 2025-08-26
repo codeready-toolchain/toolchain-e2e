@@ -164,7 +164,11 @@ execute-tests:
 	@echo "Status of ToolchainStatus"
 	-oc get ToolchainStatus -n ${HOST_NS} -o yaml
 	@echo "Starting test $(shell date)"
-	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} SECOND_MEMBER_MODE=${SECOND_MEMBER_MODE} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -v -timeout=90m -failfast || \
+	# NOTE: The "-count=1" is the idiomatic way of turning off the test result cache according to https://pkg.go.dev/cmd/go#hdr-Testing_flags.
+	# One might wonder whether the word "idiomatic" shouldn't have been spelled with 2 letters less there.
+	# We need to turn off the cache because the e2e tests depend on running the migration setup. If the results of the migration tests were
+	# cached, it might happen that the cluster is in an unprepared state when the e2e tests start running.
+	MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} HOST_NS=${HOST_NS} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} SECOND_MEMBER_MODE=${SECOND_MEMBER_MODE} go test ${TESTS_TO_EXECUTE} -run ${TESTS_RUN_FILTER_REGEXP} -p 1 -v -timeout=90m -failfast -count=1 || \
 	($(MAKE) print-logs HOST_NS=${HOST_NS} MEMBER_NS=${MEMBER_NS} MEMBER_NS_2=${MEMBER_NS_2} REGISTRATION_SERVICE_NS=${REGISTRATION_SERVICE_NS} && exit 1)
 
 .PHONY: print-logs
