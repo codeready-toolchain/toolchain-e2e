@@ -468,6 +468,7 @@ func TestTierTemplateRevision(t *testing.T) {
 				newTTR, found := actual.Status.Revisions[actual.Spec.ClusterResources.TemplateRef]
 				return found && newTTR != "" && newTTR != ttrToBeModified
 			})
+		require.NoError(t, err)
 		newTTR := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
 
 		// check that it has the updated crq
