@@ -1,5 +1,11 @@
 WAS_ALREADY_PAIRED_FILE=/tmp/toolchain_e2e_already_paired
 
+clean-warning:
+	# If the clean gets stuck, you can call the following goal to unblock the deletion of the resources in the cluster:
+	#
+	# make force-remove-finalizers-from-e2e-resources
+	#
+
 .PHONY: clean
 ## Remove vendor directory and runs go clean command
 clean:
@@ -9,20 +15,20 @@ clean:
 .PHONY: clean-users
 ## Delete usersignups in the OpenShift cluster. The deleted resources are:
 ##    * all usersignups including user namespaces and banned users
-clean-users:
+clean-users: clean-warning
 	$(Q)-oc delete usersignups --all --all-namespaces
 	$(Q)-oc delete bannedusers --all --all-namespaces
 	$(Q)-oc delete spacerequests --all --all-namespaces
 	$(Q)-oc delete spaces --all --all-namespaces
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
 
-clean-nstemplatetiers:
+clean-nstemplatetiers: clean-warning
 	$(Q)-oc delete nstemplatetier --all --all-namespaces
 	$(Q)-oc wait --for=delete nstemplatetier --all --all-namespaces
 
 .PHONY: clean-cluster-wide-config
 ## Delete all cluster-wide configuration resources like PriorityClass, MutatingWebhookConfiguration, and ClusterRoleBinding for e2e SA
-clean-cluster-wide-config:
+clean-cluster-wide-config: clean-warning
 	$(Q)-oc get ClusterRoleBinding -o name | grep e2e-service-account | xargs oc delete
 	$(Q)-oc delete ClusterRoleBinding e2e-test-cluster-admin
 	$(Q)-oc get ClusterRole -o jsonpath="{range .items[*]}{.metadata.name} {.metadata.labels.olm\.owner}{'\n'}{end}" | grep "toolchain-" | awk '{print $$1}' | xargs oc delete ClusterRole
@@ -33,7 +39,7 @@ clean-cluster-wide-config:
 
 .PHONY: clean-toolchain-namespaces-in-e2e
 ## Delete e2e namespaces
-clean-toolchain-namespaces-in-e2e:
+clean-toolchain-namespaces-in-e2e: clean-warning
 	$(Q)-oc get projects --output=name | grep -E "toolchain-(member|host)(\-operator)?(\-[0-9]+)?" | xargs oc delete
 
 .PHONY: clean-toolchain-dev-sso-resources
