@@ -462,9 +462,6 @@ func TestTierTemplateRevision(t *testing.T) {
 		require.NoError(t, err)
 
 		// then
-		// a new TTR was created
-		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs))) //there is already a cleanup controller
-		require.NoError(t, err)
 		// get the updated nstemplatetier
 		updatedCustomTier, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
 			WithNameMatching(customTier.Name, func(actual *toolchainv1alpha1.NSTemplateTier) bool {
@@ -474,6 +471,9 @@ func TestTierTemplateRevision(t *testing.T) {
 		newTTR := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
 
 		// check that it has the updated crq
+		// a new TTR was created
+		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs))) //there is already a cleanup controller
+		require.NoError(t, err)
 		checkThatTTRContainsCRQ(t, newTTR, updatedTTRs, updatedCRQ)
 
 		t.Run("update of the NSTemplateTier parameters should trigger creation of new TTR", func(t *testing.T) {
