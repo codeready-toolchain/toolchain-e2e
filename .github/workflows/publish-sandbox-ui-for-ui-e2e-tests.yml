@@ -90,12 +90,10 @@ jobs:
       - name: Publish current Developer Sandbox UI (PR event)
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
-          PROVIDED_REF="${{ github.event.pull_request.head.ref }}"
-          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ github.event.pull_request.head.sha }} PULL_NUMBER=${{ github.event.pull_request.number }} AUTHOR=${{ github.event.pull_request.head.user.login }} BRANCH_NAME="${PROVIDED_REF}"
+          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ github.event.pull_request.head.sha }} PULL_NUMBER=${{ github.event.pull_request.number }} AUTHOR=${{ github.event.pull_request.head.user.login }} BRANCH_NAME=${{ github.event.pull_request.head.ref }}
 
       # Publish Developer Sandbox UI for comment events
       - name: Publish current Developer Sandbox UI (comment event)
         if: ${{ github.event_name == 'issue_comment' }}
         run: |
-          PROVIDED_REF="${{ fromJson(steps.request.outputs.data).head.ref }}"
-          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ fromJson(steps.request.outputs.data).head.sha }} PULL_NUMBER=${{ fromJson(steps.request.outputs.data).number }} AUTHOR=${{ fromJson(steps.request.outputs.data).head.user.login }} BRANCH_NAME="${PROVIDED_REF}"
+          make push-sandbox-plugin QUAY_NAMESPACE=codeready-toolchain-test IMAGE_BUILDER=podman PULL_PULL_SHA=${{ fromJson(steps.request.outputs.data).head.sha }} PULL_NUMBER=${{ fromJson(steps.request.outputs.data).number }} AUTHOR=${{ fromJson(steps.request.outputs.data).head.user.login }} BRANCH_NAME=${{ fromJson(steps.request.outputs.data).head.ref }}
