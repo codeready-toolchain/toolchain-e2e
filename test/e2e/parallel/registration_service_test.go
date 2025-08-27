@@ -161,7 +161,7 @@ func TestAnalytics(t *testing.T) {
 	await := WaitForDeployments(t)
 	route := await.Host().RegistrationServiceURL
 
-	assertNotSecuredGetResponseEquals := func(endPointPath, expectedResponseValue string) {
+	assertNotSecuredGetResponseEquals := func(t *testing.T, endPointPath, expectedResponseValue string) {
 		// Call analytics domain endpoint.
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/%s", route, endPointPath), nil)
 		require.NoError(t, err)
@@ -183,9 +183,14 @@ func TestAnalytics(t *testing.T) {
 		require.Equal(t, expectedResponseValue, value)
 	}
 
-	t.Run("get devspaces segment write key 200 OK", func(_ *testing.T) {
+	t.Run("get devspaces segment write key 200 OK", func(t *testing.T) {
 		// Call segment write key endpoint.
-		assertNotSecuredGetResponseEquals("segment-write-key", "test devspaces segment write key")
+		assertNotSecuredGetResponseEquals(t, "segment-write-key", "test devspaces segment write key")
+	})
+
+	t.Run("get sandbox segment write key 200 OK", func(t *testing.T) {
+		// Call sandbox segment write key endpoint.
+		assertNotSecuredGetResponseEquals(t, "analytics/segment-write-key", "test sandbox segment write key")
 	})
 }
 
