@@ -25,13 +25,8 @@ jobs:
     steps:
     # Checkout from PR event
     - name: Checkout code from PR event
-<<<<<<< HEAD
-      uses: actions/checkout@v4
-      if: ${{ github.event_name == 'pull_request_target' }}
-=======
       uses: actions/checkout@v5
-      if: ${{ github.event.comment == '' }}
->>>>>>> master
+      if: ${{ github.event_name == 'pull_request_target' }}
       with:
         ref: ${{github.event.pull_request.head.ref}}
         repository: ${{github.event.pull_request.head.repo.full_name}}
