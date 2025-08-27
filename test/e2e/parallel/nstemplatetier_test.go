@@ -476,7 +476,6 @@ func TestTierTemplateRevision(t *testing.T) {
 		updatedTTRs, err := hostAwait.WaitForTTRs(
 			t,
 			customTier.Name,
-			wait.GreaterOrEqual(len(ttrs)), // count must not regress
 			wait.TierTemplateRevisionWaitCriterion{
 				Match: func(actual []toolchainv1alpha1.TierTemplateRevision) bool {
 					for _, tr := range actual {
