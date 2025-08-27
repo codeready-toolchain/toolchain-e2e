@@ -462,17 +462,39 @@ func TestTierTemplateRevision(t *testing.T) {
 		require.NoError(t, err)
 
 		// then
-		// a new TTR was created
-		updatedTTRs, err := hostAwait.WaitForTTRs(t, customTier.Name, wait.GreaterOrEqual(len(ttrs))) //there is already a cleanup controller
-		require.NoError(t, err)
 		// get the updated nstemplatetier
 		updatedCustomTier, err := wait.For(t, hostAwait.Awaitility, &toolchainv1alpha1.NSTemplateTier{}).
 			WithNameMatching(customTier.Name, func(actual *toolchainv1alpha1.NSTemplateTier) bool {
 				newTTR, found := actual.Status.Revisions[actual.Spec.ClusterResources.TemplateRef]
 				return found && newTTR != "" && newTTR != ttrToBeModified
 			})
+		require.NoError(t, err)
 		newTTR := updatedCustomTier.Status.Revisions[updatedCustomTier.Spec.ClusterResources.TemplateRef]
 
+		// a new TTR was created
+		// wait until the new TTR name appears in the list
+		updatedTTRs, err := hostAwait.WaitForTTRs(
+			t,
+			customTier.Name,
+			wait.TierTemplateRevisionWaitCriterion{
+				Match: func(actual []toolchainv1alpha1.TierTemplateRevision) bool {
+					for _, tr := range actual {
+						if tr.Name == newTTR {
+							return true
+						}
+					}
+					return false
+				},
+				Diff: func(actual []toolchainv1alpha1.TierTemplateRevision) string {
+					names := make([]string, 0, len(actual))
+					for _, tr := range actual {
+						names = append(names, tr.Name)
+					}
+					return fmt.Sprintf("expected new TTR %q in list: %v", newTTR, names)
+				},
+			},
+		)
+		require.NoError(t, err)
 		// check that it has the updated crq
 		checkThatTTRContainsCRQ(t, newTTR, updatedTTRs, updatedCRQ)
 
@@ -488,7 +510,6 @@ func TestTierTemplateRevision(t *testing.T) {
 			// when
 			// we increase the parameter for the deployment quota
 			customTier = tiers.UpdateCustomNSTemplateTier(t, hostAwait, customTier, tiers.WithParameter("DEPLOYMENT_QUOTA", "100"))
-			require.NoError(t, err)
 
 			// then
 			// retrieve new tier once the ttrs were created and the revision field updated
