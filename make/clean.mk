@@ -1,5 +1,8 @@
 WAS_ALREADY_PAIRED_FILE=/tmp/toolchain_e2e_already_paired
 
+.PHONY: clean-warning
+# note that the below comment IS printed on the screen by make because it is part of the target.
+# For it to NOT be part of the output, it would have to be written as @#.
 clean-warning:
 	# If the clean gets stuck, you can call the following goal to unblock the deletion of the resources in the cluster:
 	#
