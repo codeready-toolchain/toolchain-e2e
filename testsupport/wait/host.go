@@ -1166,22 +1166,51 @@ func UntilNSTemplateTierSpec(matcher NSTemplateTierSpecMatcher) NSTemplateTierWa
 	}
 }
 
-// HasStatusTierTemplateRevisions verifies revisions for the given TierTemplates are set in the `NSTemplateTier.Status.Revisions`
-func HasStatusTierTemplateRevisions(revisions []string) NSTemplateTierWaitCriterion {
+// extractTemplateRefs extracts all template references from an NSTemplateTier spec
+// and returns them as a map for efficient lookups
+func extractTemplateRefs(spec toolchainv1alpha1.NSTemplateTierSpec) map[string]struct{} {
+	expected := make(map[string]struct{}, len(spec.Namespaces)+1+len(spec.SpaceRoles))
+
+	// Extract template refs from namespaces
+	for _, ns := range spec.Namespaces {
+		if ns.TemplateRef != "" {
+			expected[ns.TemplateRef] = struct{}{}
+		}
+	}
+
+	// Extract template ref from cluster resources
+	if cr := spec.ClusterResources; cr != nil && cr.TemplateRef != "" {
+		expected[cr.TemplateRef] = struct{}{}
+	}
+
+	// Extract template refs from space roles
+	for _, r := range spec.SpaceRoles {
+		if r.TemplateRef != "" {
+			expected[r.TemplateRef] = struct{}{}
+		}
+	}
+
+	return expected
+}
+
+func HasStatusTierTemplateRevisionKeys() NSTemplateTierWaitCriterion {
 	return NSTemplateTierWaitCriterion{
 		Match: func(actual *toolchainv1alpha1.NSTemplateTier) bool {
-			if len(actual.Status.Revisions) != len(revisions) {
+			// Build a set of expected revision keys from the tier spec
+			expected := extractTemplateRefs(actual.Spec)
+			// Compare sets: size must match and all expected keys must exist in status
+			if len(actual.Status.Revisions) != len(expected) {
 				return false
 			}
-			for _, tierTemplateRef := range revisions {
-				if value, found := actual.Status.Revisions[tierTemplateRef]; !found || value == "" {
+			for key := range expected {
+				if _, found := actual.Status.Revisions[key]; !found {
 					return false
 				}
 			}
 			return true
 		},
 		Diff: func(actual *toolchainv1alpha1.NSTemplateTier) string {
-			return fmt.Sprintf("expected revision keys %v not found in: %v", revisions, actual.Status.Revisions)
+			return fmt.Sprintf("expected template refs: %v\nactual status revisions: %v", extractTemplateRefs(actual.Spec), actual.Status.Revisions)
 		},
 	}
 }

@@ -1,0 +1,284 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: TierTemplate
+metadata:
+  name: dev-go
+spec:
+  revision: 8b0d542-8b0d542
+  template:
+    apiVersion: template.openshift.io/v1
+    kind: Template
+    metadata: {}
+    objects:
+    - apiVersion: v1
+      kind: Namespace
+      metadata:
+        annotations:
+          openshift.io/description: '{{.SPACE_NAME}}-dev'
+          openshift.io/display-name: '{{.SPACE_NAME}}-dev'
+          openshift.io/requester: '{{.SPACE_NAME}}'
+        labels:
+          modelmesh-enabled: "true"
+          name: '{{.SPACE_NAME}}-dev'
+          opendatahub.io/dashboard: "true"
+        name: '{{.SPACE_NAME}}-dev'
+    parameters:
+    - name: SPACE_NAME
+      required: true
+  templateObjects:
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      annotations:
+        openshift.io/description: '{{.SPACE_NAME}}-dev'
+        openshift.io/display-name: '{{.SPACE_NAME}}-dev'
+        openshift.io/requester: '{{.SPACE_NAME}}'
+      labels:
+        modelmesh-enabled: "true"
+        name: '{{.SPACE_NAME}}-dev'
+        opendatahub.io/dashboard: "true"
+      name: '{{.SPACE_NAME}}-dev'
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: exec-pods
+      namespace: '{{.SPACE_NAME}}-dev'
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - pods/exec
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - update
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: crtadmin-view
+      namespace: '{{.SPACE_NAME}}-dev'
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: view
+    subjects:
+      - apiGroup: rbac.authorization.k8s.io
+        kind: Group
+        name: crtadmin-users-view
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: crtadmin-pods
+      namespace: '{{.SPACE_NAME}}-dev'
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: exec-pods
+    subjects:
+      - apiGroup: rbac.authorization.k8s.io
+        kind: Group
+        name: crtadmin-users-view
+  - apiVersion: v1
+    kind: ResourceQuota
+    metadata:
+      name: compute-deploy
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      hard:
+        limits.cpu: '{{.CPU_LIMIT}}'
+        limits.memory: '{{.MEMORY_LIMIT}}'
+        requests.cpu: '{{.CPU_REQUEST}}'
+        requests.memory: '{{.MEMORY_REQUEST}}'
+      scopes:
+        - NotTerminating
+  - apiVersion: v1
+    kind: ResourceQuota
+    metadata:
+      name: compute-build
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      hard:
+        limits.cpu: '{{.CPU_BUILD_LIMIT}}'
+        limits.memory: '{{.MEMORY_BUILD_LIMIT}}'
+        requests.cpu: '{{.CPU_REQUEST}}'
+        requests.memory: '{{.MEMORY_BUILD_REQUEST}}'
+      scopes:
+        - Terminating
+  - apiVersion: v1
+    kind: ResourceQuota
+    metadata:
+      name: storage
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      hard:
+        count/persistentvolumeclaims: '{{.PERSISTENT_VOLUME_CLAIM}}'
+        limits.ephemeral-storage: '{{.EPHEMERAL_STORAGE_LIMIT}}'
+        requests.ephemeral-storage: '{{.EPHEMERAL_STORAGE_REQUEST}}'
+        requests.storage: '{{.STORAGE_REQUEST}}'
+  - apiVersion: v1
+    kind: LimitRange
+    metadata:
+      name: resource-limits
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      limits:
+        - default:
+            cpu: 1000m
+            memory: 1000Mi
+          defaultRequest:
+            cpu: 10m
+            memory: 64Mi
+          type: Container
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-same-namespace
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - podSelector: {}
+      podSelector: {}
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-openshift-ingress
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: ingress
+      podSelector: {}
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-openshift-monitoring
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: monitoring
+      podSelector: {}
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-codeready-workspaces-operator
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: codeready-workspaces
+      podSelector: {}
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-olm-namespaces
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  openshift.io/scc: anyuid
+      podSelector: {}
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-console-namespaces
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  network.openshift.io/policy-group: console
+      podSelector: {}
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-openshift-virtualization-namespaces
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: openshift-virtualization-os-images
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: openshift-cnv
+      podSelector: {}
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-redhat-ods-app-to-mariadb
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: redhat-ods-applications
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: data-science-pipelines-operator
+          ports:
+            - port: 3306
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app: mariadb-dspa
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-redhat-ods-app-to-mm
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: redhat-ods-applications
+      podSelector:
+        matchLabels:
+          modelmesh-service: modelmesh-serving
+      policyTypes:
+        - Ingress
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-dev-sandbox-managed-ns
+      namespace: '{{.SPACE_NAME}}-dev'
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  dev-sandbox/policy-group: ingress
+      policyTypes:
+        - Ingress
+  tierName: base1ns-gotemplate
+  type: dev

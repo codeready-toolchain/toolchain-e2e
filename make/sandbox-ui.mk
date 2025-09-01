@@ -164,11 +164,12 @@ e2e-run-sandbox-ui:
 	$(GOPATH)/bin/playwright install firefox
 
 	@echo "Running Developer Sandbox UI setup e2e tests..."
-	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast
+	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast -count=1
 	
 	@echo "Running Developer Sandbox UI e2e tests in firefox..."
 	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
-	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast
+	# NOTE: The "-count=1" is the idiomatic way of turning off the test result cache according to https://pkg.go.dev/cmd/go#hdr-Testing_flags.
+	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast -count=1
 	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 
 	@echo "The Developer Sandbox UI e2e tests successfully finished"
