@@ -31,20 +31,13 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	hostAwait := await.Host()
 	memberAwait := await.Member1()
 
-	// start the AAP workloads at first, because the idler timeout is longer for this case
-	aapIdler, _ := prepareIdlerUser(t, await, "test-aap-idler")
-	// Create an Ansible Automation Platform resource
-	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", aapIdler.Name, wait.WithSandboxPriorityClass())
-	// Set a short timeout for one of the idler to trigger pod idling. It has to stay long enough, so there is
-	// a significant difference between the AAP and the standard timeout (for AAP workloads the half of the standard timeout is used)
-	aapIdler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
-		Update(aapIdler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
-			i.Spec.TimeoutSeconds = 60
-		})
-	require.NoError(t, err)
-
 	// user & idlers for standard workloads
 	idler, idlerNoise := prepareIdlerUser(t, await, "test-idler")
+
+	// Create an Ansible Automation Platform resource
+	prepareAAPWorkloads(t, await.Member1(), "test-idler-aap", idler.Name, wait.WithSandboxPriorityClass())
+	// Create KServe ServingRuntime and InferenceService resources
+	prepareKServeWorkloads(t, await.Member1(), "test-idler-kserve", idler.Name, wait.WithSandboxPriorityClass())
 
 	// Create payloads for both users
 	podsToIdle := prepareWorkloads(t, await.Member1(), idler.Name, wait.WithSandboxPriorityClass())
@@ -56,7 +49,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 
 	// Set a short timeout for one of the idler to trigger pod idling
 	// The idler is currently updating its status since it's already been idling the pods. So we need to keep trying to update.
-	idler, err = wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
+	idler, err := wait.For(t, memberAwait.Awaitility, &toolchainv1alpha1.Idler{}).
 		Update(idler.Name, memberAwait.Namespace, func(i *toolchainv1alpha1.Idler) {
 			i.Spec.TimeoutSeconds = 5
 		})
@@ -106,7 +99,12 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 	// So we just need to verify that aap.Spec.Idle_aap is set to "true" by the idler.
 	clnt, err := dynamic.NewForConfig(memberAwait.RestConfig)
 	require.NoError(t, err)
-	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", aapIdler.Name, clnt.Resource(aapRes), true)
+	_, err = memberAwait.WaitForAAP(t, "test-idler-aap", idler.Name, clnt.Resource(aapRes), true)
+	require.NoError(t, err)
+
+	// Wait for the InferenceService to be deleted - the expected action to idle
+	// the workload is by deleting the InferenceService that is old enough.
+	err = memberAwait.WaitForInferenceServiceDeleted(t, "test-idler-kserve", idler.Name, clnt.Resource(inferenceServiceRes))
 	require.NoError(t, err)
 }
 
@@ -198,6 +196,8 @@ func createDeployment(t *testing.T, memberAwait *wait.MemberAwaitility, namespac
 }
 
 var aapRes = schema.GroupVersionResource{Group: "aap.ansible.com", Version: "v1alpha1", Resource: "ansibleautomationplatforms"}
+var servingRuntimeRes = schema.GroupVersionResource{Group: "serving.kserve.io", Version: "v1alpha1", Resource: "servingruntimes"}
+var inferenceServiceRes = schema.GroupVersionResource{Group: "serving.kserve.io", Version: "v1beta1", Resource: "inferenceservices"}
 
 // createAAP creates an instance of ansibleautomationplatforms.aap.ansible.com with one deployment owned by this instance
 // returns the underlying deployment
@@ -389,4 +389,70 @@ func aapResource(name string) *unstructured.Unstructured {
 			},
 		},
 	}
+}
+
+// prepareKServeWorkloads prepares ServingRuntime and InferenceService instances with one deployment owned by ServingRuntime and waits for the pods to run
+func prepareKServeWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string, additionalPodCriteria ...wait.PodWaitCriterion) []corev1.Pod {
+	servingRuntimeDeployment := createKServeWorkloads(t, memberAwait, name, namespace)
+	n := int(*servingRuntimeDeployment.Spec.Replicas) // total number of created pods
+
+	pods, err := memberAwait.WaitForPods(t, namespace, n, append(additionalPodCriteria, wait.PodRunning(),
+		wait.WithPodLabel("app", name))...)
+	require.NoError(t, err)
+
+	return pods
+}
+
+// createKServeWorkloads creates ServingRuntime and InferenceService instances with one deployment owned by ServingRuntime
+// returns the underlying deployment
+func createKServeWorkloads(t *testing.T, memberAwait *wait.MemberAwaitility, name, namespace string) *appsv1.Deployment {
+	cl, err := dynamic.NewForConfig(memberAwait.RestConfig)
+	require.NoError(t, err)
+
+	// Create a ServingRuntime instance
+	servingRuntime := servingRuntimeResource(name)
+	createdServingRuntime, err := cl.Resource(servingRuntimeRes).Namespace(namespace).Create(context.TODO(), servingRuntime, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Create an InferenceService instance
+	inferenceService := inferenceServiceResource(name)
+	_, err = cl.Resource(inferenceServiceRes).Namespace(namespace).Create(context.TODO(), inferenceService, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Create a Deployment with two replicas and the ServingRuntime instance as the owner.
+	// The InferenceService doesn't own anything directly.
+	replicas := int32(2)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: selectorLabels(name)},
+			Replicas: &replicas,
+			Template: podTemplateSpec(name),
+		},
+	}
+	err = controllerutil.SetOwnerReference(createdServingRuntime, deployment, scheme.Scheme)
+	require.NoError(t, err)
+	err = memberAwait.Create(t, deployment)
+	require.NoError(t, err)
+
+	return deployment
+}
+
+func servingRuntimeResource(name string) *unstructured.Unstructured {
+	servingRuntime := &unstructured.Unstructured{}
+	servingRuntime.SetAPIVersion("serving.kserve.io/v1alpha1")
+	servingRuntime.SetKind("ServingRuntime")
+	servingRuntime.SetName(name)
+	return servingRuntime
+}
+
+func inferenceServiceResource(name string) *unstructured.Unstructured {
+	inferenceService := &unstructured.Unstructured{}
+	inferenceService.SetAPIVersion("serving.kserve.io/v1beta1")
+	inferenceService.SetKind("InferenceService")
+	inferenceService.SetName(name)
+	return inferenceService
 }
