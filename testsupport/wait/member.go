@@ -1541,11 +1541,11 @@ func (a *MemberAwaitility) WaitForAAP(t *testing.T, name, namespace string, aapR
 	return aap, err
 }
 
-// WaitForInferenceServiceDeleted waits for the InferenceService resource to be deleted (idled)
-func (a *MemberAwaitility) WaitForInferenceServiceDeleted(t *testing.T, name, namespace string, inferenceServiceRes dynamic.NamespaceableResourceInterface) error {
+// WaitUntilInferenceServiceDeleted waits for the InferenceService resource to be deleted (idled)
+func (a *MemberAwaitility) WaitUntilInferenceServiceDeleted(t *testing.T, name, namespace string, inferenceServiceRes dynamic.NamespaceableResourceInterface) error {
 	t.Logf("waiting for InferenceService '%s' to be deleted in namespace '%s'", name, namespace)
 	err := wait.PollUntilContextTimeout(context.TODO(), a.RetryInterval, a.Timeout, true, func(ctx context.Context) (bool, error) {
-		_, err := inferenceServiceRes.Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		_, err := inferenceServiceRes.Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil

@@ -104,7 +104,7 @@ func TestIdlerAndPriorityClass(t *testing.T) {
 
 	// Wait for the InferenceService to be deleted - the expected action to idle
 	// the workload is by deleting the InferenceService that is old enough.
-	err = memberAwait.WaitForInferenceServiceDeleted(t, "test-idler-kserve", idler.Name, clnt.Resource(inferenceServiceRes))
+	err = memberAwait.WaitUntilInferenceServiceDeleted(t, "test-idler-kserve", idler.Name, clnt.Resource(inferenceServiceRes))
 	require.NoError(t, err)
 }
 
