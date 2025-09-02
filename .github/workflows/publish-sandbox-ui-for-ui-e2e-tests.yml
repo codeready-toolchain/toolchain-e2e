@@ -70,9 +70,7 @@ jobs:
       - name: Prepare tools
         uses: codeready-toolchain/toolchain-cicd/prepare-tools-action@master
 
-      # Login to quay for PR events
-      - name: Login to quay (PR event)
-        if: ${{ github.event_name == 'pull_request_target' }}
+      - name: Login to quay
         run: |
           set -e
           export XDG_RUNTIME_DIR=/run/user/${UID}
