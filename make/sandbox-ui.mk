@@ -42,7 +42,6 @@ ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
 endif
 	kustomize build deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
-		HOST_NS=${HOST_NS} \
 		HOST_OPERATOR_API=${HOST_OPERATOR_API} \
 		SANDBOX_UI_NS=${SANDBOX_UI_NS} \
 		SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
@@ -50,11 +49,12 @@ endif
 	$(MAKE) configure-oauth-idp
 ifeq ($(ENVIRONMENT),ui-e2e-tests)
 	@echo "applying toolchainconfig changes"
-	oc apply -f deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml
+	@echo "HOST_NS: ${HOST_NS}"
+	@oc apply -f deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml -n ${HOST_NS}
 	@echo "restarting registration-service to apply toolchainconfig changes"
 	@oc -n ${HOST_NS} rollout restart deploy/registration-service
 else
-	@echo "skipping toolchainconfig changes - environment is not e2e-tests"
+	@echo "skipping toolchainconfig changes - environment is not ui-e2e-tests"
 endif
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
 	@echo "Developer Sandbox UI running at ${RHDH}"
