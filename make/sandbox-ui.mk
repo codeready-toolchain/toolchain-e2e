@@ -48,7 +48,7 @@ endif
 		SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
 		RHDH=${RHDH} envsubst | oc apply -f -
 	$(MAKE) configure-oauth-idp
-ifeq ($(ENVIRONMENT),e2e-tests)
+ifeq ($(ENVIRONMENT),ui-e2e-tests)
 	@echo "applying toolchainconfig changes"
 	oc apply -f deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml
 	@echo "restarting registration-service to apply toolchainconfig changes"
