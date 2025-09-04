@@ -195,11 +195,11 @@ e2e-run-sandbox-ui:
 
 .PHONY: test-ui-e2e
 test-ui-e2e:
-	$(MAKE) prepare-and-deploy-e2e deploy-sandbox-ui e2e-run-sandbox-ui ENVIRONMENT=${UI_ENVIRONMENT}
+	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui ENVIRONMENT=${UI_ENVIRONMENT}
 
 .PHONY: test-ui-e2e-local
 test-ui-e2e-local:
-	$(MAKE) prepare-and-deploy-e2e deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT}
+	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT}
 
 
 UNIT_TEST_IMAGE_NAME=sandbox-ui-e2e-tests
