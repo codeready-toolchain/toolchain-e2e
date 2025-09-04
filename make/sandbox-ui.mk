@@ -5,7 +5,7 @@ PLATFORM ?= linux/amd64
 RHDH_PLUGINS_DIR ?= $(TMPDIR)rhdh-plugins
 AUTH_FILE := /tmp/auth.json
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
-PUSH_SANDBOX_IMAGE ?= true
+PUSH_SANDBOX_IMAGE ?= false
 UI_ENVIRONMENT := ui-e2e-tests
 SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
 SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
@@ -228,6 +228,5 @@ test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
 	  -e SSO_PASSWORD=$(SSO_PASSWORD) \
 	  -e QUAY_NAMESPACE=$(QUAY_NAMESPACE) \
 	  -e TMP=/tmp/ \
-	  -e PUSH_SANDBOX_IMAGE=false \
 	  -e RUNNING_IN_CONTAINER=true \
 	  $(UNIT_TEST_IMAGE_NAME)
