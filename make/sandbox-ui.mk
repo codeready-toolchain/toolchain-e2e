@@ -7,6 +7,8 @@ AUTH_FILE := /tmp/auth.json
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
 PUSH_SANDBOX_IMAGE ?= true
 UI_ENVIRONMENT := ui-e2e-tests
+SSO_USERNAME_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_USERNAME 2>/dev/null || echo ""; else echo "${SSO_USERNAME}"; fi)
+SSO_PASSWORD_READ := $(shell if [ -n "$(CI)" ]; then cat /usr/local/sandbox-secrets/SSO_PASSWORD 2>/dev/null || echo ""; else echo "${SSO_PASSWORD}"; fi)
 
 TAG := $(shell \
     if [ -n "$(CI)$(CLONEREFS_OPTIONS)" ]; then \
@@ -46,28 +48,45 @@ endif
 		SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
 		RHDH=${RHDH} envsubst | oc apply -f -
 	$(MAKE) configure-oauth-idp
+ifeq ($(ENVIRONMENT),e2e-tests)
+	@echo "applying toolchainconfig changes"
+	oc apply -f deploy/host-operator/ui-e2e-tests/toolchainconfig.yaml
 	@echo "restarting registration-service to apply toolchainconfig changes"
 	@oc -n ${HOST_NS} rollout restart deploy/registration-service
+else
+	@echo "skipping toolchainconfig changes - environment is not e2e-tests"
+endif
 	@oc -n ${SANDBOX_UI_NS} rollout status deploy/rhdh
 	@echo "Developer Sandbox UI running at ${RHDH}"
 
 
 check-sso-credentials:
 	@echo "checking SSO credentials..."
-	@if [ -z "$$SSO_USERNAME" ] || [ -z "$$SSO_PASSWORD" ]; then \
-		echo "SSO_USERNAME or SSO_PASSWORD not set"; \
-		exit 1; \
+	@if [ -n "$(CI)" ]; then \
+		echo "Running in CI - using file-based SSO credentials"; \
+		if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
+			echo "SSO credential files not found or empty in CI environment"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Running locally - using environment variables"; \
+		if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
+			echo "SSO_USERNAME or SSO_PASSWORD environment variables not set"; \
+			exit 1; \
+		fi; \
 	fi
+	@echo "Validating SSO credentials..."
 	@status=$$(curl -s -o /dev/null -w "%{http_code}" \
 	  -X POST "https://sso.devsandbox.dev/auth/realms/sandbox-dev/protocol/openid-connect/token" \
 	  -d "grant_type=password" \
 	  -d "client_id=sandbox-public" \
-	  -d "username=$$SSO_USERNAME" \
-	  -d "password=$$SSO_PASSWORD"); \
+	  -d "username=$(SSO_USERNAME_READ)" \
+	  -d "password=$(SSO_PASSWORD_READ)"); \
 	if [ "$$status" != "200" ]; then \
 	  echo "failed trying to login to 'https://sso.devsandbox.dev/auth/realms/sandbox-dev' ($$status) — check your SSO credentials."; \
 	  exit 1; \
 	fi
+	@echo "SSO credentials validated successfully"
 
 configure-oauth-idp:
 	@echo "configuring DevSandbox identity provider"
@@ -164,13 +183,12 @@ e2e-run-sandbox-ui:
 	$(GOPATH)/bin/playwright install firefox
 
 	@echo "Running Developer Sandbox UI setup e2e tests..."
-	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast -count=1
+	SANDBOX_UI_NS=${SANDBOX_UI_NS} go test "./test/e2e/sandbox-ui/setup" -v -timeout=10m -failfast
 	
 	@echo "Running Developer Sandbox UI e2e tests in firefox..."
-	SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
-	# NOTE: The "-count=1" is the idiomatic way of turning off the test result cache according to https://pkg.go.dev/cmd/go#hdr-Testing_flags.
-	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast -count=1
-	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
+	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
+	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast
+	@oc delete usersignup $(SSO_USERNAME_READ) -n ${HOST_NS}
 
 	@echo "The Developer Sandbox UI e2e tests successfully finished"
 
