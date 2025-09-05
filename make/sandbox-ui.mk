@@ -31,6 +31,7 @@ IMAGE_TO_PUSH_IN_QUAY ?= quay.io/$(QUAY_NAMESPACE)/sandbox-rhdh-plugin:$(TAG)
 
 
 .PHONY: deploy-sandbox-ui
+deploy-sandbox-ui: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
 deploy-sandbox-ui: HOST_OPERATOR_API=https://$(shell oc get route api -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')
 deploy-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
@@ -167,12 +168,14 @@ push-sandbox-plugin:
 	podman push $(IMAGE_TO_PUSH_IN_QUAY)
 
 .PHONY: clean-sandbox-ui
+clean-sandbox-ui: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 clean-sandbox-ui:
 	@oc delete ns ${SANDBOX_UI_NS}
 	@oc delete secret ${OPENID_SECRET_NAME} -n openshift-config
 	@oc delete usersignup ${SSO_USERNAME} -n ${HOST_NS}
 
 .PHONY: e2e-run-sandbox-ui
+e2e-run-sandbox-ui: HOST_NS=$(shell oc get projects -l app=host-operator --output=name -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | sort | tail -n 1)
 e2e-run-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
 e2e-run-sandbox-ui:
 	@echo "Installing Playwright..."
