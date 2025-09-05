@@ -34,13 +34,6 @@ RUN yum install -y \
 RUN curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash \
     && mv kustomize /usr/local/bin
 
-# Install Node.js 22 and yarn
-RUN curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - && \
-    yum install -y nodejs && \
-    curl -sL https://dl.yarnpkg.com/rpm/yarn.repo -o /etc/yum.repos.d/yarn.repo && \
-    yum install -y yarn && \
-    yum clean all
-
 # Install oc CLI
 RUN curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz && \
     tar -xzvf openshift-client-linux.tar.gz -C /usr/local/bin oc && \
