@@ -10,7 +10,7 @@ The UI E2E tests are executed against the Developer Sandbox UI running in OpenSh
     - to easily manage it, you can run `nvm use 22`
 3. Ensure you have `yarn` installed
 4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your SSO_USERNAME and SSO_PASSWORD
-5. Make sure you do not have any toolchain resources deployed on your cluster
+5. Make sure you have toolchain resources deployed on your cluster
 
 ### Running UI E2E Tests locally
 

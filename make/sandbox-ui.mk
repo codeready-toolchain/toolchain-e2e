@@ -2,7 +2,7 @@ SANDBOX_UI_NS := sandbox-ui
 SANDBOX_PLUGIN_IMAGE_NAME := sandbox-rhdh-plugin
 TAG := latest
 PLATFORM ?= linux/amd64
-RHDH_PLUGINS_DIR ?= $(TMPDIR)rhdh-plugins
+RHDH_PLUGINS_TMP ?= $(TMPDIR)rhdh-plugins
 AUTH_FILE := /tmp/auth.json
 OPENID_SECRET_NAME=openid-sandbox-public-client-secret
 PUSH_SANDBOX_IMAGE ?= false
@@ -109,7 +109,7 @@ create-namespace:
 
 .PHONY: get-rhdh-plugins
 get-rhdh-plugins:
-ifeq ($(strip $(RHDH_PLUGINS_DIR)), $(TMPDIR)rhdh-plugins)
+ifeq ($(strip $(RHDH_PLUGINS_TMP)), $(TMPDIR)rhdh-plugins)
 ifeq ($(GITHUB_ACTIONS),true)
 	@echo "using author ${AUTHOR}"
 	$(eval AUTHOR_LINK = https://github.com/${AUTHOR})
@@ -127,7 +127,7 @@ else
 	@$(MAKE) clone-rhdh-plugins
 endif
 else
-	@echo "using local rhdh-plugins repo, no pairing needed: ${RHDH_PLUGINS_DIR}"
+	@echo "using local rhdh-plugins repo, no pairing needed: ${RHDH_PLUGINS_TMP}"
 endif
 
 pair-if-needed:
@@ -136,14 +136,14 @@ ifneq ($(strip $(REMOTE_RHDH_PLUGINS_BRANCH)),)
 	git config --global user.email "devsandbox@redhat.com"
 	git config --global user.name "KubeSaw"
 	# clone
-	rm -rf ${RHDH_PLUGINS_DIR}
-	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins.git ${RHDH_PLUGINS_DIR}
+	rm -rf ${RHDH_PLUGINS_TMP}
+	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins.git ${RHDH_PLUGINS_TMP}
 	# add the user's fork as remote repo
-	git --git-dir=${RHDH_PLUGINS_DIR}/.git --work-tree=${RHDH_PLUGINS_DIR} remote add external ${AUTHOR_LINK}/rhdh-plugins.git
+	git --git-dir=${RHDH_PLUGINS_TMP}/.git --work-tree=${RHDH_PLUGINS_TMP} remote add external ${AUTHOR_LINK}/rhdh-plugins.git
 	# fetch the branch
-	git --git-dir=${RHDH_PLUGINS_DIR}/.git --work-tree=${RHDH_PLUGINS_DIR} fetch external ${REMOTE_RHDH_PLUGINS_BRANCH}
+	git --git-dir=${RHDH_PLUGINS_TMP}/.git --work-tree=${RHDH_PLUGINS_TMP} fetch external ${REMOTE_RHDH_PLUGINS_BRANCH}
 	# merge the branch with master
-	git --git-dir=${RHDH_PLUGINS_DIR}/.git --work-tree=${RHDH_PLUGINS_DIR} merge --allow-unrelated-histories --no-commit FETCH_HEAD
+	git --git-dir=${RHDH_PLUGINS_TMP}/.git --work-tree=${RHDH_PLUGINS_TMP} merge --allow-unrelated-histories --no-commit FETCH_HEAD
 else
 	@echo "no pairing needed, using rhdh-plugins repo from master"
 	@$(MAKE) clone-rhdh-plugins 
@@ -151,14 +151,14 @@ endif
 
 .PHONY: clone-rhdh-plugins
 clone-rhdh-plugins:
-	rm -rf ${RHDH_PLUGINS_DIR}; \
-	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins $(RHDH_PLUGINS_DIR) && \
-	echo "cloned to $(RHDH_PLUGINS_DIR)"
+	rm -rf ${RHDH_PLUGINS_TMP}; \
+	git clone --depth=1 https://github.com/redhat-developer/rhdh-plugins $(RHDH_PLUGINS_TMP) && \
+	echo "cloned to $(RHDH_PLUGINS_TMP)"
 
 .PHONY: push-sandbox-plugin
 push-sandbox-plugin:
 	$(MAKE) get-rhdh-plugins
-	cd $(RHDH_PLUGINS_DIR)/workspaces/sandbox && \
+	cd $(RHDH_PLUGINS_TMP)/workspaces/sandbox && \
 	rm -rf plugins/sandbox/dist-dynamic && \
 	rm -rf red-hat-developer-hub-backstage-plugin-sandbox && \
 	yarn install && \
@@ -191,7 +191,7 @@ e2e-run-sandbox-ui:
 	@echo "Running Developer Sandbox UI e2e tests in firefox..."
 	@SSO_USERNAME=$(SSO_USERNAME_READ) SSO_PASSWORD=$(SSO_PASSWORD_READ) BASE_URL=${RHDH} BROWSER=firefox envsubst < deploy/sandbox-ui/ui-e2e-tests/.env > testsupport/sandbox-ui/.env
 	go test "./test/e2e/sandbox-ui" -v -timeout=10m -failfast
-	@oc delete usersignup $(SSO_USERNAME_READ) -n ${HOST_NS}
+	@oc delete usersignup $(SSO_USERNAME_READ) -n $(HOST_NS)
 
 	@echo "The Developer Sandbox UI e2e tests successfully finished"
 
@@ -202,7 +202,7 @@ test-ui-e2e:
 
 .PHONY: test-ui-e2e-local
 test-ui-e2e-local:
-	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_DIR=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT}
+	$(MAKE) deploy-sandbox-ui e2e-run-sandbox-ui RHDH_PLUGINS_TMP=${PWD}/../rhdh-plugins ENVIRONMENT=${UI_ENVIRONMENT}
 
 
 UNIT_TEST_IMAGE_NAME=sandbox-ui-e2e-tests
@@ -225,8 +225,8 @@ test-sandbox-ui-in-container: build-sandbox-ui-e2e-tests
 	  -e KUBECONFIG=/root/.kube/config \
 	  -v ${PWD}:/root/toolchain-e2e \
 	  -e E2E_REPO_PATH=/root/toolchain-e2e \
-	  -v $(RHDH_PLUGINS_DIR):/root/rhdh-plugins \
-	  -e RHDH_PLUGINS_DIR=/root/rhdh-plugins \
+	  -v $(RHDH_PLUGINS_TMP):/root/rhdh-plugins \
+	  -e RHDH_PLUGINS_TMP=/root/rhdh-plugins \
 	  -e SSO_USERNAME=$(SSO_USERNAME) \
 	  -e SSO_PASSWORD=$(SSO_PASSWORD) \
 	  -e QUAY_NAMESPACE=$(QUAY_NAMESPACE) \
