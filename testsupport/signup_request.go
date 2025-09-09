@@ -53,6 +53,7 @@ type SignupRequest struct {
 	originalSub          string
 	userID               string
 	accountID            string
+	accountNumber        string
 	cleanupDisabled      bool
 	noSpace              bool
 	activationCode       string
@@ -112,6 +113,11 @@ func (r *SignupRequest) UserID(userID string) *SignupRequest {
 
 func (r *SignupRequest) AccountID(accountID string) *SignupRequest {
 	r.accountID = accountID
+	return r
+}
+
+func (r *SignupRequest) AccountNumber(accountNumber string) *SignupRequest {
+	r.accountNumber = accountNumber
 	return r
 }
 
