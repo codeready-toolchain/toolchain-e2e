@@ -487,8 +487,8 @@ func TestSignupOK(t *testing.T) {
 			signupHasExpectedClaims(map[string]string{
 				"name":          userSignup.Name,
 				"username":      userSignup.Spec.IdentityClaims.PreferredUsername,
-				"given_name":    userSignup.Spec.IdentityClaims.GivenName,
-				"family_name":   userSignup.Spec.IdentityClaims.FamilyName,
+				"givenName":     userSignup.Spec.IdentityClaims.GivenName,
+				"familyName":    userSignup.Spec.IdentityClaims.FamilyName,
 				"company":       userSignup.Spec.IdentityClaims.Company,
 				"userID":        "123",
 				"accountID":     "456",
@@ -1034,10 +1034,9 @@ func signupHasExpectedDates(startDate, endDate time.Time) func(c *GetSignupClien
 
 func signupHasExpectedClaims(claims map[string]string) func(c *GetSignupClient) {
 	return func(c *GetSignupClient) {
-
 		for expectedClaim, expectedClaimValue := range claims {
 			actualClaimValue, claimFound := c.responseBody[expectedClaim]
-			require.True(c.t, claimFound, "unable to find expected claim [%s]", expectedClaim)
+			require.True(c.t, claimFound, "unable to find expected claim [%s]. Claims found %v", expectedClaim, claims)
 			require.Equal(c.t, expectedClaimValue, actualClaimValue, "expected claim value [%s] doesn't match actual claim value [%s]", expectedClaimValue, actualClaimValue)
 		}
 	}
