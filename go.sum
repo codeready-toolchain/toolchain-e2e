@@ -228,10 +228,10 @@ github.com/redhat-cop/operator-utils v1.3.8 h1:xhoMBg2snSzNdcxT53lSBr7PRXxrzP1cD
 github.com/redhat-cop/operator-utils v1.3.8/go.mod h1:s4R0YY8lVlHkC78GLV20PPuZmywjSbTwZKCHwWUQ3P8=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
-github.com/rsoaresd/api v0.0.0-20250908100603-312ce7567dd1 h1:9KHwlNL3FMa6K5lVgVCtuXqSUW8QpmqMCsem75rxZg0=
-github.com/rsoaresd/api v0.0.0-20250908100603-312ce7567dd1/go.mod h1:20258od6i5+jP406Z76YaI2ow/vc7URwsDU2bokpkRE=
-github.com/rsoaresd/toolchain-common v0.0.0-20250903095154-769c1bbc2835 h1:g5I9f2vv1NaUtGLTtFdw5FtO1mdM9jCYtIX7MEBUwfA=
-github.com/rsoaresd/toolchain-common v0.0.0-20250903095154-769c1bbc2835/go.mod h1:mjwK6D+gH299P2CEUgliLEwJs4K+Cx++Bns/8rYkxUU=
+github.com/rsoaresd/api v0.0.0-20250910155735-270447f471cd h1:kJXkF+vP8vi2ti/z4Es2hXjg54WMMaqAJNw9MNDF+ac=
+github.com/rsoaresd/api v0.0.0-20250910155735-270447f471cd/go.mod h1:TiQ/yNv3cGL4nxo3fgRtcHyYYuRf+nAgs6B1IAqvxOU=
+github.com/rsoaresd/toolchain-common v0.0.0-20250910164142-aabf15684683 h1:0oCowjVcHWnfitGbiC8bt0/iOxan5hAtvmJ23Id15HY=
+github.com/rsoaresd/toolchain-common v0.0.0-20250910164142-aabf15684683/go.mod h1:gybrINLPAi4+BybZuAdv2033dWP/2IHaYBK7vC4lIo0=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sagikazarmark/locafero v0.7.0 h1:5MqpDsTGNDhY8sGp0Aowyf0qKsPrhewaLSsFaodPcyo=
 github.com/sagikazarmark/locafero v0.7.0/go.mod h1:2za3Cg5rMaTMoG/2Ulr9AwtFaIppKXTRYnozin4aB5k=
@@ -374,8 +374,8 @@ golang.org/x/tools v0.0.0-20200619180055-7c47624df98f/go.mod h1:EkVYQZoAsY45+roY
 golang.org/x/tools v0.0.0-20210106214847-113979e3529a/go.mod h1:emZCQorbCU4vsT4fOWvOPXz4eW1wZW4PmDk9uLelYpA=
 golang.org/x/tools v0.1.12/go.mod h1:hNGJHUnrk76NpqgfD5Aqm5Crs+Hm0VOH/i9J2+nxYbc=
 golang.org/x/tools v0.6.0/go.mod h1:Xwgl3UAJ/d3gWutnCtw505GrjyAbvKui8lOU390QaIU=
-golang.org/x/tools v0.29.0 h1:Xx0h3TtM9rzQpQuR4dKLrdglAmCEN5Oi+P74JdhdzXE=
-golang.org/x/tools v0.29.0/go.mod h1:KMQVMRsVxU6nHCFXrBPhDB8XncLNLM0lIy/F14RP588=
+golang.org/x/tools v0.30.0 h1:BgcpHewrV5AUp2G9MebG4XPFI1E2W41zU1SaqVA9vJY=
+golang.org/x/tools v0.30.0/go.mod h1:c347cR/OJfw5TI+GfX7RUPNMdDRRbjvYTS0jPyvsVtY=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
