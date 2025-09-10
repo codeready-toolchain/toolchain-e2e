@@ -20,9 +20,16 @@ func TestToolchainStatusUnready(t *testing.T) {
 	VerifyToolchainStatus(t, hostAwait, memberAwait)
 
 	t.Run("verify updated toolchainconfig is synced - go to unready", func(t *testing.T) {
+		// capture original member config before mutation
+		origMemberCfg := memberAwait.GetMemberOperatorConfig(t)
+		
 		// set an invalid console route name to force an error on the memberstatus (console route won't be found)
-		memberConfigurationWithInvalidConsole := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.Console().RouteName("nonexistent-console-route"))
+		memberConfigurationWithInvalidConsole := testconfig.ModifyMemberOperatorConfigObj(origMemberCfg, testconfig.Console().RouteName("nonexistent-console-route"))
 		hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(memberConfigurationWithInvalidConsole.Spec))
+		t.Cleanup(func() {
+			// ensure restore even if the test fails earlier
+			hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(origMemberCfg.Spec))
+		})
 
 		err := memberAwait.WaitForMemberStatus(t,
 			wait.UntilMemberStatusHasConditions(wait.ToolchainStatusComponentsNotReady("[routes]")))
@@ -33,9 +40,8 @@ func TestToolchainStatusUnready(t *testing.T) {
 		require.NoError(t, err, "failed while waiting for ToolchainStatus to contain error due to invalid console route")
 
 		t.Run("verify member and toolchain status go back to ready", func(t *testing.T) {
-			// change console route name back to default to resolve the error on the memberstatus
-			memberConfigurationWithValidConsole := testconfig.ModifyMemberOperatorConfigObj(memberAwait.GetMemberOperatorConfig(t), testconfig.Console().RouteName("console"))
-			hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(memberConfigurationWithValidConsole.Spec))
+			// restore original member config captured before mutation
+			hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(origMemberCfg.Spec))
 
 			VerifyMemberStatus(t, memberAwait, consoleURL)
 			VerifyToolchainStatus(t, hostAwait, memberAwait)
