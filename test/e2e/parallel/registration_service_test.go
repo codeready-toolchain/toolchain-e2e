@@ -489,7 +489,6 @@ func TestSignupOK(t *testing.T) {
 				"username":      userSignup.Spec.IdentityClaims.PreferredUsername,
 				"givenName":     userSignup.Spec.IdentityClaims.GivenName,
 				"familyName":    userSignup.Spec.IdentityClaims.FamilyName,
-				"company":       userSignup.Spec.IdentityClaims.Company,
 				"userID":        "123",
 				"accountID":     "456",
 				"accountNumber": "789",
