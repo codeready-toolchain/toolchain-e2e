@@ -22,7 +22,6 @@ func TestToolchainStatusUnready(t *testing.T) {
 	t.Run("verify updated toolchainconfig is synced - go to unready", func(t *testing.T) {
 		// capture original member config before mutation
 		origMemberCfg := memberAwait.GetMemberOperatorConfig(t)
-		
 		// set an invalid console route name to force an error on the memberstatus (console route won't be found)
 		memberConfigurationWithInvalidConsole := testconfig.ModifyMemberOperatorConfigObj(origMemberCfg, testconfig.Console().RouteName("nonexistent-console-route"))
 		hostAwait.UpdateToolchainConfig(t, testconfig.Members().Default(memberConfigurationWithInvalidConsole.Spec))
