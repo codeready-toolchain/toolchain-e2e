@@ -468,6 +468,33 @@ func TestSignupOK(t *testing.T) {
 		// Re-activate the usersignup by calling the signup endpoint with the same token/user again
 		signupUser(token, emailAddress, identity.Username, identity)
 	})
+
+	t.Run("test get signup returns expected response", func(t *testing.T) {
+		// Get valid generated token for e2e tests.
+		emailAddress := uuid.Must(uuid.NewV4()).String() + "@acme.com"
+		identity, token, err := authsupport.NewToken(authsupport.WithEmail(emailAddress), commonauth.WithUserIDClaim("123"), commonauth.WithAccountIDClaim("456"), commonauth.WithAccountNumberClaim("789"))
+		require.NoError(t, err)
+
+		// Signup a new user
+		userSignup := signupUser(token, emailAddress, identity.Username, identity)
+
+		t.Logf("Signed up new user %+v", userSignup)
+
+		// call GET /signup and verify expected response body fields are there
+		now := time.Now()
+		NewGetSignupClient(t, await, identity.Username, token).Invoke(signupIsProvisioned,
+			signupHasExpectedDates(now, now.Add(time.Hour*24*30)),
+			signupHasExpectedClaims(map[string]string{
+				"name":          userSignup.Name,
+				"username":      userSignup.Spec.IdentityClaims.PreferredUsername,
+				"given_name":    userSignup.Spec.IdentityClaims.GivenName,
+				"family_name":   userSignup.Spec.IdentityClaims.FamilyName,
+				"company":       userSignup.Spec.IdentityClaims.Company,
+				"userID":        "123",
+				"accountID":     "456",
+				"accountNumber": "789",
+			}))
+	})
 }
 
 func TestUserSignupFoundWhenNamedWithEncodedUsername(t *testing.T) {
@@ -1002,6 +1029,17 @@ func signupHasExpectedDates(startDate, endDate time.Time) func(c *GetSignupClien
 		require.NoError(c.t, err)
 		require.WithinDuration(c.t, endDate, responseEndDate, time.Hour,
 			"endDate in response [%s] not in expected range [%s]", responseEndDate, endDate.Format(time.RFC3339))
+	}
+}
+
+func signupHasExpectedClaims(claims map[string]string) func(c *GetSignupClient) {
+	return func(c *GetSignupClient) {
+
+		for expectedClaim, expectedClaimValue := range claims {
+			actualClaimValue, claimFound := c.responseBody[expectedClaim]
+			require.True(c.t, claimFound, "unable to find expected claim [%s]", expectedClaim)
+			require.Equal(c.t, expectedClaimValue, actualClaimValue, "expected claim value [%s] doesn't match actual claim value [%s]", expectedClaimValue, actualClaimValue)
+		}
 	}
 }
 
