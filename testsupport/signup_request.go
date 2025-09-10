@@ -238,6 +238,9 @@ func (r *SignupRequest) Execute(t *testing.T) *SignupResult {
 	if r.accountID != "" {
 		claims = append(claims, commonauth.WithAccountIDClaim(r.accountID))
 	}
+	if r.accountNumber != "" {
+		claims = append(claims, commonauth.WithAccountNumberClaim(r.accountNumber))
+	}
 	r.token, err = authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(t, err)
 
