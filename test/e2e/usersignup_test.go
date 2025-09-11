@@ -356,6 +356,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 		IdentityID(id).
 		UserID("000999").
 		AccountID("111999").
+		AccountNumber("4242").
 		EnsureMUR().
 		RequireConditions(wait.ConditionSet(wait.Default(), wait.ApprovedAutomatically())...).
 		Execute(s.T())
@@ -376,6 +377,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	claims = append(claims, commonauth.WithGivenNameClaim("Jane"))
 	claims = append(claims, commonauth.WithFamilyNameClaim("Turner"))
 	claims = append(claims, commonauth.WithCompanyClaim("Acme"))
+	claims = append(claims, commonauth.WithAccountNumberClaim("2222"))
 
 	token, err := authsupport.NewTokenFromIdentity(userIdentity, claims...)
 	require.NoError(s.T(), err)
@@ -394,6 +396,7 @@ func (s *userSignupIntegrationTest) TestGetSignupEndpointUpdatesIdentityClaims()
 	require.Equal(s.T(), "Jane", userSignup.Spec.IdentityClaims.GivenName)
 	require.Equal(s.T(), "Turner", userSignup.Spec.IdentityClaims.FamilyName)
 	require.Equal(s.T(), "Acme", userSignup.Spec.IdentityClaims.Company)
+	require.Equal(s.T(), "2222", userSignup.Spec.IdentityClaims.AccountNumber)
 }
 
 // TestUserResourcesCreatedWhenOriginalSubIsSet tests the case where:

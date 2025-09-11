@@ -30,10 +30,10 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cloudflare/circl v1.1.0/go.mod h1:prBCrKB9DV4poKZY1l9zBXg2QJY7mvgRvtMxxK7fi4I=
 github.com/cloudflare/circl v1.6.1 h1:zqIqSPIndyBh1bjLVVDHMPpVKqp8Su/V+6MeDzzQBQ0=
 github.com/cloudflare/circl v1.6.1/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
-github.com/codeready-toolchain/api v0.0.0-20250605152105-383ffe6cac27 h1:g1ivSPPHTC96RHp8S/gRmqODWgoHyivq+/d5kSI0pEs=
-github.com/codeready-toolchain/api v0.0.0-20250605152105-383ffe6cac27/go.mod h1:20258od6i5+jP406Z76YaI2ow/vc7URwsDU2bokpkRE=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20250506093954-2b65ad3a2e12 h1:w54sojJJ8PsHZzK1mC+/EUBrQ9F2sC/k7JUVc8LSqK4=
-github.com/codeready-toolchain/toolchain-common v0.0.0-20250506093954-2b65ad3a2e12/go.mod h1:TrMvD0sP69wI6Rouzfs7OsOUSj4CGn/ZiIdiDBAFQjk=
+github.com/codeready-toolchain/api v0.0.0-20250909075145-ca043a618f0f h1:IZ3Wq4iC0765HP369U3+08NFb0rK/NJCKfRjj8OdPVo=
+github.com/codeready-toolchain/api v0.0.0-20250909075145-ca043a618f0f/go.mod h1:20258od6i5+jP406Z76YaI2ow/vc7URwsDU2bokpkRE=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20250910131836-b410cd4ca53d h1:wu30udLhwynhfb5w+G+fKjsQfn0hW18llOjh0ZYh62c=
+github.com/codeready-toolchain/toolchain-common v0.0.0-20250910131836-b410cd4ca53d/go.mod h1:nQ2naidFtgGv+BofbwsiZWvQLdQ2O9ICR2uxf67oYmA=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
