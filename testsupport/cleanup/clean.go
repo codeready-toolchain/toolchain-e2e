@@ -169,8 +169,8 @@ func (c *cleanTask) cleanObject() {
 			c.t.Logf("problem with getting the related %s '%s': %s", kind, objToClean.GetName(), err)
 			return false, err
 		}
-		// if the object was NSTemplateTier and is still not deleted, prod it to retry the finalization attempt
-		c.prodTierDeletion(objToClean)
+		// if the object is of selected types, encourage its deletion by forcing the reconciliation.
+		c.encourageDeletion(objToClean)
 
 		return false, nil
 	})
@@ -307,10 +307,13 @@ func (c *cleanTask) verifyTierTemplateRevisionsDeleted(isNsTemplateTier bool, ns
 	return false, nil
 }
 
-// prodTierDeletion updates the obj (assumed freshly loaded from the cluster) with a new "random" annotation value to
-// force its reconciliation if it is an NSTemplateTier. It does nothing if the object is not an NSTemplateTier.
-func (c *cleanTask) prodTierDeletion(obj client.Object) {
-	if _, ok := obj.(*toolchainv1alpha1.NSTemplateTier); !ok {
+// encourageDeletion updates the obj (assumed freshly loaded from the cluster) with a new "random" annotation value to
+// force its reconciliation if it is an NSTemplateTier or a TierTemplate. It does nothing if the object is neither.
+func (c *cleanTask) encourageDeletion(obj client.Object) {
+	switch obj.(type) {
+	case *toolchainv1alpha1.NSTemplateTier, *toolchainv1alpha1.TierTemplate:
+	default:
+		// only the above types are supported, we don't force the deletion on any other resource type.
 		return
 	}
 
@@ -322,8 +325,8 @@ func (c *cleanTask) prodTierDeletion(obj client.Object) {
 
 	if err := c.client.Update(context.TODO(), obj); err != nil {
 		// let's not propagate this kind of error - this is just trying to speed up
-		// the finalization of the NSTemplateTiers. A failure to update the object
+		// the finalization of the objects. A failure to update the object
 		// will just cause a longer pause before the next finalization attempt.
-		c.t.Logf("failed to force reconciliation of the NSTemplateTier %s: %s", obj.GetName(), err.Error())
+		c.t.Logf("failed to force reconciliation of the %T %s: %s", obj, obj.GetName(), err.Error())
 	}
 }
