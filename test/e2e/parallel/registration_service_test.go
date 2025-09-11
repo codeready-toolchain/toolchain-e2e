@@ -610,6 +610,7 @@ func TestPhoneVerification(t *testing.T) {
 	assert.Empty(t, mp["compliantUsername"])
 	assert.Empty(t, mp["defaultUserNamespace"])
 	assert.Empty(t, mp["rhodsMemberURL"])
+	assert.Empty(t, mp["cheDashboardURL"])
 	assert.Equal(t, identity0.Username, mp["username"])
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
@@ -1016,6 +1017,7 @@ func signupIsProvisioned(client *GetSignupClient) {
 	assert.Equal(client.t, hostAwait.APIProxyURL, client.responseBody["proxyURL"])
 	assert.Equal(client.t, fmt.Sprintf("%s-dev", transformedUsername), client.responseBody["defaultUserNamespace"])
 	assertRHODSClusterURL(client.t, memberAwait, client.responseBody)
+	assertCheDashboardURL(client.t, memberAwait, client.responseBody)
 }
 
 type GetSignupClient struct {
@@ -1055,6 +1057,7 @@ func assertGetSignupStatusPendingApproval(t *testing.T, await wait.Awaitilities,
 	assert.Equal(t, username, mp["username"], "unexpected username in response", mp, mpStatus)
 	assert.Empty(t, mp["defaultUserNamespace"])
 	assert.Empty(t, mp["rhodsMemberURL"])
+	assert.Empty(t, mp["cheDashboardURL"])
 	require.IsType(t, false, mpStatus["ready"])
 	assert.False(t, mpStatus["ready"].(bool))
 	assert.Equal(t, "PendingApproval", mpStatus["reason"])
@@ -1070,6 +1073,13 @@ func assertRHODSClusterURL(t *testing.T, memberAwait *wait.MemberAwaitility, res
 	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps")
 	appsURL := memberAwait.GetConsoleURL(t)[index:]
 	assert.Equal(t, fmt.Sprintf("https://%s%s", "rhods-dashboard-redhat-ods-applications", appsURL), response["rhodsMemberURL"])
+}
+
+func assertCheDashboardURL(t *testing.T, memberAwait *wait.MemberAwaitility, response map[string]interface{}) {
+	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps", "expected to find .apps in the console URL %s", memberAwait.GetConsoleURL(t))
+	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps")
+	appsURL := memberAwait.GetConsoleURL(t)[index:]
+	assert.Equal(t, fmt.Sprintf("https://%s%s", "devspaces", appsURL), response["cheDashboardURL"])
 }
 
 // waitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
