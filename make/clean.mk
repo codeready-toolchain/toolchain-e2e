@@ -24,6 +24,7 @@ clean-users: clean-warning
 	$(Q)-oc delete spacerequests --all --all-namespaces
 	$(Q)-oc delete spaces --all --all-namespaces
 	$(Q)-oc wait --for=delete namespaces -l toolchain.dev.openshift.com/type
+	$(Q)-oc delete namespace workloads-noise --wait --ignore-not-found
 
 clean-nstemplatetiers: clean-warning
 	$(Q)-oc delete nstemplatetier --all --all-namespaces
