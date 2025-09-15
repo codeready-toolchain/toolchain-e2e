@@ -1052,8 +1052,8 @@ func signupIsProvisioned(client *GetSignupClient) {
 	assert.Equal(client.t, memberCluster.Status.APIEndpoint, client.responseBody["apiEndpoint"])
 	assert.Equal(client.t, hostAwait.APIProxyURL, client.responseBody["proxyURL"])
 	assert.Equal(client.t, fmt.Sprintf("%s-dev", transformedUsername), client.responseBody["defaultUserNamespace"])
-	assertResponseURL(client.t, memberAwait, "rhods", client.responseBody)
-	assertResponseURL(client.t, memberAwait, "devspaces", client.responseBody)
+	assertResponseURL(client.t, memberAwait, "rhods-dashboard-redhat-ods-applications", "rhodsMemberURL", client.responseBody)
+	assertResponseURL(client.t, memberAwait, "devspaces", "cheDashboardURL", client.responseBody)
 }
 
 type GetSignupClient struct {
@@ -1104,22 +1104,13 @@ func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, beare
 	NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", bearerToken, "", http.StatusNotFound)
 }
 
-func assertResponseURL(t *testing.T, memberAwait *wait.MemberAwaitility, urlPrefix string, responseField map[string]interface{}) {
+func assertResponseURL(t *testing.T, memberAwait *wait.MemberAwaitility, hostname string, responseKey string, responseField map[string]interface{}) {
 	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps", "expected to find .apps in the console URL %s", memberAwait.GetConsoleURL(t))
 	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps")
 	appsURL := memberAwait.GetConsoleURL(t)[index:]
 
-	urlMappings := map[string]struct {
-		hostname    string
-		responseKey string
-	}{
-		"devspaces": {"devspaces", "cheDashboardURL"},
-		"rhods":     {"rhods-dashboard-redhat-ods-applications", "rhodsMemberURL"},
-	}
-
-	mapping := urlMappings[urlPrefix]
-	expectedURL := fmt.Sprintf("https://%s%s", mapping.hostname, appsURL)
-	assert.Equal(t, expectedURL, responseField[mapping.responseKey])
+	expectedURL := fmt.Sprintf("https://%s%s", hostname, appsURL)
+	assert.Equal(t, expectedURL, responseField[responseKey])
 }
 
 // waitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
