@@ -1052,8 +1052,8 @@ func signupIsProvisioned(client *GetSignupClient) {
 	assert.Equal(client.t, memberCluster.Status.APIEndpoint, client.responseBody["apiEndpoint"])
 	assert.Equal(client.t, hostAwait.APIProxyURL, client.responseBody["proxyURL"])
 	assert.Equal(client.t, fmt.Sprintf("%s-dev", transformedUsername), client.responseBody["defaultUserNamespace"])
-	assertRHODSClusterURL(client.t, memberAwait, client.responseBody)
-	assertCheDashboardURL(client.t, memberAwait, client.responseBody)
+	assertResponseURL(client.t, memberAwait, "rhods", client.responseBody)
+	assertResponseURL(client.t, memberAwait, "devspaces", client.responseBody)
 }
 
 type GetSignupClient struct {
@@ -1104,18 +1104,22 @@ func assertGetSignupReturnsNotFound(t *testing.T, await wait.Awaitilities, beare
 	NewHTTPRequest(t).InvokeEndpoint("GET", route+"/api/v1/signup", bearerToken, "", http.StatusNotFound)
 }
 
-func assertRHODSClusterURL(t *testing.T, memberAwait *wait.MemberAwaitility, response map[string]interface{}) {
+func assertResponseURL(t *testing.T, memberAwait *wait.MemberAwaitility, urlPrefix string, responseField map[string]interface{}) {
 	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps", "expected to find .apps in the console URL %s", memberAwait.GetConsoleURL(t))
 	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps")
 	appsURL := memberAwait.GetConsoleURL(t)[index:]
-	assert.Equal(t, fmt.Sprintf("https://%s%s", "rhods-dashboard-redhat-ods-applications", appsURL), response["rhodsMemberURL"])
-}
 
-func assertCheDashboardURL(t *testing.T, memberAwait *wait.MemberAwaitility, response map[string]interface{}) {
-	require.Containsf(t, memberAwait.GetConsoleURL(t), ".apps", "expected to find .apps in the console URL %s", memberAwait.GetConsoleURL(t))
-	index := strings.Index(memberAwait.GetConsoleURL(t), ".apps")
-	appsURL := memberAwait.GetConsoleURL(t)[index:]
-	assert.Equal(t, fmt.Sprintf("https://%s%s", "devspaces", appsURL), response["cheDashboardURL"])
+	urlMappings := map[string]struct {
+		hostname    string
+		responseKey string
+	}{
+		"devspaces": {"devspaces", "cheDashboardURL"},
+		"rhods":     {"rhods-dashboard-redhat-ods-applications", "rhodsMemberURL"},
+	}
+
+	mapping := urlMappings[urlPrefix]
+	expectedURL := fmt.Sprintf("https://%s%s", mapping.hostname, appsURL)
+	assert.Equal(t, expectedURL, responseField[mapping.responseKey])
 }
 
 // waitForUserSignupReadyInRegistrationService waits and checks that the UserSignup is ready according to registration service /signup endpoint
