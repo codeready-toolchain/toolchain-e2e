@@ -1,13 +1,13 @@
 module github.com/codeready-toolchain/toolchain-e2e
 
 require (
-	github.com/codeready-toolchain/api v0.0.0-20250909075145-ca043a618f0f
-	github.com/codeready-toolchain/toolchain-common v0.0.0-20250910131836-b410cd4ca53d
+	github.com/codeready-toolchain/api v0.0.0-20250916082953-4ecb3a4645e6
+	github.com/codeready-toolchain/toolchain-common v0.0.0-20250916085517-b50328535b99
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/fatih/color v1.18.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/gosuri/uiprogress v0.0.1
 	github.com/gosuri/uitable v0.0.4
@@ -140,10 +140,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/codeready-toolchain/api => github.com/rsoaresd/api v0.0.0-20250910155735-270447f471cd
-
-replace github.com/codeready-toolchain/toolchain-common => github.com/rsoaresd/toolchain-common v0.0.0-20250910164142-aabf15684683
 
 go 1.23.0
 
