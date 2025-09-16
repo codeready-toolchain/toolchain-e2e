@@ -101,25 +101,8 @@ func (c *customTierChecks) GetClusterObjectChecks() []clusterObjectsCheck {
 	return checks.GetClusterObjectChecks()
 }
 
-func (c *customTierChecks) GetExpectedTemplateRefs(_ *testing.T, _ *wait.HostAwaitility) TemplateRefs {
-	var clusterResourcesTmplRef *string
-	if c.tier.Spec.ClusterResources != nil {
-		clusterResourcesTmplRef = &c.tier.Spec.ClusterResources.TemplateRef
-	}
-	namespaceTmplRefs := make([]string, len(c.tier.Spec.Namespaces))
-	for i, ns := range c.tier.Spec.Namespaces {
-		namespaceTmplRefs[i] = ns.TemplateRef
-	}
-	spaceRolesTmplRefs := make(map[string]string)
-	for i, ns := range c.tier.Spec.SpaceRoles {
-		spaceRolesTmplRefs[i] = ns.TemplateRef
-	}
-
-	return TemplateRefs{
-		ClusterResources: clusterResourcesTmplRef,
-		Namespaces:       namespaceTmplRefs,
-		SpaceRoles:       spaceRolesTmplRefs,
-	}
+func (c *customTierChecks) GetExpectedTemplateRefs(t *testing.T, hostAwait *wait.HostAwaitility) TemplateRefs {
+	return GetTemplateRefs(t, hostAwait, c.tier.Name)
 }
 
 type baseTierChecks struct {
@@ -1353,7 +1336,7 @@ func clusterResourceQuotaConfigMapCount(configMapCount string) clusterObjectsChe
 	}
 }
 
-func clusterResourceQuotaMatches(userName, tierName string, hard map[corev1.ResourceName]resource.Quantity) wait.ClusterResourceQuotaWaitCriterion {
+func clusterResourceQuotaMatches(userName, tierName string, hard corev1.ResourceList) wait.ClusterResourceQuotaWaitCriterion {
 	return wait.ClusterResourceQuotaWaitCriterion{
 		Match: func(actual *quotav1.ClusterResourceQuota) bool {
 			expectedQuotaSpec := quotav1.ClusterResourceQuotaSpec{

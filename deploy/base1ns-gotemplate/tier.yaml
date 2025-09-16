@@ -1,0 +1,47 @@
+apiVersion: toolchain.dev.openshift.com/v1alpha1
+kind: NSTemplateTier
+metadata:
+  name: base1ns-gotemplate
+  labels:
+    producer: toolchain-e2e
+spec:
+  clusterResources:
+    templateRef: cluster-resources-go
+  namespaces:
+  - templateRef: dev-go
+  spaceRoles:
+    admin:
+      templateRef: spacerole-admin-go
+  parameters:
+  - name: DEPLOYMENT_QUOTA
+    value: "30"
+  - name: POD_COUNT
+    value: "50"
+  - name: VIRTUAL_MACHINES
+    value: "2"
+  - name: LOAD_BALANCER
+    value: "0"
+  - name: SECRETS_COUNT
+    value: "100"
+  - name: MEMORY_LIMIT
+    value: "30Gi"
+  - name: MEMORY_REQUEST
+    value: "30Gi"
+  - name: MEMORY_BUILD_LIMIT
+    value: "14Gi"
+  - name: MEMORY_BUILD_REQUEST
+    value: "14Gi"
+  - name: CPU_BUILD_LIMIT
+    value: "20000m"
+  - name: CPU_LIMIT
+    value: "30000m"
+  - name: CPU_REQUEST
+    value: "3000m"
+  - name: EPHEMERAL_STORAGE_LIMIT
+    value: "15Gi"
+  - name: EPHEMERAL_STORAGE_REQUEST
+    value: "15Gi"
+  - name: STORAGE_REQUEST
+    value: "80Gi"
+  - name: PERSISTENT_VOLUME_CLAIM
+    value: "10"
