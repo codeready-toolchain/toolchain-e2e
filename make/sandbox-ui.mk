@@ -64,18 +64,14 @@ endif
 check-sso-credentials:
 	@echo "checking SSO credentials..."
 	@if [ -n "$(CI)" ]; then \
-		echo "Running in CI - using file-based SSO credentials"; \
-		if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
-			echo "SSO credential files not found or empty in CI environment"; \
+		@if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
+			if [ -n "$(CI)" ]; then \
+				echo "SSO credential files not found or empty in CI environment"; \
+			else \
+				echo "SSO_USERNAME or SSO_PASSWORD environment variables not set"; \
+			fi; \
 			exit 1; \
-		fi; \
-	else \
-		echo "Running locally - using environment variables"; \
-		if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
-			echo "SSO_USERNAME or SSO_PASSWORD environment variables not set"; \
-			exit 1; \
-		fi; \
-	fi
+		fi
 	@echo "Validating SSO credentials..."
 	@status=$$(curl -s -o /dev/null -w "%{http_code}" \
 	  -X POST "https://sso.devsandbox.dev/auth/realms/sandbox-dev/protocol/openid-connect/token" \
@@ -143,7 +139,7 @@ ifneq ($(strip $(REMOTE_RHDH_PLUGINS_BRANCH)),)
 	# fetch the branch
 	git --git-dir=${RHDH_PLUGINS_TMP}/.git --work-tree=${RHDH_PLUGINS_TMP} fetch external ${REMOTE_RHDH_PLUGINS_BRANCH}
 	# merge the branch with master
-	git --git-dir=${RHDH_PLUGINS_TMP}/.git --work-tree=${RHDH_PLUGINS_TMP} merge --allow-unrelated-histories --no-commit FETCH_HEAD
+	git --git-dir=${RHDH_PLUGINS_TMP}/.git --work-tree=${RHDH_PLUGINS_TMP} merge --ff-only FETCH_HEAD
 else
 	@echo "no pairing needed, using rhdh-plugins repo from master"
 	@$(MAKE) clone-rhdh-plugins 
