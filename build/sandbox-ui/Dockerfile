@@ -76,7 +76,8 @@ RUN yum install -y \
         libXrender \
         alsa-lib \
         freetype \
-        fontconfig && \
+        fontconfig \
+        libX11-xcb && \
     yum clean all
 
 CMD ["make", "test-ui-e2e"]
