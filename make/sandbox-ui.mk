@@ -63,15 +63,14 @@ endif
 
 check-sso-credentials:
 	@echo "checking SSO credentials..."
-	@if [ -n "$(CI)" ]; then \
-		@if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
-			if [ -n "$(CI)" ]; then \
-				echo "SSO credential files not found or empty in CI environment"; \
-			else \
-				echo "SSO_USERNAME or SSO_PASSWORD environment variables not set"; \
-			fi; \
-			exit 1; \
-		fi
+	@if [ -z "$(SSO_USERNAME_READ)" ] || [ -z "$(SSO_PASSWORD_READ)" ]; then \
+		if [ -n "$(CI)" ]; then \
+			echo "SSO credential files not found or empty in CI environment"; \
+		else \
+		  	echo "SSO_USERNAME or SSO_PASSWORD environment variables not set"; \
+		fi; \
+		exit 1; \
+	fi
 	@echo "Validating SSO credentials..."
 	@status=$$(curl -s -o /dev/null -w "%{http_code}" \
 	  -X POST "https://sso.devsandbox.dev/auth/realms/sandbox-dev/protocol/openid-connect/token" \
