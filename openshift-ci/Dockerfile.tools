@@ -51,7 +51,8 @@ RUN yum install -y \
         libXrender \
         alsa-lib \
         freetype \
-        fontconfig && \
+        fontconfig \
+        libX11-xcb && \
     yum clean all
 
 # Install kustomize
