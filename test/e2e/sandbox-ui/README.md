@@ -10,19 +10,19 @@ The UI E2E tests are executed against the Developer Sandbox UI running in OpenSh
     - to easily manage it, you can run `nvm use 22`
 3. Ensure you have `yarn` installed
 4. Make sure you can log in at <https://sso.devsandbox.dev/auth/realms/sandbox-dev/account> using your SSO_USERNAME and SSO_PASSWORD
-5. Make sure you do not have any toolchain resources deployed on your cluster
+5. Make sure you have toolchain resources deployed on your cluster (you can run `make prepare-and-deploy-e2e`)
 
 ### Running UI E2E Tests locally
 
-`make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+`make test-ui-e2e SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} PUSH_SANDBOX_IMAGE=true`
 
-If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD}`
+If you want to run and test the Developer Sandbox UI from your local rhdh-plugins repo, run `make test-ui-e2e-local SSO_USERNAME=${SSO_USERNAME} SSO_PASSWORD=${SSO_PASSWORD} PUSH_SANDBOX_IMAGE=true`
 
 For now, the UI E2E tests are running only through the Firefox browser.
 
 ### Running UI E2E Tests in Container
 
-`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD>`
+`make test-sandbox-ui-in-container SSO_USERNAME=<SSO_USERNAME> SSO_PASSWORD=<SSO_PASSWORD> HOST_NS=<HOST_NS>`
 
 ### Running UI E2E Tests against dev/stage/prod
 
