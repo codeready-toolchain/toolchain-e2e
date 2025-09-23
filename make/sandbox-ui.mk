@@ -1,6 +1,5 @@
 SANDBOX_UI_NS := sandbox-ui
 SANDBOX_PLUGIN_IMAGE_NAME := sandbox-rhdh-plugin
-KUSTOMIZE = $(shell pwd)/bin/kustomize
 TAG := latest
 PLATFORM ?= linux/amd64
 RHDH_PLUGINS_TMP ?= $(TMPDIR)rhdh-plugins
@@ -36,14 +35,14 @@ deploy-sandbox-ui: HOST_NS=$(shell oc get projects -l app=host-operator --output
 deploy-sandbox-ui: REGISTRATION_SERVICE_API=https://$(shell oc get route registration-service -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')/api/v1
 deploy-sandbox-ui: HOST_OPERATOR_API=https://$(shell oc get route api -n ${HOST_NS} -o custom-columns=":spec.host" | tr -d '\n')
 deploy-sandbox-ui: RHDH=https://rhdh-${SANDBOX_UI_NS}.$(shell oc get ingress.config.openshift.io/cluster -o jsonpath='{.spec.domain}')
-deploy-sandbox-ui: kustomize
+deploy-sandbox-ui:
 	$(MAKE) check-sso-credentials
 	@echo "sandbox ui will be deployed in '${SANDBOX_UI_NS}' namespace"
 	$(MAKE) create-namespace SANDBOX_UI_NS=${SANDBOX_UI_NS}
 ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
 endif
-	$(KUSTOMIZE) build deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
+	oc kustomize deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
 		HOST_OPERATOR_API=${HOST_OPERATOR_API} \
 		SANDBOX_UI_NS=${SANDBOX_UI_NS} \
 		SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
