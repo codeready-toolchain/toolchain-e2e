@@ -55,6 +55,10 @@ RUN yum install -y \
         libX11-xcb && \
     yum clean all
 
+# Install kustomize
+RUN curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash \
+    && mv kustomize /usr/local/bin
+
 WORKDIR /tmp
 
 # download, verify and install golang
