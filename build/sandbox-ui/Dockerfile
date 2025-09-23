@@ -30,10 +30,6 @@ RUN yum install -y \
         sqlite-devel && \
     yum clean all
 
-# Install kustomize
-RUN curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash \
-    && mv kustomize /usr/local/bin
-
 # Install oc CLI
 RUN curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz && \
     tar -xzvf openshift-client-linux.tar.gz -C /usr/local/bin oc && \
