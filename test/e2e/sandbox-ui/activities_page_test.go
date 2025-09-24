@@ -20,7 +20,7 @@ func TestActivitiesPage(t *testing.T) {
 	})
 	sandboxui.IsVisible(t, activitiesLink)
 	err := activitiesLink.Click()
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	// wait for page to load
 	err = page.WaitForLoadState(playwright.PageWaitForLoadStateOptions{

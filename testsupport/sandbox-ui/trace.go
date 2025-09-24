@@ -28,6 +28,10 @@ func trace(t *testing.T, context playwright.BrowserContext, testName string) {
 		tracePath = filepath.Join(os.Getenv("E2E_REPO_PATH"), fmt.Sprintf("/trace/trace-%s.zip", testName))
 	}
 
+	if os.Getenv("CI") == "true" {
+		tracePath = filepath.Join(os.Getenv("ARTIFACT_DIR"), fmt.Sprintf("/trace/trace-%s.zip", testName))
+	}
+
 	t.Cleanup(func() {
 		if t.Failed() {
 			if err := context.Tracing().Stop(tracePath); err != nil {
