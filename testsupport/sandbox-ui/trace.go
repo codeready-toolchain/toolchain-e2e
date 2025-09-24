@@ -29,7 +29,9 @@ func trace(t *testing.T, context playwright.BrowserContext, testName string) {
 	}
 
 	if os.Getenv("CI") == "true" {
-		tracePath = filepath.Join(os.Getenv("ARTIFACT_DIR"), fmt.Sprintf("/trace/trace-%s.zip", testName))
+		// save trace in the job CI artifact directory
+		// artifacts/e2e/test/artifacts/sandbox-ui/trace/trace-%s.zip
+		tracePath = filepath.Join(os.Getenv("ARTIFACT_DIR"), fmt.Sprintf("/sandbox-ui/trace/trace-%s.zip", testName))
 	}
 
 	t.Cleanup(func() {
