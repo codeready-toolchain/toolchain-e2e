@@ -29,6 +29,8 @@ clean-users: clean-warning
 clean-nstemplatetiers: clean-warning
 	$(Q)-oc delete nstemplatetier --all --all-namespaces
 	$(Q)-oc wait --for=delete nstemplatetier --all --all-namespaces
+	$(Q)-oc delete tiertemplate --all --all-namespaces
+	$(Q)-oc wait --for=delete tiertemplate --all --all-namespaces
 
 .PHONY: clean-cluster-wide-config
 ## Delete all cluster-wide configuration resources like PriorityClass, MutatingWebhookConfiguration, and ClusterRoleBinding for e2e SA

@@ -42,7 +42,7 @@ deploy-sandbox-ui:
 ifeq ($(PUSH_SANDBOX_IMAGE),true)
 	$(MAKE) push-sandbox-plugin
 endif
-	kustomize build deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
+	oc kustomize deploy/sandbox-ui/ui-e2e-tests | REGISTRATION_SERVICE_API=${REGISTRATION_SERVICE_API} \
 		HOST_OPERATOR_API=${HOST_OPERATOR_API} \
 		SANDBOX_UI_NS=${SANDBOX_UI_NS} \
 		SANDBOX_PLUGIN_IMAGE=${IMAGE_TO_PUSH_IN_QUAY} \
