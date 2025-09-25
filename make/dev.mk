@@ -43,12 +43,12 @@ dev-deploy-e2e-local: deploy-e2e-local-to-dev-namespaces print-reg-service-link
 dev-deploy-e2e-local-two-members: deploy-e2e-local-to-dev-namespaces-two-members print-reg-service-link
 
 .PHONY: deploy-e2e-local-to-dev-namespaces
-deploy-e2e-local-to-dev-namespaces:
+deploy-e2e-local-to-dev-namespaces: check-quay-login-if-needed
 	$(MAKE) deploy-e2e-local MEMBER_NS=${DEFAULT_MEMBER_NS} SECOND_MEMBER_MODE=false HOST_NS=${DEFAULT_HOST_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
 .PHONY: deploy-e2e-local-to-dev-namespaces-two-members
-deploy-e2e-local-to-dev-namespaces-two-members:
+deploy-e2e-local-to-dev-namespaces-two-members: check-quay-login-if-needed
 	$(MAKE) deploy-e2e-local MEMBER_NS=${DEFAULT_MEMBER_NS} MEMBER_NS_2=${DEFAULT_MEMBER_NS_2} HOST_NS=${DEFAULT_HOST_NS} REGISTRATION_SERVICE_NS=${DEFAULT_HOST_NS} ENVIRONMENT=${DEV_ENVIRONMENT} E2E_TEST_EXECUTION=false
 	$(MAKE) setup-dev-sso DEV_SSO=${DEV_SSO}
 
